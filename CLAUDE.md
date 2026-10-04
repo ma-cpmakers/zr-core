@@ -65,3 +65,7 @@ frontend usano `^`: ciò che rompe chi installa (una prop dell'`AppShell` che ca
 Da tre task in su: `ma-dev-agent` con `ma-board`. Il progetto sulla board lo crea Luciano; alla nascita scrivi qui la
 riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «riprendi con `/ma-board-continue`», ma
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
+
+## Progetto sulla board
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · nessuno sprint aperto.
+   Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
