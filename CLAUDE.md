@@ -42,7 +42,9 @@ torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
 ## Repo pubblico
 Nessun segreto e nessun indirizzo interno — IP, nomi di server, percorsi di chiavi, canali di monitoraggio — né nel
 codice, né nei test, né in questo file, che è pubblico come il resto. I fatti operativi (board, chiave, server) stanno nel
-prompt di partenza e nelle skill. La CI ferma i segreti (`.github/nessun-segreto.sh`); il resto dipende da te.
+prompt di partenza e nelle skill. La CI ferma i segreti nelle forme che conosce — PHP, `.env`, chiavi (`.github/nessun-segreto.sh`) —, non in TypeScript
+né in JSON: il pacchetto non ha bisogno di segreti per costruzione (riceve tutto dall'app che lo installa), e se te ne
+serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 
 ## Stack e CI
 - PHP 8.4 (`config.platform.php` fissato), provider Laravel 13 trovato da solo
@@ -54,9 +56,12 @@ prompt di partenza e nelle skill. La CI ferma i segreti (`.github/nessun-segreto
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde. Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
 `composer.json`, nessun token) a una versione con tag, e la aggiorna col suo agente e la sua CI. Il design system cambia
-→ lo vedi all'avvio → riallinei → esce una versione nuova → ogni frontend la aggiorna.
+→ lo vedi all'avvio → riallinei → esce una versione nuova → **lo dici tu** ai frontend che usano zr-core, con un
+messaggio alla loro sessione (tag, cosa cambia, cosa devono fare) → ognuno la aggiorna. Le versioni seguono SemVer e i
+frontend usano `^`: ciò che rompe chi installa (una prop dell'`AppShell` che cambia, un campo del registro che sparisce)
+è una versione **maggiore**. Un tag non si sposta e non si cancella: uno sbagliato si corregge con una versione nuova.
 
 ## Progetti
 Da tre task in su: `ma-dev-agent` con `ma-board`. Il progetto sulla board lo crea Luciano; alla nascita scrivi qui la
-riga «Progetto sulla board» (FASE A di `ma-board`) col solo numero e nome del progetto: il modello della skill porta
-l'indirizzo della board, e in questo file non entra. Documenti, commit e dialogo in **italiano**.
+riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «riprendi con `/ma-board-continue`», ma
+**senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.

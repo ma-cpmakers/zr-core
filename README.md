@@ -9,8 +9,9 @@ Niente sito, niente database: è un pacchetto Composer (`zeiras/zr-core`) con co
 ogni frontend, a una versione con tag.
 
 **Repo pubblico di proposito**: i frontend lo installano senza credenziali. Quindi qui dentro **nessun segreto, mai**, e
-nessun indirizzo interno — niente `.env`, niente chiavi, niente nomi di server. I segreti li ferma la CI
-(`.github/nessun-segreto.sh`, lo stesso controllo di `zr-auth`); il resto è una regola di chi scrive.
+nessun indirizzo interno — niente `.env`, niente chiavi, niente nomi di server. La CI ferma i segreti nelle
+forme che conosce (`.github/nessun-segreto.sh`, lo stesso controllo di `zr-auth`: PHP, `.env`, chiavi); il pacchetto,
+per costruzione, non ne ha bisogno.
 
 Lo scrive l'agente `zr-core`. Il design system di Zeiras è la fonte: la cornice qui dentro ne è una copia derivata, e
 non si modifica a mano.
