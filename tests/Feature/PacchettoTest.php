@@ -14,5 +14,5 @@ it('dichiara per la scoperta automatica di Laravel solo provider che esistono', 
 });
 
 it('si avvia dentro un\'app Laravel', function () {
-    expect(app()->getProviders(ZrCoreServiceProvider::class))->toHaveCount(1);
+    expect(app()->getProviders(ZrCoreServiceProvider::class))->toHaveCount(2);
 });
