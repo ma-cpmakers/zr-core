@@ -1,15 +1,15 @@
 # zr-core — la cornice comune di Zeiras
 
-**Prima azione di ogni sessione: la skill `ma-dev`** (contratto di sviluppo: i test girano in CI, il dev server non è
-un runtime). **Poi la skill `zr-design-system`**: all'avvio controlla se il design system di Zeiras è cambiato, e se è
+**Prima azione di ogni sessione: la skill `ma-dev`** (contratto di sviluppo: i test girano in CI, non in
+locale). **Poi la skill `zr-design-system`**: all'avvio controlla se il design system di Zeiras è cambiato, e se è
 cambiato riallinei la copia derivata che sta qui dentro.
 
 `zr-core` è il **pacchetto** (`zeiras/zr-core`, Composer) che porta a ogni frontend di Zeiras la cornice dell'app: lo
 stesso ruolo di `zr-auth` per l'ingresso, ma per ciò che si vede. Niente sito, niente database, niente Redis: si
 installa dentro i frontend — `zr-home` per primo (la Dashboard sta nell'`AppShell` senza `product`), poi `zr-board` e gli
 altri moduli, con `product="<id>"`. Nessun frontend ricostruisce o modifica la cornice nel proprio codice. Forma e
-decisioni: spec di ma-devops `~/projects/ma-devops/docs/superpowers/specs/2026-10-04-zr-core-design.md` — si legge, non
-si riscrive; se una cosa non torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
+decisioni: la spec di zr-core (il percorso è nel prompt di partenza) — si legge, non si riscrive; se una cosa non
+torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
 `prompts/zr-core-build.md` (non versionato).
 
 ## Cosa scrive questa sessione
@@ -37,8 +37,7 @@ si riscrive; se una cosa non torna, la dici a Luciano. Il primo lavoro è nel pr
   Dashboard, notifiche, account, azienda e workspace come pagine sono di `zr-home`.
 - **Il contenuto del design system**: lo cambia solo Luciano. Un frontend che vuole cambiare la cornice lo chiede a te;
   ciò che tocca il design system lo porti a Luciano.
-- **Infrastruttura e segreti**: li fa ma-devops, e si chiedono con la skill `ma-engine-task-create`. Mai chiamate a
-  servizi di Management Academy: Zeiras è separato.
+- **Infrastruttura e segreti**: non li fai tu; a chi e come si chiedono lo dice il prompt di partenza.
 
 ## Repo pubblico
 Nessun segreto e nessun indirizzo interno — IP, nomi di server, percorsi di chiavi, canali di monitoraggio — né nel
@@ -46,12 +45,11 @@ codice, né nei test, né in questo file, che è pubblico come il resto. I fatti
 prompt di partenza e nelle skill. La CI ferma i segreti (`.github/nessun-segreto.sh`); il resto dipende da te.
 
 ## Stack e CI
-- PHP 8.4 (`config.platform.php` 8.4.26, la versione di produzione), provider Laravel 13 trovato da solo
+- PHP 8.4 (`config.platform.php` fissato), provider Laravel 13 trovato da solo
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, sintassi PHP, Pint, PHPStan, `npm ci` +
   `tsc --noEmit` + build, Pest. Nessun `composer.lock` nel repo (è una libreria). Rossa = non si tagga.
-- Sul dev server `composer` è il PHP 8.3 con `platform` fissato a 8.4.26; `php8.4 vendor/bin/pint` e
-  `php8.4 vendor/bin/phpstan` si lanciano anche in locale. Mai `pest` in locale.
+- In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza); Pest gira solo in CI.
 
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde. Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
@@ -60,4 +58,5 @@ Un tag `vX.Y.Z` su `main` con la CI verde. Un frontend installa zr-core da quest
 
 ## Progetti
 Da tre task in su: `ma-dev-agent` con `ma-board`. Il progetto sulla board lo crea Luciano; alla nascita scrivi qui la
-riga «Progetto sulla board» (FASE A di `ma-board`), senza indirizzi. Documenti, commit e dialogo in **italiano**.
+riga «Progetto sulla board» (FASE A di `ma-board`) col solo numero e nome del progetto: il modello della skill porta
+l'indirizzo della board, e in questo file non entra. Documenti, commit e dialogo in **italiano**.

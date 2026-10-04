@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # una versione è un tag: la CI dà il suo verdetto anche sul commit taggato
+    tags: ['v*']
   pull_request:
 
 # Il GITHUB_TOKEN legge soltanto. Il repo è pubblico e la CI non pubblica niente: una versione è un tag, e i frontend la
