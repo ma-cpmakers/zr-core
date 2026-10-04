@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Il GITHUB_TOKEN legge soltanto. Il repo è pubblico e la CI non pubblica niente: una versione è un tag, e i frontend la
+# installano da Composer.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # il token non resta in .git/config per i passi successivi
+          persist-credentials: false
+
+      # azione di terzi: fissata allo sha, non al tag (un tag si può spostare)
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: composer.json valido
+        run: composer validate --strict
+
+      # Pacchetto pubblico: un segreto qui dentro è pubblicato. Lo stesso controllo di zr-auth; si lancia anche in locale.
+      - name: Nessun segreto nel repo
+        run: bash .github/nessun-segreto.sh
+
+      # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run.
+      - name: Dipendenze PHP
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      # Tutti i file PHP del repo, non il diff: su un push a main il diff è vuoto. Un file rotto non ferma il giro
+      # (exit 1, non 255): si vedono tutti. shell: bash porta pipefail, così un ls-files fallito non passa verde.
+      - name: Sintassi
+        shell: bash
+        run: git ls-files -z '*.php' | xargs -0 -r -n1 sh -c 'php -l "$0" || exit 1'
+
+      - name: Stile
+        run: ./vendor/bin/pint --test
+
+      - name: Analisi statica
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Dipendenze JS e build dei componenti
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm run build
+
+      - name: Test (Pest, Testbench)
+        run: ./vendor/bin/pest

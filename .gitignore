@@ -1,0 +1,8 @@
+/vendor/
+composer.lock
+.env
+.env.*
+.phpunit.cache/
+/node_modules/
+/dist/
+/prompts/

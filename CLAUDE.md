@@ -1,0 +1,63 @@
+# zr-core — la cornice comune di Zeiras
+
+**Prima azione di ogni sessione: la skill `ma-dev`** (contratto di sviluppo: i test girano in CI, il dev server non è
+un runtime). **Poi la skill `zr-design-system`**: all'avvio controlla se il design system di Zeiras è cambiato, e se è
+cambiato riallinei la copia derivata che sta qui dentro.
+
+`zr-core` è il **pacchetto** (`zeiras/zr-core`, Composer) che porta a ogni frontend di Zeiras la cornice dell'app: lo
+stesso ruolo di `zr-auth` per l'ingresso, ma per ciò che si vede. Niente sito, niente database, niente Redis: si
+installa dentro i frontend — `zr-home` per primo (la Dashboard sta nell'`AppShell` senza `product`), poi `zr-board` e gli
+altri moduli, con `product="<id>"`. Nessun frontend ricostruisce o modifica la cornice nel proprio codice. Forma e
+decisioni: spec di ma-devops `~/projects/ma-devops/docs/superpowers/specs/2026-10-04-zr-core-design.md` — si legge, non
+si riscrive; se una cosa non torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
+`prompts/zr-core-build.md` (non versionato).
+
+## Cosa scrive questa sessione
+- **I componenti React della cornice**: `AppShell` (sidebar, menu Prodotti esteso o chiuso, topbar, percorso), il
+  selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
+  «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano.
+- **Il design system intero nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua).
+  Il `bundle.js` del design system legge `window.React` e scrive `window.Zeiras` intero: due copie nella stessa app si
+  sovrascrivono, e `window.React` va scritto da un modulo importato **prima** del bundle. I font arrivano da Google
+  Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
+  `font-src https://fonts.gstatic.com`.
+- **Il registro dei prodotti**: per ogni prodotto codice, nome, icona (un nome del set Zeiras), tono, indirizzo, «Presto».
+  È di zr-core, non del backoffice.
+- **Le traduzioni della cornice**: un file per lingua — italiano, spagnolo, inglese per partire, e le lingue si devono
+  poter aggiungere; se un testo manca si mostra l'inglese. Nessun testo scritto nel codice.
+- **La parte server**: ciò che serve al frontend per dare alla cornice i dati della persona — chi è, la sua lingua, le
+  sue aziende e i suoi workspace (con lo slug), i prodotti attivi nel workspace, il numero di notifiche. Si leggono
+  **solo** dalle API `/v1` di `zr-backoffice`, col gettone, attraverso `zr-auth`.
+
+## Cosa NON fa
+- **Niente dati salvati**: il pacchetto non ha tabelle. Un dato o un'operazione che manca si chiede a `zr-backoffice`,
+  un metodo alla volta, con la skill `zr-start-flow`. Il backoffice è **agnostico**: manda dati di dominio, mai grafica,
+  icone, nomi da mostrare o indirizzi — quelli li dice il registro di zr-core.
+- **Le pagine**: quelle di un prodotto e la navigazione sotto il suo pulsante sono dell'agente del prodotto; accesso,
+  Dashboard, notifiche, account, azienda e workspace come pagine sono di `zr-home`.
+- **Il contenuto del design system**: lo cambia solo Luciano. Un frontend che vuole cambiare la cornice lo chiede a te;
+  ciò che tocca il design system lo porti a Luciano.
+- **Infrastruttura e segreti**: li fa ma-devops, e si chiedono con la skill `ma-engine-task-create`. Mai chiamate a
+  servizi di Management Academy: Zeiras è separato.
+
+## Repo pubblico
+Nessun segreto e nessun indirizzo interno — IP, nomi di server, percorsi di chiavi, canali di monitoraggio — né nel
+codice, né nei test, né in questo file, che è pubblico come il resto. I fatti operativi (board, chiave, server) stanno nel
+prompt di partenza e nelle skill. La CI ferma i segreti (`.github/nessun-segreto.sh`); il resto dipende da te.
+
+## Stack e CI
+- PHP 8.4 (`config.platform.php` 8.4.26, la versione di produzione), provider Laravel 13 trovato da solo
+  (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8.
+- CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, sintassi PHP, Pint, PHPStan, `npm ci` +
+  `tsc --noEmit` + build, Pest. Nessun `composer.lock` nel repo (è una libreria). Rossa = non si tagga.
+- Sul dev server `composer` è il PHP 8.3 con `platform` fissato a 8.4.26; `php8.4 vendor/bin/pint` e
+  `php8.4 vendor/bin/phpstan` si lanciano anche in locale. Mai `pest` in locale.
+
+## Come esce una versione
+Un tag `vX.Y.Z` su `main` con la CI verde. Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
+`composer.json`, nessun token) a una versione con tag, e la aggiorna col suo agente e la sua CI. Il design system cambia
+→ lo vedi all'avvio → riallinei → esce una versione nuova → ogni frontend la aggiorna.
+
+## Progetti
+Da tre task in su: `ma-dev-agent` con `ma-board`. Il progetto sulla board lo crea Luciano; alla nascita scrivi qui la
+riga «Progetto sulla board» (FASE A di `ma-board`), senza indirizzi. Documenti, commit e dialogo in **italiano**.
