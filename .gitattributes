@@ -11,6 +11,8 @@
 /tsconfig.json      export-ignore
 /vite.config.ts     export-ignore
 /vitest.config.ts   export-ignore
+/vite.demo.config.ts export-ignore
+/resources/demo     export-ignore
 *.test.ts           export-ignore
 *.test.tsx          export-ignore
 /.gitattributes     export-ignore

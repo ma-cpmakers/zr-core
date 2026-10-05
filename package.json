@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "demo": "vite build --config vite.demo.config.ts",
         "test": "vitest run",
         "token": "node scripts/token-css.mjs"
     },
