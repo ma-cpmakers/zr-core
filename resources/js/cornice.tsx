@@ -89,7 +89,8 @@ export function Cornice({ lingua, persona, product, nav = [], onLogout, naviga =
         products: true,
         items: registro.map((voce) => ({
             id: voce.id,
-            label: voce.nome ?? t.dashboard,
+            // Il nome nella lingua della persona: la Dashboard ha il testo `dashboard`, un prodotto il testo col suo id.
+            label: voce.id === 'home' ? t.dashboard : t[voce.id],
             icon: voce.icona,
             tone: voce.tono,
             home: voce === dashboard,

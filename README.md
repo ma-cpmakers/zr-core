@@ -1,9 +1,9 @@
 # zr-core
 
 La cornice comune dei frontend di Zeiras: `AppShell` con il menu Prodotti, il selettore «Azienda › workspace», la
-ricerca, le notifiche e il menu del profilo; il registro dei prodotti (nome, icona, tono, indirizzo, stato); il design
-system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò che si vede: i
-frontend `zr-*` lo installano e non ricostruiscono la cornice nel proprio codice.
+ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato) e i loro nomi in ogni
+lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
+che si vede: i frontend `zr-*` lo installano e non ricostruiscono la cornice nel proprio codice.
 
 Niente sito, niente database: è un pacchetto Composer (`zeiras/zr-core`) con componenti React, e si installa dentro
 ogni frontend, a una versione con tag.

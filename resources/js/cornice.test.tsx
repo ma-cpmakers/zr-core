@@ -126,6 +126,20 @@ describe('la Cornice', () => {
         expect(bookings?.getAttribute('href')).toBe('#');
     });
 
+    it.each([
+        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
+        ['es', ['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas'],
+    ])('con lingua="%s" i nomi dei prodotti sono in quella lingua: nel menu, nel pulsante del prodotto aperto e nella lista che riapre (T7.2)', async (lingua, nomi, bookings) => {
+        await mostra(<Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} />);
+        expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
+
+        await mostra(<Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} product="bookings" />);
+        expect(uno('.zr-product-switch .zr-product-name')?.textContent).toBe(bookings);
+        expect(uno('.zr-top-product')?.textContent).toBe(bookings);
+        await clic(uno('.zr-product-switch'));
+        expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
+    });
+
     it.each(['es', 'en'])('con lingua="%s" ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');

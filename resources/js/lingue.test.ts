@@ -17,6 +17,13 @@ describe('le lingue della cornice', () => {
         expect(tedesco.planText).not.toBe(italiano.planText);
     });
 
+    it('una lingua senza il nome di un prodotto, o col nome vuoto, lo mostra in inglese, non in italiano (T7.2)', () => {
+        const tedesco = caricaLingue({ '../lingue/de.json': { pm: 'Projektmanagement', content: ' ' } }).testi('de');
+
+        expect([tedesco.pm, tedesco.automations, tedesco.content]).toStrictEqual(['Projektmanagement', 'Automations', 'Content']);
+        expect(tedesco.automations).not.toBe(italiano.automations);
+    });
+
     it('con una lingua che non esiste, tutti i testi sono in inglese: né il default italiano né il nome della chiave (T5.2)', () => {
         expect(testi('zz')).toStrictEqual(inglese);
         expect(testi('')).toStrictEqual(inglese);

@@ -1,12 +1,13 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
+import type { IdDiProdotto } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice. Dove una lingua non ha un testo si mostra l'inglese di zr-core: per questo i testi si danno
 // all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui col suo default italiano.
 
-/** I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core. */
-export type TestiDellaCornice = Required<AppShellLabels> & {
+/** I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id. */
+export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Prodotti. */

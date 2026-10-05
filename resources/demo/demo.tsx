@@ -5,9 +5,10 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Cornice, type GruppoDiVoci, type PersonaDellaCornice } from '../js/cornice';
 import { lingue } from '../js/lingue';
+import { registro } from '../js/registro';
 
 // La pagina di prova della UAT dello sprint 1: la `Cornice` con dati d'esempio marcati «UAT», in ogni lingua di zr-core e in una
-// che non esiste (`zz`), senza prodotto o con Bookings. `?lingua=es&prodotto=bookings` la apre già scelta. Gli indirizzi di
+// che non esiste (`zz`), senza prodotto o con uno del registro. `?lingua=es&prodotto=bookings` la apre già scelta. Gli indirizzi di
 // account, notifiche e workspace non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const persona: PersonaDellaCornice = {
@@ -22,7 +23,8 @@ const persona: PersonaDellaCornice = {
     nonLette: 3,
 };
 
-const vociDiBookings: GruppoDiVoci[] = [
+// Le voci del prodotto aperto, uguali per ogni prodotto: servono solo a vedere cosa c'è sotto il suo pulsante.
+const vociDelProdotto: GruppoDiVoci[] = [
     { group: 'UAT Agenda', items: [{ id: 'oggi', label: 'UAT Oggi', icon: 'calendar' }, { id: 'risorse', label: 'UAT Risorse', icon: 'users' }] },
 ];
 
@@ -36,7 +38,7 @@ function Prova() {
             lingua={lingua}
             persona={persona}
             product={prodotto || undefined}
-            nav={prodotto ? vociDiBookings : []}
+            nav={prodotto ? vociDelProdotto : []}
             active={prodotto ? 'oggi' : undefined}
             crumbs={[{ label: 'UAT Marketing', href: '#' }, { label: 'UAT Q4' }]}
             create={[{ label: 'UAT Board', icon: 'board' }]}
@@ -55,7 +57,7 @@ function Prova() {
                     Prodotto{' '}
                     <select name="prodotto" value={prodotto} onChange={(evento) => setProdotto(evento.target.value)}>
                         <option value="">nessuno (app.zeiras.com)</option>
-                        <option value="bookings">bookings</option>
+                        {registro.filter((voce) => voce.id !== 'home').map((voce) => <option key={voce.id} value={voce.id}>{voce.id}</option>)}
                     </select>
                 </label>
             </form>

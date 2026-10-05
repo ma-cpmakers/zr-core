@@ -37,5 +37,11 @@
     "logout": "Cerrar sesión",
     "crumbs": "Ruta de navegación",
     "products": "Productos",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "pm": "Gestión de proyectos",
+    "crm": "CRM",
+    "bookings": "Reservas",
+    "reports": "Informes",
+    "automations": "Automatismos",
+    "content": "Contenidos"
 }

@@ -37,5 +37,11 @@
     "logout": "Log out",
     "crumbs": "Breadcrumb",
     "products": "Products",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "pm": "Project Management",
+    "crm": "CRM",
+    "bookings": "Bookings",
+    "reports": "Reports",
+    "automations": "Automations",
+    "content": "Content"
 }

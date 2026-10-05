@@ -37,5 +37,11 @@
     "logout": "Esci",
     "crumbs": "Percorso",
     "products": "Prodotti",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "pm": "Project Management",
+    "crm": "CRM",
+    "bookings": "Bookings",
+    "reports": "Report",
+    "automations": "Automazioni",
+    "content": "Contenuti"
 }
