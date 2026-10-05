@@ -1,6 +1,8 @@
 # Il pacchetto che arriva ai frontend (lo zip del tag) porta il codice e il README, non gli strumenti di questo repo.
 # In particolare non il CLAUDE.md: dentro vendor/ entrerebbe nel contesto degli agenti dei frontend.
 /.github            export-ignore
+/docs               export-ignore
+/scripts            export-ignore
 /tests              export-ignore
 /CLAUDE.md          export-ignore
 /phpunit.xml.dist   export-ignore
@@ -8,5 +10,13 @@
 /package-lock.json  export-ignore
 /tsconfig.json      export-ignore
 /vite.config.ts     export-ignore
+/vitest.config.ts   export-ignore
+/vite.demo.config.ts export-ignore
+/resources/demo     export-ignore
+*.test.ts           export-ignore
+*.test.tsx          export-ignore
 /.gitattributes     export-ignore
 /.gitignore         export-ignore
+
+# Le copie derivate del design system restano byte per byte come l'originale: git non ne tocca i fine riga.
+/resources/zeiras/** -text

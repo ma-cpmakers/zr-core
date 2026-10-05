@@ -21,7 +21,8 @@ torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
   sovrascrivono, e `window.React` va scritto da un modulo importato **prima** del bundle. I font arrivano da Google
   Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
   `font-src https://fonts.gstatic.com`.
-- **Il registro dei prodotti**: per ogni prodotto codice, nome, icona (un nome del set Zeiras), tono, indirizzo, «Presto».
+- **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
+  nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.
 - **Le traduzioni della cornice**: un file per lingua — italiano, spagnolo, inglese per partire, e le lingue si devono
   poter aggiungere; se un testo manca si mostra l'inglese. Nessun testo scritto nel codice.
@@ -32,7 +33,7 @@ torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
 ## Cosa NON fa
 - **Niente dati salvati**: il pacchetto non ha tabelle. Un dato o un'operazione che manca si chiede a `zr-backoffice`,
   un metodo alla volta, con la skill `zr-start-flow`. Il backoffice è **agnostico**: manda dati di dominio, mai grafica,
-  icone, nomi da mostrare o indirizzi — quelli li dice il registro di zr-core.
+  icone, nomi da mostrare o indirizzi — quelli li dicono il registro e le traduzioni di zr-core.
 - **Le pagine**: quelle di un prodotto e la navigazione sotto il suo pulsante sono dell'agente del prodotto; accesso,
   Dashboard, notifiche, account, azienda e workspace come pagine sono di `zr-home`.
 - **Il contenuto del design system**: lo cambia solo Luciano. Un frontend che vuole cambiare la cornice lo chiede a te;
@@ -67,5 +68,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · nessuno sprint aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 1 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

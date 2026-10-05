@@ -11,5 +11,5 @@
         "esModuleInterop": true,
         "types": ["vite/client"]
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx"]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx", "resources/demo/**/*.tsx"]
 }

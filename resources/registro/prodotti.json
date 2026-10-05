@@ -1,0 +1,11 @@
+{
+    "prodotti": [
+        { "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false },
+        { "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false },
+        { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false },
+        { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false },
+        { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true },
+        { "id": "automations", "icona": "bolt", "tono": "plum", "indirizzo": "https://auto.zeiras.com", "presto": true },
+        { "id": "content", "icona": "sparkle", "tono": "coral", "indirizzo": "https://ai.zeiras.com", "presto": true }
+    ]
+}
