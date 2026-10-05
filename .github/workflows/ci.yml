@@ -56,10 +56,12 @@ jobs:
       - name: Analisi statica
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-      - name: Dipendenze JS e build dei componenti
+      # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto.
+      - name: Dipendenze JS, tipi, test (vitest) e build dei componenti
         run: |
           npm ci
           npx tsc --noEmit
+          npx vitest run
           npm run build
 
       - name: Test (Pest, Testbench)
