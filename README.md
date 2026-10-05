@@ -42,13 +42,39 @@ import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
 
 Il design system è uno solo per app, quello di zr-core: il frontend non ne tiene una copia sua.
 
+## La cornice
+
+Ogni pagina dell'app sta dentro la `Cornice`. Il frontend dà la pagina, la lingua della persona, i suoi dati e, in un
+prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del workspace,
+i testi tradotti e le pagine di account, azienda e notifiche su app.zeiras.com.
+
+```tsx
+import { Cornice } from '../../vendor/zeiras/zr-core/resources/js';
+
+<Cornice
+    lingua="es"                       // it, es, en…; it-IT vale it; una lingua che zr-core non ha è inglese
+    persona={persona}                 // nome, email, piano, aziende coi workspace, slug del workspace attivo, non lette
+    product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
+    nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
+    onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
+>
+    {pagina}
+</Cornice>
+```
+
+Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Notifiche e
+ricerca si collegano quando i loro dati arrivano dal backoffice.
+
 ## La CSP
 
-Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system; nessuno stile è
-iniettato da JS. Chi installa zr-core apre la sua CSP almeno a questo:
+Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`
+aggiunto da JS e nessun attributo `style` nell'HTML. I pochi stili che i componenti mettono su un elemento passano da
+JS (CSSOM), che `style-src` non governa. Chi installa zr-core apre la sua CSP almeno a questo:
 
 ```
 Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com
 ```
 
-e ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue immagini in `img-src`).
+e ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue immagini in `img-src`). È il minimo per la cornice,
+non una policy completa: `frame-ancestors`, `base-uri` e `form-action` non ricadono su `default-src`, e il frontend li
+mette da sé.

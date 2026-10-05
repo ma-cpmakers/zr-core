@@ -24,6 +24,13 @@ describe('le lingue della cornice', () => {
         expect(testi('zz').logout).not.toBe('logout');
     });
 
+    it('una variante regionale senza file prende la lingua base; una lingua che non c\'è, l\'inglese (T5.2)', () => {
+        expect(testi('it-IT')).toStrictEqual(italiano);
+        expect(testi('IT')).toStrictEqual(italiano);
+        expect(testi('es_ES')).toStrictEqual(spagnolo);
+        expect(testi('pt-BR')).toStrictEqual(inglese);
+    });
+
     it('una lingua che c\'è dà i suoi testi', () => {
         expect(testi('it')).toStrictEqual(italiano);
         expect(testi('es')).toStrictEqual(spagnolo);

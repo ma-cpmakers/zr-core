@@ -23,6 +23,7 @@ const persona: PersonaDellaCornice = {
     workspace: 'acme-marketing',
     nonLette: 3,
 };
+const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 
 let contenitore: HTMLDivElement;
@@ -32,11 +33,14 @@ beforeEach(() => {
     contenitore = document.createElement('div');
     document.body.append(contenitore);
     radice = createRoot(contenitore);
+    vi.spyOn(console, 'error');
 });
 
 afterEach(async () => {
     await act(async () => radice.unmount());
     contenitore.remove();
+    // Nessun errore in console, nemmeno un avviso di React (T2.2).
+    expect(console.error).not.toHaveBeenCalled();
     vi.restoreAllMocks();
 });
 
@@ -71,7 +75,7 @@ function frase(testo: string): RegExp {
 
 describe('la Cornice', () => {
     it('senza product il menu Prodotti è esteso: Dashboard prima e attiva, i prodotti con lo slug del workspace, «Presto» senza indirizzo (T6.1)', async () => {
-        await mostra(<Cornice lingua="it" persona={persona}><p>La pagina</p></Cornice>);
+        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
         expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Prodotti');
@@ -100,7 +104,7 @@ describe('la Cornice', () => {
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
         const voci = [{ id: 'oggi', label: 'Oggi', icon: 'calendar' as const }, { id: 'risorse', label: 'Risorse', icon: 'users' as const }];
-        await mostra(<Cornice lingua="it" persona={persona} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: voci }]} />);
+        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: voci }]} />);
 
         const pulsante = uno('.zr-product-switch');
         expect(pulsante?.querySelector('.zr-product-name')?.textContent).toBe('Bookings');
@@ -116,14 +120,17 @@ describe('la Cornice', () => {
         const lista = tutti('.zr-product-menu a.zr-nav-item');
         expect(lista[0].textContent).toBe('Dashboard');
         expect(lista[0].getAttribute('href')).toBe('https://app.zeiras.com/w/acme-marketing');
-        expect(uno('.zr-product-menu a[aria-current="true"]')?.querySelector('.zr-nav-label')?.textContent).toBe('Bookings');
+        const bookings = uno('.zr-product-menu a[aria-current="true"]');
+        expect(bookings?.querySelector('.zr-nav-label')?.textContent).toBe('Bookings');
+        // Il prodotto aperto non ha indirizzo: il clic chiude la lista e lascia la pagina com'è.
+        expect(bookings?.getAttribute('href')).toBe('#');
     });
 
     it.each(['es', 'en'])('con lingua="%s" ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
         await mostra(
-            <Cornice lingua={lingua} persona={persona} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} onNewWorkspace={() => {}} />,
+            <Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} onNewWorkspace={() => {}} />,
         );
 
         // I testi arrivano interi, e nessun alias che vincerebbe su `labels`.
@@ -160,10 +167,9 @@ describe('la Cornice', () => {
         guarda();
         const pagina = visti.join('\n');
 
+        // Senza eccezioni: un testo italiano rimasto nel file della lingua è un testo non tradotto.
         for (const [chiave, italiano] of Object.entries(Zeiras.APPSHELL_LABELS)) {
-            if (italiano !== attesi[chiave as keyof typeof attesi]) {
-                expect(pagina, chiave).not.toMatch(frase(italiano));
-            }
+            expect(pagina, chiave).not.toMatch(frase(italiano));
         }
         const raggiunti = [
             'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'workspaceSwitch', 'newWorkspace', 'search',
@@ -177,7 +183,7 @@ describe('la Cornice', () => {
     });
 
     it('i dati della persona compaiono dove li mette il design system: avatar, profilo, selettore, campanella, percorso (T6.4)', async () => {
-        await mostra(<Cornice lingua="it" persona={persona} crumbs={percorso} />);
+        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} crumbs={percorso} />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
         expect(uno('.zr-avatar-btn .zr-avatar')?.textContent).toBe('AL');
@@ -195,6 +201,24 @@ describe('la Cornice', () => {
         const testa = uno('.zr-profile-head');
         expect([...(testa?.querySelectorAll('.zr-profile-head > span:not(.zr-avatar) > *') ?? [])].map((riga) => riga.textContent))
             .toStrictEqual(['Ada Lovelace', 'ada@example.com', 'Team']);
+    });
+
+    it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Prodotti resta esteso', async (prodotto) => {
+        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} product={prodotto} />);
+
+        expect(uno('.zr-product-switch')).toBeNull();
+        expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(7);
+    });
+
+    it('un tono di workspace che non è del design system non arriva nello stile', async () => {
+        const conTonoFinto: PersonaDellaCornice = {
+            ...persona,
+            aziende: [{ id: 'acme', name: 'Acme', workspaces: [{ slug: 'acme-marketing', name: 'Marketing', tone: 'pine) url(https://x.example/b.png' as 'pine' }, { slug: 'acme-sales', name: 'Sales', tone: 'plum' }] }],
+        };
+        await mostra(<Cornice lingua="it" persona={conTonoFinto} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-ws-switch'));
+
+        expect(tutti('.zr-ws-dot').map((punto) => punto.getAttribute('style'))).toStrictEqual(['background: var(--pine);', 'background: var(--plum);']);
     });
 
     it('account, impostazioni, notifiche e workspace portano su app.zeiras.com o al nuovo slug; «Esci» chiama il frontend (linea guida 15)', async () => {

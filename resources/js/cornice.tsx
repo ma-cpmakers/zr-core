@@ -50,8 +50,8 @@ export interface CorniceProps {
     /** L'area della pagina senza margine (la board). */
     flush?: boolean;
     onNewWorkspace?: (azienda?: string) => void;
-    /** «Esci»: la sessione la chiude il frontend, ovunque. */
-    onLogout?: () => void;
+    /** «Esci»: la sessione la chiude il frontend, ovunque. Obbligatorio: senza, «Esci» non farebbe niente. */
+    onLogout: () => void;
     /** Come si apre un indirizzo: di norma il browser ci va. */
     naviga?: (indirizzo: string) => void;
     children?: ReactNode;
@@ -69,6 +69,12 @@ const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string
     notifiche: '/notifiche',
 };
 
+/** I toni che un workspace può avere: un altro valore non arriva all'`AppShell`, che lo scrive in uno stile. */
+const toniDeiWorkspace = ['pine', 'citrus', 'coral', 'sky', 'plum'] as const satisfies readonly Exclude<Tone, 'neutral'>[];
+// Se il design system aggiunge un tono, tsc si ferma qui finché non entra nell'elenco.
+const ogniTono: [Exclude<Exclude<Tone, 'neutral'>, (typeof toniDeiWorkspace)[number]>] extends [never] ? true : never = true;
+void ogniTono;
+
 /** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
 function nelWorkspace(indirizzo: string, slug: string): string {
     return `${indirizzo}/w/${encodeURIComponent(slug)}`;
@@ -76,7 +82,8 @@ function nelWorkspace(indirizzo: string, slug: string): string {
 
 export function Cornice({ lingua, persona, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     const t = testi(lingua);
-    const aperto = registro.find((voce) => voce.id === product) ?? dashboard;
+    // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
+    const aperto = registro.find((voce) => voce.id === product && voce !== dashboard);
     const prodotti = {
         group: t.products,
         products: true,
@@ -87,26 +94,31 @@ export function Cornice({ lingua, persona, product, nav = [], onLogout, naviga =
             tone: voce.tono,
             home: voce === dashboard,
             soon: voce.presto,
-            // Un prodotto «Presto» non porta da nessuna parte.
-            href: voce.presto ? undefined : nelWorkspace(voce.indirizzo, persona.workspace),
+            // Un prodotto «Presto» non porta da nessuna parte; quello aperto, al clic, chiude solo la lista.
+            href: voce.presto || voce === aperto ? undefined : nelWorkspace(voce.indirizzo, persona.workspace),
         })),
     };
+
+    const aziende = persona.aziende.map((azienda) => ({
+        ...azienda,
+        workspaces: azienda.workspaces.map(({ tone, ...workspace }) => ({ ...workspace, tone: toniDeiWorkspace.find((tono) => tono === tone) })),
+    }));
 
     return (
         <Zeiras.AppShell
             {...pagina}
             nav={[prodotti, ...nav]}
-            product={product}
+            product={aperto?.id}
             user={persona.nome}
             email={persona.email}
             planName={persona.piano}
-            companies={persona.aziende}
+            companies={aziende}
             workspaceSlug={persona.workspace}
             unreadCount={persona.nonLette}
             labels={t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
-            onSelectWorkspace={(slug) => naviga(nelWorkspace(aperto.indirizzo, slug))}
-            onAccount={(azione) => (azione === 'logout' ? onLogout?.() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
+            onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
+            onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
         />
     );

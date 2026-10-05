@@ -99,12 +99,6 @@ function variabiliDiBundleCss(): array
     return array_values(array_unique($usate[1]));
 }
 
-/** Il codice senza i commenti: un «#1254» in un commento è una voce della board, non un colore. */
-function codiceSenzaCommenti(string $codice): string
-{
-    return (string) preg_replace(['~/\*.*?\*/~s', '~(?<![:\w])//[^\n]*~'], '', $codice);
-}
-
 /**
  * I valori dei token scritti a mano: un colore esadecimale, un `rgb(a)` o `hsl(a)`, o il valore intero di un token.
  *
@@ -121,7 +115,7 @@ function valoriAMano(iterable $file): array
 
     $problemi = [];
     foreach ($file as $sorgente) {
-        $testo = codiceSenzaCommenti($sorgente->getContents());
+        $testo = senzaCommenti($sorgente->getContents());
         if (preg_match($colore, $testo, $trovato) === 1) {
             $problemi[] = "{$sorgente->getRelativePathname()}: «{$trovato[0]}»";
         }
@@ -196,8 +190,10 @@ it('i font arrivano solo da Google Fonts com\'è in bundle.css, nessuno stile è
     $bundle = File::get(__DIR__.'/../../resources/zeiras/bundle.css');
     preg_match('/^@import url\(\'(https:\/\/fonts\.googleapis\.com\/[^\']+)\'\);/', ltrim(cssSenzaCommenti($bundle)), $font);
     preg_match_all('/https?:\/\/[^\s"\')]+/', $bundle, $indirizzi);
-    $iniettati = collect(File::allFiles(__DIR__.'/../../resources/js'))
-        ->filter(fn (SplFileInfo $sorgente) => preg_match('/createElement\(\s*[\'"]style|insertRule\(|adoptedStyleSheets|new CSSStyleSheet/', codiceSenzaCommenti($sorgente->getContents())) === 1)
+    // Anche il bundle del design system: è il JS che disegna la cornice, e un riallineamento potrebbe portare stili iniettati.
+    $iniettati = collect([...File::allFiles(__DIR__.'/../../resources/js'), ...File::allFiles(__DIR__.'/../../resources/zeiras')])
+        ->filter(fn (SplFileInfo $sorgente) => in_array($sorgente->getExtension(), ['ts', 'tsx', 'js'], true))
+        ->filter(fn (SplFileInfo $sorgente) => preg_match('/createElement\(\s*[\'"]style|insertRule\(|adoptedStyleSheets|new CSSStyleSheet/', senzaCommenti($sorgente->getContents())) === 1)
         ->map->getRelativePathname()->values()->all();
 
     expect($font)->toHaveCount(2)

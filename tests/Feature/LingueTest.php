@@ -81,16 +81,6 @@ function problemiDelleLingue(array $lingue): array
     return $problemi;
 }
 
-/** Il codice senza i commenti, che citano i testi «così» e non si vedono. Le stringhe restano intere, anche con // o /* dentro. */
-function senzaCommenti(string $codice): string
-{
-    return (string) preg_replace_callback(
-        '~//[^\n]*|/\*.*?\*/|\'(?:[^\'\\\\\n]|\\\\.)*\'|"(?:[^"\\\\\n]|\\\\.)*"|`(?:[^`\\\\]|\\\\.)*`~s',
-        fn (array $parte) => str_starts_with($parte[0], '/') ? '' : $parte[0],
-        $codice,
-    );
-}
-
 /** @return list<array{testo: string, fraDueTag: bool}> le stringhe del codice e i testi fra due tag JSX, fuori dai commenti */
 function testiDelCodice(string $codice): array
 {
@@ -126,7 +116,8 @@ function testiScrittiNelCodice(string $codice, array $testiDelleLingue): array
 }
 
 /**
- * Le lingue elencate a mano nel codice: una stringa uguale al codice di una lingua.
+ * Le lingue elencate a mano nel codice: una stringa uguale al codice di una lingua, o il file di una lingua importato da solo.
+ * L'inglese no: è il ripiego di tutte, e si importa apposta.
  *
  * @param  list<string>  $codici
  * @return list<string>
@@ -135,7 +126,8 @@ function lingueElencateNelCodice(string $codice, array $codici): array
 {
     $elencate = [];
     foreach (testiDelCodice($codice) as ['testo' => $testo, 'fraDueTag' => $fraDueTag]) {
-        if (! $fraDueTag && in_array($testo, $codici, true)) {
+        $file = preg_match('~lingue/([\w-]+)\.json$~', $testo, $lingua) === 1 ? $lingua[1] : null;
+        if (! $fraDueTag && (in_array($testo, $codici, true) || ($file !== 'en' && in_array($file, $codici, true)))) {
             $elencate[] = $testo;
         }
     }
@@ -215,6 +207,8 @@ it('le lingue non sono elencate nel codice: una lingua nuova è solo un file in 
 it('il controllo trova i testi e le lingue scritti nel codice, non quelli citati nei commenti (T5.3, T5.4)', function () {
     $codice = <<<'TS'
         // la voce «Prodotti» e 'Esci' in un commento non si vedono
+        import italiano from '../lingue/it.json';
+        import inglese from '../lingue/en.json';
         const file = import.meta.glob('../lingue/*.json');
         const gruppo = 'Prodotti';
         /* 'Dashboard' in un commento */
@@ -229,5 +223,5 @@ it('il controllo trova i testi e le lingue scritti nel codice, non quelli citati
 
     expect(testiScrittiNelCodice($codice, ['Prodotti', 'Dashboard', 'Esci']))
         ->toBe(['Prodotti', 'Dashboard', 'Esci', 'Benvenuto'])
-        ->and(lingueElencateNelCodice($codice, ['it', 'es', 'en']))->toBe(['it', 'es']);
+        ->and(lingueElencateNelCodice($codice, ['it', 'es', 'en']))->toBe(['../lingue/it.json', 'it', 'es']);
 });
