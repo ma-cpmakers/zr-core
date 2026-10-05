@@ -65,6 +65,9 @@ import { Cornice } from '../../vendor/zeiras/zr-core/resources/js';
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Notifiche e
 ricerca si collegano quando i loro dati arrivano dal backoffice.
 
+Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
+persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.
+
 ## La CSP
 
 Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`

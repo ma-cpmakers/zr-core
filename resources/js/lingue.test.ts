@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
-import { caricaLingue, lingue, testi } from './lingue';
+import { caricaLingue, lingue, nomeDellaVoce, testi } from './lingue';
+import { registro } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
 // italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system e che nessuna lingua sia elencata
@@ -22,6 +23,12 @@ describe('le lingue della cornice', () => {
 
         expect([tedesco.pm, tedesco.automations, tedesco.content]).toStrictEqual(['Projektmanagement', 'Automations', 'Content']);
         expect(tedesco.automations).not.toBe(italiano.automations);
+    });
+
+    it('nomeDellaVoce dà il nome di una voce del registro nella lingua: la Dashboard col testo `dashboard`, un prodotto col suo id (T7.2)', () => {
+        expect(registro.map((voce) => nomeDellaVoce(voce, 'es')))
+            .toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
+        expect(nomeDellaVoce({ id: 'content' }, 'pt-BR')).toBe('Content');
     });
 
     it('con una lingua che non esiste, tutti i testi sono in inglese: né il default italiano né il nome della chiave (T5.2)', () => {

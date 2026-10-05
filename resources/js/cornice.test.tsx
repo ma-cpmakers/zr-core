@@ -140,6 +140,13 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
+    it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
+        const ingresso = await import('./index');
+
+        expect(ingresso.registro.map((voce) => ingresso.nomeDellaVoce(voce, 'en')))
+            .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content']);
+    });
+
     it.each(['es', 'en'])('con lingua="%s" ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');

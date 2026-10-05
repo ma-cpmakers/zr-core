@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCompany, ShellCrumb, Tone } from '../zeiras/index';
-import { testi } from './lingue';
+import { nomeDellaVoce, testi } from './lingue';
 import { registro } from './registro';
 import { Zeiras } from './zeiras';
 
@@ -89,8 +89,7 @@ export function Cornice({ lingua, persona, product, nav = [], onLogout, naviga =
         products: true,
         items: registro.map((voce) => ({
             id: voce.id,
-            // Il nome nella lingua della persona: la Dashboard ha il testo `dashboard`, un prodotto il testo col suo id.
-            label: voce.id === 'home' ? t.dashboard : t[voce.id],
+            label: nomeDellaVoce(voce, lingua),
             icon: voce.icona,
             tone: voce.tono,
             home: voce === dashboard,

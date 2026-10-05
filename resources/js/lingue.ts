@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { IdDiProdotto } from './registro';
+import type { IdDiProdotto, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice. Dove una lingua non ha un testo si mostra l'inglese di zr-core: per questo i testi si danno
@@ -52,3 +52,10 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
 export const { lingue, testi } = caricaLingue(
     import.meta.glob<Partial<TestiDellaCornice>>('../lingue/*.json', { eager: true, import: 'default' }),
 );
+
+/** Il nome di una voce del registro in una lingua: la Dashboard ha il testo `dashboard`, un prodotto il testo col suo id. */
+export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string): string {
+    const t = testi(lingua);
+
+    return voce.id === 'home' ? t.dashboard : t[voce.id];
+}

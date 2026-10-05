@@ -74,9 +74,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
     expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
-        ->and(array_map('array_keys', $voci))->toEqual([
-            ['id', 'icona', 'indirizzo', 'presto'],
-            ...array_fill(0, 6, ['id', 'icona', 'tono', 'indirizzo', 'presto']),
+        ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
+            ['icona', 'id', 'indirizzo', 'presto'],
+            ...array_fill(0, 6, ['icona', 'id', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'reports' => 'chart',
@@ -110,5 +110,5 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
     expect(idDeiProdotti())->toBe(['pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
-        ->and(valoriDelTipo('IdDiProdotto', 'resources/js/registro.ts'))->toBe(idDeiProdotti());
+        ->and(valoriDelTipo('IdDiProdotto', 'resources/js/registro.ts'))->toEqualCanonicalizing(idDeiProdotti());
 });

@@ -25,20 +25,24 @@ function chiaviDiAppShellLabels(): array
 function testiItalianiDelDesignSystem(): array
 {
     $bundle = File::get(__DIR__.'/../../resources/zeiras/bundle.js');
+    // Una stringa JS fra apici, anche con un apice col backslash dentro (`'Prova con un\'altra parola'`), e il suo testo.
+    $stringa = "'((?:[^'\\\\]|\\\\.)*)'";
+    $testo = fn (string $letto): string => (string) preg_replace('/\\\\(.)/s', '$1', $letto);
+
     preg_match('/var APPSHELL_LABELS = \{(.*?)\};/s', $bundle, $trovato);
-    preg_match_all("/(\\w+): '((?:[^'\\\\]|\\\\.)*)'/", $trovato[1] ?? '', $coppie, PREG_SET_ORDER);
+    preg_match_all("/(\\w+): $stringa/", $trovato[1] ?? '', $coppie, PREG_SET_ORDER);
 
     $testi = [];
-    foreach ($coppie as [, $chiave, $testo]) {
-        $testi[$chiave] = (string) preg_replace('/\\\\(.)/s', '$1', $testo);
+    foreach ($coppie as [, $chiave, $letto]) {
+        $testi[$chiave] = $testo($letto);
     }
     // Il menu che l'`AppShell` mostra senza `nav`: il titolo del gruppo dei prodotti, poi la Dashboard e i prodotti, per id.
     preg_match('/var DEFAULT_NAV = \[(.*?)\];/s', $bundle, $menu);
-    preg_match("/group: '([^']+)', products: true/", $menu[1] ?? '', $prodotti);
-    preg_match_all("/\\{ id: '(\\w+)', label: '([^']+)'/", $menu[1] ?? '', $voci, PREG_SET_ORDER);
-    $testi += ['products' => $prodotti[1] ?? ''];
+    preg_match("/group: $stringa, products: true/", $menu[1] ?? '', $prodotti);
+    preg_match_all("/\\{ id: '(\\w+)', label: $stringa/", $menu[1] ?? '', $voci, PREG_SET_ORDER);
+    $testi += ['products' => $testo($prodotti[1] ?? '')];
     foreach ($voci as [, $id, $nome]) {
-        $testi += [$id === 'home' ? 'dashboard' : $id => $nome];
+        $testi += [$id === 'home' ? 'dashboard' : $id => $testo($nome)];
     }
 
     return $testi;
