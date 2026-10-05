@@ -2,7 +2,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build"
+        "build": "vite build",
+        "token": "node scripts/token-css.mjs"
     },
     "peerDependencies": {
         "react": "^19.3.0",
