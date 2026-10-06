@@ -3,7 +3,6 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
@@ -51,25 +50,6 @@ function richiesteA(string $percorso): Collection
 {
     return Http::recorded(fn (Request $richiesta) => parse_url($richiesta->url(), PHP_URL_PATH) === $percorso)
         ->map(fn (array $coppia) => $coppia[0]);
-}
-
-/**
- * Una sessione fatta a mano, senza il finto: l'accesso e, se c'è, il workspace, coi dati di accessi.crea e gettoni.crea.
- *
- * @param  array{id: string, nome: string, slug: string}|null  $workspace
- * @return array{accesso: string, workspace: string} i due gettoni
- */
-function sessioneAMano(?array $workspace): array
-{
-    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'en', 'fuso_orario' => 'Europe/Rome'];
-    $gettoni = ['accesso' => 'zr_'.Str::random(48), 'workspace' => 'zr_'.Str::random(48)];
-    $scade = now()->addHour()->toIso8601String();
-    Sessione::apri(['id' => 'uat-accesso', 'gettone' => ['gettone' => $gettoni['accesso'], 'scade_il' => $scade, 'utente' => $utente]]);
-    if ($workspace !== null) {
-        Sessione::entra(['gettone' => $gettoni['workspace'], 'scade_il' => $scade, 'utente' => $utente, 'workspace' => $workspace, 'ruolo' => 'membro']);
-    }
-
-    return $gettoni;
 }
 
 /**

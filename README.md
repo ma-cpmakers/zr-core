@@ -81,6 +81,21 @@ la lingua) arriva alla cornice al prossimo ingresso.
 Con la funzione nel `share()`, `BackofficeNonRisponde` ferma ogni risposta Inertia, anche quella di una pagina senza
 cornice: come mostrarla lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in `bootstrap/app.php`).
 
+### Le rotte della cornice
+
+zr-core registra da sé, nel gruppo `web` del frontend (sessione, guardia di zr-auth, CSRF), le rotte che la cornice chiama
+dal browser sulla stessa origine. La parte server le gira al backoffice col gettone del workspace, che non esce.
+
+| Rotta | Risponde |
+|---|---|
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, per_me, motivo, app}]}`: le notifiche del workspace dalla più recente, una pagina |
+| `PATCH /cornice/notifiche/lettura` con `{fino_a}` | `{data: {fino_a}}`: segna lette le notifiche del workspace fino a `fino_a`, un istante con ora e fuso (`creata_il` della più recente vista); senza, o con un altro valore, 422 `{errore: "dati_non_validi"}` |
+
+Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
+che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
+sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
+guardia.
+
 ## La cornice
 
 Ogni pagina di un workspace sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`)

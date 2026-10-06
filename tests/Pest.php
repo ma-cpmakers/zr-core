@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use Zeiras\Auth\Sessione;
 use Zeiras\Core\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Feature');
@@ -28,4 +30,23 @@ function senzaCommenti(string $codice): string
         fn (array $parte) => str_starts_with($parte[0], '/') ? '' : $parte[0],
         $codice,
     );
+}
+
+/**
+ * Una sessione fatta a mano, senza il finto: l'accesso e, se c'è, il workspace, coi dati di accessi.crea e gettoni.crea.
+ *
+ * @param  array{id: string, nome: string, slug: string}|null  $workspace
+ * @return array{accesso: string, workspace: string} i due gettoni
+ */
+function sessioneAMano(?array $workspace): array
+{
+    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'en', 'fuso_orario' => 'Europe/Rome'];
+    $gettoni = ['accesso' => 'zr_'.Str::random(48), 'workspace' => 'zr_'.Str::random(48)];
+    $scade = now()->addHour()->toIso8601String();
+    Sessione::apri(['id' => 'uat-accesso', 'gettone' => ['gettone' => $gettoni['accesso'], 'scade_il' => $scade, 'utente' => $utente]]);
+    if ($workspace !== null) {
+        Sessione::entra(['gettone' => $gettoni['workspace'], 'scade_il' => $scade, 'utente' => $utente, 'workspace' => $workspace, 'ruolo' => 'membro']);
+    }
+
+    return $gettoni;
 }
