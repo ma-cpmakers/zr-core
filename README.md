@@ -42,6 +42,35 @@ import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
 
 Il design system è uno solo per app, quello di zr-core: il frontend non ne tiene una copia sua.
 
+## La parte server
+
+I dati della cornice — chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato dei prodotti in quel
+workspace — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione di `zr-auth` e da `app.elenca` col gettone del workspace.
+Il gettone resta nella sessione: nei dati non c'è.
+
+zr-core richiede `zeiras/zr-auth` `^0.3`, installato e configurato come dice il suo README (la sessione lato server,
+`ZR_API_URL`). Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json`
+del frontend, accanto a quello di zr-core.
+
+Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
+
+```php
+use Zeiras\Core\Cornice;
+
+public function share(Request $request): array
+{
+    return [...parent::share($request), 'cornice' => fn () => Cornice::dati()];
+}
+```
+
+| `Cornice::dati()` dà | quando |
+|---|---|
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}}` | la persona è entrata in un workspace |
+| `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
+| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto» |
+
+Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina.
+
 ## La cornice
 
 Ogni pagina dell'app sta dentro la `Cornice`. Il frontend dà la pagina, la lingua della persona, i suoi dati e, in un

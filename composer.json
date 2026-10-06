@@ -3,9 +3,16 @@
     "description": "Zeiras: la cornice comune dei frontend zr-* (AppShell, menu Prodotti, selettore di workspace, ricerca, notifiche, menu del profilo, registro dei prodotti) e il design system nella build.",
     "type": "library",
     "license": "proprietary",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/ma-cpmakers/zr-auth"
+        }
+    ],
     "require": {
         "php": "^8.4",
-        "laravel/framework": "^13.0"
+        "laravel/framework": "^13.0",
+        "zeiras/zr-auth": "^0.3"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
