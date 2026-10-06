@@ -73,16 +73,15 @@ Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non que
 
 ## La cornice
 
-Ogni pagina dell'app sta dentro la `Cornice`. Il frontend dà la pagina, la lingua della persona, i suoi dati e, in un
-prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del workspace,
-i testi tradotti e le pagine di account, azienda e notifiche su app.zeiras.com.
+Ogni pagina dell'app sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`) e, in un
+prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del workspace, i
+testi nella lingua della persona e le pagine di account e notifiche su app.zeiras.com.
 
 ```tsx
 import { Cornice } from '../../vendor/zeiras/zr-core/resources/js';
 
 <Cornice
-    lingua="es"                       // it, es, en…; it-IT vale it; una lingua che zr-core non ha è inglese
-    persona={persona}                 // nome, email, piano, aziende coi workspace, slug del workspace attivo, non lette
+    dati={cornice}                    // i dati di Cornice::dati(), condivisi dalla parte server
     product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
     nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
     onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
@@ -90,6 +89,14 @@ import { Cornice } from '../../vendor/zeiras/zr-core/resources/js';
     {pagina}
 </Cornice>
 ```
+
+- **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese.
+- **Il menu Prodotti** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
+  porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
+  indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` o che non elenca. La Dashboard porta
+  sempre a `https://app.zeiras.com/w/<slug>`.
+- **Il workspace** sta in cima alla sidebar come testo: il selettore «Azienda › workspace» arriva quando il backoffice
+  dà le aziende.
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Notifiche e
 ricerca si collegano quando i loro dati arrivano dal backoffice.

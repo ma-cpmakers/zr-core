@@ -3,4 +3,4 @@
 export { Zeiras } from './zeiras';
 export { nomeDellaVoce } from './lingue';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
-export { Cornice, type CorniceProps, type GruppoDiVoci, type PersonaDellaCornice } from './cornice';
+export { Cornice, type CorniceProps, type DatiDellaCornice, type GruppoDiVoci } from './cornice';
