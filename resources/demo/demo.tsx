@@ -10,7 +10,7 @@ import { registro } from '../js/registro';
 // La pagina di prova della UAT: la `Cornice` coi dati d'esempio marcati «UAT» nella forma di `Cornice::dati()`, in ogni lingua di
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
-// elencati. `?lingua=es&prodotto=bookings` la apre già scelta. Gli indirizzi di account e notifiche non si aprono: si scrivono
+// elencati. `?lingua=es&prodotto=pm` la apre già scelta. Gli indirizzi di account e notifiche non si aprono: si scrivono
 // in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {

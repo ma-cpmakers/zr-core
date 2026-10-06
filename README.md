@@ -69,31 +69,44 @@ public function share(Request $request): array
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto» |
 
-Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina.
+Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
+lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
+la lingua) arriva alla cornice al prossimo ingresso.
+
+Con la funzione nel `share()`, `BackofficeNonRisponde` ferma ogni risposta Inertia, anche quella di una pagina senza
+cornice: come mostrarla lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in `bootstrap/app.php`).
 
 ## La cornice
 
-Ogni pagina dell'app sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`) e, in un
-prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del workspace, i
-testi nella lingua della persona e le pagine di account e notifiche su app.zeiras.com.
+Ogni pagina di un workspace sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`)
+e, in un prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del
+workspace, i testi nella lingua della persona e le pagine di account e notifiche su app.zeiras.com. Con `cornice` a `null`
+(nessun workspace) la pagina si mostra senza `Cornice`: `dati` è obbligatorio, e la prop condivisa tipizzata
+`DatiDellaCornice | null` fa fermare `tsc` a chi se ne dimentica.
 
 ```tsx
-import { Cornice } from '../../vendor/zeiras/zr-core/resources/js';
+import { usePage } from '@inertiajs/react';
+import { Cornice, type DatiDellaCornice } from '../../vendor/zeiras/zr-core/resources/js';
 
-<Cornice
-    dati={cornice}                    // i dati di Cornice::dati(), condivisi dalla parte server
-    product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
-    nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
-    onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
->
-    {pagina}
-</Cornice>
+const { cornice } = usePage<{ cornice: DatiDellaCornice | null }>().props;
+
+cornice === null ? pagina : (
+    <Cornice
+        dati={cornice}                    // i dati di Cornice::dati(), condivisi dalla parte server
+        product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
+        nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
+        onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
+    >
+        {pagina}
+    </Cornice>
+);
 ```
 
 - **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese.
 - **Il menu Prodotti** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
-  indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` o che non elenca. La Dashboard porta
+  indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
+  conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
 - **Il workspace** sta in cima alla sidebar come testo: il selettore «Azienda › workspace» arriva quando il backoffice
   dà le aziende.

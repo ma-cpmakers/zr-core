@@ -80,6 +80,8 @@ describe('la Cornice', () => {
         [{ pm: 'in_arrivo', crm: 'attivo' }, ['crm']],
         [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, ['bookings']],
         [{}, []],
+        // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
+        [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
     ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` e `disponibile` verso il workspace, gli altri «Presto» (T4.1, %j)', async (prodotti, conIndirizzo) => {
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 

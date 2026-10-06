@@ -70,6 +70,11 @@ function nelWorkspace(indirizzo: string, slug: string): string {
     return `${indirizzo}/w/${encodeURIComponent(slug)}`;
 }
 
+/** Porta al prodotto solo uno stato che zr-core conosce: `attivo` o `disponibile`. Ogni altro, anche nuovo, è «Presto». */
+function raggiungibile(stato: string | undefined): boolean {
+    return stato === 'attivo' || stato === 'disponibile';
+}
+
 export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     const t = testi(dati.lingua);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
@@ -78,10 +83,10 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         group: t.products,
         products: true,
         items: registro.map((voce) => {
-            // «Presto» è un prodotto futuro: per il registro, o perché il backoffice lo dà in arrivo o non lo elenca. Uno
-            // `disponibile` porta alla sua pagina, che dice che non è attivo nel workspace (linea guida 15).
-            const stato = voce.id === 'home' ? 'attivo' : dati.prodotti[voce.id];
-            const presto = voce.presto || stato === undefined || stato === 'in_arrivo';
+            // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
+            // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta alla sua pagina, che dice
+            // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre.
+            const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
             return {
                 id: voce.id,
