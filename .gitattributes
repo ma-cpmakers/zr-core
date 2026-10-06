@@ -1,7 +1,6 @@
 # Il pacchetto che arriva ai frontend (lo zip del tag) porta il codice e il README, non gli strumenti di questo repo.
 # In particolare non il CLAUDE.md: dentro vendor/ entrerebbe nel contesto degli agenti dei frontend.
 /.github            export-ignore
-/docs               export-ignore
 /scripts            export-ignore
 /tests              export-ignore
 /CLAUDE.md          export-ignore

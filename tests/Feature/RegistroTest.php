@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\File;
 // guida 10 del design system, Dashboard e i sei prodotti, ognuno con un id del design system, un'icona del set (`IconName`), un
 // tono (`Tone`, tranne Dashboard), l'indirizzo della mappa della linea guida 15 e «Presto». I nomi non ci sono: stanno nelle lingue
 // (T7, decisione 5926 di Luciano). I tipi si leggono dalla copia derivata di index.d.ts; ordine, icone, toni, indirizzi e «Presto»
-// sono quelli del design system alla versione di docs/zr-design-system.md (README «Iconografia», linee guida 10 e 15, anteprima
+// sono quelli del design system alla versione delle copie in resources/zeiras/ (README «Iconografia», linee guida 10 e 15, anteprima
 // dell'AppShell).
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
