@@ -36,6 +36,8 @@ beforeEach(() => {
     document.body.append(contenitore);
     radice = createRoot(contenitore);
     vi.spyOn(console, 'error');
+    // Le rotte della cornice: senza una risposta scelta dal test, nessuna notifica.
+    vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [] })));
 });
 
 afterEach(async () => {
@@ -44,15 +46,38 @@ afterEach(async () => {
     // Nessun errore in console, nemmeno un avviso di React (T2.2).
     expect(console.error).not.toHaveBeenCalled();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
 });
 
 async function mostra(elemento: ReactElement): Promise<void> {
     await act(async () => radice.render(elemento));
 }
 
+/** Il giro dopo: le risposte già pronte delle rotte finte arrivano tutte. */
+function prossimoGiro(): Promise<void> {
+    return new Promise((fatto) => setTimeout(fatto, 0));
+}
+
+/** Un clic, e una richiesta partita dal clic con la risposta già pronta arriva prima del controllo. */
 async function clic(elemento: Element | null): Promise<void> {
     expect(elemento).not.toBeNull();
-    await act(async () => (elemento as HTMLElement).click());
+    await act(async () => {
+        (elemento as HTMLElement).click();
+        await prossimoGiro();
+    });
+}
+
+/** Una risposta di una rotta della cornice, come `fetch` la dà: lo stato e il corpo JSON. */
+function risposta(corpo: unknown, stato = 200): Response {
+    return { ok: stato >= 200 && stato < 300, status: stato, json: async () => corpo } as Response;
+}
+
+/** Una risposta che arriva quando il test la manda: per vedere cosa c'è prima. */
+function inAttesa() {
+    let arriva!: (valore: Response) => void;
+    const promessa = new Promise<Response>((risolvi) => (arriva = risolvi));
+
+    return { promessa, arriva: async (valore: Response) => act(async () => { arriva(valore); await prossimoGiro(); }) };
 }
 
 function uno(selettore: string): HTMLElement | null {
@@ -340,5 +365,147 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
 
         expect(uno('.zr-bell-count')?.textContent ?? null).toBe(numero);
         expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(numero === null ? 'Notifiche' : `Notifiche, ${numero} non lette`);
+    });
+});
+
+// Sprint 3 · T4 (voce #1277). Il pannello delle notifiche coi dati di GET /cornice/notifiche, «Segna tutte come lette» con
+// PATCH /cornice/notifiche/lettura, e dove portano una notifica e «Vedi tutte» (linea guida 15, passo 10).
+describe('il pannello delle notifiche', () => {
+    /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
+    const adesso = new Date('2026-10-06T12:00:00Z');
+    const notificheDelServer = [
+        { id: 41, creata_il: '2026-10-06T11:55:00+00:00', letta: false, per_me: true, motivo: 'menzione', app: 'pm' },
+        { id: 40, creata_il: '2026-10-05T12:00:00Z', letta: false, per_me: false, motivo: 'assegnazione', app: 'crm' },
+        // Un'app che il registro non ha: nessun prodotto, la campanella, tono neutro.
+        { id: 39, creata_il: '2026-10-01T09:00:00Z', letta: true, per_me: true, motivo: 'menzione', app: 'zz' },
+    ];
+
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(adesso);
+    });
+
+    /** Il cookie del gettone CSRF che Laravel dà alla pagina; senza valore, scaduto. */
+    const cookieCsrf = (valore?: string) => {
+        const nome = 'XSRF-TOKEN';
+        document.cookie = valore === undefined ? `${nome}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/` : `${nome}=${valore}; path=/`;
+    };
+
+    afterEach(() => {
+        vi.useRealTimers();
+        cookieCsrf();
+    });
+
+    const voci = () => tutti('.zr-notif-list .zr-notif-item');
+    const tono = (voce: HTMLElement) => [...(voce.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'));
+
+    it.each([
+        ['it', 'Nuova attività', ['Project Management · 5 minuti fa', '1 ott'], ['Project Management · 5 minuti fa', 'CRM · ieri', '1 ott']],
+        ['es', 'Nueva actividad', ['Gestión de proyectos · hace 5 minutos', '1 oct'], ['Gestión de proyectos · hace 5 minutos', 'CRM · ayer', '1 oct']],
+        ['en', 'New activity', ['Project Management · 5 minutes ago', 'Oct 1'], ['Project Management · 5 minutes ago', 'CRM · yesterday', 'Oct 1']],
+        // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
+        ['it_IT', 'Nuova attività', ['Project Management · 5 minuti fa', '1 ott'], ['Project Management · 5 minuti fa', 'CRM · ieri', '1 ott']],
+    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra le notifiche nella lingua; «Per me» solo quelle per la persona (T4.1)', async (lingua, titolo, perMe, tutte) => {
+        const elenco = inAttesa();
+        const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        // Non con la pagina: il numero sulla campanella viene dai dati.
+        expect(fetchFinto).not.toHaveBeenCalled();
+
+        await clic(uno('.zr-bell'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche']);
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(uno('.zr-notif-list')).toBeNull();
+
+        await elenco.arriva(risposta({ data: notificheDelServer }));
+        expect(uno('.zr-notif [role="status"]')).toBeNull();
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo]);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(perMe);
+        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, false]);
+        expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual([tracciatoDi('board'), tracciatoDi('bell')]);
+        expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-neutral']);
+
+        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo, titolo]);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(tutte);
+        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
+        expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-sky', 'zr-label-neutral']);
+        expect(fetchFinto).toHaveBeenCalledOnce();
+    });
+
+    it.each<[string, () => Promise<Response>]>([
+        ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
+        ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
+        ['un 200 senza lista', async () => risposta({ data: null })],
+    ])('con %s il pannello mostra l\'errore con «Riprova», non «Nessuna notifica»; «Riprova» ricarica (T4.2)', async (_caso, fallisce) => {
+        const fetchFinto = vi.fn().mockImplementationOnce(fallisce).mockImplementationOnce(async () => risposta({ data: notificheDelServer }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        const errore = uno('.zr-notif [role="alert"]');
+        expect(errore?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(uno('.zr-notif .zr-empty')).toBeNull();
+        expect(voci()).toHaveLength(0);
+
+        await clic(errore?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(voci()).toHaveLength(2);
+    });
+
+    it('«Segna tutte come lette» manda il creata_il della più recente col gettone CSRF; a risposta arrivata la campanella va a 0 e le notifiche sono lette (T4.3)', async () => {
+        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        await clic(uno('.zr-notif .zr-pop-head button'));
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        const [indirizzo, opzioni] = fetchFinto.mock.calls[1];
+        expect(indirizzo).toBe('/cornice/notifiche/lettura');
+        expect(opzioni?.method).toBe('PATCH');
+        expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
+        // L'istante della più recente com'è arrivato, non l'ora del browser.
+        expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        // Prima della risposta non cambia niente.
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
+
+        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00+00:00' } }));
+        expect(uno('.zr-bell-count')).toBeNull();
+        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([false, false, false]);
+        expect(uno('.zr-notif .zr-pop-head button')).toBeNull();
+    });
+
+    it('se «Segna tutte come lette» fallisce, il numero e le notifiche restano come prima (T4.3)', async () => {
+        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ errore: 'dati_non_validi' }, 422))));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
+
+        await clic(uno('.zr-notif .zr-pop-head button'));
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
+        expect(uno('.zr-notif .zr-pop-head button')).not.toBeNull();
+    });
+
+    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (T4.4)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(voci()[0]);
+        expect(uno('.zr-notif')).toBeNull();
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif .zr-pop-foot button'));
+        expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
     });
 });

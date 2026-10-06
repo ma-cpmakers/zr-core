@@ -134,9 +134,15 @@ cornice === null ? pagina : (
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
+- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
+  lingua, il nome, l'icona e il tono del suo prodotto dal registro (un'app che il registro non ha: nessun prodotto, la
+  campanella) e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»); se il caricamento fallisce, l'errore e «Riprova».
+  «Segna tutte come lette» manda a `PATCH /cornice/notifiche/lettura` il `creata_il` della più recente, col gettone CSRF
+  del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`; a risposta arrivata la
+  campanella va a 0. Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
 
-Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Il pannello
-delle notifiche e la ricerca non sono ancora collegati alle rotte della cornice.
+Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. La ricerca non
+è ancora collegata alla sua rotta.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.

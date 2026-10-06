@@ -3,8 +3,8 @@
 use Illuminate\Support\Facades\File;
 
 // Sprint 1 · T5 e T7 (voce #1255). Le lingue della cornice, una per file in resources/lingue: italiano, spagnolo e inglese per
-// partire, ognuna con tutti i testi dell'`AppShell` (`AppShellLabels` di index.d.ts) e quelli di zr-core (`products`, `dashboard` e
-// il nome di ogni prodotto del registro, con l'id per chiave: T7, decisione 5926 di Luciano). L'italiano è quello del design system
+// partire, ognuna con tutti i testi dell'`AppShell` (`AppShellLabels` di index.d.ts) e quelli di zr-core (`products`, `dashboard`,
+// `notificationTitle` e il nome di ogni prodotto del registro, con l'id per chiave: T7, decisione 5926 di Luciano). L'italiano è quello del design system
 // delle copie in resources/zeiras/: `APPSHELL_LABELS` e il menu di partenza di bundle.js. Nessun testo dell'interfaccia sta
 // nel codice TS/TSX: i testi vengono dalle lingue. Il ripiego sull'inglese e le lingue scoperte dai file li prova
 // resources/js/lingue.test.ts.
@@ -71,7 +71,7 @@ function lingueDellaCornice(): array
 function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
-    $chiavi = [...chiaviDiAppShellLabels(), 'products', 'dashboard', ...$prodotti];
+    $chiavi = [...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', ...$prodotti];
 
     $problemi = [];
     foreach (array_intersect($prodotti, chiaviDiAppShellLabels()) as $id) {
