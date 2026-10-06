@@ -45,8 +45,9 @@ Il design system è uno solo per app, quello di zr-core: il frontend non ne tien
 ## La parte server
 
 I dati della cornice — chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato dei prodotti in quel
-workspace — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione di `zr-auth` e da `app.elenca` col gettone del workspace.
-Il gettone resta nella sessione: nei dati non c'è.
+workspace, le sue aziende coi loro workspace, le notifiche non lette — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione
+di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.notifiche.elenca` col gettone del workspace,
+`io.aziende.elenca` e `io.workspace.elenca` col gettone della persona. Il gettone resta nella sessione: nei dati non c'è.
 
 zr-core richiede `zeiras/zr-auth` `^0.3`, installato e configurato come dice il suo README (la sessione lato server,
 `ZR_API_URL`). Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json`
@@ -65,9 +66,13 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
-| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto» |
+| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
+
+`aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
+`non_lette` sono le non lette del workspace in cui la persona è entrata, contate su una pagina sola: al più 100, e da 100
+la campanella mostra «99+».
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
