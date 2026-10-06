@@ -49,7 +49,7 @@ workspace, le sue aziende coi loro workspace, le notifiche non lette — li dà 
 di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.notifiche.elenca` col gettone del workspace,
 `io.aziende.elenca` e `io.workspace.elenca` col gettone della persona. Il gettone resta nella sessione: nei dati non c'è.
 
-zr-core richiede `zeiras/zr-auth` `^0.3`, installato e configurato come dice il suo README (la sessione lato server,
+zr-core richiede `zeiras/zr-auth` `^0.5`, installato e configurato come dice il suo README (la sessione lato server,
 `ZR_API_URL`). Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json`
 del frontend, accanto a quello di zr-core.
 
