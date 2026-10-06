@@ -1,17 +1,22 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { IdDiProdotto, VoceDelRegistro } from './registro';
+import type { IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice. Dove una lingua non ha un testo si mostra l'inglese di zr-core: per questo i testi si danno
 // all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui col suo default italiano.
 
-/** I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id. */
-export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & {
+/**
+ * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id e quello
+ * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>`.
+ */
+export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Prodotti. */
     dashboard: string;
+    /** Il titolo di una notifica nel pannello: uno solo per ogni `motivo`, finché zr-core non ne ha uno per motivo. */
+    notificationTitle: string;
 };
 
 /** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */
@@ -25,6 +30,8 @@ function codiceDi(lingua: string): string {
 /** Le lingue di un elenco di file come lo dà `import.meta.glob`: `{ '../lingue/it.json': { … } }`. */
 export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
     const perCodice = new Map(Object.entries(file).map(([percorso, testi]) => [codiceDi(percorso.replace(/^.*\/|\.json$/g, '')), testi]));
+    // Il codice dell'inglese: il file che `import.meta.glob` dà con lo stesso oggetto del ripiego.
+    const codiceDelRipiego = [...perCodice].find(([, testi]) => testi === ripiego)?.[0];
 
     return {
         /** I codici delle lingue, uno per file. */
@@ -46,10 +53,19 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
 
             return testi;
         },
+        /**
+         * La lingua di `testi(lingua)`: il codice del suo file, della lingua base, o dell'inglese. Date e ore si scrivono con `Intl`
+         * in questa lingua, mai in quella del browser, e un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
+         */
+        linguaDeiTesti(lingua: string): string | undefined {
+            const codice = codiceDi(lingua);
+
+            return [codice, codice.split('-')[0]].find((scelto) => perCodice.has(scelto)) ?? codiceDelRipiego;
+        },
     };
 }
 
-export const { lingue, testi } = caricaLingue(
+export const { lingue, testi, linguaDeiTesti } = caricaLingue(
     import.meta.glob<Partial<TestiDellaCornice>>('../lingue/*.json', { eager: true, import: 'default' }),
 );
 

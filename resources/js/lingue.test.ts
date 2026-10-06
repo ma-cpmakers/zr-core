@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
-import { caricaLingue, lingue, nomeDellaVoce, testi } from './lingue';
+import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, testi } from './lingue';
 import { registro } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -43,6 +43,11 @@ describe('le lingue della cornice', () => {
         expect(testi('IT')).toStrictEqual(italiano);
         expect(testi('es_ES')).toStrictEqual(spagnolo);
         expect(testi('pt-BR')).toStrictEqual(inglese);
+    });
+
+    it('date e ore stanno nella lingua dei testi: quella del file, della lingua base o l\'inglese, in un codice che `Intl` accetta (sprint 3 · T4.1)', () => {
+        expect(['it', 'it-IT', 'IT', 'it_IT', 'es_ES', 'en', 'pt-BR', 'zz', ''].map((lingua) => linguaDeiTesti(lingua)))
+            .toStrictEqual(['it', 'it', 'it', 'it', 'es', 'en', 'en', 'en', 'en']);
     });
 
     it('una lingua che c\'è dà i suoi testi', () => {

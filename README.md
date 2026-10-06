@@ -1,8 +1,8 @@
 # zr-core
 
 La cornice comune dei frontend di Zeiras: `AppShell` con il menu Prodotti, il selettore «Azienda › workspace», la
-ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato) e i loro nomi in ogni
-lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
+ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato, le risorse che la
+ricerca mostra) e i loro nomi in ogni lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
 che si vede: i frontend `zr-*` lo installano e non ricostruiscono la cornice nel proprio codice.
 
 Niente sito, niente database: è un pacchetto Composer (`zeiras/zr-core`) con componenti React, e si installa dentro
@@ -45,10 +45,11 @@ Il design system è uno solo per app, quello di zr-core: il frontend non ne tien
 ## La parte server
 
 I dati della cornice — chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato dei prodotti in quel
-workspace — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione di `zr-auth` e da `app.elenca` col gettone del workspace.
-Il gettone resta nella sessione: nei dati non c'è.
+workspace, le sue aziende coi loro workspace, le notifiche non lette — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione
+di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.notifiche.elenca` col gettone del workspace,
+`io.aziende.elenca` e `io.workspace.elenca` col gettone della persona. Il gettone resta nella sessione: nei dati non c'è.
 
-zr-core richiede `zeiras/zr-auth` `^0.3`, installato e configurato come dice il suo README (la sessione lato server,
+zr-core richiede `zeiras/zr-auth` `^0.5`, installato e configurato come dice il suo README (la sessione lato server,
 `ZR_API_URL`). Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json`
 del frontend, accanto a quello di zr-core.
 
@@ -65,16 +66,39 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
-| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto» |
+| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
+| l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
+| l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
+
+`aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
+`non_lette` sono le non lette del workspace in cui la persona è entrata, contate su una pagina sola: al più 100, e da 100
+la campanella mostra «99+».
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
 la lingua) arriva alla cornice al prossimo ingresso.
 
-Con la funzione nel `share()`, `BackofficeNonRisponde` ferma ogni risposta Inertia, anche quella di una pagina senza
-cornice: come mostrarla lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in `bootstrap/app.php`).
+Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
+pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
+`bootstrap/app.php`); senza, sono un 500.
+
+### Le rotte della cornice
+
+zr-core registra da sé, nel gruppo `web` del frontend (sessione, guardia di zr-auth, CSRF), le rotte che la cornice chiama
+dal browser sulla stessa origine. La parte server le gira al backoffice col gettone del workspace, che non esce.
+
+| Rotta | Risponde |
+|---|---|
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, per_me, motivo, app}]}`: le notifiche del workspace dalla più recente, una pagina |
+| `PATCH /cornice/notifiche/lettura` con `{fino_a}` | `{data: {fino_a}}`: segna lette le notifiche del workspace fino a `fino_a`, un istante con ora e fuso (`creata_il` della più recente vista); senza, o con un altro valore, 422 `{errore: "dati_non_validi"}` |
+| `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
+
+Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
+che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
+sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
+guardia.
 
 ## La cornice
 
@@ -108,11 +132,26 @@ cornice === null ? pagina : (
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
-- **Il workspace** sta in cima alla sidebar come testo: il selettore «Azienda › workspace» arriva quando il backoffice
-  dà le aziende.
+- **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
+  in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
+  Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
+  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
+- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
+- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
+  lingua, il nome, l'icona e il tono del suo prodotto dal registro (un'app che il registro non ha: nessun prodotto, la
+  campanella) e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»); se il caricamento fallisce, l'errore e «Riprova».
+  «Segna tutte come lette» manda a `PATCH /cornice/notifiche/lettura` il `creata_il` della più recente, col gettone CSRF
+  del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`; a risposta arrivata la
+  campanella va a 0. Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
+- **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
+  parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. I
+  risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e l'icona del tipo,
+  dal registro; un'app o un tipo che il registro non ha non si mostrano. Scegliere un risultato apre l'indirizzo del suo
+  prodotto nel workspace seguito dal percorso del tipo: per Project Management `/cartelle/<id>`, `/b/<id>` e `/c/<id>`,
+  provvisori finché zr-board non decide le sue rotte. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
 
-Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Notifiche e
-ricerca si collegano quando i loro dati arrivano dal backoffice.
+Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
+apre da sé le sue risorse (una scheda nel suo pannello) lo intercetta lì.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.

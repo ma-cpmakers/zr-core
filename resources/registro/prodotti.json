@@ -1,7 +1,14 @@
 {
     "prodotti": [
         { "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false },
-        { "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false },
+        {
+            "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false,
+            "risorse": [
+                { "tipo": "cartella", "icona": "folder", "percorso": "/cartelle/{id}", "contenitore": true },
+                { "tipo": "board", "icona": "board", "percorso": "/b/{id}", "contenitore": true },
+                { "tipo": "scheda", "icona": "board", "percorso": "/c/{id}", "contenitore": false }
+            ]
+        },
         { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false },
         { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false },
         { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true },

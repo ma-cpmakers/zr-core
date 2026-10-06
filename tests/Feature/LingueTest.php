@@ -3,8 +3,9 @@
 use Illuminate\Support\Facades\File;
 
 // Sprint 1 · T5 e T7 (voce #1255). Le lingue della cornice, una per file in resources/lingue: italiano, spagnolo e inglese per
-// partire, ognuna con tutti i testi dell'`AppShell` (`AppShellLabels` di index.d.ts) e quelli di zr-core (`products`, `dashboard` e
-// il nome di ogni prodotto del registro, con l'id per chiave: T7, decisione 5926 di Luciano). L'italiano è quello del design system
+// partire, ognuna con tutti i testi dell'`AppShell` (`AppShellLabels` di index.d.ts) e quelli di zr-core (`products`, `dashboard`,
+// `notificationTitle` e il nome di ogni prodotto del registro, con l'id per chiave: T7, decisione 5926 di Luciano; dallo sprint 3 ·
+// T5 anche il nome di ogni tipo di risorsa del registro, il gruppo dei risultati della ricerca, con `<prodotto>.<tipo>` per chiave). L'italiano è quello del design system
 // delle copie in resources/zeiras/: `APPSHELL_LABELS` e il menu di partenza di bundle.js. Nessun testo dell'interfaccia sta
 // nel codice TS/TSX: i testi vengono dalle lingue. Il ripiego sull'inglese e le lingue scoperte dai file li prova
 // resources/js/lingue.test.ts.
@@ -71,7 +72,7 @@ function lingueDellaCornice(): array
 function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
-    $chiavi = [...chiaviDiAppShellLabels(), 'products', 'dashboard', ...$prodotti];
+    $chiavi = [...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', ...$prodotti, ...tipiDiRisorsa()];
 
     $problemi = [];
     foreach (array_intersect($prodotti, chiaviDiAppShellLabels()) as $id) {
@@ -173,13 +174,16 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
         ->and(array_intersect_key($lingue['it'], array_flip(idDeiProdotti())))->toBe([
             'pm' => 'Project Management', 'crm' => 'CRM', 'bookings' => 'Bookings', 'reports' => 'Report',
             'automations' => 'Automazioni', 'content' => 'Contenuti',
+        ])
+        ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
+            'pm.cartella' => 'Cartelle', 'pm.board' => 'Board', 'pm.scheda' => 'Schede',
         ]);
 });
 
 it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso dal design system e un prodotto con l\'id di un testo dell\'AppShell (T5.1, T7.1)', function () {
     $italiano = testiItalianiDelDesignSystem();
     $lingue = lingueDellaCornice();
-    unset($lingue['en']['logout'], $lingue['en']['content']);
+    unset($lingue['en']['logout'], $lingue['en']['content'], $lingue['en']['pm.scheda']);
     $lingue['es']['retry'] = ' ';
     $lingue['it']['soon'] = 'Fra poco';
     $lingue['it']['reports'] = 'Reports';
@@ -195,6 +199,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->and(problemiDelleLingue($lingue))->toEqualCanonicalizing([
             'en: manca «logout»',
             'en: manca «content»',
+            'en: manca «pm.scheda»',
             'es: «retry» è vuoto',
             'it: «ciao» non è un testo della cornice',
             'it: «soon» non è il testo del design system',

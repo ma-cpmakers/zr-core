@@ -10,14 +10,27 @@ import { registro } from '../js/registro';
 // La pagina di prova della UAT: la `Cornice` coi dati d'esempio marcati «UAT» nella forma di `Cornice::dati()`, in ogni lingua di
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
-// elencati. `?lingua=es&prodotto=pm` la apre già scelta. Gli indirizzi di account e notifiche non si aprono: si scrivono
-// in console. Non entra nel pacchetto.
+// elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
+// `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche`, `?errore=lettura` o `?errore=ricerca` fa
+// fallire quella rotta. Gli indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca)
+// non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
+};
+
+// `due`: il workspace dei dati è il secondo della prima azienda, e un nome lungo va a capo. `senza-corrente`: il workspace dei
+// dati non sta in nessuna, e resta testo come con `nessuna`.
+const aziendeDiProva: Record<string, DatiDellaCornice['aziende']> = {
+    due: [
+        { id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] },
+        { id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca e sviluppo dei nuovi prodotti internazionali', slug: 'uat-ricerca' }] },
+    ],
+    nessuna: [],
+    'senza-corrente': [{ id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca', slug: 'uat-ricerca' }] }],
 };
 
 // Le voci del prodotto aperto, uguali per ogni prodotto: servono solo a vedere cosa c'è sotto il suo pulsante.
@@ -29,10 +42,12 @@ function Prova() {
     const scelti = new URLSearchParams(window.location.search);
     const [lingua, setLingua] = useState(scelti.get('lingua') ?? 'it');
     const [prodotto, setProdotto] = useState(scelti.get('prodotto') ?? '');
+    const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
+    const nonLette = Number(scelti.get('non_lette') ?? 7);
 
     return (
         <Cornice
-            dati={{ ...datiDiProva, lingua }}
+            dati={{ ...datiDiProva, lingua, aziende, non_lette: nonLette }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
             active={prodotto ? 'oggi' : undefined}
@@ -59,5 +74,77 @@ function Prova() {
         </Cornice>
     );
 }
+
+// Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
+// notifiche d'esempio coprono ogni caso: `pm` non letta per la persona, `crm` non letta per altri, `bookings` letta ieri, e
+// un'app che il registro non ha (`zz`). La lettura le segna lette fino a `fino_a`. La ricerca dà i risultati d'esempio che
+// hanno la parola nel titolo, coi tipi mescolati, un tipo (`uat-ignoto`) e un'app (`zz`) che zr-core non conosce; «ua» risponde
+// dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni
+// richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la risposta che arriva lo
+// stesso; il cookie del gettone CSRF è finto.
+const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
+const ieri = new Date();
+ieri.setDate(ieri.getDate() - 1);
+ieri.setHours(12, 0, 0, 0);
+const notificheDiProva = [
+    { id: 'uat-4', creata_il: fa(5), letta: false, per_me: true, motivo: 'uat-menzione', app: 'pm' },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, per_me: false, motivo: 'uat-assegnazione', app: 'crm' },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, per_me: true, motivo: 'uat-menzione', app: 'bookings' },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, per_me: true, motivo: 'uat-menzione', app: 'zz' },
+];
+const risultatiDiProva = [
+    { app: 'pm', tipo: 'board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    { app: 'pm', tipo: 'cartella', id: 'uat-3', titolo: 'UAT Marketing' },
+    { app: 'pm', tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
+    { app: 'zz', tipo: 'board', id: 'uat-5', titolo: 'UAT app ignota' },
+    { app: 'pm', tipo: 'scheda', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+    { app: 'pm', tipo: 'board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
+];
+const errore = new URLSearchParams(window.location.search).get('errore');
+const fetchDelBrowser = window.fetch.bind(window);
+const cookieCsrf = 'XSRF-TOKEN';
+document.cookie = `${cookieCsrf}=uat-gettone-csrf%3D%3D; path=/`;
+window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
+    const percorso = String(indirizzo);
+    if (!percorso.startsWith('/cornice/')) {
+        return fetchDelBrowser(indirizzo, opzioni);
+    }
+    console.info('UAT', opzioni?.method ?? 'GET', percorso, opzioni?.body ?? '', JSON.stringify(opzioni?.headers ?? {}));
+    opzioni?.signal?.addEventListener('abort', () => console.info('UAT annullata', percorso));
+    const json = (corpo: unknown, stato = 200) => new Response(JSON.stringify(corpo), { status: stato, headers: { 'Content-Type': 'application/json' } });
+    const [rotta, query = ''] = percorso.split('?');
+    if (rotta === '/cornice/ricerca') {
+        // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
+        const parola = new URLSearchParams(query).get('q') ?? '';
+        await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
+        console.info('UAT risposta', percorso);
+        if (errore === 'ricerca') {
+            return json({ errore: 'uat_errore' }, 502);
+        }
+
+        return json({
+            data: parola === 'ua'
+                ? [{ app: 'pm', tipo: 'board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
+                : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+        });
+    }
+    await new Promise((fatto) => setTimeout(fatto, 800));
+    if (percorso === '/cornice/notifiche') {
+        return errore === 'notifiche' ? json({ errore: 'uat_errore' }, 502) : json({ data: notificheDiProva });
+    }
+    if (percorso === '/cornice/notifiche/lettura') {
+        if (errore === 'lettura') {
+            return json({ errore: 'uat_errore' }, 502);
+        }
+        const { fino_a: finoA } = JSON.parse(String(opzioni?.body)) as { fino_a: string };
+        for (const notifica of notificheDiProva) {
+            notifica.letta ||= Date.parse(notifica.creata_il) <= Date.parse(finoA);
+        }
+
+        return json({ data: { fino_a: finoA } });
+    }
+
+    return json({ errore: 'non_trovato' }, 404);
+};
 
 createRoot(document.getElementById('pagina')!).render(<StrictMode><Prova /></StrictMode>);

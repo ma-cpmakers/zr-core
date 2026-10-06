@@ -38,10 +38,14 @@
     "crumbs": "Breadcrumb",
     "products": "Products",
     "dashboard": "Dashboard",
+    "notificationTitle": "New activity",
     "pm": "Project Management",
     "crm": "CRM",
     "bookings": "Bookings",
     "reports": "Reports",
     "automations": "Automations",
-    "content": "Content"
+    "content": "Content",
+    "pm.cartella": "Folders",
+    "pm.board": "Boards",
+    "pm.scheda": "Cards"
 }

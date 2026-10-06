@@ -8,6 +8,20 @@ import type { IconName, Tone } from '../zeiras/index';
 /** Gli id dei prodotti, Dashboard esclusa: ognuno ha il suo nome in ogni lingua, con l'id per chiave. Un prodotto nuovo entra anche qui. */
 export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations' | 'content';
 
+/** Le risorse dei prodotti che la ricerca mostra, `<prodotto>.<tipo>`: ognuna ha il nome del suo gruppo in ogni lingua, con questa chiave. Una risorsa nuova entra anche qui. */
+export type TipoDiRisorsa = 'pm.cartella' | 'pm.board' | 'pm.scheda';
+
+/** Un tipo di risorsa di un prodotto, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
+export interface RisorsaDelProdotto {
+    /** Il tipo nel backoffice: il `tipo` di un risultato della ricerca. */
+    tipo: string;
+    icona: IconName;
+    /** Il percorso nel prodotto, dopo `/w/<slug>`: `{id}` è l'id della risorsa. */
+    percorso: string;
+    /** Un contenitore (cartella, board) si apre a pagina intera, un elemento (scheda) nel pannello del prodotto. */
+    contenitore: boolean;
+}
+
 /** Una voce del menu Prodotti. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */
 export interface VoceDelRegistro {
     /** L'id del design system (`active` e `product` dell'`AppShell`); `home` è la Dashboard. */
@@ -19,6 +33,8 @@ export interface VoceDelRegistro {
     indirizzo: string;
     /** «Presto»: il prodotto non è ancora disponibile, e la sua voce non porta da nessuna parte. */
     presto: boolean;
+    /** Le risorse del prodotto che la ricerca mostra: un risultato di un tipo che non è qui non si mostra. */
+    risorse?: RisorsaDelProdotto[];
 }
 
 export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegistro[];
