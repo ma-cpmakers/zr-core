@@ -19,6 +19,10 @@ export interface DatiDellaCornice {
     workspace: { nome: string; slug: string };
     /** Lo stato di ogni prodotto nel workspace (app.elenca): un prodotto che manca è «Presto». */
     prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo'>>;
+    /** Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace dei dati non sta in nessuna, il workspace resta testo. */
+    aziende?: { id: string; nome: string; workspace: { nome: string; slug: string }[] }[];
+    /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
+    non_lette?: number;
 }
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
@@ -101,7 +105,14 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         }),
     };
 
-    // Senza aziende il workspace è solo testo: il selettore «Azienda › workspace» arriva coi loro dati.
+    // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
+    // il primo workspace della prima, e il workspace resta testo. Nessun tono (il backoffice non dà grafica) e nessun «Nuovo
+    // workspace» finché zr-home non ha la sua pagina.
+    const conIlWorkspace = dati.aziende?.some((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug));
+    const companies = conIlWorkspace
+        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => ({ slug: ws.slug, name: ws.nome })) }))
+        : undefined;
+
     return (
         <Zeiras.AppShell
             {...pagina}
@@ -110,6 +121,12 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
             user={dati.persona.nome}
             email={dati.persona.email}
             workspace={dati.workspace.nome}
+            companies={companies}
+            workspaceSlug={dati.workspace.slug}
+            // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
+            onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
+            // Il numero viene dai dati, non dall'elenco delle notifiche, che si carica solo aprendo la campanella.
+            unreadCount={dati.non_lette}
             labels={t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}

@@ -10,14 +10,26 @@ import { registro } from '../js/registro';
 // La pagina di prova della UAT: la `Cornice` coi dati d'esempio marcati «UAT» nella forma di `Cornice::dati()`, in ogni lingua di
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
-// elencati. `?lingua=es&prodotto=pm` la apre già scelta. Gli indirizzi di account e notifiche non si aprono: si scrivono
-// in console. Non entra nel pacchetto.
+// elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
+// `senza-corrente`), `?non_lette=` il numero sulla campanella. Gli indirizzi che la cornice apre (account, notifiche, un altro
+// workspace) non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
+};
+
+// `due`: il workspace dei dati è il secondo della prima azienda, e un nome lungo va a capo. `senza-corrente`: il workspace dei
+// dati non sta in nessuna, e resta testo come con `nessuna`.
+const aziendeDiProva: Record<string, DatiDellaCornice['aziende']> = {
+    due: [
+        { id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] },
+        { id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca e sviluppo dei nuovi prodotti internazionali', slug: 'uat-ricerca' }] },
+    ],
+    nessuna: [],
+    'senza-corrente': [{ id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca', slug: 'uat-ricerca' }] }],
 };
 
 // Le voci del prodotto aperto, uguali per ogni prodotto: servono solo a vedere cosa c'è sotto il suo pulsante.
@@ -29,10 +41,12 @@ function Prova() {
     const scelti = new URLSearchParams(window.location.search);
     const [lingua, setLingua] = useState(scelti.get('lingua') ?? 'it');
     const [prodotto, setProdotto] = useState(scelti.get('prodotto') ?? '');
+    const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
+    const nonLette = Number(scelti.get('non_lette') ?? 7);
 
     return (
         <Cornice
-            dati={{ ...datiDiProva, lingua }}
+            dati={{ ...datiDiProva, lingua, aziende, non_lette: nonLette }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
             active={prodotto ? 'oggi' : undefined}

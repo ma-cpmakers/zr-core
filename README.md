@@ -129,11 +129,14 @@ cornice === null ? pagina : (
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
-- **Il workspace** sta in cima alla sidebar come testo: il selettore «Azienda › workspace» arriva quando il backoffice
-  dà le aziende.
+- **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
+  in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
+  Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
+  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
+- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
 
-Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Notifiche e
-ricerca si collegano quando i loro dati arrivano dal backoffice.
+Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. Il pannello
+delle notifiche e la ricerca non sono ancora collegati alle rotte della cornice.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.

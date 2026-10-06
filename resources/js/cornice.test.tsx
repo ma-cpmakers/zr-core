@@ -22,6 +22,11 @@ const dati: DatiDellaCornice = {
 };
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
+/** Le aziende della persona in un ordine che non è alfabetico: il workspace dei dati è il secondo della seconda azienda. */
+const aziende: NonNullable<DatiDellaCornice['aziende']> = [
+    { id: '7', nome: 'Zeta Srl', workspace: [{ nome: 'Ricerca', slug: 'zeta-ricerca' }] },
+    { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }, { nome: 'Marketing', slug: 'acme-marketing' }] },
+];
 
 let contenitore: HTMLDivElement;
 let radice: Root;
@@ -156,7 +161,7 @@ describe('la Cornice', () => {
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
-        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} />);
+        await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} />);
 
         // I testi arrivano interi, e nessun alias che vincerebbe su `labels`.
         const props = appShell.mock.lastCall?.[0];
@@ -180,6 +185,8 @@ describe('la Cornice', () => {
             }
         };
         guarda();
+        await clic(uno('.zr-ws-switch'));
+        guarda();
         await clic(uno('.zr-bell'));
         guarda();
         await clic(uno('.zr-avatar-btn'));
@@ -194,11 +201,12 @@ describe('la Cornice', () => {
         for (const [chiave, italiano] of Object.entries(Zeiras.APPSHELL_LABELS)) {
             expect(pagina, chiave).not.toMatch(frase(italiano));
         }
-        // Senza aziende e senza non lette il selettore e il conteggio non ci sono: i loro testi tornano con quei dati.
+        // Coi testi del selettore e delle non lette (T2). «Nuovo workspace» non c'è finché zr-home non ha la sua pagina; gli stati
+        // delle notifiche e della ricerca tornano coi loro dati.
         const raggiunti = [
-            'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'search', 'searchPlaceholder', 'searchHint',
-            'notifications', 'forMe', 'all', 'seeAll', 'notificationsEmpty', 'notificationsEmptyText', 'account', 'profile',
-            'accountSettings', 'plan', 'company', 'logout', 'crumbs', 'products', 'dashboard',
+            'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'workspaceSwitch', 'search', 'searchPlaceholder',
+            'searchHint', 'notifications', 'unread', 'forMe', 'all', 'seeAll', 'notificationsEmpty', 'notificationsEmptyText', 'account',
+            'profile', 'accountSettings', 'plan', 'company', 'logout', 'crumbs', 'products', 'dashboard',
         ] as const;
         for (const chiave of raggiunti) {
             expect(pagina, chiave).toMatch(frase(attesi[chiave]));
@@ -258,5 +266,79 @@ describe('la Cornice', () => {
         await voceDelProfilo('Esci');
         expect(esci).toHaveBeenCalledOnce();
         expect(naviga).toHaveBeenCalledTimes(5);
+    });
+});
+
+// Sprint 3 · T2 (voce #1277). Il selettore «Azienda › workspace» e il numero sulla campanella, dalle aziende e dalle non lette
+// dei dati (linea guida 15, passo 8).
+describe('il selettore «Azienda › workspace» e la campanella', () => {
+    it('in cima alla sidebar azienda e workspace attivo; aperto, ogni azienda coi suoi workspace nell\'ordine dei dati, la ✓ sull\'attivo, nessun «Nuovo workspace» (T2.1)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+
+        const pulsante = uno('.zr-ws-switch');
+        expect(pulsante?.querySelector('.zr-ws-company')?.textContent).toBe('Acme');
+        expect(pulsante?.querySelector('.zr-ws-name')?.textContent).toBe('Marketing');
+        expect(uno('.zr-workspace')).toBeNull();
+        // Nessun tono: il backoffice non dà grafica. Nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
+        expect(appShell.mock.lastCall?.[0].companies).toStrictEqual([
+            { id: '7', name: 'Zeta Srl', workspaces: [{ slug: 'zeta-ricerca', name: 'Ricerca' }] },
+            { id: '3', name: 'Acme', workspaces: [{ slug: 'acme-vendite', name: 'Vendite' }, { slug: 'acme-marketing', name: 'Marketing' }] },
+        ]);
+        expect(appShell.mock.lastCall?.[0].onNewWorkspace).toBeUndefined();
+
+        await clic(pulsante);
+        const gruppi = tutti('.zr-ws-menu .zr-ws-group');
+        expect(gruppi.map((gruppo) => gruppo.querySelector('.zr-ws-group-title')?.textContent)).toStrictEqual(['Zeta Srl', 'Acme']);
+        expect(gruppi.map((gruppo) => [...gruppo.querySelectorAll('.zr-ws-item .zr-nav-label')].map((voce) => voce.textContent)))
+            .toStrictEqual([['Ricerca'], ['Vendite', 'Marketing']]);
+        const attivi = tutti('.zr-ws-menu .zr-ws-item[aria-current="true"]');
+        expect(attivi.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['Marketing']);
+        expect(attivi[0].querySelector('svg path')?.getAttribute('d')).toBe(tracciatoDi('check'));
+        expect(tutti('.zr-ws-menu .zr-ws-item:not([aria-current]) svg')).toHaveLength(0);
+        expect(uno('.zr-ws-new')).toBeNull();
+        expect(uno('.zr-ws-menu')?.textContent).not.toMatch(frase(testi('it').newWorkspace));
+    });
+
+    it.each([
+        [undefined, 'Ricerca', 'https://app.zeiras.com/w/zeta-ricerca'],
+        ['pm', 'Vendite', 'https://board.zeiras.com/w/acme-vendite'],
+        ['bookings', 'Ricerca', 'https://bookings.zeiras.com/w/zeta-ricerca'],
+        // Un prodotto che il registro non ha è una pagina di app.zeiras.com.
+        ['board', 'Vendite', 'https://app.zeiras.com/w/acme-vendite'],
+    ])('con product=%s scegliere «%s» porta allo stesso prodotto nel workspace scelto, o alla Dashboard (T2.2)', async (product, nome, indirizzo) => {
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, aziende }} product={product} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-ws-switch'));
+        await clic(tutti('.zr-ws-menu .zr-ws-item').find((voce) => voce.textContent === nome) ?? null);
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it.each<[string, DatiDellaCornice['aziende']]>([
+        ['senza aziende', undefined],
+        ['con un elenco vuoto', []],
+        // Senza il controllo l'`AppShell` segnerebbe attivo il primo workspace della prima azienda: un workspace sbagliato.
+        ['col workspace dei dati in nessuna azienda', [aziende[0], { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }] }]],
+    ])('%s il workspace resta testo, senza selettore (T2.3)', async (_caso, aziendeDeiDati) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-ws-company')).toBeNull();
+        expect(appShell.mock.lastCall?.[0].companies).toBeUndefined();
+    });
+
+    it.each<[number | undefined, string | null]>([
+        [undefined, null],
+        [0, null],
+        [7, '7'],
+        [100, '99+'],
+    ])('con %s non lette nei dati la campanella mostra %s, senza aver aperto le notifiche (T2.4)', async (nonLette, numero) => {
+        await mostra(<Cornice dati={{ ...dati, non_lette: nonLette }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-bell-count')?.textContent ?? null).toBe(numero);
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(numero === null ? 'Notifiche' : `Notifiche, ${numero} non lette`);
     });
 });
