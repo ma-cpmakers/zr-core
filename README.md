@@ -90,6 +90,7 @@ dal browser sulla stessa origine. La parte server le gira al backoffice col gett
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, per_me, motivo, app}]}`: le notifiche del workspace dalla più recente, una pagina |
 | `PATCH /cornice/notifiche/lettura` con `{fino_a}` | `{data: {fino_a}}`: segna lette le notifiche del workspace fino a `fino_a`, un istante con ora e fuso (`creata_il` della più recente vista); senza, o con un altro valore, 422 `{errore: "dati_non_validi"}` |
+| `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri, altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
