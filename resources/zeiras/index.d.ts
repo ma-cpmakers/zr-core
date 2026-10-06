@@ -29,7 +29,7 @@ export interface AppShellProps { active?: string; user?: string; email?: string;
   nav?: { group: string; items: (NavItem & { tone?: Exclude<Tone, 'neutral'>; home?: boolean })[]; products?: boolean }[]; /** id della voce del gruppo prodotti aperta: il gruppo diventa un menu collassabile in cima alla sidebar */ product?: string;
   actions?: React.ReactNode; onNavigate?: (id: string) => void; flush?: boolean; children?: React.ReactNode;
   /** Voci del menu «+» in cima alla sidebar (P-15): i tipi creabili nel modulo corrente. */ create?: MenuItem[];
-  /** Ricerca Ctrl/Cmd+K: onSearch dal 2° carattere, dopo 150 ms */ onSearch?: (query: string) => void; searchResults?: ShellSearchResult[]; searchState?: 'ready' | 'loading' | 'error'; onSelectResult?: (r: ShellSearchResult) => void;
+  /** Ricerca Ctrl/Cmd+K: onSearch dal 2° carattere, dopo 300 ms */ onSearch?: (query: string) => void; searchResults?: ShellSearchResult[]; searchState?: 'ready' | 'loading' | 'error'; onSelectResult?: (r: ShellSearchResult) => void;
   /** Notifiche (P-07) */ notifications?: ShellNotification[]; unreadCount?: number; notificationsState?: 'ready' | 'loading' | 'error'; onNotificationsOpen?: () => void; onOpenNotification?: (n: ShellNotification) => void; onMarkAllRead?: () => void; onAllNotifications?: () => void; onRetryNotifications?: () => void;
   /** Menu del profilo: onAccount('logout') deve chiudere la sessione ovunque */ onAccount?: (id: AccountAction) => void; accountItems?: MenuItem[];
   /** Percorso Workspace › Cartella › Oggetto, ultima voce = pagina attuale */ crumbs?: ShellCrumb[]; onCrumb?: (c: ShellCrumb, index: number) => void;

@@ -597,7 +597,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 /* ---------- Mobile first: AppShell, dialoghi, intestazioni ---------- */
 .zr-shell { height: 100vh; height: 100dvh; }
 .zr-top-menu { display: none; gap: var(--space-2); padding: 0 var(--space-2); font-weight: 600; }
-.zr-top-product { font-size: 15px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zr-top-product { font-size: 15px; white-space: nowrap; flex: none; }
 @media (max-width: 1023px) {
   .zr-shell { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .zr-side { position: fixed; top: 0; left: 0; bottom: 0; z-index: calc(var(--z-dialog) + 2); width: min(320px, 86vw); box-sizing: border-box; overflow-y: auto; padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); transform: translateX(-102%); visibility: hidden; transition: transform .2s ease, visibility 0s linear .2s; }
@@ -735,4 +735,23 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 }
 @media (prefers-reduced-motion: reduce) { .zr-ws-chev { transition: none; } }
 .zr-notif-item .zr-avatar { width: 32px; height: 32px; flex: none; font-size: 12px; }
-.zr-product-name { white-space: normal; overflow-wrap: anywhere; }
+
+
+/* ---------- AppShell: nomi di prodotto interi, su una riga, in ogni lingua (5 ott 2026) ----------
+   Menu Prodotti esteso, pulsante del prodotto aperto, lista che si riapre e barra in alto sotto 1024 px:
+   mai a capo, mai «…». Misure pensate per il nome più lungo, «Gestión de proyectos».
+   sidebar-width 264px; pulsante con gap 8px e nome a 14px. Larghezza minima supportata: 360px. */
+.zr-nav-group.is-products .zr-nav-label,
+.zr-product-menu .zr-nav-label,
+.zr-product-name,
+.zr-top-product { flex: 1 0 auto; min-width: auto; white-space: nowrap; overflow: visible; text-overflow: clip; overflow-wrap: normal; }
+.zr-top-product { flex: none; }
+.zr-product-switch { gap: var(--space-2); }
+.zr-product-name { font-size: 14px; line-height: 20px; }
+.zr-product-menu .zr-nav-item { gap: var(--space-2); }
+.zr-top-menu { flex: none; }
+@media (max-width: 720px) {
+  .zr-top { gap: var(--space-1); }
+  .zr-top-menu { padding: 0 var(--space-2) 0 var(--space-1); }
+  .zr-top-actions { gap: 0; }
+}
