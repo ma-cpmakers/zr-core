@@ -2,26 +2,23 @@ import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
-import { Cornice, type PersonaDellaCornice } from './cornice';
+import { Cornice } from './cornice';
+import type { DatiDellaCornice } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
-// Sprint 1 · T6 (voce #1255). La `Cornice` resa in un DOM finto: il menu Prodotti dal registro con gli indirizzi del workspace,
-// il pulsante del prodotto aperto, i testi della lingua, i dati della persona dove li mette il design system, e dove portano
-// account, notifiche e workspace (linea guida 15, passi 8, 10 e 11).
+// Sprint 1 · T6 (voce #1255), riscritto nello sprint 2 · T4 (voce #1256). La `Cornice` resa in un DOM finto coi dati della parte
+// server (`Cornice::dati()`): il menu Prodotti dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
+// prodotto aperto, i testi della lingua dei dati, persona e workspace dove li mette il design system, e dove portano account e
+// notifiche (linea guida 15, passi 8 e 10).
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const persona: PersonaDellaCornice = {
-    nome: 'Ada Lovelace',
-    email: 'ada@example.com',
-    piano: 'Team',
-    aziende: [
-        { id: 'acme', name: 'Acme', workspaces: [{ slug: 'acme-marketing', name: 'Marketing', tone: 'plum' }, { slug: 'acme-sales', name: 'Sales' }] },
-        { id: 'globex', name: 'Globex', workspaces: [{ slug: 'globex', name: 'Globex HQ' }] },
-    ],
-    workspace: 'acme-marketing',
-    nonLette: 3,
+const dati: DatiDellaCornice = {
+    lingua: 'it',
+    persona: { nome: 'Ada Lovelace', email: 'ada@example.com' },
+    workspace: { nome: 'Marketing', slug: 'acme-marketing' },
+    prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'attivo', reports: 'attivo' },
 };
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
@@ -73,29 +70,33 @@ function frase(testo: string): RegExp {
     return new RegExp(`(^|[^\\p{L}])${testo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u');
 }
 
+/** Gli indirizzi dei prodotti che non sono «Presto» per il registro: gli altri non ne hanno mai uno. */
+const indirizzi: Record<string, string> = { pm: 'https://board.zeiras.com', crm: 'https://crm.zeiras.com', bookings: 'https://bookings.zeiras.com' };
+const ordine = ['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'];
+
 describe('la Cornice', () => {
-    it('senza product il menu Prodotti è esteso: Dashboard prima e attiva, i prodotti con lo slug del workspace, «Presto» senza indirizzo (T6.1)', async () => {
-        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+    it.each<[DatiDellaCornice['prodotti'], string[]]>([
+        [{ pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' }, ['pm', 'crm']],
+        [{ pm: 'in_arrivo', crm: 'attivo' }, ['crm']],
+        [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, ['bookings']],
+        [{}, []],
+        // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
+        [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
+    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` e `disponibile` verso il workspace, gli altri «Presto» (T4.1, %j)', async (prodotti, conIndirizzo) => {
+        await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
         expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Prodotti');
         const voci = [...(gruppo?.querySelectorAll<HTMLAnchorElement>('a.zr-nav-item') ?? [])];
-        const nomi = voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent);
-        expect(nomi).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(voci[0].getAttribute('aria-current')).toBe('page');
-        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual([
-            'https://app.zeiras.com/w/acme-marketing',
-            'https://board.zeiras.com/w/acme-marketing',
-            'https://crm.zeiras.com/w/acme-marketing',
-            'https://bookings.zeiras.com/w/acme-marketing',
-            '#',
-            '#',
-            '#',
-        ]);
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
+            .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
+        const attesi = ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#'));
+        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
         // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
-        expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual([null, null, null, null, 'true', 'true', 'true']);
-        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
-            .toStrictEqual([null, null, null, null, 'Presto', 'Presto', 'Presto']);
+        const presto = attesi.map((indirizzo) => indirizzo === '#');
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
+        expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
+        expect(voci[0].getAttribute('aria-current')).toBe('page');
         const icone: IconName[] = ['grid', 'board', 'users', 'calendar', 'chart', 'bolt', 'sparkle'];
         expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(icone.map(tracciatoDi));
         expect(uno('.zr-product-switch')).toBeNull();
@@ -104,7 +105,7 @@ describe('la Cornice', () => {
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
         const voci = [{ id: 'oggi', label: 'Oggi', icon: 'calendar' as const }, { id: 'risorse', label: 'Risorse', icon: 'users' as const }];
-        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: voci }]} />);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: voci }]} />);
 
         const pulsante = uno('.zr-product-switch');
         expect(pulsante?.querySelector('.zr-product-name')?.textContent).toBe('Bookings');
@@ -127,13 +128,18 @@ describe('la Cornice', () => {
     });
 
     it.each([
-        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
         ['es', ['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas'],
-    ])('con lingua="%s" i nomi dei prodotti sono in quella lingua: nel menu, nel pulsante del prodotto aperto e nella lista che riapre (T7.2)', async (lingua, nomi, bookings) => {
-        await mostra(<Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} />);
+        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
+        ['zz', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
+    ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2)', async (lingua, nomi, bookings) => {
+        vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
+        vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        expect(appShell.mock.lastCall?.[0].labels).toStrictEqual(testi(lingua));
         expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
 
-        await mostra(<Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} product="bookings" />);
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} product="bookings" />);
         expect(uno('.zr-product-switch .zr-product-name')?.textContent).toBe(bookings);
         expect(uno('.zr-top-product')?.textContent).toBe(bookings);
         await clic(uno('.zr-product-switch'));
@@ -147,12 +153,10 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content']);
     });
 
-    it.each(['es', 'en'])('con lingua="%s" ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
+    it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
-        await mostra(
-            <Cornice lingua={lingua} persona={persona} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} onNewWorkspace={() => {}} />,
-        );
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} />);
 
         // I testi arrivano interi, e nessun alias che vincerebbe su `labels`.
         const props = appShell.mock.lastCall?.[0];
@@ -160,7 +164,7 @@ describe('la Cornice', () => {
         expect(props?.searchPlaceholder).toBeUndefined();
         expect(props?.createLabel).toBeUndefined();
 
-        // Sidebar, selettore, ricerca, notifiche, menu del profilo, «+» e percorso, uno dopo l'altro: testo e attributi letti.
+        // Sidebar, ricerca, notifiche, menu del profilo, «+» e percorso, uno dopo l'altro: testo e attributi letti.
         const visti: string[] = [];
         const guarda = () => {
             for (const elemento of document.body.querySelectorAll('*')) {
@@ -176,8 +180,6 @@ describe('la Cornice', () => {
             }
         };
         guarda();
-        await clic(uno('.zr-ws-switch'));
-        guarda();
         await clic(uno('.zr-bell'));
         guarda();
         await clic(uno('.zr-avatar-btn'));
@@ -192,60 +194,47 @@ describe('la Cornice', () => {
         for (const [chiave, italiano] of Object.entries(Zeiras.APPSHELL_LABELS)) {
             expect(pagina, chiave).not.toMatch(frase(italiano));
         }
+        // Senza aziende e senza non lette il selettore e il conteggio non ci sono: i loro testi tornano con quei dati.
         const raggiunti = [
-            'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'workspaceSwitch', 'newWorkspace', 'search',
-            'searchPlaceholder', 'searchHint', 'notifications', 'unread', 'forMe', 'all', 'seeAll', 'notificationsEmpty',
-            'notificationsEmptyText', 'account', 'profile', 'accountSettings', 'plan', 'company', 'logout', 'crumbs', 'products',
-            'dashboard',
+            'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'search', 'searchPlaceholder', 'searchHint',
+            'notifications', 'forMe', 'all', 'seeAll', 'notificationsEmpty', 'notificationsEmptyText', 'account', 'profile',
+            'accountSettings', 'plan', 'company', 'logout', 'crumbs', 'products', 'dashboard',
         ] as const;
         for (const chiave of raggiunti) {
             expect(pagina, chiave).toMatch(frase(attesi[chiave]));
         }
     });
 
-    it('i dati della persona compaiono dove li mette il design system: avatar, profilo, selettore, campanella, percorso (T6.4)', async () => {
-        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} crumbs={percorso} />);
+    it('nome ed email della persona in cima al menu del profilo; il workspace dei dati come testo in cima alla sidebar, senza azienda né selettore (T4.3)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={percorso} />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
         expect(uno('.zr-avatar-btn .zr-avatar')?.textContent).toBe('AL');
-        expect(uno('.zr-ws-company')?.textContent).toBe('Acme');
-        expect(uno('.zr-ws-name')?.textContent).toBe('Marketing');
-        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
+        expect(appShell.mock.lastCall?.[0].companies).toBeUndefined();
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-ws-company')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
         expect(tutti('.zr-crumbs a, .zr-crumbs [aria-current]').map((voce) => voce.textContent)).toStrictEqual(['Marketing', 'Q4 launch']);
-
-        await clic(uno('.zr-ws-switch'));
-        expect(tutti('.zr-ws-group-title').map((titolo) => titolo.textContent)).toStrictEqual(['Acme', 'Globex']);
-        expect(tutti('.zr-ws-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(['Marketing', 'Sales', 'Globex HQ']);
-        expect(tutti('.zr-ws-item[aria-current="true"]').map((voce) => voce.textContent)).toStrictEqual(['Marketing']);
 
         await clic(uno('.zr-avatar-btn'));
         const testa = uno('.zr-profile-head');
         expect([...(testa?.querySelectorAll('.zr-profile-head > span:not(.zr-avatar) > *') ?? [])].map((riga) => riga.textContent))
-            .toStrictEqual(['Ada Lovelace', 'ada@example.com', 'Team']);
+            .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
     it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Prodotti resta esteso', async (prodotto) => {
-        await mostra(<Cornice lingua="it" persona={persona} onLogout={esciSenzaEffetto} product={prodotto} />);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product={prodotto} />);
 
         expect(uno('.zr-product-switch')).toBeNull();
         expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(7);
     });
 
-    it('un tono di workspace che non è del design system non arriva nello stile', async () => {
-        const conTonoFinto: PersonaDellaCornice = {
-            ...persona,
-            aziende: [{ id: 'acme', name: 'Acme', workspaces: [{ slug: 'acme-marketing', name: 'Marketing', tone: 'pine) url(https://x.example/b.png' as 'pine' }, { slug: 'acme-sales', name: 'Sales', tone: 'plum' }] }],
-        };
-        await mostra(<Cornice lingua="it" persona={conTonoFinto} onLogout={esciSenzaEffetto} />);
-        await clic(uno('.zr-ws-switch'));
-
-        expect(tutti('.zr-ws-dot').map((punto) => punto.getAttribute('style'))).toStrictEqual(['background: var(--pine);', 'background: var(--plum);']);
-    });
-
-    it('account, impostazioni, notifiche e workspace portano su app.zeiras.com o al nuovo slug; «Esci» chiama il frontend (linea guida 15)', async () => {
+    it('account, impostazioni e notifiche portano su app.zeiras.com; «Esci» chiama il frontend (linea guida 15)', async () => {
         const naviga = vi.fn();
         const esci = vi.fn();
-        await mostra(<Cornice lingua="it" persona={persona} product="bookings" naviga={naviga} onLogout={esci} />);
+        await mostra(<Cornice dati={dati} product="bookings" naviga={naviga} onLogout={esci} />);
 
         expect(uno('.zr-side-foot a.zr-nav-item')?.getAttribute('href')).toBe('https://app.zeiras.com/impostazioni/preferenze');
         const voceDelProfilo = async (nome: string) => {
@@ -258,19 +247,16 @@ describe('la Cornice', () => {
         await voceDelProfilo('Azienda');
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-notif .zr-pop-foot button'));
-        await clic(uno('.zr-ws-switch'));
-        await clic(tutti('.zr-ws-item').find((voce) => voce.textContent === 'Globex HQ') ?? null);
         expect(naviga.mock.calls).toStrictEqual([
             ['https://app.zeiras.com/impostazioni/profilo'],
             ['https://app.zeiras.com/impostazioni/preferenze'],
             ['https://app.zeiras.com/azienda/impostazioni/piano'],
             ['https://app.zeiras.com/azienda'],
             ['https://app.zeiras.com/notifiche'],
-            ['https://bookings.zeiras.com/w/globex'],
         ]);
 
         await voceDelProfilo('Esci');
         expect(esci).toHaveBeenCalledOnce();
-        expect(naviga).toHaveBeenCalledTimes(6);
+        expect(naviga).toHaveBeenCalledTimes(5);
     });
 });

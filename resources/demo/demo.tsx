@@ -3,24 +3,21 @@ import '../zeiras/bundle.css';
 import '../css/zeiras-token.css';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Cornice, type GruppoDiVoci, type PersonaDellaCornice } from '../js/cornice';
+import { Cornice, type DatiDellaCornice, type GruppoDiVoci } from '../js/cornice';
 import { lingue } from '../js/lingue';
 import { registro } from '../js/registro';
 
-// La pagina di prova della UAT dello sprint 1: la `Cornice` con dati d'esempio marcati «UAT», in ogni lingua di zr-core e in una
-// che non esiste (`zz`), senza prodotto o con uno del registro. `?lingua=es&prodotto=bookings` la apre già scelta. Gli indirizzi di
-// account, notifiche e workspace non si aprono: si scrivono in console. Non entra nel pacchetto.
+// La pagina di prova della UAT: la `Cornice` coi dati d'esempio marcati «UAT» nella forma di `Cornice::dati()`, in ogni lingua di
+// zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
+// attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
+// elencati. `?lingua=es&prodotto=pm` la apre già scelta. Gli indirizzi di account e notifiche non si aprono: si scrivono
+// in console. Non entra nel pacchetto.
 
-const persona: PersonaDellaCornice = {
-    nome: 'UAT Ada Lovelace',
-    email: 'uat-zr-core@example.com',
-    piano: 'UAT Team',
-    aziende: [
-        { id: 'uat-acme', name: 'UAT Acme', workspaces: [{ slug: 'uat-marketing', name: 'UAT Marketing', tone: 'plum' }, { slug: 'uat-sales', name: 'UAT Sales' }] },
-        { id: 'uat-globex', name: 'UAT Globex', workspaces: [{ slug: 'uat-globex', name: 'UAT Globex HQ' }] },
-    ],
-    workspace: 'uat-marketing',
-    nonLette: 3,
+const datiDiProva: DatiDellaCornice = {
+    lingua: 'it',
+    persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
+    workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
+    prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
 };
 
 // Le voci del prodotto aperto, uguali per ogni prodotto: servono solo a vedere cosa c'è sotto il suo pulsante.
@@ -35,14 +32,12 @@ function Prova() {
 
     return (
         <Cornice
-            lingua={lingua}
-            persona={persona}
+            dati={{ ...datiDiProva, lingua }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
             active={prodotto ? 'oggi' : undefined}
             crumbs={[{ label: 'UAT Marketing', href: '#' }, { label: 'UAT Q4' }]}
             create={[{ label: 'UAT Board', icon: 'board' }]}
-            onNewWorkspace={(azienda) => console.info('UAT nuovo workspace', azienda)}
             onLogout={() => console.info('UAT esci')}
             naviga={(indirizzo) => console.info('UAT naviga', indirizzo)}
         >

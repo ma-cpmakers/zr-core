@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\File;
 // Sprint 1 · T5 e T7 (voce #1255). Le lingue della cornice, una per file in resources/lingue: italiano, spagnolo e inglese per
 // partire, ognuna con tutti i testi dell'`AppShell` (`AppShellLabels` di index.d.ts) e quelli di zr-core (`products`, `dashboard` e
 // il nome di ogni prodotto del registro, con l'id per chiave: T7, decisione 5926 di Luciano). L'italiano è quello del design system
-// alla versione di docs/zr-design-system.md: `APPSHELL_LABELS` e il menu di partenza di bundle.js. Nessun testo dell'interfaccia sta
+// delle copie in resources/zeiras/: `APPSHELL_LABELS` e il menu di partenza di bundle.js. Nessun testo dell'interfaccia sta
 // nel codice TS/TSX: i testi vengono dalle lingue. Il ripiego sull'inglese e le lingue scoperte dai file li prova
 // resources/js/lingue.test.ts.
 

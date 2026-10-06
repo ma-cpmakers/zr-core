@@ -280,7 +280,7 @@
     function runSearch(v) {
       setQ(v); setHi(0); setPop('search');
       clearTimeout(timer.current);
-      if (v.trim().length >= 2 && p.onSearch) timer.current = setTimeout(function () { p.onSearch(v.trim()); }, 150);
+      if (v.trim().length >= 2 && p.onSearch) timer.current = setTimeout(function () { p.onSearch(v.trim()); }, 300);
     }
     function pick(r) { if (!r) return; setPop(null); if (inputRef.current) inputRef.current.blur(); if (p.onSelectResult) p.onSelectResult(r); }
     function searchKeys(e) {
@@ -375,7 +375,7 @@
         switcher,
         h('nav', { className: cx('zr-nav', (open || pop === 'ws') && 'is-dimmed'), 'aria-hidden': open || pop === 'ws' ? 'true' : undefined },
           groups.map(function (g) {
-            return h('div', { key: g.group, className: 'zr-nav-group' },
+            return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || g.group === 'Prodotti') && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),
               g.items.map(item));
           })),
