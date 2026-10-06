@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
@@ -81,6 +82,24 @@ it('con meno di 2 o più di 100 caratteri risponde 422 e non chiama il backoffic
     'un carattere fra gli spazi' => ['  a  '],
     'centouno' => [str_repeat('à', 101)],
 ]);
+
+it('gli spazi ai bordi di q si tolgono prima del controllo, anche in un frontend senza TrimStrings (T5.1)', function () {
+    // Senza il middleware che toglie gli spazi: la rotta non conta su quello del frontend.
+    test()->withoutMiddleware(TrimStrings::class);
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+
+    cerca('  a  ')->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertNothingSent();
+
+    cerca('  ab  ')->assertOk();
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $richiesta) {
+        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
+
+        return $query === ['q' => 'ab'];
+    });
+});
 
 it('senza sessione 401, con la sessione ma senza workspace 403, e il backoffice non si chiama (T5.1)', function () {
     Http::fake();

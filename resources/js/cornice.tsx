@@ -61,6 +61,11 @@ export interface CorniceProps {
 /** La Dashboard: il registro la porta sempre, per prima. */
 const dashboard = registro.find((voce) => voce.id === 'home')!;
 
+/** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
+function prodottoDelRegistro(codice: string | undefined) {
+    return registro.find((voce) => voce.id === codice && voce !== dashboard);
+}
+
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
@@ -115,7 +120,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
  * l'ora nella lingua dei testi.
  */
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDellaCornice, adesso: Date): ShellNotification {
-    const delProdotto = registro.find((voce) => voce.id === notifica.app && voce !== dashboard);
+    const delProdotto = prodottoDelRegistro(notifica.app);
 
     return {
         id: String(notifica.id),
@@ -135,7 +140,7 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
  * tipo. Un'app o un tipo che il registro non ha non si mostrano: mai un indirizzo inventato.
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
-    const delProdotto = registro.find((voce) => voce.id === risultato.app && voce !== dashboard);
+    const delProdotto = prodottoDelRegistro(risultato.app);
     const risorsa = delProdotto?.risorse?.find((voce) => voce.tipo === risultato.tipo);
     if (delProdotto === undefined || risorsa === undefined) {
         return undefined;
@@ -169,7 +174,7 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
 export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     const t = testi(dati.lingua);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
-    const aperto = registro.find((voce) => voce.id === product && voce !== dashboard);
+    const aperto = prodottoDelRegistro(product);
     const prodotti = {
         group: t.products,
         products: true,
@@ -223,17 +228,18 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
 
     // «Segna tutte come lette» manda il `creata_il` della più recente caricata, mai l'ora del browser: quelle arrivate dopo, mai
     // viste, restano da leggere. Senza notifiche caricate non c'è un istante da mandare, e il pulsante non c'è. A risposta
-    // arrivata la campanella va a 0 finché la parte server non dà un altro numero; se la lettura fallisce non cambia niente.
-    const [azzerate, setAzzerate] = useState<number>();
+    // arrivata la campanella va a 0 finché la pagina ha gli stessi dati: coi dati nuovi della parte server (un'altra visita, con
+    // la cornice montata) torna il loro numero, anche se è lo stesso. Se la lettura fallisce non cambia niente.
+    const [azzerateNei, setAzzerateNei] = useState<DatiDellaCornice>();
     const piuRecente = notifiche.stato !== 'ready' ? undefined : notifiche.elenco.reduce<NotificaDellaCornice | undefined>(
         (scelta, notifica) => (scelta === undefined || Date.parse(notifica.creata_il) > Date.parse(scelta.creata_il) ? notifica : scelta),
         undefined,
     );
     const segnaTutteLette = piuRecente && (() => {
-        const numero = dati.non_lette;
+        const questi = dati;
         segnaLette(piuRecente.creata_il).then(
             () => {
-                setAzzerate(numero);
+                setAzzerateNei(questi);
                 setNotifiche((prima) => ({
                     ...prima,
                     elenco: prima.elenco.map((notifica) => (Date.parse(notifica.creata_il) <= Date.parse(piuRecente.creata_il) ? { ...notifica, letta: true } : notifica)),
@@ -245,7 +251,8 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
-    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente.
+    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Alla
+    // parte server vanno i primi 100 caratteri (code point, come `mb_strlen`): oltre risponderebbe 422, e sarebbe un errore.
     const [ricerca, setRicerca] = useState<{ stato: 'ready' | 'loading' | 'error'; risultati: RisultatoDellaRicerca[] }>({ stato: 'ready', risultati: [] });
     const ricercaInVolo = useRef<AbortController>(undefined);
     const cercaParola = (parola: string) => {
@@ -253,7 +260,7 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading', risultati: [] });
-        cerca(parola, questa.signal).then(
+        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal).then(
             (risultati) => {
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'ready', risultati });
@@ -281,7 +288,7 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // Il numero viene dai dati, non dall'elenco delle notifiche, che si carica solo aprendo la campanella.
-            unreadCount={azzerate !== undefined && azzerate === dati.non_lette ? 0 : dati.non_lette}
+            unreadCount={azzerateNei === dati ? 0 : dati.non_lette}
             notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, t, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}

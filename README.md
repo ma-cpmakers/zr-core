@@ -69,6 +69,8 @@ public function share(Request $request): array
 | `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
+| l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
+| l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 `non_lette` sono le non lette del workspace in cui la persona è entrata, contate su una pagina sola: al più 100, e da 100
@@ -78,8 +80,9 @@ Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non que
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
 la lingua) arriva alla cornice al prossimo ingresso.
 
-Con la funzione nel `share()`, `BackofficeNonRisponde` ferma ogni risposta Inertia, anche quella di una pagina senza
-cornice: come mostrarla lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in `bootstrap/app.php`).
+Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
+pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
+`bootstrap/app.php`); senza, sono un 500.
 
 ### Le rotte della cornice
 
@@ -90,7 +93,7 @@ dal browser sulla stessa origine. La parte server le gira al backoffice col gett
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, per_me, motivo, app}]}`: le notifiche del workspace dalla più recente, una pagina |
 | `PATCH /cornice/notifiche/lettura` con `{fino_a}` | `{data: {fino_a}}`: segna lette le notifiche del workspace fino a `fino_a`, un istante con ora e fuso (`creata_il` della più recente vista); senza, o con un altro valore, 422 `{errore: "dati_non_validi"}` |
-| `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri, altrimenti 422 `{errore: "dati_non_validi"}` |
+| `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le

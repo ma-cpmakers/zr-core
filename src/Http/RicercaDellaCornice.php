@@ -4,6 +4,7 @@ namespace Zeiras\Core\Http;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 
@@ -14,10 +15,14 @@ use Zeiras\Auth\Errori\BackofficeNonRisponde;
  */
 final class RicercaDellaCornice
 {
-    /** GET /cornice/ricerca?q=: `q` da 2 a 100 caratteri, come vuole ricerca.elenca; altrimenti 422 e il backoffice non si chiama. */
+    /**
+     * GET /cornice/ricerca?q=: `q` da 2 a 100 caratteri, come vuole ricerca.elenca, senza gli spazi ai bordi (anche in un
+     * frontend senza TrimStrings); altrimenti 422 e il backoffice non si chiama.
+     */
     public function cerca(Request $richiesta): JsonResponse
     {
         $q = $richiesta->query('q');
+        $q = is_string($q) ? Str::trim($q) : $q;
 
         if (! is_string($q) || mb_strlen($q) < 2 || mb_strlen($q) > 100) {
             return new JsonResponse(['errore' => 'dati_non_validi'], 422);

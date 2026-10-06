@@ -483,6 +483,24 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif .zr-pop-head button')).toBeNull();
     });
 
+    it('dopo «Segna tutte come lette» la campanella resta a 0 coi dati di prima, e coi dati nuovi della parte server mostra il loro numero, anche se è lo stesso (T4.3)', async () => {
+        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ data: { fino_a: '2026-10-06T11:55:00+00:00' } }))));
+        const primi = { ...dati, non_lette: 2 };
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif .zr-pop-head button'));
+        expect(uno('.zr-bell-count')).toBeNull();
+
+        // La stessa pagina ridisegnata con gli stessi dati: le notifiche restano lette.
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-bell-count')).toBeNull();
+
+        // Una visita dopo (Inertia tiene montata la cornice): due notifiche nuove, lo stesso numero di prima.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
     it('se «Segna tutte come lette» fallisce, il numero e le notifiche restano come prima (T4.3)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ errore: 'dati_non_validi' }, 422))));
@@ -679,5 +697,20 @@ describe('la ricerca', () => {
         expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
         expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
         expect(righe()).toHaveLength(0);
+    });
+
+    it.each([
+        // Contati in caratteri, come `mb_strlen` della parte server, non in unità UTF-16: un'emoji ne vale due.
+        ['101 emoji', '😀'.repeat(101), '😀'.repeat(100)],
+        ['60 emoji', '😀'.repeat(60), '😀'.repeat(60)],
+        ['150 lettere accentate', 'à'.repeat(150), 'à'.repeat(100)],
+    ])('una parola di %s arriva alla parte server coi primi 100 caratteri, e la ricerca risponde invece di dare errore (T5.4)', async (_caso, parola, mandata) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [risultatiDelServer[0]] }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi(parola);
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual([`/cornice/ricerca?q=${encodeURIComponent(mandata)}`]);
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
     });
 });
