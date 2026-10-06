@@ -1,8 +1,8 @@
 # zr-core
 
 La cornice comune dei frontend di Zeiras: `AppShell` con il menu Prodotti, il selettore «Azienda › workspace», la
-ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato) e i loro nomi in ogni
-lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
+ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato, le risorse che la
+ricerca mostra) e i loro nomi in ogni lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
 che si vede: i frontend `zr-*` lo installano e non ricostruiscono la cornice nel proprio codice.
 
 Niente sito, niente database: è un pacchetto Composer (`zeiras/zr-core`) con componenti React, e si installa dentro
@@ -140,9 +140,15 @@ cornice === null ? pagina : (
   «Segna tutte come lette» manda a `PATCH /cornice/notifiche/lettura` il `creata_il` della più recente, col gettone CSRF
   del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`; a risposta arrivata la
   campanella va a 0. Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
+- **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
+  parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. I
+  risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e l'icona del tipo,
+  dal registro; un'app o un tipo che il registro non ha non si mostrano. Scegliere un risultato apre l'indirizzo del suo
+  prodotto nel workspace seguito dal percorso del tipo: per Project Management `/cartelle/<id>`, `/b/<id>` e `/c/<id>`,
+  provvisori finché zr-board non decide le sue rotte. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
 
-Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`. La ricerca non
-è ancora collegata alla sua rotta.
+Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
+apre da sé le sue risorse (una scheda nel suo pannello) lo intercetta lì.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.

@@ -44,5 +44,8 @@
     "bookings": "Bookings",
     "reports": "Report",
     "automations": "Automazioni",
-    "content": "Contenuti"
+    "content": "Contenuti",
+    "pm.cartella": "Cartelle",
+    "pm.board": "Board",
+    "pm.scheda": "Schede"
 }

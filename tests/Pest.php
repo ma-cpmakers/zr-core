@@ -19,6 +19,19 @@ function idDeiProdotti(): array
     return array_values(array_diff(array_column(registroDeiProdotti(), 'id'), ['home']));
 }
 
+/** @return list<string> i tipi di risorsa del registro che la ricerca mostra, `<prodotto>.<tipo>`: ognuno ha un nome in ogni lingua, con questa chiave */
+function tipiDiRisorsa(): array
+{
+    $tipi = [];
+    foreach (registroDeiProdotti() as $voce) {
+        foreach ($voce['risorse'] ?? [] as $risorsa) {
+            $tipi[] = $voce['id'].'.'.$risorsa['tipo'];
+        }
+    }
+
+    return $tipi;
+}
+
 /**
  * Il codice senza i commenti, che citano i testi «così» e non si vedono. Le stringhe restano intere, anche con // o /* dentro
  * (`'../lingue/*.json'` non apre un commento), e `https://` fuori dalle virgolette non ne apre uno di riga.

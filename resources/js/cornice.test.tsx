@@ -509,3 +509,175 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
     });
 });
+
+// Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati
+// raggruppati per tipo dal registro, gli stati.
+describe('la ricerca', () => {
+    /**
+     * I risultati come li dà GET /cornice/ricerca, per pertinenza: i tipi mescolati (l'`AppShell` apre un gruppo a ogni cambio di
+     * gruppo), lo stesso id in due tipi, un tipo e un'app che zr-core non conosce.
+     */
+    const risultatiDelServer = [
+        { app: 'pm', tipo: 'board', id: 12, titolo: 'Lancio Q4' },
+        { app: 'pm', tipo: 'cartella', id: '3', titolo: 'Marketing' },
+        { app: 'pm', tipo: 'uat-ignoto', id: 9, titolo: 'Un tipo ignoto' },
+        { app: 'zz', tipo: 'board', id: 5, titolo: 'Un\'app ignota' },
+        { app: 'pm', tipo: 'scheda', id: 12, titolo: 'Scrivere il brief' },
+        { app: 'pm', tipo: 'board', id: 13, titolo: 'Lancio Q1' },
+    ];
+
+    // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    /** Il giro dopo, coi timer finti: le risposte già pronte arrivano. */
+    const giro = () => vi.advanceTimersByTimeAsync(0);
+
+    /** Scrive una parola nel campo della ricerca, come una persona, e lascia passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
+    async function scrivi(parola: string): Promise<void> {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.advanceTimersByTimeAsync(300);
+            await giro();
+        });
+    }
+
+    /** Una risposta della ricerca che arriva, o fallisce, quando il test lo dice. */
+    function inAttesaDellaRicerca() {
+        let arriva!: (valore: Response) => void;
+        let fallisce!: (errore: unknown) => void;
+        const promessa = new Promise<Response>((risolvi, rifiuta) => {
+            arriva = risolvi;
+            fallisce = rifiuta;
+        });
+
+        return {
+            promessa,
+            arriva: async (valore: Response) => act(async () => { arriva(valore); await giro(); }),
+            fallisce: async (errore: unknown) => act(async () => { fallisce(errore); await giro(); }),
+        };
+    }
+
+    const righe = () => tutti('.zr-search-panel [role="option"]');
+    const titoli = () => righe().map((riga) => riga.querySelector('.zr-search-title')?.textContent);
+    const inCaricamento = () => uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent;
+    const vecchi = [{ app: 'pm', tipo: 'board', id: 1, titolo: 'Risultato di «ua»' }];
+    const nuovi = [{ app: 'pm', tipo: 'board', id: 2, titolo: 'Risultato di «uat»' }];
+
+    it.each<[string, (ua: ReturnType<typeof inAttesaDellaRicerca>, uat: ReturnType<typeof inAttesaDellaRicerca>) => Promise<void>]>([
+        ['arriva prima della nuova', async (ua, uat) => {
+            await ua.arriva(risposta({ data: vecchi }));
+            // La parola è «uat»: la ricerca resta in caricamento, senza i risultati di «ua».
+            expect(inCaricamento()).toBe('Sto cercando…');
+            expect(righe()).toHaveLength(0);
+            await uat.arriva(risposta({ data: nuovi }));
+        }],
+        ['arriva dopo la nuova', async (ua, uat) => {
+            await uat.arriva(risposta({ data: nuovi }));
+            await ua.arriva(risposta({ data: vecchi }));
+        }],
+        ['annullata, finisce con un errore', async (ua, uat) => {
+            await ua.fallisce(new DOMException('The operation was aborted.', 'AbortError'));
+            expect(inCaricamento()).toBe('Sto cercando…');
+            expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+            await uat.arriva(risposta({ data: nuovi }));
+        }],
+    ])('mentre si scrive c\'è al più una ricerca in volo: la parola nuova annulla la richiesta di prima, e restano i risultati dell\'ultima anche se la vecchia %s (T5.2)', async (_caso, rispondono) => {
+        const ua = inAttesaDellaRicerca();
+        const uat = inAttesaDellaRicerca();
+        const fetchFinto = vi.fn((indirizzo: string, _opzioni?: RequestInit) => (indirizzo.endsWith('=ua') ? ua.promessa : uat.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('ua');
+        await scrivi('uat');
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/ricerca?q=ua', '/cornice/ricerca?q=uat']);
+        expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal?.aborted)).toStrictEqual([true, false]);
+        expect(inCaricamento()).toBe('Sto cercando…');
+
+        await rispondono(ua, uat);
+        expect(titoli()).toStrictEqual(['Risultato di «uat»']);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+        ['it', 'Project Management', ['Board', 'Cartelle', 'Schede']],
+        ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas', 'Tarjetas']],
+        ['en', 'Project Management', ['Boards', 'Folders', 'Cards']],
+    ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto e l\'icona del tipo; un tipo o un\'app che zr-core non conosce non compaiono (T5.3)', async (lingua, prodotto, nomiDeiGruppi) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(tutti('.zr-search-panel .zr-search-group').map((gruppo) => gruppo.textContent)).toStrictEqual(nomiDeiGruppi);
+        // Nell'ordine del backoffice dentro ogni tipo; i tipi nell'ordine del primo risultato di ognuno.
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Lancio Q1', 'Marketing', 'Scrivere il brief']);
+        expect(righe().map((riga) => riga.querySelector('.zr-search-product')?.textContent)).toStrictEqual([prodotto, prodotto, prodotto, prodotto]);
+        expect(righe().map((riga) => [...(riga.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'))))
+            .toStrictEqual(['zr-label-pine', 'zr-label-pine', 'zr-label-pine', 'zr-label-pine']);
+        expect(righe().map((riga) => riga.querySelector('.zr-iconbox path')?.getAttribute('d')))
+            .toStrictEqual([tracciatoDi('board'), tracciatoDi('board'), tracciatoDi('folder'), tracciatoDi('board')]);
+    });
+
+    it.each([
+        ['Lancio Q4', 'https://board.zeiras.com/w/acme-marketing/b/12'],
+        ['Marketing', 'https://board.zeiras.com/w/acme-marketing/cartelle/3'],
+        ['Scrivere il brief', 'https://board.zeiras.com/w/acme-marketing/c/12'],
+    ])('scegliere «%s» apre l\'indirizzo del suo prodotto nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (T5.3)', async (titolo, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        const scelto = righe().find((riga) => riga.querySelector('.zr-search-title')?.textContent === titolo);
+        expect(scelto).toBeDefined();
+        await act(async () => {
+            scelto?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+        expect(uno('.zr-search-panel')).toBeNull();
+    });
+
+    it.each([
+        ['vuoto', []],
+        ['di soli tipi e app che zr-core non conosce', [risultatiDelServer[2], risultatiDelServer[3]]],
+    ])('durante l\'attesa la ricerca è in caricamento; con un elenco %s mostra «Nessun risultato per» e la parola (T5.4)', async (_caso, risultati) => {
+        const elenco = inAttesaDellaRicerca();
+        const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('caffè latte');
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/ricerca?q=caff%C3%A8%20latte']);
+        expect(inCaricamento()).toBe('Sto cercando…');
+        expect(righe()).toHaveLength(0);
+
+        await elenco.arriva(risposta({ data: risultati }));
+        expect(inCaricamento()).toBeUndefined();
+        expect(uno('.zr-search-panel [role="status"] strong')?.textContent).toBe('Nessun risultato per «caffè latte»');
+        expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+    });
+
+    it.each<[string, () => Promise<Response>]>([
+        ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
+        ['una risposta 422', async () => risposta({ errore: 'dati_non_validi' }, 422)],
+        ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
+        ['un 200 senza lista', async () => risposta({ data: null })],
+    ])('con %s la ricerca mostra il suo errore, non «Nessun risultato» (T5.4)', async (_caso, fallisce) => {
+        vi.stubGlobal('fetch', vi.fn(fallisce));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
+        expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
+        expect(righe()).toHaveLength(0);
+    });
+});

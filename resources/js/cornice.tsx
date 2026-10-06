@@ -1,14 +1,14 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, Tone } from '../zeiras/index';
+import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, testi, type TestiDellaCornice } from './lingue';
-import { registro, type IdDiProdotto } from './registro';
-import { caricaNotifiche, segnaLette, type NotificaDellaCornice } from './servizi';
+import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
+import { caricaNotifiche, cerca, segnaLette, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
 // il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Prodotti dal
 // registro, incrociato con lo stato dei prodotti nel workspace, gli indirizzi del workspace, i testi della lingua, e dove
-// portano account e notifiche (linea guida 15).
+// portano account, notifiche e risultati della ricerca (linea guida 15).
 
 /** I dati della cornice, come li dà `Cornice::dati()` della parte server: la persona, la sua lingua, il workspace in cui è entrata. */
 export interface DatiDellaCornice {
@@ -129,6 +129,43 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
     };
 }
 
+/**
+ * Un risultato della ricerca nella cornice: il gruppo è il nome del suo tipo nella lingua dei testi, prodotto e tono vengono dal
+ * registro per codice di app, l'icona dal tipo; l'indirizzo è quello del prodotto nel workspace dei dati seguito dal percorso del
+ * tipo. Un'app o un tipo che il registro non ha non si mostrano: mai un indirizzo inventato.
+ */
+function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
+    const delProdotto = registro.find((voce) => voce.id === risultato.app && voce !== dashboard);
+    const risorsa = delProdotto?.risorse?.find((voce) => voce.tipo === risultato.tipo);
+    if (delProdotto === undefined || risorsa === undefined) {
+        return undefined;
+    }
+    const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
+    const id = String(risultato.id);
+
+    return {
+        // Unico fra i tipi: una board e una scheda possono avere lo stesso id.
+        id: `${tipo}.${id}`,
+        title: risultato.titolo,
+        group: t[tipo],
+        product: nomeDellaVoce(delProdotto, lingua),
+        icon: risorsa.icona,
+        tone: delProdotto.tono,
+        container: risorsa.contenitore,
+        href: nelWorkspace(delProdotto.indirizzo, slug) + risorsa.percorso.replace('{id}', () => encodeURIComponent(id)),
+    };
+}
+
+/**
+ * I risultati di un gruppo vicini, perché l'`AppShell` ne apre uno a ogni cambio di gruppo: i gruppi nell'ordine del primo
+ * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per pertinenza).
+ */
+function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
+    const gruppi = [...new Set(risultati.map((risultato) => risultato.group))];
+
+    return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
+}
+
 export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     const t = testi(dati.lingua);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
@@ -207,6 +244,30 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
     });
     const adesso = new Date();
 
+    // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
+    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente.
+    const [ricerca, setRicerca] = useState<{ stato: 'ready' | 'loading' | 'error'; risultati: RisultatoDellaRicerca[] }>({ stato: 'ready', risultati: [] });
+    const ricercaInVolo = useRef<AbortController>(undefined);
+    const cercaParola = (parola: string) => {
+        ricercaInVolo.current?.abort();
+        const questa = new AbortController();
+        ricercaInVolo.current = questa;
+        setRicerca({ stato: 'loading', risultati: [] });
+        cerca(parola, questa.signal).then(
+            (risultati) => {
+                if (ricercaInVolo.current === questa) {
+                    setRicerca({ stato: 'ready', risultati });
+                }
+            },
+            () => {
+                if (ricercaInVolo.current === questa) {
+                    setRicerca({ stato: 'error', risultati: [] });
+                }
+            },
+        );
+    };
+    const risultati = perGruppo(ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, dati.workspace.slug) ?? []));
+
     return (
         <Zeiras.AppShell
             {...pagina}
@@ -226,6 +287,16 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
             onNotificationsOpen={carica}
             onRetryNotifications={carica}
             onMarkAllRead={segnaTutteLette}
+            onSearch={cercaParola}
+            searchResults={risultati}
+            searchState={ricerca.stato}
+            // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
+            // contenitore a pagina intera.
+            onSelectResult={(scelto) => {
+                if (scelto.href !== undefined) {
+                    naviga(scelto.href);
+                }
+            }}
             labels={t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}

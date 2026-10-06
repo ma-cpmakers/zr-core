@@ -14,7 +14,17 @@ export interface NotificaDellaCornice {
     app: string;
 }
 
-async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<unknown> {
+/** Un risultato della ricerca come lo dà GET /cornice/ricerca. */
+export interface RisultatoDellaRicerca {
+    /** Il codice dell'app nel backoffice: l'id del prodotto nel registro. */
+    app: string;
+    /** Il tipo della risorsa nell'app: una risorsa del prodotto nel registro. */
+    tipo: string;
+    id: string | number;
+    titolo: string;
+}
+
+async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {}): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
     if (!risposta.ok) {
         throw new Error(`${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`);
@@ -40,6 +50,16 @@ export async function segnaLette(finoA: string): Promise<void> {
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ fino_a: finoA }),
     });
+}
+
+/** Le risorse del workspace che rispondono a `parola`, per pertinenza: GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
+export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
+    const corpo = (await chiama(`/cornice/ricerca?q=${encodeURIComponent(parola)}`, { signal: segnale })) as { data?: unknown } | null;
+    if (!Array.isArray(corpo?.data)) {
+        throw new Error('GET /cornice/ricerca: data');
+    }
+
+    return corpo.data as RisultatoDellaRicerca[];
 }
 
 /** Il gettone CSRF di Laravel: il cookie `XSRF-TOKEN` della pagina, rimandato nell'header `X-XSRF-TOKEN` (senza, 419). */

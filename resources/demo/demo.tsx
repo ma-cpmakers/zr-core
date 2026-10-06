@@ -11,9 +11,9 @@ import { registro } from '../js/registro';
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
 // elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
-// `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=lettura` fa fallire quella rotta.
-// Gli indirizzi che la cornice apre (account, notifiche, un altro workspace) non si aprono: si scrivono in console. Non entra
-// nel pacchetto.
+// `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche`, `?errore=lettura` o `?errore=ricerca` fa
+// fallire quella rotta. Gli indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca)
+// non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -77,8 +77,11 @@ function Prova() {
 
 // Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
 // notifiche d'esempio coprono ogni caso: `pm` non letta per la persona, `crm` non letta per altri, `bookings` letta ieri, e
-// un'app che il registro non ha (`zz`). La lettura le segna lette fino a `fino_a`. Ogni richiesta si scrive in console, la
-// PATCH col corpo e gli header; il cookie del gettone CSRF è finto.
+// un'app che il registro non ha (`zz`). La lettura le segna lette fino a `fino_a`. La ricerca dà i risultati d'esempio che
+// hanno la parola nel titolo, coi tipi mescolati, un tipo (`uat-ignoto`) e un'app (`zz`) che zr-core non conosce; «ua» risponde
+// dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni
+// richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la risposta che arriva lo
+// stesso; il cookie del gettone CSRF è finto.
 const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
@@ -88,6 +91,14 @@ const notificheDiProva = [
     { id: 'uat-3', creata_il: fa(3 * 60), letta: false, per_me: false, motivo: 'uat-assegnazione', app: 'crm' },
     { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, per_me: true, motivo: 'uat-menzione', app: 'bookings' },
     { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, per_me: true, motivo: 'uat-menzione', app: 'zz' },
+];
+const risultatiDiProva = [
+    { app: 'pm', tipo: 'board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    { app: 'pm', tipo: 'cartella', id: 'uat-3', titolo: 'UAT Marketing' },
+    { app: 'pm', tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
+    { app: 'zz', tipo: 'board', id: 'uat-5', titolo: 'UAT app ignota' },
+    { app: 'pm', tipo: 'scheda', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+    { app: 'pm', tipo: 'board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
 const fetchDelBrowser = window.fetch.bind(window);
@@ -99,8 +110,25 @@ window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
         return fetchDelBrowser(indirizzo, opzioni);
     }
     console.info('UAT', opzioni?.method ?? 'GET', percorso, opzioni?.body ?? '', JSON.stringify(opzioni?.headers ?? {}));
-    await new Promise((fatto) => setTimeout(fatto, 800));
+    opzioni?.signal?.addEventListener('abort', () => console.info('UAT annullata', percorso));
     const json = (corpo: unknown, stato = 200) => new Response(JSON.stringify(corpo), { status: stato, headers: { 'Content-Type': 'application/json' } });
+    const [rotta, query = ''] = percorso.split('?');
+    if (rotta === '/cornice/ricerca') {
+        // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
+        const parola = new URLSearchParams(query).get('q') ?? '';
+        await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
+        console.info('UAT risposta', percorso);
+        if (errore === 'ricerca') {
+            return json({ errore: 'uat_errore' }, 502);
+        }
+
+        return json({
+            data: parola === 'ua'
+                ? [{ app: 'pm', tipo: 'board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
+                : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+        });
+    }
+    await new Promise((fatto) => setTimeout(fatto, 800));
     if (percorso === '/cornice/notifiche') {
         return errore === 'notifiche' ? json({ errore: 'uat_errore' }, 502) : json({ data: notificheDiProva });
     }

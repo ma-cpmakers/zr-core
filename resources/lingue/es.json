@@ -44,5 +44,8 @@
     "bookings": "Reservas",
     "reports": "Informes",
     "automations": "Automatismos",
-    "content": "Contenidos"
+    "content": "Contenidos",
+    "pm.cartella": "Carpetas",
+    "pm.board": "Tableros",
+    "pm.scheda": "Tarjetas"
 }

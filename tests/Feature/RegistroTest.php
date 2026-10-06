@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\File;
 // tono (`Tone`, tranne Dashboard), l'indirizzo della mappa della linea guida 15 e «Presto». I nomi non ci sono: stanno nelle lingue
 // (T7, decisione 5926 di Luciano). I tipi si leggono dalla copia derivata di index.d.ts; ordine, icone, toni, indirizzi e «Presto»
 // sono quelli del design system alla versione delle copie in resources/zeiras/ (README «Iconografia», linee guida 10 e 15, anteprima
-// dell'AppShell).
+// dell'AppShell). Sprint 3 · T5 (voce #1277): le risorse di un prodotto che la ricerca mostra, ognuna col tipo del backoffice,
+// un'icona del set, il percorso nel prodotto e se è un contenitore; i loro nomi stanno nelle lingue, con `<prodotto>.<tipo>`.
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -34,7 +35,8 @@ function mappaDegliIndirizzi(): array
 
 /**
  * Cosa non torna in un registro: un'icona fuori dal set, un tono che non è di un prodotto, un indirizzo che non è quello della
- * mappa, un nome (i nomi stanno nelle lingue), «Presto» che non è un sì o un no.
+ * mappa, un nome (i nomi stanno nelle lingue), «Presto» che non è un sì o un no; in una risorsa, un tipo vuoto o ripetuto,
+ * un'icona fuori dal set, un percorso che non comincia con / o non ha un solo `{id}`, «contenitore» che non è un sì o un no, un nome.
  *
  * @param  list<array<string, mixed>>  $voci
  * @return list<string>
@@ -63,6 +65,29 @@ function problemiDelRegistro(array $voci): array
         if (! is_bool($voce['presto'] ?? null)) {
             $problemi[] = "$id: «Presto» non è un sì o un no";
         }
+        $tipi = [];
+        foreach ($voce['risorse'] ?? [] as $risorsa) {
+            $tipo = $risorsa['tipo'] ?? null;
+            $nome = $id.'.'.(is_string($tipo) ? $tipo : '?');
+            if (! is_string($tipo) || trim($tipo) === '') {
+                $problemi[] = "$nome: il tipo è vuoto";
+            } elseif (in_array($tipo, $tipi, true)) {
+                $problemi[] = "$nome: il tipo è due volte";
+            }
+            $tipi[] = $tipo;
+            if (! in_array($risorsa['icona'] ?? null, $icone, true)) {
+                $problemi[] = "$nome: l'icona «".($risorsa['icona'] ?? '').'» non è del set';
+            }
+            if (! is_string($risorsa['percorso'] ?? null) || preg_match('~^/[^{}]*\{id\}[^{}]*$~', $risorsa['percorso']) !== 1) {
+                $problemi[] = "$nome: il percorso «".($risorsa['percorso'] ?? '').'» non comincia con / o non ha un solo {id}';
+            }
+            if (! is_bool($risorsa['contenitore'] ?? null)) {
+                $problemi[] = "$nome: «contenitore» non è un sì o un no";
+            }
+            if (array_key_exists('nome', $risorsa)) {
+                $problemi[] = "$nome: ha un nome, ma i nomi stanno nelle lingue";
+            }
+        }
     }
 
     return $problemi;
@@ -76,7 +101,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
             ['icona', 'id', 'indirizzo', 'presto'],
-            ...array_fill(0, 6, ['icona', 'id', 'indirizzo', 'presto', 'tono']),
+            ['icona', 'id', 'indirizzo', 'presto', 'risorse', 'tono'],
+            ...array_fill(0, 5, ['icona', 'id', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'reports' => 'chart',
@@ -86,7 +112,15 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             'pm' => 'pine', 'crm' => 'sky', 'bookings' => 'sky', 'reports' => 'citrus', 'automations' => 'plum', 'content' => 'coral',
         ])
         // «Presto» come nell'anteprima dell'AppShell: provvisorio, finché non si sa quali prodotti sono disponibili.
-        ->and(array_keys(array_filter(array_column($voci, 'presto', 'id'))))->toBe(['reports', 'automations', 'content']);
+        ->and(array_keys(array_filter(array_column($voci, 'presto', 'id'))))->toBe(['reports', 'automations', 'content'])
+        // Le risorse di Project Management che la ricerca mostra, con le rotte della linea guida 10 (provvisorie finché zr-board
+        // non decide le sue): cartelle e board a pagina intera, le schede nel pannello. Icone: `folder` per la cartella (come
+        // `ProjectFolder`), `board` per la board e per la scheda (come i risultati «Schede» dell'anteprima dell'AppShell).
+        ->and($voci[1]['risorse'])->toBe([
+            ['tipo' => 'cartella', 'icona' => 'folder', 'percorso' => '/cartelle/{id}', 'contenitore' => true],
+            ['tipo' => 'board', 'icona' => 'board', 'percorso' => '/b/{id}', 'contenitore' => true],
+            ['tipo' => 'scheda', 'icona' => 'board', 'percorso' => '/c/{id}', 'contenitore' => false],
+        ]);
 });
 
 it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indirizzo fuori dalla mappa e un nome (T4.1, T7.3)', function () {
@@ -96,6 +130,8 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
     $voci[3]['icona'] = 'calendar-days';
     $voci[3]['indirizzo'] = 'https://cal.zeiras.com';
     unset($voci[4]['presto']);
+    $voci[1]['risorse'][] = ['tipo' => 'board', 'icona' => 'card', 'percorso' => '/b', 'contenitore' => 'sì', 'nome' => 'Board'];
+    $voci[1]['risorse'][] = ['tipo' => ' ', 'icona' => 'board', 'percorso' => '/b/{id}/c/{id}', 'contenitore' => false];
 
     expect(valoriDelTipo('IconName'))->toContain('calendar', 'board', 'sparkle')
         ->and(valoriDelTipo('Tone'))->toContain('pine', 'sky', 'neutral')
@@ -105,10 +141,22 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
             "bookings: l'icona «calendar-days» non è del set",
             "bookings: l'indirizzo «https://cal.zeiras.com» non è quello della mappa",
             'reports: «Presto» non è un sì o un no',
+            'pm.board: il tipo è due volte',
+            "pm.board: l'icona «card» non è del set",
+            'pm.board: il percorso «/b» non comincia con / o non ha un solo {id}',
+            'pm.board: «contenitore» non è un sì o un no',
+            'pm.board: ha un nome, ma i nomi stanno nelle lingue',
+            'pm. : il tipo è vuoto',
+            'pm. : il percorso «/b/{id}/c/{id}» non comincia con / o non ha un solo {id}',
         ]);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
     expect(idDeiProdotti())->toBe(['pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
         ->and(valoriDelTipo('IdDiProdotto', 'resources/js/registro.ts'))->toEqualCanonicalizing(idDeiProdotti());
+});
+
+it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<prodotto>.<tipo>`: tsc chiede all\'inglese il nome di ognuna (T5.3)', function () {
+    expect(tipiDiRisorsa())->toBe(['pm.cartella', 'pm.board', 'pm.scheda'])
+        ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
