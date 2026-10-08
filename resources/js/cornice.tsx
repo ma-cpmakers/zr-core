@@ -66,6 +66,9 @@ function prodottoDelRegistro(codice: string | undefined) {
     return registro.find((voce) => voce.id === codice && voce !== dashboard);
 }
 
+/** Di che prodotto è ogni tipo di risorsa del registro, e come si mostra: un tipo sta in un prodotto solo. */
+const risorsePerTipo = new Map(registro.flatMap((delProdotto) => (delProdotto.risorse ?? []).map((risorsa) => [risorsa.tipo, { delProdotto, risorsa }] as const)));
+
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
@@ -135,11 +138,11 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
  * dati seguito dal percorso del tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
-    const delProdotto = registro.find((voce) => voce !== dashboard && voce.risorse?.some((risorsa) => risorsa.tipo === risultato.tipo));
-    const risorsa = delProdotto?.risorse?.find((voce) => voce.tipo === risultato.tipo);
-    if (delProdotto === undefined || risorsa === undefined) {
+    const trovata = risorsePerTipo.get(risultato.tipo);
+    if (trovata === undefined) {
         return undefined;
     }
+    const { delProdotto, risorsa } = trovata;
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
     const { id } = risultato;
 

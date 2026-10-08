@@ -52,8 +52,9 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, sintassi PHP, Pint, PHPStan, `npm ci` +
   `tsc --noEmit` + build, Pest. Nessun `composer.lock` nel repo (è una libreria). Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.6 || ^0.7`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
-  verde è di tutti i giri. Una minore nuova entra in `composer.json` e nella matrice di `ci.yml` insieme.
+- `zeiras/zr-auth` `^0.6.6 || ^0.7`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
+  verde è di tutti i giri. Una minore nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non
+  scende sotto una patch che nessun giro ha provato.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza); Pest gira solo in CI.
 
 ## Come esce una versione

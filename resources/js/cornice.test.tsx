@@ -426,7 +426,7 @@ describe('il pannello delle notifiche', () => {
         ['en', 'New activity', ['5 minutes ago', 'yesterday', 'Oct 1']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
         ['it_IT', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott']],
-    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora, senza prodotto, in «Per me» come in «Tutte» (T3.1)', async (lingua, titolo, ore) => {
+    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora, senza prodotto, in «Per me» come in «Tutte» (sprint 5 · T3.1)', async (lingua, titolo, ore) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);
@@ -479,7 +479,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci()).toHaveLength(3);
     });
 
-    it('«Segna tutte come lette» manda una PATCH col gettone CSRF per ogni non letta caricata, una dopo l\'altra nell\'ordine dell\'elenco; a ogni risposta quella notifica è letta e la campanella scende di uno, da 12 a 10 (T3.2)', async () => {
+    it('«Segna tutte come lette» manda una PATCH col gettone CSRF per ogni non letta caricata, una dopo l\'altra nell\'ordine dell\'elenco; a ogni risposta quella notifica è letta e la campanella scende di uno, da 12 a 10 (sprint 5 · T3.2)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const letture = [inAttesa(), inAttesa()];
         let partite = 0;
@@ -523,7 +523,7 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()).toBeNull();
     });
 
-    it('l\'id di una notifica entra codificato nell\'indirizzo della sua lettura (T3.2)', async () => {
+    it('l\'id di una notifica entra codificato nell\'indirizzo della sua lettura (sprint 5 · T3.2)', async () => {
         const fetchFinto = rotte([{ id: 'a/b?c#d e', creata_il: '2026-10-06T11:55:00Z', letta: false }]);
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
@@ -539,7 +539,7 @@ describe('il pannello delle notifiche', () => {
         [1, '1'],
         // Senza il numero nei dati il design system conta le non lette caricate.
         [undefined, '2'],
-    ])('con %s non lette nei dati e due caricate, segnate tutte e due la campanella non ha più un numero (T3.2)', async (nonLetteNeiDati, prima) => {
+    ])('con %s non lette nei dati e due caricate, segnate tutte e due la campanella non ha più un numero (sprint 5 · T3.2)', async (nonLetteNeiDati, prima) => {
         const fetchFinto = rotte(notificheDelServer);
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
@@ -558,7 +558,7 @@ describe('il pannello delle notifiche', () => {
         ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
         ['un 200 che la dà non letta', async () => risposta({ data: { id: 'uat-n41', letta: false } })],
         ['un 200 senza dati', async () => risposta({})],
-    ])('se una lettura fallisce con %s si ferma lì: le segnate restano lette, le altre no, e il numero conta solo le segnate; un altro clic riprende da quella (T3.3)', async (_caso, fallisce) => {
+    ])('se una lettura fallisce con %s si ferma lì: le segnate restano lette, le altre no, e il numero conta solo le segnate; un altro clic riprende da quella (sprint 5 · T3.3)', async (_caso, fallisce) => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
             .mockImplementationOnce(async () => risposta({ data: conUnaInPiu }))
@@ -581,7 +581,7 @@ describe('il pannello delle notifiche', () => {
         expect(nonLette()).toStrictEqual([false, false, false, false]);
     });
 
-    it('il numero sceso vale coi dati di prima; coi dati nuovi della parte server la campanella mostra il loro numero, anche se è lo stesso (T3.4)', async () => {
+    it('il numero sceso vale coi dati di prima; coi dati nuovi della parte server la campanella mostra il loro numero, anche se è lo stesso (sprint 5 · T3.4)', async () => {
         vi.stubGlobal('fetch', rotte(notificheDelServer));
         const primi = { ...dati, non_lette: 12 };
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
@@ -598,7 +598,7 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('12');
     });
 
-    it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (T3.5)', async () => {
+    it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5)', async () => {
         const appShell = vi.spyOn(Zeiras, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
 
@@ -611,7 +611,7 @@ describe('il pannello delle notifiche', () => {
         ['in errore', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
         ['con le notifiche tutte lette', async () => risposta({ data: notificheDelServer.map((notifica) => ({ ...notifica, letta: true })) })],
         ['senza notifiche', async () => risposta({ data: [] })],
-    ])('col pannello %s «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (T3.5)', async (_caso, elenco) => {
+    ])('col pannello %s «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5)', async (_caso, elenco) => {
         const appShell = vi.spyOn(Zeiras, 'AppShell');
         vi.stubGlobal('fetch', vi.fn(elenco));
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
@@ -623,7 +623,7 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('12');
     });
 
-    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (T3.6)', async () => {
+    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -739,7 +739,7 @@ describe('la ricerca', () => {
         ['it', 'Project Management', ['Board', 'Cartelle']],
         ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas']],
         ['en', 'Project Management', ['Boards', 'Folders']],
-    ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
+    ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (sprint 5 · T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
 
@@ -760,7 +760,7 @@ describe('la ricerca', () => {
         ['Marketing', 'https://board.zeiras.com/w/acme-marketing/cartelle/01k6w2d5f7h9k1n3q5s7v9x1z3'],
         // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
         ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
-    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (T4.3)', async (titolo, indirizzo) => {
+    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -779,7 +779,7 @@ describe('la ricerca', () => {
     it.each([
         ['vuoto', []],
         ['di soli tipi che il registro non ha', [risultatiDelServer[2], risultatiDelServer[4]]],
-    ])('durante l\'attesa la ricerca è in caricamento; con un elenco %s mostra «Nessun risultato per» e la parola (T5.4, T4.4)', async (_caso, risultati) => {
+    ])('durante l\'attesa la ricerca è in caricamento; con un elenco %s mostra «Nessun risultato per» e la parola (T5.4; sprint 5 · T4.4)', async (_caso, risultati) => {
         const elenco = inAttesaDellaRicerca();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);

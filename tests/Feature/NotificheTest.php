@@ -229,6 +229,21 @@ it('le rotte della cornice hanno la guardia di zr-auth: Rotte::senzaGuardia() no
     expect($dellaCornice())->toBe(['PATCH cornice/notifiche/{notifica}/scoperta']);
 });
 
+it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la sessione e il CSRF: in un altro gruppo la PATCH non avrebbe il CSRF, e nei test Laravel non lo controlla (sprint 5 · G9)', function () {
+    $dellaCornice = fn () => array_values(array_filter(Route::getRoutes()->getRoutes(), fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/')));
+    $fuoriDalWeb = fn () => array_values(array_map(
+        fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri(),
+        array_filter($dellaCornice(), fn ($rotta) => ! in_array('web', $rotta->gatherMiddleware(), true)),
+    ));
+
+    expect($dellaCornice())->toHaveCount(3)
+        ->and($fuoriDalWeb())->toBe([]);
+
+    // Il controllo nei due versi: nel gruppo `api` una rotta ha la guardia della sessione ma non il CSRF, e qui si vede.
+    Route::middleware('api')->patch('cornice/notifiche/{notifica}/senza-csrf', fn () => 'senza CSRF');
+    expect($fuoriDalWeb())->toBe(['PATCH cornice/notifiche/{notifica}/senza-csrf']);
+});
+
 it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /v1, la rotta risponde con un errore, non con un elenco vuoto (T3.4)', function (int $stato, mixed $corpo) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response($corpo, $stato)]);

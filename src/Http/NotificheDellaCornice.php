@@ -19,7 +19,7 @@ final class NotificheDellaCornice
 {
     /**
      * Com'è fatto l'id di una notifica che la rotta accetta: lettere, cifre, `-` e `_`, 64 al più. L'id arriva dal browser e
-     * finisce nel percorso chiamato sul backoffice col gettone della persona: con una barra o due punti sarebbe un altro
+     * finisce nel percorso chiamato sul backoffice col gettone del workspace: con una barra o due punti sarebbe un altro
      * metodo. È il vincolo della rotta (routes/cornice.php): un id diverso non arriva qui, ed è un 404.
      */
     public const ID = '[A-Za-z0-9_-]{1,64}';

@@ -47,7 +47,7 @@ function cerca(string $q): TestResponse
     return $risposta;
 }
 
-it('GET /cornice/ricerca?q= cerca nel workspace del gettone e dà tipo, id e titolo dei risultati di ricerca.elenca, nell\'ordine del backoffice (T4.1)', function () {
+it('GET /cornice/ricerca?q= cerca nel workspace del gettone e dà tipo, id e titolo dei risultati di ricerca.elenca, nell\'ordine del backoffice (sprint 5 · T4.1)', function () {
     $gettoni = sessioneAMano(WORKSPACE_DELLA_RICERCA);
     // Col gettone dell'accesso il backoffice risponderebbe 403 gettone_senza_workspace: qui dà altri risultati, per vederlo.
     Http::fake(fn (Request $richiesta) => match (parse_url($richiesta->url(), PHP_URL_PATH)) {
@@ -70,7 +70,7 @@ it('GET /cornice/ricerca?q= cerca nel workspace del gettone e dà tipo, id e tit
     });
 });
 
-it('ciò che la risposta del backoffice ha in più non arriva al browser: un `app`, altri campi di un risultato, il cursore della pagina dopo; un tipo che zr-core non conosce passa, e lo scarta la cornice (T4.1)', function () {
+it('ciò che la risposta del backoffice ha in più non arriva al browser: un `app`, altri campi di un risultato, il cursore della pagina dopo; un tipo che zr-core non conosce passa, e lo scarta la cornice (sprint 5 · T4.1)', function () {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [
         [...risultatoDelBackoffice('board.board', 'uat-b1', 'UAT Lancio'), 'app' => 'crm', 'soggetto' => '/v1/board/board/uat-b1', 'dentro' => null],
@@ -140,7 +140,7 @@ it('senza sessione 401, con la sessione ma senza workspace 403, e il backoffice 
     Http::assertNothingSent();
 });
 
-it('se il backoffice non risponde, o dà risultati che non sono di /v1, la ricerca risponde con un errore: mai un elenco vuoto, mai un risultato a metà (T4.2)', function (int $stato, mixed $corpo) {
+it('se il backoffice non risponde, o dà risultati che non sono di /v1, la ricerca risponde con un errore: mai un elenco vuoto, mai un risultato a metà (sprint 5 · T4.2)', function (int $stato, mixed $corpo) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response($corpo, $stato)]);
 
