@@ -14,7 +14,14 @@ permissions:
 
 jobs:
   ci:
+    # Un giro per ogni versione minore di zr-auth che composer.json accetta: la 0.6 è quella che i frontend hanno, la 0.7
+    # quella che viene. Un giro rosso non ferma l'altro: si vedono tutti e due, e il verde è di tutti e due.
+    name: ci (zr-auth ${{ matrix.zr-auth }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        zr-auth: ['0.6', '0.7']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,9 +47,17 @@ jobs:
       - name: Nessun segreto nel repo
         run: bash .github/nessun-segreto.sh
 
-      # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run.
+      # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run. Di zr-auth si installa l'ultima
+      # versione della minore di questo giro: il log dice quale, e se composer ne ha scelta un'altra il giro si ferma.
       - name: Dipendenze PHP
-        run: composer update --prefer-dist --no-interaction --no-progress
+        shell: bash
+        env:
+          ZR_AUTH: ${{ matrix.zr-auth }}
+        run: |
+          composer update --prefer-dist --no-interaction --no-progress --with "zeiras/zr-auth:~${ZR_AUTH}.0"
+          installata=$(composer show zeiras/zr-auth --format=json | jq -r '.versions[0]')
+          echo "zr-auth installato: ${installata}"
+          case "${installata}" in "v${ZR_AUTH}."*) ;; *) echo "non è una ${ZR_AUTH}"; exit 1 ;; esac
 
       # Tutti i file PHP del repo, non il diff: su un push a main il diff è vuoto. Un file rotto non ferma il giro
       # (exit 1, non 255): si vedono tutti. shell: bash porta pipefail, così un ls-files fallito non passa verde.

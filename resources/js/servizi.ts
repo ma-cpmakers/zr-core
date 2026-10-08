@@ -2,25 +2,19 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-/** Una notifica come la dà GET /cornice/notifiche. */
+/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice di che prodotto è, né per chi. */
 export interface NotificaDellaCornice {
-    id: string | number;
+    id: string;
     /** Un istante RFC 3339, con l'ora e il fuso. */
     creata_il: string;
     letta: boolean;
-    per_me: boolean;
-    motivo: string;
-    /** Il codice dell'app nel backoffice: l'id del prodotto nel registro. */
-    app: string;
 }
 
-/** Un risultato della ricerca come lo dà GET /cornice/ricerca. */
+/** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
 export interface RisultatoDellaRicerca {
-    /** Il codice dell'app nel backoffice: l'id del prodotto nel registro. */
-    app: string;
-    /** Il tipo della risorsa nell'app: una risorsa del prodotto nel registro. */
+    /** Il tipo della risorsa nel backoffice (`board.board`, `board.cartelle`): di che prodotto è, e come si mostra, lo dice il registro. */
     tipo: string;
-    id: string | number;
+    id: string;
     titolo: string;
 }
 
@@ -43,16 +37,23 @@ export async function caricaNotifiche(): Promise<NotificaDellaCornice[]> {
     return corpo.data as NotificaDellaCornice[];
 }
 
-/** Segna lette le notifiche del workspace fino a `finoA`, un istante con ora e fuso: PATCH /cornice/notifiche/lettura. */
-export async function segnaLette(finoA: string): Promise<void> {
-    await chiama('/cornice/notifiche/lettura', {
+/**
+ * Segna letta una notifica: PATCH /cornice/notifiche/<id>/lettura. L'id entra nell'indirizzo codificato, e una risposta che non
+ * la dà per letta è un errore come le altre.
+ */
+export async function segnaLetta(id: string): Promise<void> {
+    const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
+    const corpo = (await chiama(indirizzo, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ fino_a: finoA }),
-    });
+        body: JSON.stringify({ letta: true }),
+    })) as { data?: { letta?: unknown } | null } | null;
+    if (corpo?.data?.letta !== true) {
+        throw new Error(`PATCH ${indirizzo}: letta`);
+    }
 }
 
-/** Le risorse del workspace che rispondono a `parola`, per pertinenza: GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
+/** Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
 export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
     const corpo = (await chiama(`/cornice/ricerca?q=${encodeURIComponent(parola)}`, { signal: segnale })) as { data?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {

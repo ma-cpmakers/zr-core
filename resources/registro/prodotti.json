@@ -4,9 +4,8 @@
         {
             "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false,
             "risorse": [
-                { "tipo": "cartella", "icona": "folder", "percorso": "/cartelle/{id}", "contenitore": true },
-                { "tipo": "board", "icona": "board", "percorso": "/b/{id}", "contenitore": true },
-                { "tipo": "scheda", "icona": "board", "percorso": "/c/{id}", "contenitore": false }
+                { "tipo": "board.cartelle", "icona": "folder", "percorso": "/cartelle/{id}", "contenitore": true },
+                { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
             ]
         },
         { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false },

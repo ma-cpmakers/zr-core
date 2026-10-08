@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, testi, type TestiDellaCornice } from './lingue';
 import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { caricaNotifiche, cerca, segnaLette, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { caricaNotifiche, cerca, segnaLetta, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -66,6 +66,9 @@ function prodottoDelRegistro(codice: string | undefined) {
     return registro.find((voce) => voce.id === codice && voce !== dashboard);
 }
 
+/** Di che prodotto è ogni tipo di risorsa del registro, e come si mostra: un tipo sta in un prodotto solo. */
+const risorsePerTipo = new Map(registro.flatMap((delProdotto) => (delProdotto.risorse ?? []).map((risorsa) => [risorsa.tipo, { delProdotto, risorsa }] as const)));
+
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
@@ -115,41 +118,36 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 }
 
 /**
- * Una notifica della parte server nel pannello: il titolo della lingua, uno solo per ogni `motivo`; prodotto, icona e tono dal
- * registro per codice di app (un'app che il registro non ha: nessun prodotto, la campanella e il tono neutro del design system);
- * l'ora nella lingua dei testi.
+ * Una notifica della parte server nel pannello: il titolo della lingua, uno per tutte, e l'ora nella lingua dei testi. Il
+ * contratto non dice di che prodotto è una notifica, né per chi: nessun prodotto, la campanella e il tono neutro del design
+ * system, e ognuna sta in «Per me» come in «Tutte».
  */
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDellaCornice, adesso: Date): ShellNotification {
-    const delProdotto = prodottoDelRegistro(notifica.app);
-
     return {
-        id: String(notifica.id),
+        id: notifica.id,
         title: t.notificationTitle,
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
-        product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         unread: !notifica.letta,
-        forMe: notifica.per_me,
-        icon: delProdotto?.icona,
-        tone: delProdotto?.tono,
     };
 }
 
 /**
- * Un risultato della ricerca nella cornice: il gruppo è il nome del suo tipo nella lingua dei testi, prodotto e tono vengono dal
- * registro per codice di app, l'icona dal tipo; l'indirizzo è quello del prodotto nel workspace dei dati seguito dal percorso del
- * tipo. Un'app o un tipo che il registro non ha non si mostrano: mai un indirizzo inventato.
+ * Un risultato della ricerca nella cornice. Il contratto dà solo tipo, id e titolo: il prodotto è quello che nel registro ha
+ * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
+ * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
+ * dati seguito dal percorso del tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
-    const delProdotto = prodottoDelRegistro(risultato.app);
-    const risorsa = delProdotto?.risorse?.find((voce) => voce.tipo === risultato.tipo);
-    if (delProdotto === undefined || risorsa === undefined) {
+    const trovata = risorsePerTipo.get(risultato.tipo);
+    if (trovata === undefined) {
         return undefined;
     }
+    const { delProdotto, risorsa } = trovata;
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
-    const id = String(risultato.id);
+    const { id } = risultato;
 
     return {
-        // Unico fra i tipi: una board e una scheda possono avere lo stesso id.
+        // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title: risultato.titolo,
         group: t[tipo],
@@ -163,7 +161,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
 
 /**
  * I risultati di un gruppo vicini, perché l'`AppShell` ne apre uno a ogni cambio di gruppo: i gruppi nell'ordine del primo
- * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per pertinenza).
+ * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per titolo).
  */
 function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     const gruppi = [...new Set(risultati.map((risultato) => risultato.group))];
@@ -226,28 +224,34 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         );
     };
 
-    // «Segna tutte come lette» manda il `creata_il` della più recente caricata, mai l'ora del browser: quelle arrivate dopo, mai
-    // viste, restano da leggere. Senza notifiche caricate non c'è un istante da mandare, e il pulsante non c'è. A risposta
-    // arrivata la campanella va a 0 finché la pagina ha gli stessi dati: coi dati nuovi della parte server (un'altra visita, con
-    // la cornice montata) torna il loro numero, anche se è lo stesso. Se la lettura fallisce non cambia niente.
-    const [azzerateNei, setAzzerateNei] = useState<DatiDellaCornice>();
-    const piuRecente = notifiche.stato !== 'ready' ? undefined : notifiche.elenco.reduce<NotificaDellaCornice | undefined>(
-        (scelta, notifica) => (scelta === undefined || Date.parse(notifica.creata_il) > Date.parse(scelta.creata_il) ? notifica : scelta),
-        undefined,
-    );
-    const segnaTutteLette = piuRecente && (() => {
+    // «Segna tutte come lette» segna le non lette caricate, una alla volta nell'ordine dell'elenco: quelle arrivate dopo, mai
+    // viste, restano da leggere, e senza non lette caricate il pulsante non c'è. A ogni risposta quella notifica è letta e la
+    // campanella scende di uno; se una lettura fallisce si ferma lì, e le altre restano da leggere. Un clic mentre le sta
+    // segnando non ne fa partire altre. Il numero sceso vale finché la pagina ha gli stessi dati: coi dati nuovi della parte
+    // server (un'altra visita, con la cornice montata) torna il loro numero, anche se è lo stesso. Mai a zero d'ufficio: le non
+    // lette possono essere più di quelle caricate.
+    const [segnate, setSegnate] = useState<{ dati: DatiDellaCornice; quante: number }>();
+    const leStaSegnando = useRef(false);
+    const daLeggere = notifiche.elenco.filter((notifica) => !notifica.letta);
+    const segnaTutteLette = daLeggere.length === 0 ? undefined : async () => {
+        if (leStaSegnando.current) {
+            return;
+        }
+        leStaSegnando.current = true;
         const questi = dati;
-        segnaLette(piuRecente.creata_il).then(
-            () => {
-                setAzzerateNei(questi);
-                setNotifiche((prima) => ({
-                    ...prima,
-                    elenco: prima.elenco.map((notifica) => (Date.parse(notifica.creata_il) <= Date.parse(piuRecente.creata_il) ? { ...notifica, letta: true } : notifica)),
-                }));
-            },
-            () => {},
-        );
-    });
+        try {
+            for (const { id } of daLeggere) {
+                await segnaLetta(id);
+                setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => (notifica.id === id ? { ...notifica, letta: true } : notifica)) }));
+                setSegnate((prima) => ({ dati: questi, quante: (prima?.dati === questi ? prima.quante : 0) + 1 }));
+            }
+        } catch {
+            // Ferma alla prima lettura che fallisce: il pulsante resta, per riprovare.
+        } finally {
+            leStaSegnando.current = false;
+        }
+    };
+    const nonLette = dati.non_lette === undefined ? undefined : Math.max(0, dati.non_lette - (segnate?.dati === dati ? segnate.quante : 0));
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
@@ -288,7 +292,7 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // Il numero viene dai dati, non dall'elenco delle notifiche, che si carica solo aprendo la campanella.
-            unreadCount={azzerateNei === dati ? 0 : dati.non_lette}
+            unreadCount={nonLette}
             notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, t, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}

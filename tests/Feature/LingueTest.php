@@ -176,14 +176,16 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
             'automations' => 'Automazioni', 'content' => 'Contenuti',
         ])
         ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
-            'pm.cartella' => 'Cartelle', 'pm.board' => 'Board', 'pm.scheda' => 'Schede',
+            'pm.board.cartelle' => 'Cartelle', 'pm.board.board' => 'Board',
         ]);
 });
 
 it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso dal design system e un prodotto con l\'id di un testo dell\'AppShell (T5.1, T7.1)', function () {
     $italiano = testiItalianiDelDesignSystem();
     $lingue = lingueDellaCornice();
-    unset($lingue['en']['logout'], $lingue['en']['content'], $lingue['en']['pm.scheda']);
+    unset($lingue['en']['logout'], $lingue['en']['content'], $lingue['en']['pm.board.cartelle']);
+    // Il nome di un tipo che il registro non ha più (le schede, finché la ricerca non le cerca) non è un testo della cornice.
+    $lingue['es']['pm.scheda'] = 'Tarjetas';
     $lingue['es']['retry'] = ' ';
     $lingue['it']['soon'] = 'Fra poco';
     $lingue['it']['reports'] = 'Reports';
@@ -199,8 +201,9 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->and(problemiDelleLingue($lingue))->toEqualCanonicalizing([
             'en: manca «logout»',
             'en: manca «content»',
-            'en: manca «pm.scheda»',
+            'en: manca «pm.board.cartelle»',
             'es: «retry» è vuoto',
+            'es: «pm.scheda» non è un testo della cornice',
             'it: «ciao» non è un testo della cornice',
             'it: «soon» non è il testo del design system',
             'it: «reports» non è il testo del design system',
