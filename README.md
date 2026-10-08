@@ -46,7 +46,7 @@ Il design system è uno solo per app, quello di zr-core: il frontend non ne tien
 
 I dati della cornice — chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato dei prodotti in quel
 workspace, le sue aziende coi loro workspace, le notifiche non lette — li dà `Zeiras\Core\Cornice::dati()`, dalla sessione
-di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.notifiche.elenca` col gettone del workspace,
+di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.mostra` col gettone del workspace,
 `io.aziende.elenca` e `io.workspace.elenca` col gettone della persona. Il gettone resta nella sessione: nei dati non c'è.
 
 zr-core richiede `zeiras/zr-auth` `^0.5`, installato e configurato come dice il suo README (la sessione lato server,
@@ -73,8 +73,8 @@ public function share(Request $request): array
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
-`non_lette` sono le non lette del workspace in cui la persona è entrata, contate su una pagina sola: al più 100, e da 100
-la campanella mostra «99+».
+`non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
+(`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
@@ -91,8 +91,8 @@ dal browser sulla stessa origine. La parte server le gira al backoffice col gett
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, per_me, motivo, app}]}`: le notifiche del workspace dalla più recente, una pagina |
-| `PATCH /cornice/notifiche/lettura` con `{fino_a}` | `{data: {fino_a}}`: segna lette le notifiche del workspace fino a `fino_a`, un istante con ora e fuso (`creata_il` della più recente vista); senza, o con un altro valore, 422 `{errore: "dati_non_validi"}` |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta}]}`: le notifiche della persona nel workspace dalla più recente, una pagina |
+| `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -138,11 +138,15 @@ cornice === null ? pagina : (
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
-  lingua, il nome, l'icona e il tono del suo prodotto dal registro (un'app che il registro non ha: nessun prodotto, la
-  campanella) e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»); se il caricamento fallisce, l'errore e «Riprova».
-  «Segna tutte come lette» manda a `PATCH /cornice/notifiche/lettura` il `creata_il` della più recente, col gettone CSRF
-  del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`; a risposta arrivata la
-  campanella va a 0. Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
+  lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte»; il backoffice
+  non dice di che prodotto è una notifica né per chi, e la cornice non lo indovina: nessun prodotto, l'icona della
+  campanella. Se il caricamento fallisce, l'errore e «Riprova».
+  «Segna tutte come lette» segna le non lette caricate, una alla volta dalla più recente: per ognuna una
+  `PATCH /cornice/notifiche/{id}/lettura` con `{letta: true}` e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel
+  nel gruppo `web`) nell'header `X-XSRF-TOKEN`. A ogni risposta quella notifica è letta e la campanella scende di uno, fino
+  alla prossima visita, che porta il numero del backoffice; se una lettura fallisce si ferma lì, e le altre restano da
+  leggere. Senza non lette caricate il pulsante non c'è. Una notifica e «Vedi tutte» aprono
+  `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. I
   risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e l'icona del tipo,

@@ -368,16 +368,28 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
     });
 });
 
-// Sprint 3 · T4 (voce #1277). Il pannello delle notifiche coi dati di GET /cornice/notifiche, «Segna tutte come lette» con
-// PATCH /cornice/notifiche/lettura, e dove portano una notifica e «Vedi tutte» (linea guida 15, passo 10).
+// Sprint 3 · T4 (voce #1277), riscritto nello sprint 5 · T3 (voce #1257). Il pannello delle notifiche coi dati di
+// GET /cornice/notifiche (`{id, creata_il, letta}`: il contratto non dice di che prodotto è una notifica, né per chi), «Segna
+// tutte come lette» con una PATCH /cornice/notifiche/<id>/lettura per ogni non letta caricata, e dove portano una notifica e
+// «Vedi tutte» (linea guida 15, passo 10).
 describe('il pannello delle notifiche', () => {
     /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
     const adesso = new Date('2026-10-06T12:00:00Z');
     const notificheDelServer = [
-        { id: 41, creata_il: '2026-10-06T11:55:00+00:00', letta: false, per_me: true, motivo: 'menzione', app: 'pm' },
-        { id: 40, creata_il: '2026-10-05T12:00:00Z', letta: false, per_me: false, motivo: 'assegnazione', app: 'crm' },
-        // Un'app che il registro non ha: nessun prodotto, la campanella, tono neutro.
-        { id: 39, creata_il: '2026-10-01T09:00:00Z', letta: true, per_me: true, motivo: 'menzione', app: 'zz' },
+        { id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false },
+        { id: 'uat-n40', creata_il: '2026-10-05T12:00:00Z', letta: false },
+        { id: 'uat-n39', creata_il: '2026-10-01T09:00:00Z', letta: true },
+    ];
+    /** Una terza non letta, la più recente: per vedere dove si ferma una lettura che fallisce. */
+    const conUnaInPiu = [{ id: 'uat-n42', creata_il: '2026-10-06T11:58:00Z', letta: false }, ...notificheDelServer];
+    /**
+     * Ciò che la parte server non dà: i campi della bozza (`per_me`, `motivo`, `app`) e quelli che del backoffice restano là
+     * (`tipo`, `soggetto`). Se arrivassero lo stesso, il pannello non li userebbe.
+     */
+    const conAltriCampi = [
+        { ...notificheDelServer[0], per_me: true, motivo: 'menzione', app: 'pm', tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-1' },
+        { ...notificheDelServer[1], per_me: false, motivo: 'assegnazione', app: 'crm' },
+        notificheDelServer[2],
     ];
 
     beforeEach(() => {
@@ -398,14 +410,23 @@ describe('il pannello delle notifiche', () => {
 
     const voci = () => tutti('.zr-notif-list .zr-notif-item');
     const tono = (voce: HTMLElement) => [...(voce.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'));
+    const nonLette = () => voci().map((voce) => voce.classList.contains('is-unread'));
+    const campanella = () => uno('.zr-bell-count')?.textContent ?? null;
+    const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
+    /** Le richieste partite, nell'ordine: il metodo e l'indirizzo. */
+    const richieste = (fetchFinto: { mock: { calls: [indirizzo: string, opzioni?: RequestInit][] } }) => fetchFinto.mock.calls.map(([indirizzo, opzioni]) => `${opzioni?.method ?? 'GET'} ${indirizzo}`);
+    /** La risposta della parte server a una lettura riuscita. */
+    const letta = (id: string) => risposta({ data: { id, letta: true } });
+    /** Le due rotte che rispondono subito: l'elenco dato, e ogni lettura riuscita. */
+    const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : letta(decodeURIComponent(indirizzo.split('/')[3]))));
 
     it.each([
-        ['it', 'Nuova attività', ['Project Management · 5 minuti fa', '1 ott'], ['Project Management · 5 minuti fa', 'CRM · ieri', '1 ott']],
-        ['es', 'Nueva actividad', ['Gestión de proyectos · hace 5 minutos', '1 oct'], ['Gestión de proyectos · hace 5 minutos', 'CRM · ayer', '1 oct']],
-        ['en', 'New activity', ['Project Management · 5 minutes ago', 'Oct 1'], ['Project Management · 5 minutes ago', 'CRM · yesterday', 'Oct 1']],
+        ['it', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott']],
+        ['es', 'Nueva actividad', ['hace 5 minutos', 'ayer', '1 oct']],
+        ['en', 'New activity', ['5 minutes ago', 'yesterday', 'Oct 1']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', 'Nuova attività', ['Project Management · 5 minuti fa', '1 ott'], ['Project Management · 5 minuti fa', 'CRM · ieri', '1 ott']],
-    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra le notifiche nella lingua; «Per me» solo quelle per la persona (T4.1)', async (lingua, titolo, perMe, tutte) => {
+        ['it_IT', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott']],
+    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora, senza prodotto, in «Per me» come in «Tutte» (T3.1)', async (lingua, titolo, ore) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);
@@ -414,23 +435,26 @@ describe('il pannello delle notifiche', () => {
         expect(fetchFinto).not.toHaveBeenCalled();
 
         await clic(uno('.zr-bell'));
-        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche']);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
         expect(uno('.zr-notif [role="status"]')).not.toBeNull();
         expect(uno('.zr-notif-list')).toBeNull();
 
-        await elenco.arriva(risposta({ data: notificheDelServer }));
+        await elenco.arriva(risposta({ data: conAltriCampi }));
         expect(uno('.zr-notif [role="status"]')).toBeNull();
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo]);
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(perMe);
-        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, false]);
-        expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual([tracciatoDi('board'), tracciatoDi('bell')]);
-        expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-neutral']);
-
-        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo, titolo]);
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(tutte);
-        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
-        expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-sky', 'zr-label-neutral']);
+        // «Per me», poi «Tutte»: le stesse notifiche, anche quella che la bozza dava per altri.
+        expect(tutti('.zr-notif-tabs [role="tab"]')).toHaveLength(2);
+        for (const scheda of [0, 1]) {
+            await clic(tutti('.zr-notif-tabs [role="tab"]')[scheda]);
+            expect(tutti('.zr-notif-tabs [role="tab"]').map((voce) => voce.getAttribute('aria-selected'))).toStrictEqual(scheda === 0 ? ['true', 'false'] : ['false', 'true']);
+            expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo, titolo]);
+            // Solo l'ora: nessun prodotto davanti, nemmeno per l'app o il tipo di un prodotto del registro.
+            expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(ore);
+            expect(nonLette()).toStrictEqual([true, true, false]);
+            expect(voci().map((voce) => voce.querySelectorAll('.zr-notif-dot').length)).toStrictEqual([1, 1, 0]);
+            // La campanella e il tono neutro del design system: né l'icona né il tono di un prodotto.
+            expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual([tracciatoDi('bell'), tracciatoDi('bell'), tracciatoDi('bell')]);
+            expect(voci().map(tono)).toStrictEqual(['zr-label-neutral', 'zr-label-neutral', 'zr-label-neutral']);
+        }
         expect(fetchFinto).toHaveBeenCalledOnce();
     });
 
@@ -452,69 +476,154 @@ describe('il pannello delle notifiche', () => {
         await clic(errore?.querySelector('button') ?? null);
         expect(fetchFinto).toHaveBeenCalledTimes(2);
         expect(uno('.zr-notif [role="alert"]')).toBeNull();
-        expect(voci()).toHaveLength(2);
+        expect(voci()).toHaveLength(3);
     });
 
-    it('«Segna tutte come lette» manda il creata_il della più recente col gettone CSRF; a risposta arrivata la campanella va a 0 e le notifiche sono lette (T4.3)', async () => {
+    it('«Segna tutte come lette» manda una PATCH col gettone CSRF per ogni non letta caricata, una dopo l\'altra nell\'ordine dell\'elenco; a ogni risposta quella notifica è letta e la campanella scende di uno, da 12 a 10 (T3.2)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
-        const lettura = inAttesa();
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : lettura.promessa));
+        const letture = [inAttesa(), inAttesa()];
+        let partite = 0;
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : letture[partite++].promessa));
         vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
-        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        expect(campanella()).toBe('12');
 
-        await clic(uno('.zr-notif .zr-pop-head button'));
+        await clic(segnaTutte());
+        // Parte solo la prima dell'elenco: la seconda aspetta la sua risposta.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/uat-n41/lettura']);
+        for (const [, opzioni] of fetchFinto.mock.calls.slice(1)) {
+            expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
+            expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
+            expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ letta: true });
+        }
+        // Prima della risposta non cambia niente, e un altro clic non manda una seconda richiesta.
+        expect(campanella()).toBe('12');
+        expect(nonLette()).toStrictEqual([true, true, false]);
+        await clic(segnaTutte());
         expect(fetchFinto).toHaveBeenCalledTimes(2);
-        const [indirizzo, opzioni] = fetchFinto.mock.calls[1];
-        expect(indirizzo).toBe('/cornice/notifiche/lettura');
-        expect(opzioni?.method).toBe('PATCH');
-        expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
-        // L'istante della più recente com'è arrivato, non l'ora del browser.
-        expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
-        // Prima della risposta non cambia niente.
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
-        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
 
-        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00+00:00' } }));
-        expect(uno('.zr-bell-count')).toBeNull();
-        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([false, false, false]);
-        expect(uno('.zr-notif .zr-pop-head button')).toBeNull();
+        await letture[0].arriva(letta('uat-n41'));
+        expect(campanella()).toBe('11');
+        expect(nonLette()).toStrictEqual([false, true, false]);
+        expect(richieste(fetchFinto).slice(2)).toStrictEqual(['PATCH /cornice/notifiche/uat-n40/lettura']);
+        for (const [, opzioni] of fetchFinto.mock.calls.slice(2)) {
+            expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
+            expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ letta: true });
+        }
+        await clic(segnaTutte());
+        expect(fetchFinto).toHaveBeenCalledTimes(3);
+
+        await letture[1].arriva(letta('uat-n40'));
+        // 12 nei dati e 2 non lette caricate: 10, non zero.
+        expect(campanella()).toBe('10');
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        // Per quella già letta non parte niente; senza non lette caricate il pulsante non c'è più.
+        expect(fetchFinto).toHaveBeenCalledTimes(3);
+        expect(segnaTutte()).toBeNull();
     });
 
-    it('dopo «Segna tutte come lette» la campanella resta a 0 coi dati di prima, e coi dati nuovi della parte server mostra il loro numero, anche se è lo stesso (T4.3)', async () => {
+    it('l\'id di una notifica entra codificato nell\'indirizzo della sua lettura (T3.2)', async () => {
+        const fetchFinto = rotte([{ id: 'a/b?c#d e', creata_il: '2026-10-06T11:55:00Z', letta: false }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/a%2Fb%3Fc%23d%20e/lettura']);
+        expect(nonLette()).toStrictEqual([false]);
+    });
+
+    it.each<[number | undefined, string | null]>([
+        // Meno non lette nei dati di quelle caricate (una è arrivata dopo): il numero si ferma a zero.
+        [1, '1'],
+        // Senza il numero nei dati il design system conta le non lette caricate.
+        [undefined, '2'],
+    ])('con %s non lette nei dati e due caricate, segnate tutte e due la campanella non ha più un numero (T3.2)', async (nonLetteNeiDati, prima) => {
+        const fetchFinto = rotte(notificheDelServer);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe(prima);
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto).slice(1)).toStrictEqual(['PATCH /cornice/notifiche/uat-n41/lettura', 'PATCH /cornice/notifiche/uat-n40/lettura']);
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
+    });
+
+    it.each<[string, () => Promise<Response>]>([
+        ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
+        ['un 404', async () => risposta({ errore: 'non_trovato' }, 404)],
+        ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
+        ['un 200 che la dà non letta', async () => risposta({ data: { id: 'uat-n41', letta: false } })],
+        ['un 200 senza dati', async () => risposta({})],
+    ])('se una lettura fallisce con %s si ferma lì: le segnate restano lette, le altre no, e il numero conta solo le segnate; un altro clic riprende da quella (T3.3)', async (_caso, fallisce) => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
-        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ data: { fino_a: '2026-10-06T11:55:00+00:00' } }))));
-        const primi = { ...dati, non_lette: 2 };
+        const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
+            .mockImplementationOnce(async () => risposta({ data: conUnaInPiu }))
+            .mockImplementationOnce(async () => letta('uat-n42'))
+            .mockImplementationOnce(fallisce)
+            .mockImplementation(async (indirizzo) => letta(indirizzo.split('/')[3]));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        // La terza non parte: dopo l'errore non si va avanti.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/uat-n42/lettura', 'PATCH /cornice/notifiche/uat-n41/lettura']);
+        expect(campanella()).toBe('11');
+        expect(nonLette()).toStrictEqual([false, true, true, false]);
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto).slice(3)).toStrictEqual(['PATCH /cornice/notifiche/uat-n41/lettura', 'PATCH /cornice/notifiche/uat-n40/lettura']);
+        expect(campanella()).toBe('9');
+        expect(nonLette()).toStrictEqual([false, false, false, false]);
+    });
+
+    it('il numero sceso vale coi dati di prima; coi dati nuovi della parte server la campanella mostra il loro numero, anche se è lo stesso (T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte(notificheDelServer));
+        const primi = { ...dati, non_lette: 12 };
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
-        await clic(uno('.zr-notif .zr-pop-head button'));
-        expect(uno('.zr-bell-count')).toBeNull();
+        await clic(segnaTutte());
+        expect(campanella()).toBe('10');
 
-        // La stessa pagina ridisegnata con gli stessi dati: le notifiche restano lette.
+        // La stessa pagina ridisegnata con gli stessi dati: il numero resta sceso.
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
-        expect(uno('.zr-bell-count')).toBeNull();
+        expect(campanella()).toBe('10');
 
-        // Una visita dopo (Inertia tiene montata la cornice): due notifiche nuove, lo stesso numero di prima.
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        // Una visita dopo (Inertia tiene montata la cornice): i dati nuovi contano già le lette, anche se il numero è lo stesso.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
     });
 
-    it('se «Segna tutte come lette» fallisce, il numero e le notifiche restano come prima (T4.3)', async () => {
-        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
-        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ errore: 'dati_non_validi' }, 422))));
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+    it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (T3.5)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+
+        expect(campanella()).toBe('12');
+        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
+    });
+
+    it.each<[string, () => Promise<Response>]>([
+        ['in caricamento', () => new Promise<Response>(() => {})],
+        ['in errore', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
+        ['con le notifiche tutte lette', async () => risposta({ data: notificheDelServer.map((notifica) => ({ ...notifica, letta: true })) })],
+        ['senza notifiche', async () => risposta({ data: [] })],
+    ])('col pannello %s «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (T3.5)', async (_caso, elenco) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        vi.stubGlobal('fetch', vi.fn(elenco));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+
         await clic(uno('.zr-bell'));
-        await clic(tutti('.zr-notif-tabs [role="tab"]')[1]);
-
-        await clic(uno('.zr-notif .zr-pop-head button'));
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
-        expect(voci().map((voce) => voce.classList.contains('is-unread'))).toStrictEqual([true, true, false]);
-        expect(uno('.zr-notif .zr-pop-head button')).not.toBeNull();
+        expect(uno('.zr-notif .zr-pop-head')).not.toBeNull();
+        expect(segnaTutte()).toBeNull();
+        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
+        expect(campanella()).toBe('12');
     });
 
-    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (T4.4)', async () => {
+    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (T3.6)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);

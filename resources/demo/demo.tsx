@@ -11,9 +11,9 @@ import { registro } from '../js/registro';
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
 // elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
-// `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche`, `?errore=lettura` o `?errore=ricerca` fa
-// fallire quella rotta. Gli indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca)
-// non si aprono: si scrivono in console. Non entra nel pacchetto.
+// `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
+// `?errore=lettura` la seconda lettura di una notifica. Gli indirizzi che la cornice apre (account, notifiche, un altro
+// workspace, un risultato della ricerca) non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -76,22 +76,23 @@ function Prova() {
 }
 
 // Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
-// notifiche d'esempio coprono ogni caso: `pm` non letta per la persona, `crm` non letta per altri, `bookings` letta ieri, e
-// un'app che il registro non ha (`zz`). La lettura le segna lette fino a `fino_a`. La ricerca dà i risultati d'esempio che
-// hanno la parola nel titolo, coi tipi mescolati, un tipo (`uat-ignoto`) e un'app (`zz`) che zr-core non conosce; «ua» risponde
-// dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni
-// richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la risposta che arriva lo
-// stesso; il cookie del gettone CSRF è finto.
+// notifiche d'esempio: due non lette di oggi, una letta ieri e una letta nove giorni fa. La lettura segna la notifica
+// dell'indirizzo, letta o non letta come dice il corpo; con `?errore=lettura` la seconda fallisce. La ricerca dà i risultati
+// d'esempio che hanno la parola nel titolo, coi tipi mescolati, un tipo (`uat-ignoto`) e un'app (`zz`) che zr-core non
+// conosce; «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua»
+// arriva dopo. Ogni richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la
+// risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
 const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false, per_me: true, motivo: 'uat-menzione', app: 'pm' },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, per_me: false, motivo: 'uat-assegnazione', app: 'crm' },
-    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, per_me: true, motivo: 'uat-menzione', app: 'bookings' },
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, per_me: true, motivo: 'uat-menzione', app: 'zz' },
+    { id: 'uat-4', creata_il: fa(5), letta: false },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true },
 ];
+let letture = 0;
 const risultatiDiProva = [
     { app: 'pm', tipo: 'board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
     { app: 'pm', tipo: 'cartella', id: 'uat-3', titolo: 'UAT Marketing' },
@@ -132,16 +133,23 @@ window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
     if (percorso === '/cornice/notifiche') {
         return errore === 'notifiche' ? json({ errore: 'uat_errore' }, 502) : json({ data: notificheDiProva });
     }
-    if (percorso === '/cornice/notifiche/lettura') {
-        if (errore === 'lettura') {
+    const lettura = /^\/cornice\/notifiche\/([^/]+)\/lettura$/.exec(percorso);
+    if (lettura && opzioni?.method === 'PATCH') {
+        letture += 1;
+        if (errore === 'lettura' && letture === 2) {
             return json({ errore: 'uat_errore' }, 502);
         }
-        const { fino_a: finoA } = JSON.parse(String(opzioni?.body)) as { fino_a: string };
-        for (const notifica of notificheDiProva) {
-            notifica.letta ||= Date.parse(notifica.creata_il) <= Date.parse(finoA);
+        const notifica = notificheDiProva.find((voce) => voce.id === decodeURIComponent(lettura[1]));
+        const { letta } = JSON.parse(String(opzioni.body)) as { letta?: unknown };
+        if (typeof letta !== 'boolean') {
+            return json({ errore: 'dati_non_validi' }, 422);
         }
+        if (notifica === undefined) {
+            return json({ errore: 'non_trovato' }, 404);
+        }
+        notifica.letta = letta;
 
-        return json({ data: { fino_a: finoA } });
+        return json({ data: { id: notifica.id, letta: notifica.letta } });
     }
 
     return json({ errore: 'non_trovato' }, 404);

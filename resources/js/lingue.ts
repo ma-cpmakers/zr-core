@@ -15,7 +15,7 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Prodotti. */
     dashboard: string;
-    /** Il titolo di una notifica nel pannello: uno solo per ogni `motivo`, finché zr-core non ne ha uno per motivo. */
+    /** Il titolo di una notifica nel pannello: uno per tutte, finché il contratto non dice di che cosa è una notifica. */
     notificationTitle: string;
 };
 
