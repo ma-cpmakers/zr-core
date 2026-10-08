@@ -10,13 +10,11 @@ export interface NotificaDellaCornice {
     letta: boolean;
 }
 
-/** Un risultato della ricerca come lo dà GET /cornice/ricerca. */
+/** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
 export interface RisultatoDellaRicerca {
-    /** Il codice dell'app nel backoffice: l'id del prodotto nel registro. */
-    app: string;
-    /** Il tipo della risorsa nell'app: una risorsa del prodotto nel registro. */
+    /** Il tipo della risorsa nel backoffice (`board.board`, `board.cartelle`): di che prodotto è, e come si mostra, lo dice il registro. */
     tipo: string;
-    id: string | number;
+    id: string;
     titolo: string;
 }
 
@@ -55,7 +53,7 @@ export async function segnaLetta(id: string): Promise<void> {
     }
 }
 
-/** Le risorse del workspace che rispondono a `parola`, per pertinenza: GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
+/** Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
 export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
     const corpo = (await chiama(`/cornice/ricerca?q=${encodeURIComponent(parola)}`, { signal: segnale })) as { data?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {

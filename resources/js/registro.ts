@@ -9,16 +9,19 @@ import type { IconName, Tone } from '../zeiras/index';
 export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations' | 'content';
 
 /** Le risorse dei prodotti che la ricerca mostra, `<prodotto>.<tipo>`: ognuna ha il nome del suo gruppo in ogni lingua, con questa chiave. Una risorsa nuova entra anche qui. */
-export type TipoDiRisorsa = 'pm.cartella' | 'pm.board' | 'pm.scheda';
+export type TipoDiRisorsa = 'pm.board.cartelle' | 'pm.board.board';
 
 /** Un tipo di risorsa di un prodotto, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
 export interface RisorsaDelProdotto {
-    /** Il tipo nel backoffice: il `tipo` di un risultato della ricerca. */
+    /**
+     * Il tipo nel backoffice: il `tipo` di un risultato della ricerca (`board.board`, `board.cartelle`). Sta in un prodotto
+     * solo: un risultato non dice di che prodotto è, e la cornice lo trova da qui.
+     */
     tipo: string;
     icona: IconName;
     /** Il percorso nel prodotto, dopo `/w/<slug>`: `{id}` è l'id della risorsa. */
     percorso: string;
-    /** Un contenitore (cartella, board) si apre a pagina intera, un elemento (scheda) nel pannello del prodotto. */
+    /** Un contenitore (cartella, board) si apre a pagina intera, un elemento nel pannello del prodotto. */
     contenitore: boolean;
 }
 

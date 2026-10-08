@@ -638,19 +638,20 @@ describe('il pannello delle notifiche', () => {
 });
 
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati
-// raggruppati per tipo dal registro, gli stati.
+// raggruppati per tipo dal registro, gli stati. Sprint 5 · T4 (voce #1257): un risultato è `{tipo, id, titolo}`, come in
+// ricerca.elenca; di che prodotto è lo dice il registro, dal tipo.
 describe('la ricerca', () => {
     /**
-     * I risultati come li dà GET /cornice/ricerca, per pertinenza: i tipi mescolati (l'`AppShell` apre un gruppo a ogni cambio di
-     * gruppo), lo stesso id in due tipi, un tipo e un'app che zr-core non conosce.
+     * I risultati come li dà GET /cornice/ricerca, nell'ordine del backoffice (per titolo): i tipi mescolati (l'`AppShell` apre
+     * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e le schede,
+     * che la ricerca del backoffice ancora non cerca) e un risultato con un `app` che non è il suo prodotto: non conta.
      */
     const risultatiDelServer = [
-        { app: 'pm', tipo: 'board', id: 12, titolo: 'Lancio Q4' },
-        { app: 'pm', tipo: 'cartella', id: '3', titolo: 'Marketing' },
-        { app: 'pm', tipo: 'uat-ignoto', id: 9, titolo: 'Un tipo ignoto' },
-        { app: 'zz', tipo: 'board', id: 5, titolo: 'Un\'app ignota' },
-        { app: 'pm', tipo: 'scheda', id: 12, titolo: 'Scrivere il brief' },
-        { app: 'pm', tipo: 'board', id: 13, titolo: 'Lancio Q1' },
+        { tipo: 'board.board', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Lancio Q4' },
+        { tipo: 'board.cartelle', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Marketing' },
+        { tipo: 'uat-ignoto', id: '9', titolo: 'Piano di un tipo ignoto' },
+        { app: 'crm', tipo: 'board.board', id: 'uat/13', titolo: 'Report marketing' },
+        { tipo: 'board.schede', id: '12', titolo: 'Scrivere il brief' },
     ];
 
     // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
@@ -695,8 +696,8 @@ describe('la ricerca', () => {
     const righe = () => tutti('.zr-search-panel [role="option"]');
     const titoli = () => righe().map((riga) => riga.querySelector('.zr-search-title')?.textContent);
     const inCaricamento = () => uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent;
-    const vecchi = [{ app: 'pm', tipo: 'board', id: 1, titolo: 'Risultato di «ua»' }];
-    const nuovi = [{ app: 'pm', tipo: 'board', id: 2, titolo: 'Risultato di «uat»' }];
+    const vecchi = [{ tipo: 'board.board', id: '1', titolo: 'Risultato di «ua»' }];
+    const nuovi = [{ tipo: 'board.board', id: '2', titolo: 'Risultato di «uat»' }];
 
     it.each<[string, (ua: ReturnType<typeof inAttesaDellaRicerca>, uat: ReturnType<typeof inAttesaDellaRicerca>) => Promise<void>]>([
         ['arriva prima della nuova', async (ua, uat) => {
@@ -735,29 +736,31 @@ describe('la ricerca', () => {
     });
 
     it.each([
-        ['it', 'Project Management', ['Board', 'Cartelle', 'Schede']],
-        ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas', 'Tarjetas']],
-        ['en', 'Project Management', ['Boards', 'Folders', 'Cards']],
-    ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto e l\'icona del tipo; un tipo o un\'app che zr-core non conosce non compaiono (T5.3)', async (lingua, prodotto, nomiDeiGruppi) => {
+        ['it', 'Project Management', ['Board', 'Cartelle']],
+        ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas']],
+        ['en', 'Project Management', ['Boards', 'Folders']],
+    ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
 
         await scrivi('lancio');
         expect(tutti('.zr-search-panel .zr-search-group').map((gruppo) => gruppo.textContent)).toStrictEqual(nomiDeiGruppi);
-        // Nell'ordine del backoffice dentro ogni tipo; i tipi nell'ordine del primo risultato di ognuno.
-        expect(titoli()).toStrictEqual(['Lancio Q4', 'Lancio Q1', 'Marketing', 'Scrivere il brief']);
-        expect(righe().map((riga) => riga.querySelector('.zr-search-product')?.textContent)).toStrictEqual([prodotto, prodotto, prodotto, prodotto]);
+        // Nell'ordine del backoffice dentro ogni tipo; i tipi nell'ordine del primo risultato di ognuno. «Report marketing» ha
+        // `app: 'crm'`: è una board, quindi di Project Management.
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Report marketing', 'Marketing']);
+        expect(righe().map((riga) => riga.querySelector('.zr-search-product')?.textContent)).toStrictEqual([prodotto, prodotto, prodotto]);
         expect(righe().map((riga) => [...(riga.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'))))
-            .toStrictEqual(['zr-label-pine', 'zr-label-pine', 'zr-label-pine', 'zr-label-pine']);
+            .toStrictEqual(['zr-label-pine', 'zr-label-pine', 'zr-label-pine']);
         expect(righe().map((riga) => riga.querySelector('.zr-iconbox path')?.getAttribute('d')))
-            .toStrictEqual([tracciatoDi('board'), tracciatoDi('board'), tracciatoDi('folder'), tracciatoDi('board')]);
+            .toStrictEqual([tracciatoDi('board'), tracciatoDi('board'), tracciatoDi('folder')]);
     });
 
     it.each([
-        ['Lancio Q4', 'https://board.zeiras.com/w/acme-marketing/b/12'],
-        ['Marketing', 'https://board.zeiras.com/w/acme-marketing/cartelle/3'],
-        ['Scrivere il brief', 'https://board.zeiras.com/w/acme-marketing/c/12'],
-    ])('scegliere «%s» apre l\'indirizzo del suo prodotto nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (T5.3)', async (titolo, indirizzo) => {
+        ['Lancio Q4', 'https://board.zeiras.com/w/acme-marketing/b/01k6w2d5f7h9k1n3q5s7v9x1z3'],
+        ['Marketing', 'https://board.zeiras.com/w/acme-marketing/cartelle/01k6w2d5f7h9k1n3q5s7v9x1z3'],
+        // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
+        ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
+    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (T4.3)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -775,8 +778,8 @@ describe('la ricerca', () => {
 
     it.each([
         ['vuoto', []],
-        ['di soli tipi e app che zr-core non conosce', [risultatiDelServer[2], risultatiDelServer[3]]],
-    ])('durante l\'attesa la ricerca è in caricamento; con un elenco %s mostra «Nessun risultato per» e la parola (T5.4)', async (_caso, risultati) => {
+        ['di soli tipi che il registro non ha', [risultatiDelServer[2], risultatiDelServer[4]]],
+    ])('durante l\'attesa la ricerca è in caricamento; con un elenco %s mostra «Nessun risultato per» e la parola (T5.4, T4.4)', async (_caso, risultati) => {
         const elenco = inAttesaDellaRicerca();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);

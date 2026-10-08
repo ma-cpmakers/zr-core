@@ -93,7 +93,7 @@ dal browser sulla stessa origine. La parte server le gira al backoffice col gett
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta}]}`: le notifiche della persona nel workspace dalla più recente, una pagina |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `GET /cornice/ricerca?q=` | `{data: [{app, tipo, id, titolo}]}`: le risorse del workspace che la persona può leggere, per pertinenza; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
+| `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
@@ -148,14 +148,15 @@ cornice === null ? pagina : (
   leggere. Senza non lette caricate il pulsante non c'è. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
-  parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. I
-  risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e l'icona del tipo,
-  dal registro; un'app o un tipo che il registro non ha non si mostrano. Scegliere un risultato apre l'indirizzo del suo
-  prodotto nel workspace seguito dal percorso del tipo: per Project Management `/cartelle/<id>`, `/b/<id>` e `/c/<id>`,
-  provvisori finché zr-board non decide le sue rotte. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
+  parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
+  risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
+  Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
+  l'icona del tipo; un tipo che il registro non ha non si mostra. Scegliere un risultato apre l'indirizzo del suo prodotto
+  nel workspace seguito dal percorso del tipo: per Project Management `/cartelle/<id>` e `/b/<id>`, provvisori finché
+  zr-board non decide le sue rotte. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
-apre da sé le sue risorse (una scheda nel suo pannello) lo intercetta lì.
+apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.

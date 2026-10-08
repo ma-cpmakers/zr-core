@@ -45,7 +45,6 @@
     "reports": "Report",
     "automations": "Automazioni",
     "content": "Contenuti",
-    "pm.cartella": "Cartelle",
-    "pm.board": "Board",
-    "pm.scheda": "Schede"
+    "pm.board.cartelle": "Cartelle",
+    "pm.board.board": "Board"
 }

@@ -78,9 +78,9 @@ function Prova() {
 // Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
 // notifiche d'esempio: due non lette di oggi, una letta ieri e una letta nove giorni fa. La lettura segna la notifica
 // dell'indirizzo, letta o non letta come dice il corpo; con `?errore=lettura` la seconda fallisce. La ricerca dà i risultati
-// d'esempio che hanno la parola nel titolo, coi tipi mescolati, un tipo (`uat-ignoto`) e un'app (`zz`) che zr-core non
-// conosce; «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua»
-// arriva dopo. Ogni richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la
+// d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
+// mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
+// «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la
 // risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
 const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
 const ieri = new Date();
@@ -94,12 +94,12 @@ const notificheDiProva = [
 ];
 let letture = 0;
 const risultatiDiProva = [
-    { app: 'pm', tipo: 'board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
-    { app: 'pm', tipo: 'cartella', id: 'uat-3', titolo: 'UAT Marketing' },
-    { app: 'pm', tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
-    { app: 'zz', tipo: 'board', id: 'uat-5', titolo: 'UAT app ignota' },
-    { app: 'pm', tipo: 'scheda', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
-    { app: 'pm', tipo: 'board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
+    { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
+    { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
+    { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+    { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+    { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
 const fetchDelBrowser = window.fetch.bind(window);
@@ -125,7 +125,7 @@ window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
 
         return json({
             data: parola === 'ua'
-                ? [{ app: 'pm', tipo: 'board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
+                ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
                 : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
         });
     }

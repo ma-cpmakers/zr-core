@@ -129,21 +129,22 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
 }
 
 /**
- * Un risultato della ricerca nella cornice: il gruppo è il nome del suo tipo nella lingua dei testi, prodotto e tono vengono dal
- * registro per codice di app, l'icona dal tipo; l'indirizzo è quello del prodotto nel workspace dei dati seguito dal percorso del
- * tipo. Un'app o un tipo che il registro non ha non si mostrano: mai un indirizzo inventato.
+ * Un risultato della ricerca nella cornice. Il contratto dà solo tipo, id e titolo: il prodotto è quello che nel registro ha
+ * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
+ * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
+ * dati seguito dal percorso del tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
-    const delProdotto = prodottoDelRegistro(risultato.app);
+    const delProdotto = registro.find((voce) => voce !== dashboard && voce.risorse?.some((risorsa) => risorsa.tipo === risultato.tipo));
     const risorsa = delProdotto?.risorse?.find((voce) => voce.tipo === risultato.tipo);
     if (delProdotto === undefined || risorsa === undefined) {
         return undefined;
     }
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
-    const id = String(risultato.id);
+    const { id } = risultato;
 
     return {
-        // Unico fra i tipi: una board e una scheda possono avere lo stesso id.
+        // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title: risultato.titolo,
         group: t[tipo],
@@ -157,7 +158,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
 
 /**
  * I risultati di un gruppo vicini, perché l'`AppShell` ne apre uno a ogni cambio di gruppo: i gruppi nell'ordine del primo
- * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per pertinenza).
+ * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per titolo).
  */
 function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     const gruppi = [...new Set(risultati.map((risultato) => risultato.group))];
