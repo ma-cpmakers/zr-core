@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
@@ -8,41 +9,52 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Core\Cornice;
 
-// Sprint 2 · T3 (voce #1256) e sprint 3 · T1 (voce #1277). La parte server della cornice: Cornice::dati() dà alla pagina del
-// frontend la persona, la sua lingua, il workspace in cui è entrata, lo stato delle app in quel workspace, le aziende della
-// persona coi loro workspace e le notifiche non lette nel workspace, dalla sessione di zr-auth e dal backoffice. Il backoffice
-// è Http::fake (backoffice() qui sotto), mai il finto di zr-auth 0.3: non conosce aziende e notifiche (RichiestaSconosciuta),
-// e in Http::fake ogni callback gira, anche dopo uno che ha risposto. Nessuna richiesta esce (TestCase). La pagina di prova è
-// `w/{slug}/cornice` di TestCase, nel gruppo `web`.
+// Sprint 2 · T3 (voce #1256), sprint 3 · T1 (voce #1277) e sprint 5 · T1 (voce #1257). La parte server della cornice:
+// Cornice::dati() dà alla pagina del frontend la persona, la sua lingua, il workspace in cui è entrata, lo stato delle app in
+// quel workspace, le aziende della persona coi loro workspace e le notifiche non lette nel workspace, dalla sessione di zr-auth
+// e dal backoffice. Il backoffice è Http::fake (backoffice() qui sotto), mai il finto di zr-auth: su un metodo che non conosce
+// lancia RichiestaSconosciuta. Nessuna richiesta esce (TestCase). La pagina di prova è `w/{slug}/cornice` di TestCase, nel
+// gruppo `web`.
 
 /**
- * Il backoffice in Http::fake, un metodo di /v1 alla volta: app.elenca, io.aziende.elenca, io.workspace.elenca e
- * io.notifiche.elenca. Un percorso senza risposta data risponde una lista vuota.
+ * Il backoffice in Http::fake, un metodo di /v1 alla volta: app.elenca, io.mostra, io.aziende.elenca e io.workspace.elenca.
+ * Un elenco senza risposta data risponde una lista vuota, io.mostra zero non lette. Il percorso si confronta intero
+ * (`/v1/io` non risponde per `/v1/io/aziende`); un altro percorso non ha risposta, e TestCase ferma la richiesta.
  *
  * @param  array<string, mixed>  $risposte  per percorso («/v1/io/aziende»): un corpo JSON, o una risposta, una sequenza, una closure
  */
 function backoffice(array $risposte = []): void
 {
-    $stub = [];
-    foreach (['/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/notifiche'] as $percorso) {
-        $risposta = $risposte[$percorso] ?? ['data' => [], 'successivo' => null];
-        $stub["*{$percorso}*"] = is_array($risposta) ? Http::response($risposta) : $risposta;
+    $risposte += ['/v1/io' => ioMostra(0)];
+    foreach (['/v1/app', '/v1/io/aziende', '/v1/io/workspace'] as $elenco) {
+        $risposte += [$elenco => ['data' => [], 'successivo' => null]];
     }
-    Http::fake($stub);
+
+    Http::fake(function (Request $richiesta) use ($risposte) {
+        $risposta = $risposte[parse_url($richiesta->url(), PHP_URL_PATH)] ?? null;
+
+        return match (true) {
+            is_array($risposta) => Http::response($risposta),
+            $risposta instanceof Closure, $risposta instanceof ResponseSequence => $risposta($richiesta),
+            default => $risposta,
+        };
+    });
 }
 
 /**
- * Notifiche non lette nella forma di io.notifiche.elenca (bozza di zr-backoffice, #1260), dalla più recente.
+ * La risposta di io.mostra (GET /v1/io) per la sessione dei test: la persona, il workspace del gettone col suo ruolo lì e le
+ * sue notifiche non lette in quel workspace. Col gettone dell'accesso il backoffice dà null a tutti e tre: è `ioMostra(null)`.
  *
- * @return list<array<string, mixed>>
+ * @return array{data: array<string, mixed>}
  */
-function notifiche(int $quante): array
+function ioMostra(?int $nonLette): array
 {
-    return array_map(fn (int $i) => [
-        'id' => "uat-notifica-{$i}", 'creata_il' => now()->subMinutes($i)->toIso8601String(), 'letta_il' => null,
-        'per_me' => $i % 2 === 0, 'motivo' => 'uat', 'app' => 'pm', 'autore_id' => null, 'soggetto' => "uat-soggetto-{$i}",
-        'workspace_id' => 'uat-ws',
-    ], $quante > 0 ? range(1, $quante) : []);
+    return ['data' => [
+        'utente' => ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'en', 'fuso_orario' => 'Europe/Rome'],
+        'workspace' => $nonLette === null ? null : [...marketing(), 'azienda_id' => 'az-b'],
+        'ruolo' => $nonLette === null ? null : 'membro',
+        'notifiche_non_lette' => $nonLette,
+    ]];
 }
 
 /** Le richieste fatte a un percorso di /v1 (il percorso senza la query), nell'ordine in cui sono partite. */
@@ -84,7 +96,7 @@ it('con la sessione entrata in un workspace dà persona, lingua, il workspace de
     sessioneAMano(marketing());
     backoffice([
         '/v1/app' => ['data' => [['codice' => 'pm', 'stato' => 'attivo'], ['codice' => 'crm', 'stato' => 'disponibile']], 'successivo' => null],
-        '/v1/io/notifiche' => ['data' => notifiche(3), 'successivo' => null],
+        '/v1/io' => ioMostra(3),
         ...aziendeEWorkspace(),
     ]);
 
@@ -138,31 +150,40 @@ it('le aziende sono quelle della persona nell\'ordine del backoffice, ognuna coi
     }
 });
 
-it('non_lette è il numero delle non lette del workspace del gettone, da una richiesta sola con letta=false e limite=100 (T1.2)', function (int $nonLette) {
+it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del workspace con una richiesta sola, senza tagli (sprint 5 · T1.1)', function (int $nonLette) {
     $gettoni = sessioneAMano(marketing());
-    // Col gettone dell'accesso il backoffice darebbe le notifiche di tutti i workspace della persona.
-    backoffice(['/v1/io/notifiche' => fn (Request $richiesta) => Http::response([
-        'data' => notifiche($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']) ? $nonLette : 12),
-        'successivo' => null,
-    ])]);
+    // Col gettone dell'accesso io.mostra non ha un workspace, e le non lette sono null.
+    backoffice(['/v1/io' => fn (Request $richiesta) => Http::response(
+        ioMostra($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']) ? $nonLette : null),
+    )]);
 
     expect(Cornice::dati()['non_lette'])->toBe($nonLette);
-    expect(richiesteA('/v1/io/notifiche'))->toHaveCount(1);
-    $richiesta = richiesteA('/v1/io/notifiche')->first();
-    parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
-    expect($query)->toEqual(['letta' => 'false', 'limite' => '100'])
-        ->and($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue();
-})->with([0, 7]);
+    // Una richiesta per metodo, e nessun'altra: l'elenco delle notifiche non si chiede più.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
+        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
+    $richiesta = richiesteA('/v1/io')->first();
+    expect($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue()
+        ->and(parse_url($richiesta->url(), PHP_URL_QUERY))->toBeNull();
+})->with([0, 7, 250]);
 
-it('con 100 non lette o più non_lette è 100, da una pagina sola: il cursore non si segue (T1.2)', function () {
+it('se io.mostra non dà un numero di non lette arriva BackofficeNonRisponde, mai uno 0 (sprint 5 · T1.2)', function (int $stato, mixed $corpo) {
     sessioneAMano(marketing());
-    backoffice(['/v1/io/notifiche' => Http::sequence()
-        ->push(['data' => notifiche(100), 'successivo' => 'uat-cursore-2'])
-        ->push(['data' => notifiche(30), 'successivo' => null])]);
+    backoffice(['/v1/io' => Http::response($corpo, $stato), ...aziendeEWorkspace()]);
 
-    expect(Cornice::dati()['non_lette'])->toBe(100)
-        ->and(richiesteA('/v1/io/notifiche'))->toHaveCount(1);
-});
+    expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
+})->with([
+    'notifiche_non_lette manca' => [200, ['data' => ['utente' => ['id' => 'uat-ada'], 'workspace' => ['id' => 'uat-ws'], 'ruolo' => 'membro']]],
+    'null, come col gettone dell\'accesso' => [200, ['data' => ['notifiche_non_lette' => null]]],
+    'una stringa' => [200, ['data' => ['notifiche_non_lette' => '7']]],
+    'un decimale' => [200, ['data' => ['notifiche_non_lette' => 7.5]]],
+    'un booleano' => [200, ['data' => ['notifiche_non_lette' => true]]],
+    'una lista' => [200, ['data' => ['notifiche_non_lette' => [1, 2]]]],
+    'negativo' => [200, ['data' => ['notifiche_non_lette' => -1]]],
+    'senza data' => [200, ['notifiche_non_lette' => 7]],
+    'data non è un oggetto' => [200, ['data' => 7]],
+    '500' => [500, ''],
+    'senza JSON' => [200, 'uat: non è JSON'],
+]);
 
 it('senza sessione, o con la sessione aperta ma senza workspace, dà null e non chiama il backoffice (T3.2)', function () {
     Http::fake();
@@ -178,7 +199,7 @@ it('senza sessione, o con la sessione aperta ma senza workspace, dà null e non 
 
 it('il gettone non arriva alla pagina che riceve i dati della cornice (T3.3)', function () {
     sessioneAMano(marketing());
-    backoffice(['/v1/io/notifiche' => ['data' => notifiche(2), 'successivo' => null], ...aziendeEWorkspace()]);
+    backoffice(['/v1/io' => ioMostra(2), ...aziendeEWorkspace()]);
 
     $risposta = $this->get('w/uat-marketing/cornice')->assertOk();
 
@@ -195,7 +216,7 @@ it('se il backoffice non risponde l\'errore arriva al frontend, non una lista di
     expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
 });
 
-it('se il backoffice non risponde alle aziende, ai workspace o alle notifiche arriva BackofficeNonRisponde, non un elenco vuoto o uno 0 (T1.3)', function (string $percorso, int $stato, mixed $corpo) {
+it('se il backoffice non risponde alle aziende o ai workspace arriva BackofficeNonRisponde, non un elenco vuoto (T1.3)', function (string $percorso, int $stato, mixed $corpo) {
     sessioneAMano(marketing());
     backoffice([$percorso => Http::response($corpo, $stato), ...array_diff_key(aziendeEWorkspace(), [$percorso => true])]);
 
@@ -203,6 +224,4 @@ it('se il backoffice non risponde alle aziende, ai workspace o alle notifiche ar
 })->with([
     'aziende, 500' => ['/v1/io/aziende', 500, ''],
     'workspace, 500' => ['/v1/io/workspace', 500, ''],
-    'notifiche, 500' => ['/v1/io/notifiche', 500, ''],
-    'notifiche, 200 senza una lista' => ['/v1/io/notifiche', 200, ['notifiche' => []]],
 ]);

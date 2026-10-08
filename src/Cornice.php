@@ -9,16 +9,13 @@ use Zeiras\Auth\Sessione;
 /**
  * I dati della cornice per la pagina del frontend: chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato
  * delle app in quel workspace, le aziende della persona coi loro workspace e le notifiche non lette nel workspace. Si leggono
- * dalla sessione di zr-auth e dal backoffice: app.elenca (GET /v1/app) e io.notifiche.elenca (GET /v1/io/notifiche) col
- * gettone del workspace, io.aziende.elenca (GET /v1/io/aziende) e io.workspace.elenca (GET /v1/io/workspace) col gettone
- * della persona; il gettone resta nella sessione. Il frontend li condivide con la pagina (con Inertia, nel suo `share()`), e
- * la `Cornice` di resources/js li riceve in `dati`.
+ * dalla sessione di zr-auth e dal backoffice: app.elenca (GET /v1/app) e io.mostra (GET /v1/io) col gettone del workspace,
+ * io.aziende.elenca (GET /v1/io/aziende) e io.workspace.elenca (GET /v1/io/workspace) col gettone della persona; il gettone
+ * resta nella sessione. Il frontend li condivide con la pagina (con Inertia, nel suo `share()`), e la `Cornice` di
+ * resources/js li riceve in `dati`.
  */
 final class Cornice
 {
-    /** Quante non lette si chiedono: una pagina, la più grande di io.notifiche.elenca. Da lì in su la campanella non conta. */
-    private const NON_LETTE = 100;
-
     /**
      * null senza una sessione entrata in un workspace: la pagina non ha un workspace, e il backoffice non si chiama. Il
      * workspace è quello del gettone, mai quello dell'indirizzo. Un backoffice che non risponde lancia BackofficeNonRisponde
@@ -76,19 +73,19 @@ final class Cornice
     }
 
     /**
-     * Le notifiche non lette nel workspace in cui la persona è entrata. Col gettone del workspace: con quello dell'accesso il
-     * backoffice le dà di tutti i workspace. Una pagina sola, senza seguire il cursore: da 100 in su la campanella mostra
-     * «99+», e contarle tutte vorrebbe una richiesta ogni cento. `letta` è la stringa `false`: un booleano in una query
-     * diventa `0`, che il backoffice rifiuta.
+     * Le notifiche non lette della persona nel workspace in cui è entrata: `notifiche_non_lette` di io.mostra, il numero
+     * intero e non una pagina contata. Col gettone del workspace: con quello dell'accesso il backoffice non ha un workspace
+     * e risponde null. Un numero che manca, o che non è un intero da zero in su, è un guasto e non «zero non lette»: una
+     * campanella vuota per un guasto non si distinguerebbe da nessuna notifica.
      */
     private static function nonLette(): int
     {
-        $notifiche = Api::workspace()->get('/v1/io/notifiche', ['letta' => 'false', 'limite' => self::NON_LETTE])['data'] ?? null;
+        $nonLette = Api::workspace()->get('/v1/io')['data']['notifiche_non_lette'] ?? null;
 
-        if (! is_array($notifiche) || ! array_is_list($notifiche)) {
-            throw new BackofficeNonRisponde('La risposta di GET /v1/io/notifiche non è una lista di /v1.');
+        if (! is_int($nonLette) || $nonLette < 0) {
+            throw new BackofficeNonRisponde('La risposta di GET /v1/io non porta le notifiche non lette del workspace.');
         }
 
-        return count($notifiche);
+        return $nonLette;
     }
 }
