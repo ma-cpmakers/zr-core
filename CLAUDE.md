@@ -9,7 +9,7 @@ stesso ruolo di `zr-auth` per l'ingresso, ma per ciò che si vede. Niente sito, 
 installa dentro i frontend — `zr-home` per primo (la Dashboard sta nell'`AppShell` senza `product`), poi `zr-board` e gli
 altri moduli, con `product="<id>"`. Nessun frontend ricostruisce o modifica la cornice nel proprio codice. Forma e
 decisioni: la spec di zr-core (il percorso è nel prompt di partenza) — si legge, non si riscrive; se una cosa non
-torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
+torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di partenza,
 `prompts/zr-core-build.md` (non versionato).
 
 ## Cosa scrive questa sessione
@@ -37,8 +37,15 @@ torna, la dici a Luciano. Il primo lavoro è nel prompt di partenza,
 - **Le pagine**: quelle di un prodotto e la navigazione sotto il suo pulsante sono dell'agente del prodotto; accesso,
   Dashboard, notifiche, account, azienda e workspace come pagine sono di `zr-home`.
 - **Il contenuto del design system**: lo cambia solo Luciano. Un frontend che vuole cambiare la cornice lo chiede a te;
-  ciò che tocca il design system lo porti a Luciano.
+  ciò che tocca il design system lo porti a zr-pm, che lo porta a Luciano.
 - **Infrastruttura e segreti**: non li fai tu; a chi e come si chiedono lo dice il prompt di partenza.
+
+## A chi chiedi
+Le decisioni — priorità, GO, scelte di prodotto, accettazioni — non le chiedi a Luciano: le chiedi a **zr-pm**, l'agente
+PM di Zeiras, con un messaggio alla sua sessione (`ListAgents`: il nome comincia con `zr-pm`), e la tua attesa si scrive
+`⏸ ATTESA: zr-pm`. Le regole di business e di flusso operativo le decide Luciano, ma passano anche loro da zr-pm: è lui
+che le porta a Luciano. Il design system su Claude Design lo cambia solo Luciano, ed è lui ad avvisarti quando lo cambia;
+una richiesta di cambiarlo la mandi a zr-pm.
 
 ## Repo pubblico
 Nessun segreto e nessun indirizzo interno — IP, nomi di server, percorsi di chiavi, canali di monitoraggio — né nel
