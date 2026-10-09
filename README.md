@@ -139,9 +139,11 @@ cornice === null ? pagina : (
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
-  lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte»; il backoffice
-  non dice di che prodotto è una notifica né per chi, e la cornice non lo indovina: nessun prodotto, l'icona della
-  campanella. Se il caricamento fallisce, l'errore e «Riprova».
+  lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
+  non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
+  porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
+  il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
+  prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
   «Segna tutte come lette» segna le non lette caricate, una alla volta dalla più recente: per ognuna una
   `PATCH /cornice/notifiche/{id}/lettura` con `{letta: true}` e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel
   nel gruppo `web`) nell'header `X-XSRF-TOKEN`. A ogni risposta quella notifica è letta e la campanella scende di uno, fino

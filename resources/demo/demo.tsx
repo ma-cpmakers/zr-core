@@ -76,7 +76,8 @@ function Prova() {
 }
 
 // Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
-// notifiche d'esempio: due non lette di oggi, una letta ieri e una letta nove giorni fa. La lettura segna la notifica
+// notifiche d'esempio: due non lette di oggi, di due prodotti del registro (`pm`, `crm`), una letta ieri con un codice che il
+// registro non ha e una letta nove giorni fa che non è di un'app. La lettura segna la notifica
 // dell'indirizzo, letta o non letta come dice il corpo; con `?errore=lettura` la seconda fallisce. La ricerca dà i risultati
 // d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
 // mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
@@ -87,10 +88,10 @@ const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false },
-    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true },
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true },
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm' },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm' },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota' },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null },
 ];
 let letture = 0;
 const risultatiDiProva = [

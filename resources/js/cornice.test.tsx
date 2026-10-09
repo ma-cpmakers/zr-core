@@ -376,20 +376,27 @@ describe('il pannello delle notifiche', () => {
     /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
     const adesso = new Date('2026-10-06T12:00:00Z');
     const notificheDelServer = [
-        { id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false },
-        { id: 'uat-n40', creata_il: '2026-10-05T12:00:00Z', letta: false },
-        { id: 'uat-n39', creata_il: '2026-10-01T09:00:00Z', letta: true },
+        { id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' },
+        { id: 'uat-n40', creata_il: '2026-10-05T12:00:00Z', letta: false, app: 'crm' },
+        { id: 'uat-n39', creata_il: '2026-10-01T09:00:00Z', letta: true, app: null },
     ];
     /** Una terza non letta, la più recente: per vedere dove si ferma una lettura che fallisce. */
-    const conUnaInPiu = [{ id: 'uat-n42', creata_il: '2026-10-06T11:58:00Z', letta: false }, ...notificheDelServer];
+    const conUnaInPiu = [{ id: 'uat-n42', creata_il: '2026-10-06T11:58:00Z', letta: false, app: 'pm' }, ...notificheDelServer];
     /**
-     * Ciò che la parte server non dà: i campi della bozza (`per_me`, `motivo`, `app`) e quelli che del backoffice restano là
-     * (`tipo`, `soggetto`). Se arrivassero lo stesso, il pannello non li userebbe.
+     * Una notifica per ogni caso di `app`, dalla più recente. Prima i prodotti del registro: uno attivo nel workspace dei dati
+     * (`pm`), uno solo disponibile (`crm`), uno «Presto» per il registro (`reports`), uno che i dati non elencano (`content`). Poi
+     * ciò che non è un prodotto: `null`, un codice che il registro non ha, la Dashboard. `tipo`, `soggetto` e i campi della bozza
+     * (`per_me`, `motivo`) la parte server non li dà: se arrivassero lo stesso, e dicessero un altro prodotto, il pannello non li
+     * userebbe.
      */
-    const conAltriCampi = [
-        { ...notificheDelServer[0], per_me: true, motivo: 'menzione', app: 'pm', tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-1' },
-        { ...notificheDelServer[1], per_me: false, motivo: 'assegnazione', app: 'crm' },
-        notificheDelServer[2],
+    const diOgniApp = [
+        { id: 'uat-n47', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm', per_me: true, motivo: 'menzione' },
+        { id: 'uat-n46', creata_il: '2026-10-05T12:00:00Z', letta: false, app: 'crm', per_me: false, tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-1' },
+        { id: 'uat-n45', creata_il: '2026-10-01T09:00:00Z', letta: true, app: 'reports' },
+        { id: 'uat-n44', creata_il: '2026-10-01T09:00:00Z', letta: false, app: 'content' },
+        { id: 'uat-n43', creata_il: '2026-10-01T09:00:00Z', letta: true, app: null, tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-2' },
+        { id: 'uat-n42', creata_il: '2026-10-01T09:00:00Z', letta: false, app: 'uat-ignota' },
+        { id: 'uat-n41', creata_il: '2026-10-01T09:00:00Z', letta: true, app: 'home' },
     ];
 
     beforeEach(() => {
@@ -421,16 +428,16 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : letta(decodeURIComponent(indirizzo.split('/')[3]))));
 
     it.each([
-        ['it', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott']],
-        ['es', 'Nueva actividad', ['hace 5 minutos', 'ayer', '1 oct']],
-        ['en', 'New activity', ['5 minutes ago', 'yesterday', 'Oct 1']],
+        ['it', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
+        ['es', 'Nueva actividad', ['hace 5 minutos', 'ayer', '1 oct'], ['Gestión de proyectos', 'CRM', 'Informes', 'Contenidos']],
+        ['en', 'New activity', ['5 minutes ago', 'yesterday', 'Oct 1'], ['Project Management', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott']],
-    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora, senza prodotto, in «Per me» come in «Tutte» (sprint 5 · T3.1)', async (lingua, titolo, ore) => {
+        ['it_IT', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
+    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3)', async (lingua, titolo, [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 4 }} onLogout={esciSenzaEffetto} />);
         // Non con la pagina: il numero sulla campanella viene dai dati.
         expect(fetchFinto).not.toHaveBeenCalled();
 
@@ -439,21 +446,26 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif [role="status"]')).not.toBeNull();
         expect(uno('.zr-notif-list')).toBeNull();
 
-        await elenco.arriva(risposta({ data: conAltriCampi }));
+        await elenco.arriva(risposta({ data: diOgniApp }));
         expect(uno('.zr-notif [role="status"]')).toBeNull();
         // «Per me», poi «Tutte»: le stesse notifiche, anche quella che la bozza dava per altri.
         expect(tutti('.zr-notif-tabs [role="tab"]')).toHaveLength(2);
         for (const scheda of [0, 1]) {
             await clic(tutti('.zr-notif-tabs [role="tab"]')[scheda]);
             expect(tutti('.zr-notif-tabs [role="tab"]').map((voce) => voce.getAttribute('aria-selected'))).toStrictEqual(scheda === 0 ? ['true', 'false'] : ['false', 'true']);
-            expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([titolo, titolo, titolo]);
-            // Solo l'ora: nessun prodotto davanti, nemmeno per l'app o il tipo di un prodotto del registro.
-            expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(ore);
-            expect(nonLette()).toStrictEqual([true, true, false]);
-            expect(voci().map((voce) => voce.querySelectorAll('.zr-notif-dot').length)).toStrictEqual([1, 1, 0]);
-            // La campanella e il tono neutro del design system: né l'icona né il tono di un prodotto.
-            expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual([tracciatoDi('bell'), tracciatoDi('bell'), tracciatoDi('bell')]);
-            expect(voci().map(tono)).toStrictEqual(['zr-label-neutral', 'zr-label-neutral', 'zr-label-neutral']);
+            expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(diOgniApp.map(() => titolo));
+            // Il nome del prodotto nella lingua dei dati davanti all'ora, anche se è «Presto» o non è attivo nel workspace: viene
+            // da `app`, non dal `tipo`. Senza un prodotto del registro, solo l'ora: mai il codice, mai la Dashboard.
+            expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual([
+                `${pm} · ${pocoFa}`, `${crm} · ${ieri}`, `${reports} · ${giorniFa}`, `${content} · ${giorniFa}`, giorniFa, giorniFa, giorniFa,
+            ]);
+            expect(nonLette()).toStrictEqual([true, true, false, true, false, true, false]);
+            expect(voci().map((voce) => voce.querySelectorAll('.zr-notif-dot').length)).toStrictEqual([1, 1, 0, 1, 0, 1, 0]);
+            // Icona e tono del prodotto, dal registro; senza prodotto, la campanella e il tono neutro del design system.
+            expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual(
+                (['board', 'users', 'chart', 'sparkle', 'bell', 'bell', 'bell'] as const).map(tracciatoDi),
+            );
+            expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-sky', 'zr-label-citrus', 'zr-label-coral', 'zr-label-neutral', 'zr-label-neutral', 'zr-label-neutral']);
         }
         expect(fetchFinto).toHaveBeenCalledOnce();
     });

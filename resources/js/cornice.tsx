@@ -62,7 +62,7 @@ export interface CorniceProps {
 const dashboard = registro.find((voce) => voce.id === 'home')!;
 
 /** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
-function prodottoDelRegistro(codice: string | undefined) {
+function prodottoDelRegistro(codice: string | null | undefined) {
     return registro.find((voce) => voce.id === codice && voce !== dashboard);
 }
 
@@ -118,15 +118,22 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 }
 
 /**
- * Una notifica della parte server nel pannello: il titolo della lingua, uno per tutte, e l'ora nella lingua dei testi. Il
- * contratto non dice di che prodotto è una notifica, né per chi: nessun prodotto, la campanella e il tono neutro del design
- * system, e ognuna sta in «Per me» come in «Tutte».
+ * Una notifica della parte server nel pannello: il titolo della lingua, uno per tutte, e l'ora nella lingua dei testi. Di che
+ * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
+ * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
+ * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Il contratto non dice per
+ * chi è una notifica: ognuna sta in «Per me» come in «Tutte».
  */
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDellaCornice, adesso: Date): ShellNotification {
+    const delProdotto = prodottoDelRegistro(notifica.app);
+
     return {
         id: notifica.id,
         title: t.notificationTitle,
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
+        product: delProdotto && nomeDellaVoce(delProdotto, lingua),
+        icon: delProdotto?.icona,
+        tone: delProdotto?.tono,
         unread: !notifica.letta,
     };
 }

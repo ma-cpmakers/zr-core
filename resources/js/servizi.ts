@@ -2,12 +2,14 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice di che prodotto è, né per chi. */
+/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice per chi è. */
 export interface NotificaDellaCornice {
     id: string;
     /** Un istante RFC 3339, con l'ora e il fuso. */
     creata_il: string;
     letta: boolean;
+    /** Il codice dell'app da cui viene (`pm`, `crm`…), com'è nel backoffice: `null` se non è di un'app. Di che prodotto è, e come si mostra, lo dice il registro. */
+    app: string | null;
 }
 
 /** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
