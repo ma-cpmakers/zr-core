@@ -47,6 +47,10 @@ jobs:
       - name: Nessun segreto nel repo
         run: bash .github/nessun-segreto.sh
 
+      # Lo zip del tag, ciò che Composer dà a un frontend: solo ciò che serve a chi installa, né i test né la pagina di prova.
+      - name: Lo zip del pacchetto
+        run: bash .github/zip-del-pacchetto.sh
+
       # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run. Di zr-auth si installa l'ultima
       # versione della minore di questo giro: il log dice quale, e se composer ne ha scelta un'altra il giro si ferma.
       - name: Dipendenze PHP
@@ -71,13 +75,15 @@ jobs:
       - name: Analisi statica
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-      # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto.
-      - name: Dipendenze JS, tipi, test (vitest) e build dei componenti
+      # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto. Poi le pagine di
+      # prova (`npm run demo`), con Inertia vera: non entrano nel pacchetto, ma la UAT gira lì, e devono costruirsi.
+      - name: Dipendenze JS, tipi, test (vitest), build dei componenti e delle pagine di prova
         run: |
           npm ci
           npx tsc --noEmit
           npx vitest run
           npm run build
+          npm run demo
 
       - name: Test (Pest, Testbench)
         run: ./vendor/bin/pest

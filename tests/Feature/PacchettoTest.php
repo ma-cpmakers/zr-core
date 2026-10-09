@@ -193,6 +193,22 @@ function fileDelPacchettoConInertia(array $file): array
     ));
 }
 
+it('la pagina di prova del layout passa da Inertia vera, la versione dei frontend: importa createInertiaApp e router da @inertiajs/react (sprint 9 · T3.1)', function () {
+    $pagina = (string) file_get_contents(__DIR__.'/../../resources/demo/layout.tsx');
+    $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
+    $daInertia = fn (string $testo): array => nomiFraLeGraffe('/^import \{([^}]*)\} from \'@inertiajs\/react\';$/m', $testo);
+
+    // La stessa pagina con un router finto al posto di quello di Inertia.
+    $colRouterFinto = (string) preg_replace('/^import \{[^}]*\} from \'@inertiajs\/react\';$/m', 'const router = { push: () => {} };', $pagina);
+
+    expect($daInertia($pagina))->toBe(['createInertiaApp', 'router'])
+        ->and(substr_count($pagina, 'createInertiaApp({'))->toBe(1)
+        ->and(substr_count($pagina, 'router.push({'))->toBe(1)
+        ->and($colRouterFinto)->not->toBe($pagina)
+        ->and($daInertia($colRouterFinto))->toBe([])
+        ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
+});
+
 it('il pacchetto non dipende da Inertia: a chi installa chiede solo react e react-dom, e Inertia sta fra gli strumenti di questo repo (sprint 9 · T3.2)', function () {
     $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
 
@@ -252,25 +268,29 @@ function paroleCheMancanoIn(string $testo, array $parole): array
     return array_values(array_filter($parole, fn (string $parola) => ! str_contains($testo, $parola)));
 }
 
-it('il README dice come si usa il layout della cornice, una cosa per punto (sprint 9 · T3.3)', function (string $grassetto, array $parole) {
+it('il README dice come si usa il layout della cornice, una cosa per punto (sprint 9 · T3.3)', function (string $grassetto, array $parole, array $negata) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDelLayout($readme, $grassetto);
 
-    // Il README senza quel punto; poi, una alla volta, il punto senza una delle sue parole.
+    // Il README senza quel punto; poi, una alla volta, il punto senza una delle sue parole; poi il punto che dice il contrario.
     $senzaIlPunto = str_replace("- **{$grassetto}**", '- **Altro**', $readme);
+    $cheDiceIlContrario = str_replace($negata[0], $negata[1], $punto);
 
     expect(paroleCheMancanoIn($punto, $parole))->toBe([])
         ->and($senzaIlPunto)->not->toBe($readme)
-        ->and(paroleCheMancanoIn(puntoDelLayout($senzaIlPunto, $grassetto), $parole))->toBe($parole);
+        ->and(paroleCheMancanoIn(puntoDelLayout($senzaIlPunto, $grassetto), $parole))->toBe($parole)
+        ->and($cheDiceIlContrario)->not->toBe($punto)
+        ->and(paroleCheMancanoIn($cheDiceIlContrario, $parole))->toBe([$parole[0]]);
     foreach ($parole as $parola) {
         expect(paroleCheMancanoIn(str_replace($parola, '', $punto), $parole))->toBe([$parola]);
     }
 })->with([
-    '(a) LayoutDellaCornice in un componente a livello di modulo, dato a createInertiaApp' => ['Il layout', ['`LayoutDellaCornice`', 'a livello di modulo', '`createInertiaApp({ layout })`']],
-    '(b) useCornice con le sei cose che accetta' => ['La pagina', ['`useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`actions`', '`flush`']],
-    '(c) il percorso si dà dal layout' => ['Il percorso', ['`crumbs`', 'si dà dal layout']],
-    '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['fa due cornici']],
-    '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['link veri', 'ricarica la pagina']],
+    // Di ogni punto la frase intera, dal grassetto: le stesse parole con un «non» davanti non passano.
+    '(a) LayoutDellaCornice in un componente a livello di modulo, dato a createInertiaApp' => ['Il layout', ['**Il layout** del frontend rende `LayoutDellaCornice` ed è un componente a livello di modulo, dato a `createInertiaApp({ layout })`'], ['ed è un componente', 'e non è un componente']],
+    '(b) useCornice con le sei cose che accetta' => ['La pagina', ['**La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`actions`', '`flush`'], ['dà alla cornice montata', 'non dà alla cornice montata']],
+    '(c) il percorso si dà dal layout' => ['Il percorso', ['**Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`'], ['si dà dal layout', 'non si dà dal layout']],
+    '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['**Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici'], ['fa due cornici', 'non fa due cornici']],
+    '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['**Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser ricarica la pagina'], ['sono link veri', 'non sono link veri']],
 ]);
 
 it('le sei cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3)', function () {

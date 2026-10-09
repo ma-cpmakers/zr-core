@@ -141,7 +141,10 @@ cornice === null ? pagina : (
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
-  visita dopo, se il frontend tiene montata la cornice — vale il loro numero.
+  visita dopo, se il frontend tiene montata la cornice — vale il loro numero. Per la cornice i dati sono nuovi quando è
+  nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta dati uguali: allora
+  sulla campanella resta ciò che c'era (dopo «Segna tutte come lette» nessun numero, anche se nel frattempo è arrivata una
+  notifica), finché il numero del backoffice cambia, si apre la campanella o una visita porta a un altro componente.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
   lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
   non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
@@ -153,7 +156,8 @@ cornice === null ? pagina : (
   caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
   segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
-  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce, nel pannello non
+  un numero, fino alla prossima visita che porta dati nuovi (vedi «La campanella»), col numero del backoffice; se la
+  richiesta fallisce, nel pannello non
   cambia niente e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può
   durare più di 5 secondi (dichiarato da zr-backoffice, non misurato), che è quanto zr-auth aspetta ogni risposta del
   backoffice se il frontend non ha cambiato quel tempo: in quel caso la richiesta fallisce e il pannello resta com'era,
@@ -179,9 +183,9 @@ persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, li
 ### La cornice montata una volta sola
 
 Montata in ogni pagina, la `Cornice` si rifà a ogni visita di Inertia, e con lei si perdono il testo scritto nella ricerca,
-il pannello aperto e le notifiche caricate. `LayoutDellaCornice` la tiene montata mentre la pagina cambia. È un'aggiunta:
-chi monta `Cornice` in ogni pagina non deve cambiare niente. zr-core non dipende da Inertia: il layout e `useCornice` sono
-un componente e un hook di React.
+il pannello aperto e le notifiche caricate. `LayoutDellaCornice` la tiene montata mentre la pagina cambia, finché il
+workspace è lo stesso. È un'aggiunta: chi monta `Cornice` in ogni pagina non deve cambiare niente. zr-core non dipende da
+Inertia: il layout e `useCornice` sono un componente e un hook di React.
 
 ```tsx
 import { createInertiaApp } from '@inertiajs/react';
@@ -218,17 +222,31 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
   (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
   (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Le funzioni
-  possono essere nuove a ogni render. Una chiamata per pagina: con due vince l'ultima. Dove la cornice non c'è (senza
-  dati, o fuori dal layout) non fa niente.
+  possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e due:
+  due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche
+  quello dell'altra). Il tipo di ciò che accetta è `CorniceDellaPagina`. Dove la cornice non c'è (senza dati, o fuori dal
+  layout) non fa niente.
+- **Ciò che dà la pagina** arriva alla cornice subito dopo il suo montaggio, prima che il browser disegni: un effetto di
+  montaggio della pagina trova l'area ancora com'era (col margine, anche se la pagina dà `flush`), e chi la misura lo fa
+  con un `ResizeObserver`. Con l'SSR di Inertia gli effetti non girano: l'HTML del server esce senza ciò che dà
+  `useCornice`. Un elemento dato alla cornice (`actions`) si monta nella cornice, fuori dall'albero della pagina: non vede
+  i provider di contesto, gli error boundary e i `Suspense` che la pagina ha intorno. E se due pagine danno un elemento
+  dello stesso tipo, React tiene la stessa istanza col suo stato: una `key` diversa per pagina la rifà.
 - **Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`: sposta la pagina dentro un altro elemento
   della cornice, e dato dopo il montaggio la monterebbe due volte. Viene dai dati del server: la pagina lo dà con
-  `Pagina.layout = (props) => ({ crumbs: … })`, una funzione a freccia, e il layout del frontend lo passa.
+  `Pagina.layout = (props) => ({ crumbs: … })`, una funzione a freccia, e il layout del frontend lo passa. La funzione dà
+  sempre la chiave `crumbs`, anche `{ crumbs: undefined }` quando il percorso non c'è: con un oggetto vuoto (`{}`) Inertia
+  toglie il layout intero, e quella pagina resta senza cornice.
+- **Quando cambia il workspace** — una visita porta un altro slug nei dati — la cornice si rifà, e la pagina con lei: la
+  ricerca coi suoi risultati, i pannelli e le notifiche sono di un workspace, e quelli di prima non restano davanti a chi
+  è passato a un altro. Fra pagine dello stesso workspace resta montata.
 - **Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici, una dentro l'altra: chi passa al layout la
   toglie da ogni pagina che lo usa.
 - **Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser
   ricarica la pagina, e la cornice si rifà. Resta montata nelle visite di Inertia dentro il frontend.
 - **L'area della pagina** è una `scroll-region` di Inertia: a ogni visita torna in cima, con Indietro torna dov'era, e una
-  visita con `preserveScroll` la lascia dov'è.
+  visita con `preserveScroll` la lascia dov'è. Con `flush` l'area non scorre: a scorrere è un elemento della pagina, che
+  porta da sé l'attributo `scroll-region` se vuole lo stesso.
 
 ## La CSP
 

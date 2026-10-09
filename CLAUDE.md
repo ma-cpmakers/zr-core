@@ -57,8 +57,9 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 ## Stack e CI
 - PHP 8.4 (`config.platform.php` fissato), provider Laravel 13 trovato da solo
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8, vitest 5.
-- CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, sintassi PHP, Pint, PHPStan, `npm ci` +
-  `tsc --noEmit` + vitest + build, Pest. Nessun `composer.lock` nel repo (è una libreria). Rossa = non si tagga.
+- CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
+  `npm ci` + `tsc --noEmit` + vitest + build + pagine di prova, Pest. Nessun `composer.lock` nel repo (è una libreria).
+  Rossa = non si tagga.
 - `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
   verde è di tutti i giri. Una minore nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non
   scende sotto una patch che nessun giro ha provato.

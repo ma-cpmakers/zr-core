@@ -9,11 +9,12 @@ import { Zeiras } from '../js/zeiras';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
 // La pagina di prova del layout, per la UAT: `LayoutDellaCornice` sotto Inertia vera, la versione dei frontend, senza server.
-// Quattro pagine: «Lunga» (più alta della finestra: dà alla cornice le sue cose con `useCornice`), «Corta» (non lo chiama, e porta
-// altri dati: un altro workspace, 3 non lette), «Senza dati» (`cornice` `null`, e chiama `useCornice` lo stesso) e «Percorso» (dà
-// il percorso al layout con `Percorso.layout`). Da una all'altra si passa con `router.push`, una visita di Inertia senza server,
-// e con Indietro e Avanti del browser; `layout.html?pagina=corta` apre già quella. Le rotte della cornice sono finte
-// (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console. Non entra nel pacchetto.
+// Cinque pagine: «Lunga» (più alta della finestra: dà alla cornice le sue cose con `useCornice`), «Corta» (non lo chiama, e porta
+// altri dati dello stesso workspace: un altro nome, 3 non lette), «Altro workspace» (un altro slug: la cornice si rifà), «Senza
+// dati» (`cornice` `null`, e chiama `useCornice` lo stesso) e «Percorso» (dà il percorso al layout con `Percorso.layout`). Da una
+// all'altra si passa con `router.push`, una visita di Inertia senza server, e con Indietro e Avanti del browser;
+// `layout.html?pagina=corta` apre già quella. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice
+// apre si scrivono in console. Non entra nel pacchetto.
 
 const marketing: DatiDellaCornice = {
     lingua: 'it',
@@ -23,7 +24,15 @@ const marketing: DatiDellaCornice = {
     aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] }],
     non_lette: 7,
 };
-const vendite: DatiDellaCornice = { ...marketing, workspace: { nome: 'UAT Vendite', slug: 'uat-vendite' }, non_lette: 3 };
+// Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
+const marketingDopo: DatiDellaCornice = {
+    ...marketing,
+    workspace: { nome: 'UAT Marketing Europa', slug: 'uat-marketing' },
+    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing Europa', slug: 'uat-marketing' }] }],
+    non_lette: 3,
+};
+// Un altro workspace (un altro slug): la cornice si rifà.
+const vendite: DatiDellaCornice = { ...marketing, workspace: { nome: 'UAT Vendite', slug: 'uat-vendite' }, non_lette: 5 };
 
 // Le voci del prodotto: quelle del layout, e quelle che dà la «Lunga», con una in più. Senza indirizzo: il clic chiama `onNavigate`.
 const vociDelLayout: GruppoDiVoci[] = [
@@ -125,7 +134,21 @@ function Corta({ visita }: Props) {
     return (
         <>
             <h1>UAT Corta</h1>
-            <p>UAT visita {visita}. Non chiama useCornice: il «+» non c'è, la voce attiva è quella del layout («UAT Oggi»), il workspace è «UAT Vendite» con 3 non lette.</p>
+            <p>UAT visita {visita}. Non chiama useCornice: il «+» non c'è, la voce attiva è quella del layout («UAT Oggi»). Lo stesso workspace con un altro nome, «UAT Marketing Europa», e 3 non lette: la cornice resta montata.</p>
+            {contatori}
+            <Partite />
+            <Collegamenti />
+        </>
+    );
+}
+
+function AltroWorkspace({ visita }: Props) {
+    const contatori = useContatori();
+
+    return (
+        <>
+            <h1>UAT Altro workspace</h1>
+            <p>UAT visita {visita}. Un altro workspace, «UAT Vendite», con 5 non lette: la cornice si rifà, con la ricerca vuota e i pannelli chiusi. Non chiama useCornice.</p>
             {contatori}
             <Partite />
             <Collegamenti />
@@ -165,12 +188,13 @@ function Percorso({ visita }: Props) {
 // Il percorso viene dai dati del «server»: Inertia lo dà al layout mentre lo rende, prima che la pagina si monti.
 Percorso.layout = (props: Props) => ({ crumbs: [{ label: props.cornice?.workspace.nome ?? '' }, { label: props.cartella ?? '' }] });
 
-const pagine = { lunga: Lunga, corta: Corta, 'senza-dati': SenzaDati, percorso: Percorso };
+const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso };
 type Nome = keyof typeof pagine;
 
 const propsDi: Record<Nome, Props> = {
     lunga: { cornice: marketing },
-    corta: { cornice: vendite },
+    corta: { cornice: marketingDopo },
+    'altro-workspace': { cornice: vendite },
     'senza-dati': { cornice: null },
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
 };
@@ -184,11 +208,14 @@ function paginaDellIndirizzo(): Nome {
     return nome !== null && Object.hasOwn(pagine, nome) ? (nome as Nome) : 'lunga';
 }
 
+/** Ciò che il «server» dà a una visita: una copia nuova ogni volta, come una risposta. Per la cornice i dati sono nuovi quando è nuovo l'oggetto. */
+const rispostaDi = (nome: Nome): Props => ({ ...structuredClone(propsDi[nome]), visita: visite });
+
 /** Una visita di Inertia senza server. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della cronologia. */
 function vai(nome: Nome, preserveScroll = false) {
     montaggi = 0;
     visite += 1;
-    router.push({ component: nome, url: indirizzoDi(nome), props: { ...propsDi[nome], visita: visite }, preserveScroll });
+    router.push({ component: nome, url: indirizzoDi(nome), props: { ...rispostaDi(nome) }, preserveScroll });
 }
 
 function Collegamenti() {
@@ -201,6 +228,7 @@ function Collegamenti() {
         <p>
             <a href={indirizzoDi('lunga')} data-uat="vai-lunga" onClick={apri('lunga')}>UAT alla Lunga</a>{' · '}
             <a href={indirizzoDi('corta')} data-uat="vai-corta" onClick={apri('corta')}>UAT alla Corta</a>{' · '}
+            <a href={indirizzoDi('altro-workspace')} data-uat="vai-altro-workspace" onClick={apri('altro-workspace')}>UAT alla Altro workspace</a>{' · '}
             <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
             <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
             <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
@@ -239,7 +267,7 @@ void createInertiaApp({
     page: {
         component: iniziale,
         url: window.location.pathname + window.location.search,
-        props: { errors: {}, ...propsDi[iniziale], visita: visite },
+        props: { errors: {}, ...rispostaDi(iniziale) },
         version: null,
         flash: {},
         rescuedProps: [],

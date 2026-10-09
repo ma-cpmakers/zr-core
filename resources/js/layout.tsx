@@ -3,7 +3,7 @@ import { Cornice, type CorniceProps, type DatiDellaCornice } from './cornice';
 
 // Il layout della cornice per i frontend con Inertia. Il modulo lo rende dal suo layout (un componente a livello di modulo,
 // dato a `createInertiaApp({ layout })`) e la cornice resta montata mentre la pagina cambia: il testo scritto nella ricerca, il
-// pannello aperto e le notifiche caricate restano. Ciò che sa solo la pagina (le voci del «+» con le loro funzioni, la voce
+// pannello aperto e le notifiche caricate restano, finché il workspace è lo stesso. Ciò che sa solo la pagina (le voci del «+» con le loro funzioni, la voce
 // attiva…) lo dà lei alla cornice montata, con `useCornice`. zr-core non dipende da Inertia: questi sono un componente e un
 // hook di React, e di Inertia sanno solo che a ogni visita riporta in cima gli elementi con l'attributo `scroll-region`.
 
@@ -13,28 +13,29 @@ export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     cornice?: DatiDellaCornice | null;
 }
 
+const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'actions', 'flush'] as const;
+
 /**
  * Ciò che una pagina dà alla cornice con `useCornice`. Il percorso no: sposta la pagina dentro un altro elemento dell'`AppShell`,
  * e dato dopo il montaggio la pagina si monterebbe due volte. Si dà al layout, come il prodotto aperto, «Esci» e `naviga`, che
  * sono del modulo.
  */
-const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'actions', 'flush'] as const;
-type DellaPagina = Partial<Pick<CorniceProps, (typeof nomiDellaPagina)[number]>>;
+export type CorniceDellaPagina = Partial<Pick<CorniceProps, (typeof nomiDellaPagina)[number]>>;
 
-const niente: DellaPagina = {};
+const niente: CorniceDellaPagina = {};
 
 /**
  * Ciò che la pagina ha dato, dopo che lo ha dato di nuovo: solo i suoi sei nomi, e senza quelli che non dà (anche scritti
  * `undefined`), che restano del layout. Se nessun valore è cambiato resta l'oggetto di prima, e il layout non si rende di nuovo.
  */
-function datoDallaPagina(prima: DellaPagina, adesso: DellaPagina): DellaPagina {
-    const dopo: DellaPagina = Object.fromEntries(nomiDellaPagina.flatMap((nome) => (adesso[nome] === undefined ? [] : [[nome, adesso[nome]]])));
+function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina): CorniceDellaPagina {
+    const dopo: CorniceDellaPagina = Object.fromEntries(nomiDellaPagina.flatMap((nome) => (adesso[nome] === undefined ? [] : [[nome, adesso[nome]]])));
 
     return nomiDellaPagina.every((nome) => Object.is(prima[nome], dopo[nome])) ? prima : dopo;
 }
 
 /** Come la pagina scrive nel layout ciò che dà alla cornice. Solo la funzione, che è sempre la stessa: mai lo stato, o la pagina si renderebbe a ogni cambio della cornice. */
-const ContestoDellaCornice = createContext<((dellaPagina: DellaPagina) => void) | null>(null);
+const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) => void) | null>(null);
 
 export function LayoutDellaCornice({ cornice, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga }: LayoutDellaCorniceProps) {
     const [dellaPagina, daLaPagina] = useReducer(datoDallaPagina, niente);
@@ -56,10 +57,13 @@ export function LayoutDellaCornice({ cornice, children, product, nav, active, on
     const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
 
     // Nessun elemento intorno: `.zr-shell` è una griglia alta quanto la finestra, e la pagina resta figlia di `main.zr-main`.
-    // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei.
+    // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei. La `key` è lo slug del workspace:
+    // ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i pannelli, le notifiche) è di quel
+    // workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con lei: niente del workspace di prima
+    // resta davanti a chi è passato a un altro.
     return (
         <ContestoDellaCornice value={daLaPagina}>
-            <Cornice dati={cornice} {...dellaCornice} {...dellaPagina}>
+            <Cornice key={cornice.workspace.slug} dati={cornice} {...dellaCornice} {...dellaPagina}>
                 {children}
             </Cornice>
         </ContestoDellaCornice>
@@ -67,16 +71,18 @@ export function LayoutDellaCornice({ cornice, children, product, nav, active, on
 }
 
 /**
- * Dalla pagina (o dal suo involucro), mentre è montata sotto `LayoutDellaCornice`: dà alla cornice le voci del prodotto (`nav`),
+ * Dalla pagina, o dal suo involucro, mentre è montata sotto `LayoutDellaCornice`: dà alla cornice le voci del prodotto (`nav`),
  * la voce attiva (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza
  * margine (`flush`). Vince sulle props del layout, e quando la pagina se ne va ciò che aveva dato sparisce. Le funzioni possono
- * essere nuove a ogni render. Una chiamata per pagina: con due vince l'ultima. Dove la cornice non c'è (fuori dal layout, o
- * senza dati) non fa niente.
+ * essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e due: due chiamate
+ * non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche quello dell'altra).
+ * Dove la cornice non c'è (fuori dal layout, o senza dati) non fa niente.
  */
-export function useCornice(dellaPagina: DellaPagina): void {
+export function useCornice(dellaPagina: CorniceDellaPagina): void {
     const daAllaCornice = useContext(ContestoDellaCornice);
 
-    // Dopo ogni render, e prima che il browser disegni: al primo caricamento la cornice non si vede mai senza il «+».
+    // Dopo ogni render, e prima che il browser disegni: nel browser la cornice non si vede mai senza il «+». Arriva comunque un
+    // commit dopo il montaggio della pagina, e sul server (SSR) gli effetti non girano: lì l'HTML esce senza ciò che dà la pagina.
     useLayoutEffect(() => {
         daAllaCornice?.(dellaPagina);
     });

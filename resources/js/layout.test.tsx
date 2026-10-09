@@ -1,13 +1,13 @@
 import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LayoutDellaCornice, useCornice, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
+import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
 // layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
-// mentre la pagina cambia, e la pagina le dà ciò che sa solo lei con `useCornice`. Con Inertia vera, nel browser, lo prova la
-// pagina di prova del layout.
+// mentre la pagina cambia, finché il workspace è lo stesso, e la pagina le dà ciò che sa solo lei con `useCornice`. Con Inertia
+// vera, nel browser, lo prova la pagina di prova del layout.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -18,8 +18,10 @@ const dati: DatiDellaCornice = {
     prodotti: { pm: 'attivo', crm: 'disponibile' },
     non_lette: 7,
 };
-/** I dati della pagina dopo: un altro oggetto, un altro workspace, un altro numero di non lette. */
-const datiDopo: DatiDellaCornice = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 3 };
+/** I dati della pagina dopo, nello stesso workspace: un altro oggetto, il workspace con un altro nome, un altro numero di non lette. */
+const datiDopo: DatiDellaCornice = { ...dati, workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' }, non_lette: 3 };
+/** I dati di una visita che porta un altro workspace: un altro slug. */
+const datiAltroWorkspace: DatiDellaCornice = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 };
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente. */
@@ -27,6 +29,8 @@ const notificheDelServer = [
     { id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' },
     { id: 'uat-n40', creata_il: '2026-10-05T12:00:00Z', letta: true, app: null },
 ];
+/** Un risultato come lo dà GET /cornice/ricerca. */
+const risultatiDelServer = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' }];
 
 function PaginaA() {
     return <p id="uat-pagina-a">UAT pagina A</p>;
@@ -40,10 +44,19 @@ function PaginaB() {
 const voci: GruppoDiVoci[] = [{ group: 'UAT gruppo', items: [{ id: 'uat-a', label: 'UAT A', icon: 'board' }, { id: 'uat-b', label: 'UAT B', icon: 'list' }] }];
 
 /** Una pagina che dà alla cornice ciò che riceve. */
-function PaginaCheDa({ cose }: { cose: Parameters<typeof useCornice>[0] }) {
+function PaginaCheDa({ cose }: { cose: CorniceDellaPagina }) {
     useCornice(cose);
 
     return <p id="uat-pagina-che-da">UAT pagina che dà</p>;
+}
+
+/** Una pagina che conta i suoi montaggi. */
+function PaginaCheSiConta({ conta }: { conta: { montaggi: number } }) {
+    useEffect(() => {
+        conta.montaggi += 1;
+    }, [conta]);
+
+    return <p id="uat-pagina-che-si-conta">UAT pagina che si conta</p>;
 }
 
 /** Una pagina con uno stato suo: a ogni render dà alla cornice una funzione nuova, che porta il conteggio di quel render. */
@@ -87,11 +100,13 @@ beforeEach(() => {
 afterEach(async () => {
     await act(async () => radice.unmount());
     contenitore.remove();
-    // Nessun errore in console, nemmeno un avviso di React (T1.3).
-    expect(console.error).not.toHaveBeenCalled();
+    // Prima la pulizia, poi il controllo: un test che scrive in console non lascia i suoi finti a quelli dopo.
+    const errori = [...vi.mocked(console.error).mock.calls];
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    // Nessun errore in console, nemmeno un avviso di React (T1.3).
+    expect(errori).toStrictEqual([]);
 });
 
 async function mostra(elemento: ReactElement): Promise<void> {
@@ -146,6 +161,9 @@ function tutti(selettore: string): HTMLElement[] {
 /** Gli indirizzi delle richieste partite, nell'ordine. */
 const richieste = () => vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(indirizzo));
 
+/** I titoli dei risultati nel pannello della ricerca. */
+const titoliDellaRicerca = () => tutti('.zr-search-panel [role="option"] .zr-search-title').map((titolo) => titolo.textContent);
+
 /** Gli elementi che Inertia tratta da scroll-region: li cerca così, in tutto il documento. */
 const regioni = () => [...document.querySelectorAll('[scroll-region]')];
 
@@ -168,7 +186,7 @@ describe('LayoutDellaCornice', () => {
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
         expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche']);
 
-        // Un'altra pagina, coi dati della sua visita: un altro componente e un altro oggetto `cornice`.
+        // Un'altra pagina dello stesso workspace, coi dati della sua visita: un altro componente e un altro oggetto `cornice`.
         await visita(datiDopo, <PaginaB key="2" />);
         expect(uno('#uat-pagina-a')).toBeNull();
         expect(uno('#uat-pagina-b')?.textContent).toBe('UAT pagina B');
@@ -187,9 +205,39 @@ describe('LayoutDellaCornice', () => {
 
         await visita(datiDopo, <PaginaB key="2" />);
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
-        expect(uno('aside.zr-side .zr-workspace')?.textContent).toBe('Vendite');
+        expect(uno('aside.zr-side .zr-workspace')?.textContent).toBe('Marketing Europa');
         // È la cornice di prima coi dati nuovi, non una rifatta.
         expect(uno('aside.zr-side')).toBe(barra);
+    });
+
+    it('quando una visita porta un altro workspace la cornice si rifà: il campo della ricerca è vuoto e senza i risultati di prima, il pannello delle notifiche è chiuso, e riaprire la campanella fa partire un\'altra GET /cornice/notifiche; la pagina nuova si monta una volta sola (sprint 9 · T1.6)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : risultatiDelServer })));
+        await visita(dati, <PaginaA key="1" />);
+        await scrivi('uat');
+        expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
+        await clic(uno('.zr-bell'));
+        expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
+        const barra = uno('aside.zr-side');
+
+        // Un altro slug: ricerca, pannelli e notifiche erano del workspace di prima, e non restano.
+        const conta = { montaggi: 0 };
+        await visita(datiAltroWorkspace, <PaginaCheSiConta key="2" conta={conta} />);
+        expect(uno('aside.zr-side .zr-workspace')?.textContent).toBe('Vendite');
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+        expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(uno('.zr-notif')).toBeNull();
+        // È una cornice nuova, non quella di prima coi dati nuovi; e la pagina si monta una volta.
+        expect(uno('aside.zr-side')).not.toBeNull();
+        expect(uno('aside.zr-side')).not.toBe(barra);
+        expect(uno('#uat-pagina-che-si-conta')?.textContent).toBe('UAT pagina che si conta');
+        expect(conta.montaggi).toBe(1);
+        expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche']);
+
+        // Le notifiche sono del workspace nuovo: la campanella le chiede di nuovo.
+        await clic(uno('.zr-bell'));
+        expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
+        expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche', '/cornice/notifiche']);
     });
 
     it.each<[null | undefined]>([[null], [undefined]])('senza dati (cornice %s) la pagina si vede da sola, senza barra né topbar; quando la pagina dopo porta i dati la cornice compare, e senza dati se ne va (sprint 9 · T1.3)', async (senzaDati) => {

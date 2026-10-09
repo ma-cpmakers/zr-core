@@ -5,4 +5,4 @@ export { Zeiras } from './zeiras';
 export { nomeDellaVoce } from './lingue';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { Cornice, type CorniceProps, type DatiDellaCornice, type GruppoDiVoci } from './cornice';
-export { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from './layout';
+export { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type LayoutDellaCorniceProps } from './layout';
