@@ -137,18 +137,21 @@ cornice === null ? pagina : (
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
-- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99.
+- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette caricate nel
+  pannello.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
   lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
   non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
-  «Segna tutte come lette» segna le non lette caricate, una alla volta dalla più recente: per ognuna una
-  `PATCH /cornice/notifiche/{id}/lettura` con `{letta: true}` e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel
-  nel gruppo `web`) nell'header `X-XSRF-TOKEN`. A ogni risposta quella notifica è letta e la campanella scende di uno, fino
-  alla prossima visita, che porta il numero del backoffice; se una lettura fallisce si ferma lì, e le altre restano da
-  leggere. Senza non lette caricate il pulsante non c'è. Una notifica e «Vedi tutte» aprono
+  «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a}` — la `creata_il` più
+  recente fra le notifiche caricate, così com'è — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo
+  `web`) nell'header `X-XSRF-TOKEN`: segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
+  pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
+  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce non cambia niente, e
+  il pulsante resta per riprovare. Il pulsante c'è quando la campanella ha un numero e il pannello ha caricato almeno una
+  notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un

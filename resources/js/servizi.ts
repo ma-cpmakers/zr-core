@@ -40,18 +40,19 @@ export async function caricaNotifiche(): Promise<NotificaDellaCornice[]> {
 }
 
 /**
- * Segna letta una notifica: PATCH /cornice/notifiche/<id>/lettura. L'id entra nell'indirizzo codificato, e una risposta che non
- * la dà per letta è un errore come le altre.
+ * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
+ * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica. Una
+ * risposta senza l'istante è un errore come le altre.
  */
-export async function segnaLetta(id: string): Promise<void> {
-    const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
+export async function segnaLetteFinoA(finoA: string): Promise<void> {
+    const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ letta: true }),
-    })) as { data?: { letta?: unknown } | null } | null;
-    if (corpo?.data?.letta !== true) {
-        throw new Error(`PATCH ${indirizzo}: letta`);
+        body: JSON.stringify({ fino_a: finoA }),
+    })) as { data?: { fino_a?: unknown } | null } | null;
+    if (typeof corpo?.data?.fino_a !== 'string') {
+        throw new Error(`POST ${indirizzo}: fino_a`);
     }
 }
 

@@ -369,9 +369,10 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
 });
 
 // Sprint 3 · T4 (voce #1277), riscritto nello sprint 5 · T3 (voce #1257). Il pannello delle notifiche coi dati di
-// GET /cornice/notifiche (`{id, creata_il, letta}`: il contratto non dice di che prodotto è una notifica, né per chi), «Segna
-// tutte come lette» con una PATCH /cornice/notifiche/<id>/lettura per ogni non letta caricata, e dove portano una notifica e
-// «Vedi tutte» (linea guida 15, passo 10).
+// GET /cornice/notifiche, e dove portano una notifica e «Vedi tutte» (linea guida 15, passo 10). Sprint 6 · T3 e T4 (voce
+// #1318): una notifica è `{id, creata_il, letta, app}`, e di che prodotto è lo dice il registro, da `app` (per chi è, il
+// contratto non lo dice); «Segna tutte come lette» è una POST /cornice/notifiche/letture sola, fino alla `creata_il` più recente
+// fra le caricate.
 describe('il pannello delle notifiche', () => {
     /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
     const adesso = new Date('2026-10-06T12:00:00Z');
@@ -380,8 +381,10 @@ describe('il pannello delle notifiche', () => {
         { id: 'uat-n40', creata_il: '2026-10-05T12:00:00Z', letta: false, app: 'crm' },
         { id: 'uat-n39', creata_il: '2026-10-01T09:00:00Z', letta: true, app: null },
     ];
-    /** Una terza non letta, la più recente: per vedere dove si ferma una lettura che fallisce. */
-    const conUnaInPiu = [{ id: 'uat-n42', creata_il: '2026-10-06T11:58:00Z', letta: false, app: 'pm' }, ...notificheDelServer];
+    /** Le stesse, già lette: le non lette dei dati stanno oltre la prima pagina. */
+    const tutteLette = notificheDelServer.map((notifica) => ({ ...notifica, letta: true }));
+    /** Una notifica nata in quell'istante. */
+    const nata = (id: string, creataIl: string, letta = false) => ({ id, creata_il: creataIl, letta, app: null });
     /**
      * Una notifica per ogni caso di `app`, dalla più recente. Prima i prodotti del registro: uno attivo nel workspace dei dati
      * (`pm`), uno solo disponibile (`crm`), uno «Presto» per il registro (`reports`), uno che i dati non elencano (`content`). Poi
@@ -422,10 +425,12 @@ describe('il pannello delle notifiche', () => {
     const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
     /** Le richieste partite, nell'ordine: il metodo e l'indirizzo. */
     const richieste = (fetchFinto: { mock: { calls: [indirizzo: string, opzioni?: RequestInit][] } }) => fetchFinto.mock.calls.map(([indirizzo, opzioni]) => `${opzioni?.method ?? 'GET'} ${indirizzo}`);
-    /** La risposta della parte server a una lettura riuscita. */
-    const letta = (id: string) => risposta({ data: { id, letta: true } });
-    /** Le due rotte che rispondono subito: l'elenco dato, e ogni lettura riuscita. */
-    const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : letta(decodeURIComponent(indirizzo.split('/')[3]))));
+    /** Il corpo JSON di una richiesta partita. */
+    const corpoDi = (opzioni?: RequestInit) => JSON.parse(String(opzioni?.body)) as { fino_a?: unknown };
+    /** La risposta della parte server a «Segna tutte come lette»: l'istante chiesto, come lo dà il backoffice (in UTC). */
+    const segnateFinoA = (opzioni?: RequestInit) => risposta({ data: { fino_a: new Date(String(corpoDi(opzioni).fino_a)).toISOString() } });
+    /** Le due rotte che rispondono subito: l'elenco dato, e ogni «Segna tutte come lette» riuscita. */
+    const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
         ['it', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
@@ -491,148 +496,228 @@ describe('il pannello delle notifiche', () => {
         expect(voci()).toHaveLength(3);
     });
 
-    it('«Segna tutte come lette» manda una PATCH col gettone CSRF per ogni non letta caricata, una dopo l\'altra nell\'ordine dell\'elenco; a ogni risposta quella notifica è letta e la campanella scende di uno, da 12 a 10 (sprint 5 · T3.2)', async () => {
+    it('«Segna tutte come lette» manda una sola POST /cornice/notifiche/letture, col gettone CSRF e la creata_il più recente fra le caricate così com\'è, e nessuna PATCH; alla risposta le caricate sono tutte lette e la campanella non ha più un numero, anche con 60 nei dati e 2 caricate (sprint 6 · T4.1)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
-        const letture = [inAttesa(), inAttesa()];
-        let partite = 0;
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : letture[partite++].promessa));
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : lettura.promessa));
         vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
-        expect(campanella()).toBe('12');
+        expect(campanella()).toBe('60');
 
         await clic(segnaTutte());
-        // Parte solo la prima dell'elenco: la seconda aspetta la sua risposta.
-        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/uat-n41/lettura']);
-        for (const [, opzioni] of fetchFinto.mock.calls.slice(1)) {
-            expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
-            expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
-            expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ letta: true });
-        }
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        const [, opzioni] = fetchFinto.mock.calls[1];
+        expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
+        expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
+        // Com'è nell'elenco, col suo fuso: né l'ora del browser («adesso» sono le 12:00) né l'istante riscritto.
+        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
         // Prima della risposta non cambia niente, e un altro clic non manda una seconda richiesta.
-        expect(campanella()).toBe('12');
+        expect(campanella()).toBe('60');
         expect(nonLette()).toStrictEqual([true, true, false]);
         await clic(segnaTutte());
         expect(fetchFinto).toHaveBeenCalledTimes(2);
 
-        await letture[0].arriva(letta('uat-n41'));
-        expect(campanella()).toBe('11');
-        expect(nonLette()).toStrictEqual([false, true, false]);
-        expect(richieste(fetchFinto).slice(2)).toStrictEqual(['PATCH /cornice/notifiche/uat-n40/lettura']);
-        for (const [, opzioni] of fetchFinto.mock.calls.slice(2)) {
-            expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
-            expect(JSON.parse(String(opzioni?.body))).toStrictEqual({ letta: true });
-        }
-        await clic(segnaTutte());
-        expect(fetchFinto).toHaveBeenCalledTimes(3);
-
-        await letture[1].arriva(letta('uat-n40'));
-        // 12 nei dati e 2 non lette caricate: 10, non zero.
-        expect(campanella()).toBe('10');
+        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        // 60 nei dati e 2 non lette caricate: nessun numero, non 58.
+        expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
-        // Per quella già letta non parte niente; senza non lette caricate il pulsante non c'è più.
-        expect(fetchFinto).toHaveBeenCalledTimes(3);
+        expect(segnaTutte()).toBeNull();
+        // Nessuna PATCH, e l'elenco non si ricarica: nel frattempo nessuno l'ha ricaricato.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+    });
+
+    it.each<[string, ReturnType<typeof nata>[], string]>([
+        ['non è la prima dell\'elenco', [nata('uat-a', '2026-10-06T09:00:00Z'), nata('uat-b', '2026-10-06T11:00:00Z'), nata('uat-c', '2026-10-06T10:00:00Z')], '2026-10-06T11:00:00Z'],
+        // Le 12:30 a +02:00 sono le 10:30 UTC: come stringa quella notifica verrebbe dopo le 11:00 UTC, come istante viene prima.
+        ['viene dopo, come stringa, di un\'altra con un altro fuso', [nata('uat-a', '2026-10-06T12:30:00+02:00'), nata('uat-b', '2026-10-06T11:00:00Z')], '2026-10-06T11:00:00Z'],
+        // Le 06:30 a -05:00 sono le 11:30 UTC: come stringa verrebbe prima delle 11:00 UTC, come istante viene dopo.
+        ['ha un fuso che, come stringa, la mette prima', [nata('uat-a', '2026-10-06T11:00:00Z'), nata('uat-b', '2026-10-06T06:30:00-05:00')], '2026-10-06T06:30:00-05:00'],
+        ['è già letta', [nata('uat-a', '2026-10-06T11:00:00Z', true), nata('uat-b', '2026-10-06T10:00:00Z')], '2026-10-06T11:00:00Z'],
+    ])('«Segna tutte come lette» manda l\'istante più avanti fra le notifiche caricate, com\'è, anche se la più recente %s (sprint 6 · T4.1)', async (_caso, elenco, attesa) => {
+        const fetchFinto = rotte(elenco);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa });
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual(elenco.map(() => false));
+    });
+
+    it('con 12 non lette nei dati e le notifiche caricate tutte lette il pulsante c\'è: le non lette stanno oltre la prima pagina, e il clic le segna con la stessa richiesta (sprint 6 · T4.2)', async () => {
+        const fetchFinto = rotte(tutteLette);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('12');
+        expect(nonLette()).toStrictEqual([false, false, false]);
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        expect(campanella()).toBeNull();
         expect(segnaTutte()).toBeNull();
     });
 
-    it('l\'id di una notifica entra codificato nell\'indirizzo della sua lettura (sprint 5 · T3.2)', async () => {
-        const fetchFinto = rotte([{ id: 'a/b?c#d e', creata_il: '2026-10-06T11:55:00Z', letta: false }]);
-        vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
-        await clic(uno('.zr-bell'));
-
-        await clic(segnaTutte());
-        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/a%2Fb%3Fc%23d%20e/lettura']);
-        expect(nonLette()).toStrictEqual([false]);
-    });
-
-    it.each<[number | undefined, string | null]>([
-        // Meno non lette nei dati di quelle caricate (una è arrivata dopo): il numero si ferma a zero.
-        [1, '1'],
-        // Senza il numero nei dati il design system conta le non lette caricate.
-        [undefined, '2'],
-    ])('con %s non lette nei dati e due caricate, segnate tutte e due la campanella non ha più un numero (sprint 5 · T3.2)', async (nonLetteNeiDati, prima) => {
+    it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5; sprint 6 · T4.2)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
         const fetchFinto = rotte(notificheDelServer);
         vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
-        await clic(uno('.zr-bell'));
-        expect(campanella()).toBe(prima);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
 
-        await clic(segnaTutte());
-        expect(richieste(fetchFinto).slice(1)).toStrictEqual(['PATCH /cornice/notifiche/uat-n41/lettura', 'PATCH /cornice/notifiche/uat-n40/lettura']);
-        expect(campanella()).toBeNull();
-        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(campanella()).toBe('12');
+        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
+        // Il numero viene dai dati: l'elenco non si carica con la pagina.
+        expect(fetchFinto).not.toHaveBeenCalled();
+    });
+
+    it.each<[string, number | undefined, () => Promise<Response>]>([
+        ['in caricamento', 12, () => new Promise<Response>(() => {})],
+        ['in errore', 12, async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
+        ['senza notifiche', 12, async () => risposta({ data: [] })],
+        // La campanella senza numero: nei dati zero, o nessun numero, e le notifiche caricate tutte lette.
+        ['con le notifiche tutte lette e zero non lette nei dati', 0, async () => risposta({ data: tutteLette })],
+        ['con le notifiche tutte lette e nessun numero nei dati', undefined, async () => risposta({ data: tutteLette })],
+    ])('col pannello %s «Segna tutte come lette» non c\'è (sprint 5 · T3.5; sprint 6 · T4.2)', async (_caso, nonLetteNeiDati, elenco) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        vi.stubGlobal('fetch', vi.fn(elenco));
+        await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif .zr-pop-head')).not.toBeNull();
+        expect(segnaTutte()).toBeNull();
+        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
+        expect(campanella()).toBe(nonLetteNeiDati ? String(nonLetteNeiDati) : null);
     });
 
     it.each<[string, () => Promise<Response>]>([
         ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
-        ['un 404', async () => risposta({ errore: 'non_trovato' }, 404)],
+        ['un 422', async () => risposta({ errore: 'dati_non_validi' }, 422)],
         ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
-        ['un 200 che la dà non letta', async () => risposta({ data: { id: 'uat-n41', letta: false } })],
+        ['un 200 senza l\'istante', async () => risposta({ data: {} })],
+        ['un 200 con un istante che non è una stringa', async () => risposta({ data: { fino_a: 1 } })],
         ['un 200 senza dati', async () => risposta({})],
-    ])('se una lettura fallisce con %s si ferma lì: le segnate restano lette, le altre no, e il numero conta solo le segnate; un altro clic riprende da quella (sprint 5 · T3.3)', async (_caso, fallisce) => {
-        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
+    ])('se la richiesta fallisce con %s non cambia niente: le notifiche restano non lette, il numero e il pulsante restano, e un altro clic riprova con una richiesta nuova (sprint 6 · T4.3)', async (_caso, fallisce) => {
         const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
-            .mockImplementationOnce(async () => risposta({ data: conUnaInPiu }))
-            .mockImplementationOnce(async () => letta('uat-n42'))
+            .mockImplementationOnce(async () => risposta({ data: notificheDelServer }))
             .mockImplementationOnce(fallisce)
-            .mockImplementation(async (indirizzo) => letta(indirizzo.split('/')[3]));
+            .mockImplementation(async (_indirizzo, opzioni) => segnateFinoA(opzioni));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         await clic(segnaTutte());
-        // La terza non parte: dopo l'errore non si va avanti.
-        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'PATCH /cornice/notifiche/uat-n42/lettura', 'PATCH /cornice/notifiche/uat-n41/lettura']);
-        expect(campanella()).toBe('11');
-        expect(nonLette()).toStrictEqual([false, true, true, false]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(campanella()).toBe('12');
+        expect(nonLette()).toStrictEqual([true, true, false]);
+        expect(segnaTutte()).not.toBeNull();
 
         await clic(segnaTutte());
-        expect(richieste(fetchFinto).slice(3)).toStrictEqual(['PATCH /cornice/notifiche/uat-n41/lettura', 'PATCH /cornice/notifiche/uat-n40/lettura']);
-        expect(campanella()).toBe('9');
-        expect(nonLette()).toStrictEqual([false, false, false, false]);
+        expect(richieste(fetchFinto).slice(2)).toStrictEqual(['POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
     });
 
-    it('il numero sceso vale coi dati di prima; coi dati nuovi della parte server la campanella mostra il loro numero, anche se è lo stesso (sprint 5 · T3.4)', async () => {
+    it('dopo «Segna tutte come lette» la campanella resta senza numero finché la pagina ha gli stessi dati; coi dati nuovi della parte server mostra il loro numero, anche se è lo stesso (sprint 5 · T3.4; sprint 6 · T4.4)', async () => {
         vi.stubGlobal('fetch', rotte(notificheDelServer));
         const primi = { ...dati, non_lette: 12 };
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
         await clic(segnaTutte());
-        expect(campanella()).toBe('10');
+        expect(campanella()).toBeNull();
 
-        // La stessa pagina ridisegnata con gli stessi dati: il numero resta sceso.
+        // La stessa pagina ridisegnata con gli stessi dati: la campanella resta senza numero.
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
-        expect(campanella()).toBe('10');
+        expect(campanella()).toBeNull();
 
         // Una visita dopo (Inertia tiene montata la cornice): i dati nuovi contano già le lette, anche se il numero è lo stesso.
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
         expect(campanella()).toBe('12');
     });
 
-    it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+    it('se i dati nuovi arrivano fra il clic e la risposta, alla risposta la campanella mostra il loro numero: l\'azzeramento vale per i dati del clic, non per il numero (sprint 6 · T4.4)', async () => {
+        const lettura = inAttesa();
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : lettura.promessa)));
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
 
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        expect(nonLette()).toStrictEqual([false, false, false]);
         expect(campanella()).toBe('12');
-        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
     });
 
-    it.each<[string, () => Promise<Response>]>([
-        ['in caricamento', () => new Promise<Response>(() => {})],
-        ['in errore', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
-        ['con le notifiche tutte lette', async () => risposta({ data: notificheDelServer.map((notifica) => ({ ...notifica, letta: true })) })],
-        ['senza notifiche', async () => risposta({ data: [] })],
-    ])('col pannello %s «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5)', async (_caso, elenco) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
-        vi.stubGlobal('fetch', vi.fn(elenco));
+    it.each<[number | undefined]>([
+        // Meno non lette nei dati di quelle caricate: una è arrivata dopo che la parte server ha contato.
+        [1],
+        [0],
+        // Senza il numero nei dati il design system conta le non lette caricate.
+        [undefined],
+    ])('con %s non lette nei dati e due caricate la campanella mostra 2, mai meno delle caricate; segnate, non ha più un numero (sprint 6 · T4.5)', async (nonLetteNeiDati) => {
+        const fetchFinto = rotte(notificheDelServer);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto).slice(1)).toStrictEqual(['POST /cornice/notifiche/letture']);
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
+    });
+
+    it('dopo «Segna tutte come lette», riaprendo il pannello con una notifica nuova non letta la campanella mostra 1, la notifica è non letta, il pulsante c\'è e il clic manda la sua creata_il (sprint 6 · T4.5)', async () => {
+        const nuova = nata('uat-n42', '2026-10-06T11:59:30.250Z');
+        const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
+            .mockImplementationOnce(async () => risposta({ data: notificheDelServer }))
+            .mockImplementationOnce(async (_indirizzo, opzioni) => segnateFinoA(opzioni))
+            .mockImplementationOnce(async () => risposta({ data: [nuova, ...tutteLette] }))
+            .mockImplementation(async (_indirizzo, opzioni) => segnateFinoA(opzioni));
+        vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+
+        // Chiuso e riaperto: l'elenco si ricarica, e c'è una notifica arrivata dopo, più recente del `fino_a` mandato.
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('1');
+        expect(nonLette()).toStrictEqual([true, false, false, false]);
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z' });
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false, false]);
+    });
+
+    it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
+        const lettura = inAttesa();
+        // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.
+        const elenchi = [notificheDelServer, notificheDelServer, tutteLette];
+        let chiesti = 0;
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenchi[chiesti++] }) : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
 
         await clic(uno('.zr-bell'));
-        expect(uno('.zr-notif .zr-pop-head')).not.toBeNull();
-        expect(segnaTutte()).toBeNull();
-        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
-        expect(campanella()).toBe('12');
+        await clic(uno('.zr-bell'));
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(nonLette()).toStrictEqual([true, true, false]);
+
+        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        expect(richieste(fetchFinto).slice(3)).toStrictEqual(['GET /cornice/notifiche']);
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(campanella()).toBeNull();
     });
 
     it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6)', async () => {
