@@ -2,12 +2,14 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice di che prodotto è, né per chi. */
+/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice per chi è. */
 export interface NotificaDellaCornice {
     id: string;
     /** Un istante RFC 3339, con l'ora e il fuso. */
     creata_il: string;
     letta: boolean;
+    /** Il codice dell'app da cui viene (`pm`, `crm`…), com'è nel backoffice: `null` se non è di un'app. Di che prodotto è, e come si mostra, lo dice il registro. */
+    app: string | null;
 }
 
 /** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
@@ -38,18 +40,20 @@ export async function caricaNotifiche(): Promise<NotificaDellaCornice[]> {
 }
 
 /**
- * Segna letta una notifica: PATCH /cornice/notifiche/<id>/lettura. L'id entra nell'indirizzo codificato, e una risposta che non
- * la dà per letta è un errore come le altre.
+ * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
+ * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
+ * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
+ * altro (un'altra scheda) la parte server non segna niente. Una risposta senza l'istante è un errore come le altre.
  */
-export async function segnaLetta(id: string): Promise<void> {
-    const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
+export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<void> {
+    const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ letta: true }),
-    })) as { data?: { letta?: unknown } | null } | null;
-    if (corpo?.data?.letta !== true) {
-        throw new Error(`PATCH ${indirizzo}: letta`);
+        body: JSON.stringify({ fino_a: finoA, workspace }),
+    })) as { data?: { fino_a?: unknown } | null } | null;
+    if (typeof corpo?.data?.fino_a !== 'string') {
+        throw new Error(`POST ${indirizzo}: fino_a`);
     }
 }
 

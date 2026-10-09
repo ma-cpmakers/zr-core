@@ -12,7 +12,8 @@ import { registro } from '../js/registro';
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
 // elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
-// `?errore=lettura` la seconda lettura di una notifica. Gli indirizzi che la cornice apre (account, notifiche, un altro
+// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?arriva=1` dal secondo caricamento delle
+// notifiche ce n'è una nuova, non letta. Gli indirizzi che la cornice apre (account, notifiche, un altro
 // workspace, un risultato della ricerca) non si aprono: si scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
@@ -76,23 +77,26 @@ function Prova() {
 }
 
 // Le rotte della cornice, finte: rispondono dopo un attimo, per vedere il caricamento, nella forma della parte server. Le
-// notifiche d'esempio: due non lette di oggi, una letta ieri e una letta nove giorni fa. La lettura segna la notifica
-// dell'indirizzo, letta o non letta come dice il corpo; con `?errore=lettura` la seconda fallisce. La ricerca dà i risultati
+// notifiche d'esempio: due non lette di oggi, di due prodotti del registro (`pm`, `crm`), una letta ieri con un codice che il
+// registro non ha e una letta nove giorni fa che non è di un'app; con `?arriva=1`, dal secondo caricamento, una nuova non letta
+// nata in quel momento. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a `fino_a` e
+// risponde con l'istante in UTC; con `?errore=letture` la prima fallisce e la seconda riesce. La ricerca dà i risultati
 // d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
 // mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
-// «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la PATCH col corpo e gli header, e così una richiesta annullata e la
+// «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la POST col corpo e gli header, e così una richiesta annullata e la
 // risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
 const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false },
-    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true },
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true },
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm' },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm' },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota' },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null },
 ];
 let letture = 0;
+let caricamenti = 0;
 const risultatiDiProva = [
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
@@ -102,6 +106,7 @@ const risultatiDiProva = [
     { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
+const arriva = new URLSearchParams(window.location.search).has('arriva');
 const fetchDelBrowser = window.fetch.bind(window);
 const cookieCsrf = 'XSRF-TOKEN';
 document.cookie = `${cookieCsrf}=uat-gettone-csrf%3D%3D; path=/`;
@@ -131,25 +136,37 @@ window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
     }
     await new Promise((fatto) => setTimeout(fatto, 800));
     if (percorso === '/cornice/notifiche') {
-        return errore === 'notifiche' ? json({ errore: 'uat_errore' }, 502) : json({ data: notificheDiProva });
-    }
-    const lettura = /^\/cornice\/notifiche\/([^/]+)\/lettura$/.exec(percorso);
-    if (lettura && opzioni?.method === 'PATCH') {
-        letture += 1;
-        if (errore === 'lettura' && letture === 2) {
+        caricamenti += 1;
+        if (errore === 'notifiche') {
             return json({ errore: 'uat_errore' }, 502);
         }
-        const notifica = notificheDiProva.find((voce) => voce.id === decodeURIComponent(lettura[1]));
-        const { letta } = JSON.parse(String(opzioni.body)) as { letta?: unknown };
-        if (typeof letta !== 'boolean') {
+        if (arriva && caricamenti === 2) {
+            notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm' });
+        }
+
+        return json({ data: notificheDiProva });
+    }
+    if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
+        letture += 1;
+        if (errore === 'letture' && letture === 1) {
+            return json({ errore: 'uat_errore' }, 502);
+        }
+        const { fino_a: finoA, workspace } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown };
+        const istante = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
+        if (Number.isNaN(istante) || typeof workspace !== 'string' || workspace === '') {
             return json({ errore: 'dati_non_validi' }, 422);
         }
-        if (notifica === undefined) {
-            return json({ errore: 'non_trovato' }, 404);
+        // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione.
+        if (workspace !== datiDiProva.workspace.slug) {
+            return json({ errore: 'workspace_diverso' }, 409);
         }
-        notifica.letta = letta;
+        for (const notifica of notificheDiProva) {
+            if (new Date(notifica.creata_il).getTime() <= istante) {
+                notifica.letta = true;
+            }
+        }
 
-        return json({ data: { id: notifica.id, letta: notifica.letta } });
+        return json({ data: { fino_a: new Date(istante).toISOString() } });
     }
 
     return json({ errore: 'non_trovato' }, 404);

@@ -19,7 +19,10 @@ export interface RisorsaDelProdotto {
      */
     tipo: string;
     icona: IconName;
-    /** Il percorso nel prodotto, dopo `/w/<slug>`: `{id}` è l'id della risorsa. */
+    /**
+     * Il percorso nel prodotto, dopo `/w/<slug>`: `{id}` è l'id della risorsa. Vuoto se la risorsa non ha una pagina sua
+     * (una cartella): si apre sulla pagina del prodotto nel workspace.
+     */
     percorso: string;
     /** Un contenitore (cartella, board) si apre a pagina intera, un elemento nel pannello del prodotto. */
     contenitore: boolean;
