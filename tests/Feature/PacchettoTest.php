@@ -160,7 +160,8 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
 
 // Sprint 9 · T3 (voce #1398). `LayoutDellaCornice` e `useCornice` sono per i frontend con Inertia, ma zr-core non ne dipende:
 // sono un componente e un hook di React. Inertia sta solo fra gli strumenti di questo repo, per la pagina di prova del layout
-// (resources/demo), che non entra nello zip del tag. E il README dice come si usano.
+// (resources/demo), che non entra nello zip del tag: `@inertiajs/react`, e `@inertiajs/core` per l'errore con cui la parte
+// server finta rifiuta una visita annullata. E il README dice come si usano.
 
 /**
  * Cosa chiede package.json a chi installa (`peerDependencies`), e dove nomina un pacchetto di Inertia.
@@ -198,30 +199,62 @@ function fileDelPacchettoConInertia(array $file): array
     ));
 }
 
-it('la pagina di prova del layout fa visite vere di Inertia, la versione dei frontend: router.visit con un client HTTP finto, mai router.push (sprint 9 · T3.1; sprint 10 · T3.1)', function () {
+/**
+ * Dove il lock installa un pacchetto: una voce per copia, quella in cima a `node_modules` e quelle sotto un altro pacchetto.
+ *
+ * @param  array<string, mixed>  $lock
+ * @return list<string>
+ */
+function copieNelLock(array $lock, string $pacchetto): array
+{
+    return array_values(array_filter(
+        array_keys($lock['packages']),
+        fn (string $percorso) => $percorso === "node_modules/{$pacchetto}" || str_ends_with($percorso, "/node_modules/{$pacchetto}"),
+    ));
+}
+
+it('la pagina di prova del layout fa visite vere di Inertia, la versione dei frontend: router.visit, mai router.push, e per client HTTP la parte server finta, che legge i dati col segno dell\'indirizzo (sprint 9 · T3.1; sprint 10 · T3.1, T3.2)', function () {
     $pagina = (string) file_get_contents(__DIR__.'/../../resources/demo/layout.tsx');
     $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
-    $daInertia = fn (string $testo): array => nomiFraLeGraffe('/^import \{([^}]*)\} from \'@inertiajs\/react\';$/m', $testo);
-    $comeVisita = fn (string $testo): array => [
-        'router.visit(' => substr_count($testo, 'router.visit('),
-        'http.setClient(' => substr_count($testo, 'http.setClient('),
-        'router.push(' => substr_count($testo, 'router.push('),
-    ];
+    $importati = fn (string $da): array => nomiFraLeGraffe('/^import \{([^}]*)\} from \''.preg_quote($da, '/').'\';$/m', $pagina);
+    // Quante volte la pagina scrive ognuna di queste cose. Con `router.push`, come nella v1.2.0, le visite non passerebbero dalla
+    // risposta di Inertia: lì Inertia non ridà l'oggetto di prima, e il difetto non si vedrebbe nemmeno senza il segno. Ciò che
+    // la parte server finta fa (il segno a ogni lettura, `?segno=no`, la visita annullata) lo prova il suo test, in vitest: qui,
+    // che la pagina la usa, e col segno letto dal suo indirizzo.
+    $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
-    // La stessa pagina con un router finto al posto di quello di Inertia. E quella che passa da una pagina all'altra con
-    // `router.push`, come nella v1.2.0: senza la risposta di una visita Inertia non ridà l'oggetto di prima, e il difetto non si
-    // vede nemmeno senza il segno.
-    $colRouterFinto = (string) preg_replace('/^import \{[^}]*\} from \'@inertiajs\/react\';$/m', 'const router = { visit: () => {} };', $pagina);
-    $conPush = str_replace('router.visit(', 'router.push(', $pagina);
-
-    expect($daInertia($pagina))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and(substr_count($pagina, 'createInertiaApp({'))->toBe(1)
-        ->and($comeVisita($pagina))->toBe(['router.visit(' => 1, 'http.setClient(' => 1, 'router.push(' => 0])
-        ->and($conPush)->not->toBe($pagina)
-        ->and($comeVisita($conPush))->toBe(['router.visit(' => 0, 'http.setClient(' => 1, 'router.push(' => 1])
-        ->and($colRouterFinto)->not->toBe($pagina)
-        ->and($daInertia($colRouterFinto))->toBe([])
+    expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
+        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'lettura'])
+        ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
+            'createInertiaApp({' => 1,
+            'router.visit(' => 1,
+            'router.push(' => 0,
+            'http.setClient(' => 1,
+            'http.setClient(clientFinto(' => 1,
+        ])
+        ->and($scritte(['colSegno(', 'const segno = colSegno(window.location.search);', 'lettura(', 'lettura(propsDi[nome], segno)']))->toBe([
+            'colSegno(' => 1,
+            'const segno = colSegno(window.location.search);' => 1,
+            'lettura(' => 1,
+            'lettura(propsDi[nome], segno)' => 1,
+        ])
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
+});
+
+it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
+    $parteServer = (string) file_get_contents(__DIR__.'/../../resources/demo/parte-server-finta.ts');
+    $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    // Un lock con una seconda copia, sotto `@inertiajs/react`: il router riconoscerebbe l'errore della sua, non quello della
+    // copia in cima, e una visita annullata sulla pagina di prova diventerebbe un errore di rete.
+    $conDueCopie = $lock;
+    $conDueCopie['packages']['node_modules/@inertiajs/react/node_modules/@inertiajs/core'] = ['version' => '3.7.2'];
+
+    expect(nomiFraLeGraffe('/^import \{([^}]*)\} from \'@inertiajs\/core\';$/m', $parteServer))->toBe(['HttpCancelledError', 'HttpClient'])
+        ->and(substr_count($parteServer, 'throw new HttpCancelledError('))->toBe(1)
+        ->and(copieNelLock($lock, '@inertiajs/core'))->toBe(['node_modules/@inertiajs/core'])
+        ->and(copieNelLock($lock, '@inertiajs/react'))->toBe(['node_modules/@inertiajs/react'])
+        ->and(copieNelLock($conDueCopie, '@inertiajs/core'))->toBe(['node_modules/@inertiajs/core', 'node_modules/@inertiajs/react/node_modules/@inertiajs/core']);
 });
 
 it('il pacchetto non dipende da Inertia: a chi installa chiede solo react e react-dom, e Inertia sta fra gli strumenti di questo repo (sprint 9 · T3.2)', function () {
@@ -234,9 +267,9 @@ it('il pacchetto non dipende da Inertia: a chi installa chiede solo react e reac
     $portata = $package;
     $portata['dependencies'] = ['@inertiajs/core' => '^3.7.1'];
 
-    expect(dipendenzeDelPacchettoJs($package))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['devDependencies: @inertiajs/react']])
-        ->and(dipendenzeDelPacchettoJs($chiesta))->toBe(['chiede' => ['react', 'react-dom', '@inertiajs/react'], 'inertia' => ['peerDependencies: @inertiajs/react']])
-        ->and(dipendenzeDelPacchettoJs($portata))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['dependencies: @inertiajs/core', 'devDependencies: @inertiajs/react']]);
+    expect(dipendenzeDelPacchettoJs($package))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['devDependencies: @inertiajs/core', 'devDependencies: @inertiajs/react']])
+        ->and(dipendenzeDelPacchettoJs($chiesta))->toBe(['chiede' => ['react', 'react-dom', '@inertiajs/react'], 'inertia' => ['peerDependencies: @inertiajs/react', 'devDependencies: @inertiajs/core']])
+        ->and(dipendenzeDelPacchettoJs($portata))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['dependencies: @inertiajs/core', 'devDependencies: @inertiajs/core', 'devDependencies: @inertiajs/react']]);
 });
 
 it('nessun file di resources/js che entra nello zip nomina Inertia (sprint 9 · T3.2)', function () {
@@ -330,7 +363,7 @@ function suUnaRiga(string $testo): string
     return trim((string) preg_replace('/\s+/', ' ', $testo));
 }
 
-it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, e che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso (sprint 10 · T2.5)', function () {
+it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso, e il limite che c\'è ancora (sprint 10 · T2.5, review della PR)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = function (string $testo): array {
         preg_match('/^\| `\{lingua, .*\}` \| la persona è entrata in un workspace \|$/m', $testo, $rigaDeiDati);
@@ -341,10 +374,13 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => str_contains(suUnaRiga($testo), 'I dati si danno alla cornice così come arrivano, a ogni richiesta'),
             'la campanella: anche quando è lo stesso' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'vale il loro numero, anche quando è lo stesso di prima'),
             'il difetto della v1.2.0' => str_contains(suUnaRiga($testo), 'resta ciò che c\'era'),
+            'il limite: una risposta letta prima di un\'azione' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'ogni risposta vale come dati nuovi, anche quando è stata letta prima di un\'azione e arriva dopo'),
+            'il limite: Indietro e Avanti' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora'),
         ];
     };
 
-    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto; e il README che non nomina il segno.
+    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto e non questo limite; e il README che non
+    // nomina il segno.
     $campanellaDellaV120 = <<<'MD'
     - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
       elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
@@ -364,6 +400,8 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
+            'il limite: una risposta letta prima di un\'azione' => true,
+            'il limite: Indietro e Avanti' => true,
         ])
         ->and($cosaDice($dellaV120))->toBe([
             'il segno nella riga dei dati' => true,
@@ -371,6 +409,8 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => false,
             'il difetto della v1.2.0' => true,
+            'il limite: una risposta letta prima di un\'azione' => false,
+            'il limite: Indietro e Avanti' => false,
         ])
         ->and($cosaDice($senzaIlSegno))->toBe([
             'il segno nella riga dei dati' => false,
@@ -378,6 +418,8 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
+            'il limite: una risposta letta prima di un\'azione' => true,
+            'il limite: Indietro e Avanti' => true,
         ]);
 });
 

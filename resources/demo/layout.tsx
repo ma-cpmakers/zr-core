@@ -6,6 +6,7 @@ import { useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
+import { clientFinto, colSegno, lettura } from './parte-server-finta';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
 // La pagina di prova del layout, per la UAT: `LayoutDellaCornice` sotto Inertia vera, la versione dei frontend, senza server.
@@ -13,17 +14,19 @@ import { notifichePartite, rotteFinte } from './rotte-finte';
 // altri dati dello stesso workspace: un altro nome, 3 non lette), «Altro workspace» (un altro slug: la cornice si rifà), «Senza
 // dati» (`cornice` `null`, e chiama `useCornice` lo stesso) e «Percorso» (dà il percorso al layout con `Percorso.layout`). Da una
 // all'altra si passa con una visita vera di Inertia (`router.visit`) e con Indietro e Avanti del browser: la parte server è un
-// client HTTP finto, che risponde la pagina che l'indirizzo dice coi dati di una lettura nuova. È nella risposta di una visita
-// che Inertia ridà l'oggetto di prima per i dati uguali: per questo ogni lettura porta in `cornice` il segno `aggiornati_il`,
-// come lo mette la parte server di zr-core. `layout.html?pagina=corta` apre già quella. Due parametri, letti al caricamento e
-// tenuti negli indirizzi: `?segno=no` toglie il segno (è la parte server della `v1.2.0`: alla visita dopo, con gli stessi dati,
-// la campanella resta com'era) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga» e la «Percorso»;
-// senza, 7). Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console.
+// client HTTP finto (parte-server-finta.ts), che risponde la pagina che l'indirizzo dice coi dati di una lettura nuova. È nella
+// risposta di una visita che Inertia ridà l'oggetto di prima per i dati uguali: per questo ogni lettura porta in `cornice` il
+// segno `aggiornati_il`, come lo mette la parte server di zr-core. `layout.html?pagina=corta` apre già quella. Due parametri,
+// letti al caricamento e tenuti negli indirizzi: `?segno=no` toglie il segno (è la parte server della `v1.2.0`: alla visita dopo,
+// con gli stessi dati, la campanella resta com'era) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga»
+// e la «Percorso»; senza, 7). Con `?non_lette=0` i dati dicono 0 e la campanella non ha un numero; aperta, il pannello carica le
+// due non lette d'esempio (rotte-finte.ts) e la campanella dice «2»; alla visita dopo, coi dati che dicono di nuovo 0, non ha più
+// un numero. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console.
 // Non entra nel pacchetto.
 
 const scelti = new URLSearchParams(window.location.search);
-/** `?segno=no`: i dati senza `aggiornati_il`, come li dava la parte server della `v1.2.0`. */
-const colSegno = scelti.get('segno') !== 'no';
+/** Il segno della lettura nei dati: c'è, salvo con `?segno=no`. */
+const segno = colSegno(window.location.search);
 
 const marketing: DatiDellaCornice = {
     lingua: 'it',
@@ -100,10 +103,10 @@ function Lunga({ visita }: Props) {
     const [conteggio, setConteggio] = useState(0);
     const [senzaMargine, setSenzaMargine] = useState(false);
     // Un clic si segna nel DOM, non nello stato: segnarlo non fa rendere la pagina, e «render» conta solo i clic su «conta».
-    const segno = useRef<HTMLOutputElement>(null);
+    const ultimoClic = useRef<HTMLOutputElement>(null);
     const segna = (testo: string) => {
-        if (segno.current !== null) {
-            segno.current.textContent = testo;
+        if (ultimoClic.current !== null) {
+            ultimoClic.current.textContent = testo;
         }
     };
 
@@ -129,7 +132,7 @@ function Lunga({ visita }: Props) {
                     {senzaMargine ? 'UAT flush sì: l\'area è senza margine e non scorre' : 'UAT flush no: l\'area ha il margine'}
                 </button>
             </p>
-            <p>UAT ultimo clic: <output data-uat="segno" ref={segno} /></p>
+            <p>UAT ultimo clic: <output data-uat="ultimo-clic" ref={ultimoClic} /></p>
             <Collegamenti />
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
@@ -230,29 +233,9 @@ function paginaDi(parametri: string): Nome {
 
 const paginaDellIndirizzo = () => paginaDi(window.location.search);
 
-let ultimaLettura = 0;
-
-/**
- * L'istante di una lettura, come lo scrive la parte server in `aggiornati_il`: in UTC, coi microsecondi a sei cifre, e sempre
- * dopo quello della lettura di prima (due risposte nello stesso istante hanno comunque due segni).
- */
-function istanteDellaLettura(): string {
-    ultimaLettura = Math.max(Math.round((performance.timeOrigin + performance.now()) * 1000), ultimaLettura + 1);
-
-    return new Date(Math.floor(ultimaLettura / 1000)).toISOString().replace('Z', `${String(ultimaLettura % 1000).padStart(3, '0')}Z`);
-}
-
-/**
- * Ciò che il «server» dà a una visita: una copia nuova ogni volta, come una risposta, col segno di quella lettura nei dati
- * della cornice (con `?segno=no`, senza). Alla pagina arriva l'oggetto di prima quando Inertia trova i dati uguali.
- */
+/** Ciò che il «server» dà a una visita: i dati di una lettura nuova (col segno, salvo `?segno=no`) e il numero della visita. */
 function rispostaDi(nome: Nome): Props {
-    const props = structuredClone(propsDi[nome]);
-    if (props.cornice !== null && colSegno) {
-        props.cornice.aggiornati_il = istanteDellaLettura();
-    }
-
-    return { ...props, visita: visite };
+    return { ...lettura(propsDi[nome], segno), visita: visite };
 }
 
 /** Una visita vera di Inertia, alla parte server finta. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della cronologia. */
@@ -302,29 +285,20 @@ function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'co
 rotteFinte(() => propsDi[paginaDellIndirizzo()].cornice?.workspace.slug);
 
 // La parte server, finta: ogni visita di Inertia arriva qui, e dopo un attimo la risposta è la pagina che l'indirizzo della
-// richiesta dice, coi dati di una lettura nuova. I montaggi ripartono da zero quando la risposta è pronta, non al clic: fino ad
-// allora la pagina di prima è ancora montata.
-http.setClient({
-    request: async (richiesta) => {
-        const indirizzo = new URL(richiesta.url, window.location.href);
-        const nome = paginaDi(indirizzo.search);
-        console.info('UAT visita', richiesta.method, indirizzo.pathname + indirizzo.search);
-        await new Promise((dopo) => setTimeout(dopo, 50));
-        montaggi = 0;
-        visite += 1;
+// richiesta dice, coi dati di una lettura nuova. I montaggi ripartono da zero, e le visite si contano, quando la risposta è
+// pronta, non al clic: fino ad allora la pagina di prima è ancora montata, e una visita annullata nel frattempo non conta.
+http.setClient(clientFinto((indirizzo) => {
+    const nome = paginaDi(indirizzo.search);
+    montaggi = 0;
+    visite += 1;
 
-        return {
-            status: 200,
-            data: JSON.stringify({ component: nome, url: indirizzo.pathname + indirizzo.search, props: { errors: {}, ...rispostaDi(nome) }, version: null }),
-            headers: { 'x-inertia': 'true' },
-        };
-    },
-});
+    return { component: nome, props: { errors: {}, ...rispostaDi(nome) } };
+}));
 
 const iniziale = paginaDellIndirizzo();
 
 // `page` dà la prima pagina senza leggerla dal DOM. Senza la barra di avanzamento di Inertia: metterebbe un `<style>` nella
-// pagina, che la CSP ferma (un frontend le dà un `nonce`), e qui nessuna visita aspetta un server.
+// pagina, che la CSP ferma (un frontend le dà un `nonce`).
 void createInertiaApp({
     page: {
         component: iniziale,

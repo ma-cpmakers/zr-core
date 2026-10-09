@@ -94,7 +94,7 @@ function aziendeEWorkspace(): array
     ];
 }
 
-it('con la sessione entrata in un workspace dà persona, lingua, il workspace del gettone, lo stato di ogni app, le aziende coi loro workspace, le non lette e il segno (T3.1, T1.1, T1.2; sprint 10 · T1.3)', function () {
+it('con la sessione entrata in un workspace dà persona, lingua, il workspace del gettone, lo stato di ogni app, le aziende coi loro workspace, le non lette e il segno (sprint 2 · T3.1; sprint 3 · T1.1, T1.2; sprint 10 · T1.3)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backoffice([
@@ -154,7 +154,7 @@ it('due letture in due istanti diversi hanno due aggiornati_il diversi, e quello
     Carbon::setTestNow(Carbon::parse($dopo, 'UTC'));
     $laSeconda = Cornice::dati()['aggiornati_il'];
 
-    // Come stringhe: è così che le confronta chi le riceve.
+    // Come stringhe: è così che il segno si ordina. Oggi la cornice non lo confronta: le basta che sia diverso da quello di prima.
     expect($laPrima)->toBe($segnoDiPrima)
         ->and($laSeconda)->toBe($segnoDiDopo)
         ->and(strcmp($laSeconda, $laPrima))->toBe(1);
