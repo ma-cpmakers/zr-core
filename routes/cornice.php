@@ -11,6 +11,7 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 // vincolo qui: fuori dai caratteri ammessi la rotta non c'è (404).
 Route::middleware(['web', ConWorkspace::class])->prefix('cornice')->group(function (): void {
     Route::get('notifiche', [NotificheDellaCornice::class, 'elenco']);
+    Route::post('notifiche/letture', [NotificheDellaCornice::class, 'letture']);
     Route::patch('notifiche/{notifica}/lettura', [NotificheDellaCornice::class, 'lettura'])->where('notifica', NotificheDellaCornice::ID);
     Route::get('ricerca', [RicercaDellaCornice::class, 'cerca']);
 });

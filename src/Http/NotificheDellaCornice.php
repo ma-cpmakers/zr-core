@@ -13,7 +13,8 @@ use Zeiras\Auth\Errori\ErroreApi;
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
  * l'id, quando è nata, se è letta e `app`, il codice dell'app da cui viene. Di che prodotto è lo dice il registro di zr-core,
  * nel browser: un codice che il registro non ha passa da qui com'è, e la cornice non mostra un prodotto. `tipo`, `soggetto`
- * e `dati` restano qui. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
+ * e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola al backoffice, fino a un istante, non una per
+ * notifica. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
  * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  */
 final class NotificheDellaCornice
@@ -24,6 +25,13 @@ final class NotificheDellaCornice
      * metodo. È il vincolo della rotta (routes/cornice.php): un id diverso non arriva qui, ed è un 404.
      */
     public const ID = '[A-Za-z0-9_-]{1,64}';
+
+    /**
+     * Com'è fatto l'istante che la rotta accetta in `fino_a`: data, `T`, ora coi secondi (e nove decimali al più) e fuso, `Z`
+     * o `±hh:mm`, com'è la `creata_il` di una notifica di /v1. Senza il fuso l'istante lo deciderebbe chi lo legge. `\z` e non
+     * `$`, che lascia passare un a capo in fondo. Se quel giorno esiste (il 31 febbraio no) lo dice il backoffice.
+     */
+    private const ISTANTE = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})\z/';
 
     /** GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca. */
     public function elenco(): JsonResponse
@@ -68,6 +76,38 @@ final class NotificheDellaCornice
         }
 
         return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']]]);
+    }
+
+    /**
+     * POST /cornice/notifiche/letture: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate
+     * fino a `fino_a` compreso, anche quelle oltre la prima pagina (io.notifiche.letture.crea). `fino_a` della risposta è
+     * l'istante del backoffice, in UTC, non quello chiesto.
+     */
+    public function letture(Request $richiesta): JsonResponse
+    {
+        // Solo dal corpo JSON, e solo un istante col suo fuso: il backoffice non legge la query.
+        $finoA = $richiesta->json('fino_a');
+
+        if (! is_string($finoA) || preg_match(self::ISTANTE, $finoA) !== 1) {
+            return new JsonResponse(['errore' => 'dati_non_validi'], 422);
+        }
+
+        try {
+            $segnate = Api::workspace()->post('/v1/io/notifiche/letture', ['fino_a' => $finoA])['data'] ?? null;
+        } catch (ErroreApi $errore) {
+            // La forma è giusta ma l'istante non esiste: lo dice il backoffice, ed è un errore di chi chiede.
+            if ($errore->stato === 422 && $errore->codice === 'dati_non_validi') {
+                return new JsonResponse(['errore' => 'dati_non_validi'], 422);
+            }
+
+            throw $errore;
+        }
+
+        if (! is_array($segnate) || ! is_string($segnate['fino_a'] ?? null)) {
+            throw new BackofficeNonRisponde('La risposta di POST /v1/io/notifiche/letture non è un istante di /v1.');
+        }
+
+        return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a']]]);
     }
 
     /**

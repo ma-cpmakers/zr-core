@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,8 @@ use Zeiras\Auth\Testing\Rotte;
 // /cornice/notifiche/{notifica}/lettura, nel gruppo `web` del frontend. La parte server le gira al backoffice col gettone del
 // workspace, che resta nella sessione. Il backoffice è Http::fake, mai il finto di zr-auth. Nessuna richiesta esce (TestCase).
 // Sprint 6 · T1 (voce #1318): l'elenco porta anche `app`, il codice dell'app da cui viene la notifica, com'è nel backoffice.
+// Sprint 6 · T2 (voce #1318): POST /cornice/notifiche/letture segna lette le notifiche fino a un istante, con una richiesta
+// sola al backoffice.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -192,6 +195,99 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
+it('POST /cornice/notifiche/letture manda al backoffice una sola POST con lo stesso fino_a e il gettone del workspace, e risponde con l\'istante del backoffice (sprint 6 · T2.1)', function (string $finoA, string $delBackoffice) {
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Al gettone dell'accesso io.notifiche.letture.crea risponde 403 gettone_senza_workspace.
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/letture' => $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace'])
+            ? Http::response(['data' => ['fino_a' => $delBackoffice]])
+            : problemaDelBackoffice(403, 'gettone_senza_workspace'),
+    });
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => $finoA]))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice]]);
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $richiesta) => $richiesta->method() === 'POST' && percorsoDi($richiesta) === '/v1/io/notifiche/letture'
+        && $richiesta->data() === ['fino_a' => $finoA]
+        && $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']));
+})->with([
+    'in UTC, al millisecondo: com\'è la creata_il di una notifica' => ['2026-10-08T10:00:00.123Z', '2026-10-08T10:00:00.123Z'],
+    // `fino_a` della risposta è quello del backoffice, in UTC, non quello chiesto.
+    'con un altro fuso: al backoffice va com\'è' => ['2026-10-08T12:00:00+02:00', '2026-10-08T10:00:00.000Z'],
+    'un fuso a ovest, con la mezz\'ora' => ['2026-10-08T05:30:00.5-04:30', '2026-10-08T10:00:00.500Z'],
+    'nove decimali' => ['2026-10-08T10:00:00.123456789Z', '2026-10-08T10:00:00.123Z'],
+]);
+
+it('senza fino_a, o con un valore che non è una stringa con data, ora e fuso, risponde 422 dati_non_validi e non chiama il backoffice (sprint 6 · T2.2)', function (array $corpo, string $query) {
+    // Senza il middleware che toglie gli spazi: la rotta non conta su quello del frontend per un a capo in fondo.
+    test()->withoutMiddleware(TrimStrings::class);
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake();
+
+    senzaGettone($this->postJson('cornice/notifiche/letture'.$query, $corpo))
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertNothingSent();
+})->with([
+    'senza fino_a' => [[], ''],
+    'null' => [['fino_a' => null], ''],
+    'un numero' => [['fino_a' => 1760000000], ''],
+    'true' => [['fino_a' => true], ''],
+    'una lista' => [['fino_a' => ['2026-10-08T10:00:00.000Z']], ''],
+    'vuoto' => [['fino_a' => ''], ''],
+    'una parola' => [['fino_a' => 'ieri'], ''],
+    'una data senza ora' => [['fino_a' => '2026-10-08'], ''],
+    'un\'ora senza fuso' => [['fino_a' => '2026-10-08T10:00:00.000'], ''],
+    'il fuso senza i due punti' => [['fino_a' => '2026-10-08T10:00:00.000+0200'], ''],
+    'senza i secondi' => [['fino_a' => '2026-10-08T10:00Z'], ''],
+    'uno spazio al posto di T' => [['fino_a' => '2026-10-08 10:00:00.000Z'], ''],
+    'uno spazio davanti' => [['fino_a' => ' 2026-10-08T10:00:00.000Z'], ''],
+    'un a capo in fondo' => [['fino_a' => "2026-10-08T10:00:00.000Z\n"], ''],
+    'dieci decimali' => [['fino_a' => '2026-10-08T10:00:00.1234567890Z'], ''],
+    'una stringa di 100 caratteri' => [['fino_a' => '2026-10-08T10:00:00.'.str_repeat('0', 79).'Z'], ''],
+    'solo nella query' => [[], '?fino_a=2026-10-08T10:00:00.000Z'],
+]);
+
+it('un istante che ha la forma giusta ma che il backoffice rifiuta con 422 dati_non_validi, come il 31 febbraio, risponde 422 dati_non_validi (sprint 6 · T2.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => problemaDelBackoffice(422, 'dati_non_validi')]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-02-31T10:00:00.000Z']))
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertSentCount(1);
+});
+
+it('un 422 del backoffice senza il codice dati_non_validi è un suo errore, non un istante sbagliato (sprint 6 · T2.3)', function (?string $codice) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => problemaDelBackoffice(422, $codice)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull();
+})->with([
+    'senza codice' => [null],
+    'un altro codice' => ['uat_altro_codice'],
+]);
+
+it('se il backoffice risponde alle letture senza l\'istante è un errore, mai un 200 (sprint 6 · T2.3)', function (int $stato, mixed $corpo) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response($corpo, $stato)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull();
+})->with([
+    'un 500' => [500, ''],
+    'un 200 senza JSON' => [200, 'uat: non è JSON'],
+    'senza data' => [200, ['fino_a' => '2026-10-08T10:00:00.000Z']],
+    'data vuoto' => [200, ['data' => []]],
+    'data è l\'istante, non un oggetto' => [200, ['data' => '2026-10-08T10:00:00.000Z']],
+    'fino_a null' => [200, ['data' => ['fino_a' => null]]],
+    'fino_a è un numero' => [200, ['data' => ['fino_a' => 1760000000]]],
+    'fino_a è una lista' => [200, ['data' => ['fino_a' => ['2026-10-08T10:00:00.000Z']]]],
+]);
+
 it('la rotta della bozza, PATCH /cornice/notifiche/lettura, non c\'è più (sprint 5 · T2.6)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake();
@@ -200,22 +296,24 @@ it('la rotta della bozza, PATCH /cornice/notifiche/lettura, non c\'è più (spri
     Http::assertNothingSent();
 });
 
-it('senza sessione le tre rotte della cornice rispondono 401 e non chiamano il backoffice (sprint 5 · T2.6)', function () {
+it('senza sessione le quattro rotte della cornice rispondono 401 e non chiamano il backoffice (sprint 5 · T2.6; sprint 6 · T2.4)', function () {
     Http::fake();
 
     senzaGettone($this->getJson('cornice/notifiche'))->assertUnauthorized();
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))->assertUnauthorized();
+    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']))->assertUnauthorized();
     senzaGettone($this->getJson('cornice/ricerca?q=uat'))->assertUnauthorized();
     Http::assertNothingSent();
 });
 
-it('con la sessione ma senza workspace le tre rotte della cornice rispondono 403 e non chiamano il backoffice (sprint 5 · T2.6)', function () {
+it('con la sessione ma senza workspace le quattro rotte della cornice rispondono 403 e non chiamano il backoffice (sprint 5 · T2.6; sprint 6 · T2.4)', function () {
     sessioneAMano(null);
     Http::fake();
 
     foreach ([
         $this->getJson('cornice/notifiche'),
         $this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]),
+        $this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']),
         $this->getJson('cornice/ricerca?q=uat'),
     ] as $risposta) {
         senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
@@ -233,14 +331,14 @@ it('le rotte della cornice hanno la guardia di zr-auth: Rotte::senzaGuardia() no
     expect($dellaCornice())->toBe(['PATCH cornice/notifiche/{notifica}/scoperta']);
 });
 
-it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la sessione e il CSRF: in un altro gruppo la PATCH non avrebbe il CSRF, e nei test Laravel non lo controlla (sprint 5 · G9)', function () {
+it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la sessione e il CSRF: in un altro gruppo la PATCH non avrebbe il CSRF, e nei test Laravel non lo controlla (sprint 5 · G9; sprint 6 · T2.4)', function () {
     $dellaCornice = fn () => array_values(array_filter(Route::getRoutes()->getRoutes(), fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/')));
     $fuoriDalWeb = fn () => array_values(array_map(
         fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri(),
         array_filter($dellaCornice(), fn ($rotta) => ! in_array('web', $rotta->gatherMiddleware(), true)),
     ));
 
-    expect($dellaCornice())->toHaveCount(3)
+    expect($dellaCornice())->toHaveCount(4)
         ->and($fuoriDalWeb())->toBe([]);
 
     // Il controllo nei due versi: nel gruppo `api` una rotta ha la guardia della sessione ma non il CSRF, e qui si vede.
