@@ -59,6 +59,19 @@ function PaginaCheSiConta({ conta }: { conta: { montaggi: number } }) {
     return <p id="uat-pagina-che-si-conta">UAT pagina che si conta</p>;
 }
 
+/** Un'azione per la topbar che conta i suoi montaggi. */
+function AzioneCheSiConta({ conta }: { conta: { montaggi: number } }) {
+    useEffect(() => {
+        conta.montaggi += 1;
+    }, [conta]);
+
+    return (
+        <button id="uat-azione" type="button">
+            UAT azione
+        </button>
+    );
+}
+
 /** Una pagina con uno stato suo: a ogni render dà alla cornice una funzione nuova, che porta il conteggio di quel render. */
 function PaginaCheConta({ conta, segna }: { conta: { render: number }; segna: (conteggio: number) => void }) {
     const [conteggio, setConteggio] = useState(0);
@@ -134,13 +147,16 @@ async function clic(elemento: Element | null): Promise<void> {
     });
 }
 
-/** Scrive una parola nel campo della ricerca, come una persona, e lascia passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
-async function scrivi(parola: string): Promise<void> {
+/**
+ * Scrive una parola nel campo della ricerca, come una persona, e lascia passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`;
+ * con un'attesa più corta il pannello è aperto e la cornice non ha ancora cercato.
+ */
+async function scrivi(parola: string, attesa = 300): Promise<void> {
     const campo = uno('.zr-search input') as HTMLInputElement;
     await act(async () => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
         campo.dispatchEvent(new Event('input', { bubbles: true }));
-        await vi.advanceTimersByTimeAsync(300);
+        await vi.advanceTimersByTimeAsync(attesa);
         await giro();
     });
 }
@@ -234,10 +250,32 @@ describe('LayoutDellaCornice', () => {
         expect(conta.montaggi).toBe(1);
         expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche']);
 
+        // I risultati di prima non ci sono più: scrivendo, il pannello si riapre subito, prima che la cornice cerchi (i 300 ms
+        // non passano), e non ne mostra nessuno. Il pannello chiuso da solo non lo dice: lo aveva già chiuso la campanella.
+        await scrivi('ua', 0);
+        expect(uno('.zr-search-panel')).not.toBeNull();
+        expect(titoliDellaRicerca()).toStrictEqual([]);
+        expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche']);
+
         // Le notifiche sono del workspace nuovo: la campanella le chiede di nuovo.
         await clic(uno('.zr-bell'));
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
         expect(richieste()).toStrictEqual(['/cornice/ricerca?q=uat', '/cornice/notifiche', '/cornice/notifiche']);
+    });
+
+    it('quando una visita porta un altro workspace ciò che aveva dato la pagina di prima non si monta nella cornice rifatta, nemmeno per un render (sprint 9 · T1.6)', async () => {
+        const prima = { montaggi: 0 };
+        const dopo = { montaggi: 0 };
+        await visita(dati, <PaginaCheDa key="1" cose={{ actions: <AzioneCheSiConta conta={prima} /> }} />);
+        expect(uno('header.zr-top #uat-azione')).not.toBeNull();
+        expect(prima.montaggi).toBe(1);
+
+        // La pagina del workspace nuovo dà un'azione dello stesso tipo: nasce dalla sua, non da quella della pagina di prima.
+        await visita(datiAltroWorkspace, <PaginaCheDa key="2" cose={{ actions: <AzioneCheSiConta conta={dopo} /> }} />);
+        expect(uno('aside.zr-side .zr-workspace')?.textContent).toBe('Vendite');
+        expect(uno('header.zr-top #uat-azione')).not.toBeNull();
+        expect(prima.montaggi).toBe(1);
+        expect(dopo.montaggi).toBe(1);
     });
 
     it.each<[null | undefined]>([[null], [undefined]])('senza dati (cornice %s) la pagina si vede da sola, senza barra né topbar; quando la pagina dopo porta i dati la cornice compare, e senza dati se ne va (sprint 9 · T1.3)', async (senzaDati) => {

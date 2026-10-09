@@ -38,6 +38,30 @@ function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina):
 const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) => void) | null>(null);
 
 export function LayoutDellaCornice({ cornice, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga }: LayoutDellaCorniceProps) {
+    if (cornice === null || cornice === undefined) {
+        return children;
+    }
+
+    // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
+    // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.
+    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
+
+    // La `key` è lo slug del workspace: ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i
+    // pannelli, le notifiche) è di quel workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con
+    // lei: niente del workspace di prima resta davanti a chi è passato a un altro.
+    return (
+        <CorniceMontata key={cornice.workspace.slug} dati={cornice} {...dellaCornice}>
+            {children}
+        </CorniceMontata>
+    );
+}
+
+/**
+ * La cornice di un workspace, con ciò che le ha dato la pagina. Quello stato sta qui, sotto la `key` del layout: quando il
+ * workspace cambia la cornice nuova parte senza niente della pagina di prima, nemmeno per un render (un'azione della pagina
+ * di prima non si monta nella cornice nuova).
+ */
+function CorniceMontata({ children, ...dellaCornice }: CorniceProps) {
     const [dellaPagina, daLaPagina] = useReducer(datoDallaPagina, niente);
 
     // L'area della pagina è una `scroll-region` di Inertia: a ogni visita torna in cima, e con Indietro dov'era. A scorrere è un
@@ -48,22 +72,11 @@ export function LayoutDellaCornice({ cornice, children, product, nav, active, on
         document.querySelectorAll('.zr-shell > .zr-main, .zr-shell > .zr-main > .zr-main-body').forEach((area) => area.setAttribute('scroll-region', ''));
     });
 
-    if (cornice === null || cornice === undefined) {
-        return children;
-    }
-
-    // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
-    // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.
-    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
-
     // Nessun elemento intorno: `.zr-shell` è una griglia alta quanto la finestra, e la pagina resta figlia di `main.zr-main`.
-    // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei. La `key` è lo slug del workspace:
-    // ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i pannelli, le notifiche) è di quel
-    // workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con lei: niente del workspace di prima
-    // resta davanti a chi è passato a un altro.
+    // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei.
     return (
         <ContestoDellaCornice value={daLaPagina}>
-            <Cornice key={cornice.workspace.slug} dati={cornice} {...dellaCornice} {...dellaPagina}>
+            <Cornice {...dellaCornice} {...dellaPagina}>
                 {children}
             </Cornice>
         </ContestoDellaCornice>
