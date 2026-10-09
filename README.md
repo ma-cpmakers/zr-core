@@ -66,7 +66,7 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
@@ -75,6 +75,12 @@ public function share(Request $request): array
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
+
+`aggiornati_il` è il segno della lettura: l'istante in cui la parte server ha cominciato a leggere i dati, in UTC coi
+microsecondi (`2026-10-09T21:31:05.123456Z`). C'è perché i dati di due letture non siano mai uguali, nemmeno quando niente
+è cambiato: così a ogni visita la cornice li riconosce nuovi (vedi «La campanella», più sotto). I dati si danno alla
+cornice così come arrivano, a ogni richiesta: un frontend che togliesse il segno, o che tenesse i dati da una richiesta
+all'altra, ridarebbe alla cornice dati uguali a quelli di prima.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
@@ -141,10 +147,10 @@ cornice === null ? pagina : (
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
-  visita dopo, se il frontend tiene montata la cornice — vale il loro numero. Per la cornice i dati sono nuovi quando è
-  nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta dati uguali: allora
-  sulla campanella resta ciò che c'era (dopo «Segna tutte come lette» nessun numero, anche se nel frattempo è arrivata una
-  notifica), finché il numero del backoffice cambia, si apre la campanella o una visita porta a un altro componente.
+  visita dopo, se il frontend tiene montata la cornice — vale il loro numero, anche quando è lo stesso di prima: dopo
+  «Segna tutte come lette» la campanella non ha un numero, e alla visita dopo mostra quello dei dati. Per la cornice i dati
+  sono nuovi quando è nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta
+  dati uguali: per questo ogni lettura ha il suo segno (`aggiornati_il`), che la rende diversa dalle altre.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
   lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
   non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica

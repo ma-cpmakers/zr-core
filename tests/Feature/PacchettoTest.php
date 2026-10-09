@@ -306,6 +306,71 @@ it('le sei cose che il README dice di useCornice sono quelle che accetta nel cod
     expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'actions', 'flush']);
 });
 
+/** Il punto «La campanella» del README, com'è scritto: dal grassetto al punto dopo. Vuoto se non c'è. */
+function puntoDellaCampanella(string $readme): string
+{
+    preg_match('/^- \*\*La campanella\*\*.*?(?=^- |^$|\z)/ms', $readme, $punto);
+
+    return $punto[0] ?? '';
+}
+
+/** Un testo su una riga sola: una frase del README si trova anche dove va a capo. */
+function suUnaRiga(string $testo): string
+{
+    return trim((string) preg_replace('/\s+/', ' ', $testo));
+}
+
+it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, e che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso (sprint 10 · T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $cosaDice = function (string $testo): array {
+        preg_match('/^\| `\{lingua, .*\}` \| la persona è entrata in un workspace \|$/m', $testo, $rigaDeiDati);
+
+        return [
+            'il segno nella riga dei dati' => str_contains($rigaDeiDati[0] ?? '', 'non_lette, aggiornati_il}`'),
+            'che cos\'è il segno' => str_contains(suUnaRiga($testo), '`aggiornati_il` è il segno della lettura: l\'istante in cui la parte server ha cominciato a leggere i dati, in UTC coi microsecondi'),
+            'i dati così come arrivano' => str_contains(suUnaRiga($testo), 'I dati si danno alla cornice così come arrivano, a ogni richiesta'),
+            'la campanella: anche quando è lo stesso' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'vale il loro numero, anche quando è lo stesso di prima'),
+            'il difetto della v1.2.0' => str_contains(suUnaRiga($testo), 'resta ciò che c\'era'),
+        ];
+    };
+
+    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto; e il README che non nomina il segno.
+    $campanellaDellaV120 = <<<'MD'
+    - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
+      elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
+      visita dopo, se il frontend tiene montata la cornice — vale il loro numero. Per la cornice i dati sono nuovi quando è
+      nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta dati uguali: allora
+      sulla campanella resta ciò che c'era (dopo «Segna tutte come lette» nessun numero, anche se nel frattempo è arrivata una
+      notifica), finché il numero del backoffice cambia, si apre la campanella o una visita porta a un altro componente.
+
+    MD;
+    $dellaV120 = str_replace(puntoDellaCampanella($readme), $campanellaDellaV120, $readme);
+    $senzaIlSegno = str_replace('aggiornati_il', 'altro', $readme);
+
+    expect(puntoDellaCampanella($readme))->not->toBe('')
+        ->and($cosaDice($readme))->toBe([
+            'il segno nella riga dei dati' => true,
+            'che cos\'è il segno' => true,
+            'i dati così come arrivano' => true,
+            'la campanella: anche quando è lo stesso' => true,
+            'il difetto della v1.2.0' => false,
+        ])
+        ->and($cosaDice($dellaV120))->toBe([
+            'il segno nella riga dei dati' => true,
+            'che cos\'è il segno' => true,
+            'i dati così come arrivano' => true,
+            'la campanella: anche quando è lo stesso' => false,
+            'il difetto della v1.2.0' => true,
+        ])
+        ->and($cosaDice($senzaIlSegno))->toBe([
+            'il segno nella riga dei dati' => false,
+            'che cos\'è il segno' => false,
+            'i dati così come arrivano' => true,
+            'la campanella: anche quando è lo stesso' => true,
+            'il difetto della v1.2.0' => false,
+        ]);
+});
+
 /**
  * I nomi fra le graffe delle righe che combaciano, senza `type`: quelli che un esempio importa, o che l'ingresso esporta.
  *
