@@ -17,21 +17,23 @@ it('si avvia dentro un\'app Laravel', function () {
     expect(app()->getProviders(ZrCoreServiceProvider::class))->toHaveCount(1);
 });
 
-// Sprint 5 · T6 (voce #1257). zr-core si installa accanto allo zr-auth che i frontend hanno: composer.json accetta più versioni
-// minori, e la CI le prova tutte, un giro del job per ognuna. Una versione accettata e mai provata è una promessa senza prova.
+// Sprint 5 · T6 (voce #1257) e sprint 7 · T1 (voce #1380, la 0.8). zr-core si installa accanto allo zr-auth che i frontend hanno:
+// composer.json accetta più versioni minori, e la CI le prova tutte, un giro del job per ognuna. Una versione accettata e mai
+// provata è una promessa senza prova.
 
 /**
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
- * (due giri proverebbero la stessa). Il vincolo è fatto di `^<maggiore>.<minore>`, anche con la patch, uniti da `||`, e la
- * matrice di ci.yml (`zr-auth: ['0.6', '0.7']`) ha un giro per ognuno.
+ * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch, uniti da `||`, e la
+ * matrice di ci.yml (`zr-auth: ['0.6', '0.7', '0.8']`) ha un giro per ognuno. Solo sotto la 1.0 un `^` si ferma alla sua
+ * minore: `^1.0` accetta anche le 1.1, che il giro della 1.0 non proverebbe.
  *
  * @return list<string>
  */
 function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
 {
-    if (preg_match('/^\^\d+\.\d+(\.\d+)?( \|\| \^\d+\.\d+(\.\d+)?)*$/', $vincolo) !== 1) {
-        return ["il vincolo «{$vincolo}» non è fatto di ^<maggiore>.<minore> uniti da ||"];
+    if (preg_match('/^\^0\.\d+(\.\d+)?( \|\| \^0\.\d+(\.\d+)?)*$/', $vincolo) !== 1) {
+        return ["il vincolo «{$vincolo}» non è fatto di ^0.<minore> uniti da ||"];
     }
     preg_match_all('/\^(\d+\.\d+)/', $vincolo, $accettate);
     preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
@@ -50,34 +52,73 @@ function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
     return $problemi;
 }
 
-it('composer.json accetta zr-auth 0.6 e 0.7, e la CI prova zr-core con tutte e due, un giro per versione (sprint 5 · T6.1)', function () {
+/**
+ * I vincoli fatti di più versioni unite da `||` che un testo scrive, ognuno una volta.
+ *
+ * @return list<string>
+ */
+function vincoliAPiuVersioniIn(string $testo): array
+{
+    preg_match_all('/\^0\.\d+(?:\.\d+)?(?: \|\| \^0\.\d+(?:\.\d+)?)+/', $testo, $trovati);
+
+    return array_values(array_unique($trovati[0]));
+}
+
+it('composer.json accetta zr-auth 0.6, 0.7 e 0.8, e la CI prova zr-core con tutte e tre, un giro per versione (sprint 5 · T6.1; sprint 7 · T1.1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
 
     // Della 0.6 dalla 0.6.6, l'ultima e quindi quella che la CI prova: le prime (fino alla 0.6.1) tenevano in sessione
-    // l'accesso di un'altra persona, e una patch più vecchia non la prova nessun giro.
-    expect($vincolo)->toBe('^0.6.6 || ^0.7')
+    // l'accesso di un'altra persona, e una patch più vecchia non la prova nessun giro. Della 0.7 dalla 0.7.0: l'ha provata il
+    // giro della v1.0.0, e la 0.7.1 che il giro prova oggi cambia solo il finto per i test di zr-auth, che zr-core non usa.
+    // Della 0.8 dalla 0.8.0, la prima.
+    expect($vincolo)->toBe('^0.6.6 || ^0.7 || ^0.8')
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
 
-it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1)', function () {
-    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    $conUnGiro = (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1[\'0.7\']', $ci);
+it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprint 7 · T1.3)', function (string $file) {
+    $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $vincolo = $composer['require']['zeiras/zr-auth'];
+    $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
 
-    // La voce della matrice che non arriva al passo: i due giri installerebbero tutti e due la 0.7, e sarebbero verdi.
+    // Il vincolo di prima dell'ultima versione accettata, con una versione in meno: nel file rimasto indietro, e in quello che
+    // dice il vincolo nuovo in un punto e il vecchio in un altro.
+    $vincoloDiPrima = (string) preg_replace('/ \|\| [^|]+$/', '', $vincolo);
+
+    expect(vincoliAPiuVersioniIn($testo))->toBe([$vincolo])
+        ->and(vincoliAPiuVersioniIn(str_replace($vincolo, $vincoloDiPrima, $testo)))->toBe([$vincoloDiPrima])
+        ->and(vincoliAPiuVersioniIn($testo."\n`{$vincoloDiPrima}`"))->toBe([$vincolo, $vincoloDiPrima]);
+})->with(['README.md', 'CLAUDE.md']);
+
+it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 7 · T1.2)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $vincolo = '^0.6.6 || ^0.7 || ^0.8';
+    $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
+    $conUnGiro = $conLaMatrice("'0.7'");
+
+    // Com'erano prima della 0.8, uno alla volta: la matrice senza il giro nuovo, il vincolo senza la versione nuova.
+    $conLaMatriceDiPrima = $conLaMatrice("'0.6', '0.7'");
+    $vincoloDiPrima = str_replace(' || ^0.8', '', $vincolo);
+
+    // La voce della matrice che non arriva al passo: i giri installerebbero tutti la 0.7, e sarebbero verdi.
     $conLaVersioneFissa = str_replace('ZR_AUTH: ${{ matrix.zr-auth }}', "ZR_AUTH: '0.7'", $ci);
     $senzaIlVincoloDelGiro = str_replace(' --with "zeiras/zr-auth:~${ZR_AUTH}.0"', '', $ci);
 
     expect($conUnGiro)->not->toBe($ci)
+        ->and($conLaMatriceDiPrima)->not->toBe($ci)
         ->and($conLaVersioneFissa)->not->toBe($ci)
         ->and($senzaIlVincoloDelGiro)->not->toBe($ci)
-        ->and(versioniDiZrAuthNonProvate('^0.6.6 || ^0.7', $conUnGiro))->toBe(['la CI non prova zr-auth 0.6'])
-        ->and(versioniDiZrAuthNonProvate('^0.7', $ci))->toBe(['la CI prova zr-auth 0.6, che composer.json non accetta'])
-        ->and(versioniDiZrAuthNonProvate('^0.6.6 || ^0.7', $conLaVersioneFissa))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
-        ->and(versioniDiZrAuthNonProvate('^0.6.6 || ^0.7', $senzaIlVincoloDelGiro))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $conUnGiro))->toBe(['la CI non prova zr-auth 0.6', 'la CI non prova zr-auth 0.8'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $conLaMatriceDiPrima))->toBe(['la CI non prova zr-auth 0.8'])
+        ->and(versioniDiZrAuthNonProvate($vincoloDiPrima, $ci))->toBe(['la CI prova zr-auth 0.8, che composer.json non accetta'])
+        ->and(versioniDiZrAuthNonProvate('^0.7', $ci))->toBe(['la CI prova zr-auth 0.6, che composer.json non accetta', 'la CI prova zr-auth 0.8, che composer.json non accetta'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $conLaVersioneFissa))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $senzaIlVincoloDelGiro))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
         // Senza matrice la CI fa un giro solo, con la versione che composer sceglie: nessuna delle due è provata di proposito.
         ->and(versioniDiZrAuthNonProvate('^0.6 || ^0.7', "jobs:\n  ci:\n    runs-on: ubuntu-latest\n"))
         ->toBe(['la CI non prova zr-auth 0.6', 'la CI non prova zr-auth 0.7', 'i giri non installano la versione di zr-auth della loro voce della matrice'])
-        ->and(versioniDiZrAuthNonProvate('>=0.6', $ci))->toBe(['il vincolo «>=0.6» non è fatto di ^<maggiore>.<minore> uniti da ||']);
+        ->and(versioniDiZrAuthNonProvate('>=0.6', $ci))->toBe(['il vincolo «>=0.6» non è fatto di ^0.<minore> uniti da ||'])
+        // Dalla 1.0 un `^` accetta anche le minori dopo: il controllo lo dice, invece di contarla come una minore sola.
+        ->and(versioniDiZrAuthNonProvate('^0.8 || ^1.0', $ci))->toBe(['il vincolo «^0.8 || ^1.0» non è fatto di ^0.<minore> uniti da ||']);
 });
