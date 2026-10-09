@@ -151,10 +151,14 @@ window.fetch = async (indirizzo: RequestInfo | URL, opzioni?: RequestInit) => {
         if (errore === 'letture' && letture === 1) {
             return json({ errore: 'uat_errore' }, 502);
         }
-        const { fino_a: finoA } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown };
+        const { fino_a: finoA, workspace } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown };
         const istante = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
-        if (Number.isNaN(istante)) {
+        if (Number.isNaN(istante) || typeof workspace !== 'string' || workspace === '') {
             return json({ errore: 'dati_non_validi' }, 422);
+        }
+        // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione.
+        if (workspace !== datiDiProva.workspace.slug) {
+            return json({ errore: 'workspace_diverso' }, 409);
         }
         for (const notifica of notificheDiProva) {
             if (new Date(notifica.creata_il).getTime() <= istante) {

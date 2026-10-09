@@ -8,9 +8,9 @@ use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 
-// Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte che la
-// cornice chiama dal browser per il pannello delle notifiche: GET /cornice/notifiche e PATCH
-// /cornice/notifiche/{notifica}/lettura, nel gruppo `web` del frontend. La parte server le gira al backoffice col gettone del
+// Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
+// notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
+// la chiama più: resta per i frontend che la usano), nel gruppo `web` del frontend. La parte server le gira al backoffice col gettone del
 // workspace, che resta nella sessione. Il backoffice è Http::fake, mai il finto di zr-auth. Nessuna richiesta esce (TestCase).
 // Sprint 6 · T1 (voce #1318): l'elenco porta anche `app`, il codice dell'app da cui viene la notifica, com'è nel backoffice.
 // Sprint 6 · T2 (voce #1318): POST /cornice/notifiche/letture segna lette le notifiche fino a un istante, con una richiesta
@@ -42,6 +42,16 @@ function problemaDelBackoffice(int $stato, ?string $codice): mixed
 }
 
 /** Il percorso di /v1 di una richiesta al backoffice, senza la query. */
+/**
+ * Il corpo di POST /cornice/notifiche/letture come lo manda la cornice: l'istante e lo slug del workspace della pagina.
+ *
+ * @return array{fino_a: string, workspace: string}
+ */
+function lettureFinoA(string $finoA): array
+{
+    return ['fino_a' => $finoA, 'workspace' => WORKSPACE_DELLE_NOTIFICHE['slug']];
+}
+
 function percorsoDi(Request $richiesta): ?string
 {
     return parse_url($richiesta->url(), PHP_URL_PATH) ?: null;
@@ -195,7 +205,7 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
-it('POST /cornice/notifiche/letture manda al backoffice una sola POST con lo stesso fino_a e il gettone del workspace, e risponde con l\'istante del backoffice (sprint 6 · T2.1)', function (string $finoA, string $delBackoffice) {
+it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo fino_a, lo stesso, e il gettone del workspace, e risponde con l\'istante del backoffice (sprint 6 · T2.1)', function (string $finoA, string $delBackoffice) {
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.letture.crea risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
@@ -204,9 +214,10 @@ it('POST /cornice/notifiche/letture manda al backoffice una sola POST con lo ste
             : problemaDelBackoffice(403, 'gettone_senza_workspace'),
     });
 
-    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => $finoA]))
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA($finoA)))
         ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice]]);
     Http::assertSentCount(1);
+    // Al backoffice va solo l'istante: lo slug serve alla rotta, e resta qui.
     Http::assertSent(fn (Request $richiesta) => $richiesta->method() === 'POST' && percorsoDi($richiesta) === '/v1/io/notifiche/letture'
         && $richiesta->data() === ['fino_a' => $finoA]
         && $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']));
@@ -215,7 +226,7 @@ it('POST /cornice/notifiche/letture manda al backoffice una sola POST con lo ste
     // `fino_a` della risposta è quello del backoffice, in UTC, non quello chiesto.
     'con un altro fuso: al backoffice va com\'è' => ['2026-10-08T12:00:00+02:00', '2026-10-08T10:00:00.000Z'],
     'un fuso a ovest, con la mezz\'ora' => ['2026-10-08T05:30:00.5-04:30', '2026-10-08T10:00:00.500Z'],
-    'nove decimali' => ['2026-10-08T10:00:00.123456789Z', '2026-10-08T10:00:00.123Z'],
+    'sei decimali: di più il backoffice non ne ammette' => ['2026-10-08T10:00:00.123456Z', '2026-10-08T10:00:00.123Z'],
 ]);
 
 it('senza fino_a, o con un valore che non è una stringa con data, ora e fuso, risponde 422 dati_non_validi e non chiama il backoffice (sprint 6 · T2.2)', function (array $corpo, string $query) {
@@ -224,7 +235,8 @@ it('senza fino_a, o con un valore che non è una stringa con data, ora e fuso, r
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake();
 
-    senzaGettone($this->postJson('cornice/notifiche/letture'.$query, $corpo))
+    // Con lo slug del workspace della sessione: ogni caso è rifiutato per il suo istante.
+    senzaGettone($this->postJson('cornice/notifiche/letture'.$query, $corpo + ['workspace' => WORKSPACE_DELLE_NOTIFICHE['slug']]))
         ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
     Http::assertNothingSent();
 })->with([
@@ -242,16 +254,50 @@ it('senza fino_a, o con un valore che non è una stringa con data, ora e fuso, r
     'uno spazio al posto di T' => [['fino_a' => '2026-10-08 10:00:00.000Z'], ''],
     'uno spazio davanti' => [['fino_a' => ' 2026-10-08T10:00:00.000Z'], ''],
     'un a capo in fondo' => [['fino_a' => "2026-10-08T10:00:00.000Z\n"], ''],
-    'dieci decimali' => [['fino_a' => '2026-10-08T10:00:00.1234567890Z'], ''],
+    'sette decimali' => [['fino_a' => '2026-10-08T10:00:00.1234567Z'], ''],
     'una stringa di 100 caratteri' => [['fino_a' => '2026-10-08T10:00:00.'.str_repeat('0', 79).'Z'], ''],
     'solo nella query' => [[], '?fino_a=2026-10-08T10:00:00.000Z'],
+]);
+
+it('senza workspace, o se non è una stringa non vuota, risponde 422 dati_non_validi e non chiama il backoffice (sprint 6 · T2.5)', function (array $corpo, string $query) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake();
+
+    senzaGettone($this->postJson('cornice/notifiche/letture'.$query, ['fino_a' => '2026-10-08T10:00:00.000Z'] + $corpo))
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertNothingSent();
+})->with([
+    'senza workspace' => [[], ''],
+    'null' => [['workspace' => null], ''],
+    'un numero' => [['workspace' => 7], ''],
+    'true' => [['workspace' => true], ''],
+    'una lista' => [['workspace' => ['uat-marketing']], ''],
+    'vuoto' => [['workspace' => ''], ''],
+    'solo nella query' => [[], '?workspace=uat-marketing'],
+]);
+
+it('con lo slug di un workspace che non è quello della sessione risponde 409 workspace_diverso e non chiama il backoffice: la persona è entrata in un altro da un\'altra scheda (sprint 6 · T2.5)', function (string $workspace) {
+    // Senza il middleware che toglie gli spazi: lo slug si confronta com'è.
+    test()->withoutMiddleware(TrimStrings::class);
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake();
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z', 'workspace' => $workspace]))
+        ->assertStatus(409)->assertExactJson(['errore' => 'workspace_diverso']);
+    Http::assertNothingSent();
+})->with([
+    'un altro workspace' => ['uat-vendite'],
+    'lo stesso con le maiuscole' => ['UAT-Marketing'],
+    'lo stesso con uno spazio in fondo' => ['uat-marketing '],
+    'il nome al posto dello slug' => ['UAT Marketing'],
+    'l\'id al posto dello slug' => ['uat-ws'],
 ]);
 
 it('un istante che ha la forma giusta ma che il backoffice rifiuta con 422 dati_non_validi, come il 31 febbraio, risponde 422 dati_non_validi (sprint 6 · T2.3)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => problemaDelBackoffice(422, 'dati_non_validi')]);
 
-    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-02-31T10:00:00.000Z']))
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-02-31T10:00:00.000Z')))
         ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
     Http::assertSentCount(1);
 });
@@ -260,7 +306,7 @@ it('un 422 del backoffice senza il codice dati_non_validi è un suo errore, non 
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => problemaDelBackoffice(422, $codice)]);
 
-    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']));
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')));
 
     expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
         ->and($risposta->json('errore'))->toBeNull();
@@ -273,7 +319,7 @@ it('se il backoffice risponde alle letture senza l\'istante è un errore, mai un
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response($corpo, $stato)]);
 
-    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']));
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')));
 
     expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
         ->and($risposta->json('data'))->toBeNull();
@@ -301,7 +347,7 @@ it('senza sessione le quattro rotte della cornice rispondono 401 e non chiamano 
 
     senzaGettone($this->getJson('cornice/notifiche'))->assertUnauthorized();
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))->assertUnauthorized();
-    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']))->assertUnauthorized();
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')))->assertUnauthorized();
     senzaGettone($this->getJson('cornice/ricerca?q=uat'))->assertUnauthorized();
     Http::assertNothingSent();
 });
@@ -313,7 +359,7 @@ it('con la sessione ma senza workspace le quattro rotte della cornice rispondono
     foreach ([
         $this->getJson('cornice/notifiche'),
         $this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]),
-        $this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z']),
+        $this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
         $this->getJson('cornice/ricerca?q=uat'),
     ] as $risposta) {
         senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);

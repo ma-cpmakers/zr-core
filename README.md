@@ -86,14 +86,16 @@ pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore dell
 
 ### Le rotte della cornice
 
-zr-core registra da sé, nel gruppo `web` del frontend (sessione, guardia di zr-auth, CSRF), le rotte che la cornice chiama
-dal browser sulla stessa origine. La parte server le gira al backoffice col gettone del workspace, che non esce.
+zr-core registra da sé, nel gruppo `web` del frontend (sessione, guardia di zr-auth, CSRF), le sue rotte per il browser,
+sulla stessa origine: quelle che la cornice chiama, e la lettura di una notifica sola, che dalla v1.1.0 la cornice non
+chiama più e resta per i frontend che la usano. La parte server le gira al backoffice col gettone del workspace, che non
+esce.
 
 | Rotta | Risponde |
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app}]}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `POST /cornice/notifiche/letture` con `{fino_a}` | `{data: {fino_a}}`: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; senza `fino_a`, o se non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}` |
+| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a}}`: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}` |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -137,16 +139,17 @@ cornice === null ? pagina : (
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
-- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette caricate nel
-  pannello.
+- **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
+  elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
+  visita dopo, se il frontend tiene montata la cornice — vale il loro numero.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
   lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
   non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
-  «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a}` — la `creata_il` più
-  recente fra le notifiche caricate, così com'è — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo
+  «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a, workspace}` — la
+  `creata_il` più recente fra le notifiche caricate, così com'è, e lo slug del workspace dei dati — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo
   `web`) nell'header `X-XSRF-TOKEN`: segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
   un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce non cambia niente, e

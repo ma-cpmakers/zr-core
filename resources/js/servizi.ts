@@ -41,15 +41,16 @@ export async function caricaNotifiche(): Promise<NotificaDellaCornice[]> {
 
 /**
  * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
- * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica. Una
- * risposta senza l'istante è un errore come le altre.
+ * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
+ * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
+ * altro (un'altra scheda) la parte server non segna niente. Una risposta senza l'istante è un errore come le altre.
  */
-export async function segnaLetteFinoA(finoA: string): Promise<void> {
+export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<void> {
     const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ fino_a: finoA }),
+        body: JSON.stringify({ fino_a: finoA, workspace }),
     })) as { data?: { fino_a?: unknown } | null } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
         throw new Error(`POST ${indirizzo}: fino_a`);

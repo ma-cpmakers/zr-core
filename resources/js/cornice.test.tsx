@@ -426,7 +426,7 @@ describe('il pannello delle notifiche', () => {
     /** Le richieste partite, nell'ordine: il metodo e l'indirizzo. */
     const richieste = (fetchFinto: { mock: { calls: [indirizzo: string, opzioni?: RequestInit][] } }) => fetchFinto.mock.calls.map(([indirizzo, opzioni]) => `${opzioni?.method ?? 'GET'} ${indirizzo}`);
     /** Il corpo JSON di una richiesta partita. */
-    const corpoDi = (opzioni?: RequestInit) => JSON.parse(String(opzioni?.body)) as { fino_a?: unknown };
+    const corpoDi = (opzioni?: RequestInit) => JSON.parse(String(opzioni?.body)) as { fino_a?: unknown; workspace?: unknown };
     /** La risposta della parte server a «Segna tutte come lette»: l'istante chiesto, come lo dà il backoffice (in UTC). */
     const segnateFinoA = (opzioni?: RequestInit) => risposta({ data: { fino_a: new Date(String(corpoDi(opzioni).fino_a)).toISOString() } });
     /** Le due rotte che rispondono subito: l'elenco dato, e ogni «Segna tutte come lette» riuscita. */
@@ -511,7 +511,7 @@ describe('il pannello delle notifiche', () => {
         expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
         expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
         // Com'è nell'elenco, col suo fuso: né l'ora del browser («adesso» sono le 12:00) né l'istante riscritto.
-        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         // Prima della risposta non cambia niente, e un altro clic non manda una seconda richiesta.
         expect(campanella()).toBe('60');
         expect(nonLette()).toStrictEqual([true, true, false]);
@@ -542,7 +542,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa, workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual(elenco.map(() => false));
     });
@@ -557,7 +557,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(segnaTutte()).toBeNull();
     });
@@ -617,7 +617,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(2)).toStrictEqual(['POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00' });
+        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
     });
@@ -693,9 +693,66 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false, false]);
+    });
+
+    it.each<[number, string | null]>([
+        [0, null],
+        [1, '1'],
+    ])('coi dati nuovi della parte server a %s non lette non contano più le due non lette di un elenco caricato coi dati di prima: è più vecchio del loro numero (sprint 6 · T4.5)', async (nonLetteNuove, attesa) => {
+        vi.stubGlobal('fetch', rotte(notificheDelServer));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+        expect(campanella()).toBe('2');
+
+        // Una visita dopo, con la cornice montata: la persona le ha lette altrove, e i dati nuovi lo sanno.
+        await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNuove }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe(attesa);
+    });
+
+    it('riaprendo il pannello la campanella tiene le non lette dell\'ultimo elenco arrivato mentre il nuovo si carica, e anche se il caricamento fallisce (sprint 6 · T4.5)', async () => {
+        const secondo = inAttesa();
+        const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
+            .mockImplementationOnce(async () => risposta({ data: notificheDelServer }))
+            .mockImplementationOnce(() => secondo.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 0 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+
+        // Chiuso e riaperto: mentre il nuovo elenco si carica il pannello è vuoto, ma le due non lette di prima contano ancora.
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('2');
+
+        await secondo.arriva(risposta({ errore: 'backoffice_non_risponde' }, 502));
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('2');
+    });
+
+    it('se i dati sono cambiati a pannello aperto l\'elenco è più vecchio dei dati: alla risposta di «Segna tutte come lette» si ricarica, e la campanella mostra la non letta arrivata dopo (sprint 6 · T4.6)', async () => {
+        const nuova = nata('uat-n42', '2026-10-06T11:59:30.250Z');
+        const elenchi = [notificheDelServer, [nuova, ...tutteLette]];
+        let chiesti = 0;
+        const fetchFinto = vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenchi[chiesti++] }) : segnateFinoA(opzioni)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // I dati nuovi arrivano col pannello aperto (una visita, con la cornice montata), e contano una notifica in più.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('3');
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(nonLette()).toStrictEqual([true, false, false, false]);
+        expect(campanella()).toBe('1');
     });
 
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {

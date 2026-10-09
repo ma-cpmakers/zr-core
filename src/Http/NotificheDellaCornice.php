@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
+use Zeiras\Auth\Sessione;
 
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
@@ -27,11 +28,12 @@ final class NotificheDellaCornice
     public const ID = '[A-Za-z0-9_-]{1,64}';
 
     /**
-     * Com'è fatto l'istante che la rotta accetta in `fino_a`: data, `T`, ora coi secondi (e nove decimali al più) e fuso, `Z`
-     * o `±hh:mm`, com'è la `creata_il` di una notifica di /v1. Senza il fuso l'istante lo deciderebbe chi lo legge. `\z` e non
-     * `$`, che lascia passare un a capo in fondo. Se quel giorno esiste (il 31 febbraio no) lo dice il backoffice.
+     * Com'è fatto l'istante che la rotta accetta in `fino_a`: data, `T`, ora coi secondi (e sei decimali al più: di più il
+     * backoffice non ne ammette) e fuso, `Z` o `±hh:mm`, com'è la `creata_il` di una notifica di /v1, che ne ha tre. Senza il
+     * fuso l'istante lo deciderebbe chi lo legge. `\z` e non `$`, che lascia passare un a capo in fondo. Se quel giorno esiste
+     * (il 31 febbraio no) lo dice il backoffice.
      */
-    private const ISTANTE = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})\z/';
+    private const ISTANTE = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})\z/';
 
     /** GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca. */
     public function elenco(): JsonResponse
@@ -81,15 +83,23 @@ final class NotificheDellaCornice
     /**
      * POST /cornice/notifiche/letture: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate
      * fino a `fino_a` compreso, anche quelle oltre la prima pagina (io.notifiche.letture.crea). `fino_a` della risposta è
-     * l'istante del backoffice, in UTC, non quello chiesto.
+     * l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina che chiede, quello
+     * per cui ha calcolato l'istante: al backoffice non va.
      */
     public function letture(Request $richiesta): JsonResponse
     {
         // Solo dal corpo JSON, e solo un istante col suo fuso: il backoffice non legge la query.
         $finoA = $richiesta->json('fino_a');
+        $workspace = $richiesta->json('workspace');
 
-        if (! is_string($finoA) || preg_match(self::ISTANTE, $finoA) !== 1) {
+        if (! is_string($finoA) || preg_match(self::ISTANTE, $finoA) !== 1 || ! is_string($workspace) || $workspace === '') {
             return new JsonResponse(['errore' => 'dati_non_validi'], 422);
+        }
+
+        // La sessione ha un workspace solo: se da un'altra scheda la persona è entrata in un altro, la pagina che chiede mostra
+        // ancora quello di prima, e l'istante è delle sue notifiche. Qui segnerebbe lette quelle dell'altro, mai viste.
+        if ($workspace !== (Sessione::workspace()['slug'] ?? null)) {
+            return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
         try {
