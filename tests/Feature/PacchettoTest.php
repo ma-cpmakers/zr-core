@@ -24,15 +24,16 @@ it('si avvia dentro un\'app Laravel', function () {
 /**
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
- * (due giri proverebbero la stessa). Il vincolo è fatto di `^<maggiore>.<minore>`, anche con la patch, uniti da `||`, e la
- * matrice di ci.yml (`zr-auth: ['0.6', '0.7', '0.8']`) ha un giro per ognuno.
+ * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch, uniti da `||`, e la
+ * matrice di ci.yml (`zr-auth: ['0.6', '0.7', '0.8']`) ha un giro per ognuno. Solo sotto la 1.0 un `^` si ferma alla sua
+ * minore: `^1.0` accetta anche le 1.1, che il giro della 1.0 non proverebbe.
  *
  * @return list<string>
  */
 function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
 {
-    if (preg_match('/^\^\d+\.\d+(\.\d+)?( \|\| \^\d+\.\d+(\.\d+)?)*$/', $vincolo) !== 1) {
-        return ["il vincolo «{$vincolo}» non è fatto di ^<maggiore>.<minore> uniti da ||"];
+    if (preg_match('/^\^0\.\d+(\.\d+)?( \|\| \^0\.\d+(\.\d+)?)*$/', $vincolo) !== 1) {
+        return ["il vincolo «{$vincolo}» non è fatto di ^0.<minore> uniti da ||"];
     }
     preg_match_all('/\^(\d+\.\d+)/', $vincolo, $accettate);
     preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
@@ -51,7 +52,19 @@ function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
     return $problemi;
 }
 
-it('composer.json accetta zr-auth 0.6, 0.7 e 0.8, e la CI prova zr-core con tutte e tre, un giro per versione (sprint 7 · T1.1)', function () {
+/**
+ * I vincoli fatti di più versioni unite da `||` che un testo scrive, ognuno una volta.
+ *
+ * @return list<string>
+ */
+function vincoliAPiuVersioniIn(string $testo): array
+{
+    preg_match_all('/\^0\.\d+(?:\.\d+)?(?: \|\| \^0\.\d+(?:\.\d+)?)+/', $testo, $trovati);
+
+    return array_values(array_unique($trovati[0]));
+}
+
+it('composer.json accetta zr-auth 0.6, 0.7 e 0.8, e la CI prova zr-core con tutte e tre, un giro per versione (sprint 5 · T6.1; sprint 7 · T1.1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -62,13 +75,26 @@ it('composer.json accetta zr-auth 0.6, 0.7 e 0.8, e la CI prova zr-core con tutt
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
 
-it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 7 · T1.2)', function () {
+it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprint 7 · T1.3)', function (string $file) {
+    $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $vincolo = $composer['require']['zeiras/zr-auth'];
+    $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
+
+    // Com'era il file prima dell'ultima versione accettata: lo stesso vincolo, con una versione in meno.
+    $diPrima = str_replace($vincolo, (string) preg_replace('/ \|\| [^|]+$/', '', $vincolo), $testo);
+
+    expect(vincoliAPiuVersioniIn($testo))->toBe([$vincolo])
+        ->and(vincoliAPiuVersioniIn($diPrima))->not->toBe([$vincolo]);
+})->with(['README.md', 'CLAUDE.md']);
+
+it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 7 · T1.2)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $vincolo = '^0.6.6 || ^0.7 || ^0.8';
-    $conUnGiro = (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1[\'0.7\']', $ci);
+    $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
+    $conUnGiro = $conLaMatrice("'0.7'");
 
     // Com'erano prima della 0.8, uno alla volta: la matrice senza il giro nuovo, il vincolo senza la versione nuova.
-    $conLaMatriceDiPrima = (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1[\'0.6\', \'0.7\']', $ci);
+    $conLaMatriceDiPrima = $conLaMatrice("'0.6', '0.7'");
     $vincoloDiPrima = str_replace(' || ^0.8', '', $vincolo);
 
     // La voce della matrice che non arriva al passo: i giri installerebbero tutti la 0.7, e sarebbero verdi.
@@ -77,7 +103,6 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
 
     expect($conUnGiro)->not->toBe($ci)
         ->and($conLaMatriceDiPrima)->not->toBe($ci)
-        ->and($vincoloDiPrima)->not->toBe($vincolo)
         ->and($conLaVersioneFissa)->not->toBe($ci)
         ->and($senzaIlVincoloDelGiro)->not->toBe($ci)
         ->and(versioniDiZrAuthNonProvate($vincolo, $conUnGiro))->toBe(['la CI non prova zr-auth 0.6', 'la CI non prova zr-auth 0.8'])
@@ -89,5 +114,7 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         // Senza matrice la CI fa un giro solo, con la versione che composer sceglie: nessuna delle due è provata di proposito.
         ->and(versioniDiZrAuthNonProvate('^0.6 || ^0.7', "jobs:\n  ci:\n    runs-on: ubuntu-latest\n"))
         ->toBe(['la CI non prova zr-auth 0.6', 'la CI non prova zr-auth 0.7', 'i giri non installano la versione di zr-auth della loro voce della matrice'])
-        ->and(versioniDiZrAuthNonProvate('>=0.6', $ci))->toBe(['il vincolo «>=0.6» non è fatto di ^<maggiore>.<minore> uniti da ||']);
+        ->and(versioniDiZrAuthNonProvate('>=0.6', $ci))->toBe(['il vincolo «>=0.6» non è fatto di ^0.<minore> uniti da ||'])
+        // Dalla 1.0 un `^` accetta anche le minori dopo: il controllo lo dice, invece di contarla come una minore sola.
+        ->and(versioniDiZrAuthNonProvate('^0.8 || ^1.0', $ci))->toBe(['il vincolo «^0.8 || ^1.0» non è fatto di ^0.<minore> uniti da ||']);
 });

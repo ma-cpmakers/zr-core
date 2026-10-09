@@ -95,7 +95,7 @@ esce.
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app}]}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a}}`: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}` |
+| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a}}`: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; con migliaia di non lette il backoffice può non rispondere in tempo: è un errore (5xx) anche se può averle segnate lo stesso, e la stessa richiesta ripetuta non cambia niente |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -153,13 +153,13 @@ cornice === null ? pagina : (
   caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
   segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
-  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce nel pannello non cambia
-  niente, e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può durare più
-  dei 5 secondi che zr-auth aspetta una risposta, se il frontend non ha cambiato quel tempo (dichiarato da zr-backoffice, non
-  misurato): allora la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averle segnate lo stesso —
-  il pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
-  cambia niente. Il pulsante c'è quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se
-  quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
+  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce, nel pannello non
+  cambia niente e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può
+  durare più di 5 secondi (dichiarato da zr-backoffice, non misurato), che è quanto zr-auth aspetta ogni risposta del
+  backoffice se il frontend non ha cambiato quel tempo: in quel caso la richiesta fallisce e il pannello resta com'era,
+  anche se il backoffice può averle segnate lo stesso — il pannello le ricarica alla prossima apertura della campanella —
+  e riprovare non fa danni, perché il metodo ripetuto non cambia niente. Il pulsante c'è quando la campanella ha un numero
+  e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
