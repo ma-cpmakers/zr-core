@@ -158,8 +158,9 @@ cornice === null ? pagina : (
   risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
   Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
   l'icona del tipo; un tipo che il registro non ha non si mostra. Scegliere un risultato apre l'indirizzo del suo prodotto
-  nel workspace seguito dal percorso del tipo: per Project Management `/cartelle/<id>` e `/b/<id>`, provvisori finché
-  zr-board non decide le sue rotte. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
+  nel workspace seguito dal percorso del tipo: una board si apre su `https://board.zeiras.com/w/<slug>/b/<id>`; una
+  cartella non ha una pagina sua, e si apre sulla pagina del workspace dove stanno le cartelle,
+  `https://board.zeiras.com/w/<slug>`. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.

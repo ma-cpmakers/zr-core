@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\File;
 // un'icona del set, il percorso nel prodotto e se è un contenitore; i loro nomi stanno nelle lingue, con `<prodotto>.<tipo>`.
 // Sprint 5 · T4 (voce #1257): il tipo è quello di ricerca.elenca (`board.cartelle`, `board.board`), e sta in un prodotto solo,
 // perché un risultato della ricerca non dice di che prodotto è: la cornice lo trova dal tipo.
+// Sprint 6 · T5 (voce #1377): una risorsa che nel prodotto non ha una pagina sua (la cartella) ha il percorso vuoto, e si apre
+// sulla pagina del prodotto nel workspace.
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -38,8 +40,8 @@ function mappaDegliIndirizzi(): array
 /**
  * Cosa non torna in un registro: un'icona fuori dal set, un tono che non è di un prodotto, un indirizzo che non è quello della
  * mappa, un nome (i nomi stanno nelle lingue), «Presto» che non è un sì o un no; in una risorsa, un tipo vuoto, ripetuto o già
- * di un altro prodotto, un'icona fuori dal set, un percorso che non comincia con / o non ha un solo `{id}`, «contenitore» che
- * non è un sì o un no, un nome.
+ * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
+ * «contenitore» che non è un sì o un no, un nome.
  *
  * @param  list<array<string, mixed>>  $voci
  * @return list<string>
@@ -87,8 +89,9 @@ function problemiDelRegistro(array $voci): array
             if (! in_array($risorsa['icona'] ?? null, $icone, true)) {
                 $problemi[] = "$nome: l'icona «".($risorsa['icona'] ?? '').'» non è del set';
             }
-            if (! is_string($risorsa['percorso'] ?? null) || preg_match('~^/[^{}]*\{id\}[^{}]*$~', $risorsa['percorso']) !== 1) {
-                $problemi[] = "$nome: il percorso «".($risorsa['percorso'] ?? '').'» non comincia con / o non ha un solo {id}';
+            // Vuoto, per una risorsa senza una pagina sua; altrimenti comincia con / e ha un solo `{id}` (sprint 6 · T5.2).
+            if (! is_string($risorsa['percorso'] ?? null) || preg_match('~^(/[^{}]*\{id\}[^{}]*)?$~D', $risorsa['percorso']) !== 1) {
+                $problemi[] = "$nome: il percorso «".($risorsa['percorso'] ?? '').'» non è vuoto, e non comincia con / o non ha un solo {id}';
             }
             if (! is_bool($risorsa['contenitore'] ?? null)) {
                 $problemi[] = "$nome: «contenitore» non è un sì o un no";
@@ -102,7 +105,7 @@ function problemiDelRegistro(array $voci): array
     return $problemi;
 }
 
-it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodotti, con icone del set, toni, indirizzi della mappa e «Presto», senza nomi (T4.1, T7.3)', function () {
+it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodotti, con icone del set, toni, indirizzi della mappa e «Presto», senza nomi (T4.1, T7.3; sprint 6 · T5.2)', function () {
     $voci = registroDeiProdotti();
 
     expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
@@ -123,17 +126,18 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // «Presto» come nell'anteprima dell'AppShell: provvisorio, finché non si sa quali prodotti sono disponibili.
         ->and(array_keys(array_filter(array_column($voci, 'presto', 'id'))))->toBe(['reports', 'automations', 'content'])
         // Le risorse di Project Management che la ricerca mostra: le sole che ricerca.elenca cerca, col tipo del contratto, e con
-        // le rotte della linea guida 10 (provvisorie finché zr-board non decide le sue), a pagina intera. Icone: `folder` per la
-        // cartella (come `ProjectFolder`), `board` per la board. Le schede entrano quando il contratto ha il loro tipo.
+        // le rotte di zr-board, a pagina intera: la board ha la sua pagina; la cartella no, sta con le altre sulla pagina del
+        // workspace, e il suo percorso è vuoto. Icone: `folder` per la cartella (come `ProjectFolder`), `board` per la board.
+        // Le schede entrano quando il contratto ha il loro tipo.
         ->and($voci[1]['risorse'])->toBe([
-            ['tipo' => 'board.cartelle', 'icona' => 'folder', 'percorso' => '/cartelle/{id}', 'contenitore' => true],
+            ['tipo' => 'board.cartelle', 'icona' => 'folder', 'percorso' => '', 'contenitore' => true],
             ['tipo' => 'board.board', 'icona' => 'board', 'percorso' => '/b/{id}', 'contenitore' => true],
         ])
         // Nessun altro prodotto ha risorse: un tipo in due prodotti sarebbe un problema (sopra), e qui non ce n'è nessuno.
         ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['pm']);
 });
 
-it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indirizzo fuori dalla mappa e un nome (T4.1, T7.3)', function () {
+it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indirizzo fuori dalla mappa, un nome e un percorso che non è vuoto né `/…{id}…` (T4.1, T7.3; sprint 6 · T5.2)', function () {
     $voci = registroDeiProdotti();
     $voci[1]['tono'] = 'teal';
     $voci[2]['nome'] = 'CRM';
@@ -142,10 +146,16 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
     unset($voci[4]['presto']);
     $voci[1]['risorse'][] = ['tipo' => 'board.board', 'icona' => 'card', 'percorso' => '/b', 'contenitore' => 'sì', 'nome' => 'Board'];
     $voci[1]['risorse'][] = ['tipo' => ' ', 'icona' => 'board', 'percorso' => '/b/{id}/c/{id}', 'contenitore' => false];
+    // Un percorso senza `{id}`, o senza la barra davanti, non è il percorso vuoto: resta un problema.
+    $voci[1]['risorse'][] = ['tipo' => 'uat.cartelle', 'icona' => 'folder', 'percorso' => '/cartelle', 'contenitore' => true];
+    $voci[1]['risorse'][] = ['tipo' => 'uat.senza-barra', 'icona' => 'board', 'percorso' => 'b/{id}', 'contenitore' => true];
+    $voci[1]['risorse'][] = ['tipo' => 'uat.a-capo', 'icona' => 'board', 'percorso' => "\n", 'contenitore' => true];
     // Lo stesso tipo in un altro prodotto: la cornice non saprebbe di chi è un risultato. Un tipo suo, invece, va bene.
     $voci[2]['risorse'] = [
         ['tipo' => 'board.cartelle', 'icona' => 'folder', 'percorso' => '/cartelle/{id}', 'contenitore' => true],
         ['tipo' => 'uat.contatti', 'icona' => 'users', 'percorso' => '/contatti/{id}', 'contenitore' => false],
+        // Un percorso vuoto va bene: la risorsa non ha una pagina sua, e si apre sulla pagina del prodotto nel workspace.
+        ['tipo' => 'uat.elenchi', 'icona' => 'folder', 'percorso' => '', 'contenitore' => true],
     ];
 
     expect(valoriDelTipo('IconName'))->toContain('calendar', 'board', 'sparkle')
@@ -158,11 +168,14 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
             'reports: «Presto» non è un sì o un no',
             'pm.board.board: il tipo è due volte',
             "pm.board.board: l'icona «card» non è del set",
-            'pm.board.board: il percorso «/b» non comincia con / o non ha un solo {id}',
+            'pm.board.board: il percorso «/b» non è vuoto, e non comincia con / o non ha un solo {id}',
             'pm.board.board: «contenitore» non è un sì o un no',
             'pm.board.board: ha un nome, ma i nomi stanno nelle lingue',
             'pm. : il tipo è vuoto',
-            'pm. : il percorso «/b/{id}/c/{id}» non comincia con / o non ha un solo {id}',
+            'pm. : il percorso «/b/{id}/c/{id}» non è vuoto, e non comincia con / o non ha un solo {id}',
+            'pm.uat.cartelle: il percorso «/cartelle» non è vuoto, e non comincia con / o non ha un solo {id}',
+            'pm.uat.senza-barra: il percorso «b/{id}» non è vuoto, e non comincia con / o non ha un solo {id}',
+            "pm.uat.a-capo: il percorso «\n» non è vuoto, e non comincia con / o non ha un solo {id}",
             'crm.board.cartelle: il tipo è già di pm',
         ]);
 });

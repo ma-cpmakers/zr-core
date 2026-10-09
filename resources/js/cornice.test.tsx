@@ -854,10 +854,12 @@ describe('la ricerca', () => {
 
     it.each([
         ['Lancio Q4', 'https://board.zeiras.com/w/acme-marketing/b/01k6w2d5f7h9k1n3q5s7v9x1z3'],
-        ['Marketing', 'https://board.zeiras.com/w/acme-marketing/cartelle/01k6w2d5f7h9k1n3q5s7v9x1z3'],
+        // Una cartella non ha una pagina sua in zr-board: si apre sulla pagina del workspace, dove stanno le cartelle, senza
+        // altro dopo lo slug.
+        ['Marketing', 'https://board.zeiras.com/w/acme-marketing'],
         // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
         ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
-    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3)', async (titolo, indirizzo) => {
+    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3; sprint 6 · T5.1)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -871,6 +873,24 @@ describe('la ricerca', () => {
         });
         expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
         expect(uno('.zr-search-panel')).toBeNull();
+    });
+
+    it('due cartelle si aprono sulla stessa pagina del workspace e restano due risultati (sprint 6 · T5.1)', async () => {
+        const cartelle = [
+            { tipo: 'board.cartelle', id: 'uat-c1', titolo: 'Clienti' },
+            { tipo: 'board.cartelle', id: 'uat-c2', titolo: 'Marketing' },
+        ];
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: cartelle })));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Clienti', 'Marketing']);
+        await act(async () => {
+            righe()[1]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([['https://board.zeiras.com/w/acme-marketing']]);
     });
 
     it.each([

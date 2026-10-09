@@ -4,7 +4,7 @@
         {
             "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false,
             "risorse": [
-                { "tipo": "board.cartelle", "icona": "folder", "percorso": "/cartelle/{id}", "contenitore": true },
+                { "tipo": "board.cartelle", "icona": "folder", "percorso": "", "contenitore": true },
                 { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
             ]
         },
