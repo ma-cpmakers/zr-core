@@ -274,7 +274,7 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || !((nonLette ?? nonLetteInElenco) > 0) ? undefined : async () => {
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !((nonLette ?? nonLetteInElenco) > 0) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
@@ -282,8 +282,9 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         const questi = dati;
         const elencoDelClic = ultimaRichiesta.current;
         try {
-            // Con lo slug del workspace di questi dati: se la sessione è passata a un altro, la parte server non segna niente.
-            await segnaLetteFinoA(finoA, questi.workspace.slug);
+            // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
+            // sessione è passata a un altro, la parte server non segna niente.
+            await segnaLetteFinoA(finoA, caricate.con.workspace.slug);
         } catch {
             // Non cambia niente: il pulsante resta, per riprovare.
             return;
@@ -297,7 +298,9 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         } else {
             // Il pannello è stato ricaricato fra il clic e la risposta, e quell'elenco è di prima della lettura; oppure
             // l'elenco del clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che
-            // è arrivato dopo. Si ricarica, invece di dare per lette quelle in pagina.
+            // è arrivato dopo. Si ricarica, invece di dare per lette quelle in pagina; e le non lette di quell'elenco non
+            // contano più sulla campanella, perché la lettura le ha coperte: conteranno quelle dell'elenco che arriva.
+            setCaricate(undefined);
             carica();
         }
     };

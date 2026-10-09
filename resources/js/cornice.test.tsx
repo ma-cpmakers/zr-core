@@ -755,6 +755,40 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('1');
     });
 
+    it('se il pannello è stato ricaricato fra il clic e la risposta, alla risposta le non lette di quell\'elenco non contano più sulla campanella, nemmeno mentre il nuovo si carica o se il caricamento fallisce: la lettura le ha coperte (sprint 6 · T4.6)', async () => {
+        const lettura = inAttesa();
+        const terzo = inAttesa();
+        // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.
+        const elenchi = [async () => risposta({ data: notificheDelServer }), async () => risposta({ data: notificheDelServer }), () => terzo.promessa];
+        let chiesti = 0;
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? elenchi[chiesti++]() : lettura.promessa)));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('12');
+
+        await lettura.arriva(risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        expect(campanella()).toBeNull();
+
+        await terzo.arriva(risposta({ errore: 'backoffice_non_risponde' }, 502));
+        expect(campanella()).toBeNull();
+    });
+
+    it('se i dati passano a un altro workspace a pannello aperto, «Segna tutte come lette» manda lo slug del workspace per cui l\'elenco è stato chiesto, non quello dei dati nuovi: l\'istante è delle sue notifiche (sprint 6 · T4.1, T2.5)', async () => {
+        const fetchFinto = rotte(notificheDelServer);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // La cornice resta montata e i dati sono di un altro workspace: l'elenco in pagina è ancora quello di prima.
+        await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+    });
+
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
         const lettura = inAttesa();
         // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.

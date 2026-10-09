@@ -149,8 +149,9 @@ cornice === null ? pagina : (
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
   «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a, workspace}` — la
-  `creata_il` più recente fra le notifiche caricate, così com'è, e lo slug del workspace dei dati — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo
-  `web`) nell'header `X-XSRF-TOKEN`: segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
+  `creata_il` più recente fra le notifiche caricate, così com'è, e lo slug del workspace dei dati con cui il pannello le ha
+  caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
+  segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
   un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce non cambia niente, e
   il pulsante resta per riprovare. Il pulsante c'è quando la campanella ha un numero e il pannello ha caricato almeno una

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -10,8 +11,9 @@ use Zeiras\Auth\Testing\Rotte;
 
 // Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
 // notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
-// la chiama più: resta per i frontend che la usano), nel gruppo `web` del frontend. La parte server le gira al backoffice col gettone del
-// workspace, che resta nella sessione. Il backoffice è Http::fake, mai il finto di zr-auth. Nessuna richiesta esce (TestCase).
+// la chiama più: resta per i frontend che la usano), nel gruppo `web` del frontend. La parte server le gira al backoffice
+// col gettone del workspace, che resta nella sessione. Il backoffice è Http::fake, mai il finto di zr-auth. Nessuna
+// richiesta esce (TestCase).
 // Sprint 6 · T1 (voce #1318): l'elenco porta anche `app`, il codice dell'app da cui viene la notifica, com'è nel backoffice.
 // Sprint 6 · T2 (voce #1318): POST /cornice/notifiche/letture segna lette le notifiche fino a un istante, con una richiesta
 // sola al backoffice.
@@ -41,7 +43,6 @@ function problemaDelBackoffice(int $stato, ?string $codice): mixed
     return Http::response((string) json_encode($problema), $stato, ['Content-Type' => 'application/problem+json']);
 }
 
-/** Il percorso di /v1 di una richiesta al backoffice, senza la query. */
 /**
  * Il corpo di POST /cornice/notifiche/letture come lo manda la cornice: l'istante e lo slug del workspace della pagina.
  *
@@ -52,6 +53,7 @@ function lettureFinoA(string $finoA): array
     return ['fino_a' => $finoA, 'workspace' => WORKSPACE_DELLE_NOTIFICHE['slug']];
 }
 
+/** Il percorso di /v1 di una richiesta al backoffice, senza la query. */
 function percorsoDi(Request $richiesta): ?string
 {
     return parse_url($richiesta->url(), PHP_URL_PATH) ?: null;
@@ -260,6 +262,8 @@ it('senza fino_a, o con un valore che non è una stringa con data, ora e fuso, r
 ]);
 
 it('senza workspace, o se non è una stringa non vuota, risponde 422 dati_non_validi e non chiama il backoffice (sprint 6 · T2.5)', function (array $corpo, string $query) {
+    // Senza i middleware che tolgono gli spazi e fanno null di una stringa vuota: la rotta non conta su quelli del frontend.
+    test()->withoutMiddleware([TrimStrings::class, ConvertEmptyStringsToNull::class]);
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake();
 
