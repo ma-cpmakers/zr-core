@@ -14,14 +14,15 @@ permissions:
 
 jobs:
   ci:
-    # Un giro per ogni versione minore di zr-auth che composer.json accetta: la 0.6, la 0.7 che i frontend hanno, la 0.8 e
-    # la 0.9 che viene. Un giro rosso non ferma gli altri: si vedono tutti, e il verde è di tutti.
+    # Un giro per ogni versione minore di zr-auth che composer.json accetta: la 0.6, la 0.7 che i frontend hanno, la 0.8, la
+    # 0.9 e la 0.10 che viene. Un giro rosso non ferma gli altri: si vedono tutti, e il verde è di tutti. Le voci stanno fra
+    # apici: senza, YAML legge 0.10 come il numero 0.1.
     name: ci (zr-auth ${{ matrix.zr-auth }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        zr-auth: ['0.6', '0.7', '0.8', '0.9']
+        zr-auth: ['0.6', '0.7', '0.8', '0.9', '0.10']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +48,10 @@ jobs:
       - name: Nessun segreto nel repo
         run: bash .github/nessun-segreto.sh
 
+      # Lo zip del tag, ciò che Composer dà a un frontend: solo ciò che serve a chi installa, né i test né la pagina di prova.
+      - name: Lo zip del pacchetto
+        run: bash .github/zip-del-pacchetto.sh
+
       # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run. Di zr-auth si installa l'ultima
       # versione della minore di questo giro: il log dice quale, e se composer ne ha scelta un'altra il giro si ferma.
       - name: Dipendenze PHP
@@ -71,13 +76,15 @@ jobs:
       - name: Analisi statica
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-      # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto.
-      - name: Dipendenze JS, tipi, test (vitest) e build dei componenti
+      # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto. Poi le pagine di
+      # prova (`npm run demo`), con Inertia vera: non entrano nel pacchetto, ma la UAT gira lì, e devono costruirsi.
+      - name: Dipendenze JS, tipi, test (vitest), build dei componenti e delle pagine di prova
         run: |
           npm ci
           npx tsc --noEmit
           npx vitest run
           npm run build
+          npm run demo
 
       - name: Test (Pest, Testbench)
         run: ./vendor/bin/pest
