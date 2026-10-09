@@ -11,9 +11,10 @@ use Zeiras\Auth\Errori\ErroreApi;
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
- * l'id, quando è nata e se è letta. `tipo`, `soggetto` e `dati` restano qui: il contratto non dice di che prodotto è una
- * notifica, e la cornice non lo indovina. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non
- * risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ * l'id, quando è nata, se è letta e `app`, il codice dell'app da cui viene. Di che prodotto è lo dice il registro di zr-core,
+ * nel browser: un codice che il registro non ha passa da qui com'è, e la cornice non mostra un prodotto. `tipo`, `soggetto`
+ * e `dati` restano qui. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
+ * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  */
 final class NotificheDellaCornice
 {
@@ -70,18 +71,20 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata e se è letta. `letta_il` c'è sempre, ed è null finché
-     * la persona non la segna: una risposta senza uno dei tre non è una notifica, ed è un guasto, mai una notifica non letta.
+     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata, se è letta e il codice dell'app. `letta_il` e `app` ci
+     * sono sempre: `letta_il` è null finché la persona non la segna, `app` è null se l'evento non è di un'app. Una risposta senza
+     * uno dei quattro non è una notifica, ed è un guasto: mai una notifica non letta, mai una notifica senza app.
      *
-     * @return array{id: string, creata_il: string, letta: bool}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
         if (! is_array($notifica) || ! is_string($notifica['id'] ?? null) || ! is_string($notifica['creata_il'] ?? null)
-            || ! array_key_exists('letta_il', $notifica) || ! ($notifica['letta_il'] === null || is_string($notifica['letta_il']))) {
+            || ! array_key_exists('letta_il', $notifica) || ! ($notifica['letta_il'] === null || is_string($notifica['letta_il']))
+            || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
-        return ['id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null];
+        return ['id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null, 'app' => $notifica['app']];
     }
 }

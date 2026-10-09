@@ -11,19 +11,21 @@ use Zeiras\Auth\Testing\Rotte;
 // cornice chiama dal browser per il pannello delle notifiche: GET /cornice/notifiche e PATCH
 // /cornice/notifiche/{notifica}/lettura, nel gruppo `web` del frontend. La parte server le gira al backoffice col gettone del
 // workspace, che resta nella sessione. Il backoffice è Http::fake, mai il finto di zr-auth. Nessuna richiesta esce (TestCase).
+// Sprint 6 · T1 (voce #1318): l'elenco porta anche `app`, il codice dell'app da cui viene la notifica, com'è nel backoffice.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
 /**
- * Una notifica come la dà /v1 (schema Notifica): tipo, soggetto e dati sono quelli dell'evento che l'ha generata.
+ * Una notifica come la dà /v1 (schema Notifica): tipo, soggetto e dati sono quelli dell'evento che l'ha generata, e `app` è il
+ * codice dell'app di quell'evento (`pm` per la board), o null se l'evento non è di un'app.
  *
  * @return array<string, mixed>
  */
-function notificaDelBackoffice(string $id, string $creataIl, ?string $lettaIl): array
+function notificaDelBackoffice(string $id, string $creataIl, ?string $lettaIl, ?string $app = 'pm'): array
 {
     return [
-        'id' => $id, 'tipo' => 'com.zeiras.board.cartella.creata', 'soggetto' => "/v1/board/cartelle/uat-cartella-{$id}",
+        'id' => $id, 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => $app, 'soggetto' => "/v1/board/cartelle/uat-cartella-{$id}",
         'dati' => ['id' => "uat-cartella-{$id}", 'aggiornata_il' => $creataIl], 'letta_il' => $lettaIl, 'creata_il' => $creataIl,
     ];
 }
@@ -50,23 +52,24 @@ function senzaGettone(TestResponse $risposta): TestResponse
     return $risposta;
 }
 
-it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il e letta (sprint 5 · T2.1)', function () {
+it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta e app, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null (sprint 5 · T2.1; sprint 6 · T1.1)', function () {
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.elenca risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
         '/v1/io/notifiche' => $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace'])
             ? Http::response(['data' => [
                 notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null),
-                notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z'),
-                notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null),
+                // Un'app nuova può comparire: la parte server non la scarta, lo fa la cornice col registro.
+                notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z', 'uat-ignota'),
+                notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null, null),
             ], 'successivo' => 'uat-cursore-2'])
             : problemaDelBackoffice(403, 'gettone_senza_workspace'),
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false],
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true],
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false],
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm'],
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota'],
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null],
     ]]);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -182,9 +185,10 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un 200 senza JSON' => [200, 'uat: non è JSON'],
     'senza data' => [200, ['notifica' => notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null)]],
     'data vuoto' => [200, ['data' => []]],
-    'senza id' => [200, ['data' => ['creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
-    'senza letta_il' => [200, ['data' => ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z']]],
-    'letta_il non è un istante né null' => [200, ['data' => ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => true]]],
+    'senza id' => [200, ['data' => ['app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
+    'senza letta_il' => [200, ['data' => ['id' => 'uat-n3', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z']]],
+    'letta_il non è un istante né null' => [200, ['data' => ['id' => 'uat-n3', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => true]]],
+    'senza app (sprint 6 · T1.2)' => [200, ['data' => ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
@@ -244,7 +248,7 @@ it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la se
     expect($fuoriDalWeb())->toBe(['PATCH cornice/notifiche/{notifica}/senza-csrf']);
 });
 
-it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /v1, la rotta risponde con un errore, non con un elenco vuoto (T3.4)', function (int $stato, mixed $corpo) {
+it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /v1, la rotta risponde con un errore, non con un elenco vuoto (T3.4; sprint 6 · T1.2)', function (int $stato, mixed $corpo) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response($corpo, $stato)]);
 
@@ -258,7 +262,13 @@ it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /
     'un 200 senza la forma di /v1' => [200, ['notifiche' => []]],
     'data non è una lista' => [200, ['data' => notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null), 'successivo' => null]],
     'una notifica che non è un oggetto' => [200, ['data' => ['uat-n1'], 'successivo' => null]],
-    'una notifica senza id' => [200, ['data' => [['creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'una notifica senza creata_il' => [200, ['data' => [['id' => 'uat-n1', 'letta_il' => null]], 'successivo' => null]],
-    'una notifica senza letta_il' => [200, ['data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z']], 'successivo' => null]],
+    'una notifica senza id' => [200, ['data' => [['app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'una notifica senza creata_il' => [200, ['data' => [['id' => 'uat-n1', 'app' => null, 'letta_il' => null]], 'successivo' => null]],
+    'una notifica senza letta_il' => [200, ['data' => [['id' => 'uat-n1', 'app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z']], 'successivo' => null]],
+    // Sprint 6 · T1.2: `app` c'è sempre, una stringa o null. Senza, o di un altro tipo, non è una notifica di /v1: mai `app: null`.
+    'una notifica senza app' => [200, ['data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è un numero' => [200, ['data' => [['id' => 'uat-n1', 'app' => 7, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è una lista' => [200, ['data' => [['id' => 'uat-n1', 'app' => ['pm'], 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è true' => [200, ['data' => [['id' => 'uat-n1', 'app' => true, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'la seconda notifica senza app' => [200, ['data' => [notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', null), ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
 ]);

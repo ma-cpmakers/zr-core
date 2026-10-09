@@ -91,7 +91,7 @@ dal browser sulla stessa origine. La parte server le gira al backoffice col gett
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta}]}`: le notifiche della persona nel workspace dalla più recente, una pagina |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app}]}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
