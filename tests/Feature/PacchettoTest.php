@@ -198,17 +198,27 @@ function fileDelPacchettoConInertia(array $file): array
     ));
 }
 
-it('la pagina di prova del layout passa da Inertia vera, la versione dei frontend: importa createInertiaApp e router da @inertiajs/react (sprint 9 · T3.1)', function () {
+it('la pagina di prova del layout fa visite vere di Inertia, la versione dei frontend: router.visit con un client HTTP finto, mai router.push (sprint 9 · T3.1; sprint 10 · T3.1)', function () {
     $pagina = (string) file_get_contents(__DIR__.'/../../resources/demo/layout.tsx');
     $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
     $daInertia = fn (string $testo): array => nomiFraLeGraffe('/^import \{([^}]*)\} from \'@inertiajs\/react\';$/m', $testo);
+    $comeVisita = fn (string $testo): array => [
+        'router.visit(' => substr_count($testo, 'router.visit('),
+        'http.setClient(' => substr_count($testo, 'http.setClient('),
+        'router.push(' => substr_count($testo, 'router.push('),
+    ];
 
-    // La stessa pagina con un router finto al posto di quello di Inertia.
-    $colRouterFinto = (string) preg_replace('/^import \{[^}]*\} from \'@inertiajs\/react\';$/m', 'const router = { push: () => {} };', $pagina);
+    // La stessa pagina con un router finto al posto di quello di Inertia. E quella che passa da una pagina all'altra con
+    // `router.push`, come nella v1.2.0: senza la risposta di una visita Inertia non ridà l'oggetto di prima, e il difetto non si
+    // vede nemmeno senza il segno.
+    $colRouterFinto = (string) preg_replace('/^import \{[^}]*\} from \'@inertiajs\/react\';$/m', 'const router = { visit: () => {} };', $pagina);
+    $conPush = str_replace('router.visit(', 'router.push(', $pagina);
 
-    expect($daInertia($pagina))->toBe(['createInertiaApp', 'router'])
+    expect($daInertia($pagina))->toBe(['createInertiaApp', 'http', 'router'])
         ->and(substr_count($pagina, 'createInertiaApp({'))->toBe(1)
-        ->and(substr_count($pagina, 'router.push({'))->toBe(1)
+        ->and($comeVisita($pagina))->toBe(['router.visit(' => 1, 'http.setClient(' => 1, 'router.push(' => 0])
+        ->and($conPush)->not->toBe($pagina)
+        ->and($comeVisita($conPush))->toBe(['router.visit(' => 0, 'http.setClient(' => 1, 'router.push(' => 1])
         ->and($colRouterFinto)->not->toBe($pagina)
         ->and($daInertia($colRouterFinto))->toBe([])
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
