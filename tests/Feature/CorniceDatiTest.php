@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
@@ -9,12 +10,13 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Core\Cornice;
 
-// Sprint 2 · T3 (voce #1256), sprint 3 · T1 (voce #1277) e sprint 5 · T1 (voce #1257). La parte server della cornice:
-// Cornice::dati() dà alla pagina del frontend la persona, la sua lingua, il workspace in cui è entrata, lo stato delle app in
-// quel workspace, le aziende della persona coi loro workspace e le notifiche non lette nel workspace, dalla sessione di zr-auth
-// e dal backoffice. Il backoffice è Http::fake (backoffice() qui sotto), mai il finto di zr-auth: su un metodo che non conosce
-// lancia RichiestaSconosciuta. Nessuna richiesta esce (TestCase). La pagina di prova è `w/{slug}/cornice` di TestCase, nel
-// gruppo `web`.
+// Sprint 2 · T3 (voce #1256), sprint 3 · T1 (voce #1277), sprint 5 · T1 (voce #1257) e sprint 10 · T1 (voce #1453). La parte
+// server della cornice: Cornice::dati() dà alla pagina del frontend la persona, la sua lingua, il workspace in cui è entrata,
+// lo stato delle app in quel workspace, le aziende della persona coi loro workspace e le notifiche non lette nel workspace,
+// dalla sessione di zr-auth e dal backoffice, e il segno `aggiornati_il`: l'istante in cui la lettura è cominciata. Il
+// backoffice è Http::fake (backoffice() qui sotto), mai il finto di zr-auth: su un metodo che non conosce lancia
+// RichiestaSconosciuta. Nessuna richiesta esce (TestCase). La pagina di prova è `w/{slug}/cornice` di TestCase, nel gruppo
+// `web`.
 
 /**
  * Il backoffice in Http::fake, un metodo di /v1 alla volta: app.elenca, io.mostra, io.aziende.elenca e io.workspace.elenca.
@@ -92,7 +94,8 @@ function aziendeEWorkspace(): array
     ];
 }
 
-it('con la sessione entrata in un workspace dà persona, lingua, il workspace del gettone, lo stato di ogni app, le aziende coi loro workspace e le non lette (T3.1, T1.1, T1.2)', function () {
+it('con la sessione entrata in un workspace dà persona, lingua, il workspace del gettone, lo stato di ogni app, le aziende coi loro workspace, le non lette e il segno (T3.1, T1.1, T1.2; sprint 10 · T1.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backoffice([
         '/v1/app' => ['data' => [['codice' => 'pm', 'stato' => 'attivo'], ['codice' => 'crm', 'stato' => 'disponibile']], 'successivo' => null],
@@ -111,7 +114,60 @@ it('con la sessione entrata in un workspace dà persona, lingua, il workspace de
             ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [['nome' => 'UAT clienti', 'slug' => 'uat-clienti'], ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite']]],
         ],
         'non_lette' => 3,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
     ]);
+});
+
+it('aggiornati_il è l\'istante in cui la lettura comincia, in UTC coi microsecondi, anche con l\'applicazione in un altro fuso (sprint 10 · T1.1)', function () {
+    // L'applicazione è a Roma, e lì sono le 23:31: il segno resta in UTC. Testbench rimette il fuso a ogni test.
+    config(['app.timezone' => 'Europe/Rome']);
+    date_default_timezone_set('Europe/Rome');
+    Carbon::setTestNow(Carbon::parse('2026-10-09 23:31:05.123456', 'Europe/Rome'));
+    sessioneAMano(marketing());
+    // Ogni risposta del backoffice porta l'orologio avanti di un secondo: un segno preso dopo le letture sarebbe più tardi.
+    $unSecondoDopo = fn (array $corpo) => function () use ($corpo) {
+        Carbon::setTestNow(Carbon::now()->addSecond());
+
+        return Http::response($corpo);
+    };
+    backoffice([
+        '/v1/app' => $unSecondoDopo(['data' => [['codice' => 'pm', 'stato' => 'attivo']], 'successivo' => null]),
+        '/v1/io' => $unSecondoDopo(ioMostra(3)),
+        '/v1/io/aziende' => $unSecondoDopo(['data' => [], 'successivo' => null]),
+        '/v1/io/workspace' => $unSecondoDopo(['data' => [], 'successivo' => null]),
+    ]);
+
+    $segno = Cornice::dati()['aggiornati_il'];
+
+    expect($segno)->toBe('2026-10-09T21:31:05.123456Z')
+        ->and(strlen($segno))->toBe(27)
+        // Le quattro letture sono passate, ognuna col suo secondo: l'orologio è avanti, il segno è di prima.
+        ->and(Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z'))->toBe('2026-10-09T21:31:09.123456Z');
+});
+
+it('due letture in due istanti diversi hanno due aggiornati_il diversi, e quello della seconda è il maggiore (sprint 10 · T1.2)', function (string $prima, string $dopo, string $segnoDiPrima, string $segnoDiDopo) {
+    Carbon::setTestNow(Carbon::parse($prima, 'UTC'));
+    sessioneAMano(marketing());
+    backoffice();
+
+    $laPrima = Cornice::dati()['aggiornati_il'];
+    Carbon::setTestNow(Carbon::parse($dopo, 'UTC'));
+    $laSeconda = Cornice::dati()['aggiornati_il'];
+
+    // Come stringhe: è così che le confronta chi le riceve.
+    expect($laPrima)->toBe($segnoDiPrima)
+        ->and($laSeconda)->toBe($segnoDiDopo)
+        ->and(strcmp($laSeconda, $laPrima))->toBe(1);
+})->with([
+    'a un microsecondo' => ['2026-10-09 21:31:05.123456', '2026-10-09 21:31:05.123457', '2026-10-09T21:31:05.123456Z', '2026-10-09T21:31:05.123457Z'],
+    'a cavallo del secondo, coi microsecondi a zero' => ['2026-10-09 21:31:05.999999', '2026-10-09 21:31:06.000000', '2026-10-09T21:31:05.999999Z', '2026-10-09T21:31:06.000000Z'],
+]);
+
+it('le sei chiavi di prima restano al loro posto, e il segno è l\'ultima (sprint 10 · T1.3)', function () {
+    sessioneAMano(marketing());
+    backoffice();
+
+    expect(array_keys(Cornice::dati()))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il']);
 });
 
 it('lo stato di ogni app è quello di app.elenca, chiesto col gettone del workspace e non con quello dell\'accesso (T3.1)', function () {
