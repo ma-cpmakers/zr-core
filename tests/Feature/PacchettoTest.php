@@ -70,7 +70,9 @@ it('composer.json accetta zr-auth 0.6, 0.7 e 0.8, e la CI prova zr-core con tutt
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
 
     // Della 0.6 dalla 0.6.6, l'ultima e quindi quella che la CI prova: le prime (fino alla 0.6.1) tenevano in sessione
-    // l'accesso di un'altra persona, e una patch più vecchia non la prova nessun giro.
+    // l'accesso di un'altra persona, e una patch più vecchia non la prova nessun giro. Della 0.7 dalla 0.7.0: l'ha provata il
+    // giro della v1.0.0, e la 0.7.1 che il giro prova oggi cambia solo il finto per i test di zr-auth, che zr-core non usa.
+    // Della 0.8 dalla 0.8.0, la prima.
     expect($vincolo)->toBe('^0.6.6 || ^0.7 || ^0.8')
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
@@ -80,11 +82,13 @@ it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprin
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
 
-    // Com'era il file prima dell'ultima versione accettata: lo stesso vincolo, con una versione in meno.
-    $diPrima = str_replace($vincolo, (string) preg_replace('/ \|\| [^|]+$/', '', $vincolo), $testo);
+    // Il vincolo di prima dell'ultima versione accettata, con una versione in meno: nel file rimasto indietro, e in quello che
+    // dice il vincolo nuovo in un punto e il vecchio in un altro.
+    $vincoloDiPrima = (string) preg_replace('/ \|\| [^|]+$/', '', $vincolo);
 
     expect(vincoliAPiuVersioniIn($testo))->toBe([$vincolo])
-        ->and(vincoliAPiuVersioniIn($diPrima))->not->toBe([$vincolo]);
+        ->and(vincoliAPiuVersioniIn(str_replace($vincolo, $vincoloDiPrima, $testo)))->toBe([$vincoloDiPrima])
+        ->and(vincoliAPiuVersioniIn($testo."\n`{$vincoloDiPrima}`"))->toBe([$vincolo, $vincoloDiPrima]);
 })->with(['README.md', 'CLAUDE.md']);
 
 it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 7 · T1.2)', function () {
