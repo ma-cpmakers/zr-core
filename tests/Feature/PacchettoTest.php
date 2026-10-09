@@ -92,6 +92,34 @@ it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprin
         ->and(vincoliAPiuVersioniIn($testo."\n`{$vincoloDiPrima}`"))->toBe([$vincolo, $vincoloDiPrima]);
 })->with(['README.md', 'CLAUDE.md']);
 
+/**
+ * Le versioni minori di zr-auth di cui un testo dice che la CI prova l'ultima, nell'ordine in cui le scrive.
+ *
+ * @return list<string>
+ */
+function giriDettiDa(string $testo): array
+{
+    preg_match_all("/l'ultima (\d+\.\d+)/", $testo, $trovati);
+
+    return $trovati[1];
+}
+
+it('il README dice un giro della CI per ogni voce della matrice, e nessun altro (sprint 8 · T1.3)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
+    preg_match_all("/'(\d+\.\d+)'/", $matrice[1] ?? '', $voci);
+    $ultima = (string) end($voci[1]);
+
+    // Il README rimasto indietro di una versione: dice i giri di prima, senza quello dell'ultima voce della matrice.
+    $readmeDiPrima = str_replace(" e l'ultima {$ultima})", ')', $readme);
+
+    expect($voci[1])->not->toBe([])
+        ->and($readmeDiPrima)->not->toBe($readme)
+        ->and(giriDettiDa($readme))->toBe($voci[1])
+        ->and(giriDettiDa($readmeDiPrima))->toBe(array_slice($voci[1], 0, -1));
+});
+
 it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 7 · T1.2; sprint 8 · T1.2)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $vincolo = '^0.6.6 || ^0.7 || ^0.8 || ^0.9.1';
