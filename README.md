@@ -176,6 +176,60 @@ apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.
 
+### La cornice montata una volta sola
+
+Montata in ogni pagina, la `Cornice` si rifà a ogni visita di Inertia, e con lei si perdono il testo scritto nella ricerca,
+il pannello aperto e le notifiche caricate. `LayoutDellaCornice` la tiene montata mentre la pagina cambia. È un'aggiunta:
+chi monta `Cornice` in ogni pagina non deve cambiare niente. zr-core non dipende da Inertia: il layout e `useCornice` sono
+un componente e un hook di React.
+
+```tsx
+import { createInertiaApp } from '@inertiajs/react';
+import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../../vendor/zeiras/zr-core/resources/js';
+
+// Il layout del frontend, a livello di modulo. Inertia gli dà le props della pagina, e quelle di `Pagina.layout`.
+function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'cornice' | 'crumbs' | 'children'>) {
+    return (
+        <LayoutDellaCornice cornice={cornice} product="pm" crumbs={crumbs} onLogout={esci}>
+            {children}
+        </LayoutDellaCornice>
+    );
+}
+
+createInertiaApp({ layout: () => Layout, … });
+
+// Una pagina: ciò che sa solo lei lo dà alla cornice montata.
+function Board({ board }: { board: { nome: string } }) {
+    useCornice({ nav, active: 'board', onNavigate, create: [{ label: 'Scheda', onClick: nuovaScheda }], flush: true });
+
+    return …;
+}
+
+// Il percorso viene dai dati del server: la pagina lo dà al layout, prima di montarsi.
+Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: props.board.nome }] });
+```
+
+- **Il layout** del frontend rende `LayoutDellaCornice` ed è un componente a livello di modulo, dato a
+  `createInertiaApp({ layout })`: finché è lo stesso componente Inertia lo tiene montato, e uno creato dentro un render
+  sarebbe nuovo ogni volta. `LayoutDellaCornice` prende le props di `Cornice`, con `cornice` al posto di `dati`: con `null`,
+  o senza (una pagina fuori dal workspace), la pagina si vede da sola. Il layout gliele dà **per nome**, mai con
+  `{...props}`: Inertia passa al layout anche le props della pagina, e una prop del server che si chiama `actions` o
+  `product` non deve arrivare alla cornice.
+- **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
+  (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
+  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Le funzioni
+  possono essere nuove a ogni render. Una chiamata per pagina: con due vince l'ultima. Dove la cornice non c'è (senza
+  dati, o fuori dal layout) non fa niente.
+- **Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`: sposta la pagina dentro un altro elemento
+  della cornice, e dato dopo il montaggio la monterebbe due volte. Viene dai dati del server: la pagina lo dà con
+  `Pagina.layout = (props) => ({ crumbs: … })`, una funzione a freccia, e il layout del frontend lo passa.
+- **Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici, una dentro l'altra: chi passa al layout la
+  toglie da ogni pagina che lo usa.
+- **Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser
+  ricarica la pagina, e la cornice si rifà. Resta montata nelle visite di Inertia dentro il frontend.
+- **L'area della pagina** è una `scroll-region` di Inertia: a ogni visita torna in cima, con Indietro torna dov'era, e una
+  visita con `preserveScroll` la lascia dov'è.
+
 ## La CSP
 
 Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`

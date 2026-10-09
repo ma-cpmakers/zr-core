@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 use Zeiras\Core\ZrCoreServiceProvider;
 
@@ -150,4 +151,166 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         ->and(versioniDiZrAuthNonProvate('>=0.6', $ci))->toBe(['il vincolo «>=0.6» non è fatto di ^0.<minore> uniti da ||'])
         // Dalla 1.0 un `^` accetta anche le minori dopo: il controllo lo dice, invece di contarla come una minore sola.
         ->and(versioniDiZrAuthNonProvate('^0.8 || ^1.0', $ci))->toBe(['il vincolo «^0.8 || ^1.0» non è fatto di ^0.<minore> uniti da ||']);
+});
+
+// Sprint 9 · T3 (voce #1398). `LayoutDellaCornice` e `useCornice` sono per i frontend con Inertia, ma zr-core non ne dipende:
+// sono un componente e un hook di React. Inertia sta solo fra gli strumenti di questo repo, per la pagina di prova del layout
+// (resources/demo), che non entra nello zip del tag. E il README dice come si usano.
+
+/**
+ * Cosa chiede package.json a chi installa (`peerDependencies`), e dove nomina un pacchetto di Inertia.
+ *
+ * @param  array<string, mixed>  $package
+ * @return array{chiede: list<string>, inertia: list<string>}
+ */
+function dipendenzeDelPacchettoJs(array $package): array
+{
+    $inertia = [];
+    foreach (['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies'] as $gruppo) {
+        foreach (array_keys($package[$gruppo] ?? []) as $nome) {
+            if (str_starts_with((string) $nome, '@inertiajs/')) {
+                $inertia[] = "{$gruppo}: {$nome}";
+            }
+        }
+    }
+
+    return ['chiede' => array_keys($package['peerDependencies'] ?? []), 'inertia' => $inertia];
+}
+
+/**
+ * I file che nominano un pacchetto di Inertia, fra quelli che entrano nello zip del tag: i test (`*.test.ts`, `*.test.tsx`)
+ * sono `export-ignore`, e possono.
+ *
+ * @param  array<string, string>  $file  percorso → contenuto
+ * @return list<string>
+ */
+function fileDelPacchettoConInertia(array $file): array
+{
+    return array_keys(array_filter(
+        $file,
+        fn (string $contenuto, string $percorso) => preg_match('/\.test\.tsx?$/', $percorso) !== 1 && str_contains($contenuto, '@inertiajs'),
+        ARRAY_FILTER_USE_BOTH,
+    ));
+}
+
+it('il pacchetto non dipende da Inertia: a chi installa chiede solo react e react-dom, e Inertia sta fra gli strumenti di questo repo (sprint 9 · T3.2)', function () {
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    // Inertia finita fra ciò che il pacchetto chiede a chi lo installa, o fra ciò che porta con sé.
+    $chiesta = $package;
+    $chiesta['peerDependencies']['@inertiajs/react'] = $package['devDependencies']['@inertiajs/react'];
+    unset($chiesta['devDependencies']['@inertiajs/react']);
+    $portata = $package;
+    $portata['dependencies'] = ['@inertiajs/core' => '^3.7.1'];
+
+    expect(dipendenzeDelPacchettoJs($package))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['devDependencies: @inertiajs/react']])
+        ->and(dipendenzeDelPacchettoJs($chiesta))->toBe(['chiede' => ['react', 'react-dom', '@inertiajs/react'], 'inertia' => ['peerDependencies: @inertiajs/react']])
+        ->and(dipendenzeDelPacchettoJs($portata))->toBe(['chiede' => ['react', 'react-dom'], 'inertia' => ['dependencies: @inertiajs/core', 'devDependencies: @inertiajs/react']]);
+});
+
+it('nessun file di resources/js che entra nello zip nomina Inertia (sprint 9 · T3.2)', function () {
+    $file = [];
+    foreach (File::allFiles(__DIR__.'/../../resources/js') as $uno) {
+        $file[$uno->getRelativePathname()] = $uno->getContents();
+    }
+
+    // Una pagina e un hook che importano Inertia, un test che la importa (non entra nello zip) e un file che non la nomina.
+    $conInertia = [
+        'pagina.tsx' => "import { router } from '@inertiajs/react';\n",
+        'pagina.test.tsx' => "import { router } from '@inertiajs/react';\n",
+        'sotto/hook.ts' => "import type { Page } from '@inertiajs/core';\n",
+        'sotto/hook.test.ts' => "import type { Page } from '@inertiajs/core';\n",
+        'altro.ts' => "// Di Inertia sa solo il nome.\nexport {};\n",
+    ];
+
+    expect(array_keys($file))->toContain('layout.tsx')
+        ->and(array_keys($file))->toContain('layout.test.tsx')
+        ->and(fileDelPacchettoConInertia($file))->toBe([])
+        ->and(fileDelPacchettoConInertia($conInertia))->toBe(['pagina.tsx', 'sotto/hook.ts']);
+});
+
+/**
+ * Un punto dell'elenco che il README mette sotto «La cornice montata una volta sola»: quello che comincia con quel grassetto,
+ * su una riga sola. Vuoto se il titolo o il punto non ci sono.
+ */
+function puntoDelLayout(string $readme, string $grassetto): string
+{
+    preg_match('/^### La cornice montata una volta sola$(.*?)(?=^#{2,3} |\z)/ms', $readme, $paragrafo);
+    preg_match('/^- \*\*'.preg_quote($grassetto, '/').'\*\*.*?(?=^- |^$|\z)/ms', $paragrafo[1] ?? '', $punto);
+
+    return trim((string) preg_replace('/\s+/', ' ', $punto[0] ?? ''));
+}
+
+/**
+ * Le parole che un testo non dice, fra quelle date.
+ *
+ * @param  list<string>  $parole
+ * @return list<string>
+ */
+function paroleCheMancanoIn(string $testo, array $parole): array
+{
+    return array_values(array_filter($parole, fn (string $parola) => ! str_contains($testo, $parola)));
+}
+
+it('il README dice come si usa il layout della cornice, una cosa per punto (sprint 9 · T3.3)', function (string $grassetto, array $parole) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDelLayout($readme, $grassetto);
+
+    // Il README senza quel punto; poi, una alla volta, il punto senza una delle sue parole.
+    $senzaIlPunto = str_replace("- **{$grassetto}**", '- **Altro**', $readme);
+
+    expect(paroleCheMancanoIn($punto, $parole))->toBe([])
+        ->and($senzaIlPunto)->not->toBe($readme)
+        ->and(paroleCheMancanoIn(puntoDelLayout($senzaIlPunto, $grassetto), $parole))->toBe($parole);
+    foreach ($parole as $parola) {
+        expect(paroleCheMancanoIn(str_replace($parola, '', $punto), $parole))->toBe([$parola]);
+    }
+})->with([
+    '(a) LayoutDellaCornice in un componente a livello di modulo, dato a createInertiaApp' => ['Il layout', ['`LayoutDellaCornice`', 'a livello di modulo', '`createInertiaApp({ layout })`']],
+    '(b) useCornice con le sei cose che accetta' => ['La pagina', ['`useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`actions`', '`flush`']],
+    '(c) il percorso si dà dal layout' => ['Il percorso', ['`crumbs`', 'si dà dal layout']],
+    '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['fa due cornici']],
+    '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['link veri', 'ricarica la pagina']],
+]);
+
+it('le sei cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3)', function () {
+    $layout = (string) file_get_contents(__DIR__.'/../../resources/js/layout.tsx');
+    preg_match('/^const nomiDellaPagina = \[([^\]]*)\] as const;$/m', $layout, $elenco);
+    preg_match_all('/\'(\w+)\'/', $elenco[1] ?? '', $nomi);
+
+    expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'actions', 'flush']);
+});
+
+/**
+ * I nomi fra le graffe delle righe che combaciano, senza `type`: quelli che un esempio importa, o che l'ingresso esporta.
+ *
+ * @return list<string>
+ */
+function nomiFraLeGraffe(string $regex, string $testo): array
+{
+    preg_match_all($regex, $testo, $righe);
+    $nomi = array_map(fn (string $nome) => trim((string) preg_replace('/^\s*type\s+/', '', $nome)), explode(',', implode(',', $righe[1])));
+
+    return array_values(array_unique(array_filter($nomi, fn (string $nome) => $nome !== '')));
+}
+
+it('il README importa dall\'ingresso di zr-core solo nomi che l\'ingresso esporta, e l\'ingresso esporta LayoutDellaCornice e useCornice (sprint 9 · T3.3)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $ingresso = (string) file_get_contents(__DIR__.'/../../resources/js/index.ts');
+    $importati = fn (string $testo): array => nomiFraLeGraffe('/^import \{([^}]*)\} from \'[^\']*\/zr-core\/resources\/js\';$/m', $testo);
+    $esportati = fn (string $testo): array => nomiFraLeGraffe('/^export \{([^}]*)\} from \'[^\']+\';$/m', $testo);
+
+    // Un esempio che importa un nome che non c'è, e l'ingresso che smette di esportare il layout.
+    $conUnNomeSbagliato = str_replace('{ LayoutDellaCornice, useCornice,', '{ LayoutDellaCornice, usaCornice,', $readme);
+    $senzaIlLayout = str_replace('{ LayoutDellaCornice, useCornice,', '{ useCornice,', $ingresso);
+
+    expect($esportati($ingresso))->toContain('LayoutDellaCornice')
+        ->and($esportati($ingresso))->toContain('useCornice')
+        ->and($importati($readme))->toContain('LayoutDellaCornice')
+        ->and($importati($readme))->toContain('useCornice')
+        ->and(array_values(array_diff($importati($readme), $esportati($ingresso))))->toBe([])
+        ->and($conUnNomeSbagliato)->not->toBe($readme)
+        ->and($senzaIlLayout)->not->toBe($ingresso)
+        ->and(array_values(array_diff($importati($conUnNomeSbagliato), $esportati($ingresso))))->toBe(['usaCornice'])
+        ->and(array_values(array_diff($importati($readme), $esportati($senzaIlLayout))))->toBe(['LayoutDellaCornice']);
 });
