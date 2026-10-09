@@ -1,12 +1,13 @@
-import { act, type ReactElement } from 'react';
+import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LayoutDellaCornice, type DatiDellaCornice, type LayoutDellaCorniceProps } from './index';
+import { LayoutDellaCornice, useCornice, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
 
-// Sprint 9 · T1 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso layout,
-// la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata mentre la
-// pagina cambia. Con Inertia vera, nel browser, lo prova la pagina di prova del layout.
+// Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
+// layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
+// mentre la pagina cambia, e la pagina le dà ciò che sa solo lei con `useCornice`. Con Inertia vera, nel browser, lo prova la
+// pagina di prova del layout.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -33,6 +34,40 @@ function PaginaA() {
 
 function PaginaB() {
     return <p id="uat-pagina-b">UAT pagina B</p>;
+}
+
+/** Le voci di un prodotto: nessuna ha un indirizzo, e al clic chiamano `onNavigate`. */
+const voci: GruppoDiVoci[] = [{ group: 'UAT gruppo', items: [{ id: 'uat-a', label: 'UAT A', icon: 'board' }, { id: 'uat-b', label: 'UAT B', icon: 'list' }] }];
+
+/** Una pagina che dà alla cornice ciò che riceve. */
+function PaginaCheDa({ cose }: { cose: Parameters<typeof useCornice>[0] }) {
+    useCornice(cose);
+
+    return <p id="uat-pagina-che-da">UAT pagina che dà</p>;
+}
+
+/** Una pagina con uno stato suo: a ogni render dà alla cornice una funzione nuova, che porta il conteggio di quel render. */
+function PaginaCheConta({ conta, segna }: { conta: { render: number }; segna: (conteggio: number) => void }) {
+    const [conteggio, setConteggio] = useState(0);
+    conta.render += 1;
+    useCornice({ create: [{ label: 'UAT Board', onClick: () => segna(conteggio) }] });
+
+    return (
+        <button id="uat-conta" type="button" onClick={() => setConteggio(conteggio + 1)}>
+            UAT conta
+        </button>
+    );
+}
+
+/** Una pagina che conta i suoi montaggi e prova a dare il percorso con `useCornice`. */
+function PaginaColPercorso({ conta }: { conta: { montaggi: number } }) {
+    useEffect(() => {
+        conta.montaggi += 1;
+    }, [conta]);
+    // @ts-expect-error Il percorso non passa da `useCornice`: dato dopo il montaggio, la pagina si monterebbe due volte (T2.6).
+    useCornice({ crumbs: percorso });
+
+    return <p id="uat-pagina-col-percorso">UAT pagina col percorso</p>;
 }
 
 let contenitore: HTMLDivElement;
@@ -114,6 +149,13 @@ const richieste = () => vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(
 /** Gli elementi che Inertia tratta da scroll-region: li cerca così, in tutto il documento. */
 const regioni = () => [...document.querySelectorAll('[scroll-region]')];
 
+/** I nomi delle voci accese nella barra. */
+const accese = () => tutti('a.zr-nav-item[aria-current=page]').map((voce) => voce.querySelector('.zr-nav-label')?.textContent);
+
+/** Le voci del menu «+» aperto, coi loro nomi: il menu si cerca in tutto il documento. */
+const vociDelPiu = () => [...document.querySelectorAll<HTMLElement>('button.zr-menu-item[role=menuitem]')];
+const nomiDelPiu = () => vociDelPiu().map((voce) => voce.querySelector('.zr-menu-label')?.textContent);
+
 describe('LayoutDellaCornice', () => {
     it('quando la pagina cambia barra laterale e topbar sono gli stessi nodi, il campo della ricerca porta ancora il testo scritto e il pannello delle notifiche resta aperto con le sue notifiche, senza un\'altra GET /cornice/notifiche (sprint 9 · T1.1)', async () => {
         await visita(dati, <PaginaA key="1" />);
@@ -165,6 +207,7 @@ describe('LayoutDellaCornice', () => {
 
         await visita(senzaDati, <PaginaA key="3" />);
         expect(contenitore.firstElementChild).toBe(uno('#uat-pagina-a'));
+        expect(uno('#uat-pagina-a')?.textContent).toBe('UAT pagina A');
         expect(tutti('.zr-shell, .zr-side, .zr-top')).toHaveLength(0);
     });
 
@@ -213,5 +256,123 @@ describe('LayoutDellaCornice', () => {
         );
         expect(uno('.zr-shell')?.className).toBe('zr-shell');
         expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(testi('it').searchPlaceholder);
+    });
+});
+
+describe('useCornice', () => {
+    it('una pagina sotto il layout dà alla cornice le voci del menu «+», la voce attiva, le azioni in topbar, le voci del prodotto, `onNavigate` e l\'area senza margine (sprint 9 · T2.1)', async () => {
+        const creaBoard = vi.fn();
+        const vaiA = vi.fn();
+        const cose = { create: [{ label: 'UAT Board', icon: 'board', onClick: creaBoard }], active: 'uat-b', actions: <button id="uat-azione">UAT azione</button>, nav: voci, onNavigate: vaiA, flush: true };
+        await visita(dati, <PaginaCheDa key="1" cose={cose} />, { product: 'pm' });
+
+        // 1. Il «+» con la voce della pagina: il clic chiama la sua funzione.
+        await clic(uno('button.zr-create'));
+        expect(nomiDelPiu()).toStrictEqual(['UAT Board']);
+        await clic(vociDelPiu()[0]);
+        expect(creaBoard).toHaveBeenCalledTimes(1);
+        // 2. La voce attiva è quella della pagina.
+        expect(accese()).toStrictEqual(['UAT B']);
+        // 3. Le azioni in topbar.
+        expect(uno('header.zr-top .zr-top-actions #uat-azione')?.textContent).toBe('UAT azione');
+        // 4. Le voci del prodotto, sotto il suo pulsante.
+        expect(tutti('.zr-nav-group').find((gruppo) => gruppo.querySelector('.zr-nav-title')?.textContent === 'UAT gruppo')?.querySelectorAll('a.zr-nav-item')).toHaveLength(2);
+        // 5. Il clic su una voce senza indirizzo chiama `onNavigate` della pagina, col suo id.
+        await clic(tutti('a.zr-nav-item').find((voce) => voce.querySelector('.zr-nav-label')?.textContent === 'UAT A') ?? null);
+        expect(vaiA.mock.calls).toStrictEqual([['uat-a']]);
+        // 6. L'area della pagina senza margine.
+        expect(uno('main.zr-main')?.className).toBe('zr-main is-flush');
+
+        // Con un id che nessuna voce ha, nessuna è accesa; e ciò che la pagina non dà più, non c'è più.
+        await visita(dati, <PaginaCheDa key="1" cose={{ nav: voci, active: 'uat-nessuna' }} />, { product: 'pm' });
+        expect(tutti('a.zr-nav-item')).not.toHaveLength(0);
+        expect(accese()).toStrictEqual([]);
+        expect(uno('button.zr-create')).toBeNull();
+        expect(uno('main.zr-main')?.className).toBe('zr-main');
+    });
+
+    it('fra layout e pagina vince la pagina, finché è montata: la voce attiva è la sua, e via la pagina torna quella del layout (sprint 9 · T2.2)', async () => {
+        const delLayout = { nav: voci, active: 'uat-a' };
+        await visita(dati, <PaginaCheDa key="1" cose={{ active: 'uat-b' }} />, delLayout);
+        expect(accese()).toStrictEqual(['UAT B']);
+
+        await visita(dati, <PaginaB key="2" />, delLayout);
+        expect(accese()).toStrictEqual(['UAT A']);
+
+        // Ciò che la pagina non dà resta quello del layout, anche se lo scrive `undefined`.
+        await visita(dati, <PaginaCheDa key="3" cose={{ active: undefined, flush: true }} />, delLayout);
+        expect(accese()).toStrictEqual(['UAT A']);
+        expect(uno('main.zr-main')?.className).toBe('zr-main is-flush');
+    });
+
+    it('quando la pagina se ne va ciò che aveva dato sparisce: con una pagina nuova che non chiama `useCornice` il «+» non c\'è più (sprint 9 · T2.3)', async () => {
+        const creaBoard = vi.fn();
+        const creaScheda = vi.fn();
+        await visita(dati, <PaginaCheDa key="1" cose={{ create: [{ label: 'UAT Board', onClick: creaBoard }], actions: <button id="uat-azione">UAT azione</button>, flush: true }} />);
+        expect(uno('button.zr-create')).not.toBeNull();
+        expect(uno('#uat-azione')?.textContent).toBe('UAT azione');
+        expect(uno('main.zr-main')?.className).toBe('zr-main is-flush');
+
+        await visita(datiDopo, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')?.textContent).toBe('UAT pagina B');
+        expect(uno('button.zr-create')).toBeNull();
+        expect(uno('#uat-azione')).toBeNull();
+        expect(uno('main.zr-main')?.className).toBe('zr-main');
+
+        // La pagina dopo dà il suo: nel «+» c'è solo la sua voce, con la sua funzione.
+        await visita(dati, <PaginaCheDa key="3" cose={{ create: [{ label: 'UAT Scheda', onClick: creaScheda }] }} />);
+        await clic(uno('button.zr-create'));
+        expect(nomiDelPiu()).toStrictEqual(['UAT Scheda']);
+        await clic(vociDelPiu()[0]);
+        expect(creaScheda).toHaveBeenCalledTimes(1);
+        expect(creaBoard).not.toHaveBeenCalled();
+    });
+
+    it('le funzioni possono essere nuove a ogni render: una pagina che cambia stato due volte viene resa tre volte, e il clic sul «+» chiama l\'ultima funzione (sprint 9 · T2.4)', async () => {
+        const conta = { render: 0 };
+        const segna = vi.fn();
+        await visita(dati, <PaginaCheConta key="1" conta={conta} segna={segna} />);
+        expect(conta.render).toBe(1);
+
+        await clic(uno('#uat-conta'));
+        await clic(uno('#uat-conta'));
+        // Un render per ogni stato della pagina: la cornice, che prende le funzioni nuove, non la fa rendere di nuovo.
+        expect(conta.render).toBe(3);
+
+        await clic(uno('button.zr-create'));
+        expect(nomiDelPiu()).toStrictEqual(['UAT Board']);
+        await clic(vociDelPiu()[0]);
+        expect(segna.mock.calls).toStrictEqual([[2]]);
+    });
+
+    it('dove la cornice non c\'è `useCornice` non fa niente e non lancia: una pagina fuori dal layout, e una sotto il layout senza dati (sprint 9 · T2.5)', async () => {
+        const cose = { create: [{ label: 'UAT Board', onClick: () => {} }], active: 'uat-b', flush: true };
+        await mostra(<PaginaCheDa cose={cose} />);
+        expect(contenitore.childElementCount).toBe(1);
+        expect(uno('#uat-pagina-che-da')?.textContent).toBe('UAT pagina che dà');
+
+        await visita(null, <PaginaCheDa key="1" cose={cose} />);
+        expect(contenitore.childElementCount).toBe(1);
+        expect(uno('#uat-pagina-che-da')?.textContent).toBe('UAT pagina che dà');
+        expect(tutti('.zr-shell, .zr-create')).toHaveLength(0);
+
+        // Quando la cornice compare con la pagina dopo, quella pagina le dà il suo.
+        await visita(dati, <PaginaCheDa key="2" cose={cose} />);
+        expect(uno('button.zr-create')).not.toBeNull();
+        expect(uno('main.zr-main')?.className).toBe('zr-main is-flush');
+    });
+
+    it('il percorso non passa da `useCornice`: non compila, e non arriva; dato al layout si vede, e la pagina si monta una volta sola (sprint 9 · T2.6)', async () => {
+        const conta = { montaggi: 0 };
+        await visita(dati, <PaginaColPercorso key="1" conta={conta} />);
+        expect(uno('#uat-pagina-col-percorso')?.parentElement).toBe(uno('.zr-shell > main.zr-main'));
+        expect(uno('.zr-crumbbar')).toBeNull();
+        expect(conta.montaggi).toBe(1);
+
+        const contaDopo = { montaggi: 0 };
+        await visita(dati, <PaginaColPercorso key="2" conta={contaDopo} />, { crumbs: percorso });
+        expect(tutti('.zr-crumbbar .zr-shell-crumbs > a, .zr-crumbbar .zr-shell-crumbs > [aria-current=page]').map((voce) => voce.textContent)).toStrictEqual(['Marketing', 'Q4 launch']);
+        expect(uno('#uat-pagina-col-percorso')?.parentElement).toBe(uno('.zr-shell > main.zr-main > div.zr-main-body'));
+        expect(contaDopo.montaggi).toBe(1);
     });
 });
