@@ -153,9 +153,13 @@ cornice === null ? pagina : (
   caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
   segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
-  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce non cambia niente, e
-  il pulsante resta per riprovare. Il pulsante c'è quando la campanella ha un numero e il pannello ha caricato almeno una
-  notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
+  un numero, fino alla prossima visita, che porta il numero del backoffice; se la richiesta fallisce nel pannello non cambia
+  niente, e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può durare più
+  dei 5 secondi che zr-auth aspetta una risposta, se il frontend non ha cambiato quel tempo (dichiarato da zr-backoffice, non
+  misurato): allora la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averle segnate lo stesso —
+  il pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
+  cambia niente. Il pulsante c'è quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se
+  quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
