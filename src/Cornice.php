@@ -58,8 +58,9 @@ final class Cornice
         $io = self::ioMostra();
 
         Sessione::aggiorna($io);
-        // Se intanto la sessione è scaduta zr-auth non dà più la persona: resta quella letta all'inizio, e la lettura dopo
-        // lancia GettoneRifiutato.
+        // Se intanto la sessione è scaduta zr-auth non dà più la persona, e la lettura dopo lancia GettoneRifiutato prima che
+        // la persona serva: il ripiego su quella letta all'inizio è per i tipi (`Sessione::utente()` può dare null), e nessun
+        // test lo distingue.
         $utente = Sessione::utente() ?? $utente;
 
         $prodotti = [];

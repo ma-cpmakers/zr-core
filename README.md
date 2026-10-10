@@ -53,10 +53,12 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
+zr-core richiede `zeiras/zr-auth` `^0.12.1` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
 README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più vecchia non basta: la cornice chiama
-`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Composer non eredita i
-repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del frontend, accanto a quello di zr-core.
+`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Nemmeno la 0.12.0
+basta: la sua `Sessione::aggiorna` prende la lingua e il nome anche da una risposta che non dice di chi sono (senza
+`utente.id`); dalla 0.12.1 no. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel
+`composer.json` del frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
 
@@ -99,7 +101,9 @@ ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la li
 richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della
 pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo. Un frontend che
 vuole la pagina nella lingua nuova già da quella richiesta chiama `Cornice::dati()` prima di leggere la lingua, o rilegge
-`Sessione::utente()` dopo.
+`Sessione::utente()` dopo. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza chiamarla un'altra
+volta: `Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto letture invece di
+quattro, con due segni — e in un middleware parte a ogni richiesta che ci passa, anche senza una pagina da mostrare.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
@@ -224,9 +228,11 @@ cornice === null ? pagina : (
   chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un
   workspace — quelle del frontend e il ricevitore dell'ingresso di zr-auth —, per più dei 10 secondi predefiniti: messo da
   una parte sola non ferma niente. Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati
-  mentre la richiesta lenta girava: li rimette la lettura dopo. Il pulsante c'è quando la campanella ha un numero
-  e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
-  `https://app.zeiras.com/notifiche`.
+  mentre un'altra richiesta della stessa sessione girava: basta che sia cominciata prima e finita dopo, anche non lenta (le
+  notifiche, la ricerca, una chiamata del modulo). I dati della cornice restano giusti; alla visita dopo ciò che il frontend
+  legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima, e quella lettura li rimette. Il pulsante c'è
+  quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette.
+  Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
   risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
