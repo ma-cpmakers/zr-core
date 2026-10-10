@@ -77,10 +77,13 @@ public function share(Request $request): array
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
 `aggiornati_il` è il segno della lettura: l'istante in cui la parte server ha cominciato a leggere i dati, in UTC coi
-microsecondi (`2026-10-09T21:31:05.123456Z`). C'è perché i dati di due letture non siano mai uguali, nemmeno quando niente
-è cambiato: così a ogni visita la cornice li riconosce nuovi (vedi «La campanella», più sotto). I dati si danno alla
-cornice così come arrivano, a ogni richiesta: un frontend che togliesse il segno, o che tenesse i dati da una richiesta
-all'altra, ridarebbe alla cornice dati uguali a quelli di prima.
+microsecondi (`2026-10-09T21:31:05.123456Z`). I dati di due letture non sono mai uguali, nemmeno quando niente è cambiato,
+e la cornice sa quali sono stati letti dopo: tiene i più recenti che ha visto (vedi «La campanella», più sotto). I dati si
+danno alla cornice così come arrivano, a ogni richiesta: un frontend che togliesse il segno, o che tenesse i dati da una
+richiesta all'altra, ridarebbe alla cornice dati uguali a quelli di prima; e dati cambiati nel browser lasciando lo stesso
+segno per la cornice sono la stessa lettura, e restano quelli che ha. Il segno viene dall'orologio del server che
+risponde: se i server del frontend sono più di uno devono avere l'ora allineata (NTP), o i dati letti da un server che va
+indietro passano per più vecchi.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
@@ -146,15 +149,19 @@ cornice === null ? pagina : (
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
-  elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
-  visita dopo, se il frontend tiene montata la cornice — vale il loro numero, anche quando è lo stesso di prima: dopo
-  «Segna tutte come lette» la campanella non ha un numero, e alla visita dopo mostra quello dei dati. Per la cornice i dati
-  sono nuovi quando è nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta
-  dati uguali: per questo ogni lettura ha il suo segno (`aggiornati_il`), che la rende diversa dalle altre. Un limite
-  noto: la cornice non confronta i segni, e ogni risposta vale come dati nuovi, anche quando è stata letta prima di
-  un'azione e arriva dopo. Dopo «Segna tutte come lette», una risposta letta prima del clic — una visita già partita, o
-  una pagina che il `prefetch` di Inertia tiene — rimette sulla campanella il numero di prima, fino alla visita dopo; e
-  con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora, col numero di allora.
+  elenco che il pannello ha caricato, finché i dati non sono stati letti dopo quell'elenco (una notifica può essere
+  arrivata dopo che la parte server le ha contate). Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
+  cornice — vale il loro numero, anche quando è lo stesso di prima: dopo «Segna tutte come lette» la campanella non ha un
+  numero, e alla visita dopo mostra quello dei dati. La cornice confronta i segni e non torna a dati più vecchi: ogni
+  lettura dei dati ha il suo (`aggiornati_il`), e le due rotte delle notifiche dicono quando l'elenco è stato letto e
+  quando la lettura è stata segnata. Dati dello stesso workspace letti prima di quelli che la cornice ha — la pagina
+  ripresa dalla cronologia con Indietro e Avanti del browser, una risposta che arriva tardi — non li sostituiscono: restano
+  il numero, il nome del workspace e tutto ciò che viene dai dati più recenti. E dopo «Segna tutte come lette» una risposta
+  letta prima del clic — una visita già partita, o una pagina che il `prefetch` di Inertia tiene — non rimette il numero.
+  Vale dove la cornice resta montata, sotto il layout della cornice: con la cornice montata da ogni pagina quella nuova
+  non sa niente di prima, e Indietro porta ancora il numero di allora. I segni vengono dall'orologio della parte server: i
+  server del frontend devono avere l'ora allineata. Coi dati senza il segno la cornice non ha niente da confrontare: i
+  dati sono nuovi quando è nuovo l'oggetto, e vale sempre ciò che dà la pagina.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
   lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
   non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
@@ -166,7 +173,7 @@ cornice === null ? pagina : (
   caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
   segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
-  un numero, fino alla prossima visita che porta dati nuovi (vedi «La campanella»), col numero del backoffice; se la
+  un numero, fino alla prossima visita che porta dati letti dopo (vedi «La campanella»), col numero del backoffice; se la
   richiesta fallisce, nel pannello non
   cambia niente e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può
   durare più di 5 secondi (dichiarato da zr-backoffice, non misurato), che è quanto zr-auth aspetta ogni risposta del
