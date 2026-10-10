@@ -92,10 +92,14 @@ del frontend sono più di uno devono avere l'ora allineata (NTP), o i dati letti
 più vecchi.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
-lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
-la lingua) arriva alla cornice al prossimo ingresso. Dalla 0.12 zr-auth ha `Sessione::aggiorna`, che rimette il nome e la
-lingua della sessione uguali a quelli di `io.mostra`: zr-core in questa versione non la chiama; se la chiama il frontend
-prima di `Cornice::dati()`, la cornice ha il nome e la lingua nuovi da quella richiesta.
+lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
+lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non
+lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati. Cambiano solo quei due: email, workspace,
+ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome nuovi da quella stessa
+richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della
+pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo. Un frontend che
+vuole la pagina nella lingua nuova già da quella richiesta chiama `Cornice::dati()` prima di leggere la lingua, o rilegge
+`Sessione::utente()` dopo.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
@@ -219,7 +223,8 @@ cornice === null ? pagina : (
   risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza. zr-core da solo non lo
   chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un
   workspace — quelle del frontend e il ricevitore dell'ingresso di zr-auth —, per più dei 10 secondi predefiniti: messo da
-  una parte sola non ferma niente. Il pulsante c'è quando la campanella ha un numero
+  una parte sola non ferma niente. Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati
+  mentre la richiesta lenta girava: li rimette la lettura dopo. Il pulsante c'è quando la campanella ha un numero
   e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
