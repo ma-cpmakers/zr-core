@@ -95,6 +95,31 @@ function tracciatoDi(icona: IconName): string {
     return svg.props.children.props.d;
 }
 
+/**
+ * Il menu del profilo aperto, nell'ordine in cui sta: di ogni voce ciò che il `Menu` del design system ne rende — il testo, il
+ * tracciato dell'icona, `danger`, `disabled` e `hint` — e `null` per una linea.
+ */
+function vociDelProfilo(): ({ testo: string | null; icona: string | null; pericolo: boolean; spenta: boolean; tasto: string | null } | null)[] {
+    return tutti('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep').map((voce) =>
+        voce.matches('.zr-menu-sep')
+            ? null
+            : {
+                  testo: voce.querySelector('.zr-menu-label')?.textContent ?? null,
+                  icona: voce.querySelector('path')?.getAttribute('d') ?? null,
+                  pericolo: voce.classList.contains('is-danger'),
+                  spenta: voce.hasAttribute('disabled'),
+                  tasto: voce.querySelector('kbd')?.textContent ?? null,
+              },
+    );
+}
+
+/** Una voce del menu del profilo, scelta dal pulsante dell'avatar: il clic chiude il menu, e la volta dopo il pulsante lo riapre. */
+async function scegliDalProfilo(nome: string): Promise<void> {
+    await clic(uno('.zr-avatar-btn'));
+    await clic(tutti('.zr-profile-menu [role="menuitem"]').find((voce) => voce.querySelector('.zr-menu-label')?.textContent === nome) ?? null);
+    expect(uno('.zr-profile-menu')).toBeNull();
+}
+
 /** Un testo intero dentro il testo della pagina: «Crea» non si trova dentro «Crear». */
 function frase(testo: string): RegExp {
     return new RegExp(`(^|[^\\p{L}])${testo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u');
@@ -186,7 +211,8 @@ describe('la Cornice', () => {
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
-        await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} />);
+        // Con `piano`: la voce «Piano» è spenta di default (sprint 15 · T1), e il suo testo si legge solo col menu intero.
+        await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} piano />);
 
         // I testi arrivano interi, e nessun alias che vincerebbe su `labels`.
         const props = appShell.mock.lastCall?.[0];
@@ -264,33 +290,89 @@ describe('la Cornice', () => {
         expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(7);
     });
 
-    it('account, impostazioni e notifiche portano su app.zeiras.com; «Esci» chiama il frontend (linea guida 15)', async () => {
+    it('senza la prop `piano` il menu del profilo è Profilo, Impostazioni, Azienda, una linea, Esci, e «Piano» non c\'è; account, impostazioni e notifiche portano su app.zeiras.com, «Esci» chiama il frontend (linea guida 15; sprint 15 · T1.1)', async () => {
         const naviga = vi.fn();
         const esci = vi.fn();
         await mostra(<Cornice dati={dati} product="bookings" naviga={naviga} onLogout={esci} />);
 
         expect(uno('.zr-side-foot a.zr-nav-item')?.getAttribute('href')).toBe('https://app.zeiras.com/impostazioni/preferenze');
-        const voceDelProfilo = async (nome: string) => {
-            await clic(uno('.zr-avatar-btn'));
-            await clic(tutti('.zr-profile-menu [role="menuitem"]').find((voce) => voce.textContent === nome) ?? null);
-        };
-        await voceDelProfilo('Profilo');
-        await voceDelProfilo('Impostazioni');
-        await voceDelProfilo('Piano');
-        await voceDelProfilo('Azienda');
+        await clic(uno('.zr-avatar-btn'));
+        expect(vociDelProfilo().map((voce) => voce && voce.testo)).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', null, 'Esci']);
+        await clic(uno('.zr-avatar-btn'));
+        expect(uno('.zr-profile-menu')).toBeNull();
+
+        // Ogni voce chiude il menu e porta dove portava.
+        await scegliDalProfilo('Profilo');
+        await scegliDalProfilo('Impostazioni');
+        await scegliDalProfilo('Azienda');
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-notif .zr-pop-foot button'));
         expect(naviga.mock.calls).toStrictEqual([
             ['https://app.zeiras.com/impostazioni/profilo'],
             ['https://app.zeiras.com/impostazioni/preferenze'],
-            ['https://app.zeiras.com/azienda/impostazioni/piano'],
             ['https://app.zeiras.com/azienda'],
             ['https://app.zeiras.com/notifiche'],
         ]);
 
-        await voceDelProfilo('Esci');
+        await scegliDalProfilo('Esci');
         expect(esci).toHaveBeenCalledOnce();
-        expect(naviga).toHaveBeenCalledTimes(5);
+        expect(naviga).toHaveBeenCalledTimes(4);
+    });
+
+    it('con la prop `piano` il menu del profilo è quello del design system, con «Piano» fra Impostazioni e Azienda: ogni voce porta alla sua pagina su app.zeiras.com, «Piano» a quella del piano, ed «Esci» chiama il frontend (sprint 15 · T1.2)', async () => {
+        const naviga = vi.fn();
+        const esci = vi.fn();
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esci} piano />);
+
+        // La lista è quella che l'`AppShell` mette da sé: la cornice non gliene dà una, e la prop resta alla cornice.
+        expect(appShell.mock.lastCall?.[0].accountItems).toBeUndefined();
+        expect(Object.keys(appShell.mock.lastCall?.[0] ?? {})).not.toContain('piano');
+        await clic(uno('.zr-avatar-btn'));
+        expect(vociDelProfilo().map((voce) => voce && voce.testo)).toStrictEqual(['Profilo', 'Impostazioni', 'Piano', 'Azienda', null, 'Esci']);
+        await clic(uno('.zr-avatar-btn'));
+        expect(uno('.zr-profile-menu')).toBeNull();
+
+        // È il menu di un frontend che ha la pagina del piano: ogni sua voce, non solo «Piano», passa dalla cornice.
+        await scegliDalProfilo('Profilo');
+        await scegliDalProfilo('Impostazioni');
+        await scegliDalProfilo('Piano');
+        await scegliDalProfilo('Azienda');
+        expect(naviga.mock.calls).toStrictEqual([
+            ['https://app.zeiras.com/impostazioni/profilo'],
+            ['https://app.zeiras.com/impostazioni/preferenze'],
+            ['https://app.zeiras.com/azienda/impostazioni/piano'],
+            ['https://app.zeiras.com/azienda'],
+        ]);
+        expect(esci).not.toHaveBeenCalled();
+
+        await scegliDalProfilo('Esci');
+        expect(esci).toHaveBeenCalledOnce();
+        expect(naviga).toHaveBeenCalledTimes(4);
+    });
+
+    it('il confronto fra i due menu del profilo vede `danger`, `disabled` e `hint` di una voce, come li rende il `Menu` del design system (sprint 15 · T1.3)', async () => {
+        const voci = [{ icon: 'arrow', label: 'Esci', danger: true, disabled: true, hint: 'Q' }, { sep: true }, { label: 'Profilo' }];
+        await mostra(<Zeiras.Menu anchor={null} inline className="zr-profile-menu" items={voci} onClose={esciSenzaEffetto} />);
+
+        expect(vociDelProfilo()).toStrictEqual([
+            { testo: 'Esci', icona: tracciatoDi('arrow'), pericolo: true, spenta: true, tasto: 'Q' },
+            null,
+            { testo: 'Profilo', icona: null, pericolo: false, spenta: false, tasto: null },
+        ]);
+    });
+
+    it.each(['it', 'es', 'en'])('senza la prop il menu del profilo è quello che l\'`AppShell` mette da sé, tolta la sola voce «Piano»: stessi testi, stesse icone, stesso ordine, e gli stessi `danger`, `disabled` e `hint`, in "%s" (sprint 15 · T1.3)', async (lingua) => {
+        const t = testi(lingua);
+        // L'`AppShell` da solo, coi testi della lingua e senza una lista sua: è il menu del design system, che può cambiare.
+        await mostra(<Zeiras.AppShell user="Ada Lovelace" labels={t} />);
+        await clic(uno('.zr-avatar-btn'));
+        const delDesignSystem = vociDelProfilo();
+        expect(delDesignSystem.filter((voce) => voce?.testo === t.plan)).toHaveLength(1);
+
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-avatar-btn'));
+        expect(vociDelProfilo()).toStrictEqual(delDesignSystem.filter((voce) => voce?.testo !== t.plan));
     });
 });
 

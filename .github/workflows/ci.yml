@@ -86,5 +86,10 @@ jobs:
           npm run build
           npm run demo
 
+      # favicon.ico e apple-touch-icon.png escono da scripts/favicon.mjs: qui si rileggono e si confrontano pixel per pixel con
+      # la resa di adesso della favicon del design system. Dopo il passo sopra, che installa resvg con le altre dipendenze.
+      - name: La favicon (i due file generati sono la resa di quella del design system)
+        run: npm run favicon -- --controlla
+
       - name: Test (Pest, Testbench)
         run: ./vendor/bin/pest

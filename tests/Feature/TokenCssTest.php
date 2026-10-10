@@ -162,10 +162,11 @@ it('nessun valore dei token è scritto a mano nel codice di zr-core: niente esad
     $file = collect([
         ...File::allFiles(__DIR__.'/../../resources/js'),
         ...File::allFiles(__DIR__.'/../../resources/css'),
+        ...File::allFiles(__DIR__.'/../../resources/views'),
         ...File::allFiles(__DIR__.'/../../src'),
     ])->reject(fn (SplFileInfo $sorgente) => $sorgente->getRealPath() === realpath(__DIR__.'/../../resources/css/zeiras-token.css'));
 
-    expect($file->map->getRelativePathname()->all())->toContain('index.ts', 'zeiras/react-globale.ts', 'ZrCoreServiceProvider.php')
+    expect($file->map->getRelativePathname()->all())->toContain('index.ts', 'zeiras/react-globale.ts', 'favicon.blade.php', 'ZrCoreServiceProvider.php', 'Favicon.php')
         ->and(valoriAMano($file))->toBe([]);
 });
 

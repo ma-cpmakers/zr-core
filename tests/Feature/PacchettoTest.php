@@ -1070,3 +1070,86 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
     'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
 ]);
+
+// Sprint 15 · T1 (voce #1584): la voce «Piano» del menu del profilo è spenta di default, e il README dice la prop che la accende.
+
+/** Il punto «Il menu del profilo» del README, su una riga sola: dal grassetto al punto dopo. Vuoto se non c'è. */
+function puntoDelMenuDelProfilo(string $readme): string
+{
+    preg_match('/^- \*\*Il menu del profilo\*\*.*?(?=^- |^$|\z)/ms', $readme, $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il README dice, nel punto «Il menu del profilo», una frase per cosa: che di default la voce «Piano» non c\'è, la prop piano che la accende, e quando (sprint 15 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quel punto: la frase non si trova più.
+    $diPrima = str_replace('- **Il menu del profilo**', '- **Il menu**', $readme);
+
+    expect(str_contains(puntoDelMenuDelProfilo($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **Il menu del profilo**'))->toBe(1)
+        ->and(puntoDelMenuDelProfilo($diPrima))->toBe('');
+})->with([
+    'di default la voce non c\'è' => ['La voce «Piano» è spenta di default'],
+    'la prop che la accende' => ['Si accende con la prop `piano`'],
+    'quando si accende' => ['quando la pagina del piano esiste su app.zeiras.com'],
+]);
+
+// Sprint 15 · T2 (voce #1585): i cinque file del logo stanno nel pacchetto, e il README dice dove e come li importa una pagina
+// senza cornice. Il simbolo è più piccolo del limite sotto cui Vite, nella build, scrive un file dentro il JS come indirizzo
+// `data:`, che la CSP del README non lascia passare (misurato il 10/10/2026 con Vite 8.3.2 e Chromium: `img-src` bloccato): per
+// questo il suo import porta `?no-inline`.
+it('il README dice, in «Il logo», la cartella dei file del logo, ognuno dei cinque file, come una pagina senza cornice importa logo e simbolo, e perché il simbolo vuole ?no-inline (sprint 15 · T2.2)', function (string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quella sezione: la cosa non si trova più.
+    $diPrima = str_replace("\n## Il logo\n", "\n## Il marchio\n", $readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'Il logo'), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## Il logo\n"))->toBe(1)
+        ->and(sezioneDelReadme($diPrima, 'Il logo'))->toBe('');
+})->with([
+    'la cartella' => ['in `resources/zeiras/logos/`'],
+    'il logo per i fondi chiari' => ['`zeiras-logo.svg`'],
+    'il logo per i fondi scuri' => ['`zeiras-logo-dark.svg`'],
+    'il simbolo' => ['`zeiras-mark.svg`'],
+    'il simbolo coi colori del tema scuro' => ['`zeiras-mark-dark.svg`'],
+    'la favicon' => ['`zeiras-favicon.svg`'],
+    'come si importa il logo' => ['import logo from \'../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-logo.svg\';'],
+    'come si importa il simbolo' => ['import simbolo from \'../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-mark.svg?no-inline\';'],
+    'senza ?no-inline il simbolo non passa la CSP' => ['come indirizzo `data:`, che la CSP scritta più sotto non lascia passare'],
+    'con ?no-inline la CSP non cambia' => ['Con `?no-inline` resta un file della stessa origine'],
+]);
+
+// Sprint 15 · T3 (voce #1585): la favicon arriva dal pacchetto, e il README dice come si monta. favicon.ico e
+// apple-touch-icon.png escono da uno script, e la CI li rigenera a ogni giro.
+it('il README dice, in «La favicon», la riga per la testa della pagina, i tre file, come arrivano in public/ da soli e col comando, che si committano, e che la CSP non cambia (sprint 15 · T3.6)', function (string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quella sezione: la cosa non si trova più.
+    $diPrima = str_replace("\n## La favicon\n", "\n## L'icona\n", $readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La favicon'), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## La favicon\n"))->toBe(1)
+        ->and(sezioneDelReadme($diPrima, 'La favicon'))->toBe('');
+})->with([
+    'la riga per la testa della pagina' => ['@include(\'zr-core::favicon\')'],
+    'il file SVG' => ['`favicon.svg`'],
+    'il file ICO' => ['`favicon.ico`'],
+    'l\'icona Apple' => ['`apple-touch-icon.png`'],
+    'da soli a ogni composer update' => ['Arrivano da soli a ogni `composer update`'],
+    'il tag che i frontend hanno già' => ['`php artisan vendor:publish --tag=laravel-assets --ansi --force`'],
+    'il comando col tag di zr-core' => ['php artisan vendor:publish --tag=zr-core-favicon --force'],
+    'i tre file si committano' => ['I tre file si committano nel repo del frontend'],
+    'la CSP non cambia' => ['la CSP non cambia'],
+]);
+
+it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(substr_count($ci, 'npm run favicon -- --controlla'))->toBe(1)
+        ->and(strpos($ci, 'npm run favicon -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+        ->and($package['scripts']['favicon'] ?? null)->toBe('node scripts/favicon.mjs')
+        ->and($package['devDependencies']['@resvg/resvg-js'] ?? null)->toBe('2.6.2')
+        ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
+        ->and($package)->not->toHaveKey('dependencies');
+});
