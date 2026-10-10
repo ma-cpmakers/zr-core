@@ -59,8 +59,8 @@ final class Cornice
 
         Sessione::aggiorna($io);
         // Se intanto la sessione è scaduta zr-auth non dà più la persona, e la lettura dopo lancia GettoneRifiutato prima che
-        // la persona serva: il ripiego su quella letta all'inizio è per i tipi (`Sessione::utente()` può dare null), e nessun
-        // test lo distingue.
+        // la persona serva: il ripiego su quella letta all'inizio tiene `$utente` un array qualunque sia l'ordine delle letture
+        // (`Sessione::utente()` può dare null). Oggi nessun test lo distingue, e l'analisi statica non lo chiede.
         $utente = Sessione::utente() ?? $utente;
 
         $prodotti = [];

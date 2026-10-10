@@ -930,9 +930,10 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
 ]);
 
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la cornice scrive nella sessione (la lingua e il nome del profilo), e il limite della
-// sessione vale anche per quelli. Per quelli non serve una richiesta lenta (review, R3): Laravel riscrive la sessione intera alla
-// fine di ogni richiesta, e basta una richiesta della stessa sessione cominciata prima e finita dopo la pagina che li ha
-// aggiornati. Una frase per cosa, dentro il limite e non altrove nel punto.
+// sessione vale anche per quelli. Non serve una richiesta lenta (review, R3): Laravel riscrive la sessione intera alla fine di
+// ogni richiesta, e basta una richiesta della stessa sessione cominciata prima e finita dopo la pagina che li ha aggiornati. Il
+// meccanismo è lo stesso dell'uscita e del cambio di workspace, di cui il limite parla dallo sprint 12 con «una richiesta
+// lenta»: quella frase non è di questo sprint (seconda lettura, N1). Una frase per cosa, dentro il limite e non altrove.
 it('il README dice, nel limite della sessione del punto «Le notifiche», che la lingua e il nome di prima tornano con una richiesta della stessa sessione cominciata prima e finita dopo, anche non lenta, e che la lettura dopo li rimette (sprint 13 · T2.8; review, R3)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il limite della sessione: dalla frase che lo apre alla fine del punto «Le notifiche».

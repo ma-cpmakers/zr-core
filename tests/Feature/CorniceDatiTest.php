@@ -247,9 +247,10 @@ it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del works
 })->with([0, 7, 250]);
 
 /**
- * Le risposte di io.mostra senza un numero valido di non lette, per nome: lo stato e il corpo. Quelle che hanno dove metterla
- * portano la persona data: un guasto resta un guasto anche quando la persona c'è. L'elenco è uno, per il caso che guarda
- * l'eccezione (sprint 5) e per quello che guarda la sessione (sprint 13 · T2.6): un guasto nuovo di `ioMostra()` entra qui.
+ * Le risposte di io.mostra senza un numero valido di non lette che hanno dove portare una persona, per nome: lo stato e il
+ * corpo, con la persona data. L'elenco è uno, per il caso che guarda l'eccezione (sprint 5) e per quello che guarda la sessione
+ * (sprint 13 · T2.6): un guasto nuovo di `ioMostra()` entra qui. Le risposte che una persona non possono portarla stanno solo
+ * nel caso dello sprint 5: sulla sessione non direbbero niente.
  *
  * @param  array<string, mixed>  $utente
  * @return array<string, array{int, mixed}>
@@ -265,9 +266,6 @@ function ioMostraGuaste(array $utente = ['id' => 'uat-ada']): array
         'una lista' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => [1, 2]]]],
         'negativo' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => -1]]],
         'senza data, con la persona e il numero in cima' => [200, ['utente' => $utente, 'notifiche_non_lette' => 7]],
-        'data non è un oggetto' => [200, ['data' => 7]],
-        '500' => [500, ''],
-        'senza JSON' => [200, 'uat: non è JSON'],
     ];
 }
 
@@ -276,7 +274,13 @@ it('se io.mostra non dà un numero di non lette arriva BackofficeNonRisponde, ma
     backoffice(['/v1/io' => Http::response($corpo, $stato), ...aziendeEWorkspace()]);
 
     expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
-})->with(ioMostraGuaste());
+})->with([
+    ...ioMostraGuaste(),
+    // Queste non hanno dove portare una persona.
+    'data non è un oggetto' => [200, ['data' => 7]],
+    '500' => [500, ''],
+    'senza JSON' => [200, 'uat: non è JSON'],
+]);
 
 it('senza sessione, o con la sessione aperta ma senza workspace, dà null, non chiama il backoffice e lascia la sessione com\'è (T3.2; sprint 13 · T2.6)', function () {
     // Se la cornice leggesse io.mostra ci troverebbe una lingua e un nome nuovi, e li metterebbe nella sessione.
@@ -468,8 +472,9 @@ it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, 
     'la persona null' => [null, 'en', 'UAT Ada'],
 ]);
 
-// Le stesse risposte guaste del caso dello sprint 5, con la persona cambiata dove la risposta può portarla. Il caso senza una
-// sessione entrata in un workspace è più su, con «T3.2»: lì la cornice non legge io.mostra, e la sessione resta com'è.
+// Le risposte guaste del caso dello sprint 5 che possono portare una persona, con la persona cambiata: ognuna diventa rossa se
+// un guasto aggiorna la sessione. Il caso senza una sessione entrata in un workspace è più su, con «T3.2»: lì la cornice non
+// legge io.mostra, e la sessione resta com'è.
 it('un io.mostra senza un numero valido di non lette resta un guasto e non tocca la sessione, anche se porta una lingua e un nome nuovi (sprint 13 · T2.6)', function (int $stato, mixed $corpo) {
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
