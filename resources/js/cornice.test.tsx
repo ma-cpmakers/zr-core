@@ -1148,6 +1148,96 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBeNull();
         expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche');
     });
+
+    // Sprint 12 · T4 (voce #1461). Oltre le 25.000 non lette, o se i richiami al backoffice durano troppo, la parte server si ferma
+    // a un tetto e dice che ne restano (`altre: true`). La cornice non fa finta che siano tutte lette: tiene il numero, non dà
+    // per lette le notifiche in pagina, ricarica il pannello, e «Segna tutte come lette» resta per continuare. Con `altre: false`,
+    // o senza `altre` (una parte server di prima della `v1.3.0`), fa ciò che fa la `v1.2.2`.
+
+    /**
+     * Le due rotte che rispondono subito: a ogni caricamento l'elenco dopo (finiti, l'ultimo), e a ogni «Segna tutte come lette»
+     * l'`altre` dopo (finiti, l'ultimo; `undefined`: la risposta non lo porta). Con gli istanti, o senza come nella `v1.2.1`.
+     */
+    const rotteConAltre = (elenchi: unknown[][], altre: unknown[], { lettoIl, segnateIl }: { lettoIl?: string; segnateIl?: string } = {}) => {
+        let caricamenti = 0;
+        let letture = 0;
+
+        return vi.fn(async (indirizzo: string, opzioni?: RequestInit) => {
+            if (indirizzo === '/cornice/notifiche') {
+                return risposta({ data: elenchi[Math.min(caricamenti++, elenchi.length - 1)], ...(lettoIl === undefined ? {} : { aggiornati_il: lettoIl }) });
+            }
+            const dice = altre[Math.min(letture++, altre.length - 1)];
+
+            return risposta({
+                data: { fino_a: new Date(String(corpoDi(opzioni).fino_a)).toISOString(), ...(dice === undefined ? {} : { altre: dice }) },
+                ...(segnateIl === undefined ? {} : { segnate_il: segnateIl }),
+            });
+        });
+    };
+    /** Le caricate dopo una lettura fermata da un tetto: il backoffice ne ha segnate una parte, e la più recente resta da leggere. */
+    const dopoUnaParte = [notificheDelServer[0], { ...notificheDelServer[1], letta: true }, notificheDelServer[2]];
+
+    // Il numero dei dati è piccolo per vedere che resta proprio quello, e non le non lette del pannello ricaricato: nel browser
+    // i tetti della parte server non contano.
+    it.each<[string, DatiDellaCornice, { lettoIl?: string; segnateIl?: string }]>([
+        ['con gli istanti della parte server', letti(alSecondo(5), 60), { lettoIl: alSecondo(6), segnateIl: alSecondo(9) }],
+        ['senza istanti, come nella v1.2.1', { ...dati, non_lette: 60 }, {}],
+    ])('se la parte server dice che ne restano (altre: true) la campanella tiene il numero dei dati, le notifiche in pagina non si danno per lette, il pannello si ricarica e «Segna tutte come lette» resta; al clic dopo, con altre: false, fa ciò che fa la v1.2.2: %s (sprint 12 · T4.5)', async (_caso, deiDati, istanti) => {
+        const fetchFinto = rotteConAltre([notificheDelServer, dopoUnaParte], [true, false], istanti);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={deiDati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('60');
+        expect(nonLette()).toStrictEqual([true, true, false]);
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(campanella()).toBe('60');
+        // In pagina c'è l'elenco ricaricato, com'è davvero: non le caricate di prima date per lette.
+        expect(nonLette()).toStrictEqual([true, false, false]);
+        expect(segnaTutte()).not.toBeNull();
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(segnaTutte()).toBeNull();
+    });
+
+    it('senza il numero nei dati, con altre: true il pannello si ricarica e la campanella conta ciò che resta da leggere fra le ricaricate: non resta senza numero, e «Segna tutte come lette» resta (sprint 12 · T4.5)', async () => {
+        const fetchFinto = rotteConAltre([notificheDelServer, dopoUnaParte], [true]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(campanella()).toBe('1');
+        expect(nonLette()).toStrictEqual([true, false, false]);
+        expect(segnaTutte()).not.toBeNull();
+    });
+
+    // Solo il booleano `true` vuol dire che ne restano: la parte server di zr-core dà sempre un booleano, e una di prima non dà niente.
+    it.each<[string, unknown]>([
+        ['altre: false', false],
+        ['nessun altre, come da una parte server di prima della v1.3.0', undefined],
+        ['altre: "true", che non è un booleano', 'true'],
+        ['altre: 1, che non è un booleano', 1],
+    ])('con %s «Segna tutte come lette» fa ciò che fa la v1.2.2: le caricate sono lette, la campanella non ha più un numero, il pannello non si ricarica e il pulsante non c\'è più (sprint 12 · T4.5)', async (_caso, altre) => {
+        const fetchFinto = rotteConAltre([notificheDelServer, dopoUnaParte], [altre]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('60');
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(segnaTutte()).toBeNull();
+    });
 });
 
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati

@@ -28,7 +28,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
      * Le rotte finte al posto di `fetch`, nel workspace `uat-marketing`, con un orologio che conta gli istanti che dà (il primo
      * finisce per 000001Z, il secondo per 000002Z) o senza. Dà l'orologio: il test lo legge come farebbe un'altra lettura.
      */
-    async function rotte(conOrologio: boolean): Promise<() => string> {
+    async function rotte(conOrologio: boolean, query = ''): Promise<() => string> {
+        // Le rotte leggono la query della pagina quando il modulo si carica: ogni test ha la sua, e senza non ne resta una di prima.
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
         const { rotteFinte } = await import('./rotte-finte');
         let dati = 0;
         const istante = () => `2026-10-10T00:00:00.${String(++dati).padStart(6, '0')}Z`;
@@ -93,7 +95,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(Object.keys(elenco.corpo)).toEqual(['data']);
         expect(letture.stato).toBe(200);
         expect(Object.keys(letture.corpo)).toEqual(['data']);
-        expect(Object.keys(letture.corpo.data as object)).toEqual(['fino_a']);
+        // Dalla `v1.3.0` la parte server dice sempre se ne restano: `altre` non è un istante, e c'è anche senza orologio.
+        expect(Object.keys(letture.corpo.data as object)).toEqual(['fino_a', 'altre']);
     });
 
     // Una guardia: è così anche prima dell'orologio. Come nella parte server, un errore non dice quando.
@@ -124,5 +127,47 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app'], ['id', 'creata_il', 'letta', 'app', 'tipo'],
         ]);
         expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
+    });
+
+    // Sprint 12 · T4 (voce #1461): fermata da un tetto, la parte server dice che ne restano (`altre: true`). Sulla pagina di prova lo
+    // si vede con `?altre=1`: la prima «Segna tutte come lette» riuscita ne lascia una, la seconda le segna tutte.
+
+    /** Quali notifiche d'esempio sono lette, nell'ordine dell'elenco (dalla più recente). */
+    const lette = async () => ((await rispostaDi('/cornice/notifiche')).corpo.data as { letta: boolean }[]).map((notifica) => notifica.letta);
+    /** Ciò che «Segna tutte come lette» risponde: lo stato e, se c'è, `altre`. */
+    const segnate = async () => {
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche/letture', segnaTutte());
+
+        return [stato, (corpo.data as { altre?: unknown } | undefined)?.altre];
+    };
+
+    it('con ?altre=1 la prima «Segna tutte come lette» dice altre: true e lascia non letta la più recente; la seconda dice altre: false e le segna tutte (sprint 12 · T4.5)', async () => {
+        await rotte(false, '?altre=1');
+        expect(await lette()).toEqual([false, false, true, true]);
+
+        expect(await segnate()).toEqual([200, true]);
+        expect(await lette()).toEqual([false, true, true, true]);
+
+        expect(await segnate()).toEqual([200, false]);
+        expect(await lette()).toEqual([true, true, true, true]);
+        // E da lì in poi non ne restano più.
+        expect(await segnate()).toEqual([200, false]);
+    });
+
+    it('senza ?altre «Segna tutte come lette» dice altre: false al primo clic, e le segna tutte (sprint 12 · T4.5)', async () => {
+        await rotte(false);
+
+        expect(await segnate()).toEqual([200, false]);
+        expect(await lette()).toEqual([true, true, true, true]);
+    });
+
+    it('con ?altre=1 e ?errore=letture la prima fallisce senza segnare niente, e altre: true lo dice la prima che riesce (sprint 12 · T4.5)', async () => {
+        await rotte(false, '?altre=1&errore=letture');
+
+        expect(await segnate()).toEqual([502, undefined]);
+        expect(await lette()).toEqual([false, false, true, true]);
+        expect(await segnate()).toEqual([200, true]);
+        expect(await lette()).toEqual([false, true, true, true]);
+        expect(await segnate()).toEqual([200, false]);
     });
 });
