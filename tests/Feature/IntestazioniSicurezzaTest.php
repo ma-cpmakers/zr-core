@@ -93,6 +93,23 @@ it('la costante pubblica è la CSP di tutti, quella che esce senza aggiunte; la 
         ->and(IntestazioniSicurezza::PERMESSI)->toBe('accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
 });
 
+// Sprint 16 · review, R1: `frame-src` è l'unica delle sei direttive che la CSP di tutti non ha. Nasce con la prima sorgente, e con
+// quelle sole: la classe non ci mette `'self'` da sé (la CSP di una pagina è quella dichiarata, carattere per carattere), e chi
+// incornicia anche la propria origine lo scrive.
+it('frame-src nasce con le sole sorgenti scritte: senza \'self\' non lo porta, e chi lo scrive lo ha, prima delle origini; nella CSP di tutti la direttiva non c\'è (sprint 16 · review, R1)', function (string $diChi) {
+    $componi = fn (array $aggiunte) => $diChi === 'modulo' ? IntestazioniSicurezza::componi($aggiunte) : IntestazioniSicurezza::componi([], $aggiunte);
+    [$senza, $scartateSenza] = $componi(['frame-src' => ['https://challenges.cloudflare.com']]);
+    [$con, $scartateCon] = $componi(['frame-src' => ['https://challenges.cloudflare.com', "'self'"]]);
+    $diTutti = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; ";
+    $coda = "; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+    expect(str_contains(CSP_DI_TUTTI, 'frame-src'))->toBe(false)
+        ->and($senza)->toBe($diTutti.'frame-src https://challenges.cloudflare.com'.$coda)
+        ->and($con)->toBe($diTutti."frame-src 'self' https://challenges.cloudflare.com".$coda)
+        ->and($scartateSenza)->toBe([])
+        ->and($scartateCon)->toBe([]);
+})->with(['modulo', 'pagina']);
+
 it('le aggiunte non ammesse provate sono 55, ognuna col suo nome (sprint 16 · T1.2)', function () {
     expect(aggiunteNonAmmesse())->toHaveCount(55);
 });

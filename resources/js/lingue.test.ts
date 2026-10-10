@@ -65,6 +65,43 @@ describe('le lingue della cornice', () => {
         expect(conIlFrancese.testi('fr')).toStrictEqual({ ...inglese, soon: 'Bientôt' });
     });
 
+    // Sprint 16 · review, R12: il pannello chiede un titolo a `titoloDellaNotifica` per ogni notifica, a ogni render, e ogni volta
+    // `testi` ricomponeva tutti i testi della lingua. Ora li compone una volta per file, e dà sempre lo stesso oggetto.
+    it('i testi di una lingua si compongono una volta sola: la stessa lingua e una sua variante regionale danno ogni volta lo stesso oggetto, e le lingue che zr-core non ha ne hanno uno solo fra tutte (sprint 16 · review, R12)', () => {
+        expect(testi('it')).toBe(testi('it'));
+        expect(testi('it-IT')).toBe(testi('it'));
+        expect(testi('IT')).toBe(testi('it'));
+        expect(testi('es_ES')).toBe(testi('es'));
+        // Una lingua che non c'è non lascia niente di suo: `pt-BR`, `zz`, il vuoto e `constructor` hanno lo stesso oggetto.
+        expect(testi('pt-BR')).toBe(testi('zz'));
+        expect(testi('')).toBe(testi('constructor'));
+        expect(testi('zz')).toStrictEqual(inglese);
+        // Lingue diverse, oggetti diversi: non uno per tutte.
+        expect(testi('it')).not.toBe(testi('es'));
+        expect(testi('zz')).not.toBe(testi('it'));
+        expect(testi('it')).toStrictEqual(italiano);
+        expect(testi('es')).toStrictEqual(spagnolo);
+
+        // Ogni elenco di file ha i suoi: il tedesco di un elenco non è quello di un altro.
+        const conIlTedesco = caricaLingue({ '../lingue/en.json': inglese, '../lingue/de.json': { soon: 'Bald' } });
+        expect(conIlTedesco.testi('de')).toBe(conIlTedesco.testi('de-AT'));
+        expect(conIlTedesco.testi('de')).not.toBe(caricaLingue({ '../lingue/en.json': inglese, '../lingue/de.json': { soon: 'Bald' } }).testi('de'));
+        expect(conIlTedesco.testi('de')).toStrictEqual({ ...inglese, soon: 'Bald' });
+    });
+
+    it('i testi che `testi` dà sono di tutti quelli che li chiedono, e non si cambiano da fuori: l\'oggetto è congelato, e l\'inglese dei file resta com\'è (sprint 16 · review, R12)', () => {
+        const t = testi('it');
+
+        expect(Object.isFrozen(t)).toBe(true);
+        expect(() => {
+            (t as { logout: string }).logout = 'uat';
+        }).toThrow(TypeError);
+        expect(testi('it').logout).toBe(italiano.logout);
+        // Congelato è l'oggetto composto, non il file dell'inglese, che è anche il ripiego di ogni lingua.
+        expect(testi('en')).not.toBe(inglese);
+        expect(Object.isFrozen(inglese)).toBe(false);
+    });
+
     // Sprint 12 · T3 (voce #1463): il titolo di una notifica è quello del suo tipo, con `notificationTitle.<tipo>` per chiave.
     it('il titolo di un tipo di notifica che una lingua non ha è in inglese, e un tipo che l\'inglese non ha non esiste (sprint 12 · T3.3)', () => {
         const { 'notificationTitle.com.zeiras.board.scheda.creata': tolto, ...senzaUnTitolo } = spagnolo;

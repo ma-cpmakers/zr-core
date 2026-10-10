@@ -893,13 +893,25 @@ it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per
     'altre nella risposta' => ['| `{data: {fino_a, altre}, segnate_il}`:'],
     'il backoffice ne segna 5000 per chiamata, e la parte server lo richiama' => ['il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano'],
     'il tetto delle chiamate' => ['al più 5 chiamate al backoffice per richiesta'],
-    'il tetto del tempo' => ['nessuna chiamata nuova passati 10 secondi dalla prima'],
+    // Sprint 16 · review, R2: i 10 secondi si contano dall'arrivo della richiesta, non dalla prima chiamata.
+    'il tetto del tempo' => ['nessuna chiamata nuova passati 10 secondi dall\'arrivo della richiesta'],
     'che cos\'è altre' => ['`altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora'],
     'con altre: true la stessa richiesta continua' => ['la stessa richiesta, ripetuta, continua da lì'],
     'segnate_il è dopo l\'ultima risposta' => ['`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'],
     'un richiamo che fallisce è un errore' => ['alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`'],
     'il blocco della sessione, e il 503 (sprint 16 · T4.6)' => ['la rotta tiene il blocco della sessione per tutta la sua durata, e se un\'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice'],
+    'il 503 di chi arriva tardi alla rotta (sprint 16 · review, R2)' => ['arrivata alla rotta passati 10 secondi dall\'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice'],
 ]);
+
+it('il README non dice più che i 10 secondi dei richiami si contano dalla prima chiamata (sprint 16 · review, R2)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace('passati 10 secondi dall\'arrivo della richiesta;', 'passati 10 secondi dalla prima;', $readme);
+
+    expect(str_contains($readme, 'passati 10 secondi dalla prima'))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, 'passati 10 secondi dalla prima'))->toBe(true);
+});
 
 it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando un clic non le segna tutte (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -987,6 +999,24 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», il lim
     'col 503 il pannello resta com\'era' => ['allora nel pannello non cambia niente e il pulsante resta per riprovare'],
     'chi resta senza blocco' => ['L\'elenco delle notifiche, la ricerca e le chiamate del modulo restano senza blocco'],
     'per loro il limite resta' => ['per loro il limite resta'],
+    // Sprint 16 · review della PR: ciò che il limite prometteva in più o taceva (R2, R4, R5, R6).
+    'da dove dura il blocco, e quanto (review, R2)' => ['Il blocco si prende prima dei middleware che il frontend ha nel gruppo `web`, e dura 20 secondi da lì, coi tempi di partenza'],
+    'di che cosa sono fatti i 20 secondi (review, R2)' => ['i 10 dei richiami, i 5 che zr-auth aspetta una risposta, 5 di margine'],
+    'da quando la rotta conta i suoi secondi (review, R2)' => ['la rotta conta i suoi 10 secondi dall\'arrivo della richiesta, non da quando tocca a lei'],
+    'ciò che il frontend fa prima sta dentro il blocco (review, R2)' => ['ciò che un middleware del frontend fa prima — una `Cornice::dati()`, con un backoffice lento — sta dentro il blocco'],
+    'chi arriva tardi alla rotta (review, R2)' => ['una richiesta che arriva alla rotta oltre quei 10 secondi riceve 503 `{errore: "fuori_tempo"}` senza che il backoffice sia chiamato'],
+    'il margine dopo la rotta (review, R2)' => ['Dopo la risposta della rotta restano i 5 secondi di margine per chiudere la richiesta'],
+    'un tempo senza limite ferma la rotta (review, R5)' => ['Con `zr-auth.timeout` minore di 1 la rotta non parte, ed è un errore (500)'],
+    'perché un tempo senza limite la ferma (review, R5)' => ['per il client di zr-auth 0 vuol dire senza limite, e una chiamata senza un tetto può durare più di qualunque blocco'],
+    'dove sta il lock (review, R4)' => ['Il lock sta nello store `session.block_store` del frontend — quello della cache, se non lo cambia'],
+    'lo store deve saper fare i lock (review, R4)' => ['che deve saper fare i lock (Redis, database, file; `array` nei test)'],
+    'con uno store che non li fa (review, R4)' => ['con uno store che non li fa la rotta risponde 500 a ogni clic'],
+    'con lo store null (review, R4)' => ['con lo store `null` il lock è finto e il limite resta'],
+    'la durata e le rotte in cache (review, R4)' => ['La durata del blocco si calcola quando le rotte si registrano: un frontend che tiene le rotte in cache le rifà dopo aver cambiato `zr-auth.timeout`'],
+    'chi aspetta dietro un ingresso (review, R6)' => ['una «Segna tutte come lette» che aspetta il blocco di un ingresso in un workspace riparte, dopo l\'attesa, da una sessione vuota'],
+    'il 401 e il cookie di prima (review, R6)' => ['risponde 401, come a una persona non entrata, e può rimandare il cookie con l\'id di prima'],
+    'la persona si ritrova fuori (review, R6)' => ['che nel browser prende il posto di quello nuovo: la persona si ritrova fuori'],
+    'che cosa si fa dopo un ingresso (review, R6)' => ['la pagina, dopo un ingresso, si ricarica dalla scheda in cui si è entrati'],
 ]);
 
 it('il README non dice più che il limite è di una richiesta lenta, né che zr-core da solo non lo chiude (sprint 16 · T4.6)', function (string $diPrima, string $alPostoDi) {
@@ -1409,6 +1439,39 @@ it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognu
     'al server web: i suoi errori' => ['Che cosa resta al server web', '**gli errori del server web**: una risposta che il server web dà da sé, senza arrivare a Laravel'],
     'al server web: la pagina di manutenzione pre-renderizzata' => ['Che cosa resta al server web', '**la pagina di manutenzione pre-renderizzata** (`php artisan down --render=…`): esce prima che Laravel parta'],
     'al server web: X-Frame-Options' => ['Che cosa resta al server web', '**`X-Frame-Options`**: la classe non la manda'],
+
+    // Sprint 16 · review della PR: ciò che la sezione prometteva in più o taceva (R1, R3, R7, R8, R9).
+    'le pagine di Laravel cambiano aspetto, non stato (review, R7)' => [null, 'Con la CSP le pagine che Laravel dà da sé cambiano aspetto, non stato'],
+    'le pagine d\'errore senza stile (review, R7)' => [null, 'le pagine d\'errore di Laravel — 404, 419, 500, 503 — escono senza stile, perché lo portano in un `<style>` in linea'],
+    '/up senza font e script (review, R7)' => [null, '`/up` senza i suoi font e il suo script, che vengono da altre origini'],
+    'solo le risposte che passano dai middleware (review, R8)' => [null, 'Su ogni risposta che passa dai middleware di Laravel la classe scrive cinque intestazioni'],
+    'una CSP più stretta della risposta (review, R9)' => [null, '«Al posto di ciò che la risposta aveva» vale anche per una CSP più stretta'],
+    'esce quella del modulo (review, R9)' => [null, 'una risposta che ne porta una sua — `sandbox` su un file caricato da una persona, per esempio — esce con quella del modulo'],
+    'la classe non stringe una risposta sola (review, R9)' => [null, 'La classe non ha un modo per stringere una risposta sola'],
+    'frame-src non è nella CSP di tutti (review, R1)' => ['Le sorgenti di un modulo', 'Con un\'eccezione, `frame-src`, l\'unica delle sei che la CSP di tutti non ha'],
+    'finché manca vale default-src (review, R1)' => ['Le sorgenti di un modulo', 'finché nessuno la scrive le cornici seguono `default-src`, cioè la sola origine del modulo'],
+    'dalla prima sorgente vale solo ciò che è scritto (review, R1)' => ['Le sorgenti di un modulo', 'dalla prima sorgente vale solo ciò che è scritto lì'],
+    'chi incornicia la propria origine scrive anche self (review, R1)' => ['Le sorgenti di un modulo', "Chi incornicia anche la propria origine scrive anche `'self'` in `frame-src`"],
+    'senza, niente cornici e niente avviso (review, R1)' => ['Le sorgenti di un modulo', 'senza, quelle cornici non si caricano più, e nel log non c\'è un avviso'],
+    'al server web: gli errori fuori dai middleware (review, R8)' => ['Che cosa resta al server web', '**gli errori che Laravel rende fuori dai middleware**: un errore fatale di PHP (tempo o memoria finiti), un errore all\'avvio dell\'applicazione, un 500 mentre anche il gestore delle eccezioni lancia (un log che non scrive)'],
+    'ciò che non passa dai middleware (review, R8)' => ['Che cosa resta al server web', 'La classe scrive sulle risposte che passano dai middleware di Laravel'],
+    'la CSP del server web si toglie (review, R3)' => ['Che cosa resta al server web', 'La CSP si toglie e basta: due CSP sono due politiche, e il browser le applica insieme'],
+    'perché la CSP del server web si toglie (review, R3)' => ['Che cosa resta al server web', 'su una pagina che chiede sorgenti sue quella del server web, sempre uguale, le terrebbe bloccate'],
+]);
+
+// Sprint 16 · review, R1: l'avvertenza su `frame-src` sta anche dove chi scrive le sorgenti la legge — il commento della
+// configurazione, che arriva nel frontend col file — e nel commento della classe.
+it('il commento di config/zr-core.php e quello della classe dicono che frame-src nella CSP di tutti non c\'è, e che chi incornicia anche la propria origine scrive anche \'self\' (sprint 16 · review, R1)', function (string $file, string $nonCE, string $ancheSelf) {
+    // I commenti del file su una riga sola, senza gli asterischi in testa alle righe.
+    $commenti = (string) preg_replace('~\s*\n\s*\*\s?~', ' ', (string) file_get_contents(__DIR__.'/../../'.$file));
+
+    expect(str_contains($commenti, $nonCE))->toBe(true)
+        ->and(str_contains($commenti, $ancheSelf))->toBe(true)
+        // Il controllo nei due versi: senza la frase, non si trova.
+        ->and(str_contains(str_replace($ancheSelf, '', $commenti), $ancheSelf))->toBe(false);
+})->with([
+    'la configurazione' => ['config/zr-core.php', 'frame-src nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche \'self\''],
+    'la classe' => ['src/Http/IntestazioniSicurezza.php', '`frame-src` nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche `\'self\'`'],
 ]);
 
 it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CSP», coi suoi cinque titoli; e ogni CSP che scrive per intero è quella di tutti, la stessa della classe (sprint 16 · T3.1)', function () {

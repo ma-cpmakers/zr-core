@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Contracts\Cache\Lock;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
@@ -886,7 +887,7 @@ it('quando POST /cornice/notifiche/letture risponde 422 o 409 senza chiamare il 
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
 ]);
 
-it('il lock della sessione dura più di quanto POST /cornice/notifiche/letture può durare: la tenuta è almeno i secondi dei richiami più quelli che zr-auth aspetta una risposta più uno, e segue quel tempo; l\'attesa è quella di zr-auth (sprint 16 · T4.2)', function (?int $delFrontend) {
+it('il lock della sessione dura più di quanto POST /cornice/notifiche/letture può durare: la tenuta è almeno i secondi dei richiami più quelli che zr-auth aspetta una risposta più uno, e segue quel tempo senza scendere mai sotto i 15 secondi; l\'attesa è quella di zr-auth (sprint 16 · T4.2; review, R5 e R11)', function (?int $delFrontend, int $tenuta) {
     if ($delFrontend !== null) {
         // Un frontend che ha cambiato il tempo che zr-auth aspetta il backoffice: le rotte si registrano con la sua configurazione.
         config(['zr-auth.timeout' => $delFrontend]);
@@ -900,13 +901,18 @@ it('il lock della sessione dura più di quanto POST /cornice/notifiche/letture p
     expect($rotta->uri())->toBe('cornice/notifiche/letture')
         ->and($aspetta)->toBe($delFrontend ?? 5)
         ->and($rotta->locksFor())->toBeInt()->toBeGreaterThanOrEqual($richiami + $aspetta + 1)
-        ->and($rotta->locksFor())->toBe(NotificheDellaCornice::tenutaDelBlocco())
+        // Il numero è scritto qui: confrontare la rotta con la funzione che la rotta stessa usa non proverebbe niente.
+        ->and($rotta->locksFor())->toBe($tenuta)
+        ->and(NotificheDellaCornice::tenutaDelBlocco())->toBe($tenuta)
         // Non i 10 secondi di `->bloccaSessione()`: la rotta può durarne di più.
         ->and($rotta->locksFor())->toBeGreaterThan(Sessione::BLOCCO_TENUTA)
         ->and($rotta->waitsFor())->toBe(Sessione::BLOCCO_ATTESA);
 })->with([
-    'col tempo di partenza di zr-auth, 5 secondi' => [null],
-    'con un frontend che lo ha portato a 12' => [12],
+    'col tempo di partenza di zr-auth, 5 secondi: 10 + 5 + 5' => [null, 20],
+    'con un frontend che lo ha portato a 12: 10 + 12 + 5' => [12, 27],
+    // Sotto lo zero il tempo non conta: una tenuta negativa, su Redis, sarebbe un lock senza scadenza.
+    'con un tempo a 0: 10 + 0 + 5' => [0, 15],
+    'con un tempo negativo: mai meno di 15' => [-20, 15],
 ]);
 
 it('con un backoffice lento il lock della sessione è ancora preso quando arriva l\'ultima risposta, a quasi 15 secondi dalla partenza: i 10 dei richiami più i 5 che zr-auth aspetta (sprint 16 · T4.2)', function () {
@@ -931,6 +937,122 @@ it('con un backoffice lento il lock della sessione è ancora preso quando arriva
     // Con una tenuta di 10 secondi il lock sarebbe scaduto da quasi 5, e un'uscita da un'altra scheda lo prenderebbe.
     expect($liberoAllaFine)->toBe(false);
 });
+
+// Sprint 16 · review, R2: il lock della sessione si prende nel gruppo `web`, prima dei middleware che il frontend ci ha messo, e
+// scade a tenuta finita qualunque cosa sia successa prima della rotta. I 10 secondi dei richiami si contano quindi dall'arrivo
+// della richiesta, non dall'ingresso nella rotta: ciò che un middleware del frontend fa prima — una `Cornice::dati()` con un
+// backoffice lento — sta dentro la tenuta, e una richiesta arrivata alla rotta oltre quei secondi non chiama il backoffice.
+
+/**
+ * Un middleware che il frontend ha nel gruppo `web`, dopo la sessione: prima di passare la richiesta ci mette un po' — qui porta
+ * avanti l'orologio — e segna se in quel momento il lock della sessione della richiesta è libero.
+ */
+final class MiddlewareLentoDelFrontend
+{
+    public static int $secondi = 0;
+
+    /** @var list<bool> */
+    public static array $lockLibero = [];
+
+    public function handle(RichiestaDelBrowser $richiesta, Closure $next): mixed
+    {
+        self::$lockLibero[] = lockLibero($richiesta->session()->getId());
+        Carbon::setTestNow(Carbon::now()->addSeconds(self::$secondi));
+
+        return $next($richiesta);
+    }
+}
+
+/** Il frontend dei test con quel middleware in coda al gruppo `web`: ci mette tanti secondi a ogni richiesta. */
+function frontendColMiddlewareLento(int $secondi): void
+{
+    MiddlewareLentoDelFrontend::$secondi = $secondi;
+    MiddlewareLentoDelFrontend::$lockLibero = [];
+    app(Kernel::class)->appendMiddlewareToGroup('web', MiddlewareLentoDelFrontend::class);
+}
+
+it('i 10 secondi dei richiami si contano dall\'arrivo della richiesta, non dall\'ingresso nella rotta: dopo i 6 di un middleware del frontend, che gira col lock della sessione già preso, e una chiamata da 9,9, non parte un richiamo, e all\'ultima risposta del backoffice il lock è ancora preso (sprint 16 · review, R2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    frontendColMiddlewareLento(6);
+    // A ogni risposta del backoffice: il lock della sessione è libero? La tenuta è di 20 secondi dalla presa.
+    $liberoAOgniRisposta = [];
+    $dopo = function (int $microsecondi, bool $altre) use (&$liberoAOgniRisposta, $sessione): Closure {
+        return function () use (&$liberoAOgniRisposta, $sessione, $microsecondi, $altre) {
+            Carbon::setTestNow(Carbon::now()->addMicroseconds($microsecondi));
+            $liberoAOgniRisposta[] = lockLibero($sessione);
+
+            return Http::response(lettureDelBackoffice('2026-10-08T10:00:00.123Z', $altre));
+        };
+    };
+    // La prima chiamata risponde a 15,9 secondi dall'arrivo e dice che ne restano; un richiamo risponderebbe a 20,8, a lock scaduto.
+    lettureUnaDopoLAltra([$dopo(9_900_000, true), $dopo(4_900_000, false)]);
+
+    $risposta = senzaGettone(lettureDallaSessione($sessione, lettureFinoA('2026-10-08T10:00:00.123Z')))->assertOk();
+
+    // Mentre il middleware del frontend girava il lock era già preso: i suoi 6 secondi stanno dentro la tenuta.
+    expect(MiddlewareLentoDelFrontend::$lockLibero)->toBe([false])
+        ->and($liberoAOgniRisposta)->toBe([false])
+        // Un tetto ha fermato i richiami, e ne restano: la stessa richiesta, ripetuta, continua da lì.
+        ->and($risposta->json('data.altre'))->toBe(true);
+    Http::assertSentCount(1);
+});
+
+it('arrivata alla rotta passati 10 secondi dall\'arrivo della richiesta, POST /cornice/notifiche/letture non chiama il backoffice e risponde 503 fuori_tempo con Retry-After: 1; a 10 secondi esatti chiama ancora; a risposta data il lock della sessione è libero (sprint 16 · review, R2)', function (int $delMiddleware, int $stato, ?string $errore, ?string $riprova, int $chiamate) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    frontendColMiddlewareLento($delMiddleware);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    $risposta = senzaGettone(lettureDallaSessione($sessione, lettureFinoA('2026-10-08T10:00:00.123Z')));
+
+    expect($risposta->status())->toBe($stato)
+        ->and($risposta->json('errore'))->toBe($errore)
+        ->and($risposta->headers->get('Retry-After'))->toBe($riprova)
+        ->and(lockLibero($sessione))->toBe(true);
+    Http::assertSentCount($chiamate);
+})->with([
+    'a 10 secondi esatti chiama ancora' => [10, 200, null, null, 1],
+    'a 11 secondi non chiama più' => [11, 503, 'fuori_tempo', '1', 0],
+]);
+
+it('in ritardo, una richiesta sbagliata riceve il suo 422 o il suo 409, non il 503: le guardie del corpo vengono prima del tempo (sprint 16 · review, R2)', function (array $corpo, int $stato) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    frontendColMiddlewareLento(11);
+    Http::fake();
+
+    senzaGettone(lettureDallaSessione(idDiSessione(), $corpo))->assertStatus($stato);
+
+    Http::assertNothingSent();
+})->with([
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422],
+    'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
+]);
+
+// Sprint 16 · review, R5: per il client di zr-auth un tempo di 0 è «senza limite», e ogni valore che `(int)` porta sotto 1 lo
+// diventa. Una chiamata senza un tetto può durare più di qualunque lock: la rotta non chiama, ed è un errore di configurazione.
+it('con uno zr-auth.timeout che per il client vuol dire «senza limite», POST /cornice/notifiche/letture non chiama il backoffice ed è un errore (500); a risposta data il lock della sessione è libero (sprint 16 · review, R5)', function (mixed $tempo) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    config(['zr-auth.timeout' => $tempo]);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    $risposta = senzaGettone(lettureDallaSessione($sessione, lettureFinoA('2026-10-08T10:00:00.123Z')));
+
+    expect($risposta->status())->toBe(500)
+        ->and(lockLibero($sessione))->toBe(true);
+    Http::assertNothingSent();
+})->with([
+    'zero' => [0],
+    'null' => [null],
+    'un testo vuoto' => [''],
+    'un testo che non è un numero' => ['presto'],
+    'un numero negativo' => [-3],
+    'mezzo secondo' => [0.5],
+]);
 
 it('se il lock della sessione è di un\'altra richiesta per più dell\'attesa di zr-auth, POST /cornice/notifiche/letture risponde 503 con Retry-After: 1 e non chiama il backoffice, qualunque corpo abbia: il lock si prende prima delle guardie (sprint 16 · T4.3)', function (array $corpo) {
     $partenza = Carbon::parse('2026-10-10 01:15:07.000321', 'UTC');
