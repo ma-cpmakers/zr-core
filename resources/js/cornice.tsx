@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, Tone } from '../zeiras/index';
-import { linguaDeiTesti, nomeDellaVoce, testi, type TestiDellaCornice } from './lingue';
+import { linguaDeiTesti, nomeDellaVoce, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
@@ -160,29 +160,18 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 }
 
 /**
- * Il titolo di una notifica: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi zr-core
- * conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è un
- * testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai.
- */
-function titoloDi(tipo: unknown, t: TestiDellaCornice): string {
-    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
-
-    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
-}
-
-/**
  * Una notifica della parte server nel pannello: il titolo del suo tipo e l'ora, nella lingua dei testi. Di che
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Il contratto non dice per
  * chi è una notifica: ognuna sta in «Per me» come in «Tutte».
  */
-function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDellaCornice, adesso: Date): ShellNotification {
+function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
 
     return {
         id: notifica.id,
-        title: titoloDi(notifica.tipo, t),
+        title: titoloDellaNotifica(notifica.tipo, lingua),
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: delProdotto?.icona,
@@ -481,7 +470,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // Il numero dei dati, e mai meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo
             // aprendo la campanella.
             unreadCount={nonLette}
-            notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, t, adesso))}
+            notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}
             onRetryNotifications={carica}

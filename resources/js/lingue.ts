@@ -88,3 +88,16 @@ export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string)
 
     return voce.id === 'home' ? t.dashboard : t[voce.id];
 }
+
+/**
+ * Il titolo di una notifica in una lingua: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi
+ * zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è
+ * un testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai. È la funzione del pannello delle notifiche della
+ * cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
+ */
+export function titoloDellaNotifica(tipo: unknown, lingua: string): string {
+    const t = testi(lingua);
+    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
+
+    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
+}
