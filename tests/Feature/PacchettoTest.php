@@ -730,42 +730,64 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
         ]);
 });
 
-// Sprint 12 · T7, dalla lettura del suo diff (V2): con zr-auth 0.12 il nome e la lingua della sessione possono cambiare senza
-// un nuovo ingresso (`Sessione::aggiorna`), e il README lo dice dove dice da dove vengono la persona e la lingua.
+// Sprint 13 · T2 (voce #1480): dalla v1.4.0 la parte server chiama `Sessione::aggiorna` di zr-auth a ogni lettura, e il README lo
+// dice dove dice da dove vengono la persona e la lingua. Fino alla v1.3.0 diceva che zr-core non la chiamava (sprint 12 · T7).
 
-it('il README dice, in «La parte server», che dalla 0.12 zr-auth ha Sessione::aggiorna, che zr-core in questa versione non la chiama e che cosa ha la cornice se la chiama il frontend (sprint 12 · T7; lettura del diff, V2)', function () {
+it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cambiano solo quei due, da quale richiesta valgono e il rimedio (sprint 13 · T2.7)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
-        'senza, il cambio arriva al prossimo ingresso' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'un cambio fatto dopo (il nome, la lingua) arriva alla cornice al prossimo ingresso'),
-        'dalla 0.12 zr-auth ha Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla 0.12 zr-auth ha `Sessione::aggiorna`, che rimette il nome e la lingua della sessione uguali a quelli di `io.mostra`'),
-        'zr-core in questa versione non la chiama' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'zr-core in questa versione non la chiama'),
-        'se la chiama il frontend' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'se la chiama il frontend prima di `Cornice::dati()`, la cornice ha il nome e la lingua nuovi da quella richiesta'),
+        'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati'),
+        'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'),
+        'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome nuovi da quella stessa richiesta'),
+        'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
+        'il rimedio' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'chiama `Cornice::dati()` prima di leggere la lingua, o rilegge `Sessione::utente()` dopo'),
     ];
 
     // Il README con «La parte server» e «La cornice» scambiate di titolo: le frasi ci sono, ma non dove si legge da dove
     // vengono la persona e la lingua.
     $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
 
-    // «Non la chiama» è detto del codice: il giorno che la parte server la chiama, la frase è falsa e questo caso lo dice.
+    expect($cosaDice($readme))->toBe([
+        'a ogni lettura, con Sessione::aggiorna' => true,
+        'cambiano solo quei due' => true,
+        'i dati li portano da quella stessa richiesta' => true,
+        'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => true,
+        'il rimedio' => true,
+    ])
+        ->and(str_contains(suUnaRiga($scambiate), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'))->toBe(true)
+        ->and($cosaDice($scambiate))->toBe([
+            'a ogni lettura, con Sessione::aggiorna' => false,
+            'cambiano solo quei due' => false,
+            'i dati li portano da quella stessa richiesta' => false,
+            'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => false,
+            'il rimedio' => false,
+        ]);
+});
+
+it('il README non dice più che zr-core non chiama Sessione::aggiorna, né che un cambio del nome o della lingua arriva al prossimo ingresso (sprint 13 · T2.7)', function (string $nuova, string $diPrima) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase della v1.3.0 al posto di quella nuova: il controllo la vede.
+    $conQuellaDiPrima = str_replace($nuova, $diPrima, $readme);
+
+    expect(substr_count($readme, $diPrima))->toBe(0)
+        ->and($conQuellaDiPrima)->not->toBe($readme)
+        ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
+})->with([
+    'zr-core non la chiama' => ['La lingua e il nome la cornice li tiene aggiornati', 'zr-core in questa versione non la chiama'],
+    'al prossimo ingresso' => ['Persona, lingua e workspace sono quelli della sessione di zr-auth', 'un cambio fatto dopo (il nome, la lingua) arriva alla cornice al prossimo ingresso'],
+]);
+
+it('la parte server chiama Sessione::aggiorna, come dice il README: nel codice di src/, non in un commento (sprint 13 · T2.7)', function () {
+    $chiamateIn = fn (string $codice): int => substr_count(senzaCommenti($codice), 'Sessione::aggiorna(');
     $chiamate = 0;
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src', FilesystemIterator::SKIP_DOTS)) as $file) {
-        $chiamate += substr_count((string) file_get_contents($file->getPathname()), 'Sessione::aggiorna');
+        $chiamate += $chiamateIn((string) file_get_contents($file->getPathname()));
     }
 
-    expect($cosaDice($readme))->toBe([
-        'senza, il cambio arriva al prossimo ingresso' => true,
-        'dalla 0.12 zr-auth ha Sessione::aggiorna' => true,
-        'zr-core in questa versione non la chiama' => true,
-        'se la chiama il frontend' => true,
-    ])
-        ->and($chiamate)->toBe(0)
-        ->and(str_contains(suUnaRiga($scambiate), 'zr-core in questa versione non la chiama'))->toBe(true)
-        ->and($cosaDice($scambiate))->toBe([
-            'senza, il cambio arriva al prossimo ingresso' => false,
-            'dalla 0.12 zr-auth ha Sessione::aggiorna' => false,
-            'zr-core in questa versione non la chiama' => false,
-            'se la chiama il frontend' => false,
-        ]);
+    // La conta guarda il codice: una chiamata scritta solo in un commento non è una chiamata.
+    expect($chiamateIn("<?php\n// Sessione::aggiorna(\$io);\n/** Sessione::aggiorna(\$io) */\n"))->toBe(0)
+        ->and($chiamateIn("<?php\nSessione::aggiorna(\$io);\n"))->toBe(1)
+        ->and($chiamate > 0)->toBe(true);
 });
 
 // Sprint 12 · T3 (voce #1463): nel pannello ogni notifica ha il titolo del suo tipo, e il README lo dice nel punto «Le notifiche».
@@ -869,6 +891,23 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
     'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace'],
     'di chi sono quelle rotte' => ['quelle del frontend e il ricevitore dell\'ingresso di zr-auth'],
     'per quanto, e da una parte sola' => ['per più dei 10 secondi predefiniti: messo da una parte sola non ferma niente'],
+]);
+
+// Sprint 13 · T2 (voce #1480): dalla v1.4.0 la cornice scrive nella sessione (la lingua e il nome del profilo), e il limite della
+// richiesta lenta vale anche per quelli. Una frase per cosa, dentro il limite e non altrove nel punto.
+it('il README dice, nel limite della sessione del punto «Le notifiche», che con una richiesta lenta tornano anche la lingua e il nome di prima, e che la lettura dopo li rimette (sprint 13 · T2.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il limite della sessione: dalla frase che lo apre alla fine del punto «Le notifiche».
+    $limite = fn (string $testo): string => (string) strstr(puntoDelleNotifiche($testo), 'Un limite, che non è solo di questa rotta');
+    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
+    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+
+    expect(str_contains($limite($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains($limite($scambiati), $frase))->toBe(false);
+})->with([
+    'tornano anche la lingua e il nome di prima' => ['Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati mentre la richiesta lenta girava'],
+    'la lettura dopo li rimette' => ['li rimette la lettura dopo'],
 ]);
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {

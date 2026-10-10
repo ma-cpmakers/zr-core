@@ -4,6 +4,7 @@ namespace Zeiras\Core\Tests;
 
 use Illuminate\Support\Facades\Http;
 use Orchestra\Testbench\TestCase as Testbench;
+use Zeiras\Auth\Sessione;
 use Zeiras\Auth\ZrAuthServiceProvider;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\ZrCoreServiceProvider;
@@ -30,9 +31,13 @@ abstract class TestCase extends Testbench
         $app['config']->set('session.driver', 'array');
     }
 
-    /** Una pagina del frontend nel gruppo `web` (con la guardia di zr-auth) che dà i dati della cornice. */
+    /**
+     * Due pagine del frontend nel gruppo `web` (con la guardia di zr-auth): una dà i dati della cornice; l'altra la persona
+     * della sessione senza chiamare la cornice, come una pagina che ne prende la lingua in un middleware.
+     */
     protected function defineWebRoutes($router): void
     {
         $router->get('w/{slug}/cornice', fn () => Cornice::dati());
+        $router->get('w/{slug}/sessione', fn () => Sessione::utente());
     }
 }
