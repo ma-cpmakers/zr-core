@@ -1430,10 +1430,12 @@ it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognu
     'non una costante di zr-core' => ['Il test nel modulo', 'e non una costante di zr-core'],
     'è un obbligo' => ['Il test nel modulo', 'È un obbligo, non un consiglio'],
     'il test: Strict-Transport-Security' => ['Il test nel modulo', "->assertHeader('Strict-Transport-Security', 'max-age=31536000')"],
-    'il test: Content-Security-Policy' => ['Il test nel modulo', "->assertHeader('Content-Security-Policy', \"".CSP_DI_TUTTI_NEL_README.'")'],
+    'il test: Content-Security-Policy' => ['Il test nel modulo', "expect(\$risposta->headers->all('Content-Security-Policy'))->toBe([\"".CSP_DI_TUTTI_NEL_README.'"]);'],
     'il test: Referrer-Policy' => ['Il test nel modulo', "->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')"],
     'il test: Permissions-Policy' => ['Il test nel modulo', "->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')"],
     'il test: X-Content-Type-Options' => ['Il test nel modulo', "->assertHeader('X-Content-Type-Options', 'nosniff');"],
+    'la CSP con tutti i suoi valori (sicurezza, D2)' => ['Il test nel modulo', 'La CSP si confronta con tutti i suoi valori, non col primo: una risposta può portarne più d\'una, e `assertHeader` guarda solo il primo'],
+    'una classe rimasta nel modulo (sicurezza, D2)' => ['Il test nel modulo', 'quella di zr-core le uscirebbe accanto e il test resterebbe verde'],
     'in quale versione cambiano le intestazioni comuni' => ['Il test nel modulo', 'un cambio che le allarga esce in una minore, con l\'annuncio ai frontend; uno che le stringe, in una maggiore'],
 
     'la barra aggiunge un <style>' => ['La barra d\'avanzamento di Inertia', 'aggiunge alla pagina un `<style>`'],
@@ -1487,6 +1489,19 @@ it('il README non dice più che una CSP della risposta lascia il posto a quella 
     'il margine c\'è sempre (N1)' => ['restano i 5 secondi di margine per chiudere la richiesta.', 'restano almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall\'arrivo'],
     'il tetto sono 10 secondi di richiami (N2)' => ['o se i richiami durano più di 10 secondi', 'o passati 10 secondi dall\'arrivo della richiesta, un clic'],
 ]);
+
+// Sprint 16 · lettura di sicurezza, D2: `assertHeader` guarda solo il primo valore, e da T2.7 una risposta può portare più di una CSP.
+it('il test che il README dà a ogni modulo confronta la CSP con tutti i suoi valori, non col primo (sprint 16 · lettura di sicurezza, D2)', function () {
+    $nelModulo = delleIntestazioniNelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il test nel modulo');
+    $conTuttiIValori = "expect(\$risposta->headers->all('Content-Security-Policy'))->toBe([\"".CSP_DI_TUTTI_NEL_README.'"]);';
+    $colPrimo = "->assertHeader('Content-Security-Policy', \"".CSP_DI_TUTTI_NEL_README.'")';
+    // Il test di prima rimesso al posto di quello di adesso: il controllo lo vede.
+    $conQuelloDiPrima = str_replace($conTuttiIValori, $colPrimo, $nelModulo);
+
+    expect(substr_count($nelModulo, $conTuttiIValori))->toBe(1)
+        ->and(str_contains($nelModulo, "assertHeader('Content-Security-Policy'"))->toBe(false)
+        ->and(str_contains($conQuelloDiPrima, "assertHeader('Content-Security-Policy'"))->toBe(true);
+});
 
 // Sprint 16 · review, R1: l'avvertenza su `frame-src` sta anche dove chi scrive le sorgenti la legge — il commento della
 // configurazione, che arriva nel frontend col file — e nel commento della classe.
@@ -1615,4 +1630,39 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
     'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
     'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
+]);
+
+// Sprint 16 · T7 (voce #1621): il registro dice per ogni voce se il prodotto è in arrivo per chi non ha una sessione
+// (`in_arrivo`), e non è «Presto»: il README dice la differenza subito dopo il paragrafo di `registro` e `nomeDellaVoce`.
+
+/** Il capoverso del README sui due sì o no di una voce del registro, su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoDeiDueSiONo(string $readme): string
+{
+    preg_match('/^Ogni voce del registro porta due sì o no .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di una voce del registro, una frase per cosa: `presto` è della cornice, `in_arrivo` delle pagine senza sessione, e dentro la sessione decide il backoffice (sprint 16 · T7.4)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel capoverso sotto un altro inizio: la frase c'è ancora, ma non dove chi legge del registro la cerca.
+    $altrove = str_replace("\nOgni voce del registro porta due sì o no ", "\nOgni voce porta due dati ", $readme);
+
+    expect(str_contains(paragrafoDeiDueSiONo($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\nOgni voce del registro porta due sì o no "))->toBe(1)
+        // Subito dopo il paragrafo «Fuori dalla cornice»: fra i due c'è solo la riga vuota.
+        ->and(preg_match('/^Fuori dalla cornice (?:[^\n]+\n)+\nOgni voce del registro porta due sì o no /m', $readme))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoDeiDueSiONo($altrove))->toBe('');
+})->with([
+    'due sì o no, e non dicono la stessa cosa' => ['Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa'],
+    '`presto` è della cornice' => ['`presto` è della cornice: un prodotto «Presto» non c\'è ancora'],
+    '«Presto» vale in ogni workspace' => ['la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il backoffice'],
+    '`in_arrivo` è delle pagine senza sessione' => ['`in_arrivo` è per le pagine senza sessione — Registrati —, che non hanno un workspace a cui chiedere lo stato di un prodotto'],
+    'lì si mostra «In arrivo»' => ['lì un prodotto in arrivo si mostra «In arrivo», non «Disponibile»'],
+    'perché nessuno può ancora aprirlo' => ['perché non lo può ancora aprire nessuno, salvo i workspace che il backoffice ammette in anteprima'],
+    'dentro la sessione decide il backoffice' => ['Dentro la sessione lo stato di un prodotto lo dà il backoffice, workspace per workspace'],
+    'la cornice non lo legge' => ['la cornice `in_arrivo` non lo legge: nel workspace di un\'anteprima il prodotto si apre'],
+    '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
+    'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
 ]);
