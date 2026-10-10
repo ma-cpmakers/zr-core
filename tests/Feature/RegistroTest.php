@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\File;
 // perché un risultato della ricerca non dice di che prodotto è: la cornice lo trova dal tipo.
 // Sprint 6 · T5 (voce #1377): una risorsa che nel prodotto non ha una pagina sua (la cartella) ha il percorso vuoto, e si apre
 // sulla pagina del prodotto nel workspace.
+// Sprint 16 · T7 (voce #1621): ogni voce dice anche se il prodotto è «in arrivo» per chi non ha una sessione (`in_arrivo`): lo
+// leggono le pagine senza un workspace a cui chiedere lo stato. Non è «Presto», che è della cornice e vale in ogni workspace:
+// un prodotto in anteprima (il CRM) è in arrivo, e nel workspace dell'anteprima la cornice lo apre.
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -39,7 +42,8 @@ function mappaDegliIndirizzi(): array
 
 /**
  * Cosa non torna in un registro: un'icona fuori dal set, un tono che non è di un prodotto, un indirizzo che non è quello della
- * mappa, un nome (i nomi stanno nelle lingue), «Presto» che non è un sì o un no; in una risorsa, un tipo vuoto, ripetuto o già
+ * mappa, un nome (i nomi stanno nelle lingue), «Presto» o «in arrivo» che non sono un sì o un no, una voce «Presto» che non è
+ * in arrivo, la Dashboard in arrivo; in una risorsa, un tipo vuoto, ripetuto o già
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
  * «contenitore» che non è un sì o un no, un nome.
  *
@@ -71,6 +75,15 @@ function problemiDelRegistro(array $voci): array
         }
         if (! is_bool($voce['presto'] ?? null)) {
             $problemi[] = "$id: «Presto» non è un sì o un no";
+        }
+        // Sprint 16 · T7.1: ogni voce lo dice; un prodotto che non c'è ancora è in arrivo anche per chi non ha una sessione, e
+        // la Dashboard non è un prodotto.
+        if (! is_bool($voce['in_arrivo'] ?? null)) {
+            $problemi[] = "$id: «in arrivo» non è un sì o un no";
+        } elseif ($id === 'home' && $voce['in_arrivo']) {
+            $problemi[] = "$id: la Dashboard non è mai in arrivo";
+        } elseif (($voce['presto'] ?? null) === true && ! $voce['in_arrivo']) {
+            $problemi[] = "$id: è «Presto» ma non è in arrivo";
         }
         $tipi = [];
         foreach ($voce['risorse'] ?? [] as $risorsa) {
@@ -112,9 +125,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
-            ['icona', 'id', 'indirizzo', 'presto'],
-            ['icona', 'id', 'indirizzo', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 5, ['icona', 'id', 'indirizzo', 'presto', 'tono']),
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto'],
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse', 'tono'],
+            ...array_fill(0, 5, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'reports' => 'chart',
@@ -178,6 +191,54 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
             "pm.uat.a-capo: il percorso «\n» non è vuoto, e non comincia con / o non ha un solo {id}",
             'crm.board.cartelle: il tipo è già di pm',
         ]);
+});
+
+it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una sessione: CRM, Bookings e i tre «Presto» sì, Dashboard e Project Management no; «Presto» resta dei tre (sprint 16 · T7.1)', function () {
+    $voci = registroDeiProdotti();
+
+    expect(array_column($voci, 'in_arrivo', 'id'))->toBe([
+        'home' => false, 'pm' => false, 'crm' => true, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
+    ])
+        // «Presto» non cambia: con `crm` «Presto» la cornice lo chiuderebbe anche nel workspace dell'anteprima.
+        ->and(array_column($voci, 'presto', 'id'))->toBe([
+            'home' => false, 'pm' => false, 'crm' => false, 'bookings' => false, 'reports' => true, 'automations' => true, 'content' => true,
+        ])
+        ->and(problemiDelRegistro($voci))->toBe([]);
+});
+
+it('il controllo trova la Dashboard in arrivo, una voce senza «in arrivo», una dove non è un sì o un no e una «Presto» che non è in arrivo (sprint 16 · T7.1)', function () {
+    $voci = registroDeiProdotti();
+    $voci[0]['in_arrivo'] = true;
+    unset($voci[2]['in_arrivo']);
+    $voci[3]['in_arrivo'] = 'sì';
+    $voci[4]['in_arrivo'] = false;
+    // Un prodotto in arrivo che non è «Presto» va bene (il CRM in anteprima), e uno che non è né l'uno né l'altro anche.
+    $voci[5]['presto'] = false;
+    $voci[6]['presto'] = false;
+    $voci[6]['in_arrivo'] = false;
+
+    expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
+        ->and(problemiDelRegistro($voci))->toEqualCanonicalizing([
+            'home: la Dashboard non è mai in arrivo',
+            'crm: «in arrivo» non è un sì o un no',
+            'bookings: «in arrivo» non è un sì o un no',
+            'reports: è «Presto» ma non è in arrivo',
+        ]);
+});
+
+it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un no, dopo `presto`: un frontend che lo legge compila (sprint 16 · T7.3)', function () {
+    preg_match('/^export interface VoceDelRegistro \{$(.*?)^\}$/ms', File::get(__DIR__.'/../../resources/js/registro.ts'), $tipo);
+    preg_match_all('/^    (\w+\??): (.+);$/m', $tipo[1] ?? '', $campi);
+
+    expect(array_combine($campi[1], $campi[2]))->toBe([
+        'id' => "'home' | IdDiProdotto",
+        'icona' => 'IconName',
+        'tono?' => "Exclude<Tone, 'neutral'>",
+        'indirizzo' => 'string',
+        'presto' => 'boolean',
+        'in_arrivo' => 'boolean',
+        'risorse?' => 'RisorsaDelProdotto[]',
+    ]);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {

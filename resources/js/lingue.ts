@@ -46,16 +46,33 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
     // Il codice dell'inglese: il file che `import.meta.glob` dà con lo stesso oggetto del ripiego.
     const codiceDelRipiego = [...perCodice].find(([, testi]) => testi === ripiego)?.[0];
 
+    /** Il codice del file che dà i testi a una lingua: il suo, o quello della lingua base. Nessuno, se zr-core non ce l'ha. */
+    const fileDi = (lingua: string): string | undefined => {
+        const codice = codiceDi(lingua);
+
+        return [codice, codice.split('-')[0]].find((scelto) => perCodice.has(scelto));
+    };
+    // I testi già composti, per file: il pannello delle notifiche li chiede per ogni notifica, a ogni render. Le lingue che
+    // zr-core non ha stanno tutte sotto la stessa chiave, la vuota: ciò che arriva come lingua non fa crescere l'elenco.
+    const composti = new Map<string, Readonly<TestiDellaCornice>>();
+
     return {
         /** I codici delle lingue, uno per file. */
         lingue: [...perCodice.keys()] as readonly string[],
         /**
          * I testi in una lingua, sempre tutti: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in
-         * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`.
+         * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Si compongono una volta per
+         * file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo chiedono, e non si cambia. Lo dice
+         * anche il tipo: una scrittura non passa `tsc`.
          */
-        testi(lingua: string): TestiDellaCornice {
-            const codice = codiceDi(lingua);
-            const scelti = perCodice.get(codice) ?? perCodice.get(codice.split('-')[0]) ?? {};
+        testi(lingua: string): Readonly<TestiDellaCornice> {
+            const file = fileDi(lingua);
+            const pronti = composti.get(file ?? '');
+            if (pronti !== undefined) {
+                return pronti;
+            }
+
+            const scelti = (file !== undefined && perCodice.get(file)) || {};
             const testi = { ...ripiego };
             for (const chiave of Object.keys(ripiego) as (keyof TestiDellaCornice)[]) {
                 const testo = scelti[chiave];
@@ -63,6 +80,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
                     testi[chiave] = testo;
                 }
             }
+            composti.set(file ?? '', Object.freeze(testi));
 
             return testi;
         },
@@ -71,9 +89,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
          * in questa lingua, mai in quella del browser, e un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
          */
         linguaDeiTesti(lingua: string): string | undefined {
-            const codice = codiceDi(lingua);
-
-            return [codice, codice.split('-')[0]].find((scelto) => perCodice.has(scelto)) ?? codiceDelRipiego;
+            return fileDi(lingua) ?? codiceDelRipiego;
         },
     };
 }
@@ -87,4 +103,17 @@ export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string)
     const t = testi(lingua);
 
     return voce.id === 'home' ? t.dashboard : t[voce.id];
+}
+
+/**
+ * Il titolo di una notifica in una lingua: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi
+ * zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è
+ * un testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai. È la funzione del pannello delle notifiche della
+ * cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
+ */
+export function titoloDellaNotifica(tipo: unknown, lingua: string): string {
+    const t = testi(lingua);
+    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
+
+    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
 }

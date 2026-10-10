@@ -208,6 +208,37 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content']);
     });
 
+    it('l\'ingresso del pacchetto dà su ogni voce del registro `in_arrivo`: i prodotti che chi non ha una sessione vede «In arrivo», distinti da quelli «Presto» (sprint 16 · T7.3)', async () => {
+        const ingresso = await import('./index');
+
+        // Come lo legge una pagina senza sessione: `voce.in_arrivo`, un sì o un no su ogni voce.
+        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['crm', 'bookings', 'reports', 'automations', 'content']);
+        expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm']);
+        expect(ingresso.registro.map((voce) => typeof voce.in_arrivo)).toStrictEqual(ordine.map(() => 'boolean'));
+        // «Presto» è un'altra cosa, e non cambia: CRM e Bookings sono in arrivo senza essere «Presto».
+        expect(ingresso.registro.filter((voce) => voce.presto).map((voce) => voce.id)).toStrictEqual(['reports', 'automations', 'content']);
+    });
+
+    it.each<[DatiDellaCornice['prodotti'], string[]]>([
+        [{ crm: 'attivo', bookings: 'disponibile' }, ['crm', 'bookings']],
+        [{ bookings: 'attivo' }, ['bookings']],
+        [{ crm: 'disponibile' }, ['crm']],
+        [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
+    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo` o `disponibile` (sprint 16 · T7.2, %j)', async (prodotti, aperti) => {
+        const { registro } = await import('./index');
+        // La premessa: per il registro CRM e Bookings sono in arrivo. Se la cornice lo leggesse come «Presto», qui non si aprirebbero.
+        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['crm', 'bookings']);
+
+        await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        const voci = tutti('.zr-nav .zr-nav-group a.zr-nav-item').slice(2, 4);
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['CRM', 'Bookings']);
+        expect(voci.map((voce) => voce.getAttribute('href')))
+            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
+            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? null : 'Presto')));
+    });
+
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
@@ -683,6 +714,8 @@ describe('il pannello delle notifiche', () => {
     it.each<[string, () => Promise<Response>]>([
         ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
         ['un 422', async () => risposta({ errore: 'dati_non_validi' }, 422)],
+        // Sprint 16 · T4.3: il lock della sessione è di un'altra richiesta. Il corpo è un testo, non JSON: leggerlo come JSON lancia.
+        ['il 503 del blocco della sessione', async () => ({ ok: false, status: 503, json: async () => { throw new SyntaxError('Unexpected token'); } }) as unknown as Response],
         ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
         ['un 200 senza l\'istante', async () => risposta({ data: {} })],
         ['un 200 con un istante che non è una stringa', async () => risposta({ data: { fino_a: 1 } })],
@@ -1185,6 +1218,27 @@ describe('il pannello delle notifiche', () => {
         expect(titoli()).toStrictEqual([...tipi.map(() => diRipiego[lingua]), diRipiego[lingua], delTipo[['', 'it', 'en', 'es'].indexOf(lingua)]]);
         // Nel pannello non si legge il codice di un tipo.
         expect(uno('.zr-notif')?.textContent).not.toMatch(/com\.zeiras|constructor|__proto__/i);
+    });
+
+    // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
+    // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 19 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1)', async (lingua) => {
+        const { titoloDellaNotifica } = await import('./index');
+        // I 19 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
+        const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
+        const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${90 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
+        expect(titoli()).toStrictEqual(dellaFunzione);
+        // Non sono due elenchi di ripieghi: i primi 19 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // ha), e gli altri sette il ripiego.
+        const deiTesti = lingua in diRipiego ? lingua : 'en';
+        expect(dellaFunzione.slice(0, 19)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(19)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([

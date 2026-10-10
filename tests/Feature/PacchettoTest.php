@@ -1,7 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Process\Process;
+use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -80,17 +83,20 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.1 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1)', function () {
+it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
 
-    // Dalla 0.12.1, non dalla 0.12.0: il vincolo dice la patch che ha provato il codice che la usa. La 0.12.0 l'ha provata solo una
+    // Dalla 0.12.4: il vincolo dice la patch che ha provato il codice che la usa. Dalla `v1.6.0` «Segna tutte come lette» tiene il
+    // blocco della sessione coi tempi di zr-auth (`Sessione::BLOCCO_ATTESA`, che c'è dalla 0.12.2), e i giri con quel codice hanno
+    // installato la 0.12.4: la 0.12.2 e la 0.12.3, con quel codice, non le ha provate nessun giro (sprint 16 · T4.5).
+    // Prima, dalla `v1.4.0`, il minimo era la 0.12.1 e non la 0.12.0, per la stessa regola: la 0.12.0 l'ha provata solo una
     // zr-core che `Sessione::aggiorna` non la chiamava (il giro della PR #15, sprint 12, e quello del primo commit di questo sprint);
     // con la cornice che la chiama i giri hanno installato dalla 0.12.1 in su, e fra le due patch è cambiata proprio `aggiorna`: nella 0.12.0
     // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
     // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
-    expect($vincolo)->toBe('^0.12.1')
+    expect($vincolo)->toBe('^0.12.4')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
@@ -151,36 +157,39 @@ it('il README dice un giro della CI per ogni voce della matrice, e nessun altro 
         ->and(giriDettiDa($conUnGiroInPiu))->toBe([...$voci[1], '0.11']);
 });
 
-it('il README dice, in «La parte server», da quale versione zr-core chiede zr-auth ^0.12.1, perché, che con una zr-auth più vecchia Composer lascia zr-core alla v1.3.0, e che nemmeno la 0.12.0 basta (sprint 13 · T1.3; review, R1 e S1)', function () {
+it('il README dice, in «La parte server», da quale versione zr-core chiede la 0.12 di zr-auth e da quale la 0.12.4, perché, e a quale versione Composer lascia zr-core con una zr-auth più vecchia (sprint 13 · T1.3; review, R1 e S1; sprint 16 · T4.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'da quale versione' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla `v1.4.0` una zr-auth più vecchia non basta'),
         'perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'la cornice chiama `Sessione::aggiorna`, che c\'è dalla 0.12'),
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'con una più vecchia Composer lascia zr-core alla `v1.3.0`'),
-        'nemmeno la 0.12.0, e perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Nemmeno la 0.12.0 basta: la sua `Sessione::aggiorna` prende la lingua e il nome anche da una risposta che non dice di chi sono (senza `utente.id`); dalla 0.12.1 no'),
+        'dalla v1.6.0 serve la 0.12.4, e perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth, e la 0.12.4 è la patch con cui la CI ha provato quel codice'),
+        'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'con una più vecchia della 0.12.4 Composer lascia zr-core alla `v1.5.0`'),
     ];
 
-    // Con «La parte server» e «La cornice» scambiate le quattro cose sono dette, ma non dove si legge che cosa zr-core richiede.
+    // Con «La parte server» e «La cornice» scambiate le cinque cose sono dette, ma non dove si legge che cosa zr-core richiede.
     $scambiate = conParteServerECorniceScambiate($readme);
 
     expect($cosaDice($readme))->toBe([
         'da quale versione' => true,
         'perché' => true,
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => true,
-        'nemmeno la 0.12.0, e perché' => true,
+        'dalla v1.6.0 serve la 0.12.4, e perché' => true,
+        'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => true,
     ])
         ->and(str_contains(suUnaRiga($scambiate), 'una zr-auth più vecchia non basta'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
             'da quale versione' => false,
             'perché' => false,
             'con una più vecchia Composer lascia zr-core alla v1.3.0' => false,
-            'nemmeno la 0.12.0, e perché' => false,
+            'dalla v1.6.0 serve la 0.12.4, e perché' => false,
+            'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => false,
         ]);
 });
 
 it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    $vincolo = '^0.12.1';
+    $vincolo = '^0.12.4';
     $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
 
     // Com'erano fino alla v1.3.0, uno alla volta: la matrice a sette voci, il vincolo a sette versioni.
@@ -884,12 +893,26 @@ it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per
     'altre nella risposta' => ['| `{data: {fino_a, altre}, segnate_il}`:'],
     'il backoffice ne segna 5000 per chiamata, e la parte server lo richiama' => ['il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano'],
     'il tetto delle chiamate' => ['al più 5 chiamate al backoffice per richiesta'],
-    'il tetto del tempo' => ['nessuna chiamata nuova passati 10 secondi dalla prima'],
+    // Sprint 16 · review, R2: i 10 secondi si contano dall'arrivo della richiesta, non dalla prima chiamata.
+    'il tetto del tempo' => ['nessuna chiamata nuova passati 10 secondi dall\'arrivo della richiesta'],
     'che cos\'è altre' => ['`altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora'],
     'con altre: true la stessa richiesta continua' => ['la stessa richiesta, ripetuta, continua da lì'],
     'segnate_il è dopo l\'ultima risposta' => ['`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'],
     'un richiamo che fallisce è un errore' => ['alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`'],
+    'il blocco della sessione, e il 503 (sprint 16 · T4.6)' => ['la rotta tiene il blocco della sessione per tutta la sua durata, e se un\'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice'],
+    'il 503 di chi arriva tardi alla rotta (sprint 16 · review, R2)' => ['arrivata alla rotta passati 10 secondi dall\'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice'],
+    'quanto dura il blocco, e chi lo trova scaduto (sprint 16 · seconda lettura, N1)' => ['il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto'],
 ]);
+
+it('il README non dice più che i 10 secondi dei richiami si contano dalla prima chiamata (sprint 16 · review, R2)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace('passati 10 secondi dall\'arrivo della richiesta;', 'passati 10 secondi dalla prima;', $readme);
+
+    expect(str_contains($readme, 'passati 10 secondi dalla prima'))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, 'passati 10 secondi dalla prima'))->toBe(true);
+});
 
 it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando un clic non le segna tutte (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -901,13 +924,14 @@ it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando 
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
         ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
 })->with([
-    'quando un clic non basta' => ['con più di 25.000 non lette, o se i richiami durano più di 10 secondi, un clic non le segna tutte'],
+    // Sprint 16 · seconda lettura, N2: il tetto del tempo è quello della riga della rotta, dall'arrivo della richiesta.
+    'quando un clic non basta' => ['con più di 25.000 non lette, o passati 10 secondi dall\'arrivo della richiesta, un clic non le segna tutte'],
     'che cosa vede la persona' => ['la campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un altro clic'],
 ]);
 
 // Sprint 12 · review, S1 (decisione di zr-pm): «Segna tutte come lette» può durare fino a circa 15 secondi, e in Laravel una richiesta
 // lenta, quando finisce, riscrive la sessione com'era all'inizio. Il README lo dichiara nel punto «Le notifiche», una frase per cosa.
-it('il README dichiara, nel punto «Le notifiche», il limite della sessione con una richiesta lenta (sprint 12 · review, S1)', function (string $frase) {
+it('il README dichiara, nel punto «Le notifiche», quanto dura «Segna tutte come lette» e che cosa torna quando una richiesta rimette la sessione di prima (sprint 12 · review, S1; le altre frasi del limite: sprint 16 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $scambiati = conNotificheERicercaScambiate($readme);
 
@@ -915,18 +939,12 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
         ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
 })->with([
-    'che cosa fa una richiesta lenta' => ['una richiesta lenta, quando finisce, riscrive la sessione com\'era all\'inizio e ne rimanda il cookie'],
     'quanto dura qui' => ['fino a circa 15 secondi, solo con più di 5000 non lette'],
-    'che cosa succede' => ['la persona esce o entra in un altro workspace da un\'altra scheda, la sessione torna quella di prima'],
     'dopo un cambio di workspace' => ['dopo un cambio di workspace la persona si ritrova in quello di prima'],
     // Seconda lettura, N3: dopo un'uscita i gettoni sono chiusi solo se la chiamata dell'uscita al backoffice è riuscita.
     'dopo un\'uscita tornano i gettoni di prima' => ['dopo un\'uscita torna la sessione coi gettoni di prima'],
     'dopo un\'uscita che li ha chiusi' => ['se l\'uscita li ha chiusi nel backoffice, la prima chiamata la richiude'],
     'dopo un\'uscita senza la risposta del backoffice' => ['se all\'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza'],
-    // Seconda lettura, N2: il blocco serve dalle due parti, e uscita e ingresso sono rotte del frontend.
-    'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace'],
-    'di chi sono quelle rotte' => ['quelle del frontend e il ricevitore dell\'ingresso di zr-auth'],
-    'per quanto, e da una parte sola' => ['per più dei 10 secondi predefiniti: messo da una parte sola non ferma niente'],
 ]);
 
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la cornice scrive nella sessione (la lingua e il nome del profilo), e il limite della
@@ -952,6 +970,90 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», che la
     'che cosa legge il frontend alla visita dopo' => ['alla visita dopo ciò che il frontend legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima'],
     'quella lettura li rimette' => ['e quella lettura li rimette'],
 ]);
+
+// Sprint 16 · T4 (voce #1558): «Segna tutte come lette» tiene il blocco della sessione, e il limite della sessione nel punto «Le
+// notifiche» si riscrive com'è: vale per ogni richiesta ancora in corso, non solo per una lenta; il blocco ferma solo chi lo
+// prende, quindi il frontend lo mette sulle sue rotte di uscita e di ingresso; chi arriva secondo aspetta, e poi riceve un 503;
+// l'elenco, la ricerca e le chiamate del modulo restano senza blocco. Una frase per cosa, dentro il limite e non altrove.
+
+/** Il limite della sessione del README: dalla frase che lo apre alla fine del punto «Le notifiche». Vuoto se non c'è. */
+function limiteDellaSessione(string $readme): string
+{
+    return (string) strstr(puntoDelleNotifiche($readme), 'Un limite, che non è solo di questa rotta');
+}
+
+it('il README dice, nel limite della sessione del punto «Le notifiche», il limite com\'è, che «Segna tutte come lette» tiene il blocco della sessione, che cosa mette il frontend, il 503 e chi resta senza blocco (sprint 16 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiati = conNotificheERicercaScambiate($readme);
+
+    expect(str_contains(limiteDellaSessione($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(limiteDellaSessione($scambiati), $frase))->toBe(false);
+})->with([
+    'che cosa fa ogni richiesta' => ['ogni richiesta, quando finisce, riscrive la sessione com\'era quando è partita e ne rimanda il cookie'],
+    'vale per ogni richiesta ancora in corso, non solo per una lenta' => ['Vale per ogni richiesta della stessa sessione ancora in corso quando la persona, da un\'altra scheda, esce, entra in un altro workspace o cambia lingua, non solo per una lenta'],
+    '«Segna tutte come lette» tiene il blocco per tutta la sua durata' => ['dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta la sua durata'],
+    'il blocco ferma solo chi lo prende' => ['Il blocco ferma solo chi lo prende'],
+    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di uscita e di ingresso in un workspace'],
+    'il ricevitore di zr-auth lo ha già' => ['il ricevitore dell\'ingresso di zr-auth lo ha già'],
+    'da una parte sola non ferma niente' => ['messo da una parte sola non ferma niente'],
+    'chi arriva secondo aspetta, e poi il 503' => ['la seconda aspetta la prima al più 3 secondi, e oltre risponde 503 con `Retry-After: 1`'],
+    'col 503 il pannello resta com\'era' => ['allora nel pannello non cambia niente e il pulsante resta per riprovare'],
+    'chi resta senza blocco' => ['L\'elenco delle notifiche, la ricerca e le chiamate del modulo restano senza blocco'],
+    'per loro il limite resta' => ['per loro il limite resta'],
+    // Sprint 16 · review della PR: ciò che il limite prometteva in più o taceva (R2, R4, R5, R6).
+    'da dove dura il blocco, e quanto (review, R2)' => ['Il blocco si prende prima dei middleware che il frontend ha nel gruppo `web`, e dura 20 secondi da lì, coi tempi di partenza'],
+    'di che cosa sono fatti i 20 secondi (review, R2)' => ['i 10 dei richiami, i 5 che zr-auth aspetta una risposta, 5 di margine'],
+    'da quando la rotta conta i suoi secondi (review, R2)' => ['la rotta conta i suoi 10 secondi dall\'arrivo della richiesta, non da quando tocca a lei'],
+    'ciò che il frontend fa prima sta dentro il blocco (review, R2)' => ['ciò che un middleware del frontend fa prima — una `Cornice::dati()`, con un backoffice lento — sta dentro il blocco'],
+    'chi arriva tardi alla rotta (review, R2)' => ['una richiesta che arriva alla rotta oltre quei 10 secondi riceve 503 `{errore: "fuori_tempo"}` senza che il backoffice sia chiamato'],
+    // Seconda lettura, N1: il margine è intero solo per chi arriva alla rotta in tempo, e oltre la durata del blocco il limite resta.
+    'il margine dopo la rotta, per chi ci arriva in tempo (review, R2; seconda lettura, N1)' => ['Dopo la risposta della rotta restano almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall\'arrivo'],
+    'fra 15 e 20 secondi il margine è ciò che resta (seconda lettura, N1)' => ['fra 15 e 20 il margine è ciò che resta del blocco'],
+    'oltre i 20 secondi il blocco è scaduto, e il limite resta (seconda lettura, N1)' => ['una richiesta che i middleware del frontend tengono più di 20 secondi prima della rotta ci arriva a blocco scaduto: riceve il 503 `fuori_tempo`, ma finendo riscrive la sessione lo stesso'],
+    'un tempo senza limite ferma la rotta (review, R5)' => ['Con `zr-auth.timeout` minore di 1 la rotta non parte, ed è un errore (500)'],
+    'perché un tempo senza limite la ferma (review, R5)' => ['per il client di zr-auth 0 vuol dire senza limite, e una chiamata senza un tetto può durare più di qualunque blocco'],
+    'dove sta il lock (review, R4)' => ['Il lock sta nello store `session.block_store` del frontend — quello della cache, se non lo cambia'],
+    'lo store deve saper fare i lock (review, R4)' => ['che deve saper fare i lock (Redis, database, file; `array` nei test)'],
+    'con uno store che non li fa (review, R4)' => ['con uno store che non li fa la rotta risponde 500 a ogni clic'],
+    'con lo store null (review, R4)' => ['con lo store `null` il lock è finto e il limite resta'],
+    'la durata e le rotte in cache (review, R4)' => ['La durata del blocco si calcola quando le rotte si registrano: un frontend che tiene le rotte in cache le rifà dopo aver cambiato `zr-auth.timeout`'],
+    'chi aspetta dietro un ingresso (review, R6)' => ['una «Segna tutte come lette» che aspetta il blocco di un ingresso in un workspace riparte, dopo l\'attesa, da una sessione vuota'],
+    'il 401 e il cookie di prima (review, R6)' => ['risponde 401, come a una persona non entrata, e può rimandare il cookie con l\'id di prima'],
+    'la persona si ritrova fuori (review, R6)' => ['che nel browser prende il posto di quello nuovo: la persona si ritrova fuori'],
+    'che cosa si fa dopo un ingresso (review, R6)' => ['la pagina, dopo un ingresso, si ricarica dalla scheda in cui si è entrati'],
+]);
+
+it('il README non dice più che il limite è di una richiesta lenta, né che zr-core da solo non lo chiude (sprint 16 · T4.6)', function (string $diPrima, string $alPostoDi) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $readme);
+
+    expect(str_contains($readme, $diPrima))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, $diPrima))->toBe(true);
+})->with([
+    'una richiesta lenta come unico caso' => ['una richiesta lenta, quando finisce, riscrive la sessione', 'ogni richiesta, quando finisce, riscrive la sessione'],
+    'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
+]);
+
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.4, una volta, e nessuno dice più quello di prima (sprint 16 · T4.5)', function (string $file) {
+    $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
+
+    expect(substr_count($testo, '^0.12.4'))->toBe(1)
+        ->and(substr_count($testo, '^0.12.1'))->toBe(0)
+        // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
+        ->and(substr_count(str_replace('^0.12.4', '^0.12.1', $testo), '^0.12.1'))->toBe(1);
+})->with(['composer.json', 'README.md', 'CLAUDE.md']);
+
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.4, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
+
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa (per questo dalla `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte come lette» l\'hanno provato solo giri con quella).'))->toBe(1)
+        ->and(str_contains($claude, 'per questo parte dalla 0.12.1'))->toBe(false)
+        ->and(str_contains($readme, 'Nemmeno la 0.12.0 basta'))->toBe(false);
+});
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -1066,7 +1168,8 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
         ->and($conQuellaDiPrima)->not->toBe($readme)
         ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
 })->with([
-    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
+    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte): quella sbagliata resta la stessa.
+    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte di uscita e di ingresso in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
     'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
 ]);
@@ -1153,3 +1256,415 @@ it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di quest
         ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
         ->and($package)->not->toHaveKey('dependencies');
 });
+
+// Sprint 16 · T2 (voce #1472). Il pacchetto porta la sua configurazione, `config/zr-core.php`: è lì che un modulo scrive le
+// sorgenti che aggiunge alla CSP di tutti (Zeiras\Core\Http\IntestazioniSicurezza). Di partenza non aggiunge niente; il file del
+// frontend vince su quello del pacchetto; lo zip del tag lo porta.
+
+it('porta config/zr-core.php, e di partenza non aggiunge niente alla CSP di tutti: csp e csp_pagine vuoti, e nessuna altra chiave (sprint 16 · T2.5)', function () {
+    $file = __DIR__.'/../../config/zr-core.php';
+    expect(is_file($file))->toBeTrue();
+
+    expect(require $file)->toBe(['csp' => [], 'csp_pagine' => []]);
+});
+
+it('unisce la configurazione di partenza a quella del frontend: senza un file suo valgono i valori di partenza, e una chiave scritta nel suo file vince (sprint 16 · T2.5)', function (array $delFrontend, array $csp, array $cspPagine) {
+    expect(config('zr-core'))->toBe(['csp' => [], 'csp_pagine' => []]);
+
+    // Come in un frontend: Laravel carica prima il suo config/zr-core.php, poi il provider ci unisce i valori di partenza.
+    config(['zr-core' => $delFrontend]);
+    (new ZrCoreServiceProvider(app()))->register();
+
+    expect(config('zr-core.csp'))->toBe($csp)
+        ->and(config('zr-core.csp_pagine'))->toBe($cspPagine)
+        ->and(array_keys(config('zr-core')))->toEqualCanonicalizing(['csp', 'csp_pagine']);
+})->with([
+    'solo csp' => [['csp' => ['font-src' => ["'self'"]]], ['font-src' => ["'self'"]], []],
+    'solo csp_pagine' => [['csp_pagine' => ['turnstile' => ['frame-src' => ['https://challenges.cloudflare.com']]]], [], ['turnstile' => ['frame-src' => ['https://challenges.cloudflare.com']]]],
+    'un file vuoto' => [[], [], []],
+]);
+
+it('la configurazione si pubblica col tag zr-core-config, in config/zr-core.php del frontend, uguale a quella del pacchetto; e non col tag che i frontend lanciano con --force a ogni composer update (sprint 16 · T2.5)', function () {
+    $origine = realpath(__DIR__.'/../../config/zr-core.php');
+    $dichiarati = collect(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'zr-core-config'))
+        ->mapWithKeys(fn (string $a, string $da) => [$a => realpath($da)])->all();
+
+    File::delete(config_path('zr-core.php'));
+    try {
+        $uscita = Artisan::call('vendor:publish', ['--tag' => 'zr-core-config']);
+        $pubblicato = File::exists(config_path('zr-core.php')) ? File::get(config_path('zr-core.php')) : null;
+    } finally {
+        File::delete(config_path('zr-core.php'));
+    }
+
+    expect($origine)->toBeString()
+        ->and($dichiarati)->toBe([config_path('zr-core.php') => $origine])
+        ->and($uscita)->toBe(0)
+        ->and($pubblicato)->toBe(File::get((string) $origine))
+        // `laravel-assets --force` riscriverebbe a ogni aggiornamento le sorgenti che il modulo ha scritto nel suo file.
+        ->and(array_values(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'laravel-assets')))->not->toContain(config_path('zr-core.php'))
+        ->and(array_values(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'zr-core-favicon')))->not->toContain(config_path('zr-core.php'));
+});
+
+/**
+ * Un albero finto: quello di HEAD con dei file in più o cambiati, scritto con un indice a parte (GIT_INDEX_FILE). Il working
+ * tree e l'indice vero non si toccano; in .git restano solo oggetti che nessuno nomina.
+ *
+ * @param  array<string, string>  $file  percorso → contenuto
+ * @return string lo sha dell'albero
+ */
+function alberoFintoCon(array $file): string
+{
+    $radice = dirname(__DIR__, 2);
+    $indice = sys_get_temp_dir().'/zr-core-indice-'.bin2hex(random_bytes(8));
+    $git = fn (array $comando, ?string $ingresso = null): string => trim((new Process(['git', ...$comando], $radice, ['GIT_INDEX_FILE' => $indice], $ingresso))->mustRun()->getOutput());
+
+    try {
+        $git(['read-tree', 'HEAD']);
+        foreach ($file as $percorso => $contenuto) {
+            $git(['update-index', '--add', '--cacheinfo', '100644,'.$git(['hash-object', '-w', '--stdin'], $contenuto).','.$percorso]);
+        }
+
+        return $git(['write-tree']);
+    } finally {
+        File::delete($indice);
+    }
+}
+
+/** @return array{0: int|null, 1: string} il codice d'uscita della guardia dello zip su quell'albero, e ciò che dice */
+function guardiaDelloZipSu(string $albero): array
+{
+    $guardia = new Process(['bash', '.github/zip-del-pacchetto.sh', $albero], dirname(__DIR__, 2));
+    $guardia->run();
+
+    return [$guardia->getExitCode(), $guardia->getOutput()];
+}
+
+it('la guardia dello zip, su un albero finto: config/zr-core.php è fra ciò che serve a chi installa, e se .gitattributes lo toglie dallo zip la guardia dice che manca; una cartella dal nome simile resta fuori (sprint 16 · T2.5)', function (array $file, int $uscita, array $dice) {
+    [$codice, $testo] = guardiaDelloZipSu(alberoFintoCon($file));
+
+    expect($codice)->toBe($uscita)
+        ->and($testo)->toContain(...$dice);
+})->with([
+    'l\'albero di HEAD, com\'è' => [[], 0, ['tutti del pacchetto e nessuno che manca']],
+    'con config/zr-core.php' => [['config/zr-core.php' => "<?php\n\nreturn [];\n"], 0, ['tutti del pacchetto e nessuno che manca']],
+    'con config/zr-core.php, che .gitattributes toglie dallo zip' => [
+        ['config/zr-core.php' => "<?php\n\nreturn [];\n", '.gitattributes' => file_get_contents(__DIR__.'/../../.gitattributes')."/config export-ignore\n"],
+        1, ['manca ciò che serve a chi installa', 'config/zr-core.php'],
+    ],
+    'con una cartella dal nome simile' => [['configurazioni/zr-core.php' => "<?php\n\nreturn [];\n"], 1, ['ciò che non serve a chi installa', 'configurazioni/zr-core.php']],
+]);
+
+// Sprint 16 · T3 (voce #1472). Il README dice a chi installa come registra la classe delle intestazioni di sicurezza, dove scrive
+// le sorgenti del suo modulo e che cosa tiene nel suo repo; «La CSP» dice che la CSP intera la dà la classe; CLAUDE.md nomina la
+// classe fra ciò che zr-core scrive. I valori stanno scritti qui per intero: sono quelli che un modulo ricopia nel suo test.
+
+/** La CSP di tutti, com'è nel README: nella sezione delle intestazioni, e nel test che il README dà da tenere a ogni modulo. */
+const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. */
+const CSP_MINIMA_NEL_README = "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com";
+
+/**
+ * Ciò che «Le intestazioni di sicurezza» del README dice sotto quel titolo di terzo livello, fino al titolo dopo, su una riga
+ * sola; con `null`, ciò che dice prima del primo titolo di terzo livello. Vuoto se la sezione o il titolo non ci sono.
+ */
+function delleIntestazioniNelReadme(string $readme, ?string $sottotitolo): string
+{
+    preg_match('/^## Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    $modello = $sottotitolo === null ? '/\A(.*?)(?=^### |\z)/ms' : '/^### '.preg_quote($sottotitolo, '/').'$(.*?)(?=^### |\z)/ms';
+    preg_match($modello, $sezione[1] ?? '', $parte);
+
+    return suUnaRiga($parte[1] ?? '');
+}
+
+it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognuna sotto il suo titolo: come si registra la classe, le cinque intestazioni coi loro valori, dove un modulo scrive le sue sorgenti e quali sono ammesse, il nome di una pagina e il caricamento intero, il test da tenere nel modulo, la barra di Inertia, ciò che resta al server web (sprint 16 · T3.1)', function (?string $sottotitolo, string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.6.0, senza quella sezione: la cosa non si trova più.
+    $senzaLaSezione = str_replace("\n## Le intestazioni di sicurezza\n", "\n## Le intestazioni\n", $readme);
+
+    expect(str_contains(delleIntestazioniNelReadme($readme, $sottotitolo), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## Le intestazioni di sicurezza\n"))->toBe(1)
+        ->and(delleIntestazioniNelReadme($senzaLaSezione, $sottotitolo))->toBe('');
+
+    if ($sottotitolo !== null) {
+        // Il README che la cosa la dice, ma non sotto quel titolo.
+        $sottoUnAltroTitolo = str_replace("\n### {$sottotitolo}\n", "\n### Un altro titolo\n", $readme);
+
+        expect(substr_count($readme, "\n### {$sottotitolo}\n"))->toBe(1)
+            ->and(delleIntestazioniNelReadme($sottoUnAltroTitolo, $sottotitolo))->toBe('');
+    }
+})->with([
+    'la classe' => [null, '`Zeiras\Core\Http\IntestazioniSicurezza`'],
+    'chi la registra, e dove' => [null, 'zr-core non la registra da sé: la registra il frontend, prima dei middleware globali, nel suo `bootstrap/app.php`'],
+    'la riga di registrazione' => [null, '$middleware->prepend(\Zeiras\Core\Http\IntestazioniSicurezza::class);'],
+    'prima dei globali, non nel gruppo web' => [null, 'Prima dei globali, e non nel gruppo `web`'],
+    'Strict-Transport-Security' => [null, '| `Strict-Transport-Security` | `max-age=31536000`: un anno, per questo host solo (senza `includeSubDomains` né `preload`) |'],
+    'Content-Security-Policy' => [null, '| `Content-Security-Policy` | la CSP di tutti, qui sotto, più ciò che il modulo aggiunge |'],
+    'Referrer-Policy, e quando resta quella della risposta' => [null, '| `Referrer-Policy` | `strict-origin-when-cross-origin`; una risposta che ha già `no-referrer`, e solo quello, lo tiene |'],
+    'Permissions-Policy' => [null, '| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` |'],
+    'X-Content-Type-Options' => [null, '| `X-Content-Type-Options` | `nosniff` |'],
+    'la CSP di tutti, per intero' => [null, '``` '.CSP_DI_TUTTI_NEL_README.' ```'],
+
+    'il file delle sorgenti' => ['Le sorgenti di un modulo', 'sta in un file solo, `config/zr-core.php` del frontend'],
+    'il comando che lo porta nel frontend' => ['Le sorgenti di un modulo', 'php artisan vendor:publish --tag=zr-core-config'],
+    'csp, nell\'esempio' => ['Le sorgenti di un modulo', "'csp' => [ 'font-src' => [\"'self'\"], ],"],
+    'csp_pagine, nell\'esempio' => ['Le sorgenti di un modulo', "'csp_pagine' => [ 'turnstile' => [ 'script-src' => ['https://challenges.cloudflare.com'], 'frame-src' => ['https://challenges.cloudflare.com'], ], ],"],
+    'le sei direttive' => ['Le sorgenti di un modulo', 'a sei direttive sole — `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src`'],
+    'le sorgenti ammesse' => ['Le sorgenti di un modulo', "`'self'`, oppure un'origine `https://` scritta per intero"],
+    'una non ammessa è scartata' => ['Le sorgenti di un modulo', '**Una sorgente non ammessa** è scartata, mai aggiustata'],
+    'e lascia un avviso nel log' => ['Le sorgenti di un modulo', 'la classe scrive un avviso nel log a ogni risposta'],
+    'l\'avviso non porta valori della richiesta' => ['Le sorgenti di un modulo', 'non porta valori della richiesta'],
+    'la configurazione in cache' => ['Le sorgenti di un modulo', 'la rifà dopo l\'aggiornamento di zr-core e dopo ogni modifica del file'],
+
+    'come una pagina chiede le sue' => ['Per una pagina sola', "`IntestazioniSicurezza::perLaPagina('<nome>')`"],
+    'la chiamata, nell\'esempio' => ['Per una pagina sola', "IntestazioniSicurezza::perLaPagina('turnstile');"],
+    'il nome si scrive nel codice' => ['Per una pagina sola', 'Il nome si scrive nel codice, e non si prende mai dalla richiesta'],
+    'vale l\'ultimo nome' => ['Per una pagina sola', 'chiamata due volte, vale l\'ultimo nome'],
+    'un nome non dichiarato' => ['Per una pagina sola', 'Un nome che la configurazione non dichiara non aggiunge niente, e lascia un avviso nel log'],
+    'con Inertia la CSP è del documento' => ['Per una pagina sola', '**Con Inertia la CSP è del documento.**'],
+    'il caricamento intero' => ['Per una pagina sola', 'una pagina con sorgenti sue si apre e si lascia con un caricamento intero'],
+
+    'il test nel repo del modulo' => ['Il test nel modulo', 'Ogni modulo tiene nel suo repo un test'],
+    'coi valori scritti per intero' => ['Il test nel modulo', 'confronta le cinque intestazioni coi valori scritti per intero'],
+    'non una costante di zr-core' => ['Il test nel modulo', 'e non una costante di zr-core'],
+    'è un obbligo' => ['Il test nel modulo', 'È un obbligo, non un consiglio'],
+    'il test: la risposta che l\'esempio legge (terza lettura, R4)' => ['Il test nel modulo', "\$risposta = \$this->get('/non-esiste')"],
+    'il test: Strict-Transport-Security' => ['Il test nel modulo', "->assertHeader('Strict-Transport-Security', 'max-age=31536000')"],
+    'il test: Content-Security-Policy' => ['Il test nel modulo', "expect(\$risposta->headers->all('Content-Security-Policy'))->toBe([\"".CSP_DI_TUTTI_NEL_README.'"]);'],
+    'il test: Referrer-Policy' => ['Il test nel modulo', "->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')"],
+    'il test: Permissions-Policy' => ['Il test nel modulo', "->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')"],
+    'il test: X-Content-Type-Options' => ['Il test nel modulo', "->assertHeader('X-Content-Type-Options', 'nosniff');"],
+    'la CSP con tutti i suoi valori (sicurezza, D2)' => ['Il test nel modulo', 'La CSP si confronta con tutti i suoi valori, non col primo: una risposta può portarne più d\'una, e `assertHeader` guarda solo il primo'],
+    'una classe rimasta nel modulo (sicurezza, D2)' => ['Il test nel modulo', 'quella di zr-core le uscirebbe accanto e il test resterebbe verde'],
+    'in quale versione cambiano le intestazioni comuni' => ['Il test nel modulo', 'un cambio che le allarga esce in una minore, con l\'annuncio ai frontend; uno che le stringe, in una maggiore'],
+
+    'la barra aggiunge un <style>' => ['La barra d\'avanzamento di Inertia', 'aggiunge alla pagina un `<style>`'],
+    'la barra senza <style>' => ['La barra d\'avanzamento di Inertia', '`progress: { includeCSS: false }`'],
+    'o spenta' => ['La barra d\'avanzamento di Inertia', '`progress: false`'],
+
+    'al server web: i file statici' => ['Che cosa resta al server web', '**i file statici** di `public/`'],
+    'al server web: i suoi errori' => ['Che cosa resta al server web', '**gli errori del server web**: una risposta che il server web dà da sé, senza arrivare a Laravel'],
+    'al server web: la pagina di manutenzione pre-renderizzata' => ['Che cosa resta al server web', '**la pagina di manutenzione pre-renderizzata** (`php artisan down --render=…`): esce prima che Laravel parta'],
+    'al server web: X-Frame-Options' => ['Che cosa resta al server web', '**`X-Frame-Options`**: la classe non la manda'],
+
+    // Sprint 16 · review della PR: ciò che la sezione prometteva in più o taceva (R1, R3, R7, R8, R9).
+    'le pagine di Laravel cambiano aspetto, non stato (review, R7)' => [null, 'Con la CSP le pagine che Laravel dà da sé cambiano aspetto, non stato'],
+    'le pagine d\'errore senza stile (review, R7)' => [null, 'le pagine d\'errore di Laravel — 404, 419, 500, 503 — escono senza stile, perché lo portano in un `<style>` in linea'],
+    '/up senza font e script (review, R7)' => [null, '`/up` senza i suoi font e il suo script, che vengono da altre origini'],
+    'solo le risposte che passano dai middleware (review, R8)' => [null, 'Su ogni risposta che passa dai middleware di Laravel la classe scrive cinque intestazioni'],
+    // Seconda lettura, R9 · T2.7: la CSP che una risposta porta già resta, e quella del modulo le esce accanto.
+    'quattro al posto, la CSP accanto (review, R9 · T2.7)' => [null, 'quattro al posto di ciò che la risposta aveva, e la CSP accanto a quella che la risposta porta già, se ne porta una'],
+    'una risposta tiene la sua CSP (review, R9 · T2.7)' => [null, 'Una risposta che porta già una CSP la tiene, e quella del modulo le esce accanto: due intestazioni, prima quella della risposta'],
+    'il browser le applica tutte e due (review, R9 · T2.7)' => [null, 'Il browser le applica tutte e due, e passa solo ciò che ammettono entrambe'],
+    'stringere sì, allargare no (review, R9 · T2.7)' => [null, 'una risposta può stringere la CSP del modulo, mai allargarla'],
+    'per allargare c\'è csp_pagine (review, R9 · T2.7)' => [null, 'per allargare c\'è solo `csp_pagine` (vedi «Per una pagina sola»)'],
+    'i file che Laravel serve da un disco (review, R9 · T2.7)' => [null, 'È il caso dei file che Laravel serve da un disco (`\'serve\' => true` in `config/filesystems.php`)'],
+    'la CSP con sandbox resta (review, R9 · T2.7)' => [null, 'li manda con una CSP sua, con `sandbox`, e quella CSP resta: un file caricato da una persona non gira nell\'origine del modulo'],
+    'una uguale esce una volta sola (review, R9 · T2.7)' => [null, 'Una CSP uguale a quella del modulo esce una volta sola'],
+    'una classe del frontend rimasta accanto (review, R9 · T2.7)' => [null, 'Vale anche per una classe del frontend rimasta accanto a questa: se scrive la sua CSP più all\'interno, la risposta le porta tutte e due'],
+    'frame-src non è nella CSP di tutti (review, R1)' => ['Le sorgenti di un modulo', 'Con un\'eccezione, `frame-src`, l\'unica delle sei che la CSP di tutti non ha'],
+    'finché manca vale default-src (review, R1)' => ['Le sorgenti di un modulo', 'finché nessuno la scrive le cornici seguono `default-src`, cioè la sola origine del modulo'],
+    'dalla prima sorgente vale solo ciò che è scritto (review, R1)' => ['Le sorgenti di un modulo', 'dalla prima sorgente vale solo ciò che è scritto lì'],
+    'chi incornicia la propria origine scrive anche self (review, R1)' => ['Le sorgenti di un modulo', "Chi incornicia anche la propria origine scrive anche `'self'` in `frame-src`"],
+    'senza, niente cornici e niente avviso (review, R1)' => ['Le sorgenti di un modulo', 'senza, quelle cornici non si caricano più, e nel log non c\'è un avviso'],
+    'al server web: gli errori fuori dai middleware (review, R8)' => ['Che cosa resta al server web', '**gli errori che Laravel rende fuori dai middleware**: un errore fatale di PHP (tempo o memoria finiti), un errore all\'avvio dell\'applicazione, un 500 mentre anche il gestore delle eccezioni lancia (un log che non scrive)'],
+    'ciò che non passa dai middleware (review, R8)' => ['Che cosa resta al server web', 'La classe scrive sulle risposte che passano dai middleware di Laravel'],
+    'la CSP del server web si toglie (review, R3)' => ['Che cosa resta al server web', 'La CSP si toglie e basta: due CSP sono due politiche, e il browser le applica insieme'],
+    'perché la CSP del server web si toglie (review, R3)' => ['Che cosa resta al server web', 'su una pagina che chiede sorgenti sue quella del server web, sempre uguale, le terrebbe bloccate'],
+]);
+
+// Sprint 16 · seconda lettura della PR (R9, N1, N2): le frasi che il README non dice più, perché non sono più vere.
+it('il README non dice più che una CSP della risposta lascia il posto a quella del modulo, che dopo la rotta il margine c\'è sempre, né che il tetto sono 10 secondi di richiami (sprint 16 · seconda lettura, R9, N1 e N2)', function (string $diPrima, string $alPostoDi) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $readme);
+
+    expect(str_contains($readme, $diPrima))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, $diPrima))->toBe(true);
+})->with([
+    'una CSP più stretta esce con quella del modulo (R9)' => ['esce con quella del modulo', 'e quella del modulo le esce accanto: due intestazioni'],
+    'la classe non stringe una risposta sola (R9)' => ['La classe non ha un modo per stringere una risposta sola', 'una risposta può stringere la CSP del modulo, mai allargarla'],
+    'al posto di ciò che la risposta aveva, anche la CSP (R9)' => ['la classe scrive cinque intestazioni, al posto di ciò che la risposta aveva:', 'la classe scrive cinque intestazioni: quattro al posto di ciò che la risposta aveva'],
+    'il margine c\'è sempre (N1)' => ['restano i 5 secondi di margine per chiudere la richiesta.', 'restano almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall\'arrivo'],
+    'il tetto sono 10 secondi di richiami (N2)' => ['o se i richiami durano più di 10 secondi', 'o passati 10 secondi dall\'arrivo della richiesta, un clic'],
+]);
+
+// Sprint 16 · lettura di sicurezza, D2: `assertHeader` guarda solo il primo valore, e da T2.7 una risposta può portare più di una CSP.
+it('il test che il README dà a ogni modulo confronta la CSP con tutti i suoi valori, non col primo (sprint 16 · lettura di sicurezza, D2)', function () {
+    $nelModulo = delleIntestazioniNelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il test nel modulo');
+    $conTuttiIValori = "expect(\$risposta->headers->all('Content-Security-Policy'))->toBe([\"".CSP_DI_TUTTI_NEL_README.'"]);';
+    $colPrimo = "->assertHeader('Content-Security-Policy', \"".CSP_DI_TUTTI_NEL_README.'")';
+    // Il test di prima rimesso al posto di quello di adesso: il controllo lo vede.
+    $conQuelloDiPrima = str_replace($conTuttiIValori, $colPrimo, $nelModulo);
+
+    expect(substr_count($nelModulo, $conTuttiIValori))->toBe(1)
+        ->and(str_contains($nelModulo, "assertHeader('Content-Security-Policy'"))->toBe(false)
+        ->and(str_contains($conQuelloDiPrima, "assertHeader('Content-Security-Policy'"))->toBe(true);
+});
+
+// Sprint 16 · review, R1: l'avvertenza su `frame-src` sta anche dove chi scrive le sorgenti la legge — il commento della
+// configurazione, che arriva nel frontend col file — e nel commento della classe.
+it('il commento di config/zr-core.php e quello della classe dicono che frame-src nella CSP di tutti non c\'è, e che chi incornicia anche la propria origine scrive anche \'self\' (sprint 16 · review, R1)', function (string $file, string $nonCE, string $ancheSelf) {
+    // I commenti del file su una riga sola, senza gli asterischi in testa alle righe.
+    $commenti = (string) preg_replace('~\s*\n\s*\*\s?~', ' ', (string) file_get_contents(__DIR__.'/../../'.$file));
+
+    expect(str_contains($commenti, $nonCE))->toBe(true)
+        ->and(str_contains($commenti, $ancheSelf))->toBe(true)
+        // Una volta sola: l'avvertenza è una, non due scritte in modi diversi.
+        ->and(substr_count($commenti, $ancheSelf))->toBe(1);
+})->with([
+    'la configurazione' => ['config/zr-core.php', 'frame-src nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche \'self\''],
+    'la classe' => ['src/Http/IntestazioniSicurezza.php', '`frame-src` nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche `\'self\'`'],
+]);
+
+it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CSP», coi suoi cinque titoli; e ogni CSP che scrive per intero è quella di tutti, la stessa della classe (sprint 16 · T3.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match_all('/^## (.+)$/m', $readme, $titoli);
+    preg_match('/^## Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
+    preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
+
+    expect(array_slice($titoli[1], -3))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP'])
+        ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
+        // Due volte: da sola, e nel test che un modulo ricopia.
+        ->and($scritte[0])->toBe([CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
+        ->and(IntestazioniSicurezza::CSP)->toBe(CSP_DI_TUTTI_NEL_README);
+});
+
+it('il README dice, in «La CSP», che la CSP intera la dà la classe, e tiene il minimo per la cornice per chi non la registra: solo a lui dice di mettere da sé frame-ancestors, base-uri e form-action (sprint 16 · T3.2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $sezione = sezioneDelReadme($readme, 'La CSP');
+    // Ciò che la sezione dice a chi registra la classe, e ciò che dice a chi non la registra.
+    $aChiLaRegistra = (string) strstr($sezione, 'Chi non la registra', true);
+    $aChiNonLaRegistra = (string) strstr($sezione, 'Chi non la registra');
+    // Il README della v1.5.0 lo diceva a tutti: con quella frase al posto della nuova, il controllo la vede.
+    $nuova = '`frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.';
+    $diPrima = '`frame-ancestors`, `base-uri` e `form-action` non ricadono su `default-src`, e il frontend li mette da sé.';
+    $conQuellaDiPrima = str_replace($nuova, $diPrima, suUnaRiga($readme));
+
+    expect(str_contains($aChiLaRegistra, 'La CSP intera la dà la classe delle intestazioni di sicurezza'))->toBe(true)
+        ->and(str_contains($aChiLaRegistra, 'chi la registra non ne scrive una sua'))->toBe(true)
+        ->and(substr_count($aChiLaRegistra, 'da sé'))->toBe(0)
+        // Una CSP sola nella sezione, il minimo, e solo per chi non registra la classe: quella intera sta sopra.
+        ->and(substr_count($sezione, "default-src '"))->toBe(1)
+        ->and(substr_count($aChiNonLaRegistra, '``` Content-Security-Policy: '.CSP_MINIMA_NEL_README.' ```'))->toBe(1)
+        ->and(substr_count($aChiNonLaRegistra, 'da sé'))->toBe(1)
+        ->and(str_contains($aChiNonLaRegistra, $nuova))->toBe(true)
+        // Il minimo non dice un'altra cosa: ogni sua direttiva è, uguale, nella CSP di tutti.
+        ->and(array_values(array_diff(explode('; ', CSP_MINIMA_NEL_README), explode('; ', CSP_DI_TUTTI_NEL_README))))->toBe([])
+        ->and(substr_count(suUnaRiga($readme), $diPrima))->toBe(0)
+        ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
+});
+
+/** Il punto «Le intestazioni di sicurezza» di «Cosa scrive questa sessione», in CLAUDE.md, su una riga sola. Vuoto se non c'è. */
+function puntoDelleIntestazioniInClaude(string $claude): string
+{
+    preg_match('/^## Cosa scrive questa sessione$(.*?)(?=^## |\z)/ms', $claude, $sezione);
+    preg_match('/^- \*\*Le intestazioni di sicurezza\*\*.*?(?=^- \*\*|\z)/ms', $sezione[1] ?? '', $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+/**
+ * Ciò che in un testo ha la forma di un indirizzo o del nome di una macchina — un numero IP, un nome con un punto dentro — o è
+ * il nome di un programma che fa da server web: in un file pubblico si dice «il server web», non il suo nome.
+ *
+ * @return list<string>
+ */
+function indirizziENomiDiServerIn(string $testo): array
+{
+    preg_match_all('/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+|\b(?:nginx|apache|caddy|forge)\b/i', $testo, $trovati);
+
+    return array_values(array_unique($trovati[0]));
+}
+
+it('CLAUDE.md nomina la classe delle intestazioni di sicurezza fra ciò che zr-core scrive — la registra il frontend, le sorgenti di un modulo stanno in config/zr-core.php, ogni modifica passa da una revisione di sicurezza — e il punto non porta indirizzi né nomi di server (sprint 16 · T3.3)', function () {
+    $claude = (string) file_get_contents(__DIR__.'/../../CLAUDE.md');
+    $punto = puntoDelleIntestazioniInClaude($claude);
+    // CLAUDE.md col punto finito sotto «Cosa NON fa»: c'è ancora, ma non fra ciò che zr-core scrive.
+    $sottoUnAltroTitolo = strtr($claude, ["\n## Cosa scrive questa sessione\n" => "\n## Cosa NON fa\n", "\n## Cosa NON fa\n" => "\n## Cosa scrive questa sessione\n"]);
+
+    expect(str_contains($punto, '`Zeiras\Core\Http\IntestazioniSicurezza`'))->toBe(true)
+        ->and(str_contains($punto, 'la registra il frontend'))->toBe(true)
+        ->and(str_contains($punto, 'stanno nel suo `config/zr-core.php`'))->toBe(true)
+        ->and(str_contains($punto, 'passa da una revisione di sicurezza prima del tag'))->toBe(true)
+        ->and(substr_count($claude, '- **Le intestazioni di sicurezza**'))->toBe(1)
+        ->and(puntoDelleIntestazioniInClaude($sottoUnAltroTitolo))->toBe('')
+        // Di ciò che ha un punto dentro, lì c'è solo il nome del file della configurazione.
+        ->and(indirizziENomiDiServerIn($punto))->toBe(['zr-core.php'])
+        ->and(indirizziENomiDiServerIn($punto.' (10.0.0.5)'))->toBe(['zr-core.php', '10.0.0.5'])
+        ->and(indirizziENomiDiServerIn($punto.' su web-1.example.net'))->toBe(['zr-core.php', 'web-1.example.net'])
+        ->and(indirizziENomiDiServerIn($punto.' Lo manda Nginx.'))->toBe(['zr-core.php', 'Nginx']);
+});
+
+// Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo di notifica lo dà `titoloDellaNotifica`, dallo stesso
+// ingresso di `nomeDellaVoce`, e il README lo dice nello stesso paragrafo.
+
+/** Il paragrafo del README che comincia con «Fuori dalla cornice», su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoFuoriDallaCornice(string $readme): string
+{
+    preg_match('/^Fuori dalla cornice .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titolo di un tipo di notifica, una frase per cosa: nome e argomenti, da dove si importa, che cosa dà, che cosa sono tipo e lingua, quali tipi zr-core conosce, il ripiego (sprint 16 · T5.3)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel paragrafo sotto un altro inizio: la frase c'è ancora, ma non accanto a `nomeDellaVoce`.
+    $altrove = str_replace("\nFuori dalla cornice ", "\nDentro la cornice ", $readme);
+
+    expect(str_contains(paragrafoFuoriDallaCornice($readme), $frase))->toBe(true)
+        ->and(str_contains(paragrafoFuoriDallaCornice($readme), '`registro` e `nomeDellaVoce(voce, lingua)`'))->toBe(true)
+        ->and(substr_count($readme, "\nFuori dalla cornice "))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
+})->with([
+    'nome e argomenti' => ['`titoloDellaNotifica(tipo, lingua)`'],
+    'da dove si importa, e per chi' => ['Dallo stesso ingresso si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    'che cosa dà' => ['dà il titolo di una notifica di quel tipo nella lingua'],
+    'è la funzione del pannello' => ['è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso'],
+    'che cos\'è tipo' => ['`tipo` è il `tipo` della notifica, com\'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`)'],
+    'che cos\'è lingua' => ['`lingua` è il codice della lingua della persona, e vale come per la cornice: `it-IT` è `it`'],
+    'una lingua che zr-core non ha' => ['con una lingua che zr-core non ha il titolo è in inglese'],
+    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
+    'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
+    'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
+]);
+
+// Sprint 16 · T7 (voce #1621): il registro dice per ogni voce se il prodotto è in arrivo per chi non ha una sessione
+// (`in_arrivo`), e non è «Presto»: il README dice la differenza subito dopo il paragrafo di `registro` e `nomeDellaVoce`.
+
+/** Il capoverso del README sui due sì o no di una voce del registro, su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoDeiDueSiONo(string $readme): string
+{
+    preg_match('/^Ogni voce del registro porta due sì o no .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di una voce del registro, una frase per cosa: `presto` è della cornice, `in_arrivo` delle pagine senza sessione, e dentro la sessione decide il backoffice (sprint 16 · T7.4)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel capoverso sotto un altro inizio: la frase c'è ancora, ma non dove chi legge del registro la cerca.
+    $altrove = str_replace("\nOgni voce del registro porta due sì o no ", "\nOgni voce porta due dati ", $readme);
+
+    expect(str_contains(paragrafoDeiDueSiONo($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\nOgni voce del registro porta due sì o no "))->toBe(1)
+        // Subito dopo il paragrafo «Fuori dalla cornice»: fra i due c'è solo la riga vuota.
+        ->and(preg_match('/^Fuori dalla cornice (?:[^\n]+\n)+\nOgni voce del registro porta due sì o no /m', $readme))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoDeiDueSiONo($altrove))->toBe('');
+})->with([
+    'i due non dicono la stessa cosa' => ['sullo stato del prodotto, e non dicono la stessa cosa'],
+    '`presto` è della cornice' => ['`presto` è della cornice: un prodotto «Presto» non c\'è ancora'],
+    '«Presto» vale in ogni workspace' => ['la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il backoffice'],
+    '`in_arrivo` è delle pagine senza sessione' => ['`in_arrivo` è per le pagine senza sessione — Registrati —, che non hanno un workspace a cui chiedere lo stato di un prodotto'],
+    'lì si mostra «In arrivo»' => ['lì un prodotto in arrivo si mostra «In arrivo», non «Disponibile»'],
+    'perché nessuno può ancora aprirlo' => ['perché non lo può ancora aprire nessuno, salvo i workspace che il backoffice ammette in anteprima'],
+    'dentro la sessione decide il backoffice' => ['Dentro la sessione lo stato di un prodotto lo dà il backoffice, workspace per workspace'],
+    'la cornice non lo legge' => ['la cornice `in_arrivo` non lo legge: nel workspace di un\'anteprima il prodotto si apre'],
+    'si apre se il registro non lo dà «Presto» (terza lettura, R2)' => ['nel workspace di un\'anteprima il prodotto si apre, se il registro non lo dà «Presto»'],
+    '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
+    'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
+]);

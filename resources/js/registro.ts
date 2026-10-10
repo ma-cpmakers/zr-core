@@ -37,8 +37,14 @@ export interface VoceDelRegistro {
     tono?: Exclude<Tone, 'neutral'>;
     /** L'indirizzo del prodotto, senza workspace: la cornice ci aggiunge `/w/<slug>`. */
     indirizzo: string;
-    /** «Presto»: il prodotto non è ancora disponibile, e la sua voce non porta da nessuna parte. */
+    /** «Presto»: il prodotto non è ancora disponibile, e la sua voce non porta da nessuna parte, in nessun workspace. È della cornice. */
     presto: boolean;
+    /**
+     * In arrivo per chi non ha una sessione: nessuno può ancora aprire il prodotto, salvo i workspace che il backoffice ammette
+     * in anteprima. Lo leggono le pagine senza un workspace a cui chiedere lo stato (Registrati); la cornice no: dentro la
+     * sessione lo stato lo dà il backoffice. Ogni prodotto «Presto» è anche in arrivo.
+     */
+    in_arrivo: boolean;
     /** Le risorse del prodotto che la ricerca mostra: un risultato di un tipo che non è qui non si mostra. */
     risorse?: RisorsaDelProdotto[];
 }

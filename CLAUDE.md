@@ -29,6 +29,11 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 - **La parte server**: ciò che serve al frontend per dare alla cornice i dati della persona — chi è, la sua lingua, le
   sue aziende e i suoi workspace (con lo slug), i prodotti attivi nel workspace, il numero di notifiche. Si leggono
   **solo** dalle API `/v1` di `zr-backoffice`, col gettone, attraverso `zr-auth`.
+- **Le intestazioni di sicurezza**: una classe sola per tutti i frontend, `Zeiras\Core\Http\IntestazioniSicurezza` — HSTS, la
+  CSP di tutti, `Referrer-Policy`, `Permissions-Policy`, `nosniff`. zr-core non la registra da sé: la registra il frontend,
+  prima dei middleware globali. Le sorgenti che un modulo aggiunge alla CSP stanno nel suo `config/zr-core.php`, e solo lì.
+  Ogni modifica della classe o di `config/zr-core.php` passa da una revisione di sicurezza prima del tag; un cambio alle
+  intestazioni comuni non esce in una versione di correzione: minore con l'annuncio se allarga, maggiore se stringe.
 
 ## Cosa NON fa
 - **Niente dati salvati**: il pacchetto non ha tabelle. Un dato o un'operazione che manca si chiede a `zr-backoffice`,
@@ -60,11 +65,11 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.12.1`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il verde è
+- `zeiras/zr-auth` `^0.12.4`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il verde è
   di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12). Una minore
   nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro
-  ha provato col codice che la usa (per questo parte dalla 0.12.1: la 0.12.0 l'ha provata solo una cornice che `aggiorna`
-  non la chiamava).
+  ha provato col codice che la usa (per questo dalla `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte
+  come lette» l'hanno provato solo giri con quella).
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
@@ -85,5 +90,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 15 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 16 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
