@@ -22,8 +22,11 @@ import { notifichePartite, rotteFinte } from './rotte-finte';
 // dà comunque un oggetto nuovo, e il difetto non si vede) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga»
 // e la «Percorso»; senza, 7). Con `?non_lette=0` i dati dicono 0 e la campanella non ha un numero; aperta, il pannello carica le
 // due non lette d'esempio (rotte-finte.ts) e la campanella dice «2»; alla visita dopo, coi dati che dicono di nuovo 0, non ha più
-// un numero. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console.
-// Non entra nel pacchetto.
+// un numero. Per vedere una risposta letta prima di un'azione e arrivata dopo: «UAT alla Corta lenta» e «UAT alla Lunga lenta»
+// fanno una visita con `lenta=6000` nell'indirizzo, che la parte server legge al clic e consegna sei secondi dopo; «UAT scarica
+// prima la Corta» è il `prefetch` di Inertia, che tiene la pagina trenta secondi e la dà alla visita dopo senza un'altra
+// richiesta. Le rotte della cornice sono finte (rotte-finte.ts): quelle delle notifiche dicono quando sull'orologio dei dati,
+// salvo con `?segno=no`. Gli indirizzi che la cornice apre si scrivono in console. Non entra nel pacchetto.
 
 const scelti = new URLSearchParams(window.location.search);
 /** Il segno della lettura nei dati: c'è, salvo con `?segno=no`. */
@@ -212,14 +215,23 @@ const propsDi: Record<Nome, Props> = {
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
 };
 
-/** L'indirizzo di una pagina, coi due parametri del caricamento: un ricaricamento, o Indietro, ritrova la stessa parte server. */
-function indirizzoDi(nome: Nome): string {
+/** Quanto aspetta la risposta di una visita lenta, in millisecondi: il tempo di fare altro sulla pagina prima che arrivi. */
+const attesaLenta = 6000;
+
+/**
+ * L'indirizzo di una pagina, coi due parametri del caricamento: un ricaricamento, o Indietro, ritrova la stessa parte server.
+ * Con `lenta`, la risposta della visita a quell'indirizzo aspetta quei millisecondi.
+ */
+function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
     for (const parametro of ['segno', 'non_lette']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);
         }
+    }
+    if (lenta !== undefined) {
+        parametri.set('lenta', String(lenta));
     }
 
     return `${window.location.pathname}?${parametri}`;
@@ -239,26 +251,37 @@ function leggi(nome: Nome): Props {
     return lettura(propsDi[nome], segno);
 }
 
-/** Una visita vera di Inertia, alla parte server finta. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della cronologia. */
-function vai(nome: Nome, preserveScroll = false) {
-    router.visit(indirizzoDi(nome), { preserveScroll });
+/**
+ * Una visita vera di Inertia, alla parte server finta. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della
+ * cronologia. Con `lenta` la risposta aspetta quei millisecondi, e porta i dati letti al clic.
+ */
+function vai(nome: Nome, preserveScroll = false, lenta?: number) {
+    router.visit(indirizzoDi(nome, lenta), { preserveScroll });
 }
 
 function Collegamenti() {
-    const apri = (nome: Nome, preserveScroll = false) => (evento: MouseEvent) => {
+    const apri = (nome: Nome, preserveScroll = false, lenta?: number) => (evento: MouseEvent) => {
         evento.preventDefault();
-        vai(nome, preserveScroll);
+        vai(nome, preserveScroll, lenta);
     };
 
     return (
-        <p>
-            <a href={indirizzoDi('lunga')} data-uat="vai-lunga" onClick={apri('lunga')}>UAT alla Lunga</a>{' · '}
-            <a href={indirizzoDi('corta')} data-uat="vai-corta" onClick={apri('corta')}>UAT alla Corta</a>{' · '}
-            <a href={indirizzoDi('altro-workspace')} data-uat="vai-altro-workspace" onClick={apri('altro-workspace')}>UAT alla Altro workspace</a>{' · '}
-            <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
-            <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
-            <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
-        </p>
+        <>
+            <p>
+                <a href={indirizzoDi('lunga')} data-uat="vai-lunga" onClick={apri('lunga')}>UAT alla Lunga</a>{' · '}
+                <a href={indirizzoDi('corta')} data-uat="vai-corta" onClick={apri('corta')}>UAT alla Corta</a>{' · '}
+                <a href={indirizzoDi('altro-workspace')} data-uat="vai-altro-workspace" onClick={apri('altro-workspace')}>UAT alla Altro workspace</a>{' · '}
+                <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
+                <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
+                <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
+            </p>
+            {/* Una risposta letta adesso e arrivata dopo: la visita lenta, e la pagina che Inertia scarica prima e tiene trenta secondi. */}
+            <p>
+                <a href={indirizzoDi('corta', attesaLenta)} data-uat="vai-corta-lenta" onClick={apri('corta', false, attesaLenta)}>UAT alla Corta lenta</a>{' · '}
+                <a href={indirizzoDi('lunga', attesaLenta)} data-uat="vai-lunga-lenta" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>{' · '}
+                <button type="button" data-uat="prefetch-corta" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>
+            </p>
+        </>
     );
 }
 
