@@ -1998,3 +1998,101 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
 ]);
+
+// Sprint 17 · T4 (voce #1633): ogni workspace dei dati porta il suo `id`, e dall'id la cornice ricava il colore del suo pallino
+// nel selettore. Il README lo dice dove chi legge lo cerca: la forma dei dati in «La parte server», da dove viene il colore nel
+// punto del selettore di «La cornice», e la regola per chi mostra un workspace fuori dalla cornice in un capoverso suo.
+
+it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni workspace, da dove viene l\'id e che non costa una lettura in più (sprint 17 · T4.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Con «La parte server» e «La cornice» scambiate la frase c'è ancora, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}`'],
+    'l\'id è quello di io.workspace.elenca' => ['Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`'],
+    'nessuna lettura in più' => ['sta nella riga che `Cornice::dati()` legge già, e non costa una lettura in più'],
+    'dall\'id viene il colore' => ['È dall\'`id` che la cornice ricava il colore del workspace nel selettore'],
+]);
+
+it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — dall\'id, non si sceglie, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $selettore = 'Il selettore «Azienda › workspace»';
+    // Il README col punto del selettore e quello della campanella scambiati di nome: la frase c'è, ma dove si legge della campanella.
+    $scambiati = strtr($readme, ["- **{$selettore}**" => '- **La campanella**', '- **La campanella**' => "- **{$selettore}**"]);
+
+    expect(str_contains(puntoDellaCornice($readme, $selettore), $frase))->toBe(true)
+        ->and(substr_count($readme, "- **{$selettore}**"))->toBe(1)
+        ->and(substr_count($readme, '- **La campanella**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, $selettore), $frase))->toBe(false);
+})->with([
+    'ogni workspace ha il suo colore' => ['Ogni workspace ha il pallino del suo colore'],
+    'lo decide zr-core dall\'id' => ['lo decide zr-core dall\'`id` del workspace, con una regola sola'],
+    'non si sceglie' => ['con una regola sola, e non si sceglie'],
+    'lo stesso ovunque' => ['Lo stesso workspace ha lo stesso colore in ogni prodotto, per ogni persona e a ogni visita'],
+    'nome, slug e posto non contano' => ['cambiargli nome, slug o posto nell\'elenco non glielo cambia'],
+    'nel tipo l\'id è facoltativo' => ['Nel tipo `DatiDellaCornice` l\'`id` di un workspace è facoltativo'],
+    'senza id il pallino del design system' => ['un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé'],
+]);
+
+/** Il capoverso del README sul colore di un workspace fuori dalla cornice, su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoDelTonoDelWorkspace(string $readme): string
+{
+    preg_match('/^Il colore di un workspace fuori dalla cornice .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, subito dopo il capoverso del registro, la regola che dà il tono di un workspace a chi lo mostra fuori dalla cornice, una frase per cosa (sprint 17 · T4.5, T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel capoverso sotto un altro inizio: la frase c'è ancora, ma non dove chi cerca il colore di un workspace la trova.
+    $altrove = str_replace("\nIl colore di un workspace fuori dalla cornice ", "\nUn workspace mostrato altrove ", $readme);
+
+    expect(str_contains(paragrafoDelTonoDelWorkspace($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\nIl colore di un workspace fuori dalla cornice "))->toBe(1)
+        // Subito dopo il capoverso dei due sì o no del registro: fra i due c'è solo la riga vuota.
+        ->and(preg_match('/^Ogni voce del registro porta due sì o no (?:[^\n]+\n)+\nIl colore di un workspace fuori dalla cornice /m', $readme))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoDelTonoDelWorkspace($altrove))->toBe('');
+})->with([
+    'nome e argomento, e da dove si importa' => ['lo dà `tonoDelWorkspace(id)`, dallo stesso ingresso'],
+    'è la regola del selettore' => ['è la regola che usa il selettore della cornice, quindi per lo stesso `id` il tono è lo stesso'],
+    'che cos\'è id' => ['`id` è l\'`id` del workspace, com\'è nei dati della cornice'],
+    'dà un tono del design system' => ['Dà il nome di uno dei toni che il design system ammette per un workspace'],
+    'un nome, non un colore' => ['non un colore: il colore lo mette il CSS del design system (`var(--<tono>)`)'],
+    'senza id nessun tono' => ['Un `id` vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`'],
+]);
+
+it('i toni che il README elenca per tonoDelWorkspace sono quelli che il design system ammette per un workspace, nello stesso ordine: tutti, e nessun altro (sprint 17 · T4.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $tipi = (string) file_get_contents(__DIR__.'/../../resources/zeiras/index.d.ts');
+    /** I toni di un workspace per il design system: quelli di `Tone` senza `neutral`, com'è `ShellWorkspace.tone`. */
+    $delDesignSystem = function (string $testo): array {
+        preg_match('/^export type Tone = ([^;]+);$/m', $testo, $tone);
+        preg_match_all("/'([a-z]+)'/", $tone[1] ?? '', $nomi);
+
+        return array_values(array_diff($nomi[1], ['neutral']));
+    };
+    /** I toni fra parentesi nel capoverso del README, nell'ordine in cui stanno. */
+    $delReadme = function (string $testo): array {
+        preg_match('/ammette per un workspace \(((?:`[a-z]+`(?:, )?)+)\)/', paragrafoDelTonoDelWorkspace($testo), $elenco);
+        preg_match_all('/`([a-z]+)`/', $elenco[1] ?? '', $nomi);
+
+        return $nomi[1];
+    };
+    // Il design system con un tono in più, e il README con un tono in meno: in tutti e due i casi le due liste non coincidono.
+    $conUnTonoInPiu = str_replace("| 'plum' |", "| 'plum' | 'ocean' |", $tipi);
+    $senzaUnTono = str_replace('`sky`, ', '', $readme);
+
+    expect(str_contains($tipi, "tone?: Exclude<Tone, 'neutral'> }\nexport interface ShellCompany"))->toBe(true)
+        ->and($delDesignSystem($tipi))->not->toBe([])
+        ->and($delReadme($readme))->toBe($delDesignSystem($tipi))
+        ->and($delDesignSystem($conUnTonoInPiu))->toContain('ocean')
+        ->and($delReadme($readme))->not->toBe($delDesignSystem($conUnTonoInPiu))
+        ->and($delReadme($senzaUnTono))->not->toBe($delDesignSystem($tipi))
+        ->and($delReadme($senzaUnTono))->not->toContain('sky');
+});
