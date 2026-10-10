@@ -1333,6 +1333,41 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()).not.toBeNull();
     });
 
+    // Sprint 12 · seconda lettura della PR, N1. L'elenco ricaricato dopo `altre: true` arriva, e prima che la pagina sia ridisegnata
+    // il pulsante in pagina è ancora quello dell'elenco di prima: un clic lì manda l'istante di prima. Se quella lettura finisce
+    // (`altre: false`), le notifiche dell'elenco nuovo nate dopo quell'istante non sono state segnate: la cornice non le dà per
+    // lette, ricarica il pannello.
+    it('un clic fra l\'arrivo dell\'elenco ricaricato e il ridisegno manda l\'istante dell\'elenco di prima: una notifica dell\'elenco nuovo nata dopo non si dà per letta, e il pannello si ricarica (sprint 12 · seconda lettura, N1)', async () => {
+        let arriva!: (valore: Response) => void;
+        const ricaricato = new Promise<Response>((risolvi) => (arriva = risolvi));
+        const conLaNuova = [nata('uat-n42', '2026-10-06T11:58:00+00:00'), ...tutteLette];
+        const fetchFinto = rotteUnaDopoLAltra([notificheDelServer, ricaricato, conLaNuova], [true, false]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        const pulsante = segnaTutte();
+
+        // Nello stesso `act` niente si ridisegna: l'elenco nuovo arriva, e il clic cade sulla pagina di prima.
+        await act(async () => {
+            arriva(risposta({ data: conLaNuova }));
+            await prossimoGiro();
+            expect(voci()).toHaveLength(3);
+            pulsante?.click();
+            await prossimoGiro();
+        });
+
+        // Il clic ha mandato l'istante dell'elenco di prima, non quello della notifica nata dopo; e il pannello si è ricaricato.
+        expect(richieste(fetchFinto)).toStrictEqual([
+            'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
+        ]);
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        // La notifica nata dopo quell'istante non è stata segnata: resta non letta in pagina e sulla campanella.
+        expect(nonLette()).toStrictEqual([true, false, false, false]);
+        expect(campanella()).toBe('1');
+        expect(segnaTutte()).not.toBeNull();
+    });
+
     // Sprint 12 · review della PR, R3. Il design system ha un testo solo per le non lette: è nel nome della campanella ed è il nome
     // del pallino di ogni notifica non letta. Col singolare di zr-core il pallino segue il numero della campanella, non la notifica.
     it.each<[lingua: string, nonLetteNeiDati: number, nonLetteCaricate: number, pallino: string]>([
