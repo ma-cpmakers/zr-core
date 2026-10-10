@@ -136,6 +136,7 @@ cornice === null ? pagina : (
         dati={cornice}                    // i dati di Cornice::dati(), condivisi dalla parte server
         product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
         nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
+        active="board"                    // l'id della voce attiva della barra; null: nessuna
         onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
     >
         {pagina}
@@ -149,6 +150,10 @@ cornice === null ? pagina : (
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
+- **La voce attiva** della barra è quella che ha l'id dato in `active`; senza `active` è la Dashboard. Una pagina che non
+  sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto,
+  e non serve inventare un id che la barra non ha. Il prodotto aperto lo dice `product`, non `active`: con `null` il suo
+  pulsante resta com'è.
 - **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
@@ -252,11 +257,13 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   `product` non deve arrivare alla cornice.
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
   (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
-  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Le funzioni
-  possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e due:
-  due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche
-  quello dell'altra). Il tipo di ciò che accetta è `CorniceDellaPagina`. Dove la cornice non c'è (senza dati, o fuori dal
-  layout) non fa niente.
+  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Nessuna voce
+  attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
+  valore, e quello della pagina vince anche su una voce data dal layout; ciò che la pagina non dà, o dà `undefined`, resta
+  del layout. Le funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo
+  involucro, non in tutti e due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando
+  una si smonta sparisce anche quello dell'altra). Il tipo di ciò che accetta è `CorniceDellaPagina`. Dove la cornice non
+  c'è (senza dati, o fuori dal layout) non fa niente.
 - **Ciò che dà la pagina** arriva alla cornice subito dopo il suo montaggio, prima che il browser disegni: un effetto di
   montaggio della pagina trova l'area ancora com'era (col margine, anche se la pagina dà `flush`), e chi la misura lo fa
   con un `ResizeObserver`. Con l'SSR di Inertia gli effetti non girano: l'HTML del server esce senza ciò che dà

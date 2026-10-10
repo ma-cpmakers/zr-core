@@ -14,8 +14,10 @@ import { rotteFinte } from './rotte-finte';
 // elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
 // `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?arriva=1` dal secondo caricamento delle
-// notifiche ce n'è una nuova, non letta. Gli indirizzi che la cornice apre (account, notifiche, un altro
-// workspace, un risultato della ricerca) non si aprono: si scrivono in console. Non entra nel pacchetto.
+// notifiche ce n'è una nuova, non letta. Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
+// (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
+// indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
+// scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -52,7 +54,7 @@ function Prova() {
             dati={{ ...datiDiProva, lingua, aziende, non_lette: nonLette }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
-            active={prodotto ? 'oggi' : undefined}
+            active={scelti.get('attiva') === 'nessuna' ? null : prodotto ? 'oggi' : undefined}
             crumbs={[{ label: 'UAT Marketing', href: '#' }, { label: 'UAT Q4' }]}
             create={[{ label: 'UAT Board', icon: 'board' }]}
             onLogout={() => console.info('UAT esci')}

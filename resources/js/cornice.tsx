@@ -45,8 +45,8 @@ export interface CorniceProps {
     product?: string;
     /** Le voci del prodotto aperto. */
     nav?: GruppoDiVoci[];
-    /** L'id della voce attiva; senza, la Dashboard. */
-    active?: string;
+    /** L'id della voce attiva; senza, la Dashboard. Con `null` nessuna voce della barra è attiva. */
+    active?: string | null;
     onNavigate?: (id: string) => void;
     /** Il percorso Workspace › Cartella › Oggetto: l'ultima voce è la pagina. */
     crumbs?: ShellCrumb[];
@@ -70,6 +70,22 @@ const dashboard = registro.find((voce) => voce.id === 'home')!;
 /** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
 function prodottoDelRegistro(codice: string | null | undefined) {
     return registro.find((voce) => voce.id === codice && voce !== dashboard);
+}
+
+/**
+ * Un id che nessuna di quelle voci ha. L'`AppShell` segna la voce che ha l'id attivo, e senza un id la Dashboard: «nessuna» gli
+ * si dice con un id che non è di nessuna. Si calcola dalle voci di quel render, e non è un valore fisso: un frontend potrebbe
+ * dare una voce proprio con quell'id. È fatto di soli trattini, perché una voce la cornice non la vede: «Impostazioni», che
+ * l'`AppShell` mette da sé in fondo alla barra, e il suo id è una parola.
+ */
+function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
+    const presi = new Set(gruppi.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)));
+    let id = '-';
+    while (presi.has(id)) {
+        id += '-';
+    }
+
+    return id;
 }
 
 /** Di che prodotto è ogni tipo di risorsa del registro, e come si mostra: un tipo sta in un prodotto solo. */
@@ -244,7 +260,7 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
 }
 
-export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
+export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
     // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
@@ -410,11 +426,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
         );
     };
     const risultati = perGruppo(ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, dati.workspace.slug) ?? []));
+    const voci = [prodotti, ...nav];
 
     return (
         <Zeiras.AppShell
             {...pagina}
-            nav={[prodotti, ...nav]}
+            nav={voci}
+            // Solo `null` vuol dire «nessuna voce attiva»: senza `active` resta la Dashboard, come decide l'`AppShell`.
+            active={active === null ? idDiNessunaVoce(voci) : active}
             product={aperto?.id}
             user={dati.persona.nome}
             email={dati.persona.email}
