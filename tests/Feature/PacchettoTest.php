@@ -696,3 +696,39 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
             'un test del frontend non fissi la prima lettura' => false,
         ]);
 });
+
+// Sprint 12 · T3 (voce #1463): nel pannello ogni notifica ha il titolo del suo tipo, e il README lo dice nel punto «Le notifiche».
+
+/** Il punto «Le notifiche» del README, su una riga sola: dal grassetto al punto dopo. Vuoto se non c'è. */
+function puntoDelleNotifiche(string $readme): string
+{
+    preg_match('/^- \*\*Le notifiche\*\*.*?(?=^- |^$|\z)/ms', $readme, $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 · T3.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
+    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **Le notifiche**'))->toBe(1)
+        ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
+})->with([
+    'il titolo è quello del tipo' => ['ognuna col titolo del suo tipo nella lingua'],
+    'il ripiego, per un tipo che zr-core non conosce o che manca' => ['una notifica di un tipo che zr-core non conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»)'],
+    'un tipo nuovo vuole una versione nuova di zr-core' => ['Un tipo di notifica nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego'],
+]);
+
+it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima, con la frase della v1.2.2 al posto di quella del tipo: il controllo la vede, anche dove va a capo.
+    $diPrima = str_replace('ognuna col titolo del suo', "ognuna col titolo della\n  lingua, uno per tutte, e del suo", $readme);
+
+    expect(str_contains(suUnaRiga($readme), 'uno per tutte'))->toBe(false)
+        ->and($diPrima)->not->toBe($readme)
+        ->and(str_contains(suUnaRiga($diPrima), 'uno per tutte'))->toBe(true);
+});

@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\File;
 // T5 anche il nome di ogni tipo di risorsa del registro, il gruppo dei risultati della ricerca, con `<prodotto>.<tipo>` per chiave). L'italiano è quello del design system
 // delle copie in resources/zeiras/: `APPSHELL_LABELS` e il menu di partenza di bundle.js. Nessun testo dell'interfaccia sta
 // nel codice TS/TSX: i testi vengono dalle lingue. Il ripiego sull'inglese e le lingue scoperte dai file li prova
-// resources/js/lingue.test.ts.
+// resources/js/lingue.test.ts. Sprint 12 · T3 (voce #1463): di zr-core sono anche il titolo di ogni tipo di notifica, con
+// `notificationTitle.<tipo>` per chiave (`notificationTitle` da solo è il ripiego, per un tipo che zr-core non conosce), e
+// `unreadOne`, il singolare delle non lette: `unread` è dell'`AppShell`, e in italiano resta quello del design system.
 
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
@@ -61,6 +63,43 @@ function lingueDellaCornice(): array
 }
 
 /**
+ * I tipi di evento del contratto pubblicato di `/v1`, scritti qui dal contratto: una notifica porta in `tipo` quello dell'evento
+ * che l'ha generata. Un tipo nuovo del contratto entra qui e nelle lingue insieme, con una versione nuova di zr-core.
+ *
+ * @return list<string>
+ */
+function tipiDiNotificaDelContratto(): array
+{
+    return [
+        'com.zeiras.app.modificata',
+        'com.zeiras.workspace.creato',
+        'com.zeiras.workspace.modificato',
+        'com.zeiras.workspace.membro.creato',
+        'com.zeiras.workspace.membro.modificato',
+        'com.zeiras.workspace.membro.eliminato',
+        'com.zeiras.board.cartella.creata',
+        'com.zeiras.board.cartella.modificata',
+        'com.zeiras.board.cartella.eliminata',
+        'com.zeiras.board.board.creata',
+        'com.zeiras.board.board.modificata',
+        'com.zeiras.board.lista.creata',
+        'com.zeiras.board.lista.modificata',
+        'com.zeiras.board.scheda.creata',
+        'com.zeiras.board.scheda.modificata',
+        'com.zeiras.board.scheda.eliminata',
+        'com.zeiras.board.etichetta.creata',
+        'com.zeiras.board.etichetta.modificata',
+        'com.zeiras.board.etichetta.eliminata',
+    ];
+}
+
+/** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo del contratto */
+function chiaviDeiTitoliDelleNotifiche(): array
+{
+    return array_map(fn (string $tipo) => "notificationTitle.$tipo", tipiDiNotificaDelContratto());
+}
+
+/**
  * Cosa non torna nelle tre lingue di partenza: un testo che manca, una chiave che non è della cornice, un testo vuoto, un testo
  * italiano diverso da quello del design system, un prodotto che ha per id una chiave dei testi dell'`AppShell` (il suo nome
  * finirebbe anche lì).
@@ -72,7 +111,10 @@ function lingueDellaCornice(): array
 function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
-    $chiavi = [...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', ...$prodotti, ...tipiDiRisorsa()];
+    $chiavi = [
+        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne',
+        ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
+    ];
 
     $problemi = [];
     foreach (array_intersect($prodotti, chiaviDiAppShellLabels()) as $id) {
@@ -211,6 +253,32 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         // Un prodotto che si chiamasse `search` darebbe il suo nome anche alla ricerca dell'AppShell.
         ->and(problemiDelleLingue(lingueDellaCornice(), [...idDeiProdotti(), 'search']))
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
+});
+
+it('ogni lingua ha il titolo di ognuno dei 19 tipi di notifica del contratto, né uno in più né uno in meno (sprint 12 · T3.3)', function (string $codice) {
+    $titoli = array_values(array_filter(
+        array_keys(lingueDellaCornice()[$codice] ?? []),
+        fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
+    ));
+
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(19)
+        ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
+})->with(['it', 'es', 'en']);
+
+it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
+    $lingue = lingueDellaCornice();
+    // Un tipo che il contratto non ha: in una lingua sola, e anche nell'inglese, che è il ripiego. Un tipo del contratto tolto
+    // da una lingua; il singolare tolto da un'altra.
+    $lingue['es']['notificationTitle.com.zeiras.crm.contatto.creato'] = 'Nuevo contacto';
+    $lingue['en']['notificationTitle.com.zeiras.board.scheda.spostata'] = 'Card moved';
+    unset($lingue['it']['notificationTitle.com.zeiras.board.scheda.creata'], $lingue['es']['unreadOne']);
+
+    expect(problemiDelleLingue($lingue))->toEqualCanonicalizing([
+        'es: «notificationTitle.com.zeiras.crm.contatto.creato» non è un testo della cornice',
+        'en: «notificationTitle.com.zeiras.board.scheda.spostata» non è un testo della cornice',
+        'it: manca «notificationTitle.com.zeiras.board.scheda.creata»',
+        'es: manca «unreadOne»',
+    ]);
 });
 
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
