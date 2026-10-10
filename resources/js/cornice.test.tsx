@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice } from './cornice';
-import type { DatiDellaCornice } from './index';
+import type { DatiDellaCornice, GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
@@ -1447,5 +1447,111 @@ describe('la ricerca', () => {
         await scrivi(parola);
         expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual([`/cornice/ricerca?q=${encodeURIComponent(mandata)}`]);
         expect(titoli()).toStrictEqual(['Lancio Q4']);
+    });
+});
+
+// Sprint 12 · T5 (voce #1464). `active={null}`: nessuna voce della barra è attiva. L'`AppShell` segna la voce che ha l'id
+// attivo, e senza un id la Dashboard: con `null` la cornice gli dà un id che nessuna voce di quel render ha. Senza `null` la
+// voce segnata è quella della `v1.2.2`.
+describe('la voce attiva della barra', () => {
+    /** Le voci di Project Management, sotto il suo pulsante. */
+    const vociDiPm: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Board', icon: 'board' }, { id: 'elenco', label: 'Elenco', icon: 'list' }] }];
+    const nomeDi = (voce: HTMLElement) => voce.querySelector('.zr-nav-label')?.textContent;
+    /** I nomi delle voci segnate nella barra: la classe e `aria-current` stanno sempre sulle stesse voci. */
+    const segnate = () => {
+        const conLaClasse = tutti('a.zr-nav-item.is-active').map(nomeDi);
+        expect(tutti('a.zr-nav-item[aria-current]').map(nomeDi)).toStrictEqual(conLaClasse);
+
+        return conLaClasse;
+    };
+
+    it('con active={null} nessuna voce della barra è segnata, in una pagina di app.zeiras.com: né la Dashboard né un prodotto del menu Prodotti (sprint 12 · T5.1)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} active={null} />);
+
+        // Le voci del menu Prodotti e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
+        expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'Impostazioni']);
+        expect(segnate()).toStrictEqual([]);
+    });
+
+    it('con active={null} nessuna voce della barra è segnata, dentro un prodotto con le sue voci (sprint 12 · T5.1)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="pm" nav={vociDiPm} active={null} />);
+
+        expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Board', 'Elenco', 'Impostazioni']);
+        expect(segnate()).toStrictEqual([]);
+    });
+
+    it.each<[string, { active?: string }, { product?: string; nav?: GruppoDiVoci[] }, string[]]>([
+        ['senza active, in una pagina di app.zeiras.com', {}, {}, ['Dashboard']],
+        ['con active undefined', { active: undefined }, {}, ['Dashboard']],
+        ['con active vuoto', { active: '' }, {}, ['Dashboard']],
+        ['con active "home"', { active: 'home' }, {}, ['Dashboard']],
+        ['con l\'id di un prodotto del menu', { active: 'crm' }, {}, ['CRM']],
+        ['con un id che nessuna voce ha', { active: 'uat-nessuna' }, {}, []],
+        ['senza active, dentro un prodotto', {}, { product: 'pm', nav: vociDiPm }, []],
+        ['con active undefined, dentro un prodotto', { active: undefined }, { product: 'pm', nav: vociDiPm }, []],
+        ['con l\'id di una voce del prodotto', { active: 'elenco' }, { product: 'pm', nav: vociDiPm }, ['Elenco']],
+        ['con un id che nessuna voce ha, dentro un prodotto', { active: 'uat-nessuna' }, { product: 'pm', nav: vociDiPm }, []],
+    ])('senza null la voce segnata è quella della v1.2.2: %s (sprint 12 · T5.2)', async (_caso, attiva, pagina, attese) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} {...pagina} {...attiva} />);
+
+        expect(segnate()).toStrictEqual(attese);
+        // All'`AppShell` arriva ciò che ha dato il frontend, com'è.
+        expect(appShell.mock.lastCall?.[0].active).toBe(attiva.active);
+    });
+
+    it('nessuna voce può avere l\'id con cui la cornice dice «nessuna»: data una voce proprio con quell\'id, non è segnata, e l\'id è un altro (sprint 12 · T5.4)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const idDato = () => appShell.mock.lastCall?.[0].active;
+        const voci = [...vociDiPm[0].items];
+        const dati_: string[] = [];
+
+        // Tre volte: si legge l'id che l'`AppShell` riceve con `null`, e al giro dopo una voce del prodotto ha proprio quello.
+        for (let giro = 0; giro < 3; giro += 1) {
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="pm" nav={[{ group: 'Lavoro', items: voci }]} active={null} />);
+            const id = idDato();
+
+            expect(typeof id).toBe('string');
+            expect(id).not.toBe('');
+            expect(voci.map((voce) => voce.id)).not.toContain(id);
+            expect(ordine).not.toContain(id);
+            // Nella barra ci sono le voci del prodotto e «Impostazioni», dell'`AppShell`.
+            expect(tutti('a.zr-nav-item')).toHaveLength(voci.length + 1);
+            expect(segnate()).toStrictEqual([]);
+            dati_.push(id as string);
+            voci.push({ id: id as string, label: `UAT voce ${giro + 1}`, icon: 'star' });
+        }
+        expect(new Set(dati_).size).toBe(3);
+
+        // Lo stesso in una pagina di app.zeiras.com, dove le voci sono quelle del registro e quelle date dal frontend.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} nav={[{ group: 'Lavoro', items: voci }]} active={null} />);
+        expect(voci.map((voce) => voce.id)).not.toContain(idDato());
+        expect(ordine).not.toContain(idDato());
+        expect(tutti('a.zr-nav-item')).toHaveLength(ordine.length + voci.length + 1);
+        expect(segnate()).toStrictEqual([]);
+    });
+
+    it('il prodotto aperto non dipende da active: con product="pm" e active={null} il pulsante del prodotto e la lista che lo riapre sono come con una voce attiva (sprint 12 · T5.5)', async () => {
+        const delProdotto = async (active: string | null) => {
+            await mostra(<Cornice key={String(active)} dati={dati} onLogout={esciSenzaEffetto} product="pm" nav={vociDiPm} active={active} />);
+            const pulsante = uno('.zr-product-switch');
+            const visto = { nome: pulsante?.querySelector('.zr-product-name')?.textContent, inTopbar: uno('.zr-top-product')?.textContent, lista: [] as (string | null | undefined)[], aperto: [] as (string | null | undefined)[] };
+            await clic(pulsante);
+            visto.lista = tutti('.zr-product-menu a.zr-nav-item').map(nomeDi);
+            visto.aperto = tutti('.zr-product-menu a.zr-nav-item[aria-current="true"]').map(nomeDi);
+
+            return visto;
+        };
+
+        const conUnaVoce = await delProdotto('board');
+        expect(conUnaVoce).toStrictEqual({
+            nome: 'Project Management',
+            inTopbar: 'Project Management',
+            lista: ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti'],
+            aperto: ['Project Management'],
+        });
+        expect(await delProdotto(null)).toStrictEqual(conUnaVoce);
+        // Con la lista aperta l'unica voce segnata è il prodotto aperto, nella lista: nessuna voce del prodotto.
+        expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(['Project Management']);
     });
 });
