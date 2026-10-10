@@ -290,7 +290,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         items: registro.map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
             // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta alla sua pagina, che dice
-            // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre.
+            // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
+            // registro qui non si legge: è per le pagine senza sessione, e un prodotto in anteprima si apre dove il backoffice lo dà.
             const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
             return {

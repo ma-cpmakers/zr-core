@@ -1,17 +1,17 @@
 {
     "prodotti": [
-        { "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false },
+        { "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false, "in_arrivo": false },
         {
-            "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false,
+            "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false, "in_arrivo": false,
             "risorse": [
                 { "tipo": "board.cartelle", "icona": "folder", "percorso": "", "contenitore": true },
                 { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
             ]
         },
-        { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false },
-        { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false },
-        { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true },
-        { "id": "automations", "icona": "bolt", "tono": "plum", "indirizzo": "https://auto.zeiras.com", "presto": true },
-        { "id": "content", "icona": "sparkle", "tono": "coral", "indirizzo": "https://ai.zeiras.com", "presto": true }
+        { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true },
+        { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true },
+        { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true, "in_arrivo": true },
+        { "id": "automations", "icona": "bolt", "tono": "plum", "indirizzo": "https://auto.zeiras.com", "presto": true, "in_arrivo": true },
+        { "id": "content", "icona": "sparkle", "tono": "coral", "indirizzo": "https://ai.zeiras.com", "presto": true, "in_arrivo": true }
     ]
 }

@@ -1655,7 +1655,7 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
         ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
         ->and(paragrafoDeiDueSiONo($altrove))->toBe('');
 })->with([
-    'due sì o no, e non dicono la stessa cosa' => ['Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa'],
+    'i due non dicono la stessa cosa' => ['sullo stato del prodotto, e non dicono la stessa cosa'],
     '`presto` è della cornice' => ['`presto` è della cornice: un prodotto «Presto» non c\'è ancora'],
     '«Presto» vale in ogni workspace' => ['la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il backoffice'],
     '`in_arrivo` è delle pagine senza sessione' => ['`in_arrivo` è per le pagine senza sessione — Registrati —, che non hanno un workspace a cui chiedere lo stato di un prodotto'],

@@ -289,6 +289,15 @@ inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` de
 un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
 lingua («Novità nel workspace»), mai il codice del tipo.
 
+Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
+un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il
+backoffice. `in_arrivo` è per le pagine senza sessione — Registrati —, che non hanno un workspace a cui chiedere lo stato
+di un prodotto: lì un prodotto in arrivo si mostra «In arrivo», non «Disponibile», perché non lo può ancora aprire
+nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la sessione lo stato di un prodotto lo dà il
+backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
+apre. Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il registro
+(`resources/registro/prodotti.json`).
+
 ### La cornice montata una volta sola
 
 Montata in ogni pagina, la `Cornice` si rifà a ogni visita di Inertia, e con lei si perdono il testo scritto nella ricerca,
@@ -548,14 +557,19 @@ consiglio: le intestazioni arrivano da un pacchetto, e un test che rilegge la co
 cosa il pacchetto scriva. Coi valori per intero, un aggiornamento di zr-core che cambia un'intestazione fa rosso nella CI
 del modulo, e il valore nuovo lo conferma chi lo legge.
 
+La CSP si confronta con tutti i suoi valori, non col primo: una risposta può portarne più d'una, e `assertHeader` guarda
+solo il primo. Con una classe del modulo rimasta più all'interno, che scrive la CSP che il test si aspetta, quella di
+zr-core le uscirebbe accanto e il test resterebbe verde, mentre il browser le applica tutte e due.
+
 ```php
 it('ogni risposta porta le intestazioni di sicurezza, coi valori scritti per intero', function () {
-    $this->get('/non-esiste')
+    $risposta = $this->get('/non-esiste')
         ->assertHeader('Strict-Transport-Security', 'max-age=31536000')
-        ->assertHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
         ->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    expect($risposta->headers->all('Content-Security-Policy'))->toBe(["default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"]);
 });
 ```
 
