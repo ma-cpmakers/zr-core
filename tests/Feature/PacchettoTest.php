@@ -83,17 +83,20 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.1 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1)', function () {
+it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
 
-    // Dalla 0.12.1, non dalla 0.12.0: il vincolo dice la patch che ha provato il codice che la usa. La 0.12.0 l'ha provata solo una
+    // Dalla 0.12.4: il vincolo dice la patch che ha provato il codice che la usa. Dalla `v1.6.0` «Segna tutte come lette» tiene il
+    // blocco della sessione coi tempi di zr-auth (`Sessione::BLOCCO_ATTESA`, che c'è dalla 0.12.2), e i giri con quel codice hanno
+    // installato la 0.12.4: la 0.12.2 e la 0.12.3, con quel codice, non le ha provate nessun giro (sprint 16 · T4.5).
+    // Prima, dalla `v1.4.0`, il minimo era la 0.12.1 e non la 0.12.0, per la stessa regola: la 0.12.0 l'ha provata solo una
     // zr-core che `Sessione::aggiorna` non la chiamava (il giro della PR #15, sprint 12, e quello del primo commit di questo sprint);
     // con la cornice che la chiama i giri hanno installato dalla 0.12.1 in su, e fra le due patch è cambiata proprio `aggiorna`: nella 0.12.0
     // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
     // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
-    expect($vincolo)->toBe('^0.12.1')
+    expect($vincolo)->toBe('^0.12.4')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
@@ -154,36 +157,39 @@ it('il README dice un giro della CI per ogni voce della matrice, e nessun altro 
         ->and(giriDettiDa($conUnGiroInPiu))->toBe([...$voci[1], '0.11']);
 });
 
-it('il README dice, in «La parte server», da quale versione zr-core chiede zr-auth ^0.12.1, perché, che con una zr-auth più vecchia Composer lascia zr-core alla v1.3.0, e che nemmeno la 0.12.0 basta (sprint 13 · T1.3; review, R1 e S1)', function () {
+it('il README dice, in «La parte server», da quale versione zr-core chiede la 0.12 di zr-auth e da quale la 0.12.4, perché, e a quale versione Composer lascia zr-core con una zr-auth più vecchia (sprint 13 · T1.3; review, R1 e S1; sprint 16 · T4.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'da quale versione' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla `v1.4.0` una zr-auth più vecchia non basta'),
         'perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'la cornice chiama `Sessione::aggiorna`, che c\'è dalla 0.12'),
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'con una più vecchia Composer lascia zr-core alla `v1.3.0`'),
-        'nemmeno la 0.12.0, e perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Nemmeno la 0.12.0 basta: la sua `Sessione::aggiorna` prende la lingua e il nome anche da una risposta che non dice di chi sono (senza `utente.id`); dalla 0.12.1 no'),
+        'dalla v1.6.0 serve la 0.12.4, e perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth, e la 0.12.4 è la patch con cui la CI ha provato quel codice'),
+        'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'con una più vecchia della 0.12.4 Composer lascia zr-core alla `v1.5.0`'),
     ];
 
-    // Con «La parte server» e «La cornice» scambiate le quattro cose sono dette, ma non dove si legge che cosa zr-core richiede.
+    // Con «La parte server» e «La cornice» scambiate le cinque cose sono dette, ma non dove si legge che cosa zr-core richiede.
     $scambiate = conParteServerECorniceScambiate($readme);
 
     expect($cosaDice($readme))->toBe([
         'da quale versione' => true,
         'perché' => true,
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => true,
-        'nemmeno la 0.12.0, e perché' => true,
+        'dalla v1.6.0 serve la 0.12.4, e perché' => true,
+        'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => true,
     ])
         ->and(str_contains(suUnaRiga($scambiate), 'una zr-auth più vecchia non basta'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
             'da quale versione' => false,
             'perché' => false,
             'con una più vecchia Composer lascia zr-core alla v1.3.0' => false,
-            'nemmeno la 0.12.0, e perché' => false,
+            'dalla v1.6.0 serve la 0.12.4, e perché' => false,
+            'con una più vecchia della 0.12.4 Composer lascia zr-core alla v1.5.0' => false,
         ]);
 });
 
 it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    $vincolo = '^0.12.1';
+    $vincolo = '^0.12.4';
     $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
 
     // Com'erano fino alla v1.3.0, uno alla volta: la matrice a sette voci, il vincolo a sette versioni.
@@ -892,6 +898,7 @@ it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per
     'con altre: true la stessa richiesta continua' => ['la stessa richiesta, ripetuta, continua da lì'],
     'segnate_il è dopo l\'ultima risposta' => ['`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'],
     'un richiamo che fallisce è un errore' => ['alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`'],
+    'il blocco della sessione, e il 503 (sprint 16 · T4.6)' => ['la rotta tiene il blocco della sessione per tutta la sua durata, e se un\'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice'],
 ]);
 
 it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando un clic non le segna tutte (sprint 12 · T4.6)', function (string $frase) {
@@ -910,7 +917,7 @@ it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando 
 
 // Sprint 12 · review, S1 (decisione di zr-pm): «Segna tutte come lette» può durare fino a circa 15 secondi, e in Laravel una richiesta
 // lenta, quando finisce, riscrive la sessione com'era all'inizio. Il README lo dichiara nel punto «Le notifiche», una frase per cosa.
-it('il README dichiara, nel punto «Le notifiche», il limite della sessione con una richiesta lenta (sprint 12 · review, S1)', function (string $frase) {
+it('il README dichiara, nel punto «Le notifiche», quanto dura «Segna tutte come lette» e che cosa torna quando una richiesta rimette la sessione di prima (sprint 12 · review, S1; le altre frasi del limite: sprint 16 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $scambiati = conNotificheERicercaScambiate($readme);
 
@@ -918,18 +925,12 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
         ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
 })->with([
-    'che cosa fa una richiesta lenta' => ['una richiesta lenta, quando finisce, riscrive la sessione com\'era all\'inizio e ne rimanda il cookie'],
     'quanto dura qui' => ['fino a circa 15 secondi, solo con più di 5000 non lette'],
-    'che cosa succede' => ['la persona esce o entra in un altro workspace da un\'altra scheda, la sessione torna quella di prima'],
     'dopo un cambio di workspace' => ['dopo un cambio di workspace la persona si ritrova in quello di prima'],
     // Seconda lettura, N3: dopo un'uscita i gettoni sono chiusi solo se la chiamata dell'uscita al backoffice è riuscita.
     'dopo un\'uscita tornano i gettoni di prima' => ['dopo un\'uscita torna la sessione coi gettoni di prima'],
     'dopo un\'uscita che li ha chiusi' => ['se l\'uscita li ha chiusi nel backoffice, la prima chiamata la richiude'],
     'dopo un\'uscita senza la risposta del backoffice' => ['se all\'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza'],
-    // Seconda lettura, N2: il blocco serve dalle due parti, e uscita e ingresso sono rotte del frontend.
-    'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace'],
-    'di chi sono quelle rotte' => ['quelle del frontend e il ricevitore dell\'ingresso di zr-auth'],
-    'per quanto, e da una parte sola' => ['per più dei 10 secondi predefiniti: messo da una parte sola non ferma niente'],
 ]);
 
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la cornice scrive nella sessione (la lingua e il nome del profilo), e il limite della
@@ -955,6 +956,69 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», che la
     'che cosa legge il frontend alla visita dopo' => ['alla visita dopo ciò che il frontend legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima'],
     'quella lettura li rimette' => ['e quella lettura li rimette'],
 ]);
+
+// Sprint 16 · T4 (voce #1558): «Segna tutte come lette» tiene il blocco della sessione, e il limite della sessione nel punto «Le
+// notifiche» si riscrive com'è: vale per ogni richiesta ancora in corso, non solo per una lenta; il blocco ferma solo chi lo
+// prende, quindi il frontend lo mette sulle sue rotte di uscita e di ingresso; chi arriva secondo aspetta, e poi riceve un 503;
+// l'elenco, la ricerca e le chiamate del modulo restano senza blocco. Una frase per cosa, dentro il limite e non altrove.
+
+/** Il limite della sessione del README: dalla frase che lo apre alla fine del punto «Le notifiche». Vuoto se non c'è. */
+function limiteDellaSessione(string $readme): string
+{
+    return (string) strstr(puntoDelleNotifiche($readme), 'Un limite, che non è solo di questa rotta');
+}
+
+it('il README dice, nel limite della sessione del punto «Le notifiche», il limite com\'è, che «Segna tutte come lette» tiene il blocco della sessione, che cosa mette il frontend, il 503 e chi resta senza blocco (sprint 16 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiati = conNotificheERicercaScambiate($readme);
+
+    expect(str_contains(limiteDellaSessione($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(limiteDellaSessione($scambiati), $frase))->toBe(false);
+})->with([
+    'che cosa fa ogni richiesta' => ['ogni richiesta, quando finisce, riscrive la sessione com\'era quando è partita e ne rimanda il cookie'],
+    'vale per ogni richiesta ancora in corso, non solo per una lenta' => ['Vale per ogni richiesta della stessa sessione ancora in corso quando la persona, da un\'altra scheda, esce, entra in un altro workspace o cambia lingua, non solo per una lenta'],
+    '«Segna tutte come lette» tiene il blocco per tutta la sua durata' => ['dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta la sua durata'],
+    'il blocco ferma solo chi lo prende' => ['Il blocco ferma solo chi lo prende'],
+    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di uscita e di ingresso in un workspace'],
+    'il ricevitore di zr-auth lo ha già' => ['il ricevitore dell\'ingresso di zr-auth lo ha già'],
+    'da una parte sola non ferma niente' => ['messo da una parte sola non ferma niente'],
+    'chi arriva secondo aspetta, e poi il 503' => ['la seconda aspetta la prima al più 3 secondi, e oltre risponde 503 con `Retry-After: 1`'],
+    'col 503 il pannello resta com\'era' => ['allora nel pannello non cambia niente e il pulsante resta per riprovare'],
+    'chi resta senza blocco' => ['L\'elenco delle notifiche, la ricerca e le chiamate del modulo restano senza blocco'],
+    'per loro il limite resta' => ['per loro il limite resta'],
+]);
+
+it('il README non dice più che il limite è di una richiesta lenta, né che zr-core da solo non lo chiude (sprint 16 · T4.6)', function (string $diPrima, string $alPostoDi) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $readme);
+
+    expect(str_contains($readme, $diPrima))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, $diPrima))->toBe(true);
+})->with([
+    'una richiesta lenta come unico caso' => ['una richiesta lenta, quando finisce, riscrive la sessione', 'ogni richiesta, quando finisce, riscrive la sessione'],
+    'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
+]);
+
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.4, una volta, e nessuno dice più quello di prima (sprint 16 · T4.5)', function (string $file) {
+    $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
+
+    expect(substr_count($testo, '^0.12.4'))->toBe(1)
+        ->and(substr_count($testo, '^0.12.1'))->toBe(0)
+        // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
+        ->and(substr_count(str_replace('^0.12.4', '^0.12.1', $testo), '^0.12.1'))->toBe(1);
+})->with(['composer.json', 'README.md', 'CLAUDE.md']);
+
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.4, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
+
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa (per questo dalla `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte come lette» l\'hanno provato solo giri con quella).'))->toBe(1)
+        ->and(str_contains($claude, 'per questo parte dalla 0.12.1'))->toBe(false)
+        ->and(str_contains($readme, 'Nemmeno la 0.12.0 basta'))->toBe(false);
+});
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');

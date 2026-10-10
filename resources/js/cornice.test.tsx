@@ -683,6 +683,8 @@ describe('il pannello delle notifiche', () => {
     it.each<[string, () => Promise<Response>]>([
         ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
         ['un 422', async () => risposta({ errore: 'dati_non_validi' }, 422)],
+        // Sprint 16 · T4.3: il lock della sessione è di un'altra richiesta. Il corpo è un testo, non JSON: leggerlo come JSON lancia.
+        ['il 503 del blocco della sessione', async () => ({ ok: false, status: 503, json: async () => { throw new SyntaxError('Unexpected token'); } }) as unknown as Response],
         ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
         ['un 200 senza l\'istante', async () => risposta({ data: {} })],
         ['un 200 con un istante che non è una stringa', async () => risposta({ data: { fino_a: 1 } })],

@@ -450,7 +450,7 @@ it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, 
 })->with([
     // (a) i dati di un'altra persona non entrano, nemmeno in parte
     'un\'altra persona' => [['id' => 'uat-grace', 'lingua' => 'es', 'nome' => 'UAT Grace Hopper'], 'en', 'UAT Ada'],
-    // e nemmeno quelli che non dicono di chi sono. Queste due righe sono il motivo del vincolo `^0.12.1`: con zr-auth 0.12.0
+    // e nemmeno quelli che non dicono di chi sono. Queste due righe sono il motivo per cui la 0.12.0 di zr-auth non basta: con quella
     // sarebbero rosse, perché la sua `Sessione::aggiorna` scartava solo un id diverso.
     'la persona con l\'id null' => [['id' => null, 'lingua' => 'es', 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada'],
     'la persona senza id' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada', ['id']],

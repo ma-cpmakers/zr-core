@@ -1,14 +1,21 @@
 <?php
 
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Request as RichiestaDelBrowser;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
+use Zeiras\Core\Http\NotificheDellaCornice;
 
 // Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
 // notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
@@ -786,3 +793,183 @@ it('la guardia del workspace e le due validazioni stanno prima di ogni chiamata 
     'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422, 'dati_non_validi'],
     'senza workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z'], 422, 'dati_non_validi'],
 ]);
+
+// Sprint 16 · T4 (voce #1558): «Segna tutte come lette» tiene il blocco della sessione. La rotta può durare una quindicina di
+// secondi, e in Laravel una richiesta, finendo, riscrive la sessione com'era quando è partita: se intanto la persona esce o
+// entra in un workspace da un'altra scheda, tornerebbe la sessione di prima. Col blocco (`Route::block`) le due richieste non
+// si sovrappongono: la seconda aspetta la prima, e oltre l'attesa di zr-auth risponde 503. Una richiesta della stessa
+// sessione ancora in volo si simula tenendo il lock `session:<id>` che Laravel prende, come nei test di zr-auth; qui il tempo
+// è fermo, e l'attesa del lock porta avanti l'orologio invece di dormire.
+
+/** L'id di una sessione com'è fatto per Laravel: 40 fra lettere e cifre. */
+function idDiSessione(): string
+{
+    return Str::random(40);
+}
+
+/** Il lock che Laravel prende per la sessione con quell'id (`Route::block`), nello store dei lock della sessione. */
+function lockDellaSessione(string $sessione, int $secondi): Lock
+{
+    return Cache::store(config('session.block_store'))->lock('session:'.$sessione, $secondi);
+}
+
+/** Se il lock di quella sessione è libero adesso: lo prende, e se ci riesce lo lascia subito. */
+function lockLibero(string $sessione): bool
+{
+    $lock = lockDellaSessione($sessione, 1);
+    $libero = (bool) $lock->get();
+    if ($libero) {
+        $lock->release();
+    }
+
+    return $libero;
+}
+
+/**
+ * POST /cornice/notifiche/letture dalla sessione con quell'id: il cookie della sessione arriva alla rotta, come dal browser
+ * (una richiesta JSON dei test non manda i cookie, se non glielo si chiede).
+ *
+ * @param  array<string, mixed>  $corpo
+ */
+function lettureDallaSessione(string $sessione, array $corpo): TestResponse
+{
+    return test()->withCredentials()->withCookie(config('session.cookie'), $sessione)->postJson('cornice/notifiche/letture', $corpo);
+}
+
+it('mentre POST /cornice/notifiche/letture chiama il backoffice il lock della sessione è preso, a ogni chiamata, e a risposta data è libero (sprint 16 · T4.1)', function (array $risposte, int $daStato, int $aStato) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    // A ogni chiamata che arriva al backoffice: il lock della sessione è libero? Mai, se la rotta tiene il blocco.
+    $liberoDurante = [];
+    Http::fake(function () use (&$liberoDurante, $risposte, $sessione) {
+        $liberoDurante[] = lockLibero($sessione);
+
+        return match ($risposta = $risposte[min(count($liberoDurante), count($risposte)) - 1]) {
+            true, false => Http::response(lettureDelBackoffice('2026-10-08T10:00:00.123Z', $risposta)),
+            422 => problemaDelBackoffice(422, 'dati_non_validi'),
+            default => Http::response('', $risposta),
+        };
+    });
+    expect(lockLibero($sessione))->toBe(true);
+
+    $risposta = senzaGettone(lettureDallaSessione($sessione, lettureFinoA('2026-10-08T10:00:00.123Z')));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual($daStato)->toBeLessThanOrEqual($aStato)
+        ->and($liberoDurante)->toBe(array_fill(0, count($risposte), false))
+        ->and(lockLibero($sessione))->toBe(true);
+})->with([
+    'una chiamata, e non ne restano' => [[false], 200, 200],
+    'tre chiamate: due richiami' => [[true, true, false], 200, 200],
+    'il backoffice risponde con un errore' => [[500], 500, 599],
+    'un richiamo fallisce' => [[true, 503], 500, 599],
+    'il backoffice rifiuta l\'istante' => [[422], 422, 422],
+]);
+
+it('quando POST /cornice/notifiche/letture risponde 422 o 409 senza chiamare il backoffice, a risposta data il lock della sessione è libero (sprint 16 · T4.1)', function (array $corpo, int $stato) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    Http::fake();
+
+    senzaGettone(lettureDallaSessione($sessione, $corpo))->assertStatus($stato);
+
+    Http::assertNothingSent();
+    expect(lockLibero($sessione))->toBe(true);
+
+    // Il controllo nei due versi: un lock rimasto preso si vede.
+    $rimasto = lockDellaSessione($sessione, 60);
+    expect($rimasto->get())->toBe(true)
+        ->and(lockLibero($sessione))->toBe(false);
+    $rimasto->release();
+})->with([
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422],
+    'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
+]);
+
+it('il lock della sessione dura più di quanto POST /cornice/notifiche/letture può durare: la tenuta è almeno i secondi dei richiami più quelli che zr-auth aspetta una risposta più uno, e segue quel tempo; l\'attesa è quella di zr-auth (sprint 16 · T4.2)', function (?int $delFrontend) {
+    if ($delFrontend !== null) {
+        // Un frontend che ha cambiato il tempo che zr-auth aspetta il backoffice: le rotte si registrano con la sua configurazione.
+        config(['zr-auth.timeout' => $delFrontend]);
+        require __DIR__.'/../../routes/cornice.php';
+    }
+    $rotta = Route::getRoutes()->match(RichiestaDelBrowser::create('/cornice/notifiche/letture', 'POST'));
+    // Passati questi secondi dalla prima chiamata non ne parte un'altra; quella già partita finisce, entro il tempo di zr-auth.
+    $richiami = (new ReflectionClassConstant(NotificheDellaCornice::class, 'SECONDI'))->getValue();
+    $aspetta = (int) config('zr-auth.timeout');
+
+    expect($rotta->uri())->toBe('cornice/notifiche/letture')
+        ->and($aspetta)->toBe($delFrontend ?? 5)
+        ->and($rotta->locksFor())->toBeInt()->toBeGreaterThanOrEqual($richiami + $aspetta + 1)
+        ->and($rotta->locksFor())->toBe(NotificheDellaCornice::tenutaDelBlocco())
+        // Non i 10 secondi di `->bloccaSessione()`: la rotta può durarne di più.
+        ->and($rotta->locksFor())->toBeGreaterThan(Sessione::BLOCCO_TENUTA)
+        ->and($rotta->waitsFor())->toBe(Sessione::BLOCCO_ATTESA);
+})->with([
+    'col tempo di partenza di zr-auth, 5 secondi' => [null],
+    'con un frontend che lo ha portato a 12' => [12],
+]);
+
+it('con un backoffice lento il lock della sessione è ancora preso quando arriva l\'ultima risposta, a quasi 15 secondi dalla partenza: i 10 dei richiami più i 5 che zr-auth aspetta (sprint 16 · T4.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    $liberoAllaFine = null;
+    // La prima chiamata risponde dopo 9,9 secondi e dice che ne restano: parte un richiamo, che risponde dopo altri 4,9.
+    lettureUnaDopoLAltra([
+        lettureDopo(9_900_000, true),
+        function () use (&$liberoAllaFine, $sessione) {
+            Carbon::setTestNow(Carbon::now()->addMicroseconds(4_900_000));
+            $liberoAllaFine = lockLibero($sessione);
+
+            return Http::response(lettureDelBackoffice('2026-10-08T10:00:00.123Z'));
+        },
+    ]);
+
+    senzaGettone(lettureDallaSessione($sessione, lettureFinoA('2026-10-08T10:00:00.123Z')))->assertOk();
+
+    Http::assertSentCount(2);
+    // Con una tenuta di 10 secondi il lock sarebbe scaduto da quasi 5, e un'uscita da un'altra scheda lo prenderebbe.
+    expect($liberoAllaFine)->toBe(false);
+});
+
+it('se il lock della sessione è di un\'altra richiesta per più dell\'attesa di zr-auth, POST /cornice/notifiche/letture risponde 503 con Retry-After: 1 e non chiama il backoffice, qualunque corpo abbia: il lock si prende prima delle guardie (sprint 16 · T4.3)', function (array $corpo) {
+    $partenza = Carbon::parse('2026-10-10 01:15:07.000321', 'UTC');
+    Carbon::setTestNow($partenza->copy());
+    // L'attesa del lock dorme a pezzi: qui il sonno è finto, e porta avanti l'orologio.
+    Sleep::fake(true, true);
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $sessione = idDiSessione();
+    Http::fake();
+    // Un'altra richiesta della stessa sessione, ancora in volo: tiene il lock per un minuto.
+    $altra = lockDellaSessione($sessione, 60);
+    expect($altra->get())->toBe(true);
+
+    $risposta = senzaGettone(lettureDallaSessione($sessione, $corpo));
+    $aspettati = Carbon::now()->getTimestampMs() - $partenza->getTimestampMs();
+
+    expect($risposta->status())->toBe(503)
+        ->and($risposta->headers->get('Retry-After'))->toBe('1')
+        // I 3 secondi di zr-auth, non i 10 che Laravel aspetta se non glielo si dice.
+        ->and($aspettati)->toBeGreaterThanOrEqual(2500)->toBeLessThanOrEqual(1000 * Sessione::BLOCCO_ATTESA)
+        // Non ha proseguito senza il blocco, e non ha tolto il lock all'altra.
+        ->and(lockLibero($sessione))->toBe(false);
+    Http::assertNothingSent();
+    $altra->release();
+})->with([
+    'una richiesta giusta' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-marketing']],
+    'un fino_a che non è un istante: senza il blocco sarebbe un 422' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing']],
+    'un altro workspace: senza il blocco sarebbe un 409' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite']],
+]);
+
+it('delle rotte della cornice solo POST /cornice/notifiche/letture tiene il blocco della sessione: l\'elenco, la lettura di una notifica e la ricerca no, o due richieste della stessa persona si metterebbero in fila (sprint 16 · T4.4)', function () {
+    $colBlocco = fn () => array_values(array_map(
+        fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri(),
+        array_filter(Route::getRoutes()->getRoutes(), fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/') && $rotta->locksFor() !== null),
+    ));
+
+    expect($colBlocco())->toBe(['POST cornice/notifiche/letture']);
+
+    // Il controllo nei due versi: una GET della cornice col blocco la nomina.
+    Route::middleware('web')->get('cornice/uat-in-fila', fn () => 'in fila')->block(5, 1);
+    expect($colBlocco())->toBe(['POST cornice/notifiche/letture', 'GET cornice/uat-in-fila']);
+});
