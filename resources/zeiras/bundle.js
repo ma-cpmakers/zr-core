@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"Checkbox"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"Checkbox"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -158,6 +158,18 @@
       var t = setTimeout(function () { document.addEventListener('mousedown', down); document.addEventListener('touchstart', down); }, 0);
       return function () { clearTimeout(t); document.removeEventListener('mousedown', down); document.removeEventListener('touchstart', down); };
     }, [open]);
+  }
+
+  /* Logo: simbolo a tre blocchi (pine, pine-soft, citrus) + nome Zeiras. Colori dai token: cambia da solo nel tema scuro. */
+  function Logo(p) {
+    p = p || {};
+    var size = p.size || 24;
+    var mark = h('svg', { className: 'zr-logo-mark', width: Math.round(size * 68 / 64), height: size, viewBox: '0 0 68 64', 'aria-hidden': p.wordmark === false ? undefined : 'true', role: p.wordmark === false ? 'img' : undefined, 'aria-label': p.wordmark === false ? 'Zeiras' : undefined, focusable: 'false' },
+      h('rect', { className: 'zr-logo-b1', x: 0, y: 0, width: 34, height: 64, rx: 6 }),
+      h('rect', { className: 'zr-logo-b2', x: 38.5, y: 9, width: 29.5, height: 18.5, rx: 5 }),
+      h('rect', { className: 'zr-logo-b3', x: 38.5, y: 32, width: 29.5, height: 32, rx: 6 }));
+    if (p.wordmark === false) return h('span', { className: cx('zr-logo', p.className) }, mark);
+    return h('span', { className: cx('zr-logo', p.className) }, mark, h('span', { className: 'zr-wordmark' }, 'Zeiras'));
   }
 
   function AppShell(p) {
@@ -367,7 +379,7 @@
       h('aside', { className: cx('zr-side', drawer && 'is-open'), id: sid + '-side', 'aria-label': L.nav },
         h('div', { className: cx('zr-brand', 'zr-brand-v2', p.create && 'has-create') },
           h('div', { className: 'zr-brand-row' },
-            h('span', { className: 'zr-wordmark' }, 'Zeiras'),
+            h(Logo, { size: 24 }),
             p.create && p.create.length ? h(Button, { variant: 'ghost', size: 'sm', icon: 'plus', className: 'zr-create', 'aria-label': p.createLabel || L.create, 'aria-haspopup': 'menu', 'aria-expanded': createAt ? 'true' : 'false',
               onClick: function (e) { setCreateAt(createAt ? null : e.currentTarget); } }) : null),
           wsSwitch),
@@ -637,7 +649,7 @@
     var op = useState(false), open = op[0], setOpen = op[1];
     return h('header', { className: cx('zr-site-head', open && 'is-open') },
       h('div', { className: 'zr-site-wrap zr-site-head-row' },
-        h('a', { href: p.homeHref || '#', className: 'zr-wordmark zr-site-logo' }, 'Zeiras'),
+        h('a', { href: p.homeHref || '#', className: 'zr-site-logo', 'aria-label': 'Zeiras' }, h(Logo, { size: 26 })),
         h('nav', { className: 'zr-site-nav', 'aria-label': 'Sito' },
           nav.map(function (n) { return h('a', { key: n.label, href: n.href, onClick: function () { setOpen(false); } }, n.label); })),
         h('div', { className: 'zr-site-cta' },
@@ -778,7 +790,7 @@
     return h('footer', { className: 'zr-site-foot' },
       h('div', { className: 'zr-site-wrap zr-foot-grid' },
         h('div', { className: 'zr-foot-brand' },
-          h('span', { className: 'zr-wordmark' }, 'Zeiras'),
+          h(Logo, { size: 24 }),
           h('p', null, p.tagline || 'La suite semplice e gratuita per organizzare il tuo lavoro.'),
           h('p', { className: 'zr-foot-by' }, 'Un prodotto di ', h('strong', null, co.name))),
         cols.map(function (c) {
@@ -1522,7 +1534,7 @@
   }
 
   window.Zeiras = Object.assign(window.Zeiras || {}, {
-    Button: Button, Label: Label, Avatar: Avatar, AvatarStack: AvatarStack, Icon: Icon,
+    Logo: Logo, Button: Button, Label: Label, Avatar: Avatar, AvatarStack: AvatarStack, Icon: Icon,
     AppShell: AppShell, DashboardHome: DashboardHome, ProductTile: ProductTile, ProjectFolder: ProjectFolder,
     KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard,
     SiteHeader: SiteHeader, Hero: Hero, SectionHeading: SectionHeading, StepList: StepList, AudienceGrid: AudienceGrid,
