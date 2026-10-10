@@ -84,7 +84,13 @@ describe('le lingue della cornice', () => {
 
         // Ogni elenco di file ha i suoi: il tedesco di un elenco non è quello di un altro.
         const conIlTedesco = caricaLingue({ '../lingue/en.json': inglese, '../lingue/de.json': { soon: 'Bald' } });
-        expect(conIlTedesco.testi('de')).toBe(conIlTedesco.testi('de-AT'));
+        // Chiesti per la prima volta con una variante regionale e con una lingua che non c'è: nemmeno così lasciano un oggetto loro.
+        const dellaVariante = conIlTedesco.testi('de-AT');
+        const diUnaCheNonCE = conIlTedesco.testi('pt-BR');
+        expect(conIlTedesco.testi('de')).toBe(dellaVariante);
+        expect(conIlTedesco.testi('zz')).toBe(diUnaCheNonCE);
+        expect(conIlTedesco.testi('')).toBe(diUnaCheNonCE);
+        expect(diUnaCheNonCE).not.toBe(dellaVariante);
         expect(conIlTedesco.testi('de')).not.toBe(caricaLingue({ '../lingue/en.json': inglese, '../lingue/de.json': { soon: 'Bald' } }).testi('de'));
         expect(conIlTedesco.testi('de')).toStrictEqual({ ...inglese, soon: 'Bald' });
     });
