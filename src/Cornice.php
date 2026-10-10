@@ -2,6 +2,7 @@
 
 namespace Zeiras\Core;
 
+use Illuminate\Support\Carbon;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Sessione;
@@ -13,6 +14,10 @@ use Zeiras\Auth\Sessione;
  * io.aziende.elenca (GET /v1/io/aziende) e io.workspace.elenca (GET /v1/io/workspace) col gettone della persona; il gettone
  * resta nella sessione. Il frontend li condivide con la pagina (con Inertia, nel suo `share()`), e la `Cornice` di
  * resources/js li riceve in `dati`.
+ *
+ * Ogni lettura porta un segno, `aggiornati_il`: l'istante in cui è cominciata. I dati di due letture non sono mai uguali,
+ * nemmeno quando niente è cambiato: Inertia, in una visita alla stessa pagina, ridà l'oggetto di prima per i dati uguali in
+ * profondità, e la `Cornice` riconosce i dati nuovi dall'oggetto (senza segno la campanella resterebbe al numero di prima).
  */
 final class Cornice
 {
@@ -22,7 +27,11 @@ final class Cornice
      * (zr-auth): mai una lista di app vuota, che farebbe «Presto» di ogni prodotto, né un elenco di aziende vuoto o zero non
      * lette.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int}|null
+     * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice (i dati sono almeno
+     * freschi quanto il segno): in UTC qualunque sia il fuso dell'applicazione, coi microsecondi sempre a sei cifre e `Z` in
+     * fondo (`2026-10-09T21:31:05.123456Z`), così due segni si ordinano anche come stringhe.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
      */
     public static function dati(): ?array
     {
@@ -32,6 +41,8 @@ final class Cornice
         if ($utente === null || $workspace === null) {
             return null;
         }
+
+        $aggiornatiIl = Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z');
 
         $prodotti = [];
         foreach (Api::workspace()->tutti('/v1/app') as $app) {
@@ -45,6 +56,7 @@ final class Cornice
             'prodotti' => $prodotti,
             'aziende' => self::aziende(),
             'non_lette' => self::nonLette(),
+            'aggiornati_il' => $aggiornatiIl,
         ];
     }
 

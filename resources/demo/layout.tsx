@@ -1,20 +1,33 @@
 // Il CSS nell'ordine del README: prima il design system (il suo @import dei font è la prima regola), poi i token.
 import '../zeiras/bundle.css';
 import '../css/zeiras-token.css';
-import { createInertiaApp, router } from '@inertiajs/react';
+import { createInertiaApp, http, router } from '@inertiajs/react';
 import { useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
+import { clientFinto, colSegno, lettura } from './parte-server-finta';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
 // La pagina di prova del layout, per la UAT: `LayoutDellaCornice` sotto Inertia vera, la versione dei frontend, senza server.
 // Cinque pagine: «Lunga» (più alta della finestra: dà alla cornice le sue cose con `useCornice`), «Corta» (non lo chiama, e porta
 // altri dati dello stesso workspace: un altro nome, 3 non lette), «Altro workspace» (un altro slug: la cornice si rifà), «Senza
 // dati» (`cornice` `null`, e chiama `useCornice` lo stesso) e «Percorso» (dà il percorso al layout con `Percorso.layout`). Da una
-// all'altra si passa con `router.push`, una visita di Inertia senza server, e con Indietro e Avanti del browser;
-// `layout.html?pagina=corta` apre già quella. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice
-// apre si scrivono in console. Non entra nel pacchetto.
+// all'altra si passa con una visita vera di Inertia (`router.visit`) e con Indietro e Avanti del browser: la parte server è un
+// client HTTP finto (parte-server-finta.ts), che risponde la pagina che l'indirizzo dice coi dati di una lettura nuova. È nella
+// risposta di una visita che Inertia ridà l'oggetto di prima per i dati uguali: per questo ogni lettura porta in `cornice` il
+// segno `aggiornati_il`, come lo mette la parte server di zr-core. `layout.html?pagina=corta` apre già quella. Due parametri,
+// letti al caricamento e tenuti negli indirizzi: `?segno=no` toglie il segno (è la parte server della `v1.2.0`: alla visita dopo
+// alla stessa pagina, dalla «Lunga» alla «Lunga», con gli stessi dati la campanella resta com'era; verso un'altra pagina Inertia
+// dà comunque un oggetto nuovo, e il difetto non si vede) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga»
+// e la «Percorso»; senza, 7). Con `?non_lette=0` i dati dicono 0 e la campanella non ha un numero; aperta, il pannello carica le
+// due non lette d'esempio (rotte-finte.ts) e la campanella dice «2»; alla visita dopo, coi dati che dicono di nuovo 0, non ha più
+// un numero. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console.
+// Non entra nel pacchetto.
+
+const scelti = new URLSearchParams(window.location.search);
+/** Il segno della lettura nei dati: c'è, salvo con `?segno=no`. */
+const segno = colSegno(window.location.search);
 
 const marketing: DatiDellaCornice = {
     lingua: 'it',
@@ -22,7 +35,7 @@ const marketing: DatiDellaCornice = {
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
     aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] }],
-    non_lette: 7,
+    non_lette: Number(scelti.get('non_lette') ?? 7),
 };
 // Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
 const marketingDopo: DatiDellaCornice = {
@@ -91,10 +104,10 @@ function Lunga({ visita }: Props) {
     const [conteggio, setConteggio] = useState(0);
     const [senzaMargine, setSenzaMargine] = useState(false);
     // Un clic si segna nel DOM, non nello stato: segnarlo non fa rendere la pagina, e «render» conta solo i clic su «conta».
-    const segno = useRef<HTMLOutputElement>(null);
+    const ultimoClic = useRef<HTMLOutputElement>(null);
     const segna = (testo: string) => {
-        if (segno.current !== null) {
-            segno.current.textContent = testo;
+        if (ultimoClic.current !== null) {
+            ultimoClic.current.textContent = testo;
         }
     };
 
@@ -120,7 +133,7 @@ function Lunga({ visita }: Props) {
                     {senzaMargine ? 'UAT flush sì: l\'area è senza margine e non scorre' : 'UAT flush no: l\'area ha il margine'}
                 </button>
             </p>
-            <p>UAT ultimo clic: <output data-uat="segno" ref={segno} /></p>
+            <p>UAT ultimo clic: <output data-uat="ultimo-clic" ref={ultimoClic} /></p>
             <Collegamenti />
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
@@ -199,23 +212,36 @@ const propsDi: Record<Nome, Props> = {
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
 };
 
-const indirizzoDi = (nome: Nome) => `${window.location.pathname}?pagina=${nome}`;
+/** L'indirizzo di una pagina, coi due parametri del caricamento: un ricaricamento, o Indietro, ritrova la stessa parte server. */
+function indirizzoDi(nome: Nome): string {
+    const parametri = new URLSearchParams({ pagina: nome });
+    for (const parametro of ['segno', 'non_lette']) {
+        const valore = scelti.get(parametro);
+        if (valore !== null) {
+            parametri.set(parametro, valore);
+        }
+    }
 
-/** La pagina dell'indirizzo (`?pagina=`): senza, o con un nome che non c'è, la «Lunga». */
-function paginaDellIndirizzo(): Nome {
-    const nome = new URLSearchParams(window.location.search).get('pagina');
+    return `${window.location.pathname}?${parametri}`;
+}
+
+/** La pagina che un indirizzo dice (`?pagina=`): senza, o con un nome che non c'è, la «Lunga». */
+function paginaDi(parametri: string): Nome {
+    const nome = new URLSearchParams(parametri).get('pagina');
 
     return nome !== null && Object.hasOwn(pagine, nome) ? (nome as Nome) : 'lunga';
 }
 
-/** Ciò che il «server» dà a una visita: una copia nuova ogni volta, come una risposta. Per la cornice i dati sono nuovi quando è nuovo l'oggetto. */
-const rispostaDi = (nome: Nome): Props => ({ ...structuredClone(propsDi[nome]), visita: visite });
+const paginaDellIndirizzo = () => paginaDi(window.location.search);
 
-/** Una visita di Inertia senza server. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della cronologia. */
+/** Ciò che il «server» dà a una visita: i dati di una lettura nuova (col segno, salvo `?segno=no`) e il numero della visita. */
+function rispostaDi(nome: Nome): Props {
+    return { ...lettura(propsDi[nome], segno), visita: visite };
+}
+
+/** Una visita vera di Inertia, alla parte server finta. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della cronologia. */
 function vai(nome: Nome, preserveScroll = false) {
-    montaggi = 0;
-    visite += 1;
-    router.push({ component: nome, url: indirizzoDi(nome), props: { ...rispostaDi(nome) }, preserveScroll });
+    router.visit(indirizzoDi(nome), { preserveScroll });
 }
 
 function Collegamenti() {
@@ -259,10 +285,21 @@ function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'co
 // La «sessione» è nel workspace della pagina che l'indirizzo dice: cambia con la visita, anche con Indietro.
 rotteFinte(() => propsDi[paginaDellIndirizzo()].cornice?.workspace.slug);
 
+// La parte server, finta: ogni visita di Inertia arriva qui, e dopo un attimo la risposta è la pagina che l'indirizzo della
+// richiesta dice, coi dati di una lettura nuova. I montaggi ripartono da zero, e le visite si contano, quando la risposta è
+// pronta, non al clic: fino ad allora la pagina di prima è ancora montata, e una visita annullata nel frattempo non conta.
+http.setClient(clientFinto((indirizzo) => {
+    const nome = paginaDi(indirizzo.search);
+    montaggi = 0;
+    visite += 1;
+
+    return { component: nome, props: { errors: {}, ...rispostaDi(nome) } };
+}));
+
 const iniziale = paginaDellIndirizzo();
 
 // `page` dà la prima pagina senza leggerla dal DOM. Senza la barra di avanzamento di Inertia: metterebbe un `<style>` nella
-// pagina, che la CSP ferma (un frontend le dà un `nonce`), e qui nessuna visita aspetta un server.
+// pagina, che la CSP ferma (un frontend le dà un `nonce`).
 void createInertiaApp({
     page: {
         component: iniziale,
