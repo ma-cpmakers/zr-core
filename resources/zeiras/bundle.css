@@ -755,3 +755,11 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
   .zr-top-menu { padding: 0 var(--space-2) 0 var(--space-1); }
   .zr-top-actions { gap: 0; }
 }
+
+/* Logo (10 ott 2026): simbolo accanto al nome Zeiras in AppShell, SiteHeader, SiteFooter */
+.zr-logo { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.zr-logo-mark { display: block; flex-shrink: 0; }
+.zr-logo-b1 { fill: var(--pine); }
+.zr-logo-b2 { fill: var(--pine-soft); }
+.zr-logo-b3 { fill: var(--citrus); }
+.zr-site-logo { display: inline-flex; align-items: center; color: var(--ink); }
