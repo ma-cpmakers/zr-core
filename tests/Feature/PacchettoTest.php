@@ -79,8 +79,8 @@ it('composer.json accetta zr-auth 0.6, 0.7, 0.8, 0.9, 0.10, 0.11 e 0.12, e la CI
     // provata nessun giro. Della 0.10 dalla 0.10.0, la prima: l'ha provata un giro della PR #11 (sprint 9), e dalla 0.10.0 alla
     // 0.10.3 che il giro prova oggi cambiano solo il finto del backoffice per i test, che zr-core non usa, e il testo di un
     // errore (`limite_raggiunto`) che zr-core non mostra. Della 0.11 dalla 0.11.0, la prima: l'ha provata il giro della PR #14
-    // (sprint 11), il 10/10/2026. Della 0.12 dalla 0.12.0, la prima: l'ha provata il giro della PR #15 (sprint 12), lo stesso
-    // giorno.
+    // (sprint 11), il 10/10/2026. Della 0.12 dalla 0.12.0, la prima: l'ha provata il giro della PR #15 (sprint 12), il
+    // 10/10/2026.
     expect($vincolo)->toBe('^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11 || ^0.12')
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
@@ -698,6 +698,44 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
             'l\'ordine non è un contratto' => false,
             'dalla v1.2.2 la prima conta le non lette' => false,
             'un test del frontend non fissi la prima lettura' => false,
+        ]);
+});
+
+// Sprint 12 · T7, dalla lettura del suo diff (V2): con zr-auth 0.12 il nome e la lingua della sessione possono cambiare senza
+// un nuovo ingresso (`Sessione::aggiorna`), e il README lo dice dove dice da dove vengono la persona e la lingua.
+
+it('il README dice, in «La parte server», che dalla 0.12 zr-auth ha Sessione::aggiorna, che zr-core in questa versione non la chiama e che cosa ha la cornice se la chiama il frontend (sprint 12 · T7; lettura del diff, V2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $cosaDice = fn (string $testo): array => [
+        'senza, il cambio arriva al prossimo ingresso' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'un cambio fatto dopo (il nome, la lingua) arriva alla cornice al prossimo ingresso'),
+        'dalla 0.12 zr-auth ha Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla 0.12 zr-auth ha `Sessione::aggiorna`, che rimette il nome e la lingua della sessione uguali a quelli di `io.mostra`'),
+        'zr-core in questa versione non la chiama' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'zr-core in questa versione non la chiama'),
+        'se la chiama il frontend' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'se la chiama il frontend prima di `Cornice::dati()`, la cornice ha il nome e la lingua nuovi da quella richiesta'),
+    ];
+
+    // Il README con «La parte server» e «La cornice» scambiate di titolo: le frasi ci sono, ma non dove si legge da dove
+    // vengono la persona e la lingua.
+    $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+
+    // «Non la chiama» è detto del codice: il giorno che la parte server la chiama, la frase è falsa e questo caso lo dice.
+    $chiamate = 0;
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src', FilesystemIterator::SKIP_DOTS)) as $file) {
+        $chiamate += substr_count((string) file_get_contents($file->getPathname()), 'Sessione::aggiorna');
+    }
+
+    expect($cosaDice($readme))->toBe([
+        'senza, il cambio arriva al prossimo ingresso' => true,
+        'dalla 0.12 zr-auth ha Sessione::aggiorna' => true,
+        'zr-core in questa versione non la chiama' => true,
+        'se la chiama il frontend' => true,
+    ])
+        ->and($chiamate)->toBe(0)
+        ->and(str_contains(suUnaRiga($scambiate), 'zr-core in questa versione non la chiama'))->toBe(true)
+        ->and($cosaDice($scambiate))->toBe([
+            'senza, il cambio arriva al prossimo ingresso' => false,
+            'dalla 0.12 zr-auth ha Sessione::aggiorna' => false,
+            'zr-core in questa versione non la chiama' => false,
+            'se la chiama il frontend' => false,
         ]);
 });
 
