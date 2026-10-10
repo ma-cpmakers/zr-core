@@ -596,7 +596,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo la risposta del backoffice'),
@@ -634,5 +634,65 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
             'che cos\'è aggiornati_il' => true,
             'segnate_il nella risposta delle letture' => false,
             'che cos\'è segnate_il' => false,
+        ]);
+});
+
+// Sprint 12 · T2 (voce #1463): l'elenco delle notifiche porta il tipo, e il README lo dice nella riga della rotta; e dice che
+// l'ordine in cui Cornice::dati() legge il backoffice non è un contratto.
+
+/** Il paragrafo del README sotto quel titolo di secondo livello, fino al titolo dopo, su una riga sola. Vuoto se non c'è. */
+function sezioneDelReadme(string $readme, string $titolo): string
+{
+    preg_match('/^## '.preg_quote($titolo, '/').'$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+
+    return suUnaRiga($sezione[1] ?? '');
+}
+
+it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi di ogni notifica, e che è com\'è nel backoffice (sprint 12 · T2.4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $elenco = '| `GET /cornice/notifiche` |';
+    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    $cosaDice = fn (string $testo): array => [
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
+        'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice'),
+    ];
+
+    // Il README con la riga dell'elenco e quella della ricerca scambiate di rotta: il tipo è detto, ma nella riga di un'altra
+    // rotta. Poi il README senza la riga dell'elenco: `tipo` resta detto altrove (la ricerca ha il suo), e non conta.
+    $scambiate = strtr($readme, [$elenco => $ricerca, $ricerca => $elenco]);
+    $senzaLElenco = str_replace(rigaDellaRotta($readme, 'GET /cornice/notifiche')."\n", '', $readme);
+
+    expect($cosaDice($readme))->toBe(['tipo fra le chiavi di ogni notifica' => true, 'tipo com\'è nel backoffice' => true])
+        ->and(substr_count($readme, $elenco))->toBe(1)
+        ->and(substr_count($readme, $ricerca))->toBe(1)
+        ->and($cosaDice($scambiate))->toBe(['tipo fra le chiavi di ogni notifica' => false, 'tipo com\'è nel backoffice' => false])
+        ->and(str_contains($senzaLElenco, '`tipo`'))->toBe(true)
+        ->and($cosaDice($senzaLElenco))->toBe(['tipo fra le chiavi di ogni notifica' => false, 'tipo com\'è nel backoffice' => false]);
+});
+
+it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati() legge il backoffice non è un contratto, che dalla v1.2.2 la prima lettura conta le non lette, e che un test del frontend non fissi la prima lettura (sprint 12 · T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $cosaDice = fn (string $testo): array => [
+        'l\'ordine non è un contratto' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'L\'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto'),
+        'dalla v1.2.2 la prima conta le non lette' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'dalla `v1.2.2` la prima è `io.mostra`, per contare le non lette'),
+        'un test del frontend non fissi la prima lettura' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Un test del frontend non fissi «la prima lettura»'),
+    ];
+
+    // Il README con «La parte server» e «La cornice» scambiate di titolo: le tre cose sono dette, ma non dove si legge di
+    // Cornice::dati().
+    $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+
+    expect($cosaDice($readme))->toBe([
+        'l\'ordine non è un contratto' => true,
+        'dalla v1.2.2 la prima conta le non lette' => true,
+        'un test del frontend non fissi la prima lettura' => true,
+    ])
+        ->and(substr_count($readme, "\n## La parte server\n"))->toBe(1)
+        ->and(substr_count($readme, "\n## La cornice\n"))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiate), 'fa le quattro letture non è un contratto'))->toBe(true)
+        ->and($cosaDice($scambiate))->toBe([
+            'l\'ordine non è un contratto' => false,
+            'dalla v1.2.2 la prima conta le non lette' => false,
+            'un test del frontend non fissi la prima lettura' => false,
         ]);
 });

@@ -20,6 +20,8 @@ use Zeiras\Auth\Testing\Rotte;
 // sola al backoffice.
 // Sprint 11 · T1 (voce #1458): le due rotte dicono quando, sull'orologio della parte server e nella forma del segno dei dati:
 // l'elenco quando ha cominciato a leggere (`aggiornati_il`), la lettura quando il backoffice ha risposto (`segnate_il`).
+// Sprint 12 · T2 (voce #1463): l'elenco porta anche `tipo`, il tipo dell'evento che ha generato la notifica, com'è nel
+// backoffice: alla cornice serve per il titolo. `soggetto` e `dati` restano nella parte server.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -30,11 +32,30 @@ const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 
  *
  * @return array<string, mixed>
  */
-function notificaDelBackoffice(string $id, string $creataIl, ?string $lettaIl, ?string $app = 'pm'): array
+function notificaDelBackoffice(string $id, string $creataIl, ?string $lettaIl, ?string $app = 'pm', string $tipo = 'com.zeiras.board.cartella.creata'): array
 {
     return [
-        'id' => $id, 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => $app, 'soggetto' => "/v1/board/cartelle/uat-cartella-{$id}",
+        'id' => $id, 'tipo' => $tipo, 'app' => $app, 'soggetto' => "/v1/board/cartelle/uat-cartella-{$id}",
         'dati' => ['id' => "uat-cartella-{$id}", 'aggiornata_il' => $creataIl], 'letta_il' => $lettaIl, 'creata_il' => $creataIl,
+    ];
+}
+
+/**
+ * Notifiche di /v1 a cui manca il tipo, o che ne hanno uno che non è una stringa. Per il resto sono notifiche intere: il guasto
+ * è solo quello. Una riga per caso, per l'elenco e per la lettura di una notifica.
+ *
+ * @return array<string, array{array<string, mixed>}>
+ */
+function notificheSenzaUnTipo(): array
+{
+    $notifica = notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', '2026-10-07T09:05:00.456Z');
+
+    return [
+        'senza tipo' => [array_diff_key($notifica, ['tipo' => true])],
+        'tipo è null' => [['tipo' => null] + $notifica],
+        'tipo è un numero' => [['tipo' => 7] + $notifica],
+        'tipo è true' => [['tipo' => true] + $notifica],
+        'tipo è una lista' => [['tipo' => ['com.zeiras.board.cartella.creata']] + $notifica],
     ];
 }
 
@@ -81,7 +102,7 @@ function senzaGettone(TestResponse $risposta): TestResponse
     return $risposta;
 }
 
-it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta e app, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null; e l\'istante della lettura (sprint 5 · T2.1; sprint 6 · T1.1; sprint 11 · T1.1)', function () {
+it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta, app e tipo, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null; e l\'istante della lettura (sprint 5 · T2.1; sprint 6 · T1.1; sprint 11 · T1.1; sprint 12 · T2.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.elenca risponde 403 gettone_senza_workspace.
@@ -97,9 +118,9 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm'],
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota'],
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null],
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'],
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'],
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'],
     ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -215,10 +236,10 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un 200 senza JSON' => [200, 'uat: non è JSON'],
     'senza data' => [200, ['notifica' => notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null)]],
     'data vuoto' => [200, ['data' => []]],
-    'senza id' => [200, ['data' => ['app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
-    'senza letta_il' => [200, ['data' => ['id' => 'uat-n3', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z']]],
-    'letta_il non è un istante né null' => [200, ['data' => ['id' => 'uat-n3', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => true]]],
-    'senza app (sprint 6 · T1.2)' => [200, ['data' => ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
+    'senza id' => [200, ['data' => ['tipo' => 'com.zeiras.board.cartella.creata', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
+    'senza letta_il' => [200, ['data' => ['id' => 'uat-n3', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z']]],
+    'letta_il non è un istante né null' => [200, ['data' => ['id' => 'uat-n3', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => 'pm', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => true]]],
+    'senza app (sprint 6 · T1.2)' => [200, ['data' => ['id' => 'uat-n3', 'tipo' => 'com.zeiras.board.cartella.creata', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta_il' => '2026-10-07T09:05:00.456Z']]],
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
@@ -426,15 +447,15 @@ it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /
     'un 200 senza la forma di /v1' => [200, ['notifiche' => []]],
     'data non è una lista' => [200, ['data' => notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null), 'successivo' => null]],
     'una notifica che non è un oggetto' => [200, ['data' => ['uat-n1'], 'successivo' => null]],
-    'una notifica senza id' => [200, ['data' => [['app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'una notifica senza creata_il' => [200, ['data' => [['id' => 'uat-n1', 'app' => null, 'letta_il' => null]], 'successivo' => null]],
-    'una notifica senza letta_il' => [200, ['data' => [['id' => 'uat-n1', 'app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z']], 'successivo' => null]],
+    'una notifica senza id' => [200, ['data' => [['tipo' => 'com.zeiras.board.cartella.creata', 'app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'una notifica senza creata_il' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => null, 'letta_il' => null]], 'successivo' => null]],
+    'una notifica senza letta_il' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => null, 'creata_il' => '2026-10-07T09:01:00.123Z']], 'successivo' => null]],
     // Sprint 6 · T1.2: `app` c'è sempre, una stringa o null. Senza, o di un altro tipo, non è una notifica di /v1: mai `app: null`.
-    'una notifica senza app' => [200, ['data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'app è un numero' => [200, ['data' => [['id' => 'uat-n1', 'app' => 7, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'app è una lista' => [200, ['data' => [['id' => 'uat-n1', 'app' => ['pm'], 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'app è true' => [200, ['data' => [['id' => 'uat-n1', 'app' => true, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
-    'la seconda notifica senza app' => [200, ['data' => [notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', null), ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'una notifica senza app' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è un numero' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => 7, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è una lista' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => ['pm'], 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'app è true' => [200, ['data' => [['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'app' => true, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
+    'la seconda notifica senza app' => [200, ['data' => [notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', null), ['id' => 'uat-n1', 'tipo' => 'com.zeiras.board.cartella.creata', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
 ]);
 
 it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server comincia a leggere l\'elenco, preso prima di chiamare il backoffice, in UTC coi microsecondi anche con l\'applicazione in un altro fuso (sprint 11 · T1.1)', function () {
@@ -449,7 +470,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
-        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm']],
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata']],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
     ]);
 
@@ -499,4 +520,69 @@ it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ric
             ->and(substr_count((string) $errore->getContent(), 'aggiornati_il'))->toBe(0)
             ->and(substr_count((string) $errore->getContent(), 'segnate_il'))->toBe(0);
     }
+});
+
+// Sprint 12 · T2 (voce #1463): il tipo di ogni notifica, per il titolo che la cornice le dà.
+
+it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backoffice così com\'è, anche un tipo che zr-core non conosce; soggetto e dati restano nella parte server (sprint 12 · T2.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 05:20:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null, 'pm', 'com.zeiras.board.scheda.creata'),
+        // Un tipo che /v1 oggi non ha, con le maiuscole e uno spazio: passa com'è, non si traduce e non si abbassa.
+        notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z', 'uat-ignota', 'com.zeiras.UAT.Tipo ignoto.v2'),
+        notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null, null, 'com.zeiras.workspace.membro.creato'),
+    ], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'],
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'],
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'],
+    ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z']);
+
+    // Dell'evento esce solo il tipo: né il soggetto né i dati, con la chiave o col valore.
+    expect(substr_count((string) $risposta->getContent(), '"tipo"'))->toBe(3)
+        ->and(substr_count((string) $risposta->getContent(), '"soggetto"'))->toBe(0)
+        ->and(substr_count((string) $risposta->getContent(), '"dati"'))->toBe(0)
+        ->and(substr_count((string) $risposta->getContent(), 'uat-cartella'))->toBe(0);
+});
+
+it('una notifica del backoffice senza tipo, o con un tipo che non è una stringa, è un guasto dell\'elenco: mai un elenco con una notifica senza tipo, e mai un elenco che la salta (sprint 12 · T2.2)', function (array $notifica) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La prima è una notifica di /v1, col suo tipo: il guasto è della seconda.
+    Http::fake(['*' => Http::response(['data' => [notificaDelBackoffice('uat-n4', '2026-10-07T09:04:00.123Z', null), $notifica], 'successivo' => null])]);
+
+    $elenco = senzaGettone($this->getJson('cornice/notifiche'));
+
+    expect($elenco->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($elenco->json('data'))->toBeNull();
+})->with(notificheSenzaUnTipo());
+
+it('una notifica del backoffice senza tipo, o con un tipo che non è una stringa, è un guasto anche nella risposta della lettura di una notifica: mai un 200 (sprint 12 · T2.2)', function (array $notifica) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => $notifica])]);
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull();
+})->with(notificheSenzaUnTipo());
+
+it('le altre risposte non cambiano: la lettura di una notifica risponde ancora coi soli id e letta, senza il tipo, e l\'elenco porta ancora aggiornati_il (sprint 12 · T2.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 05:20:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifica = notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', '2026-10-07T09:05:00.456Z', 'pm', 'com.zeiras.board.scheda.modificata');
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/uat-n3/lettura' => Http::response(['data' => $notifica]),
+        '/v1/io/notifiche' => Http::response(['data' => [$notifica], 'successivo' => null]),
+    });
+
+    $lettura = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+    $elenco = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect(substr_count((string) $lettura->getContent(), 'tipo'))->toBe(0)
+        ->and(substr_count((string) $lettura->getContent(), 'scheda.modificata'))->toBe(0)
+        ->and($elenco->json('aggiornati_il'))->toBe('2026-10-10T05:20:07.000321Z')
+        ->and(substr_count((string) $elenco->getContent(), '"aggiornati_il"'))->toBe(1);
 });
