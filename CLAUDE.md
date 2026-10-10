@@ -60,7 +60,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` + vitest + build + pagine di prova, Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
+- `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
   verde è di tutti i giri. Una minore nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non
   scende sotto una patch che nessun giro ha provato.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit`, vitest e la build;
