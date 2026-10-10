@@ -861,6 +861,12 @@ it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 ·
     'il titolo è quello del tipo' => ['ognuna col titolo del suo tipo nella lingua'],
     'il ripiego, per un tipo che zr-core non conosce o che manca' => ['una notifica di un tipo che zr-core non conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»)'],
     'un tipo nuovo vuole una versione nuova di zr-core' => ['Un tipo di notifica nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego'],
+    // Sprint 17 · T2 (voce #1481): il pulsante «Segna tutte come lette» dice che cosa sta succedendo, col testo di zr-core.
+    'il testo del pulsante lo dà zr-core (sprint 17 · T2.1)' => ['Che cosa sta succedendo lo dice il pulsante, col testo che zr-core gli dà al posto di quello dell\'`AppShell`'],
+    'con la richiesta in corso (sprint 17 · T2.1)' => ['Dal clic alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, dice «Segno…»'],
+    'quando ne restano (sprint 17 · T2.1)' => ['Dopo una risposta con `altre: true` dice «Segna le altre»'],
+    'fino a quando ne restano (sprint 17 · T2.1)' => ['finché quel giro di letture non è finito'],
+    'se la richiesta fallisce (sprint 17 · T2.1)' => ['Se la richiesta fallisce il pulsante torna al testo che aveva prima del clic'],
 ]);
 
 it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
@@ -975,6 +981,8 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», che la
 // notifiche» si riscrive com'è: vale per ogni richiesta ancora in corso, non solo per una lenta; il blocco ferma solo chi lo
 // prende, quindi il frontend lo mette sulle sue rotte di uscita e di ingresso; chi arriva secondo aspetta, e poi riceve un 503;
 // l'elenco, la ricerca e le chiamate del modulo restano senza blocco. Una frase per cosa, dentro il limite e non altrove.
+// Sprint 17 · T2 (voce #1481): le rotte su cui il frontend lo mette sono quelle del criterio di zr-auth — ogni rotta che apre,
+// cambia o chiude la sessione, e le sue rotte lente — non solo l'uscita e l'ingresso.
 
 /** Il limite della sessione del README: dalla frase che lo apre alla fine del punto «Le notifiche». Vuoto se non c'è. */
 function limiteDellaSessione(string $readme): string
@@ -994,7 +1002,11 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», il lim
     'vale per ogni richiesta ancora in corso, non solo per una lenta' => ['Vale per ogni richiesta della stessa sessione ancora in corso quando la persona, da un\'altra scheda, esce, entra in un altro workspace o cambia lingua, non solo per una lenta'],
     '«Segna tutte come lette» tiene il blocco per tutta la sua durata' => ['dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta la sua durata'],
     'il blocco ferma solo chi lo prende' => ['Il blocco ferma solo chi lo prende'],
-    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di uscita e di ingresso in un workspace'],
+    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che aprono, cambiano o chiudono la sessione'],
+    'quali sono, coi metodi di zr-auth (sprint 17 · T2.2)' => ['quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`'],
+    'non solo l\'uscita e l\'ingresso (sprint 17 · T2.2)' => ['non solo l\'uscita e l\'ingresso in un workspace'],
+    'e le rotte lente, non tutte (sprint 17 · T2.2)' => ['e sulle sue rotte lente, non su tutte'],
+    'il criterio è di zr-auth (sprint 17 · T2.2)' => ['è il criterio di zr-auth (il suo README, «Il blocco della sessione»'],
     'il ricevitore di zr-auth lo ha già' => ['il ricevitore dell\'ingresso di zr-auth lo ha già'],
     'da una parte sola non ferma niente' => ['messo da una parte sola non ferma niente'],
     'chi arriva secondo aspetta, e poi il 503' => ['la seconda aspetta la prima al più 3 secondi, e oltre risponde 503 con `Retry-After: 1`'],
@@ -1145,11 +1157,11 @@ it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dic
         ->and(str_contains(puntoDellaCornice($scambiati, $grassetto), $frase))->toBe(false);
 })->with([
     'R2: mentre il pannello si ricarica il pulsante resta' => ['Le notifiche', 'Mentre il pannello si ricarica l\'elenco di prima resta in pagina e il pulsante resta dov\'è, col fuoco della tastiera'],
-    // Seconda lettura, N4: il testo del pulsante è di zr-core; al design system manca il posto per un avviso.
-    'R2: due cose non le dice' => ['Le notifiche', 'Due cose la cornice oggi non le dice: che una parte è stata segnata'],
-    'R2: che cosa manca per dirle' => ['Le notifiche', 'Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo dà zr-core, e in questa versione è sempre lo stesso'],
-    'R2: niente dice che una parte è segnata' => ['Le notifiche', 'se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic fallito'],
-    'R2: niente dice che la richiesta è in corso' => ['Le notifiche', 'fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, il pulsante resta com\'è'],
+    // Sprint 17 · T2 (voce #1481): che la richiesta è in corso e che ne restano ora lo dice il pulsante. Resta l'avviso per il
+    // lettore di schermo: al design system manca il posto per un avviso (seconda lettura dello sprint 12, N4).
+    'T2.1: che cosa la cornice ancora non dice' => ['Le notifiche', 'Una cosa la cornice ancora non la dice: l\'avviso per il lettore di schermo'],
+    'T2.1: niente annuncia il testo che cambia' => ['Le notifiche', 'Il testo del pulsante cambia sullo schermo, ma niente lo annuncia'],
+    'T2.1: che cosa manca per dirla' => ['Le notifiche', 'il pannello del design system non ha un posto per un avviso'],
     'R3: il nome della campanella al singolare' => ['La campanella', 'con una sola al singolare («Notifiche, 1 non letta»)'],
     'R3: lo stesso testo è del pallino' => ['La campanella', 'Il design system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello'],
     'R3: che cosa dice il pallino' => ['La campanella', 'il pallino dice «non letta» quando sulla campanella ce n\'è una sola, «non lette» negli altri casi'],
@@ -1168,10 +1180,45 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
         ->and($conQuellaDiPrima)->not->toBe($readme)
         ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
 })->with([
-    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte): quella sbagliata resta la stessa.
-    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte di uscita e di ingresso in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
+    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte), e dallo sprint 17 · T2 dice
+    // il criterio di zr-auth: quella sbagliata resta la stessa.
+    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte che aprono, cambiano o chiudono la sessione', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
-    'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
+    // Dallo sprint 17 · T2 ciò che la cornice non dice è una cosa sola, e la frase è un'altra: quella sbagliata resta la stessa.
+    'N4: non è il design system che non ha con che dirle' => ['Una cosa la cornice ancora non la dice: l\'avviso', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
+    // Sprint 17 · T2 (voce #1481): le frasi di prima che il pulsante dicesse che cosa sta succedendo, e del blocco sulle sole
+    // rotte di uscita e di ingresso.
+    'T2.1: il testo del pulsante non è più sempre lo stesso' => ['col testo che zr-core gli dà al posto di quello dell\'`AppShell`', 'il testo del pulsante lo dà zr-core, e in questa versione è sempre lo stesso'],
+    'T2.1: la cornice dice che la richiesta è in corso' => ['dice «Segno…»', 'il pulsante resta com\'è'],
+    'T2.1: e che una parte è stata segnata' => ['dice «Segna le altre»', 'Due cose la cornice oggi non le dice: che una parte è stata segnata'],
+    'T2.2: non solo l\'uscita e l\'ingresso' => ['sulle sue rotte che aprono, cambiano o chiudono la sessione', 'sulle sue rotte di uscita e di ingresso in un workspace'],
+]);
+
+// Sprint 17 · T2 (voce #1481): quali rotte del frontend tengono il blocco della sessione lo dice zr-auth, nel suo README («Il
+// blocco della sessione»): quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, e le rotte lente
+// del modulo; non tutte. Il README di zr-core dice quel criterio e non una regola sua: ogni cosa che nomina è in quella sezione.
+
+/** La sezione «Il blocco della sessione» del README della zr-auth installata, su una riga sola. Vuota se non c'è. */
+function bloccoDellaSessioneInZrAuth(): string
+{
+    $readme = (string) file_get_contents(__DIR__.'/../../vendor/zeiras/zr-auth/README.md');
+    preg_match('/^## Il blocco della sessione.*?(?=^## |\z)/ms', $readme, $sezione);
+
+    return suUnaRiga($sezione[0] ?? '');
+}
+
+it('ogni cosa che il README dice, nel limite della sessione, delle rotte del frontend che tengono il blocco è nel README della zr-auth installata, in «Il blocco della sessione» (sprint 17 · T2.2)', function (string $inZrCore, string $inZrAuth) {
+    $limite = limiteDellaSessione((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($limite, $inZrCore))->toBe(true)
+        ->and(str_contains(bloccoDellaSessioneInZrAuth(), $inZrAuth))->toBe(true);
+})->with([
+    'la riga che zr-auth dà ai moduli' => ['`->bloccaSessione()`', '`->bloccaSessione()`'],
+    'la rotta che apre la sessione' => ['`Sessione::apri()`', '`Sessione::apri()`'],
+    'la rotta che entra in un workspace' => ['`Sessione::entra()`', '`Sessione::entra()`'],
+    'la rotta che chiude la sessione' => ['`Sessione::chiudi()`', '`Sessione::chiudi()`'],
+    'le rotte lente del modulo' => ['e sulle sue rotte lente', 'le loro rotte lente'],
+    'non su tutte' => ['non su tutte', 'Non va su tutto'],
 ]);
 
 // Sprint 15 · T1 (voce #1584): la voce «Piano» del menu del profilo è spenta di default, e il README dice la prop che la accende.

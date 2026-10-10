@@ -216,11 +216,16 @@ cornice === null ? pagina : (
   richiesta, un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
   campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un
   altro clic. Mentre il pannello si ricarica l'elenco di prima resta in pagina e il pulsante resta dov'è, col fuoco della
-  tastiera. Due cose la cornice oggi non le dice: che una parte è stata
-  segnata — se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic
-  fallito — e che la richiesta è in corso: fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15
-  secondi, il pulsante resta com'è. Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo
-  dà zr-core, e in questa versione è sempre lo stesso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
+  tastiera. Che cosa sta succedendo lo dice il pulsante, col testo che zr-core gli dà al posto di quello dell'`AppShell`
+  (dalla `v1.7.0`). Dal clic alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, dice
+  «Segno…», e un clic lì non fa partire un'altra richiesta. Dopo una risposta con `altre: true` dice «Segna le altre»: una
+  parte è segnata, anche quando l'elenco ricaricato è uguale a prima perché le segnate non erano fra quelle in pagina. Lo
+  dice finché quel giro di letture non è finito — con una lettura completa, o con l'elenco chiesto da capo (il pannello
+  riaperto, «Riprova») —, poi torna «Segna tutte come lette». Se la richiesta fallisce il pulsante torna al testo che
+  aveva prima del clic. I due testi sono di zr-core, `markingAllRead` e `markRestRead` nelle sue lingue: in una lingua
+  che zr-core non ha sono in inglese. Una cosa la cornice ancora non la dice: l'avviso per il lettore di schermo. Il
+  testo del pulsante cambia sullo schermo, ma niente lo annuncia: il pannello del design system non ha un posto per un
+  avviso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
   ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
   pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
   cambia niente. Un limite, che non è solo di questa rotta: ogni richiesta, quando finisce, riscrive la sessione com'era
@@ -231,13 +236,15 @@ cornice === null ? pagina : (
   richiude; se all'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino
   alla loro scadenza. «Segna tutte come lette» è la richiesta della cornice che dura di più — fino a circa 15 secondi,
   solo con più di 5000 non lette — e dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta
-  la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di
-  uscita e di ingresso in un workspace (il ricevitore dell'ingresso di zr-auth lo ha già); messo da una parte sola non
-  ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
+  la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che
+  aprono, cambiano o chiudono la sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o
+  `Sessione::chiudi()`: non solo l'uscita e l'ingresso in un workspace — e sulle sue rotte lente, non su tutte: è il
+  criterio di zr-auth (il suo README, «Il blocco della sessione»; il ricevitore dell'ingresso di zr-auth lo ha già); messo
+  da una parte sola non ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
   oltre risponde 503 con `Retry-After: 1` — un'uscita mentre «Segna tutte come lette» gira, o «Segna tutte come lette»
   mentre un'uscita gira: allora nel pannello non cambia niente e il pulsante resta per riprovare. L'elenco delle
-  notifiche, la ricerca e le chiamate del modulo restano senza blocco, perché due richieste della stessa persona si
-  metterebbero in fila: per loro il limite resta.
+  notifiche, la ricerca e le chiamate del modulo restano senza blocco — tranne le rotte lente su cui il modulo lo mette —,
+  perché due richieste della stessa persona si metterebbero in fila: per loro il limite resta.
   Il blocco si prende prima dei middleware che il frontend ha nel gruppo `web`, e dura 20 secondi da lì, coi tempi di
   partenza: i 10 dei richiami, i 5 che zr-auth aspetta una risposta, 5 di margine. Per questo la rotta conta i suoi 10
   secondi dall'arrivo della richiesta, non da quando tocca a lei: ciò che un middleware del frontend fa prima — una
