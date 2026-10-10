@@ -2,10 +2,13 @@
 
 use Illuminate\Config\Repository;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Filesystem\ServeFile;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Handler\TestHandler;
@@ -103,7 +106,7 @@ it('frame-src nasce con le sole sorgenti scritte: senza \'self\' non lo porta, e
     $diTutti = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; ";
     $coda = "; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
-    expect(str_contains(CSP_DI_TUTTI, 'frame-src'))->toBe(false)
+    expect(str_contains(IntestazioniSicurezza::CSP, 'frame-src'))->toBe(false)
         ->and($senza)->toBe($diTutti.'frame-src https://challenges.cloudflare.com'.$coda)
         ->and($con)->toBe($diTutti."frame-src 'self' https://challenges.cloudflare.com".$coda)
         ->and($scartateSenza)->toBe([])
@@ -658,4 +661,65 @@ it('zr-core non registra il middleware da sé: col solo provider una risposta no
     primoDeiGlobali();
 
     expect(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertOk()))->toBe(LE_CINQUE_INTESTAZIONI);
+});
+
+// Sprint 16 · review, R9 · T2.7 (seconda lettura della PR; nota `Decisione:` 8976): una risposta che porta già una CSP la tiene,
+// e quella del modulo le esce accanto, dopo. Il browser le applica insieme, e passa solo ciò che ammettono tutte e due: una
+// risposta può stringere, mai allargare. Il caso vero è di Laravel, che mette una CSP con `sandbox` sui file che serve da un
+// disco: col `set` di prima la classe la toglieva, e un file caricato da una persona girava nell'origine del modulo.
+
+/** La CSP che Laravel mette sui file che serve da un disco (`Illuminate\Filesystem\ServeFile`), scritta qui com'è nella 13.35. */
+const CSP_DEI_FILE_DI_LARAVEL = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+
+it('una risposta che porta già una CSP la tiene, e quella del modulo le esce accanto, dopo; una uguale a quella del modulo esce una volta sola, un valore vuoto non resta, e le altre quattro intestazioni restano una volta sola (sprint 16 · review, R9 · T2.7)', function (array|string|null $dellaRisposta, array $attesa) {
+    primoDeiGlobali();
+    Route::get('/prova/csp', function () use ($dellaRisposta) {
+        $risposta = response('con una CSP sua');
+        $risposta->headers->set('Content-Security-Policy', $dellaRisposta);
+
+        return $risposta;
+    });
+
+    $risposta = $this->get('/prova/csp')->assertOk()->assertSee('con una CSP sua');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => $attesa]);
+})->with([
+    'quella dei file di Laravel, con sandbox' => [CSP_DEI_FILE_DI_LARAVEL, [CSP_DEI_FILE_DI_LARAVEL, CSP_DI_TUTTI]],
+    'due valori suoi: restano tutti e due, nel loro ordine' => [["default-src 'none'", "script-src 'none'; sandbox"], ["default-src 'none'", "script-src 'none'; sandbox", CSP_DI_TUTTI]],
+    'una più larga: resta, e quella del modulo le sta accanto' => ['default-src *', ['default-src *', CSP_DI_TUTTI]],
+    'quella del modulo e una sua: quella del modulo una volta sola, in fondo' => [[CSP_DI_TUTTI, 'sandbox'], ['sandbox', CSP_DI_TUTTI]],
+    'un valore vuoto e una sua: resta la sua' => [['', 'sandbox'], ['sandbox', CSP_DI_TUTTI]],
+    // Il verso che non cambia: qui esce la sola CSP del modulo, come col `set` di prima.
+    'uguale a quella del modulo' => [CSP_DI_TUTTI, [CSP_DI_TUTTI]],
+    'quella del modulo già due volte' => [[CSP_DI_TUTTI, CSP_DI_TUTTI], [CSP_DI_TUTTI]],
+    'un valore vuoto' => ['', [CSP_DI_TUTTI]],
+    'soli spazi' => ['   ', [CSP_DI_TUTTI]],
+    'nessun valore (null)' => [null, [CSP_DI_TUTTI]],
+]);
+
+it('con le sorgenti di un modulo vale lo stesso: la CSP che la risposta porta resta com\'è, anche se è quella di tutti, e le esce accanto quella del modulo — o quella della pagina, se la pagina chiede le sue per nome (sprint 16 · review, R9 · T2.7)', function () {
+    primoDeiGlobali();
+    configurazioneDiHome();
+    Route::get('/prova/csp', fn () => response('una pagina')->header('Content-Security-Policy', CSP_DI_TUTTI));
+    Route::get('/prova/csp-pagina', function () {
+        IntestazioniSicurezza::perLaPagina('turnstile');
+
+        return response('registrati')->header('Content-Security-Policy', CSP_DI_HOME);
+    });
+
+    expect($this->get('/prova/csp')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI, CSP_DI_HOME])
+        ->and($this->get('/prova/csp-pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME, CSP_DI_HOME_CON_TURNSTILE]);
+});
+
+it('un file che Laravel serve da un disco esce con la sua CSP, quella con `sandbox`, e con quella del modulo accanto: un file caricato da una persona non gira nell\'origine del modulo (sprint 16 · review, R9 · T2.7)', function () {
+    primoDeiGlobali();
+    Storage::fake('local');
+    Storage::disk('local')->put('caricato.html', '<p>un file caricato da una persona</p>');
+    // Come la rotta che Laravel registra per un disco con `serve`: la stessa classe, qui con un disco pubblico (senza firma).
+    Route::get('/prova/storage/{path}', fn (Request $richiesta, string $path) => (new ServeFile('local', ['visibility' => 'public'], false))($richiesta, $path))->where('path', '.*');
+
+    $risposta = $this->get('/prova/storage/caricato.html')->assertOk();
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [CSP_DEI_FILE_DI_LARAVEL, CSP_DI_TUTTI]])
+        ->and($risposta->streamedContent())->toBe('<p>un file caricato da una persona</p>');
 });

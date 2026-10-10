@@ -675,7 +675,8 @@ it('le altre risposte non cambiano: la lettura di una notifica risponde ancora c
 
 // Sprint 12 · T4 (voce #1461): oltre le 5000 non lette il backoffice dice che ne restano (`altre`), e la parte server lo richiama
 // con lo stesso istante finché ne restano, entro due tetti: al più 5 chiamate per una richiesta del browser, e nessuna chiamata
-// nuova passati 10 secondi dalla prima. Fermata da un tetto risponde lo stesso 200, con `altre: true`: non è un errore.
+// nuova passati 10 secondi dall'arrivo della richiesta. Fermata da un tetto risponde lo stesso 200, con `altre: true`: non è un
+// errore. Nei casi di qui sotto nessun middleware del frontend tiene la richiesta: l'arrivo è anche la partenza della prima chiamata.
 
 /** Una chiamata alle letture come la parte server la fa ogni volta: lo stesso metodo, l'istante chiesto dal browser e nient'altro, il gettone del workspace. */
 function chiamataAlleLetture(string $finoA, string $gettone): array
@@ -713,7 +714,7 @@ it('al più cinque chiamate al backoffice per una richiesta del browser: se ne r
     expect(chiamateAlBackoffice())->toBe(array_fill(0, 5, chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])));
 });
 
-it('nessuna chiamata nuova passati 10 secondi dalla prima: se ne restano ancora la rotta risponde 200 con altre: true, e l\'istante è quello preso dopo l\'ultima risposta arrivata (sprint 12 · T4.2)', function (array $durate, int $chiamate, bool $altre, string $segnateIl) {
+it('nessuna chiamata nuova passati 10 secondi dall\'arrivo della richiesta: se ne restano ancora la rotta risponde 200 con altre: true, e l\'istante è quello preso dopo l\'ultima risposta arrivata (sprint 12 · T4.2)', function (array $durate, int $chiamate, bool $altre, string $segnateIl) {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Il backoffice dice che ne restano a ogni risposta che il caso elenca, ognuna con la sua durata; a una chiamata in più
@@ -728,7 +729,7 @@ it('nessuna chiamata nuova passati 10 secondi dalla prima: se ne restano ancora 
     'la prima risposta arriva dopo 11 secondi: nessun richiamo' => [[11_000_000], 1, true, '2026-10-10T01:15:18.000321Z'],
     'dopo 10 secondi e un microsecondo: nessun richiamo' => [[10_000_001], 1, true, '2026-10-10T01:15:17.000322Z'],
     'a 10 secondi esatti non sono ancora passati: un richiamo, e il backoffice dice che non ne restano' => [[10_000_000], 2, false, '2026-10-10T01:15:17.000321Z'],
-    'i 10 secondi si contano dalla prima chiamata, non dall\'ultima: due risposte da 6 secondi, e la terza chiamata non parte' => [[6_000_000, 6_000_000], 2, true, '2026-10-10T01:15:19.000321Z'],
+    'i 10 secondi non si contano dall\'ultima chiamata: due risposte da 6 secondi, e la terza chiamata non parte' => [[6_000_000, 6_000_000], 2, true, '2026-10-10T01:15:19.000321Z'],
 ]);
 
 it('una risposta del backoffice senza altre, o con un altre che non è un booleano, è un guasto, alla prima chiamata come a un richiamo: mai «non ne restano», mai un 200, e nessuna chiamata dopo (sprint 12 · T4.3)', function (array $lettura, int $prima) {
@@ -894,7 +895,7 @@ it('il lock della sessione dura più di quanto POST /cornice/notifiche/letture p
         require __DIR__.'/../../routes/cornice.php';
     }
     $rotta = Route::getRoutes()->match(RichiestaDelBrowser::create('/cornice/notifiche/letture', 'POST'));
-    // Passati questi secondi dalla prima chiamata non ne parte un'altra; quella già partita finisce, entro il tempo di zr-auth.
+    // Passati questi secondi dall'arrivo della richiesta non parte un'altra chiamata; quella già partita finisce, entro il tempo di zr-auth.
     $richiami = (new ReflectionClassConstant(NotificheDellaCornice::class, 'SECONDI'))->getValue();
     $aspetta = (int) config('zr-auth.timeout');
 
@@ -1012,6 +1013,10 @@ it('arrivata alla rotta passati 10 secondi dall\'arrivo della richiesta, POST /c
         ->and($risposta->json('errore'))->toBe($errore)
         ->and($risposta->headers->get('Retry-After'))->toBe($riprova)
         ->and(lockLibero($sessione))->toBe(true);
+    if ($stato === 503) {
+        // Il corpo intero: l'errore e nient'altro.
+        $risposta->assertExactJson(['errore' => 'fuori_tempo']);
+    }
     Http::assertSentCount($chiamate);
 })->with([
     'a 10 secondi esatti chiama ancora' => [10, 200, null, null, 1],
@@ -1046,6 +1051,61 @@ it('la rotta legge dal kernel quando la richiesta è arrivata, e non lo sposta: 
 
     // Non 10 secondi dopo: l'istante del kernel è del kernel, e la rotta ne usa una copia.
     expect($arrivo)->toBe('2026-10-10 01:15:07.000321');
+});
+
+// Sprint 16 · seconda lettura, N4: senza un kernel che dica quando la richiesta è arrivata — non c'è, non è quello di Laravel, non
+// ha ancora un istante, o ne ha uno nel futuro — i 10 secondi si contano da adesso: la rotta risponde, non lancia.
+
+/** Un middleware che il frontend ha in coda al gruppo `web`: prima di passare la richiesta fa ciò che il caso gli dà. */
+final class PrimaDellaRotta
+{
+    public static ?Closure $fa = null;
+
+    public function handle(RichiestaDelBrowser $richiesta, Closure $next): mixed
+    {
+        (self::$fa)();
+
+        return $next($richiesta);
+    }
+}
+
+/** Il frontend dei test con quel middleware in coda al gruppo `web`. */
+function frontendChePrimaDellaRottaFa(Closure $fa): void
+{
+    PrimaDellaRotta::$fa = $fa;
+    app(Kernel::class)->appendMiddlewareToGroup('web', PrimaDellaRotta::class);
+}
+
+it('senza un istante del kernel da cui contare, POST /cornice/notifiche/letture conta i suoi 10 secondi da adesso: chiama il backoffice e risponde 200, mai un 500 e mai un 503 (sprint 16 · seconda lettura, N4)', function (string $caso) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Dopo la sessione e prima della rotta, nel container al posto del kernel di questa richiesta c'è altro, o niente.
+    frontendChePrimaDellaRottaFa(match ($caso) {
+        'nel container il kernel non c\'è' => fn () => app()->offsetUnset(Kernel::class),
+        'il kernel non è quello di Laravel' => fn () => app()->instance(Kernel::class, new stdClass),
+        'un kernel di Laravel che non ha ancora un istante' => fn () => app()->instance(Kernel::class, (new ReflectionClass(Illuminate\Foundation\Http\Kernel::class))->newInstanceWithoutConstructor()),
+    });
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    senzaGettone(lettureDallaSessione(idDiSessione(), lettureFinoA('2026-10-08T10:00:00.123Z')))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => false], 'segnate_il' => '2026-10-10T01:15:07.000321Z']);
+
+    expect(chiamateAlBackoffice())->toBe([chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])]);
+})->with(['nel container il kernel non c\'è', 'il kernel non è quello di Laravel', 'un kernel di Laravel che non ha ancora un istante']);
+
+it('con un istante del kernel nel futuro — l\'orologio del server è tornato indietro — POST /cornice/notifiche/letture conta i suoi 10 secondi da adesso, non da quell\'istante: dopo una risposta da 11 secondi non parte un richiamo (sprint 16 · seconda lettura, N4)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Dopo l'arrivo della richiesta l'orologio torna indietro di 30 secondi: per la rotta l'istante del kernel è nel futuro.
+    frontendChePrimaDellaRottaFa(fn () => Carbon::setTestNow(Carbon::now()->subSeconds(30)));
+    // Il backoffice risponde dopo 11 secondi e dice che ne restano: contando dall'istante del kernel un richiamo partirebbe
+    // ancora, e ne avrebbe per altri 29 secondi.
+    lettureUnaDopoLAltra([lettureDopo(11_000_000, true), lettureDopo(0, false)]);
+
+    senzaGettone(lettureDallaSessione(idDiSessione(), lettureFinoA('2026-10-08T10:00:00.123Z')))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => true], 'segnate_il' => '2026-10-10T01:14:48.000321Z']);
+
+    expect(chiamateAlBackoffice())->toBe([chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])]);
 });
 
 // Sprint 16 · review, R5: per il client di zr-auth un tempo di 0 è «senza limite», e ogni valore che `(int)` porta sotto 1 lo

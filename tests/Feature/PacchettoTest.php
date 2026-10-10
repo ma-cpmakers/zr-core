@@ -901,6 +901,7 @@ it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per
     'un richiamo che fallisce è un errore' => ['alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`'],
     'il blocco della sessione, e il 503 (sprint 16 · T4.6)' => ['la rotta tiene il blocco della sessione per tutta la sua durata, e se un\'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice'],
     'il 503 di chi arriva tardi alla rotta (sprint 16 · review, R2)' => ['arrivata alla rotta passati 10 secondi dall\'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice'],
+    'quanto dura il blocco, e chi lo trova scaduto (sprint 16 · seconda lettura, N1)' => ['il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto'],
 ]);
 
 it('il README non dice più che i 10 secondi dei richiami si contano dalla prima chiamata (sprint 16 · review, R2)', function () {
@@ -923,7 +924,8 @@ it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando 
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
         ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
 })->with([
-    'quando un clic non basta' => ['con più di 25.000 non lette, o se i richiami durano più di 10 secondi, un clic non le segna tutte'],
+    // Sprint 16 · seconda lettura, N2: il tetto del tempo è quello della riga della rotta, dall'arrivo della richiesta.
+    'quando un clic non basta' => ['con più di 25.000 non lette, o passati 10 secondi dall\'arrivo della richiesta, un clic non le segna tutte'],
     'che cosa vede la persona' => ['la campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un altro clic'],
 ]);
 
@@ -1005,7 +1007,10 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», il lim
     'da quando la rotta conta i suoi secondi (review, R2)' => ['la rotta conta i suoi 10 secondi dall\'arrivo della richiesta, non da quando tocca a lei'],
     'ciò che il frontend fa prima sta dentro il blocco (review, R2)' => ['ciò che un middleware del frontend fa prima — una `Cornice::dati()`, con un backoffice lento — sta dentro il blocco'],
     'chi arriva tardi alla rotta (review, R2)' => ['una richiesta che arriva alla rotta oltre quei 10 secondi riceve 503 `{errore: "fuori_tempo"}` senza che il backoffice sia chiamato'],
-    'il margine dopo la rotta (review, R2)' => ['Dopo la risposta della rotta restano i 5 secondi di margine per chiudere la richiesta'],
+    // Seconda lettura, N1: il margine è intero solo per chi arriva alla rotta in tempo, e oltre la durata del blocco il limite resta.
+    'il margine dopo la rotta, per chi ci arriva in tempo (review, R2; seconda lettura, N1)' => ['Dopo la risposta della rotta restano almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall\'arrivo'],
+    'fra 15 e 20 secondi il margine è ciò che resta (seconda lettura, N1)' => ['fra 15 e 20 il margine è ciò che resta del blocco'],
+    'oltre i 20 secondi il blocco è scaduto, e il limite resta (seconda lettura, N1)' => ['una richiesta che i middleware del frontend tengono più di 20 secondi prima della rotta ci arriva a blocco scaduto: riceve il 503 `fuori_tempo`, ma finendo riscrive la sessione lo stesso'],
     'un tempo senza limite ferma la rotta (review, R5)' => ['Con `zr-auth.timeout` minore di 1 la rotta non parte, ed è un errore (500)'],
     'perché un tempo senza limite la ferma (review, R5)' => ['per il client di zr-auth 0 vuol dire senza limite, e una chiamata senza un tetto può durare più di qualunque blocco'],
     'dove sta il lock (review, R4)' => ['Il lock sta nello store `session.block_store` del frontend — quello della cache, se non lo cambia'],
@@ -1445,9 +1450,16 @@ it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognu
     'le pagine d\'errore senza stile (review, R7)' => [null, 'le pagine d\'errore di Laravel — 404, 419, 500, 503 — escono senza stile, perché lo portano in un `<style>` in linea'],
     '/up senza font e script (review, R7)' => [null, '`/up` senza i suoi font e il suo script, che vengono da altre origini'],
     'solo le risposte che passano dai middleware (review, R8)' => [null, 'Su ogni risposta che passa dai middleware di Laravel la classe scrive cinque intestazioni'],
-    'una CSP più stretta della risposta (review, R9)' => [null, '«Al posto di ciò che la risposta aveva» vale anche per una CSP più stretta'],
-    'esce quella del modulo (review, R9)' => [null, 'una risposta che ne porta una sua — `sandbox` su un file caricato da una persona, per esempio — esce con quella del modulo'],
-    'la classe non stringe una risposta sola (review, R9)' => [null, 'La classe non ha un modo per stringere una risposta sola'],
+    // Seconda lettura, R9 · T2.7: la CSP che una risposta porta già resta, e quella del modulo le esce accanto.
+    'quattro al posto, la CSP accanto (review, R9 · T2.7)' => [null, 'quattro al posto di ciò che la risposta aveva, e la CSP accanto a quella che la risposta porta già, se ne porta una'],
+    'una risposta tiene la sua CSP (review, R9 · T2.7)' => [null, 'Una risposta che porta già una CSP la tiene, e quella del modulo le esce accanto: due intestazioni, prima quella della risposta'],
+    'il browser le applica tutte e due (review, R9 · T2.7)' => [null, 'Il browser le applica tutte e due, e passa solo ciò che ammettono entrambe'],
+    'stringere sì, allargare no (review, R9 · T2.7)' => [null, 'una risposta può stringere la CSP del modulo, mai allargarla'],
+    'per allargare c\'è csp_pagine (review, R9 · T2.7)' => [null, 'per allargare c\'è solo `csp_pagine` (vedi «Per una pagina sola»)'],
+    'i file che Laravel serve da un disco (review, R9 · T2.7)' => [null, 'È il caso dei file che Laravel serve da un disco (`\'serve\' => true` in `config/filesystems.php`)'],
+    'la CSP con sandbox resta (review, R9 · T2.7)' => [null, 'li manda con una CSP sua, con `sandbox`, e quella CSP resta: un file caricato da una persona non gira nell\'origine del modulo'],
+    'una uguale esce una volta sola (review, R9 · T2.7)' => [null, 'Una CSP uguale a quella del modulo esce una volta sola'],
+    'una classe del frontend rimasta accanto (review, R9 · T2.7)' => [null, 'Vale anche per una classe del frontend rimasta accanto a questa: se scrive la sua CSP più all\'interno, la risposta le porta tutte e due'],
     'frame-src non è nella CSP di tutti (review, R1)' => ['Le sorgenti di un modulo', 'Con un\'eccezione, `frame-src`, l\'unica delle sei che la CSP di tutti non ha'],
     'finché manca vale default-src (review, R1)' => ['Le sorgenti di un modulo', 'finché nessuno la scrive le cornici seguono `default-src`, cioè la sola origine del modulo'],
     'dalla prima sorgente vale solo ciò che è scritto (review, R1)' => ['Le sorgenti di un modulo', 'dalla prima sorgente vale solo ciò che è scritto lì'],
@@ -1459,6 +1471,23 @@ it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognu
     'perché la CSP del server web si toglie (review, R3)' => ['Che cosa resta al server web', 'su una pagina che chiede sorgenti sue quella del server web, sempre uguale, le terrebbe bloccate'],
 ]);
 
+// Sprint 16 · seconda lettura della PR (R9, N1, N2): le frasi che il README non dice più, perché non sono più vere.
+it('il README non dice più che una CSP della risposta lascia il posto a quella del modulo, che dopo la rotta il margine c\'è sempre, né che il tetto sono 10 secondi di richiami (sprint 16 · seconda lettura, R9, N1 e N2)', function (string $diPrima, string $alPostoDi) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $readme);
+
+    expect(str_contains($readme, $diPrima))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, $diPrima))->toBe(true);
+})->with([
+    'una CSP più stretta esce con quella del modulo (R9)' => ['esce con quella del modulo', 'e quella del modulo le esce accanto: due intestazioni'],
+    'la classe non stringe una risposta sola (R9)' => ['La classe non ha un modo per stringere una risposta sola', 'una risposta può stringere la CSP del modulo, mai allargarla'],
+    'al posto di ciò che la risposta aveva, anche la CSP (R9)' => ['la classe scrive cinque intestazioni, al posto di ciò che la risposta aveva:', 'la classe scrive cinque intestazioni: quattro al posto di ciò che la risposta aveva'],
+    'il margine c\'è sempre (N1)' => ['restano i 5 secondi di margine per chiudere la richiesta.', 'restano almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall\'arrivo'],
+    'il tetto sono 10 secondi di richiami (N2)' => ['o se i richiami durano più di 10 secondi', 'o passati 10 secondi dall\'arrivo della richiesta, un clic'],
+]);
+
 // Sprint 16 · review, R1: l'avvertenza su `frame-src` sta anche dove chi scrive le sorgenti la legge — il commento della
 // configurazione, che arriva nel frontend col file — e nel commento della classe.
 it('il commento di config/zr-core.php e quello della classe dicono che frame-src nella CSP di tutti non c\'è, e che chi incornicia anche la propria origine scrive anche \'self\' (sprint 16 · review, R1)', function (string $file, string $nonCE, string $ancheSelf) {
@@ -1467,8 +1496,8 @@ it('il commento di config/zr-core.php e quello della classe dicono che frame-src
 
     expect(str_contains($commenti, $nonCE))->toBe(true)
         ->and(str_contains($commenti, $ancheSelf))->toBe(true)
-        // Il controllo nei due versi: senza la frase, non si trova.
-        ->and(str_contains(str_replace($ancheSelf, '', $commenti), $ancheSelf))->toBe(false);
+        // Una volta sola: l'avvertenza è una, non due scritte in modi diversi.
+        ->and(substr_count($commenti, $ancheSelf))->toBe(1);
 })->with([
     'la configurazione' => ['config/zr-core.php', 'frame-src nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche \'self\''],
     'la classe' => ['src/Http/IntestazioniSicurezza.php', '`frame-src` nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche `\'self\'`'],
