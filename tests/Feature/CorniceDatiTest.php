@@ -95,6 +95,30 @@ function aziendeEWorkspace(): array
     ];
 }
 
+/**
+ * I dati che la cornice dà alla sessione dei test entrata in «UAT Marketing», col backoffice di aziendeEWorkspace(), due app e
+ * tre non lette: tutti e sette i campi, con ciò che un caso si aspetta diverso al posto suo.
+ *
+ * @param  array<string, mixed>  $cambi
+ * @return array<string, mixed>
+ */
+function datiAttesi(string $aggiornatiIl, array $cambi = []): array
+{
+    return [
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
+        'aziende' => [
+            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
+            ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [['nome' => 'UAT clienti', 'slug' => 'uat-clienti'], ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite']]],
+        ],
+        'non_lette' => 3,
+        'aggiornati_il' => $aggiornatiIl,
+        ...$cambi,
+    ];
+}
+
 it('con la sessione entrata in un workspace dà persona, lingua, il workspace del gettone, lo stato di ogni app, le aziende coi loro workspace, le non lette e il segno (sprint 2 · T3.1; sprint 3 · T1.1, T1.2; sprint 10 · T1.3)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
@@ -105,18 +129,7 @@ it('con la sessione entrata in un workspace dà persona, lingua, il workspace de
     ]);
 
     // L'indirizzo nomina un altro workspace: conta quello del gettone.
-    $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson([
-        'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
-        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
-        'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
-        'aziende' => [
-            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
-            ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [['nome' => 'UAT clienti', 'slug' => 'uat-clienti'], ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite']]],
-        ],
-        'non_lette' => 3,
-        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
-    ]);
+    $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson(datiAttesi('2026-10-09T21:31:05.123456Z'));
 });
 
 it('aggiornati_il è l\'istante in cui la lettura comincia, in UTC coi microsecondi, anche con l\'applicazione in un altro fuso (sprint 10 · T1.1)', function () {
@@ -233,34 +246,50 @@ it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del works
         ->and(parse_url($richiesta->url(), PHP_URL_QUERY))->toBeNull();
 })->with([0, 7, 250]);
 
+/**
+ * Le risposte di io.mostra senza un numero valido di non lette, per nome: lo stato e il corpo. Quelle che hanno dove metterla
+ * portano la persona data: un guasto resta un guasto anche quando la persona c'è. L'elenco è uno, per il caso che guarda
+ * l'eccezione (sprint 5) e per quello che guarda la sessione (sprint 13 · T2.6): un guasto nuovo di `ioMostra()` entra qui.
+ *
+ * @param  array<string, mixed>  $utente
+ * @return array<string, array{int, mixed}>
+ */
+function ioMostraGuaste(array $utente = ['id' => 'uat-ada']): array
+{
+    return [
+        'notifiche_non_lette manca' => [200, ['data' => ['utente' => $utente, 'workspace' => ['id' => 'uat-ws'], 'ruolo' => 'membro']]],
+        'null, come col gettone dell\'accesso' => [200, ['data' => ['utente' => $utente, 'workspace' => null, 'ruolo' => null, 'notifiche_non_lette' => null]]],
+        'una stringa' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => '7']]],
+        'un decimale' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => 7.5]]],
+        'un booleano' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => true]]],
+        'una lista' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => [1, 2]]]],
+        'negativo' => [200, ['data' => ['utente' => $utente, 'notifiche_non_lette' => -1]]],
+        'senza data, con la persona e il numero in cima' => [200, ['utente' => $utente, 'notifiche_non_lette' => 7]],
+        'data non è un oggetto' => [200, ['data' => 7]],
+        '500' => [500, ''],
+        'senza JSON' => [200, 'uat: non è JSON'],
+    ];
+}
+
 it('se io.mostra non dà un numero di non lette arriva BackofficeNonRisponde, mai uno 0 (sprint 5 · T1.2)', function (int $stato, mixed $corpo) {
     sessioneAMano(marketing());
     backoffice(['/v1/io' => Http::response($corpo, $stato), ...aziendeEWorkspace()]);
 
     expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
-})->with([
-    'notifiche_non_lette manca' => [200, ['data' => ['utente' => ['id' => 'uat-ada'], 'workspace' => ['id' => 'uat-ws'], 'ruolo' => 'membro']]],
-    'null, come col gettone dell\'accesso' => [200, ['data' => ['notifiche_non_lette' => null]]],
-    'una stringa' => [200, ['data' => ['notifiche_non_lette' => '7']]],
-    'un decimale' => [200, ['data' => ['notifiche_non_lette' => 7.5]]],
-    'un booleano' => [200, ['data' => ['notifiche_non_lette' => true]]],
-    'una lista' => [200, ['data' => ['notifiche_non_lette' => [1, 2]]]],
-    'negativo' => [200, ['data' => ['notifiche_non_lette' => -1]]],
-    'senza data' => [200, ['notifiche_non_lette' => 7]],
-    'data non è un oggetto' => [200, ['data' => 7]],
-    '500' => [500, ''],
-    'senza JSON' => [200, 'uat: non è JSON'],
-]);
+})->with(ioMostraGuaste());
 
-it('senza sessione, o con la sessione aperta ma senza workspace, dà null e non chiama il backoffice (T3.2)', function () {
-    Http::fake();
+it('senza sessione, o con la sessione aperta ma senza workspace, dà null, non chiama il backoffice e lascia la sessione com\'è (T3.2; sprint 13 · T2.6)', function () {
+    // Se la cornice leggesse io.mostra ci troverebbe una lingua e un nome nuovi, e li metterebbe nella sessione.
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
 
     expect(Cornice::dati())->toBeNull();
 
     sessioneAMano(null);
+    $prima = session(Sessione::CHIAVE);
 
     expect(Sessione::aperta())->toBeTrue()
-        ->and(Cornice::dati())->toBeNull();
+        ->and(Cornice::dati())->toBeNull()
+        ->and(session(Sessione::CHIAVE))->toBe($prima);
     Http::assertNothingSent();
 });
 
@@ -300,15 +329,17 @@ it('se il backoffice non risponde alle aziende o ai workspace arriva BackofficeN
 // persona della sessione senza chiamare la cornice.
 
 /**
- * io.mostra dopo un cambio nel profilo: la persona dei test con questi campi al posto dei suoi. Un valore che non è una lista
- * di campi va al posto della persona intera, com'è: un backoffice che sbaglia.
+ * io.mostra dopo un cambio nel profilo: la persona dei test con questi campi al posto dei suoi, e senza quelli di `$senza`,
+ * che la risposta non porta affatto. Un valore che non è una lista di campi va al posto della persona intera, com'è: un
+ * backoffice che sbaglia.
  *
+ * @param  list<string>  $senza
  * @return array{data: array<string, mixed>}
  */
-function ioMostraCon(mixed $utente, int $nonLette = 3): array
+function ioMostraCon(mixed $utente, int $nonLette = 3, array $senza = []): array
 {
     $io = ioMostra($nonLette);
-    $io['data']['utente'] = is_array($utente) ? [...$io['data']['utente'], ...$utente] : $utente;
+    $io['data']['utente'] = is_array($utente) ? array_diff_key([...$io['data']['utente'], ...$utente], array_flip($senza)) : $utente;
 
     return $io;
 }
@@ -337,18 +368,11 @@ it('la lingua e il nome che io.mostra dà diversi da quelli della sessione sono 
         ...aziendeEWorkspace(),
     ]);
 
-    $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson([
+    // Gli stessi dati del primo caso, con la lingua e il nome nuovi: l'email e il workspace sono ancora quelli della sessione.
+    $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson(datiAttesi('2026-10-10T09:40:00.000001Z', [
         'lingua' => 'es',
         'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
-        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
-        'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
-        'aziende' => [
-            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
-            ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [['nome' => 'UAT clienti', 'slug' => 'uat-clienti'], ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite']]],
-        ],
-        'non_lette' => 3,
-        'aggiornati_il' => '2026-10-10T09:40:00.000001Z',
-    ]);
+    ]));
 });
 
 it('alla richiesta dopo una pagina che legge la sessione senza chiamare la cornice trova la lingua e il nome nuovi, e il backoffice non è chiamato (sprint 13 · T2.2)', function () {
@@ -359,6 +383,9 @@ it('alla richiesta dopo una pagina che legge la sessione senza chiamare la corni
     expect(Http::recorded())->toHaveCount(4);
 
     // La pagina dopo non chiama Cornice::dati(): legge la persona dalla sessione, come un middleware che ne prende la lingua.
+    // Le due richieste di un test hanno la stessa sessione in memoria: il caso diventa rosso se la cornice non scrive nella
+    // sessione, ma non prova il passaggio dal gestore della sessione fra una richiesta e l'altra, che è di `StartSession` di
+    // Laravel (review, R5).
     $dopo = $this->get('w/uat-marketing/sessione')->assertOk();
 
     expect($dopo->json('lingua'))->toBe('es')
@@ -402,10 +429,10 @@ it('della sessione cambiano solo la lingua e il nome: gettoni, id, email, fuso, 
         ->and($risposta->json('workspace'))->toBe(['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
 });
 
-it('ciò che non vale non entra: i dati di un\'altra persona, una lingua o un nome che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5)', function (mixed $utente, string $lingua, string $nome) {
+it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua o un nome che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
-    backoffice(['/v1/io' => ioMostraCon($utente)]);
+    backoffice(['/v1/io' => ioMostraCon($utente, senza: $senza)]);
 
     $risposta = $this->get('w/uat-marketing/cornice')->assertOk();
 
@@ -419,6 +446,10 @@ it('ciò che non vale non entra: i dati di un\'altra persona, una lingua o un no
 })->with([
     // (a) i dati di un'altra persona non entrano, nemmeno in parte
     'un\'altra persona' => [['id' => 'uat-grace', 'lingua' => 'es', 'nome' => 'UAT Grace Hopper'], 'en', 'UAT Ada'],
+    // e nemmeno quelli che non dicono di chi sono. Queste due righe sono il motivo del vincolo `^0.12.1`: con zr-auth 0.12.0
+    // sarebbero rosse, perché la sua `Sessione::aggiorna` scartava solo un id diverso.
+    'la persona con l\'id null' => [['id' => null, 'lingua' => 'es', 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada'],
+    'la persona senza id' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada', ['id']],
     // (b) il campo che non vale resta, e l'altro cambia
     'la lingua vuota' => [['lingua' => '', 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada Lovelace'],
     'la lingua di soli spazi' => [['lingua' => "  \t ", 'nome' => 'UAT Ada Lovelace'], 'en', 'UAT Ada Lovelace'],
@@ -437,35 +468,21 @@ it('ciò che non vale non entra: i dati di un\'altra persona, una lingua o un no
     'la persona null' => [null, 'en', 'UAT Ada'],
 ]);
 
-it('un io.mostra senza un numero valido di non lette resta un guasto e non tocca la sessione, anche se porta una lingua e un nome nuovi (sprint 13 · T2.6)', function (mixed $corpo) {
+// Le stesse risposte guaste del caso dello sprint 5, con la persona cambiata dove la risposta può portarla. Il caso senza una
+// sessione entrata in un workspace è più su, con «T3.2»: lì la cornice non legge io.mostra, e la sessione resta com'è.
+it('un io.mostra senza un numero valido di non lette resta un guasto e non tocca la sessione, anche se porta una lingua e un nome nuovi (sprint 13 · T2.6)', function (int $stato, mixed $corpo) {
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
-    backoffice(['/v1/io' => Http::response($corpo), ...aziendeEWorkspace()]);
+    backoffice(['/v1/io' => Http::response($corpo, $stato), ...aziendeEWorkspace()]);
 
     expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class)
         ->and(session(Sessione::CHIAVE))->toBe($prima);
-})->with([
-    'notifiche_non_lette manca' => [['data' => ['utente' => adaCambiata(), 'workspace' => ['id' => 'uat-ws'], 'ruolo' => 'membro']]],
-    'null, come col gettone dell\'accesso' => [['data' => ['utente' => adaCambiata(), 'workspace' => null, 'ruolo' => null, 'notifiche_non_lette' => null]]],
-    'una stringa' => [['data' => ['utente' => adaCambiata(), 'notifiche_non_lette' => '7']]],
-    'un decimale' => [['data' => ['utente' => adaCambiata(), 'notifiche_non_lette' => 7.5]]],
-    'un booleano' => [['data' => ['utente' => adaCambiata(), 'notifiche_non_lette' => true]]],
-    'negativo' => [['data' => ['utente' => adaCambiata(), 'notifiche_non_lette' => -1]]],
-    'senza data, con la persona e il numero in cima' => [['utente' => adaCambiata(), 'notifiche_non_lette' => 7]],
-]);
+})->with(ioMostraGuaste(adaCambiata()));
 
-it('senza una sessione entrata in un workspace la cornice dà null e non legge io.mostra: la sessione resta com\'è (sprint 13 · T2.6)', function () {
-    sessioneAMano(null);
-    $prima = session(Sessione::CHIAVE);
-    // Se la cornice leggesse io.mostra ci troverebbe una lingua e un nome nuovi.
-    backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
-
-    expect(Cornice::dati())->toBeNull()
-        ->and(session(Sessione::CHIAVE))->toBe($prima);
-    Http::assertNothingSent();
-});
-
-it('se la sessione scade mentre la cornice legge io.mostra arriva GettoneRifiutato di zr-auth, come prima: la persona che la sessione non dà più non rompe la lettura (sprint 13 · T2)', function () {
+// Questo caso non distingue il ripiego `?? $utente` di Cornice::dati() (review, R4): con la sessione scaduta la lettura dopo
+// lancia prima che la persona serva, e il caso è verde anche senza. Prova che una sessione che scade a metà resta un
+// GettoneRifiutato, come prima dello sprint 13, e che la cornice si ferma lì.
+it('se la sessione scade mentre la cornice legge io.mostra arriva GettoneRifiutato di zr-auth dalla lettura dopo, come prima, e la cornice non ne fa altre: una richiesta sola (sprint 13 · T2; review, R4)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 10:00:00', 'UTC'));
     sessioneAMano(marketing());
     // La sessione dei test scade fra un'ora, e la risposta di io.mostra arriva due ore dopo: da lì zr-auth non dà più né la

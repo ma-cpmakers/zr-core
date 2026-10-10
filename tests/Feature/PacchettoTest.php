@@ -26,6 +26,17 @@ it('si avvia dentro un\'app Laravel', function () {
 // una versione accettata e mai provata è una promessa senza prova.
 
 /**
+ * Le voci della matrice di zr-auth in ci.yml come sono scritte fra le quadre (`'0.12'`): null se la riga non c'è, o se non sta
+ * su una riga sola.
+ */
+function vociDellaMatriceDiZrAuth(string $ci): ?string
+{
+    preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
+
+    return $matrice[1] ?? null;
+}
+
+/**
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
  * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch: uno solo, o più d'uno uniti da
@@ -41,8 +52,7 @@ function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
         return ["il vincolo «{$vincolo}» non è fatto di ^0.<minore> uniti da ||"];
     }
     preg_match_all('/\^(\d+\.\d+)/', $vincolo, $accettate);
-    preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
-    preg_match_all("/'(\d+\.\d+)'/", $matrice[1] ?? '', $provate);
+    preg_match_all("/'(\d+\.\d+)'/", vociDellaMatriceDiZrAuth($ci) ?? '', $provate);
 
     $problemi = [
         ...array_map(fn (string $versione) => "la CI non prova zr-auth {$versione}", array_values(array_diff($accettate[1], $provate[1]))),
@@ -70,16 +80,18 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1)', function () {
+it('composer.json chiede zr-auth ^0.12.1 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
 
-    // Dalla 0.12.0, la prima: l'ha provata il giro della PR #15 (sprint 12), il 10/10/2026. Sotto la 0.12 no: `Sessione::aggiorna`
-    // non c'è, e una guardia per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
-    expect($vincolo)->toBe('^0.12')
-        ->and($matrice[1] ?? null)->toBe("'0.12'")
+    // Dalla 0.12.1, non dalla 0.12.0: il vincolo dice la patch che ha provato il codice che la usa. La 0.12.0 l'ha provata solo una
+    // zr-core che `Sessione::aggiorna` non la chiamava (il giro della PR #15, sprint 12, e quello del primo commit di questo sprint);
+    // con la cornice che la chiama i giri hanno installato dalla 0.12.1 in su, e fra le due patch è cambiata proprio `aggiorna`: nella 0.12.0
+    // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
+    // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
+    expect($vincolo)->toBe('^0.12.1')
+        ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
 
@@ -125,8 +137,7 @@ function giriDettiDa(string $testo): array
 it('il README dice un giro della CI per ogni voce della matrice, e nessun altro (sprint 8 · T1.3; sprint 13 · T1.3)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    preg_match('/^\s+zr-auth: \[([^\]\n]*)\]$/m', $ci, $matrice);
-    preg_match_all("/'(\d+\.\d+)'/", $matrice[1] ?? '', $voci);
+    preg_match_all("/'(\d+\.\d+)'/", vociDellaMatriceDiZrAuth($ci) ?? '', $voci);
 
     // Il README rimasto alla v1.3.0: dice i sette giri di allora. E quello che dice il giro giusto e, in un altro punto, uno che
     // la matrice non ha.
@@ -140,34 +151,36 @@ it('il README dice un giro della CI per ogni voce della matrice, e nessun altro 
         ->and(giriDettiDa($conUnGiroInPiu))->toBe([...$voci[1], '0.11']);
 });
 
-it('il README dice, in «La parte server», da quale versione zr-core chiede zr-auth ^0.12, perché, e che con una zr-auth più vecchia Composer lascia zr-core alla v1.3.0 (sprint 13 · T1.3)', function () {
+it('il README dice, in «La parte server», da quale versione zr-core chiede zr-auth ^0.12.1, perché, che con una zr-auth più vecchia Composer lascia zr-core alla v1.3.0, e che nemmeno la 0.12.0 basta (sprint 13 · T1.3; review, R1 e S1)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'da quale versione' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Dalla `v1.4.0` una zr-auth più vecchia non basta'),
         'perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'la cornice chiama `Sessione::aggiorna`, che c\'è dalla 0.12'),
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'con una più vecchia Composer lascia zr-core alla `v1.3.0`'),
+        'nemmeno la 0.12.0, e perché' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Nemmeno la 0.12.0 basta: la sua `Sessione::aggiorna` prende la lingua e il nome anche da una risposta che non dice di chi sono (senza `utente.id`); dalla 0.12.1 no'),
     ];
 
-    // Il README con «La parte server» e «La cornice» scambiate di titolo: le tre cose sono dette, ma non dove si legge che cosa
-    // zr-core richiede.
-    $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+    // Con «La parte server» e «La cornice» scambiate le quattro cose sono dette, ma non dove si legge che cosa zr-core richiede.
+    $scambiate = conParteServerECorniceScambiate($readme);
 
     expect($cosaDice($readme))->toBe([
         'da quale versione' => true,
         'perché' => true,
         'con una più vecchia Composer lascia zr-core alla v1.3.0' => true,
+        'nemmeno la 0.12.0, e perché' => true,
     ])
         ->and(str_contains(suUnaRiga($scambiate), 'una zr-auth più vecchia non basta'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
             'da quale versione' => false,
             'perché' => false,
             'con una più vecchia Composer lascia zr-core alla v1.3.0' => false,
+            'nemmeno la 0.12.0, e perché' => false,
         ]);
 });
 
 it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
-    $vincolo = '^0.12';
+    $vincolo = '^0.12.1';
     $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
 
     // Com'erano fino alla v1.3.0, uno alla volta: la matrice a sette voci, il vincolo a sette versioni.
@@ -678,6 +691,15 @@ function sezioneDelReadme(string $readme, string $titolo): string
     return suUnaRiga($sezione[1] ?? '');
 }
 
+/**
+ * Il README con «La parte server» e «La cornice» scambiate di titolo: ogni frase c'è ancora, ma sotto l'altro titolo. È il
+ * mutante dei casi che guardano dove il README dice una cosa della parte server, e non solo se la dice.
+ */
+function conParteServerECorniceScambiate(string $readme): string
+{
+    return strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+}
+
 it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi di ogni notifica, e che è com\'è nel backoffice, dove a non tradurlo è la parte server (sprint 12 · T2.4; review, R9)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
@@ -711,9 +733,8 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
         'un test del frontend non fissi la prima lettura' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Un test del frontend non fissi «la prima lettura»'),
     ];
 
-    // Il README con «La parte server» e «La cornice» scambiate di titolo: le tre cose sono dette, ma non dove si legge di
-    // Cornice::dati().
-    $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+    // Con «La parte server» e «La cornice» scambiate le tre cose sono dette, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
 
     expect($cosaDice($readme))->toBe([
         'l\'ordine non è un contratto' => true,
@@ -733,7 +754,7 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la parte server chiama `Sessione::aggiorna` di zr-auth a ogni lettura, e il README lo
 // dice dove dice da dove vengono la persona e la lingua. Fino alla v1.3.0 diceva che zr-core non la chiamava (sprint 12 · T7).
 
-it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cambiano solo quei due, da quale richiesta valgono e il rimedio (sprint 13 · T2.7)', function () {
+it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cambiano solo quei due, da quale richiesta valgono, il rimedio, e che chi la chiama prima ne tiene il risultato (sprint 13 · T2.7; review, R2)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati'),
@@ -741,11 +762,14 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome nuovi da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
         'il rimedio' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'chiama `Cornice::dati()` prima di leggere la lingua, o rilegge `Sessione::utente()` dopo'),
+        // Il rimedio da solo, accanto all'esempio che la lascia nella funzione di `share()`, porta a chiamarla due volte.
+        'chi la chiama prima ne tiene il risultato' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza chiamarla un\'altra volta'),
+        'perché: rilegge tutto a ogni chiamata' => str_contains(sezioneDelReadme($testo, 'La parte server'), '`Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto letture invece di quattro, con due segni'),
+        'in un middleware parte a ogni richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'in un middleware parte a ogni richiesta che ci passa, anche senza una pagina da mostrare'),
     ];
 
-    // Il README con «La parte server» e «La cornice» scambiate di titolo: le frasi ci sono, ma non dove si legge da dove
-    // vengono la persona e la lingua.
-    $scambiate = strtr($readme, ["\n## La parte server\n" => "\n## La cornice\n", "\n## La cornice\n" => "\n## La parte server\n"]);
+    // Con «La parte server» e «La cornice» scambiate le frasi ci sono, ma non dove si legge da dove vengono la persona e la lingua.
+    $scambiate = conParteServerECorniceScambiate($readme);
 
     expect($cosaDice($readme))->toBe([
         'a ogni lettura, con Sessione::aggiorna' => true,
@@ -753,6 +777,9 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         'i dati li portano da quella stessa richiesta' => true,
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => true,
         'il rimedio' => true,
+        'chi la chiama prima ne tiene il risultato' => true,
+        'perché: rilegge tutto a ogni chiamata' => true,
+        'in un middleware parte a ogni richiesta' => true,
     ])
         ->and(str_contains(suUnaRiga($scambiate), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
@@ -761,6 +788,9 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
             'i dati li portano da quella stessa richiesta' => false,
             'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => false,
             'il rimedio' => false,
+            'chi la chiama prima ne tiene il risultato' => false,
+            'perché: rilegge tutto a ogni chiamata' => false,
+            'in un middleware parte a ogni richiesta' => false,
         ]);
 });
 
@@ -800,10 +830,18 @@ function puntoDelleNotifiche(string $readme): string
     return suUnaRiga($punto[0] ?? '');
 }
 
+/**
+ * Il README col punto delle notifiche e quello della ricerca scambiati di nome: ogni frase c'è ancora, ma dove si legge della
+ * ricerca. È il mutante dei casi che guardano che una frase stia nel punto «Le notifiche», e non solo nel README.
+ */
+function conNotificheERicercaScambiate(string $readme): string
+{
+    return strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+}
+
 it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 · T3.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
-    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+    $scambiati = conNotificheERicercaScambiate($readme);
 
     expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
         ->and(substr_count($readme, '- **Le notifiche**'))->toBe(1)
@@ -855,8 +893,7 @@ it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per
 
 it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando un clic non le segna tutte (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
-    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+    $scambiati = conNotificheERicercaScambiate($readme);
 
     expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
         ->and(substr_count($readme, '- **Le notifiche**'))->toBe(1)
@@ -872,8 +909,7 @@ it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando 
 // lenta, quando finisce, riscrive la sessione com'era all'inizio. Il README lo dichiara nel punto «Le notifiche», una frase per cosa.
 it('il README dichiara, nel punto «Le notifiche», il limite della sessione con una richiesta lenta (sprint 12 · review, S1)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
-    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+    $scambiati = conNotificheERicercaScambiate($readme);
 
     expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
@@ -894,20 +930,26 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
 ]);
 
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la cornice scrive nella sessione (la lingua e il nome del profilo), e il limite della
-// richiesta lenta vale anche per quelli. Una frase per cosa, dentro il limite e non altrove nel punto.
-it('il README dice, nel limite della sessione del punto «Le notifiche», che con una richiesta lenta tornano anche la lingua e il nome di prima, e che la lettura dopo li rimette (sprint 13 · T2.8)', function (string $frase) {
+// sessione vale anche per quelli. Per quelli non serve una richiesta lenta (review, R3): Laravel riscrive la sessione intera alla
+// fine di ogni richiesta, e basta una richiesta della stessa sessione cominciata prima e finita dopo la pagina che li ha
+// aggiornati. Una frase per cosa, dentro il limite e non altrove nel punto.
+it('il README dice, nel limite della sessione del punto «Le notifiche», che la lingua e il nome di prima tornano con una richiesta della stessa sessione cominciata prima e finita dopo, anche non lenta, e che la lettura dopo li rimette (sprint 13 · T2.8; review, R3)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il limite della sessione: dalla frase che lo apre alla fine del punto «Le notifiche».
     $limite = fn (string $testo): string => (string) strstr(puntoDelleNotifiche($testo), 'Un limite, che non è solo di questa rotta');
-    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
-    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+    $scambiati = conNotificheERicercaScambiate($readme);
 
     expect(str_contains($limite($readme), $frase))->toBe(true)
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
-        ->and(str_contains($limite($scambiati), $frase))->toBe(false);
+        ->and(str_contains($limite($scambiati), $frase))->toBe(false)
+        // La frase di prima diceva che serviva una richiesta lenta.
+        ->and(str_contains(suUnaRiga($readme), 'mentre la richiesta lenta girava'))->toBe(false);
 })->with([
-    'tornano anche la lingua e il nome di prima' => ['Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati mentre la richiesta lenta girava'],
-    'la lettura dopo li rimette' => ['li rimette la lettura dopo'],
+    'tornano anche la lingua e il nome di prima' => ['Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati mentre un\'altra richiesta della stessa sessione girava'],
+    'anche con una richiesta non lenta' => ['basta che sia cominciata prima e finita dopo, anche non lenta (le notifiche, la ricerca, una chiamata del modulo)'],
+    'i dati della cornice restano giusti' => ['I dati della cornice restano giusti'],
+    'che cosa legge il frontend alla visita dopo' => ['alla visita dopo ciò che il frontend legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima'],
+    'quella lettura li rimette' => ['e quella lettura li rimette'],
 ]);
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
