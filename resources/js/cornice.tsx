@@ -202,13 +202,14 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
 }
 
 /**
- * `questi` non sono stati letti dopo `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
- * è lo stesso o più indietro. Senza un segno da una parte, o fra due workspace, non si può dire: `false`.
+ * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
+ * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
+ * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`.
  */
-function nonLettiDopo(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
+function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
     const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
 
-    return questi.workspace.slug === quelli.workspace.slug && diQuesti !== undefined && diQuelli !== undefined && diQuesti <= diQuelli;
+    return questi.workspace.slug === quelli.workspace.slug && diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli;
 }
 
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
@@ -220,7 +221,8 @@ interface Saputo {
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
  * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
- * niente: vale solo per i dati con cui la rotta è stata chiesta.
+ * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
+ * stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
  */
 function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): boolean {
     if (saputo === undefined || dati.workspace.slug !== saputo.con.workspace.slug) {
@@ -235,11 +237,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
     // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
-    // loro segno dice che non sono stati letti dopo: allora restano quelli che ci sono (con lo stesso segno sono la stessa
-    // lettura, e resta lo stesso oggetto). Senza segno, o in un altro workspace, vale la pagina. Si decide mentre si rende,
-    // non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
+    // loro segno dice che sono stati letti prima: allora restano quelli che ci sono. Con lo stesso segno vale la pagina, come
+    // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
+    // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
     const [tenuti, setTenuti] = useState(dellaPagina);
-    const dati = nonLettiDopo(dellaPagina, tenuti) ? tenuti : dellaPagina;
+    const dati = lettiPrima(dellaPagina, tenuti) ? tenuti : dellaPagina;
     if (dati !== tenuti) {
         setTenuti(dati);
     }

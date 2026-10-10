@@ -8,7 +8,9 @@ import type { DatiDellaCornice } from './index';
 // pagina, ridà alla pagina l'oggetto di prima per i dati uguali in profondità: senza un segno la cornice non li riconosce
 // nuovi, e la campanella resta al numero che aveva. Col segno `aggiornati_il` di `Cornice::dati()`, diverso a ogni lettura,
 // vale il numero dei dati. Ogni scenario ha qui accanto lo stesso giro senza il segno, coi dati come li dava la `v1.2.0`: lì
-// la campanella resta com'era. Se Inertia cambia e uno di quei casi diventa rosso, il segno non serve più.
+// la campanella resta com'era. Se Inertia cambia e uno di quei casi diventa rosso, il segno non serve più a far riconoscere i
+// dati nuovi; resta ciò con cui la cornice li ordina (sprint 11, più sotto): lo confronta, nella forma che `segno()` di
+// servizi.ts riconosce (27 caratteri, in UTC, coi microsecondi a sei cifre e `Z` in fondo).
 //
 // Inertia inizializza il suo router una volta per modulo: ogni test riparte da moduli nuovi (`vi.resetModules()`, con Inertia
 // fra i moduli che vitest tratta da sé: `server.deps.inline` in vitest.config.ts) e li importa dopo, in modo dinamico.
