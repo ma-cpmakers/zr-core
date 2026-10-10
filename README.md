@@ -92,7 +92,9 @@ più vecchi.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
-la lingua) arriva alla cornice al prossimo ingresso.
+la lingua) arriva alla cornice al prossimo ingresso. Dalla 0.12 zr-auth ha `Sessione::aggiorna`, che rimette il nome e la
+lingua della sessione uguali a quelli di `io.mostra`: zr-core in questa versione non la chiama; se la chiama il frontend
+prima di `Cornice::dati()`, la cornice ha il nome e la lingua nuovi da quella richiesta.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
