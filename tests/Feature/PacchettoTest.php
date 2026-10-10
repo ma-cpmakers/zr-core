@@ -784,3 +784,50 @@ it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (
         ->and($diPrima)->not->toBe($readme)
         ->and(substr_count($diPrima, '`{data: {fino_a}, segnate_il}`'))->toBe(1);
 });
+
+// Sprint 12 · T5 (voce #1464): `active={null}` dice che nessuna voce della barra è attiva. Il README lo dice dove parla di
+// `active`: nel punto «La voce attiva» di «La cornice», e nel punto «La pagina» di «La cornice montata una volta sola».
+
+/**
+ * Un punto dell'elenco che il README mette sotto «La cornice», prima di «La cornice montata una volta sola»: quello che comincia
+ * con quel grassetto, su una riga sola. Vuoto se il titolo o il punto non ci sono.
+ */
+function puntoDellaCornice(string $readme, string $grassetto): string
+{
+    preg_match('/^## La cornice$(.*?)(?=^#{2,3} |\z)/ms', $readme, $paragrafo);
+    preg_match('/^- \*\*'.preg_quote($grassetto, '/').'\*\*.*?(?=^- |^$|\z)/ms', $paragrafo[1] ?? '', $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il README dice, nel punto «La voce attiva» di «La cornice», che nessuna voce attiva si dice con active={null} (sprint 12 · T5.6)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $frase = 'Una pagina che non sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto';
+    // Il README col punto della voce attiva e quello del menu Prodotti scambiati di nome: la frase c'è, ma dove si legge del menu.
+    $scambiati = strtr($readme, ['- **La voce attiva**' => '- **Il menu Prodotti**', '- **Il menu Prodotti**' => '- **La voce attiva**']);
+    // Il README che in quel punto parla di `active` senza nominare `null`.
+    $senzaNull = str_replace('lo dice con `active={null}`', 'lo dice con `active`', $readme);
+
+    expect(str_contains(puntoDellaCornice($readme, 'La voce attiva'), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **La voce attiva**'))->toBe(1)
+        ->and(substr_count($readme, '- **Il menu Prodotti**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, 'La voce attiva'), $frase))->toBe(false)
+        ->and($senzaNull)->not->toBe($readme)
+        ->and(str_contains(puntoDellaCornice($senzaNull, 'La voce attiva'), $frase))->toBe(false);
+});
+
+it('il README dice, nel punto «La pagina» del layout della cornice, come si dice che nessuna voce è attiva (sprint 12 · T5.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README col punto della pagina e quello del percorso scambiati di nome: la frase c'è, ma dove si legge del percorso.
+    $scambiati = strtr($readme, ['- **La pagina**' => '- **Il percorso**', '- **Il percorso**' => '- **La pagina**']);
+
+    expect(str_contains(puntoDelLayout($readme, 'La pagina'), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **La pagina**'))->toBe(1)
+        ->and(substr_count($readme, '- **Il percorso**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelLayout($scambiati, 'La pagina'), $frase))->toBe(false);
+})->with([
+    'con null, dal layout o dalla pagina' => ['Nessuna voce attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`)'],
+    'il null della pagina vince su una voce del layout' => ['`null` è un valore, e quello della pagina vince anche su una voce data dal layout'],
+]);
