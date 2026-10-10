@@ -2,9 +2,12 @@
 
 namespace Zeiras\Core\Http;
 
+use Illuminate\Contracts\Http\Kernel as ContrattoDelKernel;
+use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use LogicException;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
@@ -51,25 +54,45 @@ final class NotificheDellaCornice
     private const CHIAMATE = 5;
 
     /**
-     * Passati quanti secondi dalla prima chiamata non ne parte un'altra. Una chiamata già partita finisce: zr-auth aspetta
-     * ogni risposta del backoffice 5 secondi, se il frontend non ha cambiato quel tempo, e la richiesta del browser dura al
-     * più questi secondi più quelli.
+     * Passati quanti secondi dall'arrivo della richiesta non parte un'altra chiamata al backoffice. Una chiamata già partita
+     * finisce: zr-auth aspetta ogni risposta del backoffice 5 secondi, se il frontend non ha cambiato quel tempo, e la rotta
+     * risponde al più a questi secondi più quelli dall'arrivo.
      */
     private const SECONDI = 10;
 
-    /** Quanti secondi il lock della sessione dura oltre il tempo che la rotta delle letture può durare. */
+    /**
+     * Quanti secondi il lock della sessione dura oltre il momento in cui la rotta delle letture ha risposto, al più tardi: ciò
+     * che resta alla richiesta per chiudersi — i middleware del frontend al ritorno, il salvataggio della sessione.
+     */
     private const MARGINE = 5;
 
     /**
      * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
      * durare, cioè SECONDI di richiami, più il tempo che zr-auth aspetta l'ultima risposta (`zr-auth.timeout`), più un margine.
      * Non i 10 secondi di `->bloccaSessione()` di zr-auth: col lock scaduto a metà corsa un'uscita da un'altra scheda lo
-     * prenderebbe, e la richiesta, finendo, rimetterebbe la sessione di prima. Si calcola quando le rotte si registrano, e la
-     * cache delle rotte lo tiene: dopo aver cambiato `zr-auth.timeout` si rifà.
+     * prenderebbe, e la richiesta, finendo, rimetterebbe la sessione di prima. Il lock si prende prima dei middleware del
+     * frontend, e la tenuta corre da lì: per questo i SECONDI si contano dall'arrivo della richiesta (arrivoDellaRichiesta). Un
+     * tempo sotto lo zero non la accorcia: un lock con una tenuta negativa, su Redis, non scade. Si calcola quando le rotte si
+     * registrano, e la cache delle rotte lo tiene: dopo aver cambiato `zr-auth.timeout` si rifà.
      */
     public static function tenutaDelBlocco(): int
     {
-        return self::SECONDI + (int) config('zr-auth.timeout') + self::MARGINE;
+        return self::SECONDI + max(0, (int) config('zr-auth.timeout')) + self::MARGINE;
+    }
+
+    /**
+     * Quando Laravel ha cominciato a rispondere a questa richiesta, in UTC: lo tiene il kernel, ed è prima del lock della
+     * sessione, che si prende nel gruppo `web`, e dei middleware del frontend che girano col lock preso. Senza un kernel che
+     * lo dica è adesso.
+     */
+    private static function arrivoDellaRichiesta(): Carbon
+    {
+        $kernel = app()->bound(ContrattoDelKernel::class) ? app(ContrattoDelKernel::class) : null;
+        $arrivo = $kernel instanceof Kernel ? $kernel->requestStartedAt() : null;
+        $adesso = Carbon::now('UTC');
+
+        // Una copia: quello del kernel serve ancora al kernel.
+        return $arrivo !== null && $arrivo->lessThanOrEqualTo($adesso) ? $arrivo->copy()->utc() : $adesso;
     }
 
     /**
@@ -129,14 +152,15 @@ final class NotificheDellaCornice
      * POST /cornice/notifiche/letture: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso,
      * anche quelle oltre la prima pagina (io.notifiche.letture.crea). Il backoffice ne segna al più 5000 per chiamata e dice
      * se ne restano (`altre`): lo si richiama con lo stesso `fino_a` finché ne restano, al più CHIAMATE volte e senza chiamate
-     * nuove passati SECONDI dalla prima. `altre` della risposta è `false` quando il backoffice ha detto che non ne restano,
+     * nuove passati SECONDI dall'arrivo della richiesta. `altre` della risposta è `false` quando il backoffice ha detto che non ne restano,
      * `true` quando un tetto ha fermato i richiami: non è un errore, e la stessa richiesta ripetuta continua da lì. `fino_a`
      * della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina
      * che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo l'ultima
      * risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo. Una
      * chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta segnato. La rotta
      * tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di zr-auth, qui non
-     * si arriva, e la risposta è il 503 di zr-auth.
+     * si arriva, e la risposta è il 503 di zr-auth. Se qui si arriva passati SECONDI dall'arrivo della richiesta — il lock è già
+     * preso da allora — la rotta non chiama il backoffice e risponde 503 `fuori_tempo`: finirebbe a lock scaduto.
      */
     public function letture(Request $richiesta): JsonResponse
     {
@@ -154,8 +178,21 @@ final class NotificheDellaCornice
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
-        // L'orologio è quello del segno: passato questo istante non parte un'altra chiamata.
-        $nessunaDopo = Carbon::now('UTC')->addSeconds(self::SECONDI);
+        // Per il client di zr-auth un tempo sotto 1 è «senza limite»: una chiamata senza un tetto può durare più di qualunque
+        // lock. È la configurazione a essere sbagliata: un errore nel log del modulo, non una risposta da riprovare.
+        if ((int) config('zr-auth.timeout') < 1) {
+            throw new LogicException('zr-core: POST /cornice/notifiche/letture non chiama il backoffice con zr-auth.timeout minore di 1, che per il client di zr-auth vuol dire senza limite: il blocco della sessione non coprirebbe la chiamata.');
+        }
+
+        // L'orologio è quello del segno. I secondi si contano da quando la richiesta è arrivata, non da qui: il lock della
+        // sessione è preso da allora, e scade a tenuta finita anche se la richiesta ci ha messo del tempo ad arrivare alla
+        // rotta. Passato questo istante non parte un'altra chiamata; se è già passato non parte nemmeno la prima.
+        $nessunaDopo = self::arrivoDellaRichiesta()->addSeconds(self::SECONDI);
+
+        if (Carbon::now('UTC')->greaterThan($nessunaDopo)) {
+            return new JsonResponse(['errore' => 'fuori_tempo'], 503, ['Retry-After' => '1']);
+        }
+
         $chiamate = 0;
 
         try {

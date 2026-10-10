@@ -25,6 +25,9 @@ return [
      * Per una pagina sola: insiemi con un nome, ognuno una mappa direttiva → sorgenti. Il controller della pagina chiede il
      * suo per nome, IntestazioniSicurezza::perLaPagina('turnstile'), e non passa origini.
      *
+     * frame-src nella CSP di tutti non c'è: finché nessuno la scrive le cornici seguono default-src, e dalla prima sorgente
+     * vale solo ciò che è scritto qui — chi incornicia anche la propria origine scrive anche 'self'.
+     *
      *     'csp_pagine' => [
      *         'turnstile' => ['script-src' => ['https://challenges.cloudflare.com'], 'frame-src' => ['https://challenges.cloudflare.com']],
      *     ],

@@ -1032,6 +1032,22 @@ it('in ritardo, una richiesta sbagliata riceve il suo 422 o il suo 409, non il 5
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
 ]);
 
+it('la rotta legge dal kernel quando la richiesta è arrivata, e non lo sposta: chi misura quanto è durata la richiesta la vede partire dall\'istante giusto (sprint 16 · review, R2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(2_000_000, false)]);
+    // Un frontend che guarda le richieste più lunghe di un secondo: il kernel gli dà l'istante in cui la richiesta è arrivata.
+    $arrivo = null;
+    app(Kernel::class)->whenRequestLifecycleIsLongerThan(1000, function ($inizio) use (&$arrivo) {
+        $arrivo = $inizio->format('Y-m-d H:i:s.u');
+    });
+
+    senzaGettone(lettureDallaSessione(idDiSessione(), lettureFinoA('2026-10-08T10:00:00.123Z')))->assertOk();
+
+    // Non 10 secondi dopo: l'istante del kernel è del kernel, e la rotta ne usa una copia.
+    expect($arrivo)->toBe('2026-10-10 01:15:07.000321');
+});
+
 // Sprint 16 · review, R5: per il client di zr-auth un tempo di 0 è «senza limite», e ogni valore che `(int)` porta sotto 1 lo
 // diventa. Una chiamata senza un tetto può durare più di qualunque lock: la rotta non chiama, ed è un errore di configurazione.
 it('con uno zr-auth.timeout che per il client vuol dire «senza limite», POST /cornice/notifiche/letture non chiama il backoffice ed è un errore (500); a risposta data il lock della sessione è libero (sprint 16 · review, R5)', function (mixed $tempo) {

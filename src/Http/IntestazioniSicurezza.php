@@ -19,6 +19,10 @@ use Throwable;
  * insieme di `zr-core.csp_pagine`, chiesto per nome con perLaPagina). Un modulo e una pagina aggiungono sorgenti, e solo a sei
  * direttive: non tolgono niente e non toccano le altre. Una sorgente è `'self'` oppure un'origine `https://` scritta per
  * intero. Tutto il resto è scartato, mai aggiustato: il ramo sicuro è la CSP più stretta.
+ *
+ * `frame-src` nella CSP di tutti non c'è: finché nessuno la scrive le cornici seguono `default-src`, e dalla prima sorgente
+ * vale solo ciò che è scritto lì — chi incornicia anche la propria origine scrive anche `'self'`. La classe non lo aggiunge
+ * da sé: la CSP di una pagina è quella che il modulo ha dichiarato, carattere per carattere.
  */
 final class IntestazioniSicurezza
 {
@@ -42,7 +46,7 @@ final class IntestazioniSicurezza
 
     /**
      * Scrive le cinque intestazioni sulla risposta, qualunque sia: con `set`, quindi una volta sola e al posto di ciò che la
-     * risposta aveva. È il middleware più esterno, e un suo errore sarebbe un 500 senza intestazioni: dopo la risposta non
+     * risposta aveva, anche di una CSP più stretta (la classe non stringe una risposta sola). È il middleware più esterno, e un suo errore sarebbe un 500 senza intestazioni: dopo la risposta non
      * lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro escono lo stesso. Ciò che è stato scartato
      * va nel log come avviso, una riga per risposta: una sorgente sbagliata nella configurazione lo scrive finché non la si
      * corregge.
