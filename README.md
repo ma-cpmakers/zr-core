@@ -262,7 +262,14 @@ Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
-persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`.
+persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`. Dallo stesso ingresso si importa
+`titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua: dà il titolo di una notifica di quel
+tipo nella lingua, ed è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso. `tipo`
+è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
+della lingua della persona, e vale come per la cornice: `it-IT` è `it`, e con una lingua che zr-core non ha il titolo è in
+inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/en.json`):
+un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
+lingua («Novità nel workspace»), mai il codice del tipo.
 
 ### La cornice montata una volta sola
 
