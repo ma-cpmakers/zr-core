@@ -323,6 +323,36 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   visita con `preserveScroll` la lascia dov'è. Con `flush` l'area non scorre: a scorrere è un elemento della pagina, che
   porta da sé l'attributo `scroll-region` se vuole lo stesso.
 
+## Il logo
+
+I cinque file del logo di Zeiras stanno nel pacchetto, in `resources/zeiras/logos/`: sono copie del gruppo Logos del design
+system, identiche byte per byte, e non si modificano.
+
+| File | Che cos'è |
+|---|---|
+| `zeiras-logo.svg` | il logo orizzontale, per i fondi chiari |
+| `zeiras-logo-dark.svg` | il logo orizzontale, per i fondi scuri |
+| `zeiras-mark.svg` | solo il simbolo: avatar, app, spazi stretti |
+| `zeiras-mark-dark.svg` | solo il simbolo, coi colori del tema scuro |
+| `zeiras-favicon.svg` | la favicon e l'icona del browser |
+
+Una pagina senza cornice (Accedi, Registrati) importa il file e ne usa l'indirizzo:
+
+```tsx
+import logo from '../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-logo.svg';
+import simbolo from '../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-mark.svg?no-inline';
+
+<img src={logo} alt="Zeiras" />
+```
+
+Il simbolo si importa con `?no-inline`. È un file di pochi byte, e nella build Vite scrive dentro il JS ogni file importato
+più piccolo di 4096 byte (`build.assetsInlineLimit`) come indirizzo `data:`, che la CSP scritta più sotto non lascia passare:
+l'immagine non si vedrebbe. Con `?no-inline` resta un file della stessa origine, come il logo, e la CSP non cambia. Vale
+anche per `zeiras-mark-dark.svg` e `zeiras-favicon.svg`.
+
+Quale versione su quale fondo, le misure minime e lo spazio di rispetto li dice il design system, alla sezione «Logo»: qui
+non si ripetono. In cima alla barra della cornice il marchio lo mette l'`AppShell`: lì il frontend non aggiunge niente.
+
 ## La CSP
 
 Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`
