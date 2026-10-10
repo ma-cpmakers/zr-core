@@ -247,49 +247,63 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
 });
 
-it('sulla pagina di prova del layout una visita è letta quando arriva alla parte server finta e consegnata dopo, anche sei secondi dopo; una pagina si scarica in anticipo; e le rotte finte dicono quando sull\'orologio dei dati, salvo con ?segno=no (sprint 11 · T3.1)', function () {
-    $pagina = (string) file_get_contents(__DIR__.'/../../resources/demo/layout.tsx');
-    $rotte = (string) file_get_contents(__DIR__.'/../../resources/demo/rotte-finte.ts');
-    // Quante volte un file scrive ognuna di queste cose. Ciò che il client e le rotte fanno coi due tempi e con l'orologio lo
-    // provano i loro test, in vitest: qui, che la pagina di prova li usa così, e che ha gli appigli che le righe della UAT cliccano.
-    $scritte = fn (string $file, array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($file, $cosa), $cose));
+/**
+ * Quante volte un file della pagina di prova scrive ognuna di queste cose. Ciò che il client finto e le rotte finte fanno coi
+ * due tempi e con l'orologio lo provano i loro test, in vitest: i casi qui sotto, che la pagina di prova li usa così, e che ha
+ * gli appigli che le righe della UAT cliccano.
+ *
+ * @param  list<string>  $cose
+ * @return array<string, int>
+ */
+function scritteNellaPaginaDiProva(string $file, array $cose): array
+{
+    $testo = (string) file_get_contents(__DIR__.'/../../resources/demo/'.$file);
+
+    return array_combine($cose, array_map(fn (string $cosa) => substr_count($testo, $cosa), $cose));
+}
+
+it('sulla pagina di prova del layout una visita è letta quando arriva alla parte server finta, e contata solo quando la risposta è pronta (sprint 11 · T3.1)', function () {
     // La lettura sta prima della funzione che il client chiama alla consegna, e fuori: lì dentro si conta soltanto. Letta alla
-    // consegna, una visita lenta porterebbe il segno di quando arriva, non di quando è partita.
+    // consegna, una visita lenta porterebbe il segno di quando arriva, non di quando è partita; contata alla lettura, una
+    // visita annullata conterebbe.
     $allArrivo = "    const letta = leggi(nome);\n\n    return () => {\n        montaggi = 0;\n        visite += 1;\n";
 
-    expect($scritte($pagina, [$allArrivo, 'montaggi = 0;', 'visite += 1;']))->toBe([$allArrivo => 1, 'montaggi = 0;' => 2, 'visite += 1;' => 1])
-        ->and($scritte($pagina, ['const attesaLenta = 6000;', "parametri.set('lenta', String(lenta));", 'router.visit(indirizzoDi(nome, lenta), { preserveScroll });']))->toBe([
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$allArrivo, 'visite += 1;']))->toBe([$allArrivo => 1, 'visite += 1;' => 1]);
+});
+
+it('la pagina di prova del layout ha la visita lenta, di sei secondi, alla Corta e alla Lunga (sprint 11 · T3.1)', function () {
+    $allaCorta = "<a href={indirizzoDi('corta', attesaLenta)} data-uat=\"vai-corta-lenta\" onClick={apri('corta', false, attesaLenta)}>UAT alla Corta lenta</a>";
+    $allaLunga = "<a href={indirizzoDi('lunga', attesaLenta)} data-uat=\"vai-lunga-lenta\" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$allaCorta, 'data-uat="vai-corta-lenta"', $allaLunga, 'data-uat="vai-lunga-lenta"']))->toBe([
+        $allaCorta => 1,
+        'data-uat="vai-corta-lenta"' => 1,
+        $allaLunga => 1,
+        'data-uat="vai-lunga-lenta"' => 1,
+    ])
+        // I sei secondi finiscono nell'indirizzo della visita, dove la parte server finta li legge.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', ['const attesaLenta = 6000;', "parametri.set('lenta', String(lenta));", 'router.visit(indirizzoDi(nome, lenta), { preserveScroll });']))->toBe([
             'const attesaLenta = 6000;' => 1,
             "parametri.set('lenta', String(lenta));" => 1,
             'router.visit(indirizzoDi(nome, lenta), { preserveScroll });' => 1,
-        ])
-        ->and($scritte($pagina, [
-            "<a href={indirizzoDi('corta', attesaLenta)} data-uat=\"vai-corta-lenta\" onClick={apri('corta', false, attesaLenta)}>UAT alla Corta lenta</a>",
-            "<a href={indirizzoDi('lunga', attesaLenta)} data-uat=\"vai-lunga-lenta\" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>",
-            'data-uat="vai-corta-lenta"',
-            'data-uat="vai-lunga-lenta"',
-        ]))->toBe([
-            "<a href={indirizzoDi('corta', attesaLenta)} data-uat=\"vai-corta-lenta\" onClick={apri('corta', false, attesaLenta)}>UAT alla Corta lenta</a>" => 1,
-            "<a href={indirizzoDi('lunga', attesaLenta)} data-uat=\"vai-lunga-lenta\" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>" => 1,
-            'data-uat="vai-corta-lenta"' => 1,
-            'data-uat="vai-lunga-lenta"' => 1,
-        ])
-        ->and($scritte($pagina, [
-            "<button type=\"button\" data-uat=\"prefetch-corta\" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>",
-            'data-uat="prefetch-corta"',
-            'router.prefetch(',
-        ]))->toBe([
-            "<button type=\"button\" data-uat=\"prefetch-corta\" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>" => 1,
-            'data-uat="prefetch-corta"' => 1,
-            'router.prefetch(' => 1,
-        ])
-        // L'orologio delle rotte è quello dei dati, e con `?segno=no` le rotte non ne hanno uno.
-        ->and($scritte($pagina, ['rotteFinte(', 'segno ? istanteDellaLettura : undefined);']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined);' => 1])
-        ->and($scritte($rotte, ['export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {', 'aggiornati_il: ', 'segnate_il: ']))->toBe([
-            'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {' => 1,
-            'aggiornati_il: ' => 1,
-            'segnate_il: ' => 1,
         ]);
+});
+
+it('la pagina di prova del layout scarica prima la Corta col prefetch di Inertia, allo stesso indirizzo della visita, e la tiene trenta secondi (sprint 11 · T3.1)', function () {
+    $scarica = "<button type=\"button\" data-uat=\"prefetch-corta\" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$scarica, 'data-uat="prefetch-corta"', 'router.prefetch(']))->toBe([
+        $scarica => 1,
+        'data-uat="prefetch-corta"' => 1,
+        'router.prefetch(' => 1,
+    ]);
+});
+
+it('le rotte finte della pagina di prova del layout dicono quando sull\'orologio dei dati, e con ?segno=no non hanno un orologio (sprint 11 · T3.1)', function () {
+    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {';
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined);']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined);' => 1])
+        ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$conOrologio, 'aggiornati_il: ', 'segnate_il: ']))->toBe([$conOrologio => 1, 'aggiornati_il: ' => 1, 'segnate_il: ' => 1]);
 });
 
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
