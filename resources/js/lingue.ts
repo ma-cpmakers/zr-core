@@ -54,7 +54,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
     };
     // I testi già composti, per file: il pannello delle notifiche li chiede per ogni notifica, a ogni render. Le lingue che
     // zr-core non ha stanno tutte sotto la stessa chiave, la vuota: ciò che arriva come lingua non fa crescere l'elenco.
-    const composti = new Map<string, TestiDellaCornice>();
+    const composti = new Map<string, Readonly<TestiDellaCornice>>();
 
     return {
         /** I codici delle lingue, uno per file. */
@@ -62,9 +62,10 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
         /**
          * I testi in una lingua, sempre tutti: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in
          * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Si compongono una volta per
-         * file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo chiedono, e non si cambia.
+         * file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo chiedono, e non si cambia. Lo dice
+         * anche il tipo: una scrittura non passa `tsc`.
          */
-        testi(lingua: string): TestiDellaCornice {
+        testi(lingua: string): Readonly<TestiDellaCornice> {
             const file = fileDi(lingua);
             const pronti = composti.get(file ?? '');
             if (pronti !== undefined) {

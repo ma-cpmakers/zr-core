@@ -13,7 +13,9 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 // percorso chiamato sul backoffice ha il suo vincolo qui: fuori dai caratteri ammessi la rotta non c'è (404).
 // Le letture tengono il blocco della sessione (`Route::block`) per tutta la loro durata, con l'attesa di zr-auth: possono
 // durare una quindicina di secondi, e finendo rimetterebbero la sessione di prima a chi intanto è uscito o è entrato in un
-// altro workspace. Solo loro, e mai il gruppo: col blocco sulle GET due richieste della stessa persona si metterebbero in fila.
+// altro workspace. Il blocco dura tenutaDelBlocco() secondi da quando è preso: una richiesta che i middleware del frontend
+// tengono più a lungo prima della rotta ci arriva a blocco scaduto. Solo loro, e mai il gruppo: col blocco sulle GET due
+// richieste della stessa persona si metterebbero in fila.
 Route::middleware(['web', ConWorkspace::class])->prefix('cornice')->group(function (): void {
     Route::get('notifiche', [NotificheDellaCornice::class, 'elenco']);
     Route::post('notifiche/letture', [NotificheDellaCornice::class, 'letture'])

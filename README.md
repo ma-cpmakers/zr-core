@@ -124,7 +124,7 @@ esce.
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice (vedi «Le notifiche») |
+| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -212,8 +212,8 @@ cornice === null ? pagina : (
   un numero, fino alla prossima visita che porta dati letti dopo (vedi «La campanella»), col numero del backoffice; se la
   richiesta fallisce, nel pannello non
   cambia niente e il pulsante resta per riprovare. Il backoffice ne segna 5000 per chiamata, e la parte server lo richiama
-  finché ne restano, entro i due tetti della rotta: con più di 25.000 non lette, o se i richiami durano più di 10 secondi,
-  un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
+  finché ne restano, entro i due tetti della rotta: con più di 25.000 non lette, o passati 10 secondi dall'arrivo della
+  richiesta, un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
   campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un
   altro clic. Mentre il pannello si ricarica l'elenco di prima resta in pagina e il pulsante resta dov'è, col fuoco della
   tastiera. Due cose la cornice oggi non le dice: che una parte è stata
@@ -243,7 +243,10 @@ cornice === null ? pagina : (
   secondi dall'arrivo della richiesta, non da quando tocca a lei: ciò che un middleware del frontend fa prima — una
   `Cornice::dati()`, con un backoffice lento — sta dentro il blocco, e una richiesta che arriva alla rotta oltre quei 10
   secondi riceve 503 `{errore: "fuori_tempo"}` senza che il backoffice sia chiamato. Dopo la risposta della rotta restano
-  i 5 secondi di margine per chiudere la richiesta. Con `zr-auth.timeout` minore di 1 la rotta non parte, ed è un errore
+  almeno i 5 secondi di margine per chiudere la richiesta, se alla rotta si arriva entro 15 secondi dall'arrivo; fra 15 e
+  20 il margine è ciò che resta del blocco, e una richiesta che i middleware del frontend tengono più di 20 secondi prima
+  della rotta ci arriva a blocco scaduto: riceve il 503 `fuori_tempo`, ma finendo riscrive la sessione lo stesso — per lei
+  il limite resta. Con `zr-auth.timeout` minore di 1 la rotta non parte, ed è un errore
   (500): per il client di zr-auth 0 vuol dire senza limite, e una chiamata senza un tetto può durare più di qualunque
   blocco. Il lock sta nello store `session.block_store` del frontend — quello della cache, se non lo cambia —, che deve
   saper fare i lock (Redis, database, file; `array` nei test): con uno store che non li fa la rotta risponde 500 a ogni
@@ -446,8 +449,8 @@ Con la CSP le pagine che Laravel dà da sé cambiano aspetto, non stato: le pagi
 503 — escono senza stile, perché lo portano in un `<style>` in linea, e `/up` senza i suoi font e il suo script, che
 vengono da altre origini. Un modulo che le vuole con lo stile le rende con le sue viste e i suoi file.
 
-Su ogni risposta che passa dai middleware di Laravel la classe scrive cinque intestazioni, al posto di ciò che la risposta
-aveva:
+Su ogni risposta che passa dai middleware di Laravel la classe scrive cinque intestazioni: quattro al posto di ciò che la
+risposta aveva, e la CSP accanto a quella che la risposta porta già, se ne porta una:
 
 | Intestazione | Valore |
 |---|---|
@@ -457,9 +460,13 @@ aveva:
 | `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` |
 | `X-Content-Type-Options` | `nosniff` |
 
-«Al posto di ciò che la risposta aveva» vale anche per una CSP più stretta: una risposta che ne porta una sua — `sandbox`
-su un file caricato da una persona, per esempio — esce con quella del modulo. La classe non ha un modo per stringere una
-risposta sola.
+Una risposta che porta già una CSP la tiene, e quella del modulo le esce accanto: due intestazioni, prima quella della
+risposta. Il browser le applica tutte e due, e passa solo ciò che ammettono entrambe: una risposta può stringere la CSP del
+modulo, mai allargarla — per allargare c'è solo `csp_pagine` (vedi «Per una pagina sola»). È il caso dei file che Laravel
+serve da un disco (`'serve' => true` in `config/filesystems.php`): li manda con una CSP sua, con `sandbox`, e quella CSP
+resta: un file caricato da una persona non gira nell'origine del modulo. Una CSP uguale a quella del modulo esce una volta
+sola. Vale anche per una classe del frontend rimasta accanto a questa: se scrive la sua CSP più all'interno, la risposta le
+porta tutte e due.
 
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 

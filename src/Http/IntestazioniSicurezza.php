@@ -9,11 +9,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * Le intestazioni di sicurezza dei frontend di Zeiras, su ogni risposta di Laravel: solo HTTPS per un anno su questo host, la
- * CSP, la provenienza ridotta all'origine verso gli altri siti, sensori, fotocamera, microfono, posizione, pagamenti e USB
- * spenti, il tipo del contenuto mai indovinato. Un frontend lo registra primo dei middleware globali, nel suo bootstrap/app.php
- * (`$middleware->prepend(IntestazioniSicurezza::class)`): così le hanno anche le risposte d'errore e il 503 della manutenzione.
- * zr-core non lo registra da sé.
+ * Le intestazioni di sicurezza dei frontend di Zeiras, su ogni risposta che passa dai middleware di Laravel: solo HTTPS per un
+ * anno su questo host, la CSP, la provenienza ridotta all'origine verso gli altri siti, sensori, fotocamera, microfono,
+ * posizione, pagamenti e USB spenti, il tipo del contenuto mai indovinato. Un frontend lo registra primo dei middleware
+ * globali, nel suo bootstrap/app.php (`$middleware->prepend(IntestazioniSicurezza::class)`): così le hanno anche le risposte
+ * d'errore e il 503 della manutenzione. zr-core non lo registra da sé.
  *
  * La CSP è quella di tutti, più ciò che un modulo aggiunge per sempre (`zr-core.csp`) e ciò che una pagina aggiunge per sé (un
  * insieme di `zr-core.csp_pagine`, chiesto per nome con perLaPagina). Un modulo e una pagina aggiungono sorgenti, e solo a sei
@@ -22,7 +22,9 @@ use Throwable;
  *
  * `frame-src` nella CSP di tutti non c'è: finché nessuno la scrive le cornici seguono `default-src`, e dalla prima sorgente
  * vale solo ciò che è scritto lì — chi incornicia anche la propria origine scrive anche `'self'`. La classe non lo aggiunge
- * da sé: la CSP di una pagina è quella che il modulo ha dichiarato, carattere per carattere.
+ * da sé: alla CSP di una pagina non aggiunge niente che il modulo non abbia dichiarato.
+ *
+ * Una CSP che la risposta porta già non si tocca: resta, e quella del modulo le esce accanto (handle).
  */
 final class IntestazioniSicurezza
 {
@@ -45,11 +47,14 @@ final class IntestazioniSicurezza
     private const SCARTI_NELL_AVVISO = 5;
 
     /**
-     * Scrive le cinque intestazioni sulla risposta, qualunque sia: con `set`, quindi una volta sola e al posto di ciò che la
-     * risposta aveva, anche di una CSP più stretta (la classe non stringe una risposta sola). È il middleware più esterno, e un suo errore sarebbe un 500 senza intestazioni: dopo la risposta non
-     * lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro escono lo stesso. Ciò che è stato scartato
-     * va nel log come avviso, una riga per risposta: una sorgente sbagliata nella configurazione lo scrive finché non la si
-     * corregge.
+     * Scrive le cinque intestazioni sulla risposta, qualunque sia. Quattro con `set`: una volta sola, e al posto di ciò che la
+     * risposta aveva. La CSP no: quella che la risposta porta già resta, e quella del modulo le esce accanto, dopo — il
+     * browser le applica tutte e due, e passa solo ciò che ammettono entrambe. Così una risposta può stringere la CSP del
+     * modulo e mai allargarla: Laravel ne mette una con `sandbox` sui file che serve da un disco, e toglierla farebbe girare
+     * nell'origine del modulo un file caricato da una persona. È il middleware più esterno, e un suo errore sarebbe un 500
+     * senza intestazioni: dopo la risposta non lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro
+     * escono lo stesso. Ciò che è stato scartato va nel log come avviso, una riga per risposta: una sorgente sbagliata nella
+     * configurazione lo scrive finché non la si corregge.
      */
     public function handle(Request $richiesta, Closure $next): Response
     {
@@ -66,7 +71,7 @@ final class IntestazioniSicurezza
         try {
             // Senza includeSubDomains né preload: gli altri indirizzi del dominio non sono di questo servizio.
             $risposta->headers->set('Strict-Transport-Security', 'max-age=31536000');
-            $risposta->headers->set('Content-Security-Policy', $csp);
+            $risposta->headers->set('Content-Security-Policy', [...self::giaNellaRisposta($risposta, $csp), $csp]);
             // Una risposta che ne chiede una più stretta la tiene, se è il suo unico valore: il rimando dell'ingresso di zr-auth
             // porta il codice nell'indirizzo, ed è `no-referrer`.
             if ($risposta->headers->all('referrer-policy') !== ['no-referrer']) {
@@ -88,6 +93,24 @@ final class IntestazioniSicurezza
         }
 
         return $risposta;
+    }
+
+    /**
+     * Le CSP che la risposta porta già, e che restano: ogni valore com'è, nel suo ordine. Non restano un valore vuoto, che non
+     * è una CSP, e uno uguale a quella del modulo, che esce una volta sola (il middleware passato due volte sulla stessa
+     * risposta).
+     *
+     * @return list<mixed>
+     */
+    private static function giaNellaRisposta(Response $risposta, string $csp): array
+    {
+        /** @var list<mixed> $valori Symfony li dice testi, ma non lo impone: un valore di un altro tipo resta com'è, non si perde. */
+        $valori = $risposta->headers->all('Content-Security-Policy');
+
+        return array_values(array_filter(
+            $valori,
+            static fn (mixed $valore): bool => is_string($valore) ? trim($valore) !== '' && $valore !== $csp : $valore !== null,
+        ));
     }
 
     /**

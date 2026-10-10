@@ -723,3 +723,27 @@ it('un file che Laravel serve da un disco esce con la sua CSP, quella con `sandb
     expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [CSP_DEI_FILE_DI_LARAVEL, CSP_DI_TUTTI]])
         ->and($risposta->streamedContent())->toBe('<p>un file caricato da una persona</p>');
 });
+
+it('un valore che non è un testo, ma che la risposta manderebbe come CSP, resta com\'è con quella del modulo accanto: la classe non perde ciò che non sa leggere (sprint 16 · review, R9 · T2.7)', function () {
+    primoDeiGlobali();
+    // Fuori dal contratto di Symfony, che i valori li dice testi ma non lo impone: all'invio lo scriverebbe come testo.
+    $sua = new class implements Stringable
+    {
+        public function __toString(): string
+        {
+            return 'sandbox';
+        }
+    };
+    Route::get('/prova/csp', function () use ($sua) {
+        $risposta = response('con una CSP sua');
+        $risposta->headers->set('Content-Security-Policy', [$sua]);
+
+        return $risposta;
+    });
+
+    $valori = $this->get('/prova/csp')->assertOk()->headers->all('Content-Security-Policy');
+
+    expect($valori)->toHaveCount(2)
+        ->and($valori[0])->toBe($sua)
+        ->and($valori[1])->toBe(CSP_DI_TUTTI);
+});

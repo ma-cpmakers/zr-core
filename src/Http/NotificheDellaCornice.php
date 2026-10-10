@@ -55,14 +55,17 @@ final class NotificheDellaCornice
 
     /**
      * Passati quanti secondi dall'arrivo della richiesta non parte un'altra chiamata al backoffice. Una chiamata già partita
-     * finisce: zr-auth aspetta ogni risposta del backoffice 5 secondi, se il frontend non ha cambiato quel tempo, e la rotta
-     * risponde al più a questi secondi più quelli dall'arrivo.
+     * finisce: zr-auth aspetta ogni risposta del backoffice 5 secondi, se il frontend non ha cambiato quel tempo. Chi arriva
+     * alla rotta entro questi secondi ha la risposta, al più, a questi secondi più quel tempo dall'arrivo; chi ci arriva dopo
+     * ha subito il 503 `fuori_tempo`, a qualunque distanza dall'arrivo.
      */
     private const SECONDI = 10;
 
     /**
-     * Quanti secondi il lock della sessione dura oltre il momento in cui la rotta delle letture ha risposto, al più tardi: ciò
-     * che resta alla richiesta per chiudersi — i middleware del frontend al ritorno, il salvataggio della sessione.
+     * Quanti secondi il lock della sessione dura, almeno, oltre il momento in cui la rotta delle letture ha risposto: ciò che
+     * resta alla richiesta per chiudersi — i middleware del frontend al ritorno, il salvataggio della sessione. Vale per chi
+     * arriva alla rotta entro SECONDI più il tempo di zr-auth dall'arrivo. Chi ci arriva più tardi ha ciò che resta della
+     * tenuta, e oltre la tenuta il lock è già scaduto: il 503 `fuori_tempo` non evita che, finendo, riscriva la sessione.
      */
     private const MARGINE = 5;
 
@@ -178,10 +181,11 @@ final class NotificheDellaCornice
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
-        // Per il client di zr-auth un tempo sotto 1 è «senza limite»: una chiamata senza un tetto può durare più di qualunque
-        // lock. È la configurazione a essere sbagliata: un errore nel log del modulo, non una risposta da riprovare.
+        // Per il client di zr-auth un tempo di 0 è «senza limite» — e lo diventa ogni valore che `(int)` porta a 0 —, e uno
+        // sotto lo zero non è un tempo: il client lo rifiuta. Una chiamata senza un tetto può durare più di qualunque lock. È
+        // la configurazione a essere sbagliata: un errore nel log del modulo, non una risposta da riprovare.
         if ((int) config('zr-auth.timeout') < 1) {
-            throw new LogicException('zr-core: POST /cornice/notifiche/letture non chiama il backoffice con zr-auth.timeout minore di 1, che per il client di zr-auth vuol dire senza limite: il blocco della sessione non coprirebbe la chiamata.');
+            throw new LogicException('zr-core: POST /cornice/notifiche/letture non chiama il backoffice con zr-auth.timeout minore di 1: per il client di zr-auth 0 vuol dire senza limite, e un numero negativo non è un tempo. Il blocco della sessione non coprirebbe la chiamata.');
         }
 
         // L'orologio è quello del segno. I secondi si contano da quando la richiesta è arrivata, non da qui: il lock della

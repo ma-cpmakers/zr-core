@@ -102,6 +102,11 @@ describe('le lingue della cornice', () => {
         expect(() => {
             (t as { logout: string }).logout = 'uat';
         }).toThrow(TypeError);
+        // Lo dice anche il tipo (seconda lettura, N3): una scrittura non passa `tsc`, e chi la scrive lo sa prima del browser.
+        expect(() => {
+            // @ts-expect-error i testi sono di sola lettura
+            t.logout = 'uat';
+        }).toThrow(TypeError);
         expect(testi('it').logout).toBe(italiano.logout);
         // Congelato è l'oggetto composto, non il file dell'inglese, che è anche il ripiego di ogni lingua.
         expect(testi('en')).not.toBe(inglese);
