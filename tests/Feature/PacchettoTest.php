@@ -27,9 +27,9 @@ it('si avvia dentro un\'app Laravel', function () {
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
  * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch, uniti da `||`, e la
- * matrice di ci.yml (`zr-auth: ['0.6', '0.7', '0.8', '0.9', '0.10', '0.11']`) ha un giro per ognuno, ogni voce fra apici:
- * senza, YAML legge `0.10` come il numero 0.1, e una voce senza apici qui non conta. Solo sotto la 1.0 un `^` si ferma alla
- * sua minore: `^1.0` accetta anche le 1.1, che il giro della 1.0 non proverebbe.
+ * matrice di ci.yml (`zr-auth: ['0.6', '0.7', …]`) ha un giro per ognuno, ogni voce fra apici: senza, YAML legge `0.10` come
+ * il numero 0.1, e una voce senza apici qui non conta. Solo sotto la 1.0 un `^` si ferma alla sua minore: `^1.0` accetta
+ * anche le 1.1, che il giro della 1.0 non proverebbe.
  *
  * @return list<string>
  */
@@ -76,8 +76,10 @@ it('composer.json accetta zr-auth 0.6, 0.7, 0.8, 0.9, 0.10 e 0.11, e la CI prova
     // l'accesso di un'altra persona, e una patch più vecchia non la prova nessun giro. Della 0.7 dalla 0.7.0: l'ha provata il
     // giro della v1.0.0, e la 0.7.1 che il giro prova oggi cambia solo il finto per i test di zr-auth, che zr-core non usa.
     // Della 0.8 dalla 0.8.0, la prima. Della 0.9 dalla 0.9.1, l'ultima e quindi quella che la CI prova: la 0.9.0 non l'ha
-    // provata nessun giro. Della 0.10 dalla 0.10.0, la prima: l'ha provata un giro della PR dello sprint 9, prima che uscisse
-    // la 0.10.1. Della 0.11 dalla 0.11.0, la prima: è quella che il giro prova.
+    // provata nessun giro. Della 0.10 dalla 0.10.0, la prima: l'ha provata un giro della PR #11 (sprint 9), e dalla 0.10.0 alla
+    // 0.10.3 che il giro prova oggi cambiano solo il finto del backoffice per i test, che zr-core non usa, e il testo di un
+    // errore (`limite_raggiunto`) che zr-core non mostra. Della 0.11 dalla 0.11.0, la prima: l'ha provata il giro della PR #14
+    // (sprint 11), il 10/10/2026.
     expect($vincolo)->toBe('^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11')
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
 });
@@ -95,6 +97,16 @@ it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprin
         ->and(vincoliAPiuVersioniIn(str_replace($vincolo, $vincoloDiPrima, $testo)))->toBe([$vincoloDiPrima])
         ->and(vincoliAPiuVersioniIn($testo."\n`{$vincoloDiPrima}`"))->toBe([$vincolo, $vincoloDiPrima]);
 })->with(['README.md', 'CLAUDE.md']);
+
+it('CLAUDE.md dice, accanto al vincolo, che la CI fa un giro per ogni versione minore accettata, con l\'ultima di ognuna (sprint 11 · T5.3)', function () {
+    $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $vincolo = $composer['require']['zeiras/zr-auth'];
+    $claude = (string) file_get_contents(__DIR__.'/../../CLAUDE.md');
+
+    // Il README i giri li elenca, e il caso qui sotto li conta sulla matrice; CLAUDE.md dice la regola, che non cambia con le
+    // versioni: sta nella riga del vincolo, una volta.
+    expect(substr_count($claude, "`zeiras/zr-auth` `{$vincolo}`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna"))->toBe(1);
+});
 
 /**
  * Le versioni minori di zr-auth di cui un testo dice che la CI prova l'ultima, nell'ordine in cui le scrive.

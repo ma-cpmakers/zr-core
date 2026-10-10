@@ -14,8 +14,8 @@ permissions:
 
 jobs:
   ci:
-    # Un giro per ogni versione minore di zr-auth che composer.json accetta, dalla 0.6 alla 0.11. Un giro rosso non ferma gli
-    # altri: si vedono tutti, e il verde è di tutti. Le voci stanno fra apici: senza, YAML legge 0.10 come il numero 0.1.
+    # Un giro per ogni versione minore di zr-auth che composer.json accetta. Un giro rosso non ferma gli altri: si vedono
+    # tutti, e il verde è di tutti. Le voci stanno fra apici: senza, YAML legge 0.10 come il numero 0.1.
     name: ci (zr-auth ${{ matrix.zr-auth }})
     runs-on: ubuntu-latest
     strategy:
