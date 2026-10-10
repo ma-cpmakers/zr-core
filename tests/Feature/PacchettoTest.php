@@ -591,15 +591,15 @@ function rigaDellaRotta(string $readme, string $rotta): string
     return $riga[0] ?? '';
 }
 
-it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4)', function () {
+it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4; sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
         'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
-        'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a}, segnate_il}`:'),
-        'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo la risposta del backoffice'),
+        'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
+        'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
     ];
 
     // Il README con le due righe scambiate di rotta: ogni istante è detto, ma nella riga dell'altra. Poi il README senza la riga
@@ -731,4 +731,56 @@ it('il README non dice più che il titolo di una notifica è uno per tutte (spri
     expect(str_contains(suUnaRiga($readme), 'uno per tutte'))->toBe(false)
         ->and($diPrima)->not->toBe($readme)
         ->and(str_contains(suUnaRiga($diPrima), 'uno per tutte'))->toBe(true);
+});
+
+// Sprint 12 · T4 (voce #1461): «Segna tutte come lette» oltre le 5000 non lette. La parte server richiama il backoffice finché ne
+// restano, entro due tetti, e dice se ne restano ancora: il README lo dice nella riga della rotta, e nel punto «Le notifiche»
+// dice che cosa vede la persona.
+
+it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per cosa (sprint 12 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    // Il README con la riga delle letture e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
+    $scambiate = strtr($readme, [$letture => $ricerca, $ricerca => $letture]);
+
+    expect(str_contains(rigaDellaRotta($readme, 'POST /cornice/notifiche/letture'), $frase))->toBe(true)
+        ->and(substr_count($readme, $letture))->toBe(1)
+        ->and(substr_count($readme, $ricerca))->toBe(1)
+        ->and(str_contains($scambiate, $frase))->toBe(true)
+        ->and(str_contains(rigaDellaRotta($scambiate, 'POST /cornice/notifiche/letture'), $frase))->toBe(false);
+})->with([
+    'altre nella risposta' => ['| `{data: {fino_a, altre}, segnate_il}`:'],
+    'il backoffice ne segna 5000 per chiamata, e la parte server lo richiama' => ['il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano'],
+    'il tetto delle chiamate' => ['al più 5 chiamate al backoffice per richiesta'],
+    'il tetto del tempo' => ['nessuna chiamata nuova passati 10 secondi dalla prima'],
+    'che cos\'è altre' => ['`altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora'],
+    'con altre: true la stessa richiesta continua' => ['la stessa richiesta, ripetuta, continua da lì'],
+    'segnate_il è dopo l\'ultima risposta' => ['`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'],
+    'un richiamo che fallisce è un errore' => ['alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`'],
+]);
+
+it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando un clic non le segna tutte (sprint 12 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
+    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **Le notifiche**'))->toBe(1)
+        ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
+})->with([
+    'quando un clic non basta' => ['con più di 25.000 non lette, o se i richiami durano più di 10 secondi, un clic non le segna tutte'],
+    'che cosa vede la persona' => ['la campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un altro clic'],
+]);
+
+it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima, con la forma della risposta della v1.2.2 al posto di quella nuova: il controllo la vede.
+    $diPrima = str_replace('| `{data: {fino_a, altre}, segnate_il}`:', '| `{data: {fino_a}, segnate_il}`:', $readme);
+
+    expect(substr_count($readme, '`{data: {fino_a}, segnate_il}`'))->toBe(0)
+        ->and($diPrima)->not->toBe($readme)
+        ->and(substr_count($diPrima, '`{data: {fino_a}, segnate_il}`'))->toBe(1);
 });

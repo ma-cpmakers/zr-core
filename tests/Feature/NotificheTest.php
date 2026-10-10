@@ -22,6 +22,8 @@ use Zeiras\Auth\Testing\Rotte;
 // l'elenco quando ha cominciato a leggere (`aggiornati_il`), la lettura quando il backoffice ha risposto (`segnate_il`).
 // Sprint 12 · T2 (voce #1463): l'elenco porta anche `tipo`, il tipo dell'evento che ha generato la notifica, com'è nel
 // backoffice: alla cornice serve per il titolo. `soggetto` e `dati` restano nella parte server.
+// Sprint 12 · T4 (voce #1461): il backoffice segna al più 5000 notifiche per chiamata e dice se ne restano (`altre`): la parte
+// server lo richiama con lo stesso istante finché ne restano, entro due tetti, e dice al browser se ne restano ancora.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -75,6 +77,80 @@ function problemaDelBackoffice(int $stato, ?string $codice): mixed
 function lettureFinoA(string $finoA): array
 {
     return ['fino_a' => $finoA, 'workspace' => WORKSPACE_DELLE_NOTIFICHE['slug']];
+}
+
+/**
+ * La risposta del backoffice a io.notifiche.letture.crea (schema NotificheLetture): l'istante in UTC, quante notifiche ha
+ * segnato questa chiamata e se ne restano. `altre` è ciò che il test gli fa dire, anche un valore che non è un booleano.
+ *
+ * @return array{data: array{fino_a: string, segnate: int, altre: mixed}}
+ */
+function lettureDelBackoffice(string $finoA, mixed $altre = false): array
+{
+    return ['data' => ['fino_a' => $finoA, 'segnate' => $altre === true ? 5000 : 3, 'altre' => $altre]];
+}
+
+/**
+ * Una risposta alle letture che ci mette un po': quando la chiamata arriva l'orologio va avanti di tanti microsecondi, e il
+ * backoffice risponde con quell'`altre` e con quell'istante.
+ */
+function lettureDopo(int $microsecondi, mixed $altre, string $finoA = '2026-10-08T10:00:00.123Z'): Closure
+{
+    return function () use ($microsecondi, $altre, $finoA) {
+        Carbon::setTestNow(Carbon::now()->addMicroseconds($microsecondi));
+
+        return Http::response(lettureDelBackoffice($finoA, $altre));
+    };
+}
+
+/**
+ * Il backoffice che risponde a io.notifiche.letture.crea una chiamata dopo l'altra: alla prima la prima risposta, e così via;
+ * finite, ripete l'ultima, così una chiamata in più del previsto ha la sua risposta e si conta. Ogni risposta è una funzione,
+ * chiamata quando la richiesta arriva.
+ *
+ * @param  non-empty-list<Closure(): mixed>  $risposte
+ */
+function lettureUnaDopoLAltra(array $risposte): void
+{
+    $chiamate = 0;
+    Http::fake(function (Request $richiesta) use (&$chiamate, $risposte) {
+        return match (percorsoDi($richiesta)) {
+            '/v1/io/notifiche/letture' => $risposte[min($chiamate++, count($risposte) - 1)](),
+        };
+    });
+}
+
+/**
+ * Le chiamate arrivate al backoffice, nell'ordine: di ognuna il metodo, il percorso, il corpo e il gettone.
+ *
+ * @return list<array{string, ?string, array<mixed>, string}>
+ */
+function chiamateAlBackoffice(): array
+{
+    return Http::recorded()
+        ->map(fn (array $coppia) => [$coppia[0]->method(), percorsoDi($coppia[0]), $coppia[0]->data(), $coppia[0]->header('Authorization')[0] ?? ''])
+        ->values()->all();
+}
+
+/**
+ * Risposte del backoffice alle letture senza `altre`, o con un `altre` che non è un booleano. Per il resto sono risposte
+ * intere: il guasto è solo quello. Una riga per caso.
+ *
+ * @return array<string, array{array<string, mixed>}>
+ */
+function lettureSenzaUnAltre(): array
+{
+    $lettura = ['fino_a' => '2026-10-08T10:00:00.123Z', 'segnate' => 3];
+
+    return [
+        'senza altre' => [$lettura],
+        'altre è null' => [$lettura + ['altre' => null]],
+        'altre è 0' => [$lettura + ['altre' => 0]],
+        'altre è "false"' => [$lettura + ['altre' => 'false']],
+        'altre è 1' => [$lettura + ['altre' => 1]],
+        'altre è "true"' => [$lettura + ['altre' => 'true']],
+        'altre è una lista vuota' => [$lettura + ['altre' => []]],
+    ];
 }
 
 /** Il percorso di /v1 di una richiesta al backoffice, senza la query. */
@@ -243,18 +319,18 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
-it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo fino_a, lo stesso, e il gettone del workspace, e risponde con l\'istante del backoffice e con quello in cui le ha segnate (sprint 6 · T2.1; sprint 11 · T1.2)', function (string $finoA, string $delBackoffice) {
+it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo fino_a, lo stesso, e il gettone del workspace, e risponde con l\'istante del backoffice, con altre: false quando il backoffice dice che non ne restano, e con l\'istante in cui le ha segnate (sprint 6 · T2.1; sprint 11 · T1.2; sprint 12 · T4.1)', function (string $finoA, string $delBackoffice) {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.letture.crea risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
         '/v1/io/notifiche/letture' => $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace'])
-            ? Http::response(['data' => ['fino_a' => $delBackoffice]])
+            ? Http::response(lettureDelBackoffice($delBackoffice))
             : problemaDelBackoffice(403, 'gettone_senza_workspace'),
     });
 
     senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA($finoA)))
-        ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice], 'segnate_il' => '2026-10-10T01:15:07.000321Z']);
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice, 'altre' => false], 'segnate_il' => '2026-10-10T01:15:07.000321Z']);
     Http::assertSentCount(1);
     // Al backoffice va solo l'istante: lo slug serve alla rotta, e resta qui.
     Http::assertSent(fn (Request $richiesta) => $richiesta->method() === 'POST' && percorsoDi($richiesta) === '/v1/io/notifiche/letture'
@@ -367,12 +443,14 @@ it('se il backoffice risponde alle letture senza l\'istante è un errore, mai un
 })->with([
     'un 500' => [500, ''],
     'un 200 senza JSON' => [200, 'uat: non è JSON'],
-    'senza data' => [200, ['fino_a' => '2026-10-08T10:00:00.000Z']],
+    'senza data' => [200, lettureDelBackoffice('2026-10-08T10:00:00.000Z')['data']],
     'data vuoto' => [200, ['data' => []]],
     'data è l\'istante, non un oggetto' => [200, ['data' => '2026-10-08T10:00:00.000Z']],
-    'fino_a null' => [200, ['data' => ['fino_a' => null]]],
-    'fino_a è un numero' => [200, ['data' => ['fino_a' => 1760000000]]],
-    'fino_a è una lista' => [200, ['data' => ['fino_a' => ['2026-10-08T10:00:00.000Z']]]],
+    // Dallo sprint 12 la risposta porta anche `segnate` e `altre`: qui ci sono, e il guasto è solo l'istante.
+    'senza fino_a' => [200, ['data' => ['segnate' => 3, 'altre' => false]]],
+    'fino_a null' => [200, ['data' => ['fino_a' => null, 'segnate' => 3, 'altre' => false]]],
+    'fino_a è un numero' => [200, ['data' => ['fino_a' => 1760000000, 'segnate' => 3, 'altre' => false]]],
+    'fino_a è una lista' => [200, ['data' => ['fino_a' => ['2026-10-08T10:00:00.000Z'], 'segnate' => 3, 'altre' => false]]],
 ]);
 
 it('la rotta della bozza, PATCH /cornice/notifiche/lettura, non c\'è più (sprint 5 · T2.6)', function () {
@@ -486,11 +564,11 @@ it('segnate_il di POST /cornice/notifiche/letture è l\'istante preso dopo che i
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // La risposta del backoffice porta l'orologio avanti: un istante preso prima di chiamarlo sarebbe di tre secondi prima.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
-        '/v1/io/notifiche/letture' => treSecondiDopo(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z']]),
+        '/v1/io/notifiche/letture' => treSecondiDopo(lettureDelBackoffice('2026-10-08T10:00:00.123Z')),
     });
 
     $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))->assertOk()->assertExactJson([
-        'data' => ['fino_a' => '2026-10-08T10:00:00.123Z'],
+        'data' => ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => false],
         'segnate_il' => '2026-10-10T01:15:10.000321Z',
     ]);
 
@@ -586,3 +664,123 @@ it('le altre risposte non cambiano: la lettura di una notifica risponde ancora c
         ->and($elenco->json('aggiornati_il'))->toBe('2026-10-10T05:20:07.000321Z')
         ->and(substr_count((string) $elenco->getContent(), '"aggiornati_il"'))->toBe(1);
 });
+
+// Sprint 12 · T4 (voce #1461): oltre le 5000 non lette il backoffice dice che ne restano (`altre`), e la parte server lo richiama
+// con lo stesso istante finché ne restano, entro due tetti: al più 5 chiamate per una richiesta del browser, e nessuna chiamata
+// nuova passati 10 secondi dalla prima. Fermata da un tetto risponde lo stesso 200, con `altre: true`: non è un errore.
+
+/** Una chiamata alle letture come la parte server la fa ogni volta: lo stesso metodo, l'istante chiesto dal browser e nient'altro, il gettone del workspace. */
+function chiamataAlleLetture(string $finoA, string $gettone): array
+{
+    return ['POST', '/v1/io/notifiche/letture', ['fino_a' => $finoA], 'Bearer '.$gettone];
+}
+
+it('finché il backoffice dice che ne restano la parte server lo richiama con lo stesso fino_a e il gettone del workspace, e alla fine risponde con l\'istante dell\'ultima risposta, altre: false e l\'istante preso dopo l\'ultima risposta: tre risposte del backoffice, tre chiamate, una richiesta del browser (sprint 12 · T4.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Ogni risposta ci mette tre secondi e porta un istante suo: quello della rotta è dell'ultima, e `segnate_il` viene dopo.
+    lettureUnaDopoLAltra([
+        lettureDopo(3_000_000, true, '2026-10-08T10:00:00.001Z'),
+        lettureDopo(3_000_000, true, '2026-10-08T10:00:00.002Z'),
+        lettureDopo(3_000_000, false, '2026-10-08T10:00:00.003Z'),
+    ]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T12:00:00+02:00')))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => '2026-10-08T10:00:00.003Z', 'altre' => false], 'segnate_il' => '2026-10-10T01:15:16.000321Z']);
+
+    // Tutte uguali: l'istante è quello chiesto dal browser, com'è, a ogni chiamata.
+    expect(chiamateAlBackoffice())->toBe(array_fill(0, 3, chiamataAlleLetture('2026-10-08T12:00:00+02:00', $gettoni['workspace'])));
+});
+
+it('al più cinque chiamate al backoffice per una richiesta del browser: se ne restano ancora la rotta risponde 200 con altre: true e l\'istante preso dopo la quinta risposta, mai un errore e mai altre: false (sprint 12 · T4.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Il backoffice dice sempre che ne restano, e ogni risposta ci mette un secondo: cinque stanno nei 10 secondi, e le ferma
+    // solo il tetto delle chiamate. Una sesta avrebbe la sua risposta, e si conterebbe.
+    lettureUnaDopoLAltra([lettureDopo(1_000_000, true)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => true], 'segnate_il' => '2026-10-10T01:15:12.000321Z']);
+
+    expect(chiamateAlBackoffice())->toBe(array_fill(0, 5, chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])));
+});
+
+it('nessuna chiamata nuova passati 10 secondi dalla prima: se ne restano ancora la rotta risponde 200 con altre: true, e l\'istante è quello preso dopo l\'ultima risposta arrivata (sprint 12 · T4.2)', function (array $durate, int $chiamate, bool $altre, string $segnateIl) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Il backoffice dice che ne restano a ogni risposta che il caso elenca, ognuna con la sua durata; a una chiamata in più
+    // direbbe subito che non ne restano.
+    lettureUnaDopoLAltra([...array_map(fn (int $microsecondi) => lettureDopo($microsecondi, true), $durate), lettureDopo(0, false)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => $altre], 'segnate_il' => $segnateIl]);
+
+    expect(chiamateAlBackoffice())->toBe(array_fill(0, $chiamate, chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])));
+})->with([
+    'la prima risposta arriva dopo 11 secondi: nessun richiamo' => [[11_000_000], 1, true, '2026-10-10T01:15:18.000321Z'],
+    'dopo 10 secondi e un microsecondo: nessun richiamo' => [[10_000_001], 1, true, '2026-10-10T01:15:17.000322Z'],
+    'a 10 secondi esatti non sono ancora passati: un richiamo, e il backoffice dice che non ne restano' => [[10_000_000], 2, false, '2026-10-10T01:15:17.000321Z'],
+    'i 10 secondi si contano dalla prima chiamata, non dall\'ultima: due risposte da 6 secondi, e la terza chiamata non parte' => [[6_000_000, 6_000_000], 2, true, '2026-10-10T01:15:19.000321Z'],
+]);
+
+it('una risposta del backoffice senza altre, o con un altre che non è un booleano, è un guasto, alla prima chiamata come a un richiamo: mai «non ne restano», mai un 200, e nessuna chiamata dopo (sprint 12 · T4.3)', function (array $lettura, int $prima) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Prima del guasto il backoffice dice che ne restano, tante volte quante il caso vuole; a una chiamata dopo il guasto
+    // direbbe che non ne restano, e la rotta risponderebbe 200.
+    lettureUnaDopoLAltra([...array_fill(0, $prima, lettureDopo(0, true)), fn () => Http::response(['data' => $lettura]), lettureDopo(0, false)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull()
+        ->and(substr_count((string) $risposta->getContent(), 'segnate_il'))->toBe(0);
+    Http::assertSentCount($prima + 1);
+})->with(lettureSenzaUnAltre())->with([
+    'alla prima chiamata' => [0],
+    'al secondo richiamo' => [2],
+]);
+
+it('se un richiamo fallisce la rotta risponde con un errore, come quando fallisce la prima chiamata: mai un 200, nessun istante, e nessuna chiamata dopo (sprint 12 · T4.4)', function (int $stato, ?string $codice) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La prima chiamata riesce e dice che ne restano; il richiamo fallisce; una terza chiamata riuscirebbe, e direbbe che non
+    // ne restano.
+    lettureUnaDopoLAltra([
+        lettureDopo(0, true),
+        fn () => $codice === null ? Http::response('', $stato) : problemaDelBackoffice($stato, $codice),
+        lettureDopo(0, false),
+    ]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(400)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull()
+        ->and(substr_count((string) $risposta->getContent(), 'segnate_il'))->toBe(0);
+    Http::assertSentCount(2);
+})->with([
+    'un 500' => [500, null],
+    'un 503' => [503, null],
+    'un 429 troppe_richieste' => [429, 'troppe_richieste'],
+    'un 422 con un altro codice' => [422, 'uat_altro_codice'],
+]);
+
+it('un richiamo che il backoffice rifiuta con 422 dati_non_validi risponde 422 dati_non_validi, come alla prima chiamata, e non ne parte un altro (sprint 12 · T4.4)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true), fn () => problemaDelBackoffice(422, 'dati_non_validi'), lettureDopo(0, false)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertSentCount(2);
+});
+
+it('la guardia del workspace e le due validazioni stanno prima di ogni chiamata anche quando il backoffice direbbe che ne restano: nessuna chiamata parte (sprint 12 · T4, guardia)', function (array $corpo, int $stato, string $errore) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', $corpo))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
+    Http::assertNothingSent();
+})->with([
+    'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409, 'workspace_diverso'],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422, 'dati_non_validi'],
+    'senza workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z'], 422, 'dati_non_validi'],
+]);
