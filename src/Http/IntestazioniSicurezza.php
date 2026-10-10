@@ -2,13 +2,23 @@
 
 namespace Zeiras\Core\Http;
 
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
+
 /**
- * La CSP dei frontend di Zeiras: quella di tutti, e come si compone quella di una risposta con ciò che un modulo aggiunge
- * per sempre e ciò che una pagina aggiunge per sé.
+ * Le intestazioni di sicurezza dei frontend di Zeiras, su ogni risposta di Laravel: solo HTTPS per un anno su questo host, la
+ * CSP, la provenienza ridotta all'origine verso gli altri siti, sensori, fotocamera, microfono, posizione, pagamenti e USB
+ * spenti, il tipo del contenuto mai indovinato. Un frontend lo registra primo dei middleware globali, nel suo bootstrap/app.php
+ * (`$middleware->prepend(IntestazioniSicurezza::class)`): così le hanno anche le risposte d'errore e il 503 della manutenzione.
+ * zr-core non lo registra da sé.
  *
- * Un modulo e una pagina aggiungono sorgenti, e solo a sei direttive: non tolgono niente e non toccano le altre. Una
- * sorgente è `'self'` oppure un'origine `https://` scritta per intero. Tutto il resto è scartato, mai aggiustato: il ramo
- * sicuro è la CSP più stretta.
+ * La CSP è quella di tutti, più ciò che un modulo aggiunge per sempre (`zr-core.csp`) e ciò che una pagina aggiunge per sé (un
+ * insieme di `zr-core.csp_pagine`, chiesto per nome con perLaPagina). Un modulo e una pagina aggiungono sorgenti, e solo a sei
+ * direttive: non tolgono niente e non toccano le altre. Una sorgente è `'self'` oppure un'origine `https://` scritta per
+ * intero. Tutto il resto è scartato, mai aggiustato: il ramo sicuro è la CSP più stretta.
  */
 final class IntestazioniSicurezza
 {
@@ -23,6 +33,70 @@ final class IntestazioniSicurezza
 
     /** Le sole direttive a cui un modulo o una pagina aggiungono sorgenti. Le altre sono uguali per tutti. */
     private const ESTENDIBILI = ['script-src', 'style-src', 'img-src', 'font-src', 'connect-src', 'frame-src'];
+
+    /** L'attributo della richiesta su cui una pagina scrive il nome del suo insieme di sorgenti (perLaPagina). */
+    private const PAGINA = 'zr-core.csp-pagina';
+
+    /** Quanti scarti porta, al più, la riga d'avviso di una risposta: degli altri dice solo quanti sono. */
+    private const SCARTI_NELL_AVVISO = 5;
+
+    /**
+     * Scrive le cinque intestazioni sulla risposta, qualunque sia: con `set`, quindi una volta sola e al posto di ciò che la
+     * risposta aveva. È il middleware più esterno, e un suo errore sarebbe un 500 senza intestazioni: dopo la risposta non
+     * lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro escono lo stesso. Ciò che è stato scartato
+     * va nel log come avviso, una riga per risposta: una sorgente sbagliata nella configurazione lo scrive finché non la si
+     * corregge.
+     */
+    public function handle(Request $richiesta, Closure $next): Response
+    {
+        /** @var Response $risposta */
+        $risposta = $next($richiesta);
+
+        try {
+            [$csp, $scartate] = self::dellaRisposta();
+        } catch (Throwable $errore) {
+            // Dell'errore solo il nome della classe: il suo messaggio può portare qualunque cosa.
+            [$csp, $scartate] = [self::CSP, ['la CSP non si è composta ('.get_debug_type($errore).'): esce quella di tutti']];
+        }
+
+        try {
+            // Senza includeSubDomains né preload: gli altri indirizzi del dominio non sono di questo servizio.
+            $risposta->headers->set('Strict-Transport-Security', 'max-age=31536000');
+            $risposta->headers->set('Content-Security-Policy', $csp);
+            // Una risposta che ne chiede una più stretta la tiene, se è il suo unico valore: il rimando dell'ingresso di zr-auth
+            // porta il codice nell'indirizzo, ed è `no-referrer`.
+            if ($risposta->headers->all('referrer-policy') !== ['no-referrer']) {
+                $risposta->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+            }
+            $risposta->headers->set('Permissions-Policy', self::PERMESSI);
+            $risposta->headers->set('X-Content-Type-Options', 'nosniff');
+        } catch (Throwable) {
+            // La risposta esce com'è.
+        }
+
+        if ($scartate !== []) {
+            try {
+                Log::warning(self::avviso($scartate));
+            } catch (Throwable) {
+                // Un log che non scrive non ferma la risposta; e l'avviso non passa dal gestore delle eccezioni di Laravel, che
+                // può lanciare a sua volta.
+            }
+        }
+
+        return $risposta;
+    }
+
+    /**
+     * La pagina che risponde a questa richiesta chiede, in più, le sorgenti di un insieme che il modulo ha dichiarato in
+     * `zr-core.csp_pagine`. Dice solo il nome: le origini stanno nella configurazione, e un nome che lì non c'è non aggiunge
+     * niente. Il nome si scrive nel codice, non si prende dalla richiesta. Vale per la risposta a questa richiesta sola, e
+     * chiamata due volte vale l'ultimo nome. Il nome sta sulla richiesta del container, non su quella che ha in mano il
+     * controller: una FormRequest è una copia, e il middleware non la vedrebbe.
+     */
+    public static function perLaPagina(string $nome): void
+    {
+        request()->attributes->set(self::PAGINA, $nome);
+    }
 
     /**
      * La CSP di una risposta: quella di tutti, più ciò che il modulo aggiunge per sempre, più ciò che la pagina aggiunge per
@@ -82,6 +156,51 @@ final class IntestazioniSicurezza
         }
 
         return [implode('; ', $pezzi), $scartate];
+    }
+
+    /**
+     * La CSP della risposta a questa richiesta, da ciò che il modulo ha scritto nella configurazione e dal nome che la pagina
+     * ha dato, se l'ha dato. Una chiave che manca vale come vuota (una configurazione messa in cache prima di questa
+     * versione). Un insieme che non è una mappa, un nome che non è un testo o che il modulo non ha dichiarato non aggiungono
+     * niente e tornano fra gli scarti: senza il nome, che può essere arrivato dalla richiesta.
+     *
+     * @return array{0: string, 1: list<string>} la CSP, e ciò che è stato scartato
+     */
+    private static function dellaRisposta(): array
+    {
+        $pagine = config('zr-core.csp_pagine', []);
+        $nome = request()->attributes->get(self::PAGINA);
+        $dellaPagina = [];
+        $scartate = [];
+
+        if (! is_array($pagine)) {
+            $scartate[] = 'pagine: zr-core.csp_pagine non è una mappa di insiemi ('.get_debug_type($pagine).')';
+        } elseif ($nome !== null && ! is_string($nome)) {
+            $scartate[] = 'pagina: il nome dell\'insieme non è un testo ('.get_debug_type($nome).')';
+        } elseif ($nome !== null && ! array_key_exists($nome, $pagine)) {
+            $scartate[] = 'pagina: il nome chiesto non è fra gli insiemi di zr-core.csp_pagine';
+        } elseif ($nome !== null) {
+            $dellaPagina = $pagine[$nome];
+        }
+
+        [$csp, $dallaComposizione] = self::componi(config('zr-core.csp', []), $dellaPagina);
+
+        return [$csp, [...$dallaComposizione, ...$scartate]];
+    }
+
+    /**
+     * La riga d'avviso di una risposta: quanti scarti, e i primi. Ogni scarto sta su una riga, e viene dalla configurazione o
+     * dal codice, mai dalla richiesta.
+     *
+     * @param  list<string>  $scartate
+     */
+    private static function avviso(array $scartate): string
+    {
+        $altri = count($scartate) - self::SCARTI_NELL_AVVISO;
+
+        return 'zr-core, intestazioni di sicurezza: scartato dalla CSP ('.count($scartate).') — '
+            .implode(' · ', array_slice($scartate, 0, self::SCARTI_NELL_AVVISO))
+            .($altri > 0 ? ' · e altri '.$altri : '');
     }
 
     /**
