@@ -318,17 +318,18 @@ it('il controllo trova il giro «minima» o «ultima» che manca, un giro che il
 
 /**
  * `.github/minimo-di-zr-auth.sh` su un composer.json finto che chiede zr-auth con quel vincolo (con null, che non lo chiede),
- * per quella minore.
+ * per quella minore. `$ambiente` sono le variabili in più con cui lo script gira (la localizzazione).
  *
+ * @param  array<string, string>  $ambiente
  * @return array{0: int|null, 1: string} il codice d'uscita e ciò che lo script scrive
  */
-function minimoDiZrAuthCon(?string $vincolo, string $minore): array
+function minimoDiZrAuthCon(?string $vincolo, string $minore, array $ambiente = []): array
 {
     $composer = sys_get_temp_dir().'/zr-core-composer-'.bin2hex(random_bytes(8)).'.json';
     file_put_contents($composer, json_encode(['require' => ['php' => '^8.4', ...($vincolo === null ? [] : ['zeiras/zr-auth' => $vincolo])]], JSON_THROW_ON_ERROR));
 
     try {
-        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', $composer, $minore], dirname(__DIR__, 2));
+        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', $composer, $minore], dirname(__DIR__, 2), $ambiente);
         $script->run();
 
         return [$script->getExitCode(), trim($script->getOutput())];
@@ -376,6 +377,28 @@ it('lo script del minimo non esegue ciò che legge: un comando scritto nel vinco
     } finally {
         is_file($segno) && unlink($segno);
     }
+});
+
+// Seconda lettura della PR #20, B2: in una localizzazione come `en_US.UTF-8` `[0-9]` prende anche le cifre che non sono ASCII
+// (`٤`, U+0664). Una patch scritta così passava la forma e poi il confronto, che dentro un `if` vale «falso» in silenzio, e lo
+// script usciva 0 con una versione che non è il minimo. Lo script si mette da sé nella localizzazione `C`, dove una cifra è
+// una di quelle dieci. Su una macchina che non ha `en_US.UTF-8` bash resta in `C`, e il caso è verde anche senza quella riga:
+// per questo c'è anche il caso dopo, che la guarda nello script.
+it('lo script del minimo legge solo cifre ASCII, in qualunque localizzazione giri: una cifra di un\'altra scrittura lo ferma (sprint 17 · review, B2)', function (string $localizzazione) {
+    $ambiente = ['LC_ALL' => $localizzazione];
+
+    expect(minimoDiZrAuthCon('^0.12.٤ || ^0.12.4', '0.12', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.12.4 || ^0.12.٤', '0.12', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.١٢.4', '0.١٢', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.12.4', '0.12', $ambiente))->toBe([0, '0.12.4']);
+})->with(['en_US.UTF-8', 'C.UTF-8', 'C']);
+
+it('lo script del minimo si mette nella localizzazione C prima di guardare una forma (sprint 17 · review, B2)', function () {
+    $script = (string) file_get_contents(dirname(__DIR__, 2).'/.github/minimo-di-zr-auth.sh');
+    $comandi = array_values(array_filter(array_map(trim(...), explode("\n", $script)), fn (string $riga): bool => $riga !== '' && ! str_starts_with($riga, '#')));
+
+    // Il primo comando dopo `set -euo pipefail`: da lì in poi `[0-9]` sono le dieci cifre ASCII.
+    expect(array_slice($comandi, 0, 2))->toBe(['set -euo pipefail', 'export LC_ALL=C']);
 });
 
 /**
@@ -1158,9 +1181,15 @@ it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 ·
     'quando ne restano (sprint 17 · T2.1)' => ['Dopo una risposta con `altre: true` dice «Segna le altre»'],
     'fino a quando ne restano (sprint 17 · T2.1)' => ['finché quel giro di letture non è finito'],
     'se la richiesta fallisce (sprint 17 · T2.1)' => ['Se la richiesta fallisce il pulsante torna al testo che aveva prima del clic'],
-    // Review della PR #20, R3: il giro finisce anche altrove (un'altra scheda), e allora «Segna le altre» non torna.
-    'il giro finito altrove (sprint 17 · review, R3)' => ['o quando la campanella non conta più non lette perché il giro è finito altrove'],
+    // Review della PR #20, R3: il giro finisce anche altrove (un'altra scheda), e allora «Segna le altre» non torna. Seconda
+    // lettura, N5: lo dicono i dati letti dopo la risposta con `altre`, non la campanella a zero; senza il numero nei dati no.
+    'il giro finito altrove (sprint 17 · review, R3 e N5)' => ['o quando dei dati letti dopo quella risposta non contano più non lette: il giro è finito altrove, in un\'altra scheda'],
+    'senza il numero nei dati quell\'uscita non c\'è (sprint 17 · review, N5)' => ['Senza `non_lette` nei dati questa terza uscita non c\'è'],
 ]);
+
+it('il README non dice più che il giro finito altrove lo dice la campanella a zero (sprint 17 · review, N5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'quando la campanella non conta più non lette'))->toBe(false);
+});
 
 it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -2036,7 +2065,17 @@ it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni 
     'senza, la lettura fallisce (sprint 17 · review, R6)' => ['una riga senza `id` fa fallire `Cornice::dati()`'],
     'il workspace della persona resta nome e slug (sprint 17 · review, R7)' => ['Il workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`'],
     'il suo id si trova in aziende (sprint 17 · review, R7)' => ['il suo `id` è quello del workspace con lo stesso `slug` in `aziende`'],
+    // Seconda lettura della PR #20: chi dà già l'`id` (N1), quale riga senza `id` fa fallire la lettura (N3), e che l'`id` del
+    // workspace in cui la persona è entrata può non esserci (N2).
+    'chi lo dà già (sprint 17 · review, N1)' => ['il `BackofficeFinto` di zr-auth e l\'esempio di `io.workspace.elenca` nel contratto lo danno'],
+    'quale riga fa fallire la lettura (sprint 17 · review, N3)' => ['una riga senza `id` fa fallire `Cornice::dati()`, se è di un\'azienda dell\'elenco (le altre restano fuori prima)'],
+    'il suo id può non esserci (sprint 17 · review, N2)' => ['con lo stesso `slug` in `aziende`, se c\'è'],
+    'quando non c\'è (sprint 17 · review, N2)' => ['e allora nei dati il suo `id` non c\'è'],
 ]);
+
+it('il README non dice più che l\'id lo danno «gli esempi di zr-auth»: zr-auth ha un backoffice finto, e gli esempi sono del contratto (sprint 17 · review, N1)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'gli esempi di zr-auth'))->toBe(false);
+});
 
 it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — dall\'id, non si sceglie, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
