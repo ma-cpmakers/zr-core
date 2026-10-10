@@ -874,8 +874,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         expect(voci()).toHaveLength(3);
         expect(campanella()).toBe('2');
-        // Dati letti prima di quell'istante: senza un istante da confrontare contano perché sono altri dati.
-        await mostra(<Cornice dati={letti(alSecondo(3), 12)} onLogout={esciSenzaEffetto} />);
+        // Dati letti prima di quell'istante: senza un istante da confrontare sono altri dati, e l'elenco non conta sul loro
+        // numero. Con zero non lette si vede: se l'istante contasse com'è, sulla campanella resterebbero le 2 dell'elenco.
+        await mostra(<Cornice dati={letti(alSecondo(3), 0)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(4), 12)} onLogout={esciSenzaEffetto} />);
         expect(campanella()).toBe('12');
 
         await clic(uno('.zr-bell'));
@@ -886,8 +889,18 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('12');
     });
 
-    it('dati con lo stesso segno di quelli che la cornice ha sono la stessa lettura, e resta l\'oggetto che c\'è: dopo «Segna tutte come lette» una copia degli stessi dati (Avanti del browser) non rimette il numero, nemmeno se la rotta non dà l\'istante (sprint 11 · T2.1)', async () => {
-        vi.stubGlobal('fetch', rotte(notificheDelServer));
+    it('dati con lo stesso segno di quelli che la cornice ha valgono come li dà la pagina: un frontend che li ritocca nel browser lasciando il segno vede il numero e il nome nuovi, come nella v1.2.1 (sprint 11 · T2.6)', async () => {
+        const primi = letti(alSecondo(5), 5);
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['5', 'Marketing']);
+
+        // Una notifica letta dalla pagina, il nome cambiato in un modulo: gli stessi dati con un altro contenuto.
+        await mostra(<Cornice dati={{ ...primi, non_lette: 4, workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' } }} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['4', 'Marketing Europa']);
+    });
+
+    it('dopo «Segna tutte come lette» una copia degli stessi dati, con lo stesso segno (Avanti del browser), non rimette il numero: la lettura è stata segnata dopo quel segno (sprint 11 · T2.1)', async () => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(2), segnateIl: alSecondo(3) }));
         const primi = letti(alSecondo(1), 12);
         await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));

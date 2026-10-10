@@ -170,6 +170,16 @@ it('le sei chiavi di prima restano al loro posto, e il segno è l\'ultima (sprin
     expect(array_keys(Cornice::dati()))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il']);
 });
 
+it('le non lette si contano per prime, subito dopo il segno: fra il segno e il numero non passa un\'altra lettura (sprint 11 · review R3)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostra(3), ...aziendeEWorkspace()]);
+
+    Cornice::dati();
+
+    // Il numero è il dato che la cornice confronta col segno: contato per ultimo sarebbe più fresco del suo segno di tre letture.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->first())->toBe('/v1/io');
+});
+
 it('lo stato di ogni app è quello di app.elenca, chiesto col gettone del workspace e non con quello dell\'accesso (T3.1)', function () {
     $gettoni = sessioneAMano(marketing());
     backoffice(['/v1/app' => ['data' => [
