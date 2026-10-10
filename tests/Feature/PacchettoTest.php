@@ -1122,7 +1122,7 @@ it('il README dice, in «Il logo», la cartella dei file del logo, ognuno dei ci
 
 // Sprint 15 · T3 (voce #1585): la favicon arriva dal pacchetto, e il README dice come si monta. favicon.ico e
 // apple-touch-icon.png escono da uno script, e la CI li rigenera a ogni giro.
-it('il README dice, in «La favicon», la riga del <head>, i tre file, come arrivano in public/ da soli e col comando, che si committano, e che la CSP non cambia (sprint 15 · T3.6)', function (string $cosa) {
+it('il README dice, in «La favicon», la riga per la testa della pagina, i tre file, come arrivano in public/ da soli e col comando, che si committano, e che la CSP non cambia (sprint 15 · T3.6)', function (string $cosa) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il README di prima della v1.5.0, senza quella sezione: la cosa non si trova più.
     $diPrima = str_replace("\n## La favicon\n", "\n## L'icona\n", $readme);
@@ -1131,7 +1131,7 @@ it('il README dice, in «La favicon», la riga del <head>, i tre file, come arri
         ->and(substr_count($readme, "\n## La favicon\n"))->toBe(1)
         ->and(sezioneDelReadme($diPrima, 'La favicon'))->toBe('');
 })->with([
-    'la riga del <head>' => ['@include(\'zr-core::favicon\')'],
+    'la riga per la testa della pagina' => ['@include(\'zr-core::favicon\')'],
     'il file SVG' => ['`favicon.svg`'],
     'il file ICO' => ['`favicon.ico`'],
     'l\'icona Apple' => ['`apple-touch-icon.png`'],

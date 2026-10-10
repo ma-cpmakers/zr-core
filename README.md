@@ -334,7 +334,7 @@ system, identiche byte per byte, e non si modificano.
 | `zeiras-logo-dark.svg` | il logo orizzontale, per i fondi scuri |
 | `zeiras-mark.svg` | solo il simbolo: avatar, app, spazi stretti |
 | `zeiras-mark-dark.svg` | solo il simbolo, coi colori del tema scuro |
-| `zeiras-favicon.svg` | la favicon e l'icona del browser |
+| `zeiras-favicon.svg` | la favicon e l'icona del browser: come si monta lo dice «La favicon», qui sotto |
 
 Una pagina senza cornice (Accedi, Registrati) importa il file e ne usa l'indirizzo:
 
@@ -352,6 +352,47 @@ anche per `zeiras-mark-dark.svg` e `zeiras-favicon.svg`.
 
 Quale versione su quale fondo, le misure minime e lo spazio di rispetto li dice il design system, alla sezione «Logo»: qui
 non si ripetono. In cima alla barra della cornice il marchio lo mette l'`AppShell`: lì il frontend non aggiunge niente.
+
+## La favicon
+
+La favicon di Zeiras arriva dal pacchetto: una riga nella testa della pagina e tre file statici in `public/` del frontend.
+
+Nel `<head>` del layout Blade del frontend:
+
+```blade
+@include('zr-core::favicon')
+```
+
+che scrive le due icone, l'icona Apple e il colore del tema:
+
+```html
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="…">
+```
+
+Il colore del tema è il token `surface` del design system, nel tema chiaro, letto da `tokens.json` del pacchetto: non si
+scrive a mano. La vista non legge niente dalla richiesta.
+
+I tre file sono `favicon.svg` (la copia del design system, `zeiras-favicon.svg`), `favicon.ico` (tre immagini: 16, 32 e
+48 px) e `apple-touch-icon.png` (180×180, senza trasparenza). Li pubblica il provider di zr-core. Arrivano da soli a ogni
+`composer update`, col comando che un frontend Laravel ha già nel suo `post-update-cmd`
+(`php artisan vendor:publish --tag=laravel-assets --ansi --force`); oppure a mano, col tag di zr-core:
+
+```
+php artisan vendor:publish --tag=zr-core-favicon --force
+```
+
+Con `--force` un file con lo stesso nome già in `public/` viene sostituito (il `favicon.ico` vuoto dello scheletro di
+Laravel, o una favicon provvisoria). I tre file si committano nel repo del frontend: il `composer install` di un deploy non
+lancia `post-update-cmd`, e senza i file nel repo in produzione non ci sarebbero.
+
+Sono file della stessa origine: la CSP non cambia. Non c'è una rotta: `/favicon.ico` lo serve il server web, come ogni file
+di `public/`.
+
+`favicon.ico` e `apple-touch-icon.png` sono la resa di `zeiras-favicon.svg`: in questo repo li genera `npm run favicon`, non
+si ritoccano a mano, e la CI a ogni giro li confronta pixel per pixel con la resa di adesso.
 
 ## La CSP
 

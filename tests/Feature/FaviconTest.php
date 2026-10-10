@@ -108,7 +108,7 @@ it('la vista della favicon non prende niente dalla richiesta: su un altro domini
         ->and(righeDi((string) $risposta->getContent()))->toBe(righeAtteseDellaFavicon());
 });
 
-it('le due pagine di prova hanno nel <head> le quattro righe della vista della favicon, com\'è resa, e nessun altro <link> (sprint 15 · T3.5)', function (string $pagina) {
+it('le due pagine di prova hanno nella testa le quattro righe della vista della favicon, com\'è resa, e nessun altro link (sprint 15 · T3.5)', function (string $pagina) {
     $testa = Str::between(File::get(__DIR__.'/../../resources/demo/'.$pagina), '<head>', '</head>');
     $nellaPagina = array_values(array_filter(righeDi($testa), fn (string $riga) => str_starts_with($riga, '<link') || str_contains($riga, 'name="theme-color"')));
 
