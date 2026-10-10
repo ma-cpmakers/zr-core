@@ -39,6 +39,8 @@
     "products": "Products",
     "dashboard": "Dashboard",
     "unreadOne": "unread",
+    "markingAllRead": "Marking…",
+    "markRestRead": "Mark the rest",
     "notificationTitle": "News in the workspace",
     "notificationTitle.com.zeiras.app.modificata": "An app in the workspace was turned on or off",
     "notificationTitle.com.zeiras.workspace.creato": "The workspace was created",

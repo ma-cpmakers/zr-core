@@ -1527,6 +1527,216 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelector('.zr-notif-dot')?.getAttribute('aria-label') ?? null))
             .toStrictEqual([...Array.from({ length: nonLetteCaricate }, () => pallino), null]);
     });
+
+    // Sprint 17 · T1 (voce #1481). Il pulsante dice che cosa sta succedendo: dal clic alla risposta che la richiesta è in corso
+    // («Segno…»), e dopo `altre: true` che c'è da continuare («Segna le altre»), finché quel giro di letture non è finito. I due
+    // testi sono di zr-core (`markingAllRead`, `markRestRead`): `markAllRead` resta quello del design system. Il pulsante è sempre
+    // lo stesso elemento, e cambia solo il testo.
+
+    /**
+     * Le due rotte, con le letture che il test decide: a ogni caricamento l'elenco dopo (finiti, l'ultimo), che può essere una
+     * risposta in attesa; a ogni «Segna tutte come lette» la risposta dopo, pronta o in attesa.
+     */
+    const rotteConLetture = (elenchi: (unknown[] | Promise<Response>)[], letture: (Response | Promise<Response>)[]) => {
+        let caricamenti = 0;
+        let partite = 0;
+
+        return vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => {
+            if (indirizzo === '/cornice/notifiche') {
+                const elenco = elenchi[Math.min(caricamenti++, elenchi.length - 1)];
+
+                return Array.isArray(elenco) ? risposta({ data: elenco }) : elenco;
+            }
+
+            return letture[partite++];
+        });
+    };
+    /** La risposta di una lettura riuscita: se ne restano (`altre`). */
+    const letturaFatta = (altre: boolean) => risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z', altre } });
+    /** I tre testi del pulsante in una lingua: fermo, con la richiesta in corso, con altre da segnare. */
+    const testiDelPulsante: [lingua: string, fermo: string, inCorso: string, leAltre: string][] = [
+        ['it', 'Segna tutte come lette', 'Segno…', 'Segna le altre'],
+        ['es', 'Marcar todas como leídas', 'Marcando…', 'Marcar las demás'],
+        ['en', 'Mark all as read', 'Marking…', 'Mark the rest'],
+        // Una lingua che zr-core non ha: anche i due testi nuovi sono in inglese.
+        ['de', 'Mark all as read', 'Marking…', 'Mark the rest'],
+    ];
+    const nomeDellaCampanella = () => uno('.zr-bell')?.getAttribute('aria-label');
+
+    it.each(testiDelPulsante)('con la lingua "%s", dal clic alla risposta il pulsante dice che la richiesta è in corso, e un clic lì non ne fa partire un\'altra; alla risposta se ne va col numero della campanella (sprint 17 · T1.1, T1.4)', async (lingua, fermo, inCorso) => {
+        const lettura = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer], [lettura.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+        expect(pulsante?.textContent).toBe(fermo);
+
+        await clic(pulsante);
+        // La risposta non è arrivata e il testo è già cambiato, sullo stesso pulsante.
+        expect(segnaTutte()).toBe(pulsante);
+        expect(pulsante?.textContent).toBe(inCorso);
+        await clic(pulsante);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(pulsante?.textContent).toBe(inCorso);
+
+        await lettura.arriva(letturaFatta(false));
+        expect(campanella()).toBeNull();
+        expect(segnaTutte()).toBeNull();
+    });
+
+    it.each(testiDelPulsante)('con la lingua "%s", dopo altre: true il pulsante dice che ce ne sono altre da segnare, mentre il pannello si ricarica e quando l\'elenco nuovo è arrivato: è lo stesso pulsante, col fuoco (sprint 17 · T1.2)', async (lingua, _fermo, _inCorso, leAltre) => {
+        const ricaricato = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer, ricaricato.promessa], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+        pulsante?.focus();
+
+        await clic(pulsante);
+        // La lettura ha risposto che ne restano; l'elenco nuovo è stato chiesto e non è arrivato.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(segnaTutte()).toBe(pulsante);
+        expect(pulsante?.textContent).toBe(leAltre);
+        expect(document.activeElement).toBe(pulsante);
+
+        await ricaricato.arriva(risposta({ data: dopoUnaParte }));
+        expect(segnaTutte()).toBe(pulsante);
+        expect(pulsante?.textContent).toBe(leAltre);
+        expect(document.activeElement).toBe(pulsante);
+    });
+
+    it('«Segna le altre» vale finché quel giro di letture non è finito: dopo la lettura completa, una notifica arrivata dopo trova «Segna tutte come lette» (sprint 17 · T1.3)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true), letturaFatta(false)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Il clic che continua finisce la lettura: il pulsante se ne va col numero.
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+        expect(segnaTutte()).toBeNull();
+
+        // Una visita dopo, a pannello aperto: i dati nuovi contano una notifica arrivata dopo la lettura. È un altro giro.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('1');
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
+    it('dopo altre: true, chiuso e riaperto il pannello il pulsante dice di nuovo «Segna tutte come lette»: l\'elenco è stato chiesto da capo (sprint 17 · T1.3)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+        await clic(uno('.zr-bell'));
+        expect(richieste(fetchFinto).slice(3)).toStrictEqual(['GET /cornice/notifiche']);
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
+    it('se dopo altre: true il ricaricamento fallisce, dopo «Riprova» il pulsante dice «Segna tutte come lette»: anche quello è un elenco chiesto da capo (sprint 17 · T1.3)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, Promise.resolve(risposta({}, 500)), dopoUnaParte], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+
+        await clic(uno('.zr-notif [role="alert"] button'));
+        expect(nonLette()).toStrictEqual([true, false, false]);
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
+    it('il clic che continua dopo altre: true mostra di nuovo «Segno…», non «Segna le altre», e un clic lì non fa partire un\'altra richiesta; il nome della campanella resta al plurale (sprint 17 · T1.4)', async () => {
+        const seconda = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true), seconda.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+        await clic(pulsante);
+        expect(pulsante?.textContent).toBe('Segna le altre');
+
+        await clic(pulsante);
+        expect(segnaTutte()).toBe(pulsante);
+        expect(pulsante?.textContent).toBe('Segno…');
+        expect(nomeDellaCampanella()).toBe('Notifiche, 60 non lette');
+        await clic(pulsante);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+
+        await seconda.arriva(letturaFatta(false));
+        expect(campanella()).toBeNull();
+        expect(segnaTutte()).toBeNull();
+    });
+
+    // Il guardiano del doppio clic non è il testo: il secondo clic può cadere prima che la pagina sia ridisegnata.
+    it('due clic nello stesso giro, prima che il pulsante dica «Segno…», fanno partire una richiesta sola (sprint 17 · T1.4)', async () => {
+        const lettura = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer], [lettura.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+
+        // Nello stesso `act` niente si ridisegna fra un clic e l'altro: il secondo cade sul pulsante di prima.
+        await act(async () => {
+            pulsante?.click();
+            expect(pulsante?.textContent).toBe('Segna tutte come lette');
+            pulsante?.click();
+            await prossimoGiro();
+        });
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(pulsante?.textContent).toBe('Segno…');
+    });
+
+    it.each<[string, boolean, string]>([
+        ['«Segna tutte come lette»', false, 'Segna tutte come lette'],
+        ['«Segna le altre», dopo altre: true', true, 'Segna le altre'],
+    ])('se la richiesta fallisce il pulsante torna al testo che aveva prima del clic: %s (sprint 17 · T1.5)', async (_caso, dopoAltre, prima) => {
+        const fallita = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], dopoAltre ? [letturaFatta(true), fallita.promessa] : [fallita.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+        if (dopoAltre) {
+            await clic(pulsante);
+        }
+        expect(pulsante?.textContent).toBe(prima);
+
+        await clic(pulsante);
+        expect(pulsante?.textContent).toBe('Segno…');
+
+        await fallita.arriva(risposta({}, 500));
+        expect(segnaTutte()).toBe(pulsante);
+        expect(pulsante?.textContent).toBe(prima);
+        expect(campanella()).toBe('60');
+    });
+
+    it.each<[string, boolean, string]>([
+        ['mentre la richiesta è in corso', false, 'Segno…'],
+        ['dopo altre: true', true, 'Segna le altre'],
+    ])('con una sola non letta la campanella e il pallino restano al singolare e il pulsante ha il testo del suo momento, %s: i testi che zr-core dà al posto di quelli dell\'`AppShell` non si pestano (sprint 17 · T1.7)', async (_caso, risponde, testo) => {
+        const lettura = inAttesa();
+        const fetchFinto = rotteConLetture([[nata('uat-n80', '2026-10-06T11:55:00Z')]], [risponde ? letturaFatta(true) : lettura.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(nomeDellaCampanella()).toBe('Notifiche, 1 non letta');
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+
+        await clic(segnaTutte());
+        expect(nomeDellaCampanella()).toBe('Notifiche, 1 non letta');
+        expect(uno('.zr-notif-dot')?.getAttribute('aria-label')).toBe('non letta');
+        expect(segnaTutte()?.textContent).toBe(testo);
+    });
 });
 
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati

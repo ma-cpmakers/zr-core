@@ -331,6 +331,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // pagina da cui prende l'istante mandato, anche se cade fra l'arrivo di un elenco nuovo e il ridisegno.
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
+    // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
+    // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, o con un
+    // elenco chiesto da capo. Sono testo, e stanno nello stato; il guardiano del doppio clic resta un ref, che è sincrono.
+    const [inCorso, setInCorso] = useState(false);
+    const [neRestano, setNeRestano] = useState(false);
     const ultimaRichiesta = useRef(0);
     const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
@@ -352,7 +357,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
         );
     };
-    const carica = () => chiedi(true);
+    // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, e un giro di letture rimasto a metà non continua da lì.
+    const carica = () => {
+        setNeRestano(false);
+        chiedi(true);
+    };
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
     // caricate, anche quelle oltre la prima pagina. Fin lì e non fino all'ora del browser: ciò che arriva dopo, mai visto,
@@ -363,9 +372,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // non ne fa partire un'altra. Se la parte server dice che ne restano (`altre`: si è fermata a un tetto) non sono tutte
     // lette: il numero resta, le notifiche in pagina non si danno per lette, e il pannello si ricarica con ciò che c'è
     // davvero, senza svuotarsi: finché l'elenco nuovo non arriva resta in pagina quello di prima, e il pulsante resta dov'è,
-    // col fuoco, per il clic che continua. Che una parte è segnata, e che la richiesta è in corso, la cornice oggi non lo
-    // dice: il pannello del design system non ha un posto per un avviso, e il testo del pulsante, che è di zr-core, in
-    // questa versione è sempre lo stesso (README, «Le notifiche»).
+    // col fuoco, per il clic che continua. Che cosa sta succedendo lo dice il testo del pulsante, che la cornice dà
+    // all'`AppShell` al posto del suo: che la richiesta è in corso (`markingAllRead`), e dopo un `altre` che ne restano
+    // (`markRestRead`). Al lettore di schermo la cornice non lo annuncia: il pannello del design system non ha un posto per
+    // un avviso (README, «Le notifiche»).
     const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
@@ -378,6 +388,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const nonLetteInElenco = notifiche.elenco.filter((notifica) => !notifica.letta).length;
     // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
     const sullaCampanella = nonLette ?? nonLetteInElenco;
+    const unaSola = sullaCampanella === 1;
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina.
@@ -386,6 +397,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             return;
         }
         leStaSegnando.current = true;
+        setInCorso(true);
         const questi = dati;
         // L'elenco in pagina al clic: è quello da cui viene l'istante mandato.
         const elencoDelClic = notifiche.richiesta;
@@ -400,7 +412,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             return;
         } finally {
             leStaSegnando.current = false;
+            setInCorso(false);
         }
+        // Il giro di letture continua se ne restano, e finisce con la lettura completa. Se la richiesta è fallita resta com'era.
+        setNeRestano(altre);
         if (altre) {
             // Ne restano da leggere: niente è «segnato fino a qui», e le non lette dell'ultimo elenco contano finché non
             // arriva quello nuovo. Senza svuotare il pannello: il pulsante resta montato, col fuoco.
@@ -423,6 +438,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             carica();
         }
     };
+    // Il testo del pulsante nel suo momento. La richiesta in corso viene prima: il clic che continua dopo un `altre` è in corso.
+    const sulPulsante = inCorso ? t.markingAllRead : neRestano ? t.markRestRead : t.markAllRead;
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
@@ -488,8 +505,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             }}
             // Con una sola non letta il nome della campanella per il lettore di schermo è al singolare: il design system ha un
             // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
-            // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»).
-            labels={sullaCampanella === 1 ? { ...t, unread: t.unreadOne } : t}
+            // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
+            // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
+            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano.
+            labels={unaSola || sulPulsante !== t.markAllRead ? { ...t, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
             // Con `piano` nessuna lista: vale quella che l'`AppShell` mette da sé, con la voce «Piano».

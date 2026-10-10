@@ -23,6 +23,13 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
      * file solo, finché il design system ha un testo solo per le non lette (README, «La lingua»).
      */
     unreadOne: string;
+    /**
+     * Il testo del pulsante «Segna tutte come lette» mentre la richiesta è in corso. `markAllRead` è dell'`AppShell`, che per il
+     * pulsante ha un testo solo: quale vale lo decide la cornice, come per `unreadOne` (README, «Le notifiche»).
+     */
+    markingAllRead: string;
+    /** Il testo dello stesso pulsante quando la parte server ha detto che ne restano da segnare: il clic continua la lettura. */
+    markRestRead: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
     /**
