@@ -61,6 +61,11 @@ export interface CorniceProps {
     onLogout: () => void;
     /** Come si apre un indirizzo: di norma il browser ci va. */
     naviga?: (indirizzo: string) => void;
+    /**
+     * La voce «Piano» nel menu del profilo. Spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina
+     * che non c'è. Il frontend la accende quando la pagina del piano esiste su app.zeiras.com.
+     */
+    piano?: boolean;
     children?: ReactNode;
 }
 
@@ -99,6 +104,21 @@ const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string
     company: '/azienda',
     notifiche: '/notifiche',
 };
+
+/**
+ * Il menu del profilo senza «Piano»: la lista che l'`AppShell` mette da sé, tolta quella voce. L'`AppShell` non ha un modo per
+ * toglierne una sola e prende la lista intera (`accountItems`): icone, testi e ordine sono i suoi, e un test li confronta coi
+ * suoi, perché il design system può cambiarli.
+ */
+function menuDelProfiloSenzaPiano(t: TestiDellaCornice, suAccount: (azione: AccountAction) => void): MenuItem[] {
+    return [
+        { icon: 'user', label: t.profile, onClick: () => suAccount('profile') },
+        { icon: 'settings', label: t.accountSettings, onClick: () => suAccount('settings') },
+        { icon: 'building', label: t.company, onClick: () => suAccount('company') },
+        { sep: true },
+        { icon: 'arrow', label: t.logout, onClick: () => suAccount('logout') },
+    ];
+}
 
 /** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
 function nelWorkspace(indirizzo: string, slug: string): string {
@@ -260,7 +280,7 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
 }
 
-export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
+export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
     // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
@@ -441,6 +461,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const risultati = perGruppo(ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, dati.workspace.slug) ?? []));
     const voci = [prodotti, ...nav];
 
+    // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
+    const suAccount = (azione: AccountAction) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]));
+
     return (
         <Zeiras.AppShell
             {...pagina}
@@ -478,7 +501,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»).
             labels={sullaCampanella === 1 ? { ...t, unread: t.unreadOne } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
-            onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
+            onAccount={suAccount}
+            // Con `piano` nessuna lista: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
+            accountItems={piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount)}
             // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
             onOpenNotification={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}

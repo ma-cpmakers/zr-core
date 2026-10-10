@@ -241,6 +241,11 @@ cornice === null ? pagina : (
   nel workspace seguito dal percorso del tipo: una board si apre su `https://board.zeiras.com/w/<slug>/b/<id>`; una
   cartella non ha una pagina sua, e si apre sulla pagina del workspace dove stanno le cartelle,
   `https://board.zeiras.com/w/<slug>`. Se la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
+- **Il menu del profilo** ha Profilo, Impostazioni, Azienda e, dopo una linea, Esci: le prime tre aprono le loro pagine su
+  app.zeiras.com (`/impostazioni/profilo`, `/impostazioni/preferenze`, `/azienda`), «Esci» chiama `onLogout`. La voce
+  «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
+  la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
+  (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.

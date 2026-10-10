@@ -539,3 +539,20 @@ describe('nessuna voce attiva, sotto il layout', () => {
         expect(accese()).toStrictEqual([]);
     });
 });
+
+// Sprint 15 · T1 (voce #1584). La voce «Piano» del menu del profilo è spenta di default: sotto il layout la accende la prop
+// `piano` data al layout, che è del modulo come il prodotto aperto.
+describe('la voce «Piano», sotto il layout', () => {
+    /** I nomi delle voci del menu del profilo aperto. */
+    const nomiDelProfilo = () => tutti('.zr-profile-menu [role="menuitem"]').map((voce) => voce.querySelector('.zr-menu-label')?.textContent);
+
+    it('con `piano` dato a LayoutDellaCornice il menu del profilo ha la voce «Piano»; alla visita dopo, senza, non l\'ha più (sprint 15 · T1.4)', async () => {
+        await visita(dati, <PaginaA key="1" />, { piano: true });
+        await clic(uno('.zr-avatar-btn'));
+        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Piano', 'Azienda', 'Esci']);
+
+        // La cornice resta montata, col menu aperto: è la prop del layout a decidere, a ogni render.
+        await visita(dati, <PaginaB key="2" />);
+        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', 'Esci']);
+    });
+});

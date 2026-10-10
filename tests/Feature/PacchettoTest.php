@@ -1070,3 +1070,27 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
     'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
 ]);
+
+// Sprint 15 · T1 (voce #1584): la voce «Piano» del menu del profilo è spenta di default, e il README dice la prop che la accende.
+
+/** Il punto «Il menu del profilo» del README, su una riga sola: dal grassetto al punto dopo. Vuoto se non c'è. */
+function puntoDelMenuDelProfilo(string $readme): string
+{
+    preg_match('/^- \*\*Il menu del profilo\*\*.*?(?=^- |^$|\z)/ms', $readme, $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il README dice, nel punto «Il menu del profilo», una frase per cosa: che di default la voce «Piano» non c\'è, la prop piano che la accende, e quando (sprint 15 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quel punto: la frase non si trova più.
+    $diPrima = str_replace('- **Il menu del profilo**', '- **Il menu**', $readme);
+
+    expect(str_contains(puntoDelMenuDelProfilo($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, '- **Il menu del profilo**'))->toBe(1)
+        ->and(puntoDelMenuDelProfilo($diPrima))->toBe('');
+})->with([
+    'di default la voce non c\'è' => ['La voce «Piano» è spenta di default'],
+    'la prop che la accende' => ['Si accende con la prop `piano`'],
+    'quando si accende' => ['quando la pagina del piano esiste su app.zeiras.com'],
+]);
