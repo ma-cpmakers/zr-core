@@ -221,6 +221,7 @@ describe('la Cornice', () => {
 
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
         [{ crm: 'attivo', bookings: 'disponibile' }, ['crm', 'bookings']],
+        [{ bookings: 'attivo' }, ['bookings']],
         [{ crm: 'disponibile' }, ['crm']],
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
     ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo` o `disponibile` (sprint 16 · T7.2, %j)', async (prodotti, aperti) => {

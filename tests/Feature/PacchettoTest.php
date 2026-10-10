@@ -1429,6 +1429,7 @@ it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognu
     'coi valori scritti per intero' => ['Il test nel modulo', 'confronta le cinque intestazioni coi valori scritti per intero'],
     'non una costante di zr-core' => ['Il test nel modulo', 'e non una costante di zr-core'],
     'è un obbligo' => ['Il test nel modulo', 'È un obbligo, non un consiglio'],
+    'il test: la risposta che l\'esempio legge (terza lettura, R4)' => ['Il test nel modulo', "\$risposta = \$this->get('/non-esiste')"],
     'il test: Strict-Transport-Security' => ['Il test nel modulo', "->assertHeader('Strict-Transport-Security', 'max-age=31536000')"],
     'il test: Content-Security-Policy' => ['Il test nel modulo', "expect(\$risposta->headers->all('Content-Security-Policy'))->toBe([\"".CSP_DI_TUTTI_NEL_README.'"]);'],
     'il test: Referrer-Policy' => ['Il test nel modulo', "->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')"],
@@ -1663,6 +1664,7 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     'perché nessuno può ancora aprirlo' => ['perché non lo può ancora aprire nessuno, salvo i workspace che il backoffice ammette in anteprima'],
     'dentro la sessione decide il backoffice' => ['Dentro la sessione lo stato di un prodotto lo dà il backoffice, workspace per workspace'],
     'la cornice non lo legge' => ['la cornice `in_arrivo` non lo legge: nel workspace di un\'anteprima il prodotto si apre'],
+    'si apre se il registro non lo dà «Presto» (terza lettura, R2)' => ['nel workspace di un\'anteprima il prodotto si apre, se il registro non lo dà «Presto»'],
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
 ]);
