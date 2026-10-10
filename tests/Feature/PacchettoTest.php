@@ -1119,3 +1119,37 @@ it('il README dice, in «Il logo», la cartella dei file del logo, ognuno dei ci
     'senza ?no-inline il simbolo non passa la CSP' => ['come indirizzo `data:`, che la CSP scritta più sotto non lascia passare'],
     'con ?no-inline la CSP non cambia' => ['Con `?no-inline` resta un file della stessa origine'],
 ]);
+
+// Sprint 15 · T3 (voce #1585): la favicon arriva dal pacchetto, e il README dice come si monta. favicon.ico e
+// apple-touch-icon.png escono da uno script, e la CI li rigenera a ogni giro.
+it('il README dice, in «La favicon», la riga del <head>, i tre file, come arrivano in public/ da soli e col comando, che si committano, e che la CSP non cambia (sprint 15 · T3.6)', function (string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quella sezione: la cosa non si trova più.
+    $diPrima = str_replace("\n## La favicon\n", "\n## L'icona\n", $readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La favicon'), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## La favicon\n"))->toBe(1)
+        ->and(sezioneDelReadme($diPrima, 'La favicon'))->toBe('');
+})->with([
+    'la riga del <head>' => ['@include(\'zr-core::favicon\')'],
+    'il file SVG' => ['`favicon.svg`'],
+    'il file ICO' => ['`favicon.ico`'],
+    'l\'icona Apple' => ['`apple-touch-icon.png`'],
+    'da soli a ogni composer update' => ['Arrivano da soli a ogni `composer update`'],
+    'il tag che i frontend hanno già' => ['`php artisan vendor:publish --tag=laravel-assets --ansi --force`'],
+    'il comando col tag di zr-core' => ['php artisan vendor:publish --tag=zr-core-favicon --force'],
+    'i tre file si committano' => ['I tre file si committano nel repo del frontend'],
+    'la CSP non cambia' => ['la CSP non cambia'],
+]);
+
+it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(substr_count($ci, 'npm run favicon -- --controlla'))->toBe(1)
+        ->and(strpos($ci, 'npm run favicon -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+        ->and($package['scripts']['favicon'] ?? null)->toBe('node scripts/favicon.mjs')
+        ->and($package['devDependencies']['@resvg/resvg-js'] ?? null)->toBe('2.6.2')
+        ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
+        ->and($package)->not->toHaveKey('dependencies');
+});
