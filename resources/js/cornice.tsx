@@ -316,28 +316,28 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // rotta che non lo dà — «dati nuovi» vuol dire un altro oggetto `dati`, come prima che la cornice confrontasse i segni; e
     // lì, con la cornice montata fra una visita e l'altra, Inertia ridà alla pagina l'oggetto di prima quando i dati della
     // visita sono uguali in profondità.
-    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[] }>({ stato: 'ready', elenco: [] });
+    // Con l'elenco, la richiesta da cui viene (`richiesta`): mentre il pannello si ricarica senza svuotarsi è una di prima
+    // dell'ultima partita. Sta nello stato insieme all'elenco, non in un ref: un clic la prende dallo stesso disegno della
+    // pagina da cui prende l'istante mandato, anche se cade fra l'arrivo di un elenco nuovo e il ridisegno.
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     const ultimaRichiesta = useRef(0);
-    // La richiesta dell'elenco che è in pagina: mentre il pannello si ricarica senza svuotarsi è una di prima dell'ultima partita.
-    const elencoInPagina = useRef(0);
     const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
-            setNotifiche({ stato: 'loading', elenco: [] });
+            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
         }
         caricaNotifiche().then(
             ({ elenco, il }) => {
                 if (questa === ultimaRichiesta.current) {
-                    elencoInPagina.current = questa;
-                    setNotifiche({ stato: 'ready', elenco });
+                    setNotifiche({ stato: 'ready', elenco, richiesta: questa });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
                 }
             },
             () => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'error', elenco: [] });
+                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa });
                 }
             },
         );
@@ -353,8 +353,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // non ne fa partire un'altra. Se la parte server dice che ne restano (`altre`: si è fermata a un tetto) non sono tutte
     // lette: il numero resta, le notifiche in pagina non si danno per lette, e il pannello si ricarica con ciò che c'è
     // davvero, senza svuotarsi: finché l'elenco nuovo non arriva resta in pagina quello di prima, e il pulsante resta dov'è,
-    // col fuoco, per il clic che continua. Che una parte è segnata, e che la richiesta è in corso, la cornice non lo dice: il
-    // design system non ha con che dirlo (README, «Le notifiche»).
+    // col fuoco, per il clic che continua. Che una parte è segnata, e che la richiesta è in corso, la cornice oggi non lo
+    // dice: il pannello del design system non ha un posto per un avviso, e il testo del pulsante, che è di zr-core, in
+    // questa versione è sempre lo stesso (README, «Le notifiche»).
     const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
@@ -377,7 +378,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         leStaSegnando.current = true;
         const questi = dati;
         // L'elenco in pagina al clic: è quello da cui viene l'istante mandato.
-        const elencoDelClic = elencoInPagina.current;
+        const elencoDelClic = notifiche.richiesta;
         let il: string | undefined;
         let altre: boolean;
         try {

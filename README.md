@@ -201,18 +201,22 @@ cornice === null ? pagina : (
   un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
   campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un
   altro clic. Mentre il pannello si ricarica l'elenco di prima resta in pagina e il pulsante resta dov'è, col fuoco della
-  tastiera. Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte è stata
+  tastiera. Due cose la cornice oggi non le dice: che una parte è stata
   segnata — se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic
   fallito — e che la richiesta è in corso: fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15
-  secondi, il pulsante resta com'è. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
+  secondi, il pulsante resta com'è. Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo
+  dà zr-core, e in questa versione è sempre lo stesso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
   ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
   pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
   cambia niente. Un limite, che non è solo di questa rotta: una richiesta lenta, quando finisce, riscrive la sessione com'era
   all'inizio e ne rimanda il cookie (lo fa Laravel). Se mentre «Segna tutte come lette» gira — fino a circa 15 secondi, solo
   con più di 5000 non lette — la persona esce o entra in un altro workspace da un'altra scheda, la sessione torna quella di
-  prima: dopo un cambio di workspace la persona si ritrova in quello di prima; dopo un'uscita i suoi gettoni sono già chiusi
-  nel backoffice, e la prima chiamata la richiude. zr-core da solo non lo chiude: serve il blocco della sessione sulle rotte
-  di uscita e di ingresso nel workspace, che sono di zr-auth. Il pulsante c'è quando la campanella ha un numero
+  prima: dopo un cambio di workspace la persona si ritrova in quello di prima; dopo un'uscita torna la sessione coi gettoni
+  di prima: se l'uscita li ha chiusi nel backoffice, la prima chiamata la richiude; se all'uscita il backoffice non ha
+  risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza. zr-core da solo non lo
+  chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un
+  workspace — quelle del frontend e il ricevitore dell'ingresso di zr-auth —, per più dei 10 secondi predefiniti: messo da
+  una parte sola non ferma niente. Il pulsante c'è quando la campanella ha un numero
   e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
