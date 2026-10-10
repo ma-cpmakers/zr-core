@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
@@ -26,7 +27,10 @@ it('si avvia dentro un\'app Laravel', function () {
 // v1.3.0): fino alla v1.3.0 zr-core si installava accanto allo zr-auth che i frontend avevano, composer.json accettava sette
 // versioni minori, dalla 0.6 alla 0.12, e la CI le provava tutte, un giro del job per ognuna. Sprint 13 · T1 (voce #1480):
 // dalla v1.4.0 la minore è una, la 0.12, perché la cornice chiama `Sessione::aggiorna`, che c'è da lì. La regola non cambia:
-// una versione accettata e mai provata è una promessa senza prova.
+// una versione accettata e mai provata è una promessa senza prova. Sprint 17 · T3 (voce #1468): i giri di ogni minore sono
+// due, «ultima» e «minima». Il secondo installa la versione più bassa che composer.json accetta in quella minore, e la legge
+// da composer.json (`.github/minimo-di-zr-auth.sh`): prima la provava solo il giro in cui era anche l'ultima, e un vincolo
+// abbassato prometteva una patch che nessun giro installava.
 
 /**
  * Le voci della matrice di zr-auth in ci.yml come sono scritte fra le quadre (`'0.12'`): null se la riga non c'è, o se non sta
@@ -40,10 +44,51 @@ function vociDellaMatriceDiZrAuth(string $ci): ?string
 }
 
 /**
+ * Le voci di `patch` nella matrice di ci.yml come sono scritte fra le quadre (`'ultima', 'minima'`): null se la riga non c'è, o
+ * se non sta su una riga sola.
+ */
+function vociDellePatchDiZrAuth(string $ci): ?string
+{
+    preg_match('/^\s+patch: \[([^\]\n]*)\]$/m', $ci, $matrice);
+
+    return $matrice[1] ?? null;
+}
+
+/**
+ * Cosa non torna fra i due giri che la CI fa per ogni minore di zr-auth, «ultima» e «minima», e la matrice di ci.yml
+ * (`patch: ['ultima', 'minima']`, ogni voce fra apici): un giro che manca, uno che il passo delle dipendenze non conosce, un
+ * giro tolto o aggiunto a mano (`exclude`, `include`: la matrice è un prodotto, e così ogni minore li ha tutti e due), la voce
+ * che non arriva al passo che installa, il nome del giro che non dice quale dei due è. Che cosa installa ogni giro lo prova
+ * il caso che lancia il passo, più sotto.
+ *
+ * @return list<string>
+ */
+function patchDiZrAuthNonProvate(string $ci): array
+{
+    preg_match_all("/'([^',\s]+)'/", vociDellePatchDiZrAuth($ci) ?? '', $voci);
+
+    $problemi = [
+        ...array_map(fn (string $patch) => "la CI non fa il giro «{$patch}» delle minori di zr-auth", array_values(array_diff(['ultima', 'minima'], $voci[1]))),
+        ...array_map(fn (string $patch) => "la CI fa un giro «{$patch}», che il passo delle dipendenze non conosce", array_values(array_diff($voci[1], ['ultima', 'minima']))),
+    ];
+    if (preg_match('/^\s+(exclude|include):/m', $ci) === 1) {
+        $problemi[] = 'la matrice toglie o aggiunge giri a mano: una minore può restare senza uno dei suoi due giri';
+    }
+    if (! str_contains($ci, 'PATCH: ${{ matrix.patch }}')) {
+        $problemi[] = 'i giri non installano la patch della loro voce della matrice';
+    }
+    if (! str_contains($ci, 'name: ci (zr-auth ${{ matrix.zr-auth }}, ${{ matrix.patch }})')) {
+        $problemi[] = 'il nome del giro non dice la minore e la patch';
+    }
+
+    return $problemi;
+}
+
+/**
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
  * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch: uno solo, o più d'uno uniti da
- * `||`. La matrice di ci.yml (`zr-auth: ['0.12']`) ha un giro per ognuno, ogni voce fra apici: senza, YAML legge `0.10` come
+ * `||`. La matrice di ci.yml (`zr-auth: ['0.12']`) ha una voce per ognuno, ogni voce fra apici: senza, YAML legge `0.10` come
  * il numero 0.1, e una voce senza apici qui non conta. Solo sotto la 1.0 un `^` si ferma alla sua minore: `^1.0` accetta
  * anche le 1.1, che il giro della 1.0 non proverebbe.
  *
@@ -61,8 +106,8 @@ function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
         ...array_map(fn (string $versione) => "la CI non prova zr-auth {$versione}", array_values(array_diff($accettate[1], $provate[1]))),
         ...array_map(fn (string $versione) => "la CI prova zr-auth {$versione}, che composer.json non accetta", array_values(array_diff($provate[1], $accettate[1]))),
     ];
-    // Ogni giro installa l'ultima versione della minore della sua voce: la voce arriva al passo in ZR_AUTH, e restringe il
-    // vincolo di composer.json. Senza questo legame i giri avrebbero nomi diversi e la stessa versione.
+    // Il giro «ultima» installa l'ultima versione della minore della sua voce: la voce arriva al passo in ZR_AUTH, e restringe
+    // il vincolo di composer.json. Senza questo legame i giri avrebbero nomi diversi e la stessa versione.
     if (! str_contains($ci, 'ZR_AUTH: ${{ matrix.zr-auth }}') || ! str_contains($ci, '--with "zeiras/zr-auth:~${ZR_AUTH}.0"')) {
         $problemi[] = 'i giri non installano la versione di zr-auth della loro voce della matrice';
     }
@@ -83,7 +128,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5)', function () {
+it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -95,10 +140,13 @@ it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI 
     // zr-core che `Sessione::aggiorna` non la chiamava (il giro della PR #15, sprint 12, e quello del primo commit di questo sprint);
     // con la cornice che la chiama i giri hanno installato dalla 0.12.1 in su, e fra le due patch è cambiata proprio `aggiorna`: nella 0.12.0
     // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
-    // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
+    // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026). Dallo sprint 17 la patch più
+    // bassa la installa a ogni run il giro «minima», che la legge da qui: chi abbassa il vincolo la vede provata, o rossa.
     expect($vincolo)->toBe('^0.12.4')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
-        ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
+        ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
+        ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
+        ->and(patchDiZrAuthNonProvate($ci))->toBe([]);
 });
 
 it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprint 7 · T1.3; sprint 13 · T1.2)', function (string $file) {
@@ -116,16 +164,16 @@ it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprin
         ->and(vincoliDiZrAuthIn($testo."\n`^0.11`"))->toBe([$vincolo, '^0.11']);
 })->with(['README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice, accanto al vincolo, che la CI fa un giro per ogni versione minore accettata, con l\'ultima di ognuna, e che dalla v1.4.0 la minore è una, e perché (sprint 11 · T5.3; sprint 13 · T1.2)', function () {
+it('CLAUDE.md dice, accanto al vincolo, che la CI fa due giri per ogni versione minore accettata, con l\'ultima patch e con la più bassa che il vincolo accetta, e che dalla v1.4.0 la minore è una, e perché (sprint 11 · T5.3; sprint 13 · T1.2; sprint 17 · T3.3)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
-    $claude = (string) file_get_contents(__DIR__.'/../../CLAUDE.md');
+    $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
     // Il README i giri li elenca, e il caso qui sotto li conta sulla matrice; CLAUDE.md dice la regola, che non cambia con le
     // versioni: sta nella riga del vincolo, una volta. Accanto, perché la minore è una: è ciò che legge chi vorrebbe riallargare
     // il vincolo a una zr-auth senza `Sessione::aggiorna`.
-    expect(substr_count($claude, "`zeiras/zr-auth` `{$vincolo}`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna"))->toBe(1)
-        ->and(substr_count(suUnaRiga($claude), "e il verde è di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12)."))->toBe(1);
+    expect(substr_count($claude, "`zeiras/zr-auth` `{$vincolo}`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più bassa che il vincolo accetta (la legge da `composer.json`),"))->toBe(1)
+        ->and(substr_count($claude, "e il verde è di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12)."))->toBe(1);
 });
 
 /**
@@ -140,14 +188,14 @@ function giriDettiDa(string $testo): array
     return $trovati[1];
 }
 
-it('il README dice un giro della CI per ogni voce della matrice, e nessun altro (sprint 8 · T1.3; sprint 13 · T1.3)', function () {
+it('il README dice, di ogni voce della matrice e di nessun\'altra, che la CI ne prova l\'ultima (sprint 8 · T1.3; sprint 13 · T1.3; sprint 17 · T3.3)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     preg_match_all("/'(\d+\.\d+)'/", vociDellaMatriceDiZrAuth($ci) ?? '', $voci);
 
     // Il README rimasto alla v1.3.0: dice i sette giri di allora. E quello che dice il giro giusto e, in un altro punto, uno che
     // la matrice non ha.
-    $readmeDiPrima = str_replace("(la CI lo prova con l'ultima 0.12)", "(la CI lo prova con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10, l'ultima 0.11 e l'ultima 0.12)", $readme);
+    $readmeDiPrima = str_replace("e con l'ultima 0.12)", "e con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10, l'ultima 0.11 e l'ultima 0.12)", $readme);
     $conUnGiroInPiu = $readme."\nLa CI lo prova anche con l'ultima 0.11.\n";
 
     expect($voci[1])->not->toBe([])
@@ -187,7 +235,7 @@ it('il README dice, in «La parte server», da quale versione zr-core chiede la 
         ]);
 });
 
-it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1)', function () {
+it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1; sprint 17 · T3.4)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $vincolo = '^0.12.4';
     $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
@@ -201,6 +249,8 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
     // Un'altra minore al posto di quella accettata, e una in più accanto.
     $conUnAltraMinore = $conLaMatrice("'0.11'");
     $conUnaMinoreInPiu = $conLaMatrice("'0.12', '0.13'");
+    // La minore tolta dalla matrice, con le sue due patch ancora lì: nessun giro.
+    $senzaLaMinore = $conLaMatrice('');
 
     // La voce della matrice che non arriva al passo: il giro installerebbe una versione scritta nel passo, e sarebbe verde.
     $conLaVersioneFissa = str_replace('ZR_AUTH: ${{ matrix.zr-auth }}', "ZR_AUTH: '0.11'", $ci);
@@ -210,6 +260,7 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         ->and($conLaVoceSenzaApici)->not->toBe($ci)
         ->and($conUnAltraMinore)->not->toBe($ci)
         ->and($conUnaMinoreInPiu)->not->toBe($ci)
+        ->and($senzaLaMinore)->not->toBe($ci)
         ->and($conLaVersioneFissa)->not->toBe($ci)
         ->and($senzaIlVincoloDelGiro)->not->toBe($ci)
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaMatriceDiPrima))->toBe(['la CI prova zr-auth 0.6, che composer.json non accetta', 'la CI prova zr-auth 0.7, che composer.json non accetta', 'la CI prova zr-auth 0.8, che composer.json non accetta', 'la CI prova zr-auth 0.9, che composer.json non accetta', 'la CI prova zr-auth 0.10, che composer.json non accetta', 'la CI prova zr-auth 0.11, che composer.json non accetta'])
@@ -218,6 +269,7 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaVoceSenzaApici))->toBe(['la CI non prova zr-auth 0.12'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conUnAltraMinore))->toBe(['la CI non prova zr-auth 0.12', 'la CI prova zr-auth 0.11, che composer.json non accetta'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conUnaMinoreInPiu))->toBe(['la CI prova zr-auth 0.13, che composer.json non accetta'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $senzaLaMinore))->toBe(['la CI non prova zr-auth 0.12'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaVersioneFissa))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $senzaIlVincoloDelGiro))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
         // Senza matrice la CI fa un giro solo, con la versione che composer sceglie: nessuna delle due è provata di proposito.
@@ -227,6 +279,268 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         // Dalla 1.0 un `^` accetta anche le minori dopo: il controllo lo dice, invece di contarla come una minore sola.
         ->and(versioniDiZrAuthNonProvate('^0.8 || ^1.0', $ci))->toBe(['il vincolo «^0.8 || ^1.0» non è fatto di ^0.<minore> uniti da ||']);
 });
+
+it('il controllo trova il giro «minima» o «ultima» che manca, un giro che il passo non conosce, uno tolto a mano, la patch che non arriva al passo e il nome che non la dice (sprint 17 · T3.1, T3.4)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $conLePatch = fn (string $voci): string => (string) preg_replace('/^(\s+patch: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
+
+    // Una delle due patch tolta dalla matrice: ogni minore resta con un giro solo. E senza la riga, com'era fino alla v1.6.0.
+    $senzaLaMinima = $conLePatch("'ultima'");
+    $senzaLUltima = $conLePatch("'minima'");
+    $senzaLaRiga = (string) preg_replace('/^\s+patch: \[[^\]\n]*\]\n/m', '', $ci);
+    // Le voci senza gli apici qui non contano, come quelle delle minori; e una voce in più, che il passo non sa installare.
+    $conLeVociSenzaApici = $conLePatch('ultima, minima');
+    $conUnGiroInPiu = $conLePatch("'ultima', 'minima', 'prossima'");
+    // Il giro «minima» di una minore tolto a mano: la matrice ha le due patch, e quella minore ne prova una.
+    $conUnGiroTolto = str_replace("        patch: ['ultima', 'minima']\n", "        patch: ['ultima', 'minima']\n        exclude:\n          - zr-auth: '0.12'\n            patch: 'minima'\n", $ci);
+    // La voce che non arriva al passo: i due giri installerebbero la stessa versione, coi loro due nomi.
+    $conLaPatchFissa = str_replace('PATCH: ${{ matrix.patch }}', "PATCH: 'ultima'", $ci);
+    // Il nome di prima: i due giri di una minore si chiamerebbero allo stesso modo, e il run non si leggerebbe giro per giro.
+    $colNomeDiPrima = str_replace('name: ci (zr-auth ${{ matrix.zr-auth }}, ${{ matrix.patch }})', 'name: ci (zr-auth ${{ matrix.zr-auth }})', $ci);
+
+    expect($senzaLaMinima)->not->toBe($ci)
+        ->and($senzaLUltima)->not->toBe($ci)
+        ->and($senzaLaRiga)->not->toBe($ci)
+        ->and($conLeVociSenzaApici)->not->toBe($ci)
+        ->and($conUnGiroInPiu)->not->toBe($ci)
+        ->and($conUnGiroTolto)->not->toBe($ci)
+        ->and($conLaPatchFissa)->not->toBe($ci)
+        ->and($colNomeDiPrima)->not->toBe($ci)
+        ->and(patchDiZrAuthNonProvate($senzaLaMinima))->toBe(['la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($senzaLUltima))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($senzaLaRiga))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth', 'la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($conLeVociSenzaApici))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth', 'la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($conUnGiroInPiu))->toBe(['la CI fa un giro «prossima», che il passo delle dipendenze non conosce'])
+        ->and(patchDiZrAuthNonProvate($conUnGiroTolto))->toBe(['la matrice toglie o aggiunge giri a mano: una minore può restare senza uno dei suoi due giri'])
+        ->and(patchDiZrAuthNonProvate($conLaPatchFissa))->toBe(['i giri non installano la patch della loro voce della matrice'])
+        ->and(patchDiZrAuthNonProvate($colNomeDiPrima))->toBe(['il nome del giro non dice la minore e la patch']);
+});
+
+/**
+ * `.github/minimo-di-zr-auth.sh` su un composer.json finto che chiede zr-auth con quel vincolo (con null, che non lo chiede),
+ * per quella minore. `$ambiente` sono le variabili in più con cui lo script gira (la localizzazione).
+ *
+ * @param  array<string, string>  $ambiente
+ * @return array{0: int|null, 1: string} il codice d'uscita e ciò che lo script scrive
+ */
+function minimoDiZrAuthCon(?string $vincolo, string $minore, array $ambiente = []): array
+{
+    $composer = sys_get_temp_dir().'/zr-core-composer-'.bin2hex(random_bytes(8)).'.json';
+    file_put_contents($composer, json_encode(['require' => ['php' => '^8.4', ...($vincolo === null ? [] : ['zeiras/zr-auth' => $vincolo])]], JSON_THROW_ON_ERROR));
+
+    try {
+        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', $composer, $minore], dirname(__DIR__, 2), $ambiente);
+        $script->run();
+
+        return [$script->getExitCode(), trim($script->getOutput())];
+    } finally {
+        unlink($composer);
+    }
+}
+
+it('lo script del minimo dice la versione più bassa di zr-auth che un vincolo accetta in una minore, e si ferma su ciò che non sa leggere (sprint 17 · T3.2)', function (?string $vincolo, string $minore, int $uscita, string $scrive) {
+    expect(minimoDiZrAuthCon($vincolo, $minore))->toBe([$uscita, $scrive]);
+})->with([
+    'il vincolo di oggi' => ['^0.12.4', '0.12', 0, '0.12.4'],
+    'il minimo che scende' => ['^0.12.3', '0.12', 0, '0.12.3'],
+    'il minimo che sale' => ['^0.12.5', '0.12', 0, '0.12.5'],
+    'senza la patch: la prima della minore' => ['^0.12', '0.12', 0, '0.12.0'],
+    'due minori: la seconda' => ['^0.11 || ^0.12.4', '0.12', 0, '0.12.4'],
+    'due minori: la prima' => ['^0.11 || ^0.12.4', '0.11', 0, '0.11.0'],
+    'due minori, con la patch sulla prima' => ['^0.11.3 || ^0.12', '0.11', 0, '0.11.3'],
+    'la 0.1 non è la 0.12, che viene prima' => ['^0.12.4 || ^0.1.5', '0.1', 0, '0.1.5'],
+    'la 0.12 non accetta la 0.1' => ['^0.12.4', '0.1', 1, ''],
+    'una minore che il vincolo non accetta' => ['^0.12.4', '0.11', 1, ''],
+    'la stessa minore due volte: la più bassa' => ['^0.12.6 || ^0.12.4', '0.12', 0, '0.12.4'],
+    'un vincolo che non è fatto di ^0.<minore>' => ['>=0.12.4', '0.12', 2, ''],
+    'un vincolo dalla 1.0' => ['^1.2', '1.2', 2, ''],
+    'una minore che non è 0.<numero>' => ['^0.12.4', '0.1*', 2, ''],
+    'un composer.json che non chiede zr-auth' => [null, '0.12', 2, ''],
+    // Review della PR #20, R2: un numero che la shell non sa confrontare (oltre i 63 bit `[ … -lt … ]` esce 2, e in un `if`
+    // vale «falso») non passa per buono. Lo script legge numeri fino a nove cifre, e davanti a uno più lungo si ferma.
+    'una patch più lunga di nove cifre, per prima' => ['^0.12.99999999999999999999 || ^0.12.4', '0.12', 2, ''],
+    'una patch più lunga di nove cifre, in fondo' => ['^0.12.4 || ^0.12.99999999999999999999', '0.12', 2, ''],
+    'una patch di dieci cifre' => ['^0.12.1000000000', '0.12', 2, ''],
+    'una patch di nove cifre' => ['^0.12.999999999', '0.12', 0, '0.12.999999999'],
+    'una minore più lunga di nove cifre' => ['^0.99999999999999999999.4', '0.99999999999999999999', 2, ''],
+    'una minore di nove cifre' => ['^0.999999999.4', '0.999999999', 0, '0.999999999.4'],
+]);
+
+it('lo script del minimo non esegue ciò che legge: un comando scritto nel vincolo o nella minore resta testo, e lo script si ferma (sprint 17 · T3.2)', function () {
+    $segno = sys_get_temp_dir().'/zr-core-segno-'.bin2hex(random_bytes(8));
+
+    try {
+        expect(minimoDiZrAuthCon('^0.12.4 || $(touch '.$segno.')', '0.12'))->toBe([2, ''])
+            ->and(minimoDiZrAuthCon('^0.12.4`touch '.$segno.'`', '0.12'))->toBe([2, ''])
+            ->and(minimoDiZrAuthCon('^0.12.4', '0.12$(touch '.$segno.')'))->toBe([2, ''])
+            ->and(is_file($segno))->toBe(false);
+    } finally {
+        is_file($segno) && unlink($segno);
+    }
+});
+
+// Seconda lettura della PR #20, B2: in una localizzazione come `en_US.UTF-8` `[0-9]` prende anche le cifre che non sono ASCII
+// (`٤`, U+0664). Una patch scritta così passava la forma e poi il confronto, che dentro un `if` vale «falso» in silenzio, e lo
+// script usciva 0 con una versione che non è il minimo. Lo script si mette da sé nella localizzazione `C`, dove una cifra è
+// una di quelle dieci. Su una macchina che non ha `en_US.UTF-8` bash resta in `C`, e il caso è verde anche senza quella riga:
+// per questo c'è anche il caso dopo, che la guarda nello script.
+it('lo script del minimo legge solo cifre ASCII, in qualunque localizzazione giri: una cifra di un\'altra scrittura lo ferma (sprint 17 · review, B2)', function (string $localizzazione) {
+    $ambiente = ['LC_ALL' => $localizzazione];
+
+    expect(minimoDiZrAuthCon('^0.12.٤ || ^0.12.4', '0.12', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.12.4 || ^0.12.٤', '0.12', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.١٢.4', '0.١٢', $ambiente))->toBe([2, ''])
+        ->and(minimoDiZrAuthCon('^0.12.4', '0.12', $ambiente))->toBe([0, '0.12.4']);
+})->with(['en_US.UTF-8', 'C.UTF-8', 'C']);
+
+it('lo script del minimo si mette nella localizzazione C prima di guardare una forma (sprint 17 · review, B2)', function () {
+    $script = (string) file_get_contents(dirname(__DIR__, 2).'/.github/minimo-di-zr-auth.sh');
+    $comandi = array_values(array_filter(array_map(trim(...), explode("\n", $script)), fn (string $riga): bool => $riga !== '' && ! str_starts_with($riga, '#')));
+
+    // Il primo comando dopo `set -euo pipefail`: da lì in poi `[0-9]` sono le dieci cifre ASCII.
+    expect(array_slice($comandi, 0, 2))->toBe(['set -euo pipefail', 'export LC_ALL=C']);
+});
+
+/**
+ * Per ogni minore di zr-auth che un vincolo accetta, la versione più bassa che accetta: `^0.12.4` → `['0.12' => '0.12.4']`, e
+ * senza la patch la prima della minore. È il conto di `.github/minimo-di-zr-auth.sh` rifatto qui: i due si controllano.
+ *
+ * @return array<string, string>
+ */
+function minimiDiZrAuthIn(string $vincolo): array
+{
+    preg_match_all('/\^(0\.\d+)(?:\.(\d+))?/', $vincolo, $pezzi, PREG_SET_ORDER);
+
+    return array_column(array_map(fn (array $pezzo) => [$pezzo[1], $pezzo[1].'.'.($pezzo[2] ?? '0')], $pezzi), 1, 0);
+}
+
+/**
+ * I numeri di patch di quelle minori di zr-auth che un testo scrive (`0.12.4` per la `0.12`), commenti compresi.
+ *
+ * @param  list<string>  $minori
+ * @return list<string>
+ */
+function patchDiZrAuthScritteIn(string $testo, array $minori): array
+{
+    $scritte = [];
+    foreach ($minori as $minore) {
+        preg_match_all('/(?<![\d.])'.preg_quote($minore, '/').'\.\d+/', $testo, $numeri);
+        $scritte = [...$scritte, ...$numeri[0]];
+    }
+
+    return $scritte;
+}
+
+it('il minimo che il giro «minima» installa è quello di composer.json: lo script, su composer.json, dice per ogni minore accettata la più bassa che il vincolo accetta, e ci.yml non scrive il numero di nessuna patch, nemmeno in un commento (sprint 17 · T3.2, T3.3)', function () {
+    $radice = dirname(__DIR__, 2);
+    $composer = json_decode((string) file_get_contents($radice.'/composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $minimi = minimiDiZrAuthIn($composer['require']['zeiras/zr-auth']);
+    $ci = (string) file_get_contents($radice.'/.github/workflows/ci.yml');
+
+    $delloScript = [];
+    foreach (array_keys($minimi) as $minore) {
+        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', 'composer.json', $minore], $radice);
+        $script->run();
+        $delloScript[$minore] = trim($script->getOutput());
+    }
+
+    // Il minimo scritto a mano nel passo, al posto di ciò che dice lo script: quando il vincolo cambia, il giro installa quello
+    // di prima. E un commento su quale patch ha provato un giro, com'era in ci.yml fino alla v1.3.0: nessun caso lo teneva vero.
+    $unMinimo = array_values($minimi)[0] ?? '';
+    $colMinimoScritto = str_replace('--with "zeiras/zr-auth:${minima}"', '--with "zeiras/zr-auth:'.$unMinimo.'"', $ci);
+    $colCommentoAMano = $ci."      # la {$unMinimo} l'ha provata il giro di una versione di prima\n";
+
+    expect($minimi)->not->toBe([])
+        ->and($delloScript)->toBe($minimi)
+        ->and(patchDiZrAuthScritteIn($ci, array_keys($minimi)))->toBe([])
+        ->and($colMinimoScritto)->not->toBe($ci)
+        ->and(patchDiZrAuthScritteIn($colMinimoScritto, array_keys($minimi)))->toBe([$unMinimo])
+        ->and(patchDiZrAuthScritteIn($colCommentoAMano, array_keys($minimi)))->toBe([$unMinimo]);
+});
+
+/**
+ * Lo script del passo «Dipendenze PHP» di ci.yml, cioè il suo blocco `run: |` senza il rientro: vuoto se il passo o il blocco
+ * non ci sono.
+ */
+function passoDelleDipendenzePhp(string $ci): string
+{
+    if (preg_match('/^ {6}- name: Dipendenze PHP\n(?: {8}.*\n)*? {8}run: \|\n((?:(?: {10}.*)?\n)+)/m', $ci, $passo) !== 1) {
+        return '';
+    }
+
+    return trim((string) preg_replace('/^ {10}/m', '', $passo[1]))."\n";
+}
+
+/**
+ * Il passo «Dipendenze PHP» lanciato come lo lancia la CI (`bash -eo pipefail`), per quella minore e quella patch della matrice,
+ * in una cartella con un composer.json che chiede zr-auth con quel vincolo, lo script del minimo e un Composer finto: scrive
+ * ciò che gli si chiede e, a `composer show`, dice di aver installato quella versione.
+ *
+ * @return array{0: int|null, 1: list<string>, 2: string} il codice d'uscita, i vincoli chiesti a Composer con `--with`, ciò che il passo scrive
+ */
+function dipendenzePhpCon(string $vincolo, string $minore, string $patch, string $installata): array
+{
+    $radice = dirname(__DIR__, 2);
+    $prova = sys_get_temp_dir().'/zr-core-passo-'.bin2hex(random_bytes(8));
+    mkdir($prova.'/.github', 0700, true);
+    mkdir($prova.'/bin', 0700);
+
+    try {
+        file_put_contents($prova.'/composer.json', json_encode(['require' => ['zeiras/zr-auth' => $vincolo]], JSON_THROW_ON_ERROR));
+        copy($radice.'/.github/minimo-di-zr-auth.sh', $prova.'/.github/minimo-di-zr-auth.sh');
+        file_put_contents($prova.'/passo.sh', passoDelleDipendenzePhp((string) file_get_contents($radice.'/.github/workflows/ci.yml')));
+        file_put_contents($prova.'/bin/composer', <<<'BASH'
+            #!/usr/bin/env bash
+            printf '%s\n' "$*" >>chiesto
+            if [ "$1" = show ]; then printf '{"versions":["%s"]}\n' "$INSTALLATA"; fi
+
+            BASH);
+        chmod($prova.'/bin/composer', 0700);
+
+        $passo = new Process(['bash', '--noprofile', '--norc', '-eo', 'pipefail', 'passo.sh'], $prova, ['PATH' => $prova.'/bin:'.getenv('PATH'), 'ZR_AUTH' => $minore, 'PATCH' => $patch, 'INSTALLATA' => $installata]);
+        $passo->run();
+        preg_match_all('/^update .*--with (\S+)$/m', is_file($prova.'/chiesto') ? (string) file_get_contents($prova.'/chiesto') : '', $chiesti);
+
+        return [$passo->getExitCode(), $chiesti[1], $passo->getOutput()];
+    } finally {
+        (new Filesystem)->deleteDirectory($prova);
+    }
+}
+
+it('il passo delle dipendenze installa la versione del suo giro e si ferma se Composer ne ha installata un\'altra: «minima» chiede proprio la più bassa che composer.json accetta, «ultima» l\'ultima della minore (sprint 17 · T3.1, T3.2)', function (string $vincolo, string $minore, string $patch, string $installata, int $uscita, array $chiede) {
+    [$codice, $chiesti, $scrive] = dipendenzePhpCon($vincolo, $minore, $patch, $installata);
+
+    // Quando Composer è stato chiamato, il log dice quale versione ha installato: è la riga che si legge giro per giro.
+    expect([$codice, $chiesti])->toBe([$uscita, $chiede])
+        ->and(str_contains($scrive, "zr-auth installato: {$installata}\n"))->toBe($chiede !== []);
+})->with([
+    '«minima», col vincolo di oggi' => ['^0.12.4', '0.12', 'minima', 'v0.12.4', 0, ['zeiras/zr-auth:0.12.4']],
+    '«minima», e Composer ne ha installata una più alta' => ['^0.12.4', '0.12', 'minima', 'v0.12.6', 1, ['zeiras/zr-auth:0.12.4']],
+    '«minima», e Composer ne ha installata una che comincia allo stesso modo' => ['^0.12.4', '0.12', 'minima', 'v0.12.40', 1, ['zeiras/zr-auth:0.12.4']],
+    '«minima», col minimo che scende' => ['^0.12.3', '0.12', 'minima', 'v0.12.3', 0, ['zeiras/zr-auth:0.12.3']],
+    '«minima», col minimo che scende e la versione di prima installata' => ['^0.12.3', '0.12', 'minima', 'v0.12.4', 1, ['zeiras/zr-auth:0.12.3']],
+    '«minima», col minimo che sale' => ['^0.12.5', '0.12', 'minima', 'v0.12.5', 0, ['zeiras/zr-auth:0.12.5']],
+    '«minima», col minimo che sale e la versione di prima installata' => ['^0.12.5', '0.12', 'minima', 'v0.12.4', 1, ['zeiras/zr-auth:0.12.5']],
+    '«minima», senza la patch nel vincolo' => ['^0.12', '0.12', 'minima', 'v0.12.0', 0, ['zeiras/zr-auth:0.12.0']],
+    '«minima», di una minore fra due' => ['^0.11 || ^0.12.4', '0.11', 'minima', 'v0.11.0', 0, ['zeiras/zr-auth:0.11.0']],
+    '«minima», di una minore che composer.json non accetta' => ['^0.12.4', '0.11', 'minima', 'v0.11.0', 1, []],
+    '«ultima»' => ['^0.12.4', '0.12', 'ultima', 'v0.12.6', 0, ['zeiras/zr-auth:~0.12.0']],
+    '«ultima», e Composer ha installato un\'altra minore' => ['^0.12.4', '0.12', 'ultima', 'v0.13.0', 1, ['zeiras/zr-auth:~0.12.0']],
+    'un giro che il passo non conosce' => ['^0.12.4', '0.12', 'minimo', 'v0.12.4', 1, []],
+]);
+
+it('README e CLAUDE.md non dicono più che la CI prova zr-auth con l\'ultima patch soltanto: dicono la più bassa accettata e l\'ultima (sprint 17 · T3.3)', function (string $file, string $diPrima, string $alPostoDi) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+    // Il file con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $testo);
+
+    expect(substr_count($testo, $alPostoDi))->toBe(1)
+        ->and(substr_count($testo, $diPrima))->toBe(0)
+        ->and(substr_count($conLaFraseDiPrima, $diPrima))->toBe(1);
+})->with([
+    'README.md' => ['README.md', "(la CI lo prova con l'ultima 0.12)", "(la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12)"],
+    'CLAUDE.md' => ['CLAUDE.md', "la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna", "la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più bassa che il vincolo accetta (la legge da `composer.json`)"],
+]);
 
 // Sprint 9 · T3 (voce #1398). `LayoutDellaCornice` e `useCornice` sono per i frontend con Inertia, ma zr-core non ne dipende:
 // sono un componente e un hook di React. Inertia sta solo fra gli strumenti di questo repo, per la pagina di prova del layout
@@ -861,7 +1175,21 @@ it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 ·
     'il titolo è quello del tipo' => ['ognuna col titolo del suo tipo nella lingua'],
     'il ripiego, per un tipo che zr-core non conosce o che manca' => ['una notifica di un tipo che zr-core non conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»)'],
     'un tipo nuovo vuole una versione nuova di zr-core' => ['Un tipo di notifica nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego'],
+    // Sprint 17 · T2 (voce #1481): il pulsante «Segna tutte come lette» dice che cosa sta succedendo, col testo di zr-core.
+    'il testo del pulsante lo dà zr-core (sprint 17 · T2.1)' => ['Che cosa sta succedendo lo dice il pulsante, col testo che zr-core gli dà al posto di quello dell\'`AppShell`'],
+    'con la richiesta in corso (sprint 17 · T2.1)' => ['Dal clic alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, dice «Segno…»'],
+    'quando ne restano (sprint 17 · T2.1)' => ['Dopo una risposta con `altre: true` dice «Segna le altre»'],
+    'fino a quando ne restano (sprint 17 · T2.1)' => ['finché quel giro di letture non è finito'],
+    'se la richiesta fallisce (sprint 17 · T2.1)' => ['Se la richiesta fallisce il pulsante torna al testo che aveva prima del clic'],
+    // Review della PR #20, R3: il giro finisce anche altrove (un'altra scheda), e allora «Segna le altre» non torna. Seconda
+    // lettura, N5: lo dicono i dati letti dopo la risposta con `altre`, non la campanella a zero; senza il numero nei dati no.
+    'il giro finito altrove (sprint 17 · review, R3 e N5)' => ['o quando dei dati letti dopo quella risposta non contano più non lette: il giro è finito altrove, in un\'altra scheda'],
+    'senza il numero nei dati quell\'uscita non c\'è (sprint 17 · review, N5)' => ['Senza `non_lette` nei dati questa terza uscita non c\'è'],
 ]);
+
+it('il README non dice più che il giro finito altrove lo dice la campanella a zero (sprint 17 · review, N5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'quando la campanella non conta più non lette'))->toBe(false);
+});
 
 it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -975,6 +1303,8 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», che la
 // notifiche» si riscrive com'è: vale per ogni richiesta ancora in corso, non solo per una lenta; il blocco ferma solo chi lo
 // prende, quindi il frontend lo mette sulle sue rotte di uscita e di ingresso; chi arriva secondo aspetta, e poi riceve un 503;
 // l'elenco, la ricerca e le chiamate del modulo restano senza blocco. Una frase per cosa, dentro il limite e non altrove.
+// Sprint 17 · T2 (voce #1481): le rotte su cui il frontend lo mette sono quelle del criterio di zr-auth — ogni rotta che apre,
+// cambia o chiude la sessione, e le sue rotte lente — non solo l'uscita e l'ingresso.
 
 /** Il limite della sessione del README: dalla frase che lo apre alla fine del punto «Le notifiche». Vuoto se non c'è. */
 function limiteDellaSessione(string $readme): string
@@ -994,7 +1324,11 @@ it('il README dice, nel limite della sessione del punto «Le notifiche», il lim
     'vale per ogni richiesta ancora in corso, non solo per una lenta' => ['Vale per ogni richiesta della stessa sessione ancora in corso quando la persona, da un\'altra scheda, esce, entra in un altro workspace o cambia lingua, non solo per una lenta'],
     '«Segna tutte come lette» tiene il blocco per tutta la sua durata' => ['dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta la sua durata'],
     'il blocco ferma solo chi lo prende' => ['Il blocco ferma solo chi lo prende'],
-    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di uscita e di ingresso in un workspace'],
+    'che cosa mette il frontend' => ['il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che aprono, cambiano o chiudono la sessione'],
+    'quali sono, coi metodi di zr-auth (sprint 17 · T2.2)' => ['quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`'],
+    'non solo l\'uscita e l\'ingresso (sprint 17 · T2.2)' => ['non solo l\'uscita e l\'ingresso in un workspace'],
+    'e le rotte lente, non tutte (sprint 17 · T2.2)' => ['e sulle sue rotte lente, non su tutte'],
+    'il criterio è di zr-auth (sprint 17 · T2.2)' => ['è il criterio di zr-auth (il suo README, «Il blocco della sessione»'],
     'il ricevitore di zr-auth lo ha già' => ['il ricevitore dell\'ingresso di zr-auth lo ha già'],
     'da una parte sola non ferma niente' => ['messo da una parte sola non ferma niente'],
     'chi arriva secondo aspetta, e poi il 503' => ['la seconda aspetta la prima al più 3 secondi, e oltre risponde 503 con `Retry-After: 1`'],
@@ -1145,11 +1479,11 @@ it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dic
         ->and(str_contains(puntoDellaCornice($scambiati, $grassetto), $frase))->toBe(false);
 })->with([
     'R2: mentre il pannello si ricarica il pulsante resta' => ['Le notifiche', 'Mentre il pannello si ricarica l\'elenco di prima resta in pagina e il pulsante resta dov\'è, col fuoco della tastiera'],
-    // Seconda lettura, N4: il testo del pulsante è di zr-core; al design system manca il posto per un avviso.
-    'R2: due cose non le dice' => ['Le notifiche', 'Due cose la cornice oggi non le dice: che una parte è stata segnata'],
-    'R2: che cosa manca per dirle' => ['Le notifiche', 'Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo dà zr-core, e in questa versione è sempre lo stesso'],
-    'R2: niente dice che una parte è segnata' => ['Le notifiche', 'se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic fallito'],
-    'R2: niente dice che la richiesta è in corso' => ['Le notifiche', 'fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, il pulsante resta com\'è'],
+    // Sprint 17 · T2 (voce #1481): che la richiesta è in corso e che ne restano ora lo dice il pulsante. Resta l'avviso per il
+    // lettore di schermo: al design system manca il posto per un avviso (seconda lettura dello sprint 12, N4).
+    'T2.1: che cosa la cornice ancora non dice' => ['Le notifiche', 'Una cosa la cornice ancora non la dice: l\'avviso per il lettore di schermo'],
+    'T2.1: niente annuncia il testo che cambia' => ['Le notifiche', 'Il testo del pulsante cambia sullo schermo, ma niente lo annuncia'],
+    'T2.1: che cosa manca per dirla' => ['Le notifiche', 'il pannello del design system non ha un posto per un avviso'],
     'R3: il nome della campanella al singolare' => ['La campanella', 'con una sola al singolare («Notifiche, 1 non letta»)'],
     'R3: lo stesso testo è del pallino' => ['La campanella', 'Il design system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello'],
     'R3: che cosa dice il pallino' => ['La campanella', 'il pallino dice «non letta» quando sulla campanella ce n\'è una sola, «non lette» negli altri casi'],
@@ -1168,10 +1502,48 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
         ->and($conQuellaDiPrima)->not->toBe($readme)
         ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
 })->with([
-    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte): quella sbagliata resta la stessa.
-    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte di uscita e di ingresso in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
+    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte), e dallo sprint 17 · T2 dice
+    // il criterio di zr-auth: quella sbagliata resta la stessa.
+    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte che aprono, cambiano o chiudono la sessione', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
-    'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
+    // Dallo sprint 17 · T2 ciò che la cornice non dice è una cosa sola, e la frase è un'altra: quella sbagliata resta la stessa.
+    'N4: non è il design system che non ha con che dirle' => ['Una cosa la cornice ancora non la dice: l\'avviso', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
+    // Sprint 17 · T2 (voce #1481): le frasi di prima che il pulsante dicesse che cosa sta succedendo, e del blocco sulle sole
+    // rotte di uscita e di ingresso.
+    'T2.1: il testo del pulsante non è più sempre lo stesso' => ['col testo che zr-core gli dà al posto di quello dell\'`AppShell`', 'il testo del pulsante lo dà zr-core, e in questa versione è sempre lo stesso'],
+    'T2.1: la cornice dice che la richiesta è in corso' => ['dice «Segno…»', 'il pulsante resta com\'è'],
+    'T2.1: e che una parte è stata segnata' => ['dice «Segna le altre»', 'Due cose la cornice oggi non le dice: che una parte è stata segnata'],
+    'T2.2: non solo l\'uscita e l\'ingresso' => ['sulle sue rotte che aprono, cambiano o chiudono la sessione', 'sulle sue rotte di uscita e di ingresso in un workspace'],
+]);
+
+// Sprint 17 · T2 (voce #1481): quali rotte del frontend tengono il blocco della sessione lo dice zr-auth, nel suo README («Il
+// blocco della sessione»): quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, e le rotte lente
+// del modulo; non tutte. Il README di zr-core dice quel criterio e non una regola sua: ogni cosa che nomina è in quella sezione.
+
+/** La sezione «Il blocco della sessione» del README della zr-auth installata, su una riga sola. Vuota se non c'è, lei o il README. */
+function bloccoDellaSessioneInZrAuth(): string
+{
+    $readme = __DIR__.'/../../vendor/zeiras/zr-auth/README.md';
+    preg_match('/^## Il blocco della sessione.*?(?=^## |\z)/ms', is_file($readme) ? (string) file_get_contents($readme) : '', $sezione);
+
+    return suUnaRiga($sezione[0] ?? '');
+}
+
+it('ogni cosa che il README dice, nel limite della sessione, delle rotte del frontend che tengono il blocco è nel README della zr-auth installata, in «Il blocco della sessione» (sprint 17 · T2.2)', function (string $inZrCore, string $inZrAuth) {
+    $limite = limiteDellaSessione((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    // Review della PR #20, R5: il giro «ultima» installa una patch di zr-auth che zr-core non sceglie, e una sezione riscritta lì
+    // fa rosso questo confronto senza un cambio in zr-core. È il segnale che T2.2 vuole (il criterio è quello dell'ultima
+    // versione accettata), e il messaggio dice che cosa fare: il rosso non si legge come un guasto di zr-core.
+    expect(str_contains($limite, $inZrCore))->toBe(true)
+        ->and(str_contains(bloccoDellaSessioneInZrAuth(), $inZrAuth))->toBe(true, "Nel README della zr-auth installata «Il blocco della sessione» non dice più «{$inZrAuth}»: va riletta. Se il criterio è lo stesso cambia la frase cercata in questo caso; se è cambiato cambia il README di zr-core, nel limite della sessione.");
+})->with([
+    'la riga che zr-auth dà ai moduli' => ['`->bloccaSessione()`', '`->bloccaSessione()`'],
+    'la rotta che apre la sessione' => ['`Sessione::apri()`', '`Sessione::apri()`'],
+    'la rotta che entra in un workspace' => ['`Sessione::entra()`', '`Sessione::entra()`'],
+    'la rotta che chiude la sessione' => ['`Sessione::chiudi()`', '`Sessione::chiudi()`'],
+    'le rotte lente del modulo' => ['e sulle sue rotte lente', 'le loro rotte lente'],
+    'non su tutte' => ['non su tutte', 'Non va su tutto'],
 ]);
 
 // Sprint 15 · T1 (voce #1584): la voce «Piano» del menu del profilo è spenta di default, e il README dice la prop che la accende.
@@ -1667,4 +2039,137 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     'si apre se il registro non lo dà «Presto» (terza lettura, R2)' => ['nel workspace di un\'anteprima il prodotto si apre, se il registro non lo dà «Presto»'],
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
+]);
+
+// Sprint 17 · T4 (voce #1633): ogni workspace dei dati porta il suo `id`, e dall'id la cornice ricava il colore del suo pallino
+// nel selettore. Il README lo dice dove chi legge lo cerca: la forma dei dati in «La parte server», da dove viene il colore nel
+// punto del selettore di «La cornice», e la regola per chi mostra un workspace fuori dalla cornice in un capoverso suo.
+
+it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni workspace, da dove viene l\'id e che non costa una lettura in più (sprint 17 · T4.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Con «La parte server» e «La cornice» scambiate la frase c'è ancora, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}`'],
+    'l\'id è quello di io.workspace.elenca' => ['Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`'],
+    'nessuna lettura in più' => ['sta nella riga che `Cornice::dati()` legge già, e non costa una lettura in più'],
+    'dall\'id viene il colore' => ['È dall\'`id` che la cornice ricava il colore del workspace nel selettore'],
+    // Review della PR #20: da quale versione c'è (A4); un backoffice finto scritto a mano nei test di un frontend lo deve dare
+    // (R6); il workspace in cui la persona è entrata non lo porta, e dove lo si trova (R7).
+    'da quale versione (sprint 17 · review, A4)' => ['L\'`id` c\'è dalla `v1.7.0`'],
+    'un finto scritto a mano lo deve dare (sprint 17 · review, R6)' => ['nei test di un frontend un backoffice finto scritto a mano lo deve dare come dà `nome` e `slug`'],
+    'senza, la lettura fallisce (sprint 17 · review, R6)' => ['una riga senza `id` fa fallire `Cornice::dati()`'],
+    'il workspace della persona resta nome e slug (sprint 17 · review, R7)' => ['Il workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`'],
+    'il suo id si trova in aziende (sprint 17 · review, R7)' => ['il suo `id` è quello del workspace con lo stesso `slug` in `aziende`'],
+    // Seconda lettura della PR #20: chi dà già l'`id` (N1), quale riga senza `id` fa fallire la lettura (N3), e che l'`id` del
+    // workspace in cui la persona è entrata può non esserci (N2).
+    'chi lo dà già (sprint 17 · review, N1)' => ['il `BackofficeFinto` di zr-auth e l\'esempio di `io.workspace.elenca` nel contratto lo danno'],
+    'quale riga fa fallire la lettura (sprint 17 · review, N3)' => ['una riga senza `id` fa fallire `Cornice::dati()`, se è di un\'azienda dell\'elenco (le altre restano fuori prima)'],
+    'il suo id può non esserci (sprint 17 · review, N2)' => ['con lo stesso `slug` in `aziende`, se c\'è'],
+    'quando non c\'è (sprint 17 · review, N2)' => ['e allora nei dati il suo `id` non c\'è'],
+]);
+
+it('il README non dice più che l\'id lo danno «gli esempi di zr-auth»: zr-auth ha un backoffice finto, e gli esempi sono del contratto (sprint 17 · review, N1)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'gli esempi di zr-auth'))->toBe(false);
+});
+
+it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — dall\'id, non si sceglie, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $selettore = 'Il selettore «Azienda › workspace»';
+    // Il README col punto del selettore e quello della campanella scambiati di nome: la frase c'è, ma dove si legge della campanella.
+    $scambiati = strtr($readme, ["- **{$selettore}**" => '- **La campanella**', '- **La campanella**' => "- **{$selettore}**"]);
+
+    expect(str_contains(puntoDellaCornice($readme, $selettore), $frase))->toBe(true)
+        ->and(substr_count($readme, "- **{$selettore}**"))->toBe(1)
+        ->and(substr_count($readme, '- **La campanella**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, $selettore), $frase))->toBe(false);
+})->with([
+    'ogni workspace ha il suo colore' => ['Ogni workspace ha il pallino del suo colore'],
+    'lo decide zr-core dall\'id' => ['lo decide zr-core dall\'`id` del workspace, con una regola sola'],
+    'non si sceglie' => ['con una regola sola, e non si sceglie'],
+    'lo stesso ovunque' => ['Lo stesso workspace ha lo stesso colore in ogni prodotto, per ogni persona e a ogni visita'],
+    'nome, slug e posto non contano' => ['cambiargli nome, slug o posto nell\'elenco non glielo cambia'],
+    'nel tipo l\'id è facoltativo' => ['Nel tipo `DatiDellaCornice` l\'`id` di un workspace è facoltativo'],
+    'senza id il pallino del design system' => ['un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé'],
+    // Review della PR #20, R8: «il suo colore» non vuol dire un colore diverso da quello di ogni altro.
+    'i colori si ripetono (sprint 17 · review, R8)' => ['quindi due workspace possono avere lo stesso'],
+    'a che cosa serve il colore (sprint 17 · review, R8)' => ['il colore aiuta a riconoscere un workspace, non lo distingue da tutti gli altri'],
+]);
+
+/** Il capoverso del README sul colore di un workspace fuori dalla cornice, su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoDelTonoDelWorkspace(string $readme): string
+{
+    preg_match('/^Il colore di un workspace fuori dalla cornice .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, subito dopo il capoverso del registro, la regola che dà il tono di un workspace a chi lo mostra fuori dalla cornice, una frase per cosa (sprint 17 · T4.5, T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel capoverso sotto un altro inizio: la frase c'è ancora, ma non dove chi cerca il colore di un workspace la trova.
+    $altrove = str_replace("\nIl colore di un workspace fuori dalla cornice ", "\nUn workspace mostrato altrove ", $readme);
+
+    expect(str_contains(paragrafoDelTonoDelWorkspace($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\nIl colore di un workspace fuori dalla cornice "))->toBe(1)
+        // Subito dopo il capoverso dei due sì o no del registro: fra i due c'è solo la riga vuota.
+        ->and(preg_match('/^Ogni voce del registro porta due sì o no (?:[^\n]+\n)+\nIl colore di un workspace fuori dalla cornice /m', $readme))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoDelTonoDelWorkspace($altrove))->toBe('');
+})->with([
+    'nome e argomento, e da dove si importa' => ['lo dà `tonoDelWorkspace(id)`, dallo stesso ingresso'],
+    'è la regola del selettore' => ['è la regola che usa il selettore della cornice, quindi per lo stesso `id` il tono è lo stesso'],
+    // Review della PR #20: da quale versione (A4), dove sta l'id nei dati (R7), e che due workspace possono avere lo stesso tono (R8).
+    'da quale versione (sprint 17 · review, A4)' => ['dallo stesso ingresso (dalla `v1.7.0`)'],
+    'che cos\'è id' => ['`id` è l\'`id` del workspace, com\'è in ogni workspace di `aziende` nei dati della cornice'],
+    'i toni si ripetono (sprint 17 · review, R8)' => ['Due workspace possono avere lo stesso tono'],
+    'dà un tono del design system' => ['Dà il nome di uno dei toni che il design system ammette per un workspace'],
+    'un nome, non un colore' => ['non un colore: il colore lo mette il CSS del design system (`var(--<tono>)`)'],
+    'senza id nessun tono' => ['Un `id` vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`'],
+]);
+
+it('i toni che il README elenca per tonoDelWorkspace sono quelli che il design system ammette per un workspace, nello stesso ordine: tutti, e nessun altro (sprint 17 · T4.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $tipi = (string) file_get_contents(__DIR__.'/../../resources/zeiras/index.d.ts');
+    /** I toni di un workspace per il design system: quelli di `Tone` senza `neutral`, com'è `ShellWorkspace.tone`. */
+    $delDesignSystem = function (string $testo): array {
+        preg_match('/^export type Tone = ([^;]+);$/m', $testo, $tone);
+        preg_match_all("/'([a-z]+)'/", $tone[1] ?? '', $nomi);
+
+        return array_values(array_diff($nomi[1], ['neutral']));
+    };
+    /** I toni fra parentesi nel capoverso del README, nell'ordine in cui stanno. */
+    $delReadme = function (string $testo): array {
+        preg_match('/ammette per un workspace \(((?:`[a-z]+`(?:, )?)+)\)/', paragrafoDelTonoDelWorkspace($testo), $elenco);
+        preg_match_all('/`([a-z]+)`/', $elenco[1] ?? '', $nomi);
+
+        return $nomi[1];
+    };
+    // Il design system con un tono in più, e il README con un tono in meno: in tutti e due i casi le due liste non coincidono.
+    $conUnTonoInPiu = str_replace("| 'plum' |", "| 'plum' | 'ocean' |", $tipi);
+    $senzaUnTono = str_replace('`sky`, ', '', $readme);
+
+    expect(str_contains($tipi, "tone?: Exclude<Tone, 'neutral'> }\nexport interface ShellCompany"))->toBe(true)
+        ->and($delDesignSystem($tipi))->not->toBe([])
+        ->and($delReadme($readme))->toBe($delDesignSystem($tipi))
+        ->and($delDesignSystem($conUnTonoInPiu))->toContain('ocean')
+        ->and($delReadme($readme))->not->toBe($delDesignSystem($conUnTonoInPiu))
+        ->and($delReadme($senzaUnTono))->not->toBe($delDesignSystem($tipi))
+        ->and($delReadme($senzaUnTono))->not->toContain('sky');
+});
+
+// Sprint 17 · review della PR #20, R1: i frontend compilano i sorgenti di zr-core dalla cartella del pacchetto col loro
+// tsconfig, e lì non li possono correggere. Il `tsc` di zr-core guarda quindi anche ciò che un tsconfig più stretto del suo
+// fermerebbe in quei sorgenti: una dichiarazione mai usata e un parametro mai usato.
+it('il tsc di zr-core si ferma su una dichiarazione o su un parametro mai usati, come quello di un frontend col tsconfig più stretto (sprint 17 · review, R1)', function (string $opzione) {
+    $tsconfig = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($tsconfig['compilerOptions'][$opzione] ?? null)->toBe(true);
+})->with([
+    'una dichiarazione mai usata' => ['noUnusedLocals'],
+    'un parametro mai usato' => ['noUnusedParameters'],
 ]);

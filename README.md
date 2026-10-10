@@ -56,13 +56,13 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
-README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più vecchia non basta: la cornice chiama
-`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Dalla `v1.6.0` serve
-la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth, e la 0.12.4 è la patch con cui la
-CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla `v1.5.0`. Composer non eredita i
-repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del frontend, accanto a quello di
-zr-core.
+zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
+vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
+alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
+e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla
+`v1.5.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
 
@@ -77,13 +77,21 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
+Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
+costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore. L'`id` c'è dalla
+`v1.7.0`. Il contratto di `/v1` lo dà sempre: nei test di un frontend un backoffice finto scritto a mano lo deve dare come
+dà `nome` e `slug` (il `BackofficeFinto` di zr-auth e l'esempio di `io.workspace.elenca` nel contratto lo danno), perché
+una riga senza `id` fa fallire `Cornice::dati()`, se è di un'azienda dell'elenco (le altre restano fuori prima). Il
+workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso
+`slug` in `aziende`, se c'è. Il workspace dei dati può non stare in nessuna azienda — per esempio se il suo slug è cambiato
+dopo l'ingresso —, e allora nei dati il suo `id` non c'è.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -174,7 +182,12 @@ cornice === null ? pagina : (
 - **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
-  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
+  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina. Ogni workspace ha il pallino del suo colore:
+  lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
+  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. I colori
+  sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
+  aiuta a riconoscere un workspace, non lo distingue da tutti gli altri. Nel tipo `DatiDellaCornice` l'`id` di un workspace
+  è facoltativo: un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato, finché i dati non sono stati letti dopo quell'elenco (una notifica può essere
   arrivata dopo che la parte server le ha contate). Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
@@ -216,11 +229,18 @@ cornice === null ? pagina : (
   richiesta, un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
   campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un
   altro clic. Mentre il pannello si ricarica l'elenco di prima resta in pagina e il pulsante resta dov'è, col fuoco della
-  tastiera. Due cose la cornice oggi non le dice: che una parte è stata
-  segnata — se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic
-  fallito — e che la richiesta è in corso: fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15
-  secondi, il pulsante resta com'è. Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo
-  dà zr-core, e in questa versione è sempre lo stesso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
+  tastiera. Che cosa sta succedendo lo dice il pulsante, col testo che zr-core gli dà al posto di quello dell'`AppShell`
+  (dalla `v1.7.0`). Dal clic alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, dice
+  «Segno…», e un clic lì non fa partire un'altra richiesta. Dopo una risposta con `altre: true` dice «Segna le altre»: una
+  parte è segnata, anche quando l'elenco ricaricato è uguale a prima perché le segnate non erano fra quelle in pagina. Lo
+  dice finché quel giro di letture non è finito — con una lettura completa, con l'elenco chiesto da capo (il pannello
+  riaperto, «Riprova»), o quando dei dati letti dopo quella risposta non contano più non lette: il giro è finito altrove, in
+  un'altra scheda —, poi torna «Segna tutte come lette». Senza `non_lette` nei dati questa terza uscita non c'è. Se la
+  richiesta fallisce il pulsante torna al testo che aveva prima del clic. I due testi sono di zr-core, `markingAllRead`
+  e `markRestRead` nelle sue lingue: in una lingua che zr-core non ha sono in inglese. Una cosa la cornice ancora non la
+  dice: l'avviso per il lettore di schermo. Il
+  testo del pulsante cambia sullo schermo, ma niente lo annuncia: il pannello del design system non ha un posto per un
+  avviso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
   ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
   pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
   cambia niente. Un limite, che non è solo di questa rotta: ogni richiesta, quando finisce, riscrive la sessione com'era
@@ -231,13 +251,15 @@ cornice === null ? pagina : (
   richiude; se all'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino
   alla loro scadenza. «Segna tutte come lette» è la richiesta della cornice che dura di più — fino a circa 15 secondi,
   solo con più di 5000 non lette — e dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta
-  la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di
-  uscita e di ingresso in un workspace (il ricevitore dell'ingresso di zr-auth lo ha già); messo da una parte sola non
-  ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
+  la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che
+  aprono, cambiano o chiudono la sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o
+  `Sessione::chiudi()`: non solo l'uscita e l'ingresso in un workspace — e sulle sue rotte lente, non su tutte: è il
+  criterio di zr-auth (il suo README, «Il blocco della sessione»; il ricevitore dell'ingresso di zr-auth lo ha già); messo
+  da una parte sola non ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
   oltre risponde 503 con `Retry-After: 1` — un'uscita mentre «Segna tutte come lette» gira, o «Segna tutte come lette»
   mentre un'uscita gira: allora nel pannello non cambia niente e il pulsante resta per riprovare. L'elenco delle
-  notifiche, la ricerca e le chiamate del modulo restano senza blocco, perché due richieste della stessa persona si
-  metterebbero in fila: per loro il limite resta.
+  notifiche, la ricerca e le chiamate del modulo restano senza blocco — tranne le rotte lente su cui il modulo lo mette —,
+  perché due richieste della stessa persona si metterebbero in fila: per loro il limite resta.
   Il blocco si prende prima dei middleware che il frontend ha nel gruppo `web`, e dura 20 secondi da lì, coi tempi di
   partenza: i 10 dei richiami, i 5 che zr-auth aspetta una risposta, 5 di margine. Per questo la rotta conta i suoi 10
   secondi dall'arrivo della richiesta, non da quando tocca a lei: ciò che un middleware del frontend fa prima — una
@@ -297,6 +319,13 @@ nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la ses
 backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
 apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il
 registro (`resources/registro/prodotti.json`).
+
+Il colore di un workspace fuori dalla cornice — un elenco dei workspace in una pagina del frontend — lo dà
+`tonoDelWorkspace(id)`, dallo stesso ingresso (dalla `v1.7.0`): è la regola che usa il selettore della cornice, quindi per
+lo stesso `id` il tono è lo stesso. `id` è l'`id` del workspace, com'è in ogni workspace di `aziende` nei dati della cornice.
+Dà il nome di uno dei toni che il design system ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un
+colore: il colore lo mette il CSS del design system (`var(--<tono>)`). Due workspace possono avere lo stesso tono. Un `id`
+vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
 
 ### La cornice montata una volta sola
 

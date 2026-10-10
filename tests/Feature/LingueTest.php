@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\File;
 // resources/js/lingue.test.ts. Sprint 12 · T3 (voce #1463): di zr-core sono anche il titolo di ogni tipo di notifica, con
 // `notificationTitle.<tipo>` per chiave (`notificationTitle` da solo è il ripiego, per un tipo che zr-core non conosce), e
 // `unreadOne`, il singolare delle non lette: `unread` è dell'`AppShell`, e in italiano resta quello del design system.
+// Sprint 17 · T1 (voce #1481): di zr-core sono anche `markingAllRead` e `markRestRead`, i testi del pulsante «Segna tutte come
+// lette» mentre la richiesta è in corso e quando ne restano: `markAllRead` è dell'`AppShell`, e in italiano resta quello del design system.
 
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
@@ -112,7 +114,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
     $chiavi = [
-        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne',
+        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
     ];
 

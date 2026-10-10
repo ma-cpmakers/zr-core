@@ -31,11 +31,11 @@ const datiDiProva: DatiDellaCornice = {
 // dati non sta in nessuna, e resta testo come con `nessuna`.
 const aziendeDiProva: Record<string, DatiDellaCornice['aziende']> = {
     due: [
-        { id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] },
-        { id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca e sviluppo dei nuovi prodotti internazionali', slug: 'uat-ricerca' }] },
+        { id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }] },
+        { id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ id: 'uat-ws-5', nome: 'UAT Ricerca e sviluppo dei nuovi prodotti internazionali', slug: 'uat-ricerca' }] },
     ],
     nessuna: [],
-    'senza-corrente': [{ id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ nome: 'UAT Ricerca', slug: 'uat-ricerca' }] }],
+    'senza-corrente': [{ id: 'uat-2', nome: 'UAT Beta Consulenze', workspace: [{ id: 'uat-ws-5', nome: 'UAT Ricerca', slug: 'uat-ricerca' }] }],
 };
 
 // Le voci del prodotto aperto, uguali per ogni prodotto: servono solo a vedere cosa c'è sotto il suo pulsante.

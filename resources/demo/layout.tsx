@@ -38,14 +38,14 @@ const marketing: DatiDellaCornice = {
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
-    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing', slug: 'uat-marketing' }] }],
+    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }] }],
     non_lette: Number(scelti.get('non_lette') ?? 7),
 };
 // Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
 const marketingDopo: DatiDellaCornice = {
     ...marketing,
     workspace: { nome: 'UAT Marketing Europa', slug: 'uat-marketing' },
-    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ nome: 'UAT Vendite', slug: 'uat-vendite' }, { nome: 'UAT Marketing Europa', slug: 'uat-marketing' }] }],
+    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing Europa', slug: 'uat-marketing' }] }],
     non_lette: 3,
 };
 // Un altro workspace (un altro slug): la cornice si rifà.

@@ -110,8 +110,11 @@ function datiAttesi(string $aggiornatiIl, array $cambi = []): array
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
         'aziende' => [
-            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
-            ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [['nome' => 'UAT clienti', 'slug' => 'uat-clienti'], ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite']]],
+            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
+            ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [
+                ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
+                ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
+            ]],
         ],
         'non_lette' => 3,
         'aggiornati_il' => $aggiornatiIl,
@@ -217,10 +220,10 @@ it('le aziende sono quelle della persona nell\'ordine del backoffice, ognuna coi
     backoffice(aziendeEWorkspace());
 
     expect(Cornice::dati()['aziende'])->toBe([
-        ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
+        ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
         ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [
-            ['nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
-            ['nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
+            ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
+            ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
         ]],
     ]);
     expect(richiesteA('/v1/io/aziende'))->toHaveCount(1)
@@ -228,6 +231,25 @@ it('le aziende sono quelle della persona nell\'ordine del backoffice, ognuna coi
     foreach ([...richiesteA('/v1/io/aziende'), ...richiesteA('/v1/io/workspace')] as $richiesta) {
         expect($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['accesso']))->toBeTrue();
     }
+});
+
+// Sprint 17 · T4 (voce #1633). Ogni workspace esce col suo `id`, quello di io.workspace.elenca: è da lì che la cornice ricava
+// il tono del suo pallino nel selettore. Della riga del backoffice non esce altro (`ruolo` e `azienda_id` no), e per l'id non
+// parte nessuna lettura in più: sta nella riga che la cornice legge già.
+it('ogni workspace delle aziende porta il suo id, quello di io.workspace.elenca, con nome e slug e nient\'altro della riga; le letture del backoffice sono quelle di prima (sprint 17 · T4.3)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostra(3), ...aziendeEWorkspace()]);
+
+    $workspace = collect(Cornice::dati()['aziende'])->flatMap(fn (array $azienda) => $azienda['workspace'])->all();
+
+    expect($workspace)->toBe([
+        ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
+        ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
+    ]);
+    // Una richiesta per metodo, due per i workspace (le due pagine dell'elenco), e nessun'altra.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
+        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']);
 });
 
 it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del workspace con una richiesta sola, senza tagli (sprint 5 · T1.1)', function (int $nonLette) {

@@ -181,4 +181,20 @@ describe('le lingue della cornice', () => {
         expect(['it-IT', 'IT', 'es_ES'].map((lingua) => titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua))).toStrictEqual(['Nuova scheda', 'Nuova scheda', 'Nueva tarjeta']);
         expect(['it-IT', 'IT', 'es_ES'].map((lingua) => titoloDellaNotifica(undefined, lingua))).toStrictEqual(['Novità nel workspace', 'Novità nel workspace', 'Novedades en el workspace']);
     });
+
+    // Sprint 17 · T1 (voce #1481): i due testi che il pulsante «Segna tutte come lette» ha mentre la richiesta è in corso e quando
+    // ne restano sono chiavi di zr-core, non valori cambiati a `markAllRead`, che è dell'`AppShell` e resta com'è in ogni lingua.
+    it('i due testi del pulsante delle notifiche sono chiavi di zr-core nelle tre lingue, e `markAllRead` resta il testo di prima; in una lingua che zr-core non ha sono in inglese (sprint 17 · T1.6)', () => {
+        expect([italiano, spagnolo, inglese].map((file) => [file.markingAllRead, file.markRestRead])).toStrictEqual([
+            ['Segno…', 'Segna le altre'],
+            ['Marcando…', 'Marcar las demás'],
+            ['Marking…', 'Mark the rest'],
+        ]);
+        expect([italiano, spagnolo, inglese].map((file) => file.markAllRead)).toStrictEqual(['Segna tutte come lette', 'Marcar todas como leídas', 'Mark all as read']);
+
+        // Una lingua che ha solo il testo dell'`AppShell`: i due di zr-core li prende dall'inglese, e il suo resta suo.
+        const tedesco = caricaLingue({ '../lingue/de.json': { markAllRead: 'Alle als gelesen markieren' } }).testi('de');
+        expect([tedesco.markAllRead, tedesco.markingAllRead, tedesco.markRestRead]).toStrictEqual(['Alle als gelesen markieren', 'Marking…', 'Mark the rest']);
+        expect([testi('pt-BR').markingAllRead, testi('pt-BR').markRestRead]).toStrictEqual(['Marking…', 'Mark the rest']);
+    });
 });
