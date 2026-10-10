@@ -793,8 +793,14 @@ it('il README dichiara, nel punto «Le notifiche», il limite della sessione con
     'quanto dura qui' => ['fino a circa 15 secondi, solo con più di 5000 non lette'],
     'che cosa succede' => ['la persona esce o entra in un altro workspace da un\'altra scheda, la sessione torna quella di prima'],
     'dopo un cambio di workspace' => ['dopo un cambio di workspace la persona si ritrova in quello di prima'],
-    'dopo un\'uscita' => ['dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice, e la prima chiamata la richiude'],
-    'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione sulle rotte di uscita e di ingresso nel workspace'],
+    // Seconda lettura, N3: dopo un'uscita i gettoni sono chiusi solo se la chiamata dell'uscita al backoffice è riuscita.
+    'dopo un\'uscita tornano i gettoni di prima' => ['dopo un\'uscita torna la sessione coi gettoni di prima'],
+    'dopo un\'uscita che li ha chiusi' => ['se l\'uscita li ha chiusi nel backoffice, la prima chiamata la richiude'],
+    'dopo un\'uscita senza la risposta del backoffice' => ['se all\'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza'],
+    // Seconda lettura, N2: il blocco serve dalle due parti, e uscita e ingresso sono rotte del frontend.
+    'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace'],
+    'di chi sono quelle rotte' => ['quelle del frontend e il ricevitore dell\'ingresso di zr-auth'],
+    'per quanto, e da una parte sola' => ['per più dei 10 secondi predefiniti: messo da una parte sola non ferma niente'],
 ]);
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
@@ -887,11 +893,30 @@ it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dic
         ->and(str_contains(puntoDellaCornice($scambiati, $grassetto), $frase))->toBe(false);
 })->with([
     'R2: mentre il pannello si ricarica il pulsante resta' => ['Le notifiche', 'Mentre il pannello si ricarica l\'elenco di prima resta in pagina e il pulsante resta dov\'è, col fuoco della tastiera'],
-    'R2: perché non lo dice' => ['Le notifiche', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle'],
+    // Seconda lettura, N4: il testo del pulsante è di zr-core; al design system manca il posto per un avviso.
+    'R2: due cose non le dice' => ['Le notifiche', 'Due cose la cornice oggi non le dice: che una parte è stata segnata'],
+    'R2: che cosa manca per dirle' => ['Le notifiche', 'Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo dà zr-core, e in questa versione è sempre lo stesso'],
     'R2: niente dice che una parte è segnata' => ['Le notifiche', 'se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic fallito'],
     'R2: niente dice che la richiesta è in corso' => ['Le notifiche', 'fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, il pulsante resta com\'è'],
     'R3: il nome della campanella al singolare' => ['La campanella', 'con una sola al singolare («Notifiche, 1 non letta»)'],
     'R3: lo stesso testo è del pallino' => ['La campanella', 'Il design system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello'],
     'R3: che cosa dice il pallino' => ['La campanella', 'il pallino dice «non letta» quando sulla campanella ce n\'è una sola, «non lette» negli altri casi'],
     'R4: una lingua con più forme di plurale' => ['La lingua', 'una lingua con più forme di plurale (il polacco, l\'arabo) oggi non entra con un file solo'],
+]);
+
+// Sprint 12 · seconda lettura della PR, N2, N3 e N4: tre frasi del README erano vere solo in parte. Il rimedio del limite della
+// sessione non è il blocco sulle sole rotte di uscita e di ingresso, che non sono di zr-auth; dopo un'uscita i gettoni non sono
+// sempre chiusi; e non è il design system che non ha con che dire le due cose che la cornice non dice.
+it('il README non dice più le frasi che la seconda lettura ha trovato vere solo in parte (sprint 12 · seconda lettura, N2, N3, N4)', function (string $nuova, string $diPrima) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima al posto di quella nuova: il controllo la vede.
+    $conQuellaDiPrima = str_replace($nuova, $diPrima, $readme);
+
+    expect(substr_count($readme, $diPrima))->toBe(0)
+        ->and($conQuellaDiPrima)->not->toBe($readme)
+        ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
+})->with([
+    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
+    'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
+    'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
 ]);
