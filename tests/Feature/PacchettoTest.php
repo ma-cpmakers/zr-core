@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
+use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -1253,3 +1254,174 @@ it('la guardia dello zip, su un albero finto: config/zr-core.php è fra ciò che
     ],
     'con una cartella dal nome simile' => [['configurazioni/zr-core.php' => "<?php\n\nreturn [];\n"], 1, ['ciò che non serve a chi installa', 'configurazioni/zr-core.php']],
 ]);
+
+// Sprint 16 · T3 (voce #1472). Il README dice a chi installa come registra la classe delle intestazioni di sicurezza, dove scrive
+// le sorgenti del suo modulo e che cosa tiene nel suo repo; «La CSP» dice che la CSP intera la dà la classe; CLAUDE.md nomina la
+// classe fra ciò che zr-core scrive. I valori stanno scritti qui per intero: sono quelli che un modulo ricopia nel suo test.
+
+/** La CSP di tutti, com'è nel README: nella sezione delle intestazioni, e nel test che il README dà da tenere a ogni modulo. */
+const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. */
+const CSP_MINIMA_NEL_README = "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com";
+
+/**
+ * Ciò che «Le intestazioni di sicurezza» del README dice sotto quel titolo di terzo livello, fino al titolo dopo, su una riga
+ * sola; con `null`, ciò che dice prima del primo titolo di terzo livello. Vuoto se la sezione o il titolo non ci sono.
+ */
+function delleIntestazioniNelReadme(string $readme, ?string $sottotitolo): string
+{
+    preg_match('/^## Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    $modello = $sottotitolo === null ? '/\A(.*?)(?=^### |\z)/ms' : '/^### '.preg_quote($sottotitolo, '/').'$(.*?)(?=^### |\z)/ms';
+    preg_match($modello, $sezione[1] ?? '', $parte);
+
+    return suUnaRiga($parte[1] ?? '');
+}
+
+it('il README dice, in «Le intestazioni di sicurezza», una cosa per riga, ognuna sotto il suo titolo: come si registra la classe, le cinque intestazioni coi loro valori, dove un modulo scrive le sue sorgenti e quali sono ammesse, il nome di una pagina e il caricamento intero, il test da tenere nel modulo, la barra di Inertia, ciò che resta al server web (sprint 16 · T3.1)', function (?string $sottotitolo, string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.6.0, senza quella sezione: la cosa non si trova più.
+    $senzaLaSezione = str_replace("\n## Le intestazioni di sicurezza\n", "\n## Le intestazioni\n", $readme);
+
+    expect(str_contains(delleIntestazioniNelReadme($readme, $sottotitolo), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## Le intestazioni di sicurezza\n"))->toBe(1)
+        ->and(delleIntestazioniNelReadme($senzaLaSezione, $sottotitolo))->toBe('');
+
+    if ($sottotitolo !== null) {
+        // Il README che la cosa la dice, ma non sotto quel titolo.
+        $sottoUnAltroTitolo = str_replace("\n### {$sottotitolo}\n", "\n### Un altro titolo\n", $readme);
+
+        expect(substr_count($readme, "\n### {$sottotitolo}\n"))->toBe(1)
+            ->and(delleIntestazioniNelReadme($sottoUnAltroTitolo, $sottotitolo))->toBe('');
+    }
+})->with([
+    'la classe' => [null, '`Zeiras\Core\Http\IntestazioniSicurezza`'],
+    'chi la registra, e dove' => [null, 'zr-core non la registra da sé: la registra il frontend, prima dei middleware globali, nel suo `bootstrap/app.php`'],
+    'la riga di registrazione' => [null, '$middleware->prepend(\Zeiras\Core\Http\IntestazioniSicurezza::class);'],
+    'prima dei globali, non nel gruppo web' => [null, 'Prima dei globali, e non nel gruppo `web`'],
+    'Strict-Transport-Security' => [null, '| `Strict-Transport-Security` | `max-age=31536000`: un anno, per questo host solo (senza `includeSubDomains` né `preload`) |'],
+    'Content-Security-Policy' => [null, '| `Content-Security-Policy` | la CSP di tutti, qui sotto, più ciò che il modulo aggiunge |'],
+    'Referrer-Policy, e quando resta quella della risposta' => [null, '| `Referrer-Policy` | `strict-origin-when-cross-origin`; una risposta che ha già `no-referrer`, e solo quello, lo tiene |'],
+    'Permissions-Policy' => [null, '| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` |'],
+    'X-Content-Type-Options' => [null, '| `X-Content-Type-Options` | `nosniff` |'],
+    'la CSP di tutti, per intero' => [null, '``` '.CSP_DI_TUTTI_NEL_README.' ```'],
+
+    'il file delle sorgenti' => ['Le sorgenti di un modulo', 'sta in un file solo, `config/zr-core.php` del frontend'],
+    'il comando che lo porta nel frontend' => ['Le sorgenti di un modulo', 'php artisan vendor:publish --tag=zr-core-config'],
+    'csp, nell\'esempio' => ['Le sorgenti di un modulo', "'csp' => [ 'font-src' => [\"'self'\"], ],"],
+    'csp_pagine, nell\'esempio' => ['Le sorgenti di un modulo', "'csp_pagine' => [ 'turnstile' => [ 'script-src' => ['https://challenges.cloudflare.com'], 'frame-src' => ['https://challenges.cloudflare.com'], ], ],"],
+    'le sei direttive' => ['Le sorgenti di un modulo', 'a sei direttive sole — `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src`'],
+    'le sorgenti ammesse' => ['Le sorgenti di un modulo', "`'self'`, oppure un'origine `https://` scritta per intero"],
+    'una non ammessa è scartata' => ['Le sorgenti di un modulo', '**Una sorgente non ammessa** è scartata, mai aggiustata'],
+    'e lascia un avviso nel log' => ['Le sorgenti di un modulo', 'la classe scrive un avviso nel log a ogni risposta'],
+    'l\'avviso non porta valori della richiesta' => ['Le sorgenti di un modulo', 'non porta valori della richiesta'],
+    'la configurazione in cache' => ['Le sorgenti di un modulo', 'la rifà dopo l\'aggiornamento di zr-core e dopo ogni modifica del file'],
+
+    'come una pagina chiede le sue' => ['Per una pagina sola', "`IntestazioniSicurezza::perLaPagina('<nome>')`"],
+    'la chiamata, nell\'esempio' => ['Per una pagina sola', "IntestazioniSicurezza::perLaPagina('turnstile');"],
+    'il nome si scrive nel codice' => ['Per una pagina sola', 'Il nome si scrive nel codice, e non si prende mai dalla richiesta'],
+    'vale l\'ultimo nome' => ['Per una pagina sola', 'chiamata due volte, vale l\'ultimo nome'],
+    'un nome non dichiarato' => ['Per una pagina sola', 'Un nome che la configurazione non dichiara non aggiunge niente, e lascia un avviso nel log'],
+    'con Inertia la CSP è del documento' => ['Per una pagina sola', '**Con Inertia la CSP è del documento.**'],
+    'il caricamento intero' => ['Per una pagina sola', 'una pagina con sorgenti sue si apre e si lascia con un caricamento intero'],
+
+    'il test nel repo del modulo' => ['Il test nel modulo', 'Ogni modulo tiene nel suo repo un test'],
+    'coi valori scritti per intero' => ['Il test nel modulo', 'confronta le cinque intestazioni coi valori scritti per intero'],
+    'non una costante di zr-core' => ['Il test nel modulo', 'e non una costante di zr-core'],
+    'è un obbligo' => ['Il test nel modulo', 'È un obbligo, non un consiglio'],
+    'il test: Strict-Transport-Security' => ['Il test nel modulo', "->assertHeader('Strict-Transport-Security', 'max-age=31536000')"],
+    'il test: Content-Security-Policy' => ['Il test nel modulo', "->assertHeader('Content-Security-Policy', \"".CSP_DI_TUTTI_NEL_README.'")'],
+    'il test: Referrer-Policy' => ['Il test nel modulo', "->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')"],
+    'il test: Permissions-Policy' => ['Il test nel modulo', "->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')"],
+    'il test: X-Content-Type-Options' => ['Il test nel modulo', "->assertHeader('X-Content-Type-Options', 'nosniff');"],
+    'in quale versione cambiano le intestazioni comuni' => ['Il test nel modulo', 'un cambio che le allarga esce in una minore, con l\'annuncio ai frontend; uno che le stringe, in una maggiore'],
+
+    'la barra aggiunge un <style>' => ['La barra d\'avanzamento di Inertia', 'aggiunge alla pagina un `<style>`'],
+    'la barra senza <style>' => ['La barra d\'avanzamento di Inertia', '`progress: { includeCSS: false }`'],
+    'o spenta' => ['La barra d\'avanzamento di Inertia', '`progress: false`'],
+
+    'al server web: i file statici' => ['Che cosa resta al server web', '**i file statici** di `public/`'],
+    'al server web: i suoi errori' => ['Che cosa resta al server web', '**gli errori del server web**: una risposta che il server web dà da sé, senza arrivare a Laravel'],
+    'al server web: la pagina di manutenzione pre-renderizzata' => ['Che cosa resta al server web', '**la pagina di manutenzione pre-renderizzata** (`php artisan down --render=…`): esce prima che Laravel parta'],
+    'al server web: X-Frame-Options' => ['Che cosa resta al server web', '**`X-Frame-Options`**: la classe non la manda'],
+]);
+
+it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CSP», coi suoi cinque titoli; e ogni CSP che scrive per intero è quella di tutti, la stessa della classe (sprint 16 · T3.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match_all('/^## (.+)$/m', $readme, $titoli);
+    preg_match('/^## Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
+    preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
+
+    expect(array_slice($titoli[1], -3))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP'])
+        ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
+        // Due volte: da sola, e nel test che un modulo ricopia.
+        ->and($scritte[0])->toBe([CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
+        ->and(IntestazioniSicurezza::CSP)->toBe(CSP_DI_TUTTI_NEL_README);
+});
+
+it('il README dice, in «La CSP», che la CSP intera la dà la classe, e tiene il minimo per la cornice per chi non la registra: solo a lui dice di mettere da sé frame-ancestors, base-uri e form-action (sprint 16 · T3.2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $sezione = sezioneDelReadme($readme, 'La CSP');
+    // Ciò che la sezione dice a chi registra la classe, e ciò che dice a chi non la registra.
+    $aChiLaRegistra = (string) strstr($sezione, 'Chi non la registra', true);
+    $aChiNonLaRegistra = (string) strstr($sezione, 'Chi non la registra');
+    // Il README della v1.5.0 lo diceva a tutti: con quella frase al posto della nuova, il controllo la vede.
+    $nuova = '`frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.';
+    $diPrima = '`frame-ancestors`, `base-uri` e `form-action` non ricadono su `default-src`, e il frontend li mette da sé.';
+    $conQuellaDiPrima = str_replace($nuova, $diPrima, suUnaRiga($readme));
+
+    expect(str_contains($aChiLaRegistra, 'La CSP intera la dà la classe delle intestazioni di sicurezza'))->toBe(true)
+        ->and(str_contains($aChiLaRegistra, 'chi la registra non ne scrive una sua'))->toBe(true)
+        ->and(substr_count($aChiLaRegistra, 'da sé'))->toBe(0)
+        // Una CSP sola nella sezione, il minimo, e solo per chi non registra la classe: quella intera sta sopra.
+        ->and(substr_count($sezione, "default-src '"))->toBe(1)
+        ->and(substr_count($aChiNonLaRegistra, '``` Content-Security-Policy: '.CSP_MINIMA_NEL_README.' ```'))->toBe(1)
+        ->and(substr_count($aChiNonLaRegistra, 'da sé'))->toBe(1)
+        ->and(str_contains($aChiNonLaRegistra, $nuova))->toBe(true)
+        // Il minimo non dice un'altra cosa: ogni sua direttiva è, uguale, nella CSP di tutti.
+        ->and(array_values(array_diff(explode('; ', CSP_MINIMA_NEL_README), explode('; ', CSP_DI_TUTTI_NEL_README))))->toBe([])
+        ->and(substr_count(suUnaRiga($readme), $diPrima))->toBe(0)
+        ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
+});
+
+/** Il punto «Le intestazioni di sicurezza» di «Cosa scrive questa sessione», in CLAUDE.md, su una riga sola. Vuoto se non c'è. */
+function puntoDelleIntestazioniInClaude(string $claude): string
+{
+    preg_match('/^## Cosa scrive questa sessione$(.*?)(?=^## |\z)/ms', $claude, $sezione);
+    preg_match('/^- \*\*Le intestazioni di sicurezza\*\*.*?(?=^- \*\*|\z)/ms', $sezione[1] ?? '', $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+/**
+ * Ciò che in un testo ha la forma di un indirizzo o del nome di una macchina — un numero IP, un nome con un punto dentro — o è
+ * il nome di un programma che fa da server web: in un file pubblico si dice «il server web», non il suo nome.
+ *
+ * @return list<string>
+ */
+function indirizziENomiDiServerIn(string $testo): array
+{
+    preg_match_all('/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+|\b(?:nginx|apache|caddy|forge)\b/i', $testo, $trovati);
+
+    return array_values(array_unique($trovati[0]));
+}
+
+it('CLAUDE.md nomina la classe delle intestazioni di sicurezza fra ciò che zr-core scrive — la registra il frontend, le sorgenti di un modulo stanno in config/zr-core.php, ogni modifica passa da una revisione di sicurezza — e il punto non porta indirizzi né nomi di server (sprint 16 · T3.3)', function () {
+    $claude = (string) file_get_contents(__DIR__.'/../../CLAUDE.md');
+    $punto = puntoDelleIntestazioniInClaude($claude);
+    // CLAUDE.md col punto finito sotto «Cosa NON fa»: c'è ancora, ma non fra ciò che zr-core scrive.
+    $sottoUnAltroTitolo = strtr($claude, ["\n## Cosa scrive questa sessione\n" => "\n## Cosa NON fa\n", "\n## Cosa NON fa\n" => "\n## Cosa scrive questa sessione\n"]);
+
+    expect(str_contains($punto, '`Zeiras\Core\Http\IntestazioniSicurezza`'))->toBe(true)
+        ->and(str_contains($punto, 'la registra il frontend'))->toBe(true)
+        ->and(str_contains($punto, 'stanno nel suo `config/zr-core.php`'))->toBe(true)
+        ->and(str_contains($punto, 'passa da una revisione di sicurezza prima del tag'))->toBe(true)
+        ->and(substr_count($claude, '- **Le intestazioni di sicurezza**'))->toBe(1)
+        ->and(puntoDelleIntestazioniInClaude($sottoUnAltroTitolo))->toBe('')
+        // Di ciò che ha un punto dentro, lì c'è solo il nome del file della configurazione.
+        ->and(indirizziENomiDiServerIn($punto))->toBe(['zr-core.php'])
+        ->and(indirizziENomiDiServerIn($punto.' (10.0.0.5)'))->toBe(['zr-core.php', '10.0.0.5'])
+        ->and(indirizziENomiDiServerIn($punto.' su web-1.example.net'))->toBe(['zr-core.php', 'web-1.example.net'])
+        ->and(indirizziENomiDiServerIn($punto.' Lo manda Nginx.'))->toBe(['zr-core.php', 'Nginx']);
+});
