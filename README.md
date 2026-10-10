@@ -295,8 +295,8 @@ backoffice. `in_arrivo` è per le pagine senza sessione — Registrati —, che 
 di un prodotto: lì un prodotto in arrivo si mostra «In arrivo», non «Disponibile», perché non lo può ancora aprire
 nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la sessione lo stato di un prodotto lo dà il
 backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
-apre. Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il registro
-(`resources/registro/prodotti.json`).
+apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il
+registro (`resources/registro/prodotti.json`).
 
 ### La cornice montata una volta sola
 
