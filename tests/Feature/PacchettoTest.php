@@ -369,7 +369,7 @@ function suUnaRiga(string $testo): string
     return trim((string) preg_replace('/\s+/', ' ', $testo));
 }
 
-it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso, e il limite che c\'è ancora (sprint 10 · T2.5, review della PR)', function () {
+it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, e che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso (sprint 10 · T2.5, review della PR; il limite di allora: sprint 11 · T2.7)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = function (string $testo): array {
         preg_match('/^\| `\{lingua, .*\}` \| la persona è entrata in un workspace \|$/m', $testo, $rigaDeiDati);
@@ -380,13 +380,10 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => str_contains(suUnaRiga($testo), 'I dati si danno alla cornice così come arrivano, a ogni richiesta'),
             'la campanella: anche quando è lo stesso' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'vale il loro numero, anche quando è lo stesso di prima'),
             'il difetto della v1.2.0' => str_contains(suUnaRiga($testo), 'resta ciò che c\'era'),
-            'il limite: una risposta letta prima di un\'azione' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'ogni risposta vale come dati nuovi, anche quando è stata letta prima di un\'azione e arriva dopo'),
-            'il limite: Indietro e Avanti' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora'),
         ];
     };
 
-    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto e non questo limite; e il README che non
-    // nomina il segno.
+    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto; e il README che non nomina il segno.
     $campanellaDellaV120 = <<<'MD'
     - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
       elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
@@ -406,8 +403,6 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
-            'il limite: una risposta letta prima di un\'azione' => true,
-            'il limite: Indietro e Avanti' => true,
         ])
         ->and($cosaDice($dellaV120))->toBe([
             'il segno nella riga dei dati' => true,
@@ -415,8 +410,6 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => false,
             'il difetto della v1.2.0' => true,
-            'il limite: una risposta letta prima di un\'azione' => false,
-            'il limite: Indietro e Avanti' => false,
         ])
         ->and($cosaDice($senzaIlSegno))->toBe([
             'il segno nella riga dei dati' => false,
@@ -424,8 +417,56 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
-            'il limite: una risposta letta prima di un\'azione' => true,
-            'il limite: Indietro e Avanti' => true,
+        ]);
+});
+
+it('il README dice che la cornice confronta i segni e non torna a dati più vecchi, dove vale e dove non arriva, e che i server del frontend devono avere l\'ora allineata; il limite della v1.2.1 non c\'è più (sprint 11 · T2.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $cosaDice = function (string $testo): array {
+        $campanella = suUnaRiga(puntoDellaCampanella($testo));
+
+        return [
+            'confronta i segni e non torna a dati più vecchi' => str_contains($campanella, 'La cornice confronta i segni e non torna a dati più vecchi'),
+            'una risposta letta prima del clic non rimette il numero' => str_contains($campanella, 'una risposta letta prima del clic — una visita già partita, o una pagina che il `prefetch` di Inertia tiene — non rimette il numero'),
+            'dove vale' => str_contains($campanella, 'Vale dove la cornice resta montata'),
+            'dove non arriva' => str_contains($campanella, 'con la cornice montata da ogni pagina quella nuova non sa niente di prima, e Indietro porta ancora il numero di allora'),
+            'gli orologi' => str_contains($campanella, 'i server del frontend devono avere l\'ora allineata'),
+            'il limite della v1.2.1' => str_contains($campanella, 'la cornice non confronta i segni') || str_contains($campanella, 'rimette sulla campanella il numero di prima'),
+        ];
+    };
+
+    // Il README col punto della campanella della v1.2.1, che dichiarava il limite.
+    $campanellaDellaV121 = <<<'MD'
+    - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
+      elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
+      visita dopo, se il frontend tiene montata la cornice — vale il loro numero, anche quando è lo stesso di prima: dopo
+      «Segna tutte come lette» la campanella non ha un numero, e alla visita dopo mostra quello dei dati. Per la cornice i dati
+      sono nuovi quando è nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta
+      dati uguali: per questo ogni lettura ha il suo segno (`aggiornati_il`), che la rende diversa dalle altre. Un limite
+      noto: la cornice non confronta i segni, e ogni risposta vale come dati nuovi, anche quando è stata letta prima di
+      un'azione e arriva dopo. Dopo «Segna tutte come lette», una risposta letta prima del clic — una visita già partita, o
+      una pagina che il `prefetch` di Inertia tiene — rimette sulla campanella il numero di prima, fino alla visita dopo; e
+      con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora, col numero di allora.
+
+    MD;
+    $dellaV121 = str_replace(puntoDellaCampanella($readme), $campanellaDellaV121, $readme);
+
+    expect(puntoDellaCampanella($readme))->not->toBe('')
+        ->and($cosaDice($readme))->toBe([
+            'confronta i segni e non torna a dati più vecchi' => true,
+            'una risposta letta prima del clic non rimette il numero' => true,
+            'dove vale' => true,
+            'dove non arriva' => true,
+            'gli orologi' => true,
+            'il limite della v1.2.1' => false,
+        ])
+        ->and($cosaDice($dellaV121))->toBe([
+            'confronta i segni e non torna a dati più vecchi' => false,
+            'una risposta letta prima del clic non rimette il numero' => false,
+            'dove vale' => false,
+            'dove non arriva' => false,
+            'gli orologi' => false,
+            'il limite della v1.2.1' => true,
         ]);
 });
 
