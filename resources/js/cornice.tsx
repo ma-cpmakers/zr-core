@@ -319,13 +319,18 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[] }>({ stato: 'ready', elenco: [] });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     const ultimaRichiesta = useRef(0);
-    const carica = () => {
+    // La richiesta dell'elenco che è in pagina: mentre il pannello si ricarica senza svuotarsi è una di prima dell'ultima partita.
+    const elencoInPagina = useRef(0);
+    const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
-        setNotifiche({ stato: 'loading', elenco: [] });
+        if (svuota) {
+            setNotifiche({ stato: 'loading', elenco: [] });
+        }
         caricaNotifiche().then(
             ({ elenco, il }) => {
                 if (questa === ultimaRichiesta.current) {
+                    elencoInPagina.current = questa;
                     setNotifiche({ stato: 'ready', elenco });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
                 }
@@ -337,6 +342,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
         );
     };
+    const carica = () => chiedi(true);
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
     // caricate, anche quelle oltre la prima pagina. Fin lì e non fino all'ora del browser: ciò che arriva dopo, mai visto,
@@ -346,7 +352,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // prima del clic. Se la richiesta fallisce non cambia niente, e il pulsante resta per riprovare. Un clic mentre è in volo
     // non ne fa partire un'altra. Se la parte server dice che ne restano (`altre`: si è fermata a un tetto) non sono tutte
     // lette: il numero resta, le notifiche in pagina non si danno per lette, e il pannello si ricarica con ciò che c'è
-    // davvero; il pulsante resta, e un altro clic continua.
+    // davvero, senza svuotarsi: finché l'elenco nuovo non arriva resta in pagina quello di prima, e il pulsante resta dov'è,
+    // col fuoco, per il clic che continua. Che una parte è segnata, e che la richiesta è in corso, la cornice non lo dice: il
+    // design system non ha con che dirlo (README, «Le notifiche»).
     const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
@@ -357,16 +365,19 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // numero nei dati le conta il design system.
     const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette, elencoDiQuestiDati ? caricate.nonLette : 0);
     const nonLetteInElenco = notifiche.elenco.filter((notifica) => !notifica.letta).length;
+    // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
+    const sullaCampanella = nonLette ?? nonLetteInElenco;
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !((nonLette ?? nonLetteInElenco) > 0) ? undefined : async () => {
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
         leStaSegnando.current = true;
         const questi = dati;
-        const elencoDelClic = ultimaRichiesta.current;
+        // L'elenco in pagina al clic: è quello da cui viene l'istante mandato.
+        const elencoDelClic = elencoInPagina.current;
         let il: string | undefined;
         let altre: boolean;
         try {
@@ -381,8 +392,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
         if (altre) {
             // Ne restano da leggere: niente è «segnato fino a qui», e le non lette dell'ultimo elenco contano finché non
-            // arriva quello nuovo.
-            carica();
+            // arriva quello nuovo. Senza svuotare il pannello: il pulsante resta montato, col fuoco.
+            chiedi(false);
 
             return;
         }
@@ -392,10 +403,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
             setCaricate({ con: questi, nonLette: 0, il });
         } else {
-            // Il pannello è stato ricaricato fra il clic e la risposta, e quell'elenco è di prima della lettura; oppure
-            // l'elenco del clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che
-            // è arrivato dopo. Si ricarica, invece di dare per lette quelle in pagina; e le non lette di quell'elenco non
-            // contano più sulla campanella, perché la lettura le ha coperte: conteranno quelle dell'elenco che arriva.
+            // Un elenco è stato chiesto dopo quello del clic — il pannello ricaricato fra il clic e la risposta, o che si
+            // stava già ricaricando al clic, dopo un `altre` — e quell'elenco è di prima della lettura; oppure l'elenco del
+            // clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che è arrivato
+            // dopo. Si ricarica, invece di dare per lette quelle in pagina; e le non lette di quell'elenco non contano più
+            // sulla campanella, perché la lettura le ha coperte: conteranno quelle dell'elenco che arriva.
             setCaricate(undefined);
             carica();
         }
@@ -461,9 +473,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 }
             }}
             // Con una sola non letta il nome della campanella per il lettore di schermo è al singolare: il design system ha un
-            // testo solo per le non lette, e zr-core gli dà il suo. Il numero è quello che la campanella mostra: quello dei dati
-            // o, senza, le non lette caricate, che conta il design system.
-            labels={(nonLette ?? nonLetteInElenco) === 1 ? { ...t, unread: t.unreadOne } : t}
+            // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
+            // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»).
+            labels={sullaCampanella === 1 ? { ...t, unread: t.unreadOne } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
             // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
