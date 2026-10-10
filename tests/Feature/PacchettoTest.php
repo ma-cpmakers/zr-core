@@ -648,13 +648,14 @@ function sezioneDelReadme(string $readme, string $titolo): string
     return suUnaRiga($sezione[1] ?? '');
 }
 
-it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi di ogni notifica, e che è com\'è nel backoffice (sprint 12 · T2.4)', function () {
+it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi di ogni notifica, e che è com\'è nel backoffice, dove a non tradurlo è la parte server (sprint 12 · T2.4; review, R9)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
     $ricerca = '| `GET /cornice/ricerca?q=` |';
+    // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
         'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
-        'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice'),
+        'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
     // Il README con la riga dell'elenco e quella della ricerca scambiate di rotta: il tipo è detto, ma nella riga di un'altra
@@ -667,7 +668,9 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
         ->and(substr_count($readme, $ricerca))->toBe(1)
         ->and($cosaDice($scambiate))->toBe(['tipo fra le chiavi di ogni notifica' => false, 'tipo com\'è nel backoffice' => false])
         ->and(str_contains($senzaLElenco, '`tipo`'))->toBe(true)
-        ->and($cosaDice($senzaLElenco))->toBe(['tipo fra le chiavi di ogni notifica' => false, 'tipo com\'è nel backoffice' => false]);
+        ->and($cosaDice($senzaLElenco))->toBe(['tipo fra le chiavi di ogni notifica' => false, 'tipo com\'è nel backoffice' => false])
+        // Detto di zr-core contraddirebbe il punto «Le notifiche», dove è zr-core a dare il titolo dal tipo.
+        ->and(str_contains(suUnaRiga($readme), 'zr-core non lo traduce'))->toBe(false);
 });
 
 it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati() legge il backoffice non è un contratto, che dalla v1.2.2 la prima lettura conta le non lette, e che un test del frontend non fissi la prima lettura (sprint 12 · T2.5)', function () {
@@ -775,6 +778,25 @@ it('il README dice, nel punto «Le notifiche», che cosa vede la persona quando 
     'che cosa vede la persona' => ['la campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un altro clic'],
 ]);
 
+// Sprint 12 · review, S1 (decisione di zr-pm): «Segna tutte come lette» può durare fino a circa 15 secondi, e in Laravel una richiesta
+// lenta, quando finisce, riscrive la sessione com'era all'inizio. Il README lo dichiara nel punto «Le notifiche», una frase per cosa.
+it('il README dichiara, nel punto «Le notifiche», il limite della sessione con una richiesta lenta (sprint 12 · review, S1)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README col punto delle notifiche e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
+    $scambiati = strtr($readme, ['- **Le notifiche**' => '- **La ricerca**', '- **La ricerca**' => '- **Le notifiche**']);
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
+})->with([
+    'che cosa fa una richiesta lenta' => ['una richiesta lenta, quando finisce, riscrive la sessione com\'era all\'inizio e ne rimanda il cookie'],
+    'quanto dura qui' => ['fino a circa 15 secondi, solo con più di 5000 non lette'],
+    'che cosa succede' => ['la persona esce o entra in un altro workspace da un\'altra scheda, la sessione torna quella di prima'],
+    'dopo un cambio di workspace' => ['dopo un cambio di workspace la persona si ritrova in quello di prima'],
+    'dopo un\'uscita' => ['dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice, e la prima chiamata la richiude'],
+    'zr-core non lo chiude da solo' => ['zr-core da solo non lo chiude: serve il blocco della sessione sulle rotte di uscita e di ingresso nel workspace'],
+]);
+
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il README di prima, con la forma della risposta della v1.2.2 al posto di quella nuova: il controllo la vede.
@@ -830,4 +852,46 @@ it('il README dice, nel punto «La pagina» del layout della cornice, come si di
 })->with([
     'con null, dal layout o dalla pagina' => ['Nessuna voce attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`)'],
     'il null della pagina vince su una voce del layout' => ['`null` è un valore, e quello della pagina vince anche su una voce data dal layout'],
+]);
+
+// Sprint 12 · review della PR. R8: una risposta del backoffice che non ha la forma di /v1 è un errore, e il README lo dice nella
+// riga della rotta: è lì che lo legge un frontend che nei suoi test finge il backoffice. R2, R3 e R4: ciò che la cornice oggi
+// non dice o non fa, dichiarato nel punto che ne parla.
+
+it('il README dice, nella riga della rotta, che una risposta del backoffice senza quel campo è un errore (sprint 12 · review, R8)', function (string $rotta, string $inizio, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    // Il README con la riga di quella rotta e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
+    $scambiate = strtr($readme, [$inizio => $ricerca, $ricerca => $inizio]);
+
+    expect(str_contains(rigaDellaRotta($readme, $rotta), $frase))->toBe(true)
+        ->and(substr_count($readme, $inizio))->toBe(1)
+        ->and(substr_count($readme, $ricerca))->toBe(1)
+        ->and(str_contains($scambiate, $frase))->toBe(true)
+        ->and(str_contains(rigaDellaRotta($scambiate, $rotta), $frase))->toBe(false);
+})->with([
+    'una notifica senza tipo' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx)'],
+    'anche nella lettura di una notifica sola' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`'],
+    'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
+]);
+
+it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel punto e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
+    $scambiati = strtr($readme, ["- **{$grassetto}**" => '- **La ricerca**', '- **La ricerca**' => "- **{$grassetto}**"]);
+
+    expect(str_contains(puntoDellaCornice($readme, $grassetto), $frase))->toBe(true)
+        ->and(substr_count($readme, "- **{$grassetto}**"))->toBe(1)
+        ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, $grassetto), $frase))->toBe(false);
+})->with([
+    'R2: mentre il pannello si ricarica il pulsante resta' => ['Le notifiche', 'Mentre il pannello si ricarica l\'elenco di prima resta in pagina e il pulsante resta dov\'è, col fuoco della tastiera'],
+    'R2: perché non lo dice' => ['Le notifiche', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle'],
+    'R2: niente dice che una parte è segnata' => ['Le notifiche', 'se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic fallito'],
+    'R2: niente dice che la richiesta è in corso' => ['Le notifiche', 'fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, il pulsante resta com\'è'],
+    'R3: il nome della campanella al singolare' => ['La campanella', 'con una sola al singolare («Notifiche, 1 non letta»)'],
+    'R3: lo stesso testo è del pallino' => ['La campanella', 'Il design system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello'],
+    'R3: che cosa dice il pallino' => ['La campanella', 'il pallino dice «non letta» quando sulla campanella ce n\'è una sola, «non lette» negli altri casi'],
+    'R4: una lingua con più forme di plurale' => ['La lingua', 'una lingua con più forme di plurale (il polacco, l\'arabo) oggi non entra con un file solo'],
 ]);

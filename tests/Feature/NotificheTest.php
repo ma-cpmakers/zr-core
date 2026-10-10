@@ -753,7 +753,9 @@ it('se un richiamo fallisce la rotta risponde con un errore, come quando fallisc
 
     $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')));
 
-    expect($risposta->status())->toBeGreaterThanOrEqual(400)->toBeLessThan(600)
+    // Un errore della parte server (5xx), come quando fallisce la prima chiamata: mai un 4xx con un `errore` per il browser.
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull()
         ->and($risposta->json('data'))->toBeNull()
         ->and(substr_count((string) $risposta->getContent(), 'segnate_il'))->toBe(0);
     Http::assertSentCount(2);
