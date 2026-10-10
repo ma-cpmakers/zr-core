@@ -97,16 +97,24 @@ describe('la parte server finta della pagina di prova del layout', () => {
         annulla.abort();
 
         await expect(risposta).rejects.toBeInstanceOf(HttpCancelledError);
+        // Nemmeno dopo, quando la risposta sarebbe stata pronta.
+        await new Promise((dopo) => setTimeout(dopo, 40));
         expect(pagina).not.toHaveBeenCalled();
     });
 
-    it('una visita già annullata quando parte è rifiutata allo stesso modo (sprint 10 · T3.1, review della PR)', async () => {
+    // Il client vero ascolta l'annullo da quando la richiesta gli arriva (`signal.addEventListener('abort', …)`): un segnale già
+    // annullato non lo avvisa, la richiesta parte e Inertia monta la sua risposta. Succede con due visite nello stesso giro, che
+    // solo uno script fa (due clic di una persona stanno in due giri): la pagina di prova fa lo stesso, non di meglio.
+    it('una visita già annullata quando arriva al client non è rifiutata, come nel client vero: la richiesta parte e la risposta arriva (sprint 10 · T3.1, seconda lettura della PR)', async () => {
         vi.spyOn(console, 'info').mockImplementation(() => {});
         const pagina = vi.fn(paginaDi);
         const annulla = new AbortController();
         annulla.abort();
 
-        await expect(clientFinto(pagina, 1).request(visita(annulla.signal))).rejects.toBeInstanceOf(HttpCancelledError);
-        expect(pagina).not.toHaveBeenCalled();
+        const risposta = await clientFinto(pagina, 1).request(visita(annulla.signal));
+
+        expect(risposta.status).toBe(200);
+        expect(JSON.parse(risposta.data).component).toBe('corta');
+        expect(pagina).toHaveBeenCalledTimes(1);
     });
 });

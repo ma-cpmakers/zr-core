@@ -220,7 +220,8 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     // Quante volte la pagina scrive ognuna di queste cose. Con `router.push`, come nella v1.2.0, le visite non passerebbero dalla
     // risposta di Inertia: lì Inertia non ridà l'oggetto di prima, e il difetto non si vedrebbe nemmeno senza il segno. Ciò che
     // la parte server finta fa (il segno a ogni lettura, `?segno=no`, la visita annullata) lo prova il suo test, in vitest: qui,
-    // che la pagina la usa, e col segno letto dal suo indirizzo.
+    // che la pagina la usa, col segno letto dal suo indirizzo, e che ciò che il client risponde a una visita è una lettura
+    // (`rispostaDi`), come la pagina iniziale: se rispondesse i dati così come sono, le visite uscirebbero senza segno.
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
@@ -237,6 +238,11 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
             'const segno = colSegno(window.location.search);' => 1,
             'lettura(' => 1,
             'lettura(propsDi[nome], segno)' => 1,
+        ])
+        ->and($scritte(['rispostaDi(', 'props: { errors: {}, ...rispostaDi(nome) }', 'props: { errors: {}, ...rispostaDi(iniziale) }']))->toBe([
+            'rispostaDi(' => 3,
+            'props: { errors: {}, ...rispostaDi(nome) }' => 1,
+            'props: { errors: {}, ...rispostaDi(iniziale) }' => 1,
         ])
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
 });

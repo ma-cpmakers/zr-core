@@ -41,19 +41,27 @@ export function lettura<Props extends { cornice: DatiDellaCornice | null }>(prop
  * Il client HTTP da dare a Inertia (`http.setClient`): ogni visita arriva qui, si scrive in console, e dopo `attesa` millisecondi
  * la risposta è la pagina che `pagina` dà per l'indirizzo della richiesta. `pagina` gira quando la risposta è pronta, e non
  * gira per una visita annullata nel frattempo: quella è rifiutata con l'errore del client vero, che Inertia riconosce e ignora.
+ * Come il client vero, l'annullo si ascolta da quando la richiesta arriva qui: una visita già annullata prima (due visite nello
+ * stesso giro, che solo uno script fa) parte lo stesso, e Inertia monta la sua risposta.
  */
 export function clientFinto(pagina: (indirizzo: URL) => { component: string; props: object }, attesa = 50): HttpClient {
     return {
-        request: async (richiesta) => {
-            const indirizzo = new URL(richiesta.url, window.location.href);
-            const url = indirizzo.pathname + indirizzo.search;
-            console.info('UAT visita', richiesta.method, url);
-            await new Promise((dopo) => setTimeout(dopo, attesa));
-            if (richiesta.signal?.aborted) {
-                throw new HttpCancelledError('Request was cancelled', url);
-            }
-
-            return { status: 200, data: JSON.stringify({ ...pagina(indirizzo), url, version: null }), headers: { 'x-inertia': 'true' } };
-        },
+        request: (richiesta) =>
+            new Promise((risposta, rifiuto) => {
+                const indirizzo = new URL(richiesta.url, window.location.href);
+                const url = indirizzo.pathname + indirizzo.search;
+                console.info('UAT visita', richiesta.method, url);
+                const pronta = setTimeout(() => {
+                    try {
+                        risposta({ status: 200, data: JSON.stringify({ ...pagina(indirizzo), url, version: null }), headers: { 'x-inertia': 'true' } });
+                    } catch (errore) {
+                        rifiuto(errore);
+                    }
+                }, attesa);
+                richiesta.signal?.addEventListener('abort', () => {
+                    clearTimeout(pronta);
+                    rifiuto(new HttpCancelledError('Request was cancelled', url));
+                });
+            }),
     };
 }

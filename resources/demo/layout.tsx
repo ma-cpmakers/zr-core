@@ -17,8 +17,9 @@ import { notifichePartite, rotteFinte } from './rotte-finte';
 // client HTTP finto (parte-server-finta.ts), che risponde la pagina che l'indirizzo dice coi dati di una lettura nuova. È nella
 // risposta di una visita che Inertia ridà l'oggetto di prima per i dati uguali: per questo ogni lettura porta in `cornice` il
 // segno `aggiornati_il`, come lo mette la parte server di zr-core. `layout.html?pagina=corta` apre già quella. Due parametri,
-// letti al caricamento e tenuti negli indirizzi: `?segno=no` toglie il segno (è la parte server della `v1.2.0`: alla visita dopo,
-// con gli stessi dati, la campanella resta com'era) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga»
+// letti al caricamento e tenuti negli indirizzi: `?segno=no` toglie il segno (è la parte server della `v1.2.0`: alla visita dopo
+// alla stessa pagina, dalla «Lunga» alla «Lunga», con gli stessi dati la campanella resta com'era; verso un'altra pagina Inertia
+// dà comunque un oggetto nuovo, e il difetto non si vede) e `?non_lette=<n>` dà quel numero alle pagine di «UAT Marketing» (la «Lunga»
 // e la «Percorso»; senza, 7). Con `?non_lette=0` i dati dicono 0 e la campanella non ha un numero; aperta, il pannello carica le
 // due non lette d'esempio (rotte-finte.ts) e la campanella dice «2»; alla visita dopo, coi dati che dicono di nuovo 0, non ha più
 // un numero. Le rotte della cornice sono finte (rotte-finte.ts), e gli indirizzi che la cornice apre si scrivono in console.
