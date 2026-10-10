@@ -372,7 +372,8 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
 // GET /cornice/notifiche, e dove portano una notifica e «Vedi tutte» (linea guida 15, passo 10). Sprint 6 · T3 e T4 (voce
 // #1318): una notifica è `{id, creata_il, letta, app}`, e di che prodotto è lo dice il registro, da `app` (per chi è, il
 // contratto non lo dice); «Segna tutte come lette» è una POST /cornice/notifiche/letture sola, fino alla `creata_il` più recente
-// fra le caricate.
+// fra le caricate. Sprint 12 · T3 (voce #1463): una notifica porta anche `tipo`, e il suo titolo è quello del tipo, dalle lingue;
+// un tipo che zr-core non conosce ha il titolo di ripiego. Con una sola non letta la campanella dice il singolare.
 describe('il pannello delle notifiche', () => {
     /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
     const adesso = new Date('2026-10-06T12:00:00Z');
@@ -388,9 +389,10 @@ describe('il pannello delle notifiche', () => {
     /**
      * Una notifica per ogni caso di `app`, dalla più recente. Prima i prodotti del registro: uno attivo nel workspace dei dati
      * (`pm`), uno solo disponibile (`crm`), uno «Presto» per il registro (`reports`), uno che i dati non elencano (`content`). Poi
-     * ciò che non è un prodotto: `null`, un codice che il registro non ha, la Dashboard. `tipo`, `soggetto` e i campi della bozza
-     * (`per_me`, `motivo`) la parte server non li dà: se arrivassero lo stesso, e dicessero un altro prodotto, il pannello non li
-     * userebbe.
+     * ciò che non è un prodotto: `null`, un codice che il registro non ha, la Dashboard. Il `tipo` dà il titolo, non il prodotto:
+     * due notifiche hanno il tipo di una cartella di Project Management, una con `app` `crm` e una che non è di un'app, e il
+     * prodotto resta quello di `app`; le altre non hanno `tipo`, e hanno il titolo di ripiego. `soggetto` e i campi della bozza
+     * (`per_me`, `motivo`) la parte server non li dà: se arrivassero lo stesso il pannello non li userebbe.
      */
     const diOgniApp = [
         { id: 'uat-n47', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm', per_me: true, motivo: 'menzione' },
@@ -433,12 +435,12 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
-        ['it', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
-        ['es', 'Nueva actividad', ['hace 5 minutos', 'ayer', '1 oct'], ['Gestión de proyectos', 'CRM', 'Informes', 'Contenidos']],
-        ['en', 'New activity', ['5 minutes ago', 'yesterday', 'Oct 1'], ['Project Management', 'CRM', 'Reports', 'Content']],
+        ['it', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
+        ['es', ['Novedades en el workspace', 'Nueva carpeta'], ['hace 5 minutos', 'ayer', '1 oct'], ['Gestión de proyectos', 'CRM', 'Informes', 'Contenidos']],
+        ['en', ['News in the workspace', 'New folder'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Project Management', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', 'Nuova attività', ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
-    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo della lingua e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3)', async (lingua, titolo, [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
+        ['it_IT', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
+    ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo del suo tipo nella lingua, o quello di ripiego, e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3; sprint 12 · T3.1, T3.2)', async (lingua, [diRipiego, dellaCartella], [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
         vi.stubGlobal('fetch', fetchFinto);
@@ -458,7 +460,10 @@ describe('il pannello delle notifiche', () => {
         for (const scheda of [0, 1]) {
             await clic(tutti('.zr-notif-tabs [role="tab"]')[scheda]);
             expect(tutti('.zr-notif-tabs [role="tab"]').map((voce) => voce.getAttribute('aria-selected'))).toStrictEqual(scheda === 0 ? ['true', 'false'] : ['false', 'true']);
-            expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(diOgniApp.map(() => titolo));
+            // Riga per riga: il titolo del tipo dove il tipo c'è (la seconda e la quinta), quello di ripiego dove manca.
+            expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual([
+                diRipiego, dellaCartella, diRipiego, diRipiego, dellaCartella, diRipiego, diRipiego,
+            ]);
             // Il nome del prodotto nella lingua dei dati davanti all'ora, anche se è «Presto» o non è attivo nel workspace: viene
             // da `app`, non dal `tipo`. Senza un prodotto del registro, solo l'ora: mai il codice, mai la Dashboard.
             expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual([
@@ -1026,6 +1031,122 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-notif .zr-pop-foot button'));
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
+    });
+
+    /**
+     * I titoli dei 19 tipi di evento del contratto, in italiano, inglese e spagnolo: la tabella dello sprint 12, scritta qui e
+     * non letta dai file delle lingue.
+     */
+    const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
+        ['com.zeiras.app.modificata', "Un'app del workspace è stata attivata o disattivata", 'An app in the workspace was turned on or off', 'Se activó o desactivó una app del workspace'],
+        ['com.zeiras.workspace.creato', 'Il workspace è stato creato', 'The workspace was created', 'Se creó el workspace'],
+        ['com.zeiras.workspace.modificato', 'Il workspace è stato modificato', 'The workspace was changed', 'Se modificó el workspace'],
+        ['com.zeiras.workspace.membro.creato', 'Una persona è entrata nel workspace', 'Someone joined the workspace', 'Una persona entró en el workspace'],
+        ['com.zeiras.workspace.membro.modificato', 'Il ruolo di un membro è cambiato', "A member's role changed", 'Cambió el rol de un miembro'],
+        ['com.zeiras.workspace.membro.eliminato', 'Una persona è uscita dal workspace', 'Someone left the workspace', 'Una persona salió del workspace'],
+        ['com.zeiras.board.cartella.creata', 'Nuova cartella', 'New folder', 'Nueva carpeta'],
+        ['com.zeiras.board.cartella.modificata', 'Cartella modificata', 'Folder changed', 'Carpeta modificada'],
+        ['com.zeiras.board.cartella.eliminata', 'Cartella eliminata', 'Folder deleted', 'Carpeta eliminada'],
+        ['com.zeiras.board.board.creata', 'Nuova board', 'New board', 'Nuevo tablero'],
+        ['com.zeiras.board.board.modificata', 'Board modificata', 'Board changed', 'Tablero modificado'],
+        ['com.zeiras.board.lista.creata', 'Nuova lista', 'New list', 'Nueva lista'],
+        ['com.zeiras.board.lista.modificata', 'Lista modificata', 'List changed', 'Lista modificada'],
+        ['com.zeiras.board.scheda.creata', 'Nuova scheda', 'New card', 'Nueva tarjeta'],
+        ['com.zeiras.board.scheda.modificata', 'Scheda modificata', 'Card changed', 'Tarjeta modificada'],
+        ['com.zeiras.board.scheda.eliminata', 'Scheda eliminata', 'Card deleted', 'Tarjeta eliminada'],
+        ['com.zeiras.board.etichetta.creata', 'Nuova etichetta', 'New label', 'Nueva etiqueta'],
+        ['com.zeiras.board.etichetta.modificata', 'Etichetta modificata', 'Label changed', 'Etiqueta modificada'],
+        ['com.zeiras.board.etichetta.eliminata', 'Etichetta eliminata', 'Label deleted', 'Etiqueta eliminada'],
+    ];
+    /** Il titolo di ripiego, per lingua. */
+    const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
+    const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
+
+    it('la tabella dei titoli ha 19 tipi, tutti diversi (sprint 12 · T3.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(19);
+        expect(titoliPerTipo).toHaveLength(19);
+    });
+
+    it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
+        'una notifica di tipo %s, con la lingua "%s", nel pannello si chiama «%s» (sprint 12 · T3.1)',
+        async (tipo, lingua, titolo) => {
+            // Con un prodotto e senza: il titolo viene dal tipo, non da `app`.
+            const elenco = [{ ...nata('uat-n51', '2026-10-06T11:55:00Z'), tipo, app: 'crm' }, { ...nata('uat-n50', '2026-10-06T11:50:00Z'), tipo }];
+            vi.stubGlobal('fetch', rotte(elenco));
+            await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+
+            await clic(uno('.zr-bell'));
+            expect(titoli()).toStrictEqual([titolo, titolo]);
+        },
+    );
+
+    it.each(['it', 'en', 'es'])('con la lingua "%s", una notifica di un tipo che zr-core non conosce, o senza tipo, ha il titolo di ripiego: mai il codice del tipo, mai un titolo vuoto (sprint 12 · T3.2)', async (lingua) => {
+        const tipi: unknown[] = [
+            // Un tipo che il contratto non ha ancora, e uno che ha solo il nome di un altro davanti o dietro.
+            'com.zeiras.crm.contatto.creato', 'com.zeiras.board.scheda', 'com.zeiras.board.scheda.creata.poi', 'COM.ZEIRAS.BOARD.SCHEDA.CREATA', ' com.zeiras.board.scheda.creata',
+            // Nomi che ogni oggetto ha, e il vuoto.
+            'constructor', '__proto__', 'toString', '',
+            // Ciò che non è un testo: anche un elenco che, scritto come testo, sarebbe un tipo conosciuto.
+            null, 7, true, ['com.zeiras.board.scheda.creata'], { toString: () => 'com.zeiras.board.scheda.creata' },
+        ];
+        // In più una senza `tipo`, e in fondo una di un tipo conosciuto: il pannello non si è fermato prima.
+        const elenco = [
+            ...tipi.map((tipo, indice) => ({ ...nata(`uat-n${90 - indice}`, '2026-10-06T11:55:00Z'), tipo })),
+            nata('uat-n61', '2026-10-06T11:50:00Z'),
+            { ...nata('uat-n60', '2026-10-06T11:45:00Z'), tipo: 'com.zeiras.board.scheda.creata' },
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        const delTipo = titoliPerTipo.find(([tipo]) => tipo === 'com.zeiras.board.scheda.creata')!;
+        expect(titoli()).toStrictEqual([...tipi.map(() => diRipiego[lingua]), diRipiego[lingua], delTipo[['', 'it', 'en', 'es'].indexOf(lingua)]]);
+        // Nel pannello non si legge il codice di un tipo.
+        expect(uno('.zr-notif')?.textContent).not.toMatch(/com\.zeiras|constructor|__proto__/i);
+    });
+
+    it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
+        ['it', 0, 0, 'Notifiche'],
+        ['it', 1, 0, 'Notifiche, 1 non letta'],
+        ['it', 2, 0, 'Notifiche, 2 non lette'],
+        ['it', 100, 0, 'Notifiche, 99+ non lette'],
+        ['en', 0, 0, 'Notifications'],
+        ['en', 1, 0, 'Notifications, 1 unread'],
+        ['en', 2, 0, 'Notifications, 2 unread'],
+        ['es', 0, 0, 'Notificaciones'],
+        ['es', 1, 0, 'Notificaciones, 1 sin leer'],
+        ['es', 2, 0, 'Notificaciones, 2 sin leer'],
+        // Senza numero nei dati contano le non lette caricate: le conta il design system, e il nome le segue.
+        ['it', undefined, 1, 'Notifiche, 1 non letta'],
+        ['it', undefined, 2, 'Notifiche, 2 non lette'],
+        ['en', undefined, 1, 'Notifications, 1 unread'],
+        ['es', undefined, 1, 'Notificaciones, 1 sin leer'],
+        // Il numero dei dati e un elenco più recente con più non lette: vale il numero che la campanella mostra.
+        ['it', 1, 2, 'Notifiche, 2 non lette'],
+    ])('con la lingua "%s", %s non lette nei dati e %s caricate, la campanella per il lettore di schermo si chiama «%s» (sprint 12 · T3.4)', async (lingua, nonLetteNeiDati, nonLetteCaricate, nome) => {
+        const elenco = [
+            ...Array.from({ length: nonLetteCaricate }, (_, indice) => nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z')),
+            nata('uat-n70', '2026-10-06T11:00:00Z', true),
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
+        if (nonLetteCaricate > 0) {
+            await clic(uno('.zr-bell'));
+            expect(nonLette()).toStrictEqual([...Array.from({ length: nonLetteCaricate }, () => true), false]);
+        }
+
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(nome);
+    });
+
+    it('dopo «Segna tutte come lette» su una sola non letta la campanella torna a chiamarsi «Notifiche» (sprint 12 · T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte([nata('uat-n80', '2026-10-06T11:55:00Z')]));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche, 1 non letta');
+
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche');
     });
 });
 

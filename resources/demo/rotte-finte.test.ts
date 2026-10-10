@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import inglese from '../lingue/en.json';
 
 // Sprint 11 · T3 (voce #1458). Le rotte finte delle pagine di prova rispondono nella forma della parte server, e la parte server
 // dice quando: l'elenco delle notifiche quando ha cominciato a leggerlo (`aggiornati_il`), «segna tutte come lette» quando le ha
@@ -101,5 +102,27 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         expect(await rispostaDi('/cornice/notifiche/letture', segnaTutte('uat-vendite'))).toEqual({ stato: 409, corpo: { errore: 'workspace_diverso' } });
         expect(await rispostaDi('/cornice/notifiche/letture', segnaTutte('uat-marketing', 'ieri'))).toEqual({ stato: 422, corpo: { errore: 'dati_non_validi' } });
+    });
+
+    // Sprint 12 · T3 (voce #1463): sulla pagina di prova si vedono un titolo di tipo e il ripiego, coi suoi due motivi.
+    it('le notifiche d\'esempio hanno un tipo: due di tipi che zr-core conosce, una di un tipo che non conosce, una senza tipo (sprint 12 · T3.7)', async () => {
+        await rotte(false);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string }[];
+        // Quali tipi zr-core conosce lo dicono le chiavi dell'inglese.
+        const conosciuto = (tipo: string | undefined) => tipo !== undefined && Object.keys(inglese).includes(`notificationTitle.${tipo}`);
+
+        expect(notifiche.map(({ id, app, tipo }) => [id, app, tipo ?? null])).toEqual([
+            ['uat-4', 'pm', 'com.zeiras.board.scheda.creata'],
+            ['uat-3', 'crm', 'com.zeiras.crm.contatto.creato'],
+            ['uat-2', 'uat-ignota', null],
+            ['uat-1', null, 'com.zeiras.workspace.membro.creato'],
+        ]);
+        // Senza tipo: la chiave non c'è, come in una risposta di prima della v1.3.0.
+        expect(notifiche.map((notifica) => Object.keys(notifica))).toEqual([
+            ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app'], ['id', 'creata_il', 'letta', 'app', 'tipo'],
+        ]);
+        expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
     });
 });
