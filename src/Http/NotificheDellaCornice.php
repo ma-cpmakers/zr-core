@@ -13,11 +13,12 @@ use Zeiras\Core\Segno;
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
- * l'id, quando è nata, se è letta e `app`, il codice dell'app da cui viene. Di che prodotto è lo dice il registro di zr-core,
- * nel browser: un codice che il registro non ha passa da qui com'è, e la cornice non mostra un prodotto. `tipo`, `soggetto`
- * e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola al backoffice, fino a un istante, non una per
- * notifica. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
- * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata.
+ * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
+ * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
+ * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola al backoffice,
+ * fino a un istante, non una per notifica. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non
+ * risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
  * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
  * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
@@ -136,20 +137,25 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata, se è letta e il codice dell'app. `letta_il` e `app` ci
-     * sono sempre: `letta_il` è null finché la persona non la segna, `app` è null se l'evento non è di un'app. Una risposta senza
-     * uno dei quattro non è una notifica, ed è un guasto: mai una notifica non letta, mai una notifica senza app.
+     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata, se è letta, il codice dell'app e il tipo dell'evento.
+     * `letta_il` e `app` ci sono sempre: `letta_il` è null finché la persona non la segna, `app` è null se l'evento non è di
+     * un'app. Il `tipo` è una stringa, e passa com'è. Una risposta senza uno dei cinque non è una notifica, ed è un guasto: mai
+     * una notifica non letta, mai una notifica senza app o senza tipo.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
         if (! is_array($notifica) || ! is_string($notifica['id'] ?? null) || ! is_string($notifica['creata_il'] ?? null)
             || ! array_key_exists('letta_il', $notifica) || ! ($notifica['letta_il'] === null || is_string($notifica['letta_il']))
-            || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))) {
+            || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))
+            || ! is_string($notifica['tipo'] ?? null)) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
-        return ['id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null, 'app' => $notifica['app']];
+        return [
+            'id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
+            'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
+        ];
     }
 }
