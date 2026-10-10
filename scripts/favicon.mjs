@@ -2,9 +2,10 @@
 // (resources/zeiras/logos/zeiras-favicon.svg, copia derivata), con resvg. favicon.ico porta tre immagini PNG, 16, 32 e 48 px, la
 // favicon com'è, con gli angoli trasparenti; apple-touch-icon.png è 180×180 e senza trasparenza: lo stesso disegno sul colore
 // del suo fondo, pieno fino agli angoli, perché iOS mette il nero dove un'icona è trasparente. Il colore non è scritto qui: è
-// il `fill` del primo <rect> della favicon. I due file non si ritoccano a mano: si rigenerano con `npm run favicon` quando la
-// favicon del design system cambia. `npm run favicon -- --controlla` non scrive niente: rilegge i due file, li confronta pixel
-// per pixel con la resa di adesso ed esce 1 alla prima differenza. Lo lancia la CI a ogni giro.
+// il `fill` del primo <rect> della favicon, che è il fondo solo se copre tutto il `viewBox`: se non lo copre lo script si
+// ferma. I due file non si ritoccano a mano: si rigenerano con `npm run favicon` quando la favicon del design system cambia.
+// `npm run favicon -- --controlla` non scrive niente: rilegge i due file, li confronta pixel per pixel con la resa di adesso ed
+// esce 1 alla prima differenza. Lo lancia la CI a ogni giro.
 import { Resvg } from '@resvg/resvg-js';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { crc32, deflateSync, inflateSync } from 'node:zlib';
@@ -117,8 +118,16 @@ function leggiIco(ico) {
 
 /** L'icona Apple: la favicon sul colore del suo fondo, senza il canale alfa. */
 function iconaApple() {
-    const fondo = /\bfill="(#[0-9a-f]{6})"/i.exec(/<rect\b[^>]*>/i.exec(svg)?.[0] ?? '')?.[1];
+    const primo = /<rect\b[^>]*>/i.exec(svg)?.[0] ?? '';
+    const fondo = /\bfill="(#[0-9a-f]{6})"/i.exec(primo)?.[1];
     if (!fondo) throw new Error('icona Apple: il primo <rect> della favicon non ha un fill esadecimale a sei cifre, e il colore del fondo non si sa');
+    // Il primo <rect> è il fondo solo se copre tutto il viewBox: x, y, width e height sono i suoi quattro numeri.
+    const vista = /\sviewBox="([^"]*)"/i.exec(svg)?.[1].trim().split(/[\s,]+/).map(Number) ?? [];
+    const lato = (nome, seManca) => Number(new RegExp(`\\s${nome}="([^"]*)"`, 'i').exec(primo)?.[1] ?? seManca);
+    const rettangolo = [lato('x', 0), lato('y', 0), lato('width', NaN), lato('height', NaN)];
+    if (vista.length !== 4 || rettangolo.some((numero, i) => numero !== vista[i])) {
+        throw new Error(`icona Apple: il primo <rect> della favicon (x, y, width, height: ${rettangolo.join(', ')}) non copre tutto il viewBox (${vista.join(', ')}), e il colore del fondo non si sa`);
+    }
     const { larghezza, altezza, canali, pixel } = leggiPng(resa(MISURA_APPLE, fondo));
     const rgb = Buffer.alloc(larghezza * altezza * 3);
     for (let i = 0; i < larghezza * altezza; i++) {

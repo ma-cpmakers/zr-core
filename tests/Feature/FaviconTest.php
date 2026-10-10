@@ -12,7 +12,9 @@ use Zeiras\Core\ZrCoreServiceProvider;
 // Sprint 15 · T3 (voce #1585): la favicon di Zeiras arriva dal pacchetto. Tre file statici in public/ del frontend — favicon.svg,
 // che è la copia del design system, favicon.ico e apple-touch-icon.png, generati da quella con `npm run favicon` — e una vista
 // che dà le righe del <head>. Nessuna rotta: /favicon.ico lo serve il server web, come ogni file di public/. Che i due file
-// generati siano la resa della favicon lo guarda la CI (`npm run favicon -- --controlla`), non Pest.
+// generati siano la resa della favicon lo guarda la CI (`npm run favicon -- --controlla`), che li confronta con ciò che lo
+// script genera oggi; qui se ne leggono i byte, con le attese scritte nel test: quante immagini, di che misura, e niente alfa
+// nell'icona Apple. Così uno script cambiato non porta con sé un file sbagliato.
 
 /**
  * I tre file della favicon come stanno in public/ del frontend: il nome lì → il file del pacchetto da cui viene.
@@ -34,6 +36,62 @@ function sha256NellElenco(string $copia): ?string
     preg_match('/^([0-9a-f]{64})  '.preg_quote($copia, '/').'$/m', File::get(__DIR__.'/../zeiras.sha256'), $riga);
 
     return $riga[1] ?? null;
+}
+
+/**
+ * Che cosa c'è in un PNG, letto dai suoi byte: la firma; misure, bit e tipo di colore (2 = RGB, 6 = con l'alfa) del suo IHDR; i
+ * nomi dei blocchi nell'ordine in cui stanno, fino all'IEND; e quanti byte restano dopo.
+ *
+ * @return array{firma: bool, larghezza: int|null, altezza: int|null, bit: int|null, colore: int|null, blocchi: list<string>, dopo: int}
+ */
+function dentroIlPng(string $png): array
+{
+    $testa = strlen($png) >= 26 ? unpack('Nlarghezza/Naltezza/Cbit/Ccolore', $png, 16) : [];
+    $blocchi = [];
+    $da = 8;
+    while ($da + 12 <= strlen($png) && end($blocchi) !== 'IEND') {
+        $blocco = unpack('Nlunghezza/a4nome', $png, $da);
+        $blocchi[] = $blocco['nome'];
+        $da += 12 + $blocco['lunghezza'];
+    }
+
+    return [
+        'firma' => str_starts_with($png, "\x89PNG\r\n\x1a\n"),
+        'larghezza' => $testa['larghezza'] ?? null,
+        'altezza' => $testa['altezza'] ?? null,
+        'bit' => $testa['bit'] ?? null,
+        'colore' => $testa['colore'] ?? null,
+        'blocchi' => $blocchi,
+        'dopo' => strlen($png) - $da,
+    ];
+}
+
+/**
+ * Che cosa c'è in un ICO, letto dai suoi byte: i tre numeri dell'intestazione; per ogni voce le misure che dichiara, piani e
+ * bit, se la sua immagine comincia dove finisce quella di prima (la prima subito dopo le voci) e che cosa c'è in
+ * quell'immagine; e quanti byte restano dopo l'ultima.
+ *
+ * @return array{testa: array<string, int>, voci: list<array<string, mixed>>, dopo: int}
+ */
+function dentroLIco(string $ico): array
+{
+    $testa = strlen($ico) >= 6 ? unpack('vriservato/vtipo/vimmagini', $ico) : ['riservato' => -1, 'tipo' => -1, 'immagini' => 0];
+    $posto = 6 + 16 * $testa['immagini'];
+    $voci = [];
+    for ($i = 0; $i < $testa['immagini'] && 22 + 16 * $i <= strlen($ico); $i++) {
+        $voce = unpack('Clarghezza/Caltezza/x2/vpiani/vbit/Vlunghezza/Vposto', $ico, 6 + 16 * $i);
+        $voci[] = [
+            'larghezza' => $voce['larghezza'],
+            'altezza' => $voce['altezza'],
+            'piani' => $voce['piani'],
+            'bit' => $voce['bit'],
+            'di_seguito' => $voce['posto'] === $posto,
+            'png' => dentroIlPng(substr($ico, $voce['posto'], $voce['lunghezza'])),
+        ];
+        $posto += $voce['lunghezza'];
+    }
+
+    return ['testa' => $testa, 'voci' => $voci, 'dopo' => strlen($ico) - $posto];
 }
 
 /**
@@ -90,6 +148,18 @@ it('vendor:publish mette in public/ favicon.svg, favicon.ico e apple-touch-icon.
         ->and($pubblicati['favicon.svg'])->toBe(sha256NellElenco('resources/zeiras/logos/zeiras-favicon.svg'))
         ->and(File::size(public_path('favicon.ico')))->toBeGreaterThan(0);
 })->with(['zr-core-favicon', 'laravel-assets']);
+
+it('favicon.ico e apple-touch-icon.png, letti byte per byte: nell\'ICO tre immagini PNG di 16, 32 e 48 px, una di seguito all\'altra e niente dopo; l\'icona Apple è un PNG 180×180 senza canale alfa, coi soli blocchi IHDR, IDAT e IEND (sprint 15 · T3.2)', function () {
+    $file = fileDellaFavicon();
+    $png = fn (int $misura, int $colore) => ['firma' => true, 'larghezza' => $misura, 'altezza' => $misura, 'bit' => 8, 'colore' => $colore, 'blocchi' => ['IHDR', 'IDAT', 'IEND'], 'dopo' => 0];
+    // Nell'ICO la favicon com'è, con gli angoli trasparenti: PNG con l'alfa (tipo di colore 6). L'icona Apple no (2): senza
+    // l'alfa e senza un blocco tRNS nessun suo pixel può essere trasparente.
+    $voce = fn (int $misura) => ['larghezza' => $misura, 'altezza' => $misura, 'piani' => 1, 'bit' => 32, 'di_seguito' => true, 'png' => $png($misura, 6)];
+
+    expect($file)->not->toContain(false)
+        ->and(dentroLIco(File::get($file['favicon.ico'])))->toBe(['testa' => ['riservato' => 0, 'tipo' => 1, 'immagini' => 3], 'voci' => [$voce(16), $voce(32), $voce(48)], 'dopo' => 0])
+        ->and(dentroIlPng(File::get($file['apple-touch-icon.png'])))->toBe($png(180, 2));
+});
 
 it('@include(\'zr-core::favicon\') dà quattro righe: le due icone, l\'icona Apple e il theme-color, col valore del token surface nel tema chiaro letto da tokens.json (sprint 15 · T3.4)', function () {
     $attese = righeAtteseDellaFavicon();
