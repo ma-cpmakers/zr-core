@@ -14,9 +14,12 @@ use Zeiras\Auth\Sessione;
  * resta nella sessione. Il frontend li condivide con la pagina (con Inertia, nel suo `share()`), e la `Cornice` di
  * resources/js li riceve in `dati`.
  *
- * Ogni lettura porta un segno, `aggiornati_il`: l'istante in cui è cominciata. I dati di due letture non sono mai uguali,
- * nemmeno quando niente è cambiato: Inertia, in una visita alla stessa pagina, ridà l'oggetto di prima per i dati uguali in
- * profondità, e la `Cornice` riconosce i dati nuovi dall'oggetto (senza segno la campanella resterebbe al numero di prima).
+ * Ogni lettura porta un segno, `aggiornati_il`: l'istante in cui è cominciata. La `Cornice` lo confronta con quello dei dati
+ * che ha e con gli istanti delle due rotte delle notifiche, e non torna a dati letti prima: per questo la sua forma è una
+ * sola, quella di `Segno::adesso()`, che `segno()` di resources/js/servizi.ts riconosce; in un'altra forma nel browser
+ * varrebbe «senza segno», in silenzio. E i dati di due letture non sono mai uguali, nemmeno quando niente è cambiato:
+ * Inertia, in una visita alla stessa pagina, ridà l'oggetto di prima per i dati uguali in profondità, e senza segno la
+ * campanella resterebbe al numero di prima.
  */
 final class Cornice
 {
@@ -29,7 +32,8 @@ final class Cornice
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice (i dati sono almeno
      * freschi quanto il segno), nella forma di `Segno::adesso()`: in UTC qualunque sia il fuso dell'applicazione, coi
      * microsecondi sempre a sei cifre e `Z` in fondo (`2026-10-09T21:31:05.123456Z`), così due segni si ordinano anche come
-     * stringhe.
+     * stringhe. Le non lette si contano per prime, subito dopo il segno: è il numero che la cornice confronta col segno, e
+     * contato dopo le altre letture sarebbe più fresco del suo segno di tre chiamate.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
      */
@@ -43,6 +47,7 @@ final class Cornice
         }
 
         $aggiornatiIl = Segno::adesso();
+        $nonLette = self::nonLette();
 
         $prodotti = [];
         foreach (Api::workspace()->tutti('/v1/app') as $app) {
@@ -55,7 +60,7 @@ final class Cornice
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             'prodotti' => $prodotti,
             'aziende' => self::aziende(),
-            'non_lette' => self::nonLette(),
+            'non_lette' => $nonLette,
             'aggiornati_il' => $aggiornatiIl,
         ];
     }

@@ -80,10 +80,11 @@ public function share(Request $request): array
 microsecondi (`2026-10-09T21:31:05.123456Z`). I dati di due letture non sono mai uguali, nemmeno quando niente è cambiato,
 e la cornice sa quali sono stati letti dopo: tiene i più recenti che ha visto (vedi «La campanella», più sotto). I dati si
 danno alla cornice così come arrivano, a ogni richiesta: un frontend che togliesse il segno, o che tenesse i dati da una
-richiesta all'altra, ridarebbe alla cornice dati uguali a quelli di prima; e dati cambiati nel browser lasciando lo stesso
-segno per la cornice sono la stessa lettura, e restano quelli che ha. Il segno viene dall'orologio del server che
-risponde: se i server del frontend sono più di uno devono avere l'ora allineata (NTP), o i dati letti da un server che va
-indietro passano per più vecchi.
+richiesta all'altra, ridarebbe alla cornice dati uguali a quelli di prima. Dati con lo stesso segno di quelli che la
+cornice ha valgono come li dà la pagina: un frontend che li ritocca nel browser lasciando il segno (una notifica letta
+dalla pagina, e il numero che scende) vede il cambio. Il segno viene dall'orologio del server che risponde: se i server
+del frontend sono più di uno devono avere l'ora allineata (NTP), o i dati letti da un server che va indietro passano per
+più vecchi.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
@@ -156,8 +157,10 @@ cornice === null ? pagina : (
   lettura dei dati ha il suo (`aggiornati_il`), e le due rotte delle notifiche dicono quando l'elenco è stato letto e
   quando la lettura è stata segnata. Dati dello stesso workspace letti prima di quelli che la cornice ha — la pagina
   ripresa dalla cronologia con Indietro e Avanti del browser, una risposta che arriva tardi — non li sostituiscono: restano
-  il numero, il nome del workspace e tutto ciò che viene dai dati più recenti. E dopo «Segna tutte come lette» una risposta
-  letta prima del clic — una visita già partita, o una pagina che il `prefetch` di Inertia tiene — non rimette il numero.
+  il numero, il nome del workspace e tutto ciò che viene dai dati più recenti. Vale per la cornice, non per la pagina:
+  quella ripresa dalla cronologia ha i suoi dati di allora, e se li usa nel suo contenuto o nel percorso (`crumbs`) mostra
+  quelli di allora, accanto alla cornice coi più recenti. E dopo «Segna tutte come lette» una risposta letta prima del
+  clic — una visita già partita, o una pagina che il `prefetch` di Inertia tiene — non rimette il numero.
   Vale dove la cornice resta montata, sotto il layout della cornice: con la cornice montata da ogni pagina quella nuova
   non sa niente di prima, e Indietro porta ancora il numero di allora. I segni vengono dall'orologio della parte server: i
   server del frontend devono avere l'ora allineata. Coi dati senza il segno la cornice non ha niente da confrontare: i

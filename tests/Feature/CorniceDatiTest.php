@@ -154,7 +154,7 @@ it('due letture in due istanti diversi hanno due aggiornati_il diversi, e quello
     Carbon::setTestNow(Carbon::parse($dopo, 'UTC'));
     $laSeconda = Cornice::dati()['aggiornati_il'];
 
-    // Come stringhe: è così che il segno si ordina. Oggi la cornice non lo confronta: le basta che sia diverso da quello di prima.
+    // Come stringhe: è così che il segno si ordina, ed è così che la cornice lo confronta nel browser (`segno()` in servizi.ts).
     expect($laPrima)->toBe($segnoDiPrima)
         ->and($laSeconda)->toBe($segnoDiDopo)
         ->and(strcmp($laSeconda, $laPrima))->toBe(1);

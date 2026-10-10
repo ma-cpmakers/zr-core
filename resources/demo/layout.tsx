@@ -313,7 +313,9 @@ rotteFinte(() => propsDi[paginaDellIndirizzo()].cornice?.workspace.slug, segno ?
 // parte server vera: il segno è di quell'istante, e una risposta che parte dopo porta i dati di allora. La risposta è la pagina
 // che l'indirizzo della richiesta dice, ed è pronta dopo un attimo, o dopo i millisecondi di `lenta`. I montaggi ripartono da
 // zero, e le visite si contano, quando la risposta è pronta, non al clic e non alla lettura: fino ad allora la pagina di prima
-// è ancora montata, e una visita annullata nel frattempo non conta.
+// è ancora montata, e una visita annullata nel frattempo non conta. Di qui passa anche lo scaricamento in anticipo: quando la
+// sua risposta è pronta i montaggi ripartono da zero e la visita si conta con la pagina di prima ancora montata, e la visita
+// che poi prende la pagina tenuta non passa di qui. Fra lo scaricamento e la visita i montaggi mostrati non dicono niente.
 http.setClient(clientFinto((indirizzo) => {
     const nome = paginaDi(indirizzo.search);
     const letta = leggi(nome);
