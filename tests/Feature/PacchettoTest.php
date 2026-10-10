@@ -257,7 +257,7 @@ it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inert
     $conDueCopie['packages']['node_modules/@inertiajs/react/node_modules/@inertiajs/core'] = ['version' => '3.7.2'];
 
     expect(nomiFraLeGraffe('/^import \{([^}]*)\} from \'@inertiajs\/core\';$/m', $parteServer))->toBe(['HttpCancelledError', 'HttpClient'])
-        ->and(substr_count($parteServer, 'throw new HttpCancelledError('))->toBe(1)
+        ->and(substr_count($parteServer, 'new HttpCancelledError('))->toBe(1)
         ->and(copieNelLock($lock, '@inertiajs/core'))->toBe(['node_modules/@inertiajs/core'])
         ->and(copieNelLock($lock, '@inertiajs/react'))->toBe(['node_modules/@inertiajs/react'])
         ->and(copieNelLock($conDueCopie, '@inertiajs/core'))->toBe(['node_modules/@inertiajs/core', 'node_modules/@inertiajs/react/node_modules/@inertiajs/core']);
