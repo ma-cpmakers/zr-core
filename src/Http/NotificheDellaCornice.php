@@ -4,6 +4,7 @@ namespace Zeiras\Core\Http;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
@@ -16,14 +17,15 @@ use Zeiras\Core\Segno;
  * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata.
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
- * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola al backoffice,
- * fino a un istante, non una per notifica. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non
- * risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola del browser,
+ * fino a un istante, non una per notifica: il backoffice ne segna 5000 per chiamata, e la parte server lo richiama finché ne
+ * restano, entro due tetti. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
+ * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
  * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
  * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
- * risposto, `segnate_il`. La cornice li confronta col segno dei dati per non tornare a ciò che è più vecchio. Le risposte
- * d'errore non portano un istante.
+ * risposto per l'ultima volta, `segnate_il`. La cornice li confronta col segno dei dati per non tornare a ciò che è più
+ * vecchio. Le risposte d'errore non portano un istante.
  */
 final class NotificheDellaCornice
 {
@@ -41,6 +43,19 @@ final class NotificheDellaCornice
      * (il 31 febbraio no) lo dice il backoffice.
      */
     private const ISTANTE = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})\z/';
+
+    /**
+     * Quante volte, al più, la parte server chiama il backoffice per una «segna tutte» del browser: il backoffice ne segna al
+     * più 5000 per chiamata, quindi 25.000 per richiesta. Oltre, la rotta dice che ne restano, e il browser richiede.
+     */
+    private const CHIAMATE = 5;
+
+    /**
+     * Passati quanti secondi dalla prima chiamata non ne parte un'altra. Una chiamata già partita finisce: zr-auth aspetta
+     * ogni risposta del backoffice 5 secondi, se il frontend non ha cambiato quel tempo, e la richiesta del browser dura al
+     * più questi secondi più quelli.
+     */
+    private const SECONDI = 10;
 
     /**
      * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
@@ -96,11 +111,15 @@ final class NotificheDellaCornice
     }
 
     /**
-     * POST /cornice/notifiche/letture: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate
-     * fino a `fino_a` compreso, anche quelle oltre la prima pagina (io.notifiche.letture.crea). `fino_a` della risposta è
-     * l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina che chiede, quello
-     * per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo la risposta del backoffice:
-     * a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo.
+     * POST /cornice/notifiche/letture: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso,
+     * anche quelle oltre la prima pagina (io.notifiche.letture.crea). Il backoffice ne segna al più 5000 per chiamata e dice
+     * se ne restano (`altre`): lo si richiama con lo stesso `fino_a` finché ne restano, al più CHIAMATE volte e senza chiamate
+     * nuove passati SECONDI dalla prima. `altre` della risposta è `false` quando il backoffice ha detto che non ne restano,
+     * `true` quando un tetto ha fermato i richiami: non è un errore, e la stessa richiesta ripetuta continua da lì. `fino_a`
+     * della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina
+     * che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo l'ultima
+     * risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo. Una
+     * chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta segnato.
      */
     public function letture(Request $richiesta): JsonResponse
     {
@@ -118,8 +137,17 @@ final class NotificheDellaCornice
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
+        // L'orologio è quello del segno: passato questo istante non parte un'altra chiamata.
+        $nessunaDopo = Carbon::now('UTC')->addSeconds(self::SECONDI);
+        $chiamate = 0;
+
         try {
-            $segnate = Api::workspace()->post('/v1/io/notifiche/letture', ['fino_a' => $finoA])['data'] ?? null;
+            // Il ciclo finisce su ogni strada: il backoffice dice che non ne restano, il tetto delle chiamate, quello del
+            // tempo, o un'eccezione. Le guardie di sopra valgono per tutte le chiamate: fra l'una e l'altra non si rifanno.
+            do {
+                $segnate = self::segnaFinoA($finoA);
+                $chiamate++;
+            } while ($segnate['altre'] && $chiamate < self::CHIAMATE && Carbon::now('UTC')->lessThanOrEqualTo($nessunaDopo));
         } catch (ErroreApi $errore) {
             // La forma è giusta ma l'istante non esiste: lo dice il backoffice, ed è un errore di chi chiede.
             if ($errore->stato === 422 && $errore->codice === 'dati_non_validi') {
@@ -129,11 +157,24 @@ final class NotificheDellaCornice
             throw $errore;
         }
 
-        if (! is_array($segnate) || ! is_string($segnate['fino_a'] ?? null)) {
-            throw new BackofficeNonRisponde('La risposta di POST /v1/io/notifiche/letture non è un istante di /v1.');
+        return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a'], 'altre' => $segnate['altre']], 'segnate_il' => Segno::adesso()]);
+    }
+
+    /**
+     * Una chiamata a io.notifiche.letture.crea col gettone del workspace: l'istante del backoffice e se ne restano. `altre` è
+     * un booleano o la risposta non è di /v1: senza, o con un altro valore, è un guasto, mai «non ne restano».
+     *
+     * @return array{fino_a: string, altre: bool}
+     */
+    private static function segnaFinoA(string $finoA): array
+    {
+        $segnate = Api::workspace()->post('/v1/io/notifiche/letture', ['fino_a' => $finoA])['data'] ?? null;
+
+        if (! is_array($segnate) || ! is_string($segnate['fino_a'] ?? null) || ! is_bool($segnate['altre'] ?? null)) {
+            throw new BackofficeNonRisponde('La risposta di POST /v1/io/notifiche/letture non è una lettura di /v1.');
         }
 
-        return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a']], 'segnate_il' => Segno::adesso()]);
+        return ['fino_a' => $segnate['fino_a'], 'altre' => $segnate['altre']];
     }
 
     /**

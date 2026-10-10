@@ -4,7 +4,9 @@
 // nuova non letta nata in quel momento. Ognuna ha il tipo dell'evento, com'è nel backoffice, tranne una: due sono di tipi che
 // zr-core conosce (una scheda creata, una persona entrata nel workspace) e hanno il titolo del tipo, una è di un tipo che non
 // conosce e una non ha `tipo`, e hanno il titolo di ripiego. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
-// `fino_a` e risponde con l'istante in UTC; con `?errore=letture` la prima fallisce e la seconda riesce. La ricerca dà i risultati
+// `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
+// si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
+// `?errore=letture` la prima fallisce e la seconda riesce. La ricerca dà i risultati
 // d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
 // mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
 // «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la POST
@@ -24,6 +26,7 @@ const notificheDiProva = [
     { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato' },
 ];
 let letture = 0;
+let riuscite = 0;
 let caricamenti = 0;
 const risultatiDiProva = [
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
@@ -35,6 +38,7 @@ const risultatiDiProva = [
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
 const arriva = new URLSearchParams(window.location.search).has('arriva');
+const altre = new URLSearchParams(window.location.search).has('altre');
 
 let partite = 0;
 const inAscolto = new Set<() => void>();
@@ -117,14 +121,16 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (workspace !== slugDellaSessione()) {
                 return json({ errore: 'workspace_diverso' }, 409);
             }
-            for (const notifica of notificheDiProva) {
-                if (new Date(notifica.creata_il).getTime() <= finoAIl) {
-                    notifica.letta = true;
-                }
+            // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.
+            riuscite += 1;
+            const restano = altre && riuscite === 1;
+            const daSegnare = notificheDiProva.filter((notifica) => !notifica.letta && new Date(notifica.creata_il).getTime() <= finoAIl);
+            for (const notifica of restano ? daSegnare.slice(1) : daSegnare) {
+                notifica.letta = true;
             }
 
             // A notifiche segnate: ciò che è stato letto prima di adesso può non saperlo.
-            return json({ data: { fino_a: new Date(finoAIl).toISOString() }, segnate_il: istante?.() });
+            return json({ data: { fino_a: new Date(finoAIl).toISOString(), altre: restano }, segnate_il: istante?.() });
         }
 
         return json({ errore: 'non_trovato' }, 404);

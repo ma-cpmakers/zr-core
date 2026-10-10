@@ -328,7 +328,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
     // letti dopo l'istante in cui la parte server le ha segnate: una risposta letta prima del clic e arrivata dopo non rimette
     // il numero, e coi dati letti dopo (un'altra visita, con la cornice montata) vale il loro numero, anche se è lo stesso di
     // prima del clic. Se la richiesta fallisce non cambia niente, e il pulsante resta per riprovare. Un clic mentre è in volo
-    // non ne fa partire un'altra.
+    // non ne fa partire un'altra. Se la parte server dice che ne restano (`altre`: si è fermata a un tetto) non sono tutte
+    // lette: il numero resta, le notifiche in pagina non si danno per lette, e il pannello si ricarica con ciò che c'è
+    // davvero; il pulsante resta, e un altro clic continua.
     const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
@@ -350,15 +352,23 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
         const questi = dati;
         const elencoDelClic = ultimaRichiesta.current;
         let il: string | undefined;
+        let altre: boolean;
         try {
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente.
-            il = await segnaLetteFinoA(finoA, caricate.con.workspace.slug);
+            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug));
         } catch {
             // Non cambia niente: il pulsante resta, per riprovare.
             return;
         } finally {
             leStaSegnando.current = false;
+        }
+        if (altre) {
+            // Ne restano da leggere: niente è «segnato fino a qui», e le non lette dell'ultimo elenco contano finché non
+            // arriva quello nuovo.
+            carica();
+
+            return;
         }
         setSegnate({ con: questi, il });
         if (ultimaRichiesta.current === elencoDelClic && elencoDiQuestiDati) {
