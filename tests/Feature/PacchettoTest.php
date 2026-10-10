@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
@@ -26,7 +27,10 @@ it('si avvia dentro un\'app Laravel', function () {
 // v1.3.0): fino alla v1.3.0 zr-core si installava accanto allo zr-auth che i frontend avevano, composer.json accettava sette
 // versioni minori, dalla 0.6 alla 0.12, e la CI le provava tutte, un giro del job per ognuna. Sprint 13 · T1 (voce #1480):
 // dalla v1.4.0 la minore è una, la 0.12, perché la cornice chiama `Sessione::aggiorna`, che c'è da lì. La regola non cambia:
-// una versione accettata e mai provata è una promessa senza prova.
+// una versione accettata e mai provata è una promessa senza prova. Sprint 17 · T3 (voce #1468): i giri di ogni minore sono
+// due, «ultima» e «minima». Il secondo installa la versione più bassa che composer.json accetta in quella minore, e la legge
+// da composer.json (`.github/minimo-di-zr-auth.sh`): prima la provava solo il giro in cui era anche l'ultima, e un vincolo
+// abbassato prometteva una patch che nessun giro installava.
 
 /**
  * Le voci della matrice di zr-auth in ci.yml come sono scritte fra le quadre (`'0.12'`): null se la riga non c'è, o se non sta
@@ -40,10 +44,51 @@ function vociDellaMatriceDiZrAuth(string $ci): ?string
 }
 
 /**
+ * Le voci di `patch` nella matrice di ci.yml come sono scritte fra le quadre (`'ultima', 'minima'`): null se la riga non c'è, o
+ * se non sta su una riga sola.
+ */
+function vociDellePatchDiZrAuth(string $ci): ?string
+{
+    preg_match('/^\s+patch: \[([^\]\n]*)\]$/m', $ci, $matrice);
+
+    return $matrice[1] ?? null;
+}
+
+/**
+ * Cosa non torna fra i due giri che la CI fa per ogni minore di zr-auth, «ultima» e «minima», e la matrice di ci.yml
+ * (`patch: ['ultima', 'minima']`, ogni voce fra apici): un giro che manca, uno che il passo delle dipendenze non conosce, un
+ * giro tolto o aggiunto a mano (`exclude`, `include`: la matrice è un prodotto, e così ogni minore li ha tutti e due), la voce
+ * che non arriva al passo che installa, il nome del giro che non dice quale dei due è. Che cosa installa ogni giro lo prova
+ * il caso che lancia il passo, più sotto.
+ *
+ * @return list<string>
+ */
+function patchDiZrAuthNonProvate(string $ci): array
+{
+    preg_match_all("/'([^',\s]+)'/", vociDellePatchDiZrAuth($ci) ?? '', $voci);
+
+    $problemi = [
+        ...array_map(fn (string $patch) => "la CI non fa il giro «{$patch}» delle minori di zr-auth", array_values(array_diff(['ultima', 'minima'], $voci[1]))),
+        ...array_map(fn (string $patch) => "la CI fa un giro «{$patch}», che il passo delle dipendenze non conosce", array_values(array_diff($voci[1], ['ultima', 'minima']))),
+    ];
+    if (preg_match('/^\s+(exclude|include):/m', $ci) === 1) {
+        $problemi[] = 'la matrice toglie o aggiunge giri a mano: una minore può restare senza uno dei suoi due giri';
+    }
+    if (! str_contains($ci, 'PATCH: ${{ matrix.patch }}')) {
+        $problemi[] = 'i giri non installano la patch della loro voce della matrice';
+    }
+    if (! str_contains($ci, 'name: ci (zr-auth ${{ matrix.zr-auth }}, ${{ matrix.patch }})')) {
+        $problemi[] = 'il nome del giro non dice la minore e la patch';
+    }
+
+    return $problemi;
+}
+
+/**
  * Cosa non torna fra le versioni di zr-auth che composer.json accetta e i giri della CI: una versione minore accettata che la
  * CI non prova, o una provata che composer.json non accetta; un giro che non installa la versione della sua voce della matrice
  * (due giri proverebbero la stessa). Il vincolo è fatto di `^0.<minore>`, anche con la patch: uno solo, o più d'uno uniti da
- * `||`. La matrice di ci.yml (`zr-auth: ['0.12']`) ha un giro per ognuno, ogni voce fra apici: senza, YAML legge `0.10` come
+ * `||`. La matrice di ci.yml (`zr-auth: ['0.12']`) ha una voce per ognuno, ogni voce fra apici: senza, YAML legge `0.10` come
  * il numero 0.1, e una voce senza apici qui non conta. Solo sotto la 1.0 un `^` si ferma alla sua minore: `^1.0` accetta
  * anche le 1.1, che il giro della 1.0 non proverebbe.
  *
@@ -61,8 +106,8 @@ function versioniDiZrAuthNonProvate(string $vincolo, string $ci): array
         ...array_map(fn (string $versione) => "la CI non prova zr-auth {$versione}", array_values(array_diff($accettate[1], $provate[1]))),
         ...array_map(fn (string $versione) => "la CI prova zr-auth {$versione}, che composer.json non accetta", array_values(array_diff($provate[1], $accettate[1]))),
     ];
-    // Ogni giro installa l'ultima versione della minore della sua voce: la voce arriva al passo in ZR_AUTH, e restringe il
-    // vincolo di composer.json. Senza questo legame i giri avrebbero nomi diversi e la stessa versione.
+    // Il giro «ultima» installa l'ultima versione della minore della sua voce: la voce arriva al passo in ZR_AUTH, e restringe
+    // il vincolo di composer.json. Senza questo legame i giri avrebbero nomi diversi e la stessa versione.
     if (! str_contains($ci, 'ZR_AUTH: ${{ matrix.zr-auth }}') || ! str_contains($ci, '--with "zeiras/zr-auth:~${ZR_AUTH}.0"')) {
         $problemi[] = 'i giri non installano la versione di zr-auth della loro voce della matrice';
     }
@@ -83,7 +128,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, un giro (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5)', function () {
+it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -95,10 +140,13 @@ it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI 
     // zr-core che `Sessione::aggiorna` non la chiamava (il giro della PR #15, sprint 12, e quello del primo commit di questo sprint);
     // con la cornice che la chiama i giri hanno installato dalla 0.12.1 in su, e fra le due patch è cambiata proprio `aggiorna`: nella 0.12.0
     // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
-    // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026).
+    // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026). Dallo sprint 17 la patch più
+    // bassa la installa a ogni run il giro «minima», che la legge da qui: chi abbassa il vincolo la vede provata, o rossa.
     expect($vincolo)->toBe('^0.12.4')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
-        ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([]);
+        ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
+        ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
+        ->and(patchDiZrAuthNonProvate($ci))->toBe([]);
 });
 
 it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprint 7 · T1.3; sprint 13 · T1.2)', function (string $file) {
@@ -116,16 +164,16 @@ it('README e CLAUDE.md dicono il vincolo di composer.json, e nessun altro (sprin
         ->and(vincoliDiZrAuthIn($testo."\n`^0.11`"))->toBe([$vincolo, '^0.11']);
 })->with(['README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice, accanto al vincolo, che la CI fa un giro per ogni versione minore accettata, con l\'ultima di ognuna, e che dalla v1.4.0 la minore è una, e perché (sprint 11 · T5.3; sprint 13 · T1.2)', function () {
+it('CLAUDE.md dice, accanto al vincolo, che la CI fa due giri per ogni versione minore accettata, con l\'ultima patch e con la più bassa che il vincolo accetta, e che dalla v1.4.0 la minore è una, e perché (sprint 11 · T5.3; sprint 13 · T1.2; sprint 17 · T3.3)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
-    $claude = (string) file_get_contents(__DIR__.'/../../CLAUDE.md');
+    $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
     // Il README i giri li elenca, e il caso qui sotto li conta sulla matrice; CLAUDE.md dice la regola, che non cambia con le
     // versioni: sta nella riga del vincolo, una volta. Accanto, perché la minore è una: è ciò che legge chi vorrebbe riallargare
     // il vincolo a una zr-auth senza `Sessione::aggiorna`.
-    expect(substr_count($claude, "`zeiras/zr-auth` `{$vincolo}`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna"))->toBe(1)
-        ->and(substr_count(suUnaRiga($claude), "e il verde è di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12)."))->toBe(1);
+    expect(substr_count($claude, "`zeiras/zr-auth` `{$vincolo}`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più bassa che il vincolo accetta (la legge da `composer.json`),"))->toBe(1)
+        ->and(substr_count($claude, "e il verde è di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12)."))->toBe(1);
 });
 
 /**
@@ -140,14 +188,14 @@ function giriDettiDa(string $testo): array
     return $trovati[1];
 }
 
-it('il README dice un giro della CI per ogni voce della matrice, e nessun altro (sprint 8 · T1.3; sprint 13 · T1.3)', function () {
+it('il README dice, di ogni voce della matrice e di nessun\'altra, che la CI ne prova l\'ultima (sprint 8 · T1.3; sprint 13 · T1.3; sprint 17 · T3.3)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     preg_match_all("/'(\d+\.\d+)'/", vociDellaMatriceDiZrAuth($ci) ?? '', $voci);
 
     // Il README rimasto alla v1.3.0: dice i sette giri di allora. E quello che dice il giro giusto e, in un altro punto, uno che
     // la matrice non ha.
-    $readmeDiPrima = str_replace("(la CI lo prova con l'ultima 0.12)", "(la CI lo prova con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10, l'ultima 0.11 e l'ultima 0.12)", $readme);
+    $readmeDiPrima = str_replace("e con l'ultima 0.12)", "e con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10, l'ultima 0.11 e l'ultima 0.12)", $readme);
     $conUnGiroInPiu = $readme."\nLa CI lo prova anche con l'ultima 0.11.\n";
 
     expect($voci[1])->not->toBe([])
@@ -187,7 +235,7 @@ it('il README dice, in «La parte server», da quale versione zr-core chiede la 
         ]);
 });
 
-it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1)', function () {
+it('il controllo trova una versione accettata che la CI non prova, una provata che composer.json non accetta e un giro che non installa la versione della sua voce (sprint 5 · T6.1; sprint 13 · T1.1; sprint 17 · T3.4)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $vincolo = '^0.12.4';
     $conLaMatrice = fn (string $voci): string => (string) preg_replace('/^(\s+zr-auth: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
@@ -201,6 +249,8 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
     // Un'altra minore al posto di quella accettata, e una in più accanto.
     $conUnAltraMinore = $conLaMatrice("'0.11'");
     $conUnaMinoreInPiu = $conLaMatrice("'0.12', '0.13'");
+    // La minore tolta dalla matrice, con le sue due patch ancora lì: nessun giro.
+    $senzaLaMinore = $conLaMatrice('');
 
     // La voce della matrice che non arriva al passo: il giro installerebbe una versione scritta nel passo, e sarebbe verde.
     $conLaVersioneFissa = str_replace('ZR_AUTH: ${{ matrix.zr-auth }}', "ZR_AUTH: '0.11'", $ci);
@@ -210,6 +260,7 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         ->and($conLaVoceSenzaApici)->not->toBe($ci)
         ->and($conUnAltraMinore)->not->toBe($ci)
         ->and($conUnaMinoreInPiu)->not->toBe($ci)
+        ->and($senzaLaMinore)->not->toBe($ci)
         ->and($conLaVersioneFissa)->not->toBe($ci)
         ->and($senzaIlVincoloDelGiro)->not->toBe($ci)
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaMatriceDiPrima))->toBe(['la CI prova zr-auth 0.6, che composer.json non accetta', 'la CI prova zr-auth 0.7, che composer.json non accetta', 'la CI prova zr-auth 0.8, che composer.json non accetta', 'la CI prova zr-auth 0.9, che composer.json non accetta', 'la CI prova zr-auth 0.10, che composer.json non accetta', 'la CI prova zr-auth 0.11, che composer.json non accetta'])
@@ -218,6 +269,7 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaVoceSenzaApici))->toBe(['la CI non prova zr-auth 0.12'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conUnAltraMinore))->toBe(['la CI non prova zr-auth 0.12', 'la CI prova zr-auth 0.11, che composer.json non accetta'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conUnaMinoreInPiu))->toBe(['la CI prova zr-auth 0.13, che composer.json non accetta'])
+        ->and(versioniDiZrAuthNonProvate($vincolo, $senzaLaMinore))->toBe(['la CI non prova zr-auth 0.12'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $conLaVersioneFissa))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
         ->and(versioniDiZrAuthNonProvate($vincolo, $senzaIlVincoloDelGiro))->toBe(['i giri non installano la versione di zr-auth della loro voce della matrice'])
         // Senza matrice la CI fa un giro solo, con la versione che composer sceglie: nessuna delle due è provata di proposito.
@@ -227,6 +279,237 @@ it('il controllo trova una versione accettata che la CI non prova, una provata c
         // Dalla 1.0 un `^` accetta anche le minori dopo: il controllo lo dice, invece di contarla come una minore sola.
         ->and(versioniDiZrAuthNonProvate('^0.8 || ^1.0', $ci))->toBe(['il vincolo «^0.8 || ^1.0» non è fatto di ^0.<minore> uniti da ||']);
 });
+
+it('il controllo trova il giro «minima» o «ultima» che manca, un giro che il passo non conosce, uno tolto a mano, la patch che non arriva al passo e il nome che non la dice (sprint 17 · T3.1, T3.4)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $conLePatch = fn (string $voci): string => (string) preg_replace('/^(\s+patch: )\[[^\]\n]*\]$/m', '$1['.$voci.']', $ci);
+
+    // Una delle due patch tolta dalla matrice: ogni minore resta con un giro solo. E senza la riga, com'era fino alla v1.6.0.
+    $senzaLaMinima = $conLePatch("'ultima'");
+    $senzaLUltima = $conLePatch("'minima'");
+    $senzaLaRiga = (string) preg_replace('/^\s+patch: \[[^\]\n]*\]\n/m', '', $ci);
+    // Le voci senza gli apici qui non contano, come quelle delle minori; e una voce in più, che il passo non sa installare.
+    $conLeVociSenzaApici = $conLePatch('ultima, minima');
+    $conUnGiroInPiu = $conLePatch("'ultima', 'minima', 'prossima'");
+    // Il giro «minima» di una minore tolto a mano: la matrice ha le due patch, e quella minore ne prova una.
+    $conUnGiroTolto = str_replace("        patch: ['ultima', 'minima']\n", "        patch: ['ultima', 'minima']\n        exclude:\n          - zr-auth: '0.12'\n            patch: 'minima'\n", $ci);
+    // La voce che non arriva al passo: i due giri installerebbero la stessa versione, coi loro due nomi.
+    $conLaPatchFissa = str_replace('PATCH: ${{ matrix.patch }}', "PATCH: 'ultima'", $ci);
+    // Il nome di prima: i due giri di una minore si chiamerebbero allo stesso modo, e il run non si leggerebbe giro per giro.
+    $colNomeDiPrima = str_replace('name: ci (zr-auth ${{ matrix.zr-auth }}, ${{ matrix.patch }})', 'name: ci (zr-auth ${{ matrix.zr-auth }})', $ci);
+
+    expect($senzaLaMinima)->not->toBe($ci)
+        ->and($senzaLUltima)->not->toBe($ci)
+        ->and($senzaLaRiga)->not->toBe($ci)
+        ->and($conLeVociSenzaApici)->not->toBe($ci)
+        ->and($conUnGiroInPiu)->not->toBe($ci)
+        ->and($conUnGiroTolto)->not->toBe($ci)
+        ->and($conLaPatchFissa)->not->toBe($ci)
+        ->and($colNomeDiPrima)->not->toBe($ci)
+        ->and(patchDiZrAuthNonProvate($senzaLaMinima))->toBe(['la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($senzaLUltima))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($senzaLaRiga))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth', 'la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($conLeVociSenzaApici))->toBe(['la CI non fa il giro «ultima» delle minori di zr-auth', 'la CI non fa il giro «minima» delle minori di zr-auth'])
+        ->and(patchDiZrAuthNonProvate($conUnGiroInPiu))->toBe(['la CI fa un giro «prossima», che il passo delle dipendenze non conosce'])
+        ->and(patchDiZrAuthNonProvate($conUnGiroTolto))->toBe(['la matrice toglie o aggiunge giri a mano: una minore può restare senza uno dei suoi due giri'])
+        ->and(patchDiZrAuthNonProvate($conLaPatchFissa))->toBe(['i giri non installano la patch della loro voce della matrice'])
+        ->and(patchDiZrAuthNonProvate($colNomeDiPrima))->toBe(['il nome del giro non dice la minore e la patch']);
+});
+
+/**
+ * `.github/minimo-di-zr-auth.sh` su un composer.json finto che chiede zr-auth con quel vincolo (con null, che non lo chiede),
+ * per quella minore.
+ *
+ * @return array{0: int|null, 1: string} il codice d'uscita e ciò che lo script scrive
+ */
+function minimoDiZrAuthCon(?string $vincolo, string $minore): array
+{
+    $composer = sys_get_temp_dir().'/zr-core-composer-'.bin2hex(random_bytes(8)).'.json';
+    file_put_contents($composer, json_encode(['require' => ['php' => '^8.4', ...($vincolo === null ? [] : ['zeiras/zr-auth' => $vincolo])]], JSON_THROW_ON_ERROR));
+
+    try {
+        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', $composer, $minore], dirname(__DIR__, 2));
+        $script->run();
+
+        return [$script->getExitCode(), trim($script->getOutput())];
+    } finally {
+        unlink($composer);
+    }
+}
+
+it('lo script del minimo dice la versione più bassa di zr-auth che un vincolo accetta in una minore, e si ferma su ciò che non sa leggere (sprint 17 · T3.2)', function (?string $vincolo, string $minore, int $uscita, string $scrive) {
+    expect(minimoDiZrAuthCon($vincolo, $minore))->toBe([$uscita, $scrive]);
+})->with([
+    'il vincolo di oggi' => ['^0.12.4', '0.12', 0, '0.12.4'],
+    'il minimo che scende' => ['^0.12.3', '0.12', 0, '0.12.3'],
+    'il minimo che sale' => ['^0.12.5', '0.12', 0, '0.12.5'],
+    'senza la patch: la prima della minore' => ['^0.12', '0.12', 0, '0.12.0'],
+    'due minori: la seconda' => ['^0.11 || ^0.12.4', '0.12', 0, '0.12.4'],
+    'due minori: la prima' => ['^0.11 || ^0.12.4', '0.11', 0, '0.11.0'],
+    'due minori, con la patch sulla prima' => ['^0.11.3 || ^0.12', '0.11', 0, '0.11.3'],
+    'la 0.1 non è la 0.12, che viene prima' => ['^0.12.4 || ^0.1.5', '0.1', 0, '0.1.5'],
+    'la 0.12 non accetta la 0.1' => ['^0.12.4', '0.1', 1, ''],
+    'una minore che il vincolo non accetta' => ['^0.12.4', '0.11', 1, ''],
+    'la stessa minore due volte: la più bassa' => ['^0.12.6 || ^0.12.4', '0.12', 0, '0.12.4'],
+    'un vincolo che non è fatto di ^0.<minore>' => ['>=0.12.4', '0.12', 2, ''],
+    'un vincolo dalla 1.0' => ['^1.2', '1.2', 2, ''],
+    'una minore che non è 0.<numero>' => ['^0.12.4', '0.1*', 2, ''],
+    'un composer.json che non chiede zr-auth' => [null, '0.12', 2, ''],
+]);
+
+it('lo script del minimo non esegue ciò che legge: un comando scritto nel vincolo o nella minore resta testo, e lo script si ferma (sprint 17 · T3.2)', function () {
+    $segno = sys_get_temp_dir().'/zr-core-segno-'.bin2hex(random_bytes(8));
+
+    try {
+        expect(minimoDiZrAuthCon('^0.12.4 || $(touch '.$segno.')', '0.12'))->toBe([2, ''])
+            ->and(minimoDiZrAuthCon('^0.12.4`touch '.$segno.'`', '0.12'))->toBe([2, ''])
+            ->and(minimoDiZrAuthCon('^0.12.4', '0.12$(touch '.$segno.')'))->toBe([2, ''])
+            ->and(is_file($segno))->toBe(false);
+    } finally {
+        is_file($segno) && unlink($segno);
+    }
+});
+
+/**
+ * Per ogni minore di zr-auth che un vincolo accetta, la versione più bassa che accetta: `^0.12.4` → `['0.12' => '0.12.4']`, e
+ * senza la patch la prima della minore. È il conto di `.github/minimo-di-zr-auth.sh` rifatto qui: i due si controllano.
+ *
+ * @return array<string, string>
+ */
+function minimiDiZrAuthIn(string $vincolo): array
+{
+    preg_match_all('/\^(0\.\d+)(?:\.(\d+))?/', $vincolo, $pezzi, PREG_SET_ORDER);
+
+    return array_column(array_map(fn (array $pezzo) => [$pezzo[1], $pezzo[1].'.'.($pezzo[2] ?? '0')], $pezzi), 1, 0);
+}
+
+/**
+ * I numeri di patch di quelle minori di zr-auth che un testo scrive (`0.12.4` per la `0.12`), commenti compresi.
+ *
+ * @param  list<string>  $minori
+ * @return list<string>
+ */
+function patchDiZrAuthScritteIn(string $testo, array $minori): array
+{
+    $scritte = [];
+    foreach ($minori as $minore) {
+        preg_match_all('/(?<![\d.])'.preg_quote($minore, '/').'\.\d+/', $testo, $numeri);
+        $scritte = [...$scritte, ...$numeri[0]];
+    }
+
+    return $scritte;
+}
+
+it('il minimo che il giro «minima» installa è quello di composer.json: lo script, su composer.json, dice per ogni minore accettata la più bassa che il vincolo accetta, e ci.yml non scrive il numero di nessuna patch, nemmeno in un commento (sprint 17 · T3.2, T3.3)', function () {
+    $radice = dirname(__DIR__, 2);
+    $composer = json_decode((string) file_get_contents($radice.'/composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $minimi = minimiDiZrAuthIn($composer['require']['zeiras/zr-auth']);
+    $ci = (string) file_get_contents($radice.'/.github/workflows/ci.yml');
+
+    $delloScript = [];
+    foreach (array_keys($minimi) as $minore) {
+        $script = new Process(['bash', '.github/minimo-di-zr-auth.sh', 'composer.json', $minore], $radice);
+        $script->run();
+        $delloScript[$minore] = trim($script->getOutput());
+    }
+
+    // Il minimo scritto a mano nel passo, al posto di ciò che dice lo script: quando il vincolo cambia, il giro installa quello
+    // di prima. E un commento su quale patch ha provato un giro, com'era in ci.yml fino alla v1.3.0: nessun caso lo teneva vero.
+    $unMinimo = array_values($minimi)[0] ?? '';
+    $colMinimoScritto = str_replace('--with "zeiras/zr-auth:${minima}"', '--with "zeiras/zr-auth:'.$unMinimo.'"', $ci);
+    $colCommentoAMano = $ci."      # la {$unMinimo} l'ha provata il giro di una versione di prima\n";
+
+    expect($minimi)->not->toBe([])
+        ->and($delloScript)->toBe($minimi)
+        ->and(patchDiZrAuthScritteIn($ci, array_keys($minimi)))->toBe([])
+        ->and($colMinimoScritto)->not->toBe($ci)
+        ->and(patchDiZrAuthScritteIn($colMinimoScritto, array_keys($minimi)))->toBe([$unMinimo])
+        ->and(patchDiZrAuthScritteIn($colCommentoAMano, array_keys($minimi)))->toBe([$unMinimo]);
+});
+
+/**
+ * Lo script del passo «Dipendenze PHP» di ci.yml, cioè il suo blocco `run: |` senza il rientro: vuoto se il passo o il blocco
+ * non ci sono.
+ */
+function passoDelleDipendenzePhp(string $ci): string
+{
+    if (preg_match('/^ {6}- name: Dipendenze PHP\n(?: {8}.*\n)*? {8}run: \|\n((?:(?: {10}.*)?\n)+)/m', $ci, $passo) !== 1) {
+        return '';
+    }
+
+    return trim((string) preg_replace('/^ {10}/m', '', $passo[1]))."\n";
+}
+
+/**
+ * Il passo «Dipendenze PHP» lanciato come lo lancia la CI (`bash -eo pipefail`), per quella minore e quella patch della matrice,
+ * in una cartella con un composer.json che chiede zr-auth con quel vincolo, lo script del minimo e un Composer finto: scrive
+ * ciò che gli si chiede e, a `composer show`, dice di aver installato quella versione.
+ *
+ * @return array{0: int|null, 1: list<string>, 2: string} il codice d'uscita, i vincoli chiesti a Composer con `--with`, ciò che il passo scrive
+ */
+function dipendenzePhpCon(string $vincolo, string $minore, string $patch, string $installata): array
+{
+    $radice = dirname(__DIR__, 2);
+    $prova = sys_get_temp_dir().'/zr-core-passo-'.bin2hex(random_bytes(8));
+    mkdir($prova.'/.github', 0700, true);
+    mkdir($prova.'/bin', 0700);
+
+    try {
+        file_put_contents($prova.'/composer.json', json_encode(['require' => ['zeiras/zr-auth' => $vincolo]], JSON_THROW_ON_ERROR));
+        copy($radice.'/.github/minimo-di-zr-auth.sh', $prova.'/.github/minimo-di-zr-auth.sh');
+        file_put_contents($prova.'/passo.sh', passoDelleDipendenzePhp((string) file_get_contents($radice.'/.github/workflows/ci.yml')));
+        file_put_contents($prova.'/bin/composer', <<<'BASH'
+            #!/usr/bin/env bash
+            printf '%s\n' "$*" >>chiesto
+            if [ "$1" = show ]; then printf '{"versions":["%s"]}\n' "$INSTALLATA"; fi
+
+            BASH);
+        chmod($prova.'/bin/composer', 0700);
+
+        $passo = new Process(['bash', '--noprofile', '--norc', '-eo', 'pipefail', 'passo.sh'], $prova, ['PATH' => $prova.'/bin:'.getenv('PATH'), 'ZR_AUTH' => $minore, 'PATCH' => $patch, 'INSTALLATA' => $installata]);
+        $passo->run();
+        preg_match_all('/^update .*--with (\S+)$/m', is_file($prova.'/chiesto') ? (string) file_get_contents($prova.'/chiesto') : '', $chiesti);
+
+        return [$passo->getExitCode(), $chiesti[1], $passo->getOutput()];
+    } finally {
+        (new Filesystem)->deleteDirectory($prova);
+    }
+}
+
+it('il passo delle dipendenze installa la versione del suo giro e si ferma se Composer ne ha installata un\'altra: «minima» chiede proprio la più bassa che composer.json accetta, «ultima» l\'ultima della minore (sprint 17 · T3.1, T3.2)', function (string $vincolo, string $minore, string $patch, string $installata, int $uscita, array $chiede) {
+    [$codice, $chiesti, $scrive] = dipendenzePhpCon($vincolo, $minore, $patch, $installata);
+
+    // Quando Composer è stato chiamato, il log dice quale versione ha installato: è la riga che si legge giro per giro.
+    expect([$codice, $chiesti])->toBe([$uscita, $chiede])
+        ->and(str_contains($scrive, "zr-auth installato: {$installata}\n"))->toBe($chiede !== []);
+})->with([
+    '«minima», col vincolo di oggi' => ['^0.12.4', '0.12', 'minima', 'v0.12.4', 0, ['zeiras/zr-auth:0.12.4']],
+    '«minima», e Composer ne ha installata una più alta' => ['^0.12.4', '0.12', 'minima', 'v0.12.6', 1, ['zeiras/zr-auth:0.12.4']],
+    '«minima», e Composer ne ha installata una che comincia allo stesso modo' => ['^0.12.4', '0.12', 'minima', 'v0.12.40', 1, ['zeiras/zr-auth:0.12.4']],
+    '«minima», col minimo che scende' => ['^0.12.3', '0.12', 'minima', 'v0.12.3', 0, ['zeiras/zr-auth:0.12.3']],
+    '«minima», col minimo che scende e la versione di prima installata' => ['^0.12.3', '0.12', 'minima', 'v0.12.4', 1, ['zeiras/zr-auth:0.12.3']],
+    '«minima», col minimo che sale' => ['^0.12.5', '0.12', 'minima', 'v0.12.5', 0, ['zeiras/zr-auth:0.12.5']],
+    '«minima», col minimo che sale e la versione di prima installata' => ['^0.12.5', '0.12', 'minima', 'v0.12.4', 1, ['zeiras/zr-auth:0.12.5']],
+    '«minima», senza la patch nel vincolo' => ['^0.12', '0.12', 'minima', 'v0.12.0', 0, ['zeiras/zr-auth:0.12.0']],
+    '«minima», di una minore fra due' => ['^0.11 || ^0.12.4', '0.11', 'minima', 'v0.11.0', 0, ['zeiras/zr-auth:0.11.0']],
+    '«minima», di una minore che composer.json non accetta' => ['^0.12.4', '0.11', 'minima', 'v0.11.0', 1, []],
+    '«ultima»' => ['^0.12.4', '0.12', 'ultima', 'v0.12.6', 0, ['zeiras/zr-auth:~0.12.0']],
+    '«ultima», e Composer ha installato un\'altra minore' => ['^0.12.4', '0.12', 'ultima', 'v0.13.0', 1, ['zeiras/zr-auth:~0.12.0']],
+    'un giro che il passo non conosce' => ['^0.12.4', '0.12', 'minimo', 'v0.12.4', 1, []],
+]);
+
+it('README e CLAUDE.md non dicono più che la CI prova zr-auth con l\'ultima patch soltanto: dicono la più bassa accettata e l\'ultima (sprint 17 · T3.3)', function (string $file, string $diPrima, string $alPostoDi) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+    // Il file con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $testo);
+
+    expect(substr_count($testo, $alPostoDi))->toBe(1)
+        ->and(substr_count($testo, $diPrima))->toBe(0)
+        ->and(substr_count($conLaFraseDiPrima, $diPrima))->toBe(1);
+})->with([
+    'README.md' => ['README.md', "(la CI lo prova con l'ultima 0.12)", "(la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12)"],
+    'CLAUDE.md' => ['CLAUDE.md', "la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna", "la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più bassa che il vincolo accetta (la legge da `composer.json`)"],
+]);
 
 // Sprint 9 · T3 (voce #1398). `LayoutDellaCornice` e `useCornice` sono per i frontend con Inertia, ma zr-core non ne dipende:
 // sono un componente e un hook di React. Inertia sta solo fra gli strumenti di questo repo, per la pagina di prova del layout

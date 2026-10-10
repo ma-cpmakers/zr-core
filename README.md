@@ -56,13 +56,13 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
-README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più vecchia non basta: la cornice chiama
-`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Dalla `v1.6.0` serve
-la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth, e la 0.12.4 è la patch con cui la
-CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla `v1.5.0`. Composer non eredita i
-repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del frontend, accanto a quello di
-zr-core.
+zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
+vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
+alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
+e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla
+`v1.5.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
 

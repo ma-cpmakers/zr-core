@@ -14,15 +14,16 @@ permissions:
 
 jobs:
   ci:
-    # Un giro per ogni versione minore di zr-auth che composer.json accetta: dalla v1.4.0 una sola, la 0.12. Un giro rosso non
-    # ferma gli altri: si vedono tutti, e il verde è di tutti. Le voci stanno fra apici: senza, YAML legge 0.10 come il
-    # numero 0.1.
-    name: ci (zr-auth ${{ matrix.zr-auth }})
+    # Due giri per ogni versione minore di zr-auth che composer.json accetta (dalla v1.4.0 una sola, la 0.12): «ultima» installa
+    # l'ultima patch della minore, «minima» la più bassa che composer.json accetta. Un giro rosso non ferma gli altri: si vedono
+    # tutti, e il verde è di tutti. Le voci stanno fra apici: senza, YAML legge 0.10 come il numero 0.1.
+    name: ci (zr-auth ${{ matrix.zr-auth }}, ${{ matrix.patch }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         zr-auth: ['0.12']
+        patch: ['ultima', 'minima']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,17 +53,36 @@ jobs:
       - name: Lo zip del pacchetto
         run: bash .github/zip-del-pacchetto.sh
 
-      # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run. Di zr-auth si installa l'ultima
-      # versione della minore di questo giro: il log dice quale, e se composer ne ha scelta un'altra il giro si ferma.
+      # Libreria: nessun composer.lock nel repo, le dipendenze si risolvono a ogni run. Di zr-auth il giro «ultima» installa
+      # l'ultima versione della sua minore; il giro «minima» la più bassa che composer.json accetta in quella minore, e la legge
+      # da composer.json (.github/minimo-di-zr-auth.sh): qui il suo numero non è scritto. Il log dice quale versione è stata
+      # installata, e se Composer ne ha scelta un'altra il giro si ferma.
       - name: Dipendenze PHP
         shell: bash
         env:
           ZR_AUTH: ${{ matrix.zr-auth }}
+          PATCH: ${{ matrix.patch }}
         run: |
-          composer update --prefer-dist --no-interaction --no-progress --with "zeiras/zr-auth:~${ZR_AUTH}.0"
+          case "${PATCH}" in
+            ultima)
+              composer update --prefer-dist --no-interaction --no-progress --with "zeiras/zr-auth:~${ZR_AUTH}.0"
+              ;;
+            minima)
+              minima=$(bash .github/minimo-di-zr-auth.sh composer.json "${ZR_AUTH}")
+              composer update --prefer-dist --no-interaction --no-progress --with "zeiras/zr-auth:${minima}"
+              ;;
+            *)
+              echo "il passo non conosce il giro «${PATCH}»"
+              exit 1
+              ;;
+          esac
           installata=$(composer show zeiras/zr-auth --format=json | jq -r '.versions[0]')
           echo "zr-auth installato: ${installata}"
-          case "${installata}" in "v${ZR_AUTH}."*) ;; *) echo "non è una ${ZR_AUTH}"; exit 1 ;; esac
+          if [ "${PATCH}" = minima ]; then
+            [ "${installata}" = "v${minima}" ] || { echo "non è la più bassa che composer.json accetta, la ${minima}"; exit 1; }
+          else
+            case "${installata}" in "v${ZR_AUTH}."*) ;; *) echo "non è una ${ZR_AUTH}"; exit 1 ;; esac
+          fi
 
       # Tutti i file PHP del repo, non il diff: su un push a main il diff è vuoto. Un file rotto non ferma il giro
       # (exit 1, non 255): si vedono tutti. shell: bash porta pipefail, così un ls-files fallito non passa verde.
