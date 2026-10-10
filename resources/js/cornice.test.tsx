@@ -1,9 +1,9 @@
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice } from './cornice';
-import type { DatiDellaCornice, GruppoDiVoci } from './index';
+import { tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
@@ -22,10 +22,14 @@ const dati: DatiDellaCornice = {
 };
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
-/** Le aziende della persona in un ordine che non è alfabetico: il workspace dei dati è il secondo della seconda azienda. */
+/**
+ * Le aziende della persona in un ordine che non è alfabetico: il workspace dei dati è il secondo della seconda azienda. Gli id
+ * dei workspace hanno tre toni diversi (`ws-3` citrus, `ws-2` coral, `ws-4` plum), nessuno dei quali è quello che verrebbe dal
+ * nome, dallo slug o dal posto nell'elenco, né quello che il design system mette da sé (pine).
+ */
 const aziende: NonNullable<DatiDellaCornice['aziende']> = [
-    { id: '7', nome: 'Zeta Srl', workspace: [{ nome: 'Ricerca', slug: 'zeta-ricerca' }] },
-    { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }, { nome: 'Marketing', slug: 'acme-marketing' }] },
+    { id: '7', nome: 'Zeta Srl', workspace: [{ id: 'ws-3', nome: 'Ricerca', slug: 'zeta-ricerca' }] },
+    { id: '3', nome: 'Acme', workspace: [{ id: 'ws-2', nome: 'Vendite', slug: 'acme-vendite' }, { id: 'ws-4', nome: 'Marketing', slug: 'acme-marketing' }] },
 ];
 
 let contenitore: HTMLDivElement;
@@ -418,10 +422,10 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
         expect(pulsante?.querySelector('.zr-ws-company')?.textContent).toBe('Acme');
         expect(pulsante?.querySelector('.zr-ws-name')?.textContent).toBe('Marketing');
         expect(uno('.zr-workspace')).toBeNull();
-        // Nessun tono: il backoffice non dà grafica. Nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
+        // Il tono di ogni workspace viene dal suo id (sprint 17 · T4). Nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
         expect(appShell.mock.lastCall?.[0].companies).toStrictEqual([
-            { id: '7', name: 'Zeta Srl', workspaces: [{ slug: 'zeta-ricerca', name: 'Ricerca' }] },
-            { id: '3', name: 'Acme', workspaces: [{ slug: 'acme-vendite', name: 'Vendite' }, { slug: 'acme-marketing', name: 'Marketing' }] },
+            { id: '7', name: 'Zeta Srl', workspaces: [{ slug: 'zeta-ricerca', name: 'Ricerca', tone: 'citrus' }] },
+            { id: '3', name: 'Acme', workspaces: [{ slug: 'acme-vendite', name: 'Vendite', tone: 'coral' }, { slug: 'acme-marketing', name: 'Marketing', tone: 'plum' }] },
         ]);
         expect(appShell.mock.lastCall?.[0].onNewWorkspace).toBeUndefined();
 
@@ -478,6 +482,77 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
 
         expect(uno('.zr-bell-count')?.textContent ?? null).toBe(numero);
         expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(numero === null ? 'Notifiche' : `Notifiche, ${numero} non lette`);
+    });
+});
+
+// Sprint 17 · T4 (voce #1633). Nel selettore ogni workspace ha il pallino del suo tono, e il tono lo decide la regola di zr-core
+// dall'id del workspace (`tonoDelWorkspace`): non dal nome, dallo slug o dal posto nell'elenco, che cambiano. Un workspace senza
+// id — i dati scritti a mano nei test di un frontend — non ha tono: il pallino resta quello che il design system mette da sé.
+describe('il colore di ogni workspace nel selettore', () => {
+    type Aziende = NonNullable<DatiDellaCornice['aziende']>;
+    const [zeta, acme] = aziende;
+    const [vendite, marketing] = acme.workspace;
+
+    /** Il colore del pallino di ogni workspace nel selettore aperto, per nome: com'è scritto nel suo stile. */
+    function pallini(): Record<string, string | null> {
+        return Object.fromEntries(
+            tutti('.zr-ws-menu .zr-ws-item').map((voce) => [voce.querySelector('.zr-nav-label')?.textContent ?? '', voce.querySelector('.zr-ws-dot')?.getAttribute('style') ?? null]),
+        );
+    }
+
+    it('ogni workspace ha il pallino del suo tono, quello che la regola esportata dà per il suo id (sprint 17 · T4.1, T4.6)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'plum']]);
+        // Lo stesso tono che la regola esportata dà a chi mostra un workspace fuori dalla cornice.
+        expect(aziende.map((azienda) => azienda.workspace.map((ws) => tonoDelWorkspace(ws.id)))).toStrictEqual([['citrus'], ['coral', 'plum']]);
+
+        await clic(uno('.zr-ws-switch'));
+        expect(pallini()).toStrictEqual({ Ricerca: 'background: var(--citrus);', Vendite: 'background: var(--coral);', Marketing: 'background: var(--plum);' });
+    });
+
+    it.each<[string, Aziende, string]>([
+        ['con un altro nome', [zeta, { ...acme, workspace: [vendite, { ...marketing, nome: 'Marketing Europa' }] }], 'acme-marketing'],
+        ['con un altro slug', [zeta, { ...acme, workspace: [vendite, { ...marketing, slug: 'acme-europa' }] }], 'acme-europa'],
+        ['con un workspace in più prima di lui, e la sua azienda per prima', [{ ...acme, workspace: [{ id: 'ws-9', nome: 'Assistenza', slug: 'acme-assistenza' }, vendite, marketing] }, zeta], 'acme-marketing'],
+        ['da solo nella sua azienda', [{ ...acme, workspace: [marketing] }], 'acme-marketing'],
+    ])('%s il workspace «ws-4» ha lo stesso tono (sprint 17 · T4.1)', async (_caso, aziendeDeiDati, slug) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Marketing', slug }, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
+
+        const workspace = appShell.mock.lastCall?.[0].companies?.flatMap((azienda) => azienda.workspaces).filter((ws) => ws.slug === slug);
+        expect(workspace?.map((ws) => ws.tone)).toStrictEqual(['plum']);
+    });
+
+    it('lo stesso nome, lo stesso slug e lo stesso posto con un altro id: un altro tono (sprint 17 · T4.1)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: [zeta, { ...acme, workspace: [vendite, { ...marketing, id: 'ws-5' }] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'sky']]);
+    });
+
+    it.each<[string, unknown]>([
+        ['senza id', undefined],
+        ['con un id vuoto', ''],
+        ['con un id che non è un testo', 5],
+        ['con un id null', null],
+    ])('un workspace %s non ha tono, e il suo pallino è quello che il design system mette da sé; gli altri hanno il loro (sprint 17 · T4.4)', async (_caso, id) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        // Nome e slug sono testi che come id avrebbero un tono (sky e coral): senza id non se ne ricava uno da lì, né dal posto.
+        const senzaId = { nome: 'ws-5', slug: 'ws-2', ...(id === undefined ? {} : { id: id as string }) };
+        await mostra(<Cornice dati={{ ...dati, aziende: [{ ...acme, workspace: [marketing, senzaId] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies).toStrictEqual([
+            { id: '3', name: 'Acme', workspaces: [{ slug: 'acme-marketing', name: 'Marketing', tone: 'plum' }, { slug: 'ws-2', name: 'ws-5' }] },
+        ]);
+        await clic(uno('.zr-ws-switch'));
+        expect(pallini()).toStrictEqual({ Marketing: 'background: var(--plum);', 'ws-5': 'background: var(--pine);' });
+    });
+
+    it('nel tipo dei dati l\'id di un workspace è facoltativo: i dati di un frontend che non lo danno restano validi, lo guarda tsc (sprint 17 · T4.5)', () => {
+        expectTypeOf<{ nome: string; slug: string }>().toExtend<Aziende[number]['workspace'][number]>();
+        expectTypeOf<Aziende[number]['workspace'][number]['id']>().toEqualTypeOf<string | undefined>();
     });
 });
 

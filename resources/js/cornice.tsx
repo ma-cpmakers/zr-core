@@ -1,8 +1,9 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, Tone } from '../zeiras/index';
+import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -20,8 +21,12 @@ export interface DatiDellaCornice {
     workspace: { nome: string; slug: string };
     /** Lo stato di ogni prodotto nel workspace (app.elenca): un prodotto che manca è «Presto». */
     prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo'>>;
-    /** Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace dei dati non sta in nessuna, il workspace resta testo. */
-    aziende?: { id: string; nome: string; workspace: { nome: string; slug: string }[] }[];
+    /**
+     * Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace
+     * dei dati non sta in nessuna, il workspace resta testo. Dall'`id` di un workspace viene il tono del suo pallino
+     * (`tonoDelWorkspace`): è facoltativo, perché i dati scritti a mano nei test di un frontend restino validi, e senza non c'è tono.
+     */
+    aziende?: { id: string; nome: string; workspace: { id?: string; nome: string; slug: string }[] }[];
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number;
     /**
@@ -121,6 +126,16 @@ function menuDelProfiloSenzaPiano(t: TestiDellaCornice, suAccount: (azione: Acco
 }
 
 /** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
+/**
+ * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col tono del suo id (tono.ts), mai del nome, dello slug o del
+ * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
+ */
+function nelSelettore(workspace: { id?: string; nome: string; slug: string }): ShellWorkspace {
+    const tone = tonoDelWorkspace(workspace.id);
+
+    return tone === undefined ? { slug: workspace.slug, name: workspace.nome } : { slug: workspace.slug, name: workspace.nome, tone };
+}
+
 function nelWorkspace(indirizzo: string, slug: string): string {
     return `${indirizzo}/w/${encodeURIComponent(slug)}`;
 }
@@ -308,11 +323,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     };
 
     // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
-    // il primo workspace della prima, e il workspace resta testo. Nessun tono (il backoffice non dà grafica) e nessun «Nuovo
-    // workspace» finché zr-home non ha la sua pagina.
+    // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
+    // grafica); nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
     const conIlWorkspace = dati.aziende?.some((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug));
     const companies = conIlWorkspace
-        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => ({ slug: ws.slug, name: ws.nome })) }))
+        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => nelSelettore(ws)) }))
         : undefined;
 
     // Le notifiche si caricano a ogni apertura del pannello, non con la pagina. Conta l'ultima richiesta partita: una più vecchia

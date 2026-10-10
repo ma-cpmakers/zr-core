@@ -77,13 +77,15 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
+Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
+costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -174,7 +176,11 @@ cornice === null ? pagina : (
 - **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
-  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina.
+  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina. Ogni workspace ha il pallino del suo colore:
+  lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
+  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. Nel tipo
+  `DatiDellaCornice` l'`id` di un workspace è facoltativo: un workspace senza `id` non ha un colore suo, e il suo pallino è
+  quello che il design system mette da sé.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato, finché i dati non sono stati letti dopo quell'elenco (una notifica può essere
   arrivata dopo che la parte server le ha contate). Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
@@ -304,6 +310,12 @@ nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la ses
 backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
 apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il
 registro (`resources/registro/prodotti.json`).
+
+Il colore di un workspace fuori dalla cornice — un elenco dei workspace in una pagina del frontend — lo dà
+`tonoDelWorkspace(id)`, dallo stesso ingresso: è la regola che usa il selettore della cornice, quindi per lo stesso `id` il
+tono è lo stesso. `id` è l'`id` del workspace, com'è nei dati della cornice. Dà il nome di uno dei toni che il design system
+ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un colore: il colore lo mette il CSS del design
+system (`var(--<tono>)`). Un `id` vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
 
 ### La cornice montata una volta sola
 

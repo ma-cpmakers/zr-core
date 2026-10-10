@@ -43,7 +43,7 @@ final class Cornice
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
      * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
      */
     public static function dati(): ?array
     {
@@ -83,9 +83,10 @@ final class Cornice
      * Le aziende della persona nell'ordine di io.aziende.elenca, ognuna coi suoi workspace nell'ordine di
      * io.workspace.elenca: il backoffice dà le due liste, e raggruppare per `azienda_id` è della cornice. Col gettone della
      * persona, perché sono le aziende di tutti i suoi workspace e non di quello in cui è entrata. Un workspace di un'azienda
-     * che l'elenco non ha resta fuori: non va sotto un'altra.
+     * che l'elenco non ha resta fuori: non va sotto un'altra. Di ogni workspace escono l'id, il nome e lo slug, e nient'altro della
+     * riga (ruolo e azienda no): dall'id la cornice ricava il tono del workspace nel selettore, e sta nella riga già letta.
      *
-     * @return list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>
+     * @return list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>}>
      */
     private static function aziende(): array
     {
@@ -96,7 +97,7 @@ final class Cornice
 
         foreach (Api::persona()->tutti('/v1/io/workspace') as $workspace) {
             if (isset($aziende[$workspace['azienda_id']])) {
-                $aziende[$workspace['azienda_id']]['workspace'][] = ['nome' => $workspace['nome'], 'slug' => $workspace['slug']];
+                $aziende[$workspace['azienda_id']]['workspace'][] = ['id' => $workspace['id'], 'nome' => $workspace['nome'], 'slug' => $workspace['slug']];
             }
         }
 
