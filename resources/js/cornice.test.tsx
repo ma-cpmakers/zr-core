@@ -1238,6 +1238,124 @@ describe('il pannello delle notifiche', () => {
         expect(nonLette()).toStrictEqual([false, false, false]);
         expect(segnaTutte()).toBeNull();
     });
+
+    // Sprint 12 · review della PR, R2. Con `altre: true` il pannello si ricarica senza passare dal caricamento: l'elenco di prima
+    // resta in pagina e «Segna tutte come lette» resta dov'è, col fuoco, per il clic dopo. Se si svuotasse, il pulsante sparirebbe
+    // mentre ha il fuoco, e da tastiera il clic dopo vorrebbe di nuovo il giro di Tab.
+
+    /**
+     * Le due rotte, con gli elenchi e le letture che il test decide: a ogni caricamento l'elenco dopo, che può essere una risposta
+     * in attesa; a ogni «Segna tutte come lette» l'`altre` dopo.
+     */
+    const rotteUnaDopoLAltra = (elenchi: (unknown[] | Promise<Response>)[], altre: boolean[]) => {
+        let caricamenti = 0;
+        let letture = 0;
+
+        return vi.fn(async (indirizzo: string, opzioni?: RequestInit) => {
+            if (indirizzo === '/cornice/notifiche') {
+                const elenco = elenchi[caricamenti++];
+
+                return Array.isArray(elenco) ? risposta({ data: elenco }) : elenco;
+            }
+
+            return risposta({ data: { fino_a: new Date(String(corpoDi(opzioni).fino_a)).toISOString(), altre: altre[letture++] } });
+        });
+    };
+
+    it('con altre: true, mentre l\'elenco nuovo non è arrivato, il pannello non è in caricamento: l\'elenco di prima resta in pagina e «Segna tutte come lette» resta dov\'è, col fuoco; e resta quando l\'elenco arriva (sprint 12 · review, R2)', async () => {
+        const ricaricato = inAttesa();
+        const fetchFinto = rotteUnaDopoLAltra([notificheDelServer, ricaricato.promessa], [true]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const pulsante = segnaTutte();
+        pulsante?.focus();
+        expect(document.activeElement).toBe(pulsante);
+
+        await clic(pulsante);
+        // La lettura ha risposto che ne restano, e l'elenco nuovo è stato chiesto ma non è arrivato.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(uno('.zr-notif [role="status"]')).toBeNull();
+        expect(nonLette()).toStrictEqual([true, true, false]);
+        expect(campanella()).toBe('60');
+        // Lo stesso pulsante di prima, non uno nuovo: è ancora quello che ha il fuoco.
+        expect(segnaTutte()).toBe(pulsante);
+        expect(document.activeElement).toBe(pulsante);
+
+        await ricaricato.arriva(risposta({ data: dopoUnaParte }));
+        expect(nonLette()).toStrictEqual([true, false, false]);
+        expect(campanella()).toBe('60');
+        expect(segnaTutte()).toBe(pulsante);
+        expect(document.activeElement).toBe(pulsante);
+    });
+
+    it('un clic mentre il pannello si ricarica dopo altre: true continua la lettura dallo stesso istante; se finisce prima che quell\'elenco arrivi, l\'elenco — letto prima della lettura — non conta, e il pannello si ricarica (sprint 12 · review, R2)', async () => {
+        const lettoPrima = inAttesa();
+        const fetchFinto = rotteUnaDopoLAltra([notificheDelServer, lettoPrima.promessa, tutteLette], [true, false]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+
+        // Il secondo clic, con l'elenco nuovo ancora in volo: la lettura riparte dall'istante dell'elenco in pagina.
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual([
+            'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
+        ]);
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(campanella()).toBeNull();
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(segnaTutte()).toBeNull();
+
+        // L'elenco chiesto dopo il primo clic arriva adesso, con le non lette di allora: non torna in pagina né sulla campanella.
+        await lettoPrima.arriva(risposta({ data: notificheDelServer }));
+        expect(nonLette()).toStrictEqual([false, false, false]);
+        expect(campanella()).toBeNull();
+        expect(segnaTutte()).toBeNull();
+    });
+
+    it('se dopo altre: true il ricaricamento fallisce, il pannello mostra l\'errore e «Riprova», come ogni caricamento fallito, e la campanella tiene il numero (sprint 12 · review, R2)', async () => {
+        const fetchFinto = rotteUnaDopoLAltra([notificheDelServer, Promise.resolve(risposta({}, 500)), dopoUnaParte], [true]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('60');
+
+        await clic(uno('.zr-notif [role="alert"] button'));
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(nonLette()).toStrictEqual([true, false, false]);
+        expect(segnaTutte()).not.toBeNull();
+    });
+
+    // Sprint 12 · review della PR, R3. Il design system ha un testo solo per le non lette: è nel nome della campanella ed è il nome
+    // del pallino di ogni notifica non letta. Col singolare di zr-core il pallino segue il numero della campanella, non la notifica.
+    it.each<[lingua: string, nonLetteNeiDati: number, nonLetteCaricate: number, pallino: string]>([
+        ['it', 1, 1, 'non letta'],
+        ['it', 3, 3, 'non lette'],
+        // Una sola non letta in pagina e tre sulla campanella: le altre due stanno oltre la prima pagina.
+        ['it', 3, 1, 'non lette'],
+        // Il numero che la campanella mostra, non quello dei dati: un elenco più recente ne ha due.
+        ['it', 1, 2, 'non lette'],
+        ['en', 1, 1, 'unread'],
+        ['es', 3, 3, 'sin leer'],
+    ])('con la lingua "%s", %s non lette nei dati e %s caricate, il pallino di ogni notifica non letta si chiama «%s» per il lettore di schermo, come le non lette della campanella (sprint 12 · review, R3)', async (lingua, nonLetteNeiDati, nonLetteCaricate, pallino) => {
+        const elenco = [
+            ...Array.from({ length: nonLetteCaricate }, (_, indice) => nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z')),
+            nata('uat-n70', '2026-10-06T11:00:00Z', true),
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-dot')?.getAttribute('aria-label') ?? null))
+            .toStrictEqual([...Array.from({ length: nonLetteCaricate }, () => pallino), null]);
+    });
 });
 
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati
