@@ -29,32 +29,47 @@ async function chiama(indirizzo: string, opzioni: { method?: string; headers?: R
     return risposta.json();
 }
 
-/** Le notifiche del workspace, dalla più recente: GET /cornice/notifiche. */
-export async function caricaNotifiche(): Promise<NotificaDellaCornice[]> {
-    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown } | null;
+/**
+ * Un istante della parte server, se ha la forma del suo segno: in UTC, coi microsecondi a sei cifre e `Z` in fondo
+ * (`2026-10-09T21:31:05.123456Z`). Solo in quella forma due istanti si confrontano come testi, fino al microsecondo: ogni altro
+ * valore è «senza segno».
+ */
+export function segno(valore: unknown): string | undefined {
+    return typeof valore === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(valore) ? valore : undefined;
+}
+
+/**
+ * Le notifiche del workspace, dalla più recente: GET /cornice/notifiche. `il` è l'istante in cui la parte server ha cominciato
+ * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
+ */
+export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined }> {
+    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
 
-    return corpo.data as NotificaDellaCornice[];
+    return { elenco: corpo.data as NotificaDellaCornice[], il: segno(corpo.aggiornati_il) };
 }
 
 /**
  * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
  * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
- * altro (un'altra scheda) la parte server non segna niente. Una risposta senza l'istante è un errore come le altre.
+ * altro (un'altra scheda) la parte server non segna niente. Una risposta senza `fino_a` è un errore come le altre. Dà
+ * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
  */
-export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<void> {
+export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<string | undefined> {
     const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ fino_a: finoA, workspace }),
-    })) as { data?: { fino_a?: unknown } | null } | null;
+    })) as { data?: { fino_a?: unknown } | null; segnate_il?: unknown } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
         throw new Error(`POST ${indirizzo}: fino_a`);
     }
+
+    return segno(corpo.segnate_il);
 }
 
 /** Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */

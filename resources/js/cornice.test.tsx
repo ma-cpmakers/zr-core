@@ -844,6 +844,10 @@ describe('il pannello delle notifiche', () => {
 
         await mostra(<Cornice dati={letti(alSecondo(7), 2, { workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' } })} onLogout={esciSenzaEffetto} />);
         expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['2', 'Marketing Europa']);
+
+        // Più indietro degli ultimi, anche se più avanti dei primi: i più recenti sono quelli della visita di prima.
+        await mostra(<Cornice dati={letti(alSecondo(6), 9)} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['2', 'Marketing Europa']);
     });
 
     it.each([
