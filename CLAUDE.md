@@ -65,11 +65,11 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.12.1`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il verde è
+- `zeiras/zr-auth` `^0.12.4`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il verde è
   di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12). Una minore
   nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro
-  ha provato col codice che la usa (per questo parte dalla 0.12.1: la 0.12.0 l'ha provata solo una cornice che `aggiorna`
-  non la chiamava).
+  ha provato col codice che la usa (per questo dalla `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte
+  come lette» l'hanno provato solo giri con quella).
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.

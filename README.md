@@ -56,12 +56,13 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.1` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
+zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con l'ultima 0.12), installato e configurato come dice il suo
 README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più vecchia non basta: la cornice chiama
-`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Nemmeno la 0.12.0
-basta: la sua `Sessione::aggiorna` prende la lingua e il nome anche da una risposta che non dice di chi sono (senza
-`utente.id`); dalla 0.12.1 no. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel
-`composer.json` del frontend, accanto a quello di zr-core.
+`Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core alla `v1.3.0`. Dalla `v1.6.0` serve
+la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth, e la 0.12.4 è la patch con cui la
+CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla `v1.5.0`. Composer non eredita i
+repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del frontend, accanto a quello di
+zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
 
@@ -123,7 +124,7 @@ esce.
 |---|---|
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dalla prima; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato |
+| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dalla prima; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice (vedi «Le notifiche») |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -222,15 +223,22 @@ cornice === null ? pagina : (
   dà zr-core, e in questa versione è sempre lo stesso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
   ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
   pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
-  cambia niente. Un limite, che non è solo di questa rotta: una richiesta lenta, quando finisce, riscrive la sessione com'era
-  all'inizio e ne rimanda il cookie (lo fa Laravel). Se mentre «Segna tutte come lette» gira — fino a circa 15 secondi, solo
-  con più di 5000 non lette — la persona esce o entra in un altro workspace da un'altra scheda, la sessione torna quella di
-  prima: dopo un cambio di workspace la persona si ritrova in quello di prima; dopo un'uscita torna la sessione coi gettoni
-  di prima: se l'uscita li ha chiusi nel backoffice, la prima chiamata la richiude; se all'uscita il backoffice non ha
-  risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza. zr-core da solo non lo
-  chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un
-  workspace — quelle del frontend e il ricevitore dell'ingresso di zr-auth —, per più dei 10 secondi predefiniti: messo da
-  una parte sola non ferma niente. Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati
+  cambia niente. Un limite, che non è solo di questa rotta: ogni richiesta, quando finisce, riscrive la sessione com'era
+  quando è partita e ne rimanda il cookie (lo fa Laravel). Vale per ogni richiesta della stessa sessione ancora in corso
+  quando la persona, da un'altra scheda, esce, entra in un altro workspace o cambia lingua, non solo per una lenta:
+  finendo dopo, rimette la sessione di prima — dopo un cambio di workspace la persona si ritrova in quello di prima; dopo
+  un'uscita torna la sessione coi gettoni di prima: se l'uscita li ha chiusi nel backoffice, la prima chiamata la
+  richiude; se all'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino
+  alla loro scadenza. «Segna tutte come lette» è la richiesta della cornice che dura di più — fino a circa 15 secondi,
+  solo con più di 5000 non lette — e dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta
+  la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte di
+  uscita e di ingresso in un workspace (il ricevitore dell'ingresso di zr-auth lo ha già); messo da una parte sola non
+  ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
+  oltre risponde 503 con `Retry-After: 1` — un'uscita mentre «Segna tutte come lette» gira, o «Segna tutte come lette»
+  mentre un'uscita gira: allora nel pannello non cambia niente e il pulsante resta per riprovare. L'elenco delle
+  notifiche, la ricerca e le chiamate del modulo restano senza blocco, perché due richieste della stessa persona si
+  metterebbero in fila: per loro il limite resta.
+  Allo stesso modo tornano la lingua e il nome di prima, se la cornice li aveva aggiornati
   mentre un'altra richiesta della stessa sessione girava: basta che sia cominciata prima e finita dopo, anche non lenta (le
   notifiche, la ricerca, una chiamata del modulo). I dati della cornice restano giusti; alla visita dopo ciò che il frontend
   legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima, e quella lettura li rimette. Il pulsante c'è

@@ -1133,7 +1133,8 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
         ->and($conQuellaDiPrima)->not->toBe($readme)
         ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
 })->with([
-    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sia su questa rotta sia sulle rotte che fanno uscire o entrare in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
+    // Dallo sprint 16 · T4 la frase è un'altra (il blocco lo mette il frontend sulle sue rotte): quella sbagliata resta la stessa.
+    'N2: uscita e ingresso non sono rotte di zr-auth' => ['sulle sue rotte di uscita e di ingresso in un workspace', 'sulle rotte di uscita e di ingresso nel workspace, che sono di zr-auth'],
     'N3: dopo un\'uscita i gettoni non sono sempre chiusi' => ['dopo un\'uscita torna la sessione coi gettoni di prima', 'dopo un\'uscita i suoi gettoni sono già chiusi nel backoffice'],
     'N4: non è il design system che non ha con che dirle' => ['Due cose la cornice oggi non le dice: che una parte', 'Due cose la cornice oggi non le dice, perché il design system non ha con che dirle: che una parte'],
 ]);

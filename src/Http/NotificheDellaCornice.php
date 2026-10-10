@@ -57,6 +57,21 @@ final class NotificheDellaCornice
      */
     private const SECONDI = 10;
 
+    /** Quanti secondi il lock della sessione dura oltre il tempo che la rotta delle letture può durare. */
+    private const MARGINE = 5;
+
+    /**
+     * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
+     * durare, cioè SECONDI di richiami, più il tempo che zr-auth aspetta l'ultima risposta (`zr-auth.timeout`), più un margine.
+     * Non i 10 secondi di `->bloccaSessione()` di zr-auth: col lock scaduto a metà corsa un'uscita da un'altra scheda lo
+     * prenderebbe, e la richiesta, finendo, rimetterebbe la sessione di prima. Si calcola quando le rotte si registrano, e la
+     * cache delle rotte lo tiene: dopo aver cambiato `zr-auth.timeout` si rifà.
+     */
+    public static function tenutaDelBlocco(): int
+    {
+        return self::SECONDI + (int) config('zr-auth.timeout') + self::MARGINE;
+    }
+
     /**
      * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
@@ -119,7 +134,9 @@ final class NotificheDellaCornice
      * della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina
      * che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo l'ultima
      * risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo. Una
-     * chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta segnato.
+     * chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta segnato. La rotta
+     * tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di zr-auth, qui non
+     * si arriva, e la risposta è il 503 di zr-auth.
      */
     public function letture(Request $richiesta): JsonResponse
     {
