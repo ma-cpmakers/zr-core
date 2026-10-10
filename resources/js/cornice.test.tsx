@@ -1724,6 +1724,82 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
     });
 
+    // Seconda lettura della PR #20, N4. A giro aperto dei dati nuovi non bastano a chiuderlo: una visita che conta ancora non
+    // lette lascia «Segna le altre», e lo chiude solo quella che non ne conta più.
+    it('a giro aperto una visita che conta ancora non lette lascia «Segna le altre»: lo chiude solo quella che non ne conta più (sprint 17 · review, N4)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Una visita dopo, a pannello aperto: un'altra scheda ne ha segnate una parte, e ne restano quaranta.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 40 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('40');
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Un'altra visita: le rimaste sono segnate. La notifica che arriva dopo è un altro giro.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 0 }} onLogout={esciSenzaEffetto} />);
+        expect(segnaTutte()).toBeNull();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
+    // Seconda lettura della PR #20, N5. Senza il numero nei dati la campanella conta le non lette in pagina, che vanno a zero anche
+    // quando un elenco non arriva: una campanella a zero non dice che il giro è finito.
+    it('senza il numero nei dati, un ricaricamento fallito a giro aperto non chiude il giro: la lettura in volo risponde altre: true e il pulsante dice «Segna le altre» (sprint 17 · review, N5)', async () => {
+        const ricaricato = inAttesa();
+        const seconda = inAttesa();
+        const ricaricatoDiNuovo = inAttesa();
+        const fetchFinto = rotteConLetture([notificheDelServer, ricaricato.promessa, ricaricatoDiNuovo.promessa], [letturaFatta(true), seconda.promessa]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Il secondo clic, con l'elenco nuovo ancora in volo; poi quell'elenco non arriva, e il pannello mostra l'errore.
+        await clic(segnaTutte());
+        await ricaricato.arriva(risposta({}, 500));
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        expect(segnaTutte()).toBeNull();
+
+        // La seconda lettura risponde che ne restano, e il pannello si ricarica: finché l'elenco non arriva resta l'errore.
+        await seconda.arriva(letturaFatta(true));
+        expect(richieste(fetchFinto)).toStrictEqual([
+            'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
+        ]);
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+
+        // L'elenco arriva: il pulsante torna, e dice ciò che la parte server ha appena detto.
+        await ricaricatoDiNuovo.arriva(risposta({ data: dopoUnaParte }));
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+    });
+
+    // Che il giro è finito altrove lo dicono solo dei dati letti dopo la risposta che ha detto `altre`: quelli letti prima sono più
+    // vecchi di lei, anche se contano zero. Qui i dati contano zero e l'elenco, letto dopo, ha le non lette arrivate nel frattempo:
+    // è il caso di una notifica che arriva a pagina aperta, con una parte server lenta che si ferma al tetto dei secondi.
+    it('dei dati che contano zero ma sono stati letti prima della risposta con altre: true non chiudono il giro: lo chiudono quelli letti dopo (sprint 17 · review, N5)', async () => {
+        vi.stubGlobal('fetch', rotteConAltre([notificheDelServer, dopoUnaParte], [true], { lettoIl: alSecondo(3), segnateIl: alSecondo(5) }));
+        await mostra(<Cornice dati={letti(alSecondo(1), 0)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Una visita lenta: i suoi dati sono stati letti prima di quella risposta, e contano zero anche loro.
+        await mostra(<Cornice dati={letti(alSecondo(2), 0)} onLogout={esciSenzaEffetto} />);
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // I dati letti dopo quella risposta contano zero: il giro è finito altrove, e la notifica che arriva dopo è un altro giro.
+        await mostra(<Cornice dati={letti(alSecondo(6), 0)} onLogout={esciSenzaEffetto} />);
+        expect(segnaTutte()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(7), 1)} onLogout={esciSenzaEffetto} />);
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
     it('dopo altre: true, chiuso e riaperto il pannello il pulsante dice di nuovo «Segna tutte come lette»: l\'elenco è stato chiesto da capo (sprint 17 · T1.3)', async () => {
         const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true)]);
         vi.stubGlobal('fetch', fetchFinto);

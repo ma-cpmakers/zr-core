@@ -2,12 +2,16 @@
 # La versione più bassa di zr-auth che composer.json accetta in una minore: con `^0.12.4` la 0.12.4 per la 0.12, e un `^0.12`
 # senza patch vale la 0.12.0. È quella che installa il giro «minima» della CI (ci.yml, «Dipendenze PHP»), che così non la
 # riscrive: chi cambia il vincolo cambia anche ciò che quel giro prova. Il vincolo è fatto di `^0.<minore>`, anche con la patch,
-# uno solo o più d'uno uniti da ` || `, la stessa forma che guarda tests/Feature/PacchettoTest.php: davanti a un'altra forma lo
-# script si ferma, invece di indovinare. Legge soltanto: niente rete, e ciò che trova in composer.json non lo esegue.
+# uno solo o più d'uno uniti da ` || `, la forma che guarda anche tests/Feature/PacchettoTest.php, e qui più stretta: un numero
+# ha al più nove cifre, senza zeri davanti. Davanti a un'altra forma lo script si ferma, invece di indovinare. Legge soltanto:
+# niente rete, e ciò che trova in composer.json non lo esegue.
 #
 # Uso: bash .github/minimo-di-zr-auth.sh <composer.json> <minore>
 # Scrive la versione ed esce 0; esce 1 se composer.json non accetta quella minore, 2 se il vincolo o la minore non si leggono.
 set -euo pipefail
+# Nella localizzazione `C` una cifra è una delle dieci ASCII: in una come `en_US.UTF-8` `[0-9]` prende anche quelle di altre
+# scritture (`٤`), che passerebbero la forma e poi farebbero uscire 2 il confronto più sotto, in silenzio.
+export LC_ALL=C
 
 composer="${1:-}"
 minore="${2:-}"

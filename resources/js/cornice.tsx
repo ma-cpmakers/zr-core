@@ -348,10 +348,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
-    // elenco chiesto da capo, o altrove (sotto, dove la campanella non conta più non lette). Sono testo, e stanno nello stato;
-    // il guardiano del doppio clic resta un ref, che è sincrono.
+    // elenco chiesto da capo, o altrove (sotto, dove dei dati letti dopo non contano più non lette). «Ne restano» è ciò che la
+    // cornice ha saputo dalla risposta con `altre`: coi dati di allora e l'istante della risposta. Sono testo, e stanno nello
+    // stato; il guardiano del doppio clic resta un ref, che è sincrono.
     const [inCorso, setInCorso] = useState(false);
-    const [neRestano, setNeRestano] = useState(false);
+    const [neRestano, setNeRestano] = useState<Saputo>();
     const ultimaRichiesta = useRef(0);
     const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
@@ -375,7 +376,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     };
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, e un giro di letture rimasto a metà non continua da lì.
     const carica = () => {
-        setNeRestano(false);
+        setNeRestano(undefined);
         chiedi(true);
     };
 
@@ -405,10 +406,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
     const sullaCampanella = nonLette ?? nonLetteInElenco;
     const unaSola = sullaCampanella === 1;
-    // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: se la campanella non
-    // conta più non lette non ne restano, e una notifica che arriva dopo è un altro giro, con «Segna tutte come lette».
-    if (neRestano && !(sullaCampanella > 0)) {
-        setNeRestano(false);
+    // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
+    // risposta con `altre`, se contano zero non lette. Una notifica che arriva dopo è un altro giro, con «Segna tutte come
+    // lette». Non lo dice la campanella a zero: senza il numero nei dati conta le non lette in pagina, che vanno a zero anche
+    // quando un elenco non arriva. E non lo dicono dei dati letti prima di quella risposta, anche se contano zero: sono più
+    // vecchi di lei (una notifica arrivata a pagina aperta, con la parte server che si ferma al tetto dei secondi).
+    if (neRestano !== undefined && dati.non_lette === 0 && !nonPiuRecentiDi(dati, neRestano)) {
+        setNeRestano(undefined);
     }
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
@@ -436,7 +440,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             setInCorso(false);
         }
         // Il giro di letture continua se ne restano, e finisce con la lettura completa. Se la richiesta è fallita resta com'era.
-        setNeRestano(altre);
+        setNeRestano(altre ? { con: questi, il } : undefined);
         if (altre) {
             // Ne restano da leggere: niente è «segnato fino a qui», e le non lette dell'ultimo elenco contano finché non
             // arriva quello nuovo. Senza svuotare il pannello: il pulsante resta montato, col fuoco.
@@ -460,7 +464,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
     };
     // Il testo del pulsante nel suo momento. La richiesta in corso viene prima: il clic che continua dopo un `altre` è in corso.
-    const sulPulsante = inCorso ? t.markingAllRead : neRestano ? t.markRestRead : t.markAllRead;
+    const sulPulsante = inCorso ? t.markingAllRead : neRestano !== undefined ? t.markRestRead : t.markAllRead;
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una

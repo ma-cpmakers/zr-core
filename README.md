@@ -87,9 +87,11 @@ public function share(Request $request): array
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
 costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore. L'`id` c'è dalla
 `v1.7.0`. Il contratto di `/v1` lo dà sempre: nei test di un frontend un backoffice finto scritto a mano lo deve dare come
-dà `nome` e `slug` (gli esempi di zr-auth lo danno), perché una riga senza `id` fa fallire `Cornice::dati()`. Il workspace
-in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso `slug` in
-`aziende`.
+dà `nome` e `slug` (il `BackofficeFinto` di zr-auth e l'esempio di `io.workspace.elenca` nel contratto lo danno), perché
+una riga senza `id` fa fallire `Cornice::dati()`, se è di un'azienda dell'elenco (le altre restano fuori prima). Il
+workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso
+`slug` in `aziende`, se c'è. Il workspace dei dati può non stare in nessuna azienda — per esempio se il suo slug è cambiato
+dopo l'ingresso —, e allora nei dati il suo `id` non c'è.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -232,10 +234,11 @@ cornice === null ? pagina : (
   «Segno…», e un clic lì non fa partire un'altra richiesta. Dopo una risposta con `altre: true` dice «Segna le altre»: una
   parte è segnata, anche quando l'elenco ricaricato è uguale a prima perché le segnate non erano fra quelle in pagina. Lo
   dice finché quel giro di letture non è finito — con una lettura completa, con l'elenco chiesto da capo (il pannello
-  riaperto, «Riprova»), o quando la campanella non conta più non lette perché il giro è finito altrove, in un'altra
-  scheda —, poi torna «Segna tutte come lette». Se la richiesta fallisce il pulsante torna al testo che
-  aveva prima del clic. I due testi sono di zr-core, `markingAllRead` e `markRestRead` nelle sue lingue: in una lingua
-  che zr-core non ha sono in inglese. Una cosa la cornice ancora non la dice: l'avviso per il lettore di schermo. Il
+  riaperto, «Riprova»), o quando dei dati letti dopo quella risposta non contano più non lette: il giro è finito altrove, in
+  un'altra scheda —, poi torna «Segna tutte come lette». Senza `non_lette` nei dati questa terza uscita non c'è. Se la
+  richiesta fallisce il pulsante torna al testo che aveva prima del clic. I due testi sono di zr-core, `markingAllRead`
+  e `markRestRead` nelle sue lingue: in una lingua che zr-core non ha sono in inglese. Una cosa la cornice ancora non la
+  dice: l'avviso per il lettore di schermo. Il
   testo del pulsante cambia sullo schermo, ma niente lo annuncia: il pannello del design system non ha un posto per un
   avviso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
   ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
