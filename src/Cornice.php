@@ -2,7 +2,6 @@
 
 namespace Zeiras\Core;
 
-use Illuminate\Support\Carbon;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Sessione;
@@ -28,8 +27,9 @@ final class Cornice
      * lette.
      *
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice (i dati sono almeno
-     * freschi quanto il segno): in UTC qualunque sia il fuso dell'applicazione, coi microsecondi sempre a sei cifre e `Z` in
-     * fondo (`2026-10-09T21:31:05.123456Z`), così due segni si ordinano anche come stringhe.
+     * freschi quanto il segno), nella forma di `Segno::adesso()`: in UTC qualunque sia il fuso dell'applicazione, coi
+     * microsecondi sempre a sei cifre e `Z` in fondo (`2026-10-09T21:31:05.123456Z`), così due segni si ordinano anche come
+     * stringhe.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
      */
@@ -42,7 +42,7 @@ final class Cornice
             return null;
         }
 
-        $aggiornatiIl = Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z');
+        $aggiornatiIl = Segno::adesso();
 
         $prodotti = [];
         foreach (Api::workspace()->tutti('/v1/app') as $app) {

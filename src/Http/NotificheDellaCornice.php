@@ -8,6 +8,7 @@ use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Sessione;
+use Zeiras\Core\Segno;
 
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
@@ -17,6 +18,11 @@ use Zeiras\Auth\Sessione;
  * e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola al backoffice, fino a un istante, non una per
  * notifica. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
  * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ *
+ * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
+ * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
+ * risposto, `segnate_il`. La cornice li confronta col segno dei dati per non tornare a ciò che è più vecchio. Le risposte
+ * d'errore non portano un istante.
  */
 final class NotificheDellaCornice
 {
@@ -35,16 +41,24 @@ final class NotificheDellaCornice
      */
     private const ISTANTE = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})\z/';
 
-    /** GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca. */
+    /**
+     * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
+     * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
+     * quanto il suo segno.
+     */
     public function elenco(): JsonResponse
     {
+        $aggiornatiIl = Segno::adesso();
         $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
             throw new BackofficeNonRisponde('La risposta di GET /v1/io/notifiche non è una lista di /v1.');
         }
 
-        return new JsonResponse(['data' => array_map(fn (mixed $notifica) => self::perLaCornice($notifica, 'GET /v1/io/notifiche'), $notifiche)]);
+        return new JsonResponse([
+            'data' => array_map(fn (mixed $notifica) => self::perLaCornice($notifica, 'GET /v1/io/notifiche'), $notifiche),
+            'aggiornati_il' => $aggiornatiIl,
+        ]);
     }
 
     /**
@@ -84,7 +98,8 @@ final class NotificheDellaCornice
      * POST /cornice/notifiche/letture: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate
      * fino a `fino_a` compreso, anche quelle oltre la prima pagina (io.notifiche.letture.crea). `fino_a` della risposta è
      * l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina che chiede, quello
-     * per cui ha calcolato l'istante: al backoffice non va.
+     * per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo la risposta del backoffice:
+     * a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo.
      */
     public function letture(Request $richiesta): JsonResponse
     {
@@ -117,7 +132,7 @@ final class NotificheDellaCornice
             throw new BackofficeNonRisponde('La risposta di POST /v1/io/notifiche/letture non è un istante di /v1.');
         }
 
-        return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a']]]);
+        return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a']], 'segnate_il' => Segno::adesso()]);
     }
 
     /**
