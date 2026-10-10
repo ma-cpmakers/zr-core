@@ -462,3 +462,59 @@ it('il README importa dall\'ingresso di zr-core solo nomi che l\'ingresso esport
         ->and(array_values(array_diff($importati($conUnNomeSbagliato), $esportati($ingresso))))->toBe(['usaCornice'])
         ->and(array_values(array_diff($importati($readme), $esportati($senzaIlLayout))))->toBe(['LayoutDellaCornice']);
 });
+
+// Sprint 11 · T1 (voce #1458): le due rotte delle notifiche dicono quando, e il README lo dice nella riga di ognuna.
+
+/** La riga della tabella «Le rotte della cornice» del README che comincia con quella rotta. Vuota se non c'è. */
+function rigaDellaRotta(string $readme, string $rotta): string
+{
+    preg_match('/^\| `'.preg_quote($rotta, '/').'`[^|\n]*\|[^\n]*\|$/m', $readme, $riga);
+
+    return $riga[0] ?? '';
+}
+
+it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $elenco = '| `GET /cornice/notifiche` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $cosaDice = fn (string $testo): array => [
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app}], aggiornati_il}`:'),
+        'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
+        'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a}, segnate_il}`:'),
+        'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo la risposta del backoffice'),
+    ];
+
+    // Il README con le due righe scambiate di rotta: ogni istante è detto, ma nella riga dell'altra. Poi il README senza la riga
+    // dell'elenco, e quello senza la riga delle letture: `aggiornati_il` resta detto altrove (i dati della cornice), e non conta.
+    $scambiate = strtr($readme, [$elenco => $letture, $letture => $elenco]);
+    $senzaLElenco = str_replace(rigaDellaRotta($readme, 'GET /cornice/notifiche')."\n", '', $readme);
+    $senzaLeLetture = str_replace(rigaDellaRotta($readme, 'POST /cornice/notifiche/letture')."\n", '', $readme);
+
+    expect($cosaDice($readme))->toBe([
+        'aggiornati_il nella risposta dell\'elenco' => true,
+        'che cos\'è aggiornati_il' => true,
+        'segnate_il nella risposta delle letture' => true,
+        'che cos\'è segnate_il' => true,
+    ])
+        ->and(substr_count($readme, $elenco))->toBe(1)
+        ->and(substr_count($readme, $letture))->toBe(1)
+        ->and($cosaDice($scambiate))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => false,
+            'che cos\'è aggiornati_il' => false,
+            'segnate_il nella risposta delle letture' => false,
+            'che cos\'è segnate_il' => false,
+        ])
+        ->and(str_contains($senzaLElenco, 'aggiornati_il'))->toBe(true)
+        ->and($cosaDice($senzaLElenco))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => false,
+            'che cos\'è aggiornati_il' => false,
+            'segnate_il nella risposta delle letture' => true,
+            'che cos\'è segnate_il' => true,
+        ])
+        ->and($cosaDice($senzaLeLetture))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => true,
+            'che cos\'è aggiornati_il' => true,
+            'segnate_il nella risposta delle letture' => false,
+            'che cos\'è segnate_il' => false,
+        ]);
+});
