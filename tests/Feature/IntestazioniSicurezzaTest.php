@@ -111,6 +111,7 @@ it('non entrano nemmeno: un jolly senza schema, un indirizzo IP, uno spazio o un
     'un nome senza punto' => 'https://example',
     'un dominio di una lettera sola' => 'https://example.c',
     'un punto in fondo' => 'https://a.example.com.',
+    'un trattino in fondo a un\'etichetta' => 'https://a-.example.com',
     'uno spazio davanti' => ' https://a.example.com',
     'uno spazio in fondo' => 'https://a.example.com ',
     'una tabulazione in fondo' => "https://a.example.com\t",
