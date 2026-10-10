@@ -355,6 +355,14 @@ it('lo script del minimo dice la versione più bassa di zr-auth che un vincolo a
     'un vincolo dalla 1.0' => ['^1.2', '1.2', 2, ''],
     'una minore che non è 0.<numero>' => ['^0.12.4', '0.1*', 2, ''],
     'un composer.json che non chiede zr-auth' => [null, '0.12', 2, ''],
+    // Review della PR #20, R2: un numero che la shell non sa confrontare (oltre i 63 bit `[ … -lt … ]` esce 2, e in un `if`
+    // vale «falso») non passa per buono. Lo script legge numeri fino a nove cifre, e davanti a uno più lungo si ferma.
+    'una patch più lunga di nove cifre, per prima' => ['^0.12.99999999999999999999 || ^0.12.4', '0.12', 2, ''],
+    'una patch più lunga di nove cifre, in fondo' => ['^0.12.4 || ^0.12.99999999999999999999', '0.12', 2, ''],
+    'una patch di dieci cifre' => ['^0.12.1000000000', '0.12', 2, ''],
+    'una patch di nove cifre' => ['^0.12.999999999', '0.12', 0, '0.12.999999999'],
+    'una minore più lunga di nove cifre' => ['^0.99999999999999999999.4', '0.99999999999999999999', 2, ''],
+    'una minore di nove cifre' => ['^0.999999999.4', '0.999999999', 0, '0.999999999.4'],
 ]);
 
 it('lo script del minimo non esegue ciò che legge: un comando scritto nel vincolo o nella minore resta testo, e lo script si ferma (sprint 17 · T3.2)', function () {
@@ -1150,6 +1158,8 @@ it('il README dice, nel punto «Le notifiche», una frase per cosa (sprint 12 ·
     'quando ne restano (sprint 17 · T2.1)' => ['Dopo una risposta con `altre: true` dice «Segna le altre»'],
     'fino a quando ne restano (sprint 17 · T2.1)' => ['finché quel giro di letture non è finito'],
     'se la richiesta fallisce (sprint 17 · T2.1)' => ['Se la richiesta fallisce il pulsante torna al testo che aveva prima del clic'],
+    // Review della PR #20, R3: il giro finisce anche altrove (un'altra scheda), e allora «Segna le altre» non torna.
+    'il giro finito altrove (sprint 17 · review, R3)' => ['o quando la campanella non conta più non lette perché il giro è finito altrove'],
 ]);
 
 it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
@@ -1481,11 +1491,11 @@ it('il README non dice più le frasi che la seconda lettura ha trovato vere solo
 // blocco della sessione»): quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, e le rotte lente
 // del modulo; non tutte. Il README di zr-core dice quel criterio e non una regola sua: ogni cosa che nomina è in quella sezione.
 
-/** La sezione «Il blocco della sessione» del README della zr-auth installata, su una riga sola. Vuota se non c'è. */
+/** La sezione «Il blocco della sessione» del README della zr-auth installata, su una riga sola. Vuota se non c'è, lei o il README. */
 function bloccoDellaSessioneInZrAuth(): string
 {
-    $readme = (string) file_get_contents(__DIR__.'/../../vendor/zeiras/zr-auth/README.md');
-    preg_match('/^## Il blocco della sessione.*?(?=^## |\z)/ms', $readme, $sezione);
+    $readme = __DIR__.'/../../vendor/zeiras/zr-auth/README.md';
+    preg_match('/^## Il blocco della sessione.*?(?=^## |\z)/ms', is_file($readme) ? (string) file_get_contents($readme) : '', $sezione);
 
     return suUnaRiga($sezione[0] ?? '');
 }
@@ -1493,8 +1503,11 @@ function bloccoDellaSessioneInZrAuth(): string
 it('ogni cosa che il README dice, nel limite della sessione, delle rotte del frontend che tengono il blocco è nel README della zr-auth installata, in «Il blocco della sessione» (sprint 17 · T2.2)', function (string $inZrCore, string $inZrAuth) {
     $limite = limiteDellaSessione((string) file_get_contents(__DIR__.'/../../README.md'));
 
+    // Review della PR #20, R5: il giro «ultima» installa una patch di zr-auth che zr-core non sceglie, e una sezione riscritta lì
+    // fa rosso questo confronto senza un cambio in zr-core. È il segnale che T2.2 vuole (il criterio è quello dell'ultima
+    // versione accettata), e il messaggio dice che cosa fare: il rosso non si legge come un guasto di zr-core.
     expect(str_contains($limite, $inZrCore))->toBe(true)
-        ->and(str_contains(bloccoDellaSessioneInZrAuth(), $inZrAuth))->toBe(true);
+        ->and(str_contains(bloccoDellaSessioneInZrAuth(), $inZrAuth))->toBe(true, "Nel README della zr-auth installata «Il blocco della sessione» non dice più «{$inZrAuth}»: va riletta. Se il criterio è lo stesso cambia la frase cercata in questo caso; se è cambiato cambia il README di zr-core, nel limite della sessione.");
 })->with([
     'la riga che zr-auth dà ai moduli' => ['`->bloccaSessione()`', '`->bloccaSessione()`'],
     'la rotta che apre la sessione' => ['`Sessione::apri()`', '`Sessione::apri()`'],
@@ -2016,6 +2029,13 @@ it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni 
     'l\'id è quello di io.workspace.elenca' => ['Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`'],
     'nessuna lettura in più' => ['sta nella riga che `Cornice::dati()` legge già, e non costa una lettura in più'],
     'dall\'id viene il colore' => ['È dall\'`id` che la cornice ricava il colore del workspace nel selettore'],
+    // Review della PR #20: da quale versione c'è (A4); un backoffice finto scritto a mano nei test di un frontend lo deve dare
+    // (R6); il workspace in cui la persona è entrata non lo porta, e dove lo si trova (R7).
+    'da quale versione (sprint 17 · review, A4)' => ['L\'`id` c\'è dalla `v1.7.0`'],
+    'un finto scritto a mano lo deve dare (sprint 17 · review, R6)' => ['nei test di un frontend un backoffice finto scritto a mano lo deve dare come dà `nome` e `slug`'],
+    'senza, la lettura fallisce (sprint 17 · review, R6)' => ['una riga senza `id` fa fallire `Cornice::dati()`'],
+    'il workspace della persona resta nome e slug (sprint 17 · review, R7)' => ['Il workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`'],
+    'il suo id si trova in aziende (sprint 17 · review, R7)' => ['il suo `id` è quello del workspace con lo stesso `slug` in `aziende`'],
 ]);
 
 it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — dall\'id, non si sceglie, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5)', function (string $frase) {
@@ -2037,6 +2057,9 @@ it('il README dice, nel punto del selettore di «La cornice», da dove viene il 
     'nome, slug e posto non contano' => ['cambiargli nome, slug o posto nell\'elenco non glielo cambia'],
     'nel tipo l\'id è facoltativo' => ['Nel tipo `DatiDellaCornice` l\'`id` di un workspace è facoltativo'],
     'senza id il pallino del design system' => ['un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé'],
+    // Review della PR #20, R8: «il suo colore» non vuol dire un colore diverso da quello di ogni altro.
+    'i colori si ripetono (sprint 17 · review, R8)' => ['quindi due workspace possono avere lo stesso'],
+    'a che cosa serve il colore (sprint 17 · review, R8)' => ['il colore aiuta a riconoscere un workspace, non lo distingue da tutti gli altri'],
 ]);
 
 /** Il capoverso del README sul colore di un workspace fuori dalla cornice, su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
@@ -2061,7 +2084,10 @@ it('il README dice, subito dopo il capoverso del registro, la regola che dà il 
 })->with([
     'nome e argomento, e da dove si importa' => ['lo dà `tonoDelWorkspace(id)`, dallo stesso ingresso'],
     'è la regola del selettore' => ['è la regola che usa il selettore della cornice, quindi per lo stesso `id` il tono è lo stesso'],
-    'che cos\'è id' => ['`id` è l\'`id` del workspace, com\'è nei dati della cornice'],
+    // Review della PR #20: da quale versione (A4), dove sta l'id nei dati (R7), e che due workspace possono avere lo stesso tono (R8).
+    'da quale versione (sprint 17 · review, A4)' => ['dallo stesso ingresso (dalla `v1.7.0`)'],
+    'che cos\'è id' => ['`id` è l\'`id` del workspace, com\'è in ogni workspace di `aziende` nei dati della cornice'],
+    'i toni si ripetono (sprint 17 · review, R8)' => ['Due workspace possono avere lo stesso tono'],
     'dà un tono del design system' => ['Dà il nome di uno dei toni che il design system ammette per un workspace'],
     'un nome, non un colore' => ['non un colore: il colore lo mette il CSS del design system (`var(--<tono>)`)'],
     'senza id nessun tono' => ['Un `id` vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`'],
@@ -2096,3 +2122,15 @@ it('i toni che il README elenca per tonoDelWorkspace sono quelli che il design s
         ->and($delReadme($senzaUnTono))->not->toBe($delDesignSystem($tipi))
         ->and($delReadme($senzaUnTono))->not->toContain('sky');
 });
+
+// Sprint 17 · review della PR #20, R1: i frontend compilano i sorgenti di zr-core dalla cartella del pacchetto col loro
+// tsconfig, e lì non li possono correggere. Il `tsc` di zr-core guarda quindi anche ciò che un tsconfig più stretto del suo
+// fermerebbe in quei sorgenti: una dichiarazione mai usata e un parametro mai usato.
+it('il tsc di zr-core si ferma su una dichiarazione o su un parametro mai usati, come quello di un frontend col tsconfig più stretto (sprint 17 · review, R1)', function (string $opzione) {
+    $tsconfig = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($tsconfig['compilerOptions'][$opzione] ?? null)->toBe(true);
+})->with([
+    'una dichiarazione mai usata' => ['noUnusedLocals'],
+    'un parametro mai usato' => ['noUnusedParameters'],
+]);
