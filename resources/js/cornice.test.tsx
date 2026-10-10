@@ -811,6 +811,210 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBeNull();
     });
 
+    // Sprint 11 · T2 (voce #1458). I dati della parte server portano un segno, l'istante in cui sono stati letti, e le due rotte
+    // dicono quando l'elenco è stato letto e quando la lettura è stata segnata: la cornice li confronta, e non torna a ciò che è
+    // più vecchio. Qui i dati arrivano alla `Cornice` come glieli dà la pagina, uno dopo l'altro.
+
+    /** Un istante della parte server nella forma del segno: il 6 ottobre 2026 alle 12:00 e `secondi`, in UTC coi microsecondi. */
+    const alSecondo = (secondi: number) => `2026-10-06T12:00:${String(secondi).padStart(2, '0')}.123456Z`;
+    /** I dati di una lettura della parte server: il segno (o nessuno, come nella `v1.2.0`) e le non lette contate allora. */
+    const letti = (il: string | undefined, nonLetteContate: number, altro: Partial<DatiDellaCornice> = {}): DatiDellaCornice => ({
+        ...dati,
+        non_lette: nonLetteContate,
+        ...(il === undefined ? {} : { aggiornati_il: il }),
+        ...altro,
+    });
+    /** Le due rotte con gli istanti della parte server: l'elenco letto in `lettoIl`, la lettura segnata in `segnateIl`. Senza un istante, la risposta è quella della `v1.2.1`. */
+    const rotteConGliIstanti = (elenco: unknown[], { lettoIl, segnateIl }: { lettoIl?: string; segnateIl?: string }) =>
+        vi.fn(async (indirizzo: string, opzioni?: RequestInit) =>
+            indirizzo === '/cornice/notifiche'
+                ? risposta({ data: elenco, ...(lettoIl === undefined ? {} : { aggiornati_il: lettoIl }) })
+                : risposta({ data: { fino_a: new Date(String(corpoDi(opzioni).fino_a)).toISOString() }, ...(segnateIl === undefined ? {} : { segnate_il: segnateIl }) }),
+        );
+    const vendite = { workspace: { nome: 'Vendite', slug: 'acme-vendite' } };
+    const nomeDelWorkspace = () => uno('.zr-workspace')?.textContent ?? null;
+
+    it('la cornice tiene i dati più recenti che ha visto: dati dello stesso workspace con un segno più indietro non cambiano il numero né il nome del workspace; con un segno più avanti valgono, anche col numero più basso (sprint 11 · T2.2, T2.3)', async () => {
+        await mostra(<Cornice dati={letti(alSecondo(5), 5)} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['5', 'Marketing']);
+
+        // Letti prima e arrivati dopo: una pagina ripresa dalla cronologia, una risposta in ritardo.
+        await mostra(<Cornice dati={letti(alSecondo(3), 3, { workspace: { nome: 'Marketing di prima', slug: 'acme-marketing' } })} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['5', 'Marketing']);
+
+        await mostra(<Cornice dati={letti(alSecondo(7), 2, { workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' } })} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['2', 'Marketing Europa']);
+
+        // Più indietro degli ultimi, anche se più avanti dei primi: i più recenti sono quelli della visita di prima.
+        await mostra(<Cornice dati={letti(alSecondo(6), 9)} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['2', 'Marketing Europa']);
+    });
+
+    it.each([
+        ['senza i decimali', '2026-10-06T12:00:03Z'],
+        ['coi millisecondi', '2026-10-06T12:00:03.123Z'],
+        ['senza la Z', '2026-10-06T12:00:03.123456'],
+        ['con un altro fuso', '2026-10-06T10:00:03.123456-02:00'],
+        ['che non è un testo', 20261006120003],
+    ])('un segno in un\'altra forma (%s) vale «senza segno»: quei dati valgono come nella v1.2.1, anche se l\'istante è più indietro di quello dei dati di prima (sprint 11 · T2.6)', async (_forma, altraForma) => {
+        await mostra(<Cornice dati={letti(alSecondo(5), 5)} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={letti(altraForma as string, 2)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('2');
+    });
+
+    it.each([
+        ['senza i decimali', '2026-10-06T12:00:09Z'],
+        ['coi millisecondi', '2026-10-06T12:00:09.123Z'],
+        ['senza la Z', '2026-10-06T12:00:09.123456'],
+        ['con un altro fuso', '2026-10-06T14:00:09.123456+02:00'],
+        ['che non è un testo', 20261006120009],
+    ])('l\'istante di una rotta in un\'altra forma (%s) vale «senza istante», e non è un errore: l\'elenco e la lettura contano per i dati con cui sono stati chiesti, come nella v1.2.1 (sprint 11 · T2.6)', async (_forma, altraForma) => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: altraForma as string, segnateIl: altraForma as string }));
+        await mostra(<Cornice dati={letti(alSecondo(1), 0)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(voci()).toHaveLength(3);
+        expect(campanella()).toBe('2');
+        // Dati letti prima di quell'istante: senza un istante da confrontare sono altri dati, e l'elenco non conta sul loro
+        // numero. Con zero non lette si vede: se l'istante contasse com'è, sulla campanella resterebbero le 2 dell'elenco.
+        await mostra(<Cornice dati={letti(alSecondo(3), 0)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(4), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(5), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
+    });
+
+    it('dati con lo stesso segno di quelli che la cornice ha valgono come li dà la pagina: un frontend che li ritocca nel browser lasciando il segno vede il numero e il nome nuovi, come nella v1.2.1 (sprint 11 · T2.6)', async () => {
+        const primi = letti(alSecondo(5), 5);
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['5', 'Marketing']);
+
+        // Una notifica letta dalla pagina, il nome cambiato in un modulo: gli stessi dati con un altro contenuto.
+        await mostra(<Cornice dati={{ ...primi, non_lette: 4, workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' } }} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['4', 'Marketing Europa']);
+    });
+
+    it('dopo «Segna tutte come lette» una copia degli stessi dati, con lo stesso segno (Avanti del browser), non rimette il numero: la lettura è stata segnata dopo quel segno (sprint 11 · T2.1)', async () => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(2), segnateIl: alSecondo(3) }));
+        const primi = letti(alSecondo(1), 12);
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+
+        await mostra(<Cornice dati={structuredClone(primi)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+    });
+
+    it.each([
+        ['più indietro dei dati di prima', 1],
+        ['fra i dati di prima e l\'elenco', 3],
+    ])('ciò che la cornice sa è di un workspace: i dati di un altro, con un segno %s, valgono, e l\'elenco del workspace di prima non conta sul loro numero (sprint 11 · T2.6)', async (_quando, secondi) => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(4) }));
+        await mostra(<Cornice dati={letti(alSecondo(2), 2)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+
+        await mostra(<Cornice dati={letti(alSecondo(secondi), 0, vendite)} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual([null, 'Vendite']);
+    });
+
+    it.each([
+        ['più indietro dei dati di prima', 1],
+        ['fra l\'elenco e la lettura', 5],
+    ])('ciò che la cornice sa è di un workspace: dopo «Segna tutte come lette» i dati di un altro, con un segno %s, mostrano il loro numero (sprint 11 · T2.6)', async (_quando, secondi) => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(4), segnateIl: alSecondo(6) }));
+        await mostra(<Cornice dati={letti(alSecondo(2), 12)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+
+        await mostra(<Cornice dati={letti(alSecondo(secondi), 5, vendite)} onLogout={esciSenzaEffetto} />);
+        expect([campanella(), nomeDelWorkspace()]).toStrictEqual(['5', 'Vendite']);
+    });
+
+    it('dopo «Segna tutte come lette» i dati letti fino all\'istante della lettura non rimettono il numero, anche se arrivano dopo e anche se sono altri dati; quelli letti dopo mostrano il loro, anche se è lo stesso (sprint 11 · T2.3, T2.4)', async () => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(2), segnateIl: alSecondo(5) }));
+        await mostra(<Cornice dati={letti(alSecondo(1), 12)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+
+        // Una visita partita prima del clic, o una pagina che il prefetch teneva: letta prima della lettura.
+        await mostra(<Cornice dati={letti(alSecondo(3), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        // Nello stesso istante della lettura: non dopo.
+        await mostra(<Cornice dati={letti(alSecondo(5), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(6), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
+    });
+
+    it('le non lette dell\'elenco contano sulla campanella finché i dati sono letti fino all\'istante dell\'elenco, anche se arrivano dopo; coi dati letti dopo vale il loro numero (sprint 11 · T2.5)', async () => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(4) }));
+        await mostra(<Cornice dati={letti(alSecondo(1), 0)} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+
+        // Una visita letta prima che il pannello caricasse l'elenco, arrivata dopo.
+        await mostra(<Cornice dati={letti(alSecondo(3), 0)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('2');
+        // Nello stesso istante dell'elenco: non dopo.
+        await mostra(<Cornice dati={letti(alSecondo(4), 1)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('2');
+        await mostra(<Cornice dati={letti(alSecondo(6), 0)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+    });
+
+    it('se le rotte non danno l\'istante, coi dati col segno l\'elenco e la lettura contano per i dati con cui sono stati chiesti, come nella v1.2.1: altri dati, letti dopo, mostrano il loro numero (sprint 11 · T2.6)', async () => {
+        vi.stubGlobal('fetch', rotte(notificheDelServer));
+        const primi = letti(alSecondo(1), 0);
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('2');
+        await mostra(<Cornice dati={letti(alSecondo(3), 0)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+
+        const secondi = letti(alSecondo(5), 12);
+        await mostra(<Cornice dati={secondi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={secondi} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={letti(alSecondo(7), 12)} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
+    });
+
+    it('coi dati senza segno e le rotte che danno l\'istante vale ancora l\'oggetto dei dati, come nella v1.2.1: un dato senza segno non è né più vecchio né più recente di un istante (sprint 11 · T2.6)', async () => {
+        vi.stubGlobal('fetch', rotteConGliIstanti(notificheDelServer, { lettoIl: alSecondo(4), segnateIl: alSecondo(6) }));
+        const primi = letti(undefined, 0);
+        await mostra(<Cornice dati={primi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('2');
+        await mostra(<Cornice dati={{ ...primi }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+
+        const secondi = letti(undefined, 12);
+        await mostra(<Cornice dati={secondi} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={secondi} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        await mostra(<Cornice dati={{ ...secondi }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('12');
+    });
+
     it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
         const naviga = vi.fn();

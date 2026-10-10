@@ -221,11 +221,11 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     // risposta di Inertia: lì Inertia non ridà l'oggetto di prima, e il difetto non si vedrebbe nemmeno senza il segno. Ciò che
     // la parte server finta fa (il segno a ogni lettura, `?segno=no`, la visita annullata) lo prova il suo test, in vitest: qui,
     // che la pagina la usa, col segno letto dal suo indirizzo, e che ciò che il client risponde a una visita è una lettura
-    // (`rispostaDi`), come la pagina iniziale: se rispondesse i dati così come sono, le visite uscirebbero senza segno.
+    // (`leggi`), come la pagina iniziale: se rispondesse i dati così come sono, le visite uscirebbero senza segno.
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'lettura'])
+        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'istanteDellaLettura', 'lettura'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -239,12 +239,71 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
             'lettura(' => 1,
             'lettura(propsDi[nome], segno)' => 1,
         ])
-        ->and($scritte(['rispostaDi(', 'props: { errors: {}, ...rispostaDi(nome) }', 'props: { errors: {}, ...rispostaDi(iniziale) }']))->toBe([
-            'rispostaDi(' => 3,
-            'props: { errors: {}, ...rispostaDi(nome) }' => 1,
-            'props: { errors: {}, ...rispostaDi(iniziale) }' => 1,
+        ->and($scritte(['leggi(', 'props: { errors: {}, ...letta, visita: visite }', 'props: { errors: {}, ...leggi(iniziale), visita: visite }']))->toBe([
+            'leggi(' => 3,
+            'props: { errors: {}, ...letta, visita: visite }' => 1,
+            'props: { errors: {}, ...leggi(iniziale), visita: visite }' => 1,
         ])
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
+});
+
+/**
+ * Quante volte un file della pagina di prova scrive ognuna di queste cose. Ciò che il client finto e le rotte finte fanno coi
+ * due tempi e con l'orologio lo provano i loro test, in vitest: i casi qui sotto, che la pagina di prova li usa così, e che ha
+ * gli appigli che le righe della UAT cliccano.
+ *
+ * @param  list<string>  $cose
+ * @return array<string, int>
+ */
+function scritteNellaPaginaDiProva(string $file, array $cose): array
+{
+    $testo = (string) file_get_contents(__DIR__.'/../../resources/demo/'.$file);
+
+    return array_combine($cose, array_map(fn (string $cosa) => substr_count($testo, $cosa), $cose));
+}
+
+it('sulla pagina di prova del layout una visita è letta quando arriva alla parte server finta, e contata solo quando la risposta è pronta (sprint 11 · T3.1)', function () {
+    // La lettura sta prima della funzione che il client chiama alla consegna, e fuori: lì dentro si conta soltanto. Letta alla
+    // consegna, una visita lenta porterebbe il segno di quando arriva, non di quando è partita; contata alla lettura, una
+    // visita annullata conterebbe.
+    $allArrivo = "    const letta = leggi(nome);\n\n    return () => {\n        montaggi = 0;\n        visite += 1;\n";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$allArrivo, 'visite += 1;']))->toBe([$allArrivo => 1, 'visite += 1;' => 1]);
+});
+
+it('la pagina di prova del layout ha la visita lenta, di sei secondi, alla Corta e alla Lunga (sprint 11 · T3.1)', function () {
+    $allaCorta = "<a href={indirizzoDi('corta', attesaLenta)} data-uat=\"vai-corta-lenta\" onClick={apri('corta', false, attesaLenta)}>UAT alla Corta lenta</a>";
+    $allaLunga = "<a href={indirizzoDi('lunga', attesaLenta)} data-uat=\"vai-lunga-lenta\" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$allaCorta, 'data-uat="vai-corta-lenta"', $allaLunga, 'data-uat="vai-lunga-lenta"']))->toBe([
+        $allaCorta => 1,
+        'data-uat="vai-corta-lenta"' => 1,
+        $allaLunga => 1,
+        'data-uat="vai-lunga-lenta"' => 1,
+    ])
+        // I sei secondi finiscono nell'indirizzo della visita, dove la parte server finta li legge.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', ['const attesaLenta = 6000;', "parametri.set('lenta', String(lenta));", 'router.visit(indirizzoDi(nome, lenta), { preserveScroll });']))->toBe([
+            'const attesaLenta = 6000;' => 1,
+            "parametri.set('lenta', String(lenta));" => 1,
+            'router.visit(indirizzoDi(nome, lenta), { preserveScroll });' => 1,
+        ]);
+});
+
+it('la pagina di prova del layout scarica prima la Corta col prefetch di Inertia, allo stesso indirizzo della visita, e la tiene trenta secondi (sprint 11 · T3.1)', function () {
+    $scarica = "<button type=\"button\" data-uat=\"prefetch-corta\" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$scarica, 'data-uat="prefetch-corta"', 'router.prefetch(']))->toBe([
+        $scarica => 1,
+        'data-uat="prefetch-corta"' => 1,
+        'router.prefetch(' => 1,
+    ]);
+});
+
+it('le rotte finte della pagina di prova del layout dicono quando sull\'orologio dei dati, e con ?segno=no non hanno un orologio (sprint 11 · T3.1)', function () {
+    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {';
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined);']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined);' => 1])
+        ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$conOrologio, 'aggiornati_il: ', 'segnate_il: ']))->toBe([$conOrologio => 1, 'aggiornati_il: ' => 1, 'segnate_il: ' => 1]);
 });
 
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
@@ -369,7 +428,7 @@ function suUnaRiga(string $testo): string
     return trim((string) preg_replace('/\s+/', ' ', $testo));
 }
 
-it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso, e il limite che c\'è ancora (sprint 10 · T2.5, review della PR)', function () {
+it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice così come arrivano, e che alla visita dopo sulla campanella vale il numero dei dati anche quando è lo stesso (sprint 10 · T2.5, review della PR; il limite di allora: sprint 11 · T2.7)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = function (string $testo): array {
         preg_match('/^\| `\{lingua, .*\}` \| la persona è entrata in un workspace \|$/m', $testo, $rigaDeiDati);
@@ -380,13 +439,10 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => str_contains(suUnaRiga($testo), 'I dati si danno alla cornice così come arrivano, a ogni richiesta'),
             'la campanella: anche quando è lo stesso' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'vale il loro numero, anche quando è lo stesso di prima'),
             'il difetto della v1.2.0' => str_contains(suUnaRiga($testo), 'resta ciò che c\'era'),
-            'il limite: una risposta letta prima di un\'azione' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'ogni risposta vale come dati nuovi, anche quando è stata letta prima di un\'azione e arriva dopo'),
-            'il limite: Indietro e Avanti' => str_contains(suUnaRiga(puntoDellaCampanella($testo)), 'con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora'),
         ];
     };
 
-    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto e non questo limite; e il README che non
-    // nomina il segno.
+    // Il README col punto della campanella della v1.2.0, che dichiarava il difetto; e il README che non nomina il segno.
     $campanellaDellaV120 = <<<'MD'
     - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
       elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
@@ -406,8 +462,6 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
-            'il limite: una risposta letta prima di un\'azione' => true,
-            'il limite: Indietro e Avanti' => true,
         ])
         ->and($cosaDice($dellaV120))->toBe([
             'il segno nella riga dei dati' => true,
@@ -415,8 +469,6 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => false,
             'il difetto della v1.2.0' => true,
-            'il limite: una risposta letta prima di un\'azione' => false,
-            'il limite: Indietro e Avanti' => false,
         ])
         ->and($cosaDice($senzaIlSegno))->toBe([
             'il segno nella riga dei dati' => false,
@@ -424,8 +476,56 @@ it('il README dice che cos\'è aggiornati_il, che i dati si danno alla cornice c
             'i dati così come arrivano' => true,
             'la campanella: anche quando è lo stesso' => true,
             'il difetto della v1.2.0' => false,
-            'il limite: una risposta letta prima di un\'azione' => true,
-            'il limite: Indietro e Avanti' => true,
+        ]);
+});
+
+it('il README dice che la cornice confronta i segni e non torna a dati più vecchi, dove vale e dove non arriva, e che i server del frontend devono avere l\'ora allineata; il limite della v1.2.1 non c\'è più (sprint 11 · T2.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $cosaDice = function (string $testo): array {
+        $campanella = suUnaRiga(puntoDellaCampanella($testo));
+
+        return [
+            'confronta i segni e non torna a dati più vecchi' => str_contains($campanella, 'La cornice confronta i segni e non torna a dati più vecchi'),
+            'una risposta letta prima del clic non rimette il numero' => str_contains($campanella, 'una risposta letta prima del clic — una visita già partita, o una pagina che il `prefetch` di Inertia tiene — non rimette il numero'),
+            'dove vale' => str_contains($campanella, 'Vale dove la cornice resta montata'),
+            'dove non arriva' => str_contains($campanella, 'con la cornice montata da ogni pagina quella nuova non sa niente di prima, e Indietro porta ancora il numero di allora'),
+            'gli orologi' => str_contains($campanella, 'i server del frontend devono avere l\'ora allineata'),
+            'il limite della v1.2.1' => str_contains($campanella, 'la cornice non confronta i segni') || str_contains($campanella, 'rimette sulla campanella il numero di prima'),
+        ];
+    };
+
+    // Il README col punto della campanella della v1.2.1, che dichiarava il limite.
+    $campanellaDellaV121 = <<<'MD'
+    - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
+      elenco che il pannello ha caricato con quegli stessi dati (una notifica può essere arrivata dopo). Coi dati nuovi — una
+      visita dopo, se il frontend tiene montata la cornice — vale il loro numero, anche quando è lo stesso di prima: dopo
+      «Segna tutte come lette» la campanella non ha un numero, e alla visita dopo mostra quello dei dati. Per la cornice i dati
+      sono nuovi quando è nuovo l'oggetto, e Inertia ridà l'oggetto di prima quando una visita allo stesso componente porta
+      dati uguali: per questo ogni lettura ha il suo segno (`aggiornati_il`), che la rende diversa dalle altre. Un limite
+      noto: la cornice non confronta i segni, e ogni risposta vale come dati nuovi, anche quando è stata letta prima di
+      un'azione e arriva dopo. Dopo «Segna tutte come lette», una risposta letta prima del clic — una visita già partita, o
+      una pagina che il `prefetch` di Inertia tiene — rimette sulla campanella il numero di prima, fino alla visita dopo; e
+      con Indietro e Avanti del browser la pagina ripresa dalla cronologia porta i dati di allora, col numero di allora.
+
+    MD;
+    $dellaV121 = str_replace(puntoDellaCampanella($readme), $campanellaDellaV121, $readme);
+
+    expect(puntoDellaCampanella($readme))->not->toBe('')
+        ->and($cosaDice($readme))->toBe([
+            'confronta i segni e non torna a dati più vecchi' => true,
+            'una risposta letta prima del clic non rimette il numero' => true,
+            'dove vale' => true,
+            'dove non arriva' => true,
+            'gli orologi' => true,
+            'il limite della v1.2.1' => false,
+        ])
+        ->and($cosaDice($dellaV121))->toBe([
+            'confronta i segni e non torna a dati più vecchi' => false,
+            'una risposta letta prima del clic non rimette il numero' => false,
+            'dove vale' => false,
+            'dove non arriva' => false,
+            'gli orologi' => false,
+            'il limite della v1.2.1' => true,
         ]);
 });
 
@@ -461,4 +561,60 @@ it('il README importa dall\'ingresso di zr-core solo nomi che l\'ingresso esport
         ->and($senzaIlLayout)->not->toBe($ingresso)
         ->and(array_values(array_diff($importati($conUnNomeSbagliato), $esportati($ingresso))))->toBe(['usaCornice'])
         ->and(array_values(array_diff($importati($readme), $esportati($senzaIlLayout))))->toBe(['LayoutDellaCornice']);
+});
+
+// Sprint 11 · T1 (voce #1458): le due rotte delle notifiche dicono quando, e il README lo dice nella riga di ognuna.
+
+/** La riga della tabella «Le rotte della cornice» del README che comincia con quella rotta. Vuota se non c'è. */
+function rigaDellaRotta(string $readme, string $rotta): string
+{
+    preg_match('/^\| `'.preg_quote($rotta, '/').'`[^|\n]*\|[^\n]*\|$/m', $readme, $riga);
+
+    return $riga[0] ?? '';
+}
+
+it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $elenco = '| `GET /cornice/notifiche` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $cosaDice = fn (string $testo): array => [
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app}], aggiornati_il}`:'),
+        'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
+        'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a}, segnate_il}`:'),
+        'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo la risposta del backoffice'),
+    ];
+
+    // Il README con le due righe scambiate di rotta: ogni istante è detto, ma nella riga dell'altra. Poi il README senza la riga
+    // dell'elenco, e quello senza la riga delle letture: `aggiornati_il` resta detto altrove (i dati della cornice), e non conta.
+    $scambiate = strtr($readme, [$elenco => $letture, $letture => $elenco]);
+    $senzaLElenco = str_replace(rigaDellaRotta($readme, 'GET /cornice/notifiche')."\n", '', $readme);
+    $senzaLeLetture = str_replace(rigaDellaRotta($readme, 'POST /cornice/notifiche/letture')."\n", '', $readme);
+
+    expect($cosaDice($readme))->toBe([
+        'aggiornati_il nella risposta dell\'elenco' => true,
+        'che cos\'è aggiornati_il' => true,
+        'segnate_il nella risposta delle letture' => true,
+        'che cos\'è segnate_il' => true,
+    ])
+        ->and(substr_count($readme, $elenco))->toBe(1)
+        ->and(substr_count($readme, $letture))->toBe(1)
+        ->and($cosaDice($scambiate))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => false,
+            'che cos\'è aggiornati_il' => false,
+            'segnate_il nella risposta delle letture' => false,
+            'che cos\'è segnate_il' => false,
+        ])
+        ->and(str_contains($senzaLElenco, 'aggiornati_il'))->toBe(true)
+        ->and($cosaDice($senzaLElenco))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => false,
+            'che cos\'è aggiornati_il' => false,
+            'segnate_il nella risposta delle letture' => true,
+            'che cos\'è segnate_il' => true,
+        ])
+        ->and($cosaDice($senzaLeLetture))->toBe([
+            'aggiornati_il nella risposta dell\'elenco' => true,
+            'che cos\'è aggiornati_il' => true,
+            'segnate_il nella risposta delle letture' => false,
+            'che cos\'è segnate_il' => false,
+        ]);
 });

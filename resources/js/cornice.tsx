@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, testi, type TestiDellaCornice } from './lingue';
 import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { caricaNotifiche, cerca, segnaLetteFinoA, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -25,8 +25,9 @@ export interface DatiDellaCornice {
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number;
     /**
-     * Il segno della lettura: l'istante in cui la parte server ha cominciato a leggere questi dati (UTC, coi microsecondi). La
-     * cornice non lo legge: c'è perché i dati di due letture non siano mai uguali (vedi «dati nuovi», più sotto).
+     * Il segno della lettura: l'istante in cui la parte server ha cominciato a leggere questi dati (UTC, coi microsecondi). I
+     * dati di due letture non sono mai uguali, e la cornice sa quali sono stati letti dopo: tiene i più recenti che ha visto
+     * (vedi «i dati più recenti», più sotto).
      */
     aggiornati_il?: string;
 }
@@ -200,7 +201,50 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
 }
 
-export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
+/**
+ * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
+ * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
+ * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`.
+ */
+function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
+    const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
+
+    return questi.workspace.slug === quelli.workspace.slug && diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli;
+}
+
+/** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
+interface Saputo {
+    con: DatiDellaCornice;
+    il: string | undefined;
+}
+
+/**
+ * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
+ * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
+ * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
+ * stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
+ */
+function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): boolean {
+    if (saputo === undefined || dati.workspace.slug !== saputo.con.workspace.slug) {
+        return false;
+    }
+    const deiDati = segno(dati.aggiornati_il);
+
+    return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
+}
+
+export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
+    // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
+    // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
+    // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
+    // loro segno dice che sono stati letti prima: allora restano quelli che ci sono. Con lo stesso segno vale la pagina, come
+    // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
+    // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
+    const [tenuti, setTenuti] = useState(dellaPagina);
+    const dati = lettiPrima(dellaPagina, tenuti) ? tenuti : dellaPagina;
+    if (dati !== tenuti) {
+        setTenuti(dati);
+    }
     const t = testi(dati.lingua);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
@@ -235,25 +279,28 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         : undefined;
 
     // Le notifiche si caricano a ogni apertura del pannello, non con la pagina. Conta l'ultima richiesta partita: una più vecchia
-    // che risponde dopo non sovrascrive la lista. Dell'ultimo elenco arrivato restano le non lette, coi dati che la pagina aveva
-    // quando è stato chiesto: un elenco è più recente del numero di quei dati, e più vecchio dei dati arrivati dopo. Restano
-    // anche mentre il pannello si ricarica, o se il caricamento fallisce.
+    // che risponde dopo non sovrascrive la lista. Dell'ultimo elenco arrivato restano le non lette, coi dati che la cornice aveva
+    // quando è stato chiesto e l'istante in cui la parte server lo ha letto: un elenco è più recente del numero dei dati letti
+    // fino a quell'istante, e più vecchio dei dati letti dopo. Restano anche mentre il pannello si ricarica, o se il
+    // caricamento fallisce.
     //
-    // «Dati nuovi», qui e più sotto, vuol dire un altro oggetto `dati`. Con la cornice montata fra una visita e l'altra Inertia
-    // ridà alla pagina l'oggetto di prima quando i dati della visita sono uguali in profondità: per questo la parte server mette
-    // in ogni lettura il segno `aggiornati_il`, e i dati di due letture non sono mai uguali. La cornice il segno non lo confronta.
+    // Quali dati sono più recenti lo dicono gli istanti della parte server: il segno dei dati (`aggiornati_il`) contro quello
+    // dell'elenco e quello di «Segna tutte come lette» (`nonPiuRecentiDi`). Senza un istante da una parte — dati senza segno, una
+    // rotta che non lo dà — «dati nuovi» vuol dire un altro oggetto `dati`, come prima che la cornice confrontasse i segni; e
+    // lì, con la cornice montata fra una visita e l'altra, Inertia ridà alla pagina l'oggetto di prima quando i dati della
+    // visita sono uguali in profondità.
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[] }>({ stato: 'ready', elenco: [] });
-    const [caricate, setCaricate] = useState<{ con: DatiDellaCornice; nonLette: number }>();
+    const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     const ultimaRichiesta = useRef(0);
     const carica = () => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         setNotifiche({ stato: 'loading', elenco: [] });
         caricaNotifiche().then(
-            (elenco) => {
+            ({ elenco, il }) => {
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'ready', elenco });
-                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length });
+                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
                 }
             },
             () => {
@@ -266,19 +313,20 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
     // caricate, anche quelle oltre la prima pagina. Fin lì e non fino all'ora del browser: ciò che arriva dopo, mai visto,
-    // resta da leggere. Alla risposta le caricate sono lette e il numero dei dati non conta più, finché la pagina ha gli
-    // stessi dati: coi dati nuovi della parte server (un'altra visita, con la cornice montata) vale il loro numero, anche se è
-    // lo stesso di prima del clic (il segno della lettura li fa nuovi). Se la richiesta fallisce non cambia niente, e il
-    // pulsante resta per riprovare. Un clic mentre è in volo non ne fa partire un'altra.
-    const [segnate, setSegnate] = useState<DatiDellaCornice>();
+    // resta da leggere. Alla risposta le caricate sono lette e il numero dei dati non conta più, finché i dati non sono stati
+    // letti dopo l'istante in cui la parte server le ha segnate: una risposta letta prima del clic e arrivata dopo non rimette
+    // il numero, e coi dati letti dopo (un'altra visita, con la cornice montata) vale il loro numero, anche se è lo stesso di
+    // prima del clic. Se la richiesta fallisce non cambia niente, e il pulsante resta per riprovare. Un clic mentre è in volo
+    // non ne fa partire un'altra.
+    const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
-    // L'ultimo elenco arrivato è stato chiesto con questi dati: è più recente del loro numero.
-    const elencoDiQuestiDati = caricate?.con === dati;
-    // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco chiesto con gli stessi dati: una
-    // può essere arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati nuovi (un'altra
-    // visita, con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio. Senza
-    // il numero nei dati le conta il design system.
-    const nonLette = dati.non_lette === undefined ? undefined : Math.max(segnate === dati ? 0 : dati.non_lette, elencoDiQuestiDati ? caricate.nonLette : 0);
+    // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
+    const elencoDiQuestiDati = caricate !== undefined && nonPiuRecentiDi(dati, caricate);
+    // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco più recente: una può essere
+    // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra visita,
+    // con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio. Senza il
+    // numero nei dati le conta il design system.
+    const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette, elencoDiQuestiDati ? caricate.nonLette : 0);
     const nonLetteInElenco = notifiche.elenco.filter((notifica) => !notifica.letta).length;
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
@@ -290,20 +338,22 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
         leStaSegnando.current = true;
         const questi = dati;
         const elencoDelClic = ultimaRichiesta.current;
+        let il: string | undefined;
         try {
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente.
-            await segnaLetteFinoA(finoA, caricate.con.workspace.slug);
+            il = await segnaLetteFinoA(finoA, caricate.con.workspace.slug);
         } catch {
             // Non cambia niente: il pulsante resta, per riprovare.
             return;
         } finally {
             leStaSegnando.current = false;
         }
-        setSegnate(questi);
+        setSegnate({ con: questi, il });
         if (ultimaRichiesta.current === elencoDelClic && elencoDiQuestiDati) {
+            // Le caricate sono lette dall'istante della lettura: per i dati letti fin lì non ce ne sono di non lette.
             setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
-            setCaricate({ con: questi, nonLette: 0 });
+            setCaricate({ con: questi, nonLette: 0, il });
         } else {
             // Il pannello è stato ricaricato fra il clic e la risposta, e quell'elenco è di prima della lettura; oppure
             // l'elenco del clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che
@@ -352,8 +402,8 @@ export function Cornice({ dati, product, nav = [], onLogout, naviga = (indirizzo
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
-            // Il numero dei dati, e mai meno delle non lette di un elenco chiesto con gli stessi dati (sopra): l'elenco si
-            // carica solo aprendo la campanella.
+            // Il numero dei dati, e mai meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo
+            // aprendo la campanella.
             unreadCount={nonLette}
             notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, t, adesso))}
             notificationsState={notifiche.stato}

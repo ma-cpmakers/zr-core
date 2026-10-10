@@ -154,7 +154,7 @@ it('due letture in due istanti diversi hanno due aggiornati_il diversi, e quello
     Carbon::setTestNow(Carbon::parse($dopo, 'UTC'));
     $laSeconda = Cornice::dati()['aggiornati_il'];
 
-    // Come stringhe: è così che il segno si ordina. Oggi la cornice non lo confronta: le basta che sia diverso da quello di prima.
+    // Come stringhe: è così che il segno si ordina, ed è così che la cornice lo confronta nel browser (`segno()` in servizi.ts).
     expect($laPrima)->toBe($segnoDiPrima)
         ->and($laSeconda)->toBe($segnoDiDopo)
         ->and(strcmp($laSeconda, $laPrima))->toBe(1);
@@ -168,6 +168,16 @@ it('le sei chiavi di prima restano al loro posto, e il segno è l\'ultima (sprin
     backoffice();
 
     expect(array_keys(Cornice::dati()))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il']);
+});
+
+it('le non lette si contano per prime, subito dopo il segno: fra il segno e il numero non passa un\'altra lettura (sprint 11 · review R3)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostra(3), ...aziendeEWorkspace()]);
+
+    Cornice::dati();
+
+    // Il numero è il dato che la cornice confronta col segno: contato per ultimo sarebbe più fresco del suo segno di tre letture.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->first())->toBe('/v1/io');
 });
 
 it('lo stato di ogni app è quello di app.elenca, chiesto col gettone del workspace e non con quello dell\'accesso (T3.1)', function () {

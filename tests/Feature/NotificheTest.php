@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
@@ -17,6 +18,8 @@ use Zeiras\Auth\Testing\Rotte;
 // Sprint 6 · T1 (voce #1318): l'elenco porta anche `app`, il codice dell'app da cui viene la notifica, com'è nel backoffice.
 // Sprint 6 · T2 (voce #1318): POST /cornice/notifiche/letture segna lette le notifiche fino a un istante, con una richiesta
 // sola al backoffice.
+// Sprint 11 · T1 (voce #1458): le due rotte dicono quando, sull'orologio della parte server e nella forma del segno dei dati:
+// l'elenco quando ha cominciato a leggere (`aggiornati_il`), la lettura quando il backoffice ha risposto (`segnate_il`).
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -59,6 +62,17 @@ function percorsoDi(Request $richiesta): ?string
     return parse_url($richiesta->url(), PHP_URL_PATH) ?: null;
 }
 
+/**
+ * Una risposta del backoffice che porta l'orologio avanti di tre secondi: ciò che la parte server prende prima di chiamarlo e
+ * ciò che prende dopo sono due istanti diversi. Si chiama dentro il finto, quando la richiesta arriva.
+ */
+function treSecondiDopo(mixed $corpo): mixed
+{
+    Carbon::setTestNow(Carbon::now()->addSeconds(3));
+
+    return Http::response($corpo);
+}
+
 /** Ogni risposta delle rotte della cornice è senza gettone. */
 function senzaGettone(TestResponse $risposta): TestResponse
 {
@@ -67,7 +81,8 @@ function senzaGettone(TestResponse $risposta): TestResponse
     return $risposta;
 }
 
-it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta e app, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null (sprint 5 · T2.1; sprint 6 · T1.1)', function () {
+it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta e app, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null; e l\'istante della lettura (sprint 5 · T2.1; sprint 6 · T1.1; sprint 11 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.elenca risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
@@ -85,7 +100,7 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
         ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm'],
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota'],
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null],
-    ]]);
+    ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
     Http::assertSentCount(1);
@@ -207,7 +222,8 @@ it('se il backoffice risponde alla lettura senza la notifica è un errore, mai u
     'un\'altra notifica' => [200, ['data' => notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z')]],
 ]);
 
-it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo fino_a, lo stesso, e il gettone del workspace, e risponde con l\'istante del backoffice (sprint 6 · T2.1)', function (string $finoA, string $delBackoffice) {
+it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo fino_a, lo stesso, e il gettone del workspace, e risponde con l\'istante del backoffice e con quello in cui le ha segnate (sprint 6 · T2.1; sprint 11 · T1.2)', function (string $finoA, string $delBackoffice) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.letture.crea risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
@@ -217,7 +233,7 @@ it('POST /cornice/notifiche/letture manda al backoffice una sola POST col solo f
     });
 
     senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA($finoA)))
-        ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice]]);
+        ->assertOk()->assertExactJson(['data' => ['fino_a' => $delBackoffice], 'segnate_il' => '2026-10-10T01:15:07.000321Z']);
     Http::assertSentCount(1);
     // Al backoffice va solo l'istante: lo slug serve alla rotta, e resta qui.
     Http::assertSent(fn (Request $richiesta) => $richiesta->method() === 'POST' && percorsoDi($richiesta) === '/v1/io/notifiche/letture'
@@ -420,3 +436,67 @@ it('se il backoffice non risponde all\'elenco, o dà notifiche che non sono di /
     'app è true' => [200, ['data' => [['id' => 'uat-n1', 'app' => true, 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
     'la seconda notifica senza app' => [200, ['data' => [notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', null), ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta_il' => null]], 'successivo' => null]],
 ]);
+
+it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server comincia a leggere l\'elenco, preso prima di chiamare il backoffice, in UTC coi microsecondi anche con l\'applicazione in un altro fuso (sprint 11 · T1.1)', function () {
+    // L'applicazione è a Roma, e lì sono le 03:15: l'istante resta in UTC. Testbench rimette il fuso a ogni test.
+    config(['app.timezone' => 'Europe/Rome']);
+    date_default_timezone_set('Europe/Rome');
+    Carbon::setTestNow(Carbon::parse('2026-10-10 03:15:07.000321', 'Europe/Rome'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La risposta del backoffice porta l'orologio avanti: un istante preso dopo sarebbe di tre secondi più tardi.
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche' => treSecondiDopo(['data' => [notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null)], 'successivo' => null]),
+    });
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm']],
+        'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
+    ]);
+
+    expect(strlen((string) $risposta->json('aggiornati_il')))->toBe(27)
+        // Il backoffice ha risposto, e l'orologio è avanti: l'istante è di prima.
+        ->and(Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z'))->toBe('2026-10-10T01:15:10.000321Z');
+});
+
+it('segnate_il di POST /cornice/notifiche/letture è l\'istante preso dopo che il backoffice ha risposto, in UTC coi microsecondi anche con l\'applicazione in un altro fuso (sprint 11 · T1.2)', function () {
+    config(['app.timezone' => 'Europe/Rome']);
+    date_default_timezone_set('Europe/Rome');
+    Carbon::setTestNow(Carbon::parse('2026-10-10 03:15:07.000321', 'Europe/Rome'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La risposta del backoffice porta l'orologio avanti: un istante preso prima di chiamarlo sarebbe di tre secondi prima.
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/letture' => treSecondiDopo(['data' => ['fino_a' => '2026-10-08T10:00:00.123Z']]),
+    });
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))->assertOk()->assertExactJson([
+        'data' => ['fino_a' => '2026-10-08T10:00:00.123Z'],
+        'segnate_il' => '2026-10-10T01:15:10.000321Z',
+    ]);
+
+    expect(strlen((string) $risposta->json('segnate_il')))->toBe(27);
+});
+
+it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ricerca restano com\'erano, e un errore del backoffice sull\'elenco o sulle letture non ne porta (sprint 11 · T1.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/uat-n3/lettura' => Http::response(['data' => notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', '2026-10-07T09:05:00.456Z')]),
+        '/v1/ricerca' => Http::response(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']], 'successivo' => null]),
+        // All'elenco e alle letture il backoffice non risponde.
+        default => Http::response('', 503),
+    });
+
+    senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+    senzaGettone($this->getJson('cornice/ricerca?q=uat'))
+        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']]]);
+
+    foreach ([
+        $this->getJson('cornice/notifiche'),
+        $this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
+    ] as $errore) {
+        expect(senzaGettone($errore)->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+            ->and(substr_count((string) $errore->getContent(), 'aggiornati_il'))->toBe(0)
+            ->and(substr_count((string) $errore->getContent(), 'segnate_il'))->toBe(0);
+    }
+});
