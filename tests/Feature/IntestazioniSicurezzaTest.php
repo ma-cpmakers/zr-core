@@ -1,5 +1,17 @@
 <?php
 
+use Illuminate\Config\Repository;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
+use Monolog\Handler\AbstractProcessingHandler;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\LogRecord;
+use Zeiras\Auth\Ingresso;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 
 // Sprint 16 · T1 (voce #1472). La CSP di un frontend di Zeiras composta da tre strati: quella di tutti, ciò che un modulo
@@ -239,3 +251,394 @@ it('uno scarto dice la direttiva e il motivo su una riga corta: mai il valore in
     'una direttiva con un a capo' => [["script-src\ndefault-src" => ['https://a.example.com']]],
     'un testo smisurato al posto della mappa' => [str_repeat("a\n", 35000)],
 ]);
+
+// Sprint 16 · T2 (voce #1472). La classe è anche il middleware: un frontend lo mette primo dei globali con una riga, e ogni
+// risposta di Laravel esce con le cinque intestazioni. Le sorgenti del modulo arrivano da `config/zr-core.php`; una pagina chiede
+// le sue per nome. Qui il frontend è quello finto dei test (Testbench), coi middleware globali di un'app Laravel.
+
+/** Le cinque intestazioni che il middleware scrive su ogni risposta, coi valori per intero: ognuna una volta sola. */
+const LE_CINQUE_INTESTAZIONI = [
+    'Strict-Transport-Security' => ['max-age=31536000'],
+    'Content-Security-Policy' => [CSP_DI_TUTTI],
+    'Referrer-Policy' => ['strict-origin-when-cross-origin'],
+    'Permissions-Policy' => ['accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'],
+    'X-Content-Type-Options' => ['nosniff'],
+];
+
+/** Una risposta che il middleware non ha toccato: nessuna delle cinque. */
+const NESSUNA_INTESTAZIONE = [
+    'Strict-Transport-Security' => [],
+    'Content-Security-Policy' => [],
+    'Referrer-Policy' => [],
+    'Permissions-Policy' => [],
+    'X-Content-Type-Options' => [],
+];
+
+/** La CSP di tutti con Turnstile sulla pagina: quella di un modulo senza aggiunte sue, su una pagina che chiede l'insieme. */
+const CSP_DI_TUTTI_CON_TURNSTILE = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/** Quella di zr-home con Turnstile e, in più, un'origine per le immagini. */
+const CSP_DI_HOME_CON_TURNSTILE_E_IMMAGINI = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' https://fonts.googleapis.com; img-src 'self' https://cdn.example.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/** Un registro che non scrive: come un file di log che non si apre. */
+final class RegistroCheLancia extends AbstractProcessingHandler
+{
+    protected function write(LogRecord $record): void
+    {
+        throw new RuntimeException('il log non scrive');
+    }
+}
+
+/** Una FormRequest senza regole: Laravel la dà al controller come copia della richiesta. */
+final class ModuloDiProva extends FormRequest
+{
+    /** @return array<string, mixed> */
+    public function rules(): array
+    {
+        return [];
+    }
+}
+
+/**
+ * I valori che la risposta porta per ognuna delle cinque intestazioni: una lista vuota se non c'è, due valori se è scritta
+ * due volte.
+ *
+ * @return array<string, list<string|null>>
+ */
+function intestazioniDiSicurezzaDi(TestResponse $risposta): array
+{
+    $valori = [];
+    foreach (array_keys(LE_CINQUE_INTESTAZIONI) as $nome) {
+        $valori[$nome] = $risposta->headers->all($nome);
+    }
+
+    return $valori;
+}
+
+/** Come fa un frontend in bootstrap/app.php, `$middleware->prepend(IntestazioniSicurezza::class)`: il primo dei globali. */
+function primoDeiGlobali(): void
+{
+    app(HttpKernel::class)->prependMiddleware(IntestazioniSicurezza::class);
+}
+
+/**
+ * Le rotte del frontend finto, fuori da ogni gruppo: una pagina, una risposta JSON, un rimando, un controller rotto e una
+ * pagina che chiede per nome le sorgenti di Turnstile.
+ */
+function rotteDiProva(): void
+{
+    // Senza il dettaglio dell'errore: il 500 è la pagina d'errore di Laravel, come in produzione.
+    config(['app.debug' => false]);
+    Route::get('/prova/pagina', fn () => '<p>una pagina</p>');
+    Route::get('/prova/json', fn () => ['esito' => 'ok']);
+    Route::get('/prova/rimando', fn () => redirect('/prova/pagina'));
+    Route::get('/prova/rotta', fn () => throw new RuntimeException('un controller rotto'));
+    Route::get('/prova/registrati', function () {
+        IntestazioniSicurezza::perLaPagina('turnstile');
+
+        return 'registrati';
+    });
+}
+
+/** Ciò che zr-home scrive nel suo config/zr-core.php: i font per sempre, Turnstile per le pagine che lo chiedono. */
+function configurazioneDiHome(): void
+{
+    config(['zr-core.csp' => AGGIUNTE_DI_HOME, 'zr-core.csp_pagine' => ['turnstile' => AGGIUNTE_DI_TURNSTILE]]);
+}
+
+/** La manutenzione accesa, come con `php artisan down`: il 503 nasce in un middleware globale, prima delle rotte. */
+function inManutenzione(): void
+{
+    config(['app.maintenance.driver' => 'array']);
+    app()->maintenanceMode()->activate(['status' => 503, 'retry' => null, 'refresh' => null, 'secret' => null, 'redirect' => null, 'template' => null, 'except' => []]);
+}
+
+/** Il log dell'app in memoria: un canale vero di Laravel, con un registro di Monolog che tiene le righe. */
+function logInMemoria(): void
+{
+    config(['logging.default' => 'in-memoria', 'logging.channels.in-memoria' => ['driver' => 'monolog', 'handler' => TestHandler::class]]);
+}
+
+/** @return list<string> le righe d'avviso scritte nel log in memoria, nell'ordine */
+function avvisiNelLog(): array
+{
+    $righe = [];
+    foreach (Log::channel('in-memoria')->getLogger()->getHandlers()[0]->getRecords() as $riga) {
+        if ($riga->level === Level::Warning) {
+            $righe[] = $riga->message;
+        }
+    }
+
+    return $righe;
+}
+
+it('col middleware primo dei globali ogni risposta di Laravel porta le cinque intestazioni, coi valori per intero e una volta sola, e non X-Frame-Options (sprint 16 · T2.1)', function (string $caso) {
+    primoDeiGlobali();
+    rotteDiProva();
+    if ($caso === 'il 503 della manutenzione') {
+        inManutenzione();
+    }
+
+    $risposta = match ($caso) {
+        'una 200' => $this->get('/prova/pagina')->assertOk()->assertSee('una pagina'),
+        'una 404' => $this->get('/prova/non-esiste')->assertNotFound(),
+        'una risposta JSON' => $this->getJson('/prova/json')->assertOk()->assertExactJson(['esito' => 'ok']),
+        'un rimando 302' => $this->get('/prova/rimando')->assertStatus(302)->assertRedirect('/prova/pagina'),
+        'un 500, da un\'eccezione in un controller' => $this->get('/prova/rotta')->assertStatus(500),
+        'il 503 della manutenzione' => $this->get('/prova/pagina')->assertStatus(503),
+    };
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe(LE_CINQUE_INTESTAZIONI)
+        ->and($risposta->headers->has('X-Frame-Options'))->toBeFalse();
+})->with(['una 200', 'una 404', 'una risposta JSON', 'un rimando 302', 'un 500, da un\'eccezione in un controller', 'il 503 della manutenzione']);
+
+it('in coda ai globali il middleware lavora, ma il 503 della manutenzione esce senza le cinque intestazioni: per questo il frontend lo mette primo (sprint 16 · T2.1)', function () {
+    app(HttpKernel::class)->pushMiddleware(IntestazioniSicurezza::class);
+    rotteDiProva();
+
+    expect(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertOk()))->toBe(LE_CINQUE_INTESTAZIONI);
+
+    inManutenzione();
+
+    expect(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertStatus(503)))->toBe(NESSUNA_INTESTAZIONE);
+});
+
+it('le sorgenti del modulo arrivano da zr-core.csp, e una pagina chiede le sue per nome: Turnstile entra nella CSP della sola pagina che lo chiede, e la risposta dopo torna a quella del modulo (sprint 16 · T2.2)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    configurazioneDiHome();
+
+    expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
+        ->and($this->get('/prova/registrati')->assertOk()->assertSee('registrati')->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE])
+        ->and($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
+        ->and($this->get('/prova/non-esiste')->assertNotFound()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
+        ->and(intestazioniDiSicurezzaDi($this->get('/prova/registrati')->assertOk()))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [CSP_DI_HOME_CON_TURNSTILE]]);
+});
+
+it('il nome della pagina arriva al middleware anche da un controller che riceve una FormRequest, che è una copia della richiesta (sprint 16 · T2.2)', function () {
+    primoDeiGlobali();
+    configurazioneDiHome();
+    $eUnaCopia = null;
+    Route::post('/prova/modulo', function (ModuloDiProva $modulo) use (&$eUnaCopia) {
+        $eUnaCopia = $modulo !== request();
+        IntestazioniSicurezza::perLaPagina('turnstile');
+
+        return 'modulo';
+    });
+
+    $risposta = $this->post('/prova/modulo', ['nome' => 'UAT'])->assertOk()->assertSee('modulo');
+
+    expect($eUnaCopia)->toBeTrue()
+        ->and($risposta->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE]);
+});
+
+it('perLaPagina vuole un nome: una mappa di sorgenti è un errore di chi la chiama, non una CSP più larga (sprint 16 · T2.2)', function () {
+    expect(fn () => IntestazioniSicurezza::perLaPagina(AGGIUNTE_DI_TURNSTILE))->toThrow(TypeError::class);
+});
+
+it('un nome non dichiarato non aggiunge niente, e un valore della richiesta non arriva né alla CSP né al log: dalla query, dal corpo, da un\'intestazione, o passato come nome (sprint 16 · T2.2)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    configurazioneDiHome();
+    logInMemoria();
+    Route::post('/prova/nome', function () {
+        IntestazioniSicurezza::perLaPagina((string) request()->input('pagina'));
+
+        return 'nome';
+    });
+    $ostile = 'https://ostile.example.com';
+
+    // Una pagina che non chiede niente, con la richiesta piena: niente di ciò che porta decide la CSP.
+    $piena = $this->withHeaders(['Content-Security-Policy' => 'script-src '.$ostile, 'X-Csp-Pagina' => 'turnstile'])
+        ->get('/prova/pagina?pagina=turnstile&turnstile=1&csp_pagine=turnstile&script-src='.urlencode($ostile))->assertOk();
+    expect($piena->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])->and(avvisiNelLog())->toBe([]);
+
+    // Un controller che passa come nome un valore della richiesta: un nome non dichiarato non aggiunge niente.
+    foreach ([$ostile, 'turnstile; script-src '.$ostile, 'non-dichiarato', 'Turnstile', ''] as $nome) {
+        expect($this->post('/prova/nome', ['pagina' => $nome])->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME]);
+    }
+
+    expect(avvisiNelLog())->toHaveCount(5)
+        ->and(array_unique(avvisiNelLog()))->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toContain('pagina')->not->toContain('ostile')->not->toContain('non-dichiarato')->not->toContain('Turnstile');
+});
+
+it('una mappa al posto del nome della pagina non lancia e non aggiunge niente, e lascia un avviso (sprint 16 · T1.5)', function () {
+    primoDeiGlobali();
+    configurazioneDiHome();
+    logInMemoria();
+    Route::get('/prova/mappa', function () {
+        // Il nome sta su un attributo della richiesta: qui qualcuno ci scrive una mappa di sorgenti, senza passare da perLaPagina.
+        IntestazioniSicurezza::perLaPagina('turnstile');
+        $attributo = array_search('turnstile', request()->attributes->all(), true);
+        throw_unless(is_string($attributo), LogicException::class, 'il nome non è su un attributo della richiesta');
+        request()->attributes->set($attributo, ['script-src' => ['https://a.example.com']]);
+
+        return 'mappa';
+    });
+
+    $risposta = $this->get('/prova/mappa')->assertOk()->assertSee('mappa');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [CSP_DI_HOME]])
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toContain('pagina')->not->toContain('a.example.com');
+});
+
+it('una risposta con `Referrer-Policy: no-referrer` come unico valore lo tiene; in ogni altro caso esce quella di tutti, una volta sola (sprint 16 · T2.3)', function (array|string|null $dellaRisposta, array $attesa) {
+    primoDeiGlobali();
+    Route::get('/prova/provenienza', function () use ($dellaRisposta) {
+        $risposta = response('provenienza');
+        if ($dellaRisposta !== null) {
+            $risposta->headers->set('Referrer-Policy', $dellaRisposta);
+        }
+
+        return $risposta;
+    });
+
+    $risposta = $this->get('/prova/provenienza')->assertOk()->assertSee('provenienza');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Referrer-Policy' => $attesa]);
+})->with([
+    'la risposta non ne ha' => [null, ['strict-origin-when-cross-origin']],
+    'no-referrer, da solo' => ['no-referrer', ['no-referrer']],
+    'no-referrer e un altro valore' => [['no-referrer', 'unsafe-url'], ['strict-origin-when-cross-origin']],
+    'un altro valore e no-referrer' => [['unsafe-url', 'no-referrer'], ['strict-origin-when-cross-origin']],
+    'no-referrer due volte' => [['no-referrer', 'no-referrer'], ['strict-origin-when-cross-origin']],
+    'due valori in uno solo' => ['no-referrer, unsafe-url', ['strict-origin-when-cross-origin']],
+    'un altro valore solo, più largo' => ['unsafe-url', ['strict-origin-when-cross-origin']],
+    'un altro valore solo, più stretto' => ['same-origin', ['strict-origin-when-cross-origin']],
+    'quella di tutti' => ['strict-origin-when-cross-origin', ['strict-origin-when-cross-origin']],
+]);
+
+it('il rimando dell\'ingresso di zr-auth tiene il suo no-referrer, e prende le altre quattro intestazioni (sprint 16 · T2.3)', function () {
+    primoDeiGlobali();
+    Route::get('/prova/ingresso', fn () => redirect()->away('https://home.example.com/ingresso?state=abc')->withHeaders(Ingresso::INTESTAZIONI));
+
+    $risposta = $this->get('/prova/ingresso')->assertStatus(302);
+
+    expect(Ingresso::INTESTAZIONI['Referrer-Policy'] ?? null)->toBe('no-referrer')
+        ->and(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Referrer-Policy' => ['no-referrer']]);
+});
+
+it('il middleware non lancia mai: con una configurazione di forma sbagliata la risposta esce col suo stato e con le cinque intestazioni, la CSP porta le sole sorgenti ammesse, e lo scarto lascia nel log una riga d\'avviso (sprint 16 · T2.4)', function (mixed $csp, mixed $cspPagine, string $cspAttesa, array $nellAvviso) {
+    primoDeiGlobali();
+    rotteDiProva();
+    logInMemoria();
+    config(['zr-core.csp' => $csp, 'zr-core.csp_pagine' => $cspPagine]);
+
+    $risposta = $this->get('/prova/registrati')->assertOk()->assertSee('registrati');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [$cspAttesa]])
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toContain(...$nellAvviso)
+        ->and(preg_match('/[\x00-\x1F\x7F]/', avvisiNelLog()[0]))->toBe(0);
+
+    // E su una risposta d'errore: lo stato resta il suo.
+    expect($this->get('/prova/non-esiste')->assertNotFound()->headers->all('X-Content-Type-Options'))->toBe(['nosniff']);
+})->with([
+    'zr-core.csp è un testo' => ["font-src 'self'", ['turnstile' => AGGIUNTE_DI_TURNSTILE], CSP_DI_TUTTI_CON_TURNSTILE, ['modulo']],
+    'zr-core.csp_pagine è un numero' => [AGGIUNTE_DI_HOME, 7, CSP_DI_HOME, ['csp_pagine']],
+    'una sorgente non ammessa fra quelle del modulo' => [
+        ['font-src' => ["'self'"], 'img-src' => ['https://*.example.com', 'https://cdn.example.com']], ['turnstile' => AGGIUNTE_DI_TURNSTILE],
+        CSP_DI_HOME_CON_TURNSTILE_E_IMMAGINI, ['modulo', 'img-src'],
+    ],
+    'una sorgente non ammessa fra quelle della pagina' => [
+        AGGIUNTE_DI_HOME, ['turnstile' => ['script-src' => ["'unsafe-inline'", 'https://challenges.cloudflare.com'], 'frame-src' => ['https://challenges.cloudflare.com']]],
+        CSP_DI_HOME_CON_TURNSTILE, ['pagina', 'script-src'],
+    ],
+    'l\'insieme della pagina è un testo' => [AGGIUNTE_DI_HOME, ['turnstile' => 'script-src https://challenges.cloudflare.com'], CSP_DI_HOME, ['pagina']],
+    'una direttiva a cui non si aggiunge' => [['font-src' => ["'self'"], 'frame-ancestors' => ['https://a.example.com']], [], CSP_DI_HOME, ['modulo', 'frame-ancestors']],
+]);
+
+it('senza niente da scartare nel log non esce nessun avviso, nemmeno senza la configurazione di zr-core; con qualcosa da scartare, una riga per risposta (sprint 16 · T2.4)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    configurazioneDiHome();
+    logInMemoria();
+
+    $this->get('/prova/pagina')->assertOk();
+    $this->get('/prova/registrati')->assertOk();
+    $this->get('/prova/non-esiste')->assertNotFound();
+    $this->get('/prova/rimando')->assertStatus(302);
+    // Una configurazione messa in cache prima di installare questa versione non ha la chiave `zr-core`: vale come vuota.
+    config(['zr-core' => null]);
+    expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI])
+        ->and(avvisiNelLog())->toBe([]);
+
+    // Quattro scarti nella configurazione del modulo: una riga per risposta, non una per scarto.
+    config(['zr-core' => ['csp' => ['img-src' => ['https://*.example.com'], 'script-src' => ["'unsafe-inline'", 'data:'], 'worker-src' => ["'self'"]], 'csp_pagine' => []]]);
+    expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI])
+        ->and(avvisiNelLog())->toHaveCount(1);
+    $this->get('/prova/non-esiste')->assertNotFound();
+
+    expect(avvisiNelLog())->toHaveCount(2)
+        ->and(avvisiNelLog()[1])->toBe(avvisiNelLog()[0])
+        ->and(avvisiNelLog()[0])->toContain('img-src', 'script-src', 'worker-src');
+});
+
+it('la riga d\'avviso resta corta anche con molti scarti: dice quanti sono e ne mostra i primi (sprint 16 · T2.4)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    logInMemoria();
+    config(['zr-core.csp' => ['script-src' => array_map(fn (int $numero) => 'https://*.dominio-'.$numero.'.example.com', range(1, 40))]]);
+
+    expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI])
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(strlen(avvisiNelLog()[0]))->toBeLessThan(1500)
+        ->and(avvisiNelLog()[0])->toContain('40', 'dominio-1.')->not->toContain('dominio-40.');
+});
+
+it('un log che lancia non diventa un 500 senza intestazioni: la risposta esce col suo stato e con le cinque (sprint 16 · T2.4)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    config(['logging.default' => 'rotto', 'logging.channels.rotto' => ['driver' => 'monolog', 'handler' => RegistroCheLancia::class]]);
+    config(['zr-core.csp' => ['img-src' => ['https://*.example.com']]]);
+
+    // Il log lancia davvero: senza, il caso non proverebbe niente.
+    expect(fn () => Log::warning('una riga di prova'))->toThrow(RuntimeException::class, 'il log non scrive');
+
+    expect(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertOk()->assertSee('una pagina')))->toBe(LE_CINQUE_INTESTAZIONI)
+        ->and(intestazioniDiSicurezzaDi($this->get('/prova/non-esiste')->assertNotFound()))->toBe(LE_CINQUE_INTESTAZIONI)
+        ->and(intestazioniDiSicurezzaDi($this->get('/prova/rimando')->assertStatus(302)))->toBe(LE_CINQUE_INTESTAZIONI);
+});
+
+it('se la configurazione non si legge, la risposta esce lo stesso col suo stato: la CSP di tutti senza aggiunte, le altre quattro, e un avviso (sprint 16 · T2.4)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    configurazioneDiHome();
+    logInMemoria();
+    app()->instance('config', new class(config()->all()) extends Repository
+    {
+        public function get($key, $default = null)
+        {
+            if (is_string($key) && str_starts_with($key, 'zr-core')) {
+                throw new RuntimeException('la configurazione di zr-core non si legge');
+            }
+
+            return parent::get($key, $default);
+        }
+    });
+
+    $risposta = $this->get('/prova/registrati')->assertOk()->assertSee('registrati');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe(LE_CINQUE_INTESTAZIONI)
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toContain('RuntimeException')->not->toContain('non si legge');
+});
+
+it('zr-core non registra il middleware da sé: col solo provider una risposta non ha le intestazioni, e con la riga del frontend le ha (sprint 16 · T2.6)', function () {
+    rotteDiProva();
+    $kernel = app(HttpKernel::class);
+    $delleRotte = collect(Route::getRoutes()->getRoutes())->flatMap(fn ($rotta) => $rotta->gatherMiddleware())->all();
+
+    expect($kernel->hasMiddleware(IntestazioniSicurezza::class))->toBeFalse()
+        ->and(Arr::flatten($kernel->getMiddlewareGroups()))->not->toContain(IntestazioniSicurezza::class)
+        ->and($delleRotte)->not->toContain(IntestazioniSicurezza::class)
+        ->and(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertOk()))->toBe(NESSUNA_INTESTAZIONE)
+        ->and(intestazioniDiSicurezzaDi($this->get('/prova/non-esiste')->assertNotFound()))->toBe(NESSUNA_INTESTAZIONE);
+
+    // La riga del frontend: da qui le ha.
+    primoDeiGlobali();
+
+    expect(intestazioniDiSicurezzaDi($this->get('/prova/pagina')->assertOk()))->toBe(LE_CINQUE_INTESTAZIONI);
+});

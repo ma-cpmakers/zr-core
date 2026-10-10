@@ -1,7 +1,9 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Process\Process;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -1153,3 +1155,101 @@ it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di quest
         ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
         ->and($package)->not->toHaveKey('dependencies');
 });
+
+// Sprint 16 · T2 (voce #1472). Il pacchetto porta la sua configurazione, `config/zr-core.php`: è lì che un modulo scrive le
+// sorgenti che aggiunge alla CSP di tutti (Zeiras\Core\Http\IntestazioniSicurezza). Di partenza non aggiunge niente; il file del
+// frontend vince su quello del pacchetto; lo zip del tag lo porta.
+
+it('porta config/zr-core.php, e di partenza non aggiunge niente alla CSP di tutti: csp e csp_pagine vuoti, e nessuna altra chiave (sprint 16 · T2.5)', function () {
+    $file = __DIR__.'/../../config/zr-core.php';
+    expect(is_file($file))->toBeTrue();
+
+    expect(require $file)->toBe(['csp' => [], 'csp_pagine' => []]);
+});
+
+it('unisce la configurazione di partenza a quella del frontend: senza un file suo valgono i valori di partenza, e una chiave scritta nel suo file vince (sprint 16 · T2.5)', function (array $delFrontend, array $csp, array $cspPagine) {
+    expect(config('zr-core'))->toBe(['csp' => [], 'csp_pagine' => []]);
+
+    // Come in un frontend: Laravel carica prima il suo config/zr-core.php, poi il provider ci unisce i valori di partenza.
+    config(['zr-core' => $delFrontend]);
+    (new ZrCoreServiceProvider(app()))->register();
+
+    expect(config('zr-core.csp'))->toBe($csp)
+        ->and(config('zr-core.csp_pagine'))->toBe($cspPagine)
+        ->and(array_keys(config('zr-core')))->toEqualCanonicalizing(['csp', 'csp_pagine']);
+})->with([
+    'solo csp' => [['csp' => ['font-src' => ["'self'"]]], ['font-src' => ["'self'"]], []],
+    'solo csp_pagine' => [['csp_pagine' => ['turnstile' => ['frame-src' => ['https://challenges.cloudflare.com']]]], [], ['turnstile' => ['frame-src' => ['https://challenges.cloudflare.com']]]],
+    'un file vuoto' => [[], [], []],
+]);
+
+it('la configurazione si pubblica col tag zr-core-config, in config/zr-core.php del frontend, uguale a quella del pacchetto; e non col tag che i frontend lanciano con --force a ogni composer update (sprint 16 · T2.5)', function () {
+    $origine = realpath(__DIR__.'/../../config/zr-core.php');
+    $dichiarati = collect(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'zr-core-config'))
+        ->mapWithKeys(fn (string $a, string $da) => [$a => realpath($da)])->all();
+
+    File::delete(config_path('zr-core.php'));
+    try {
+        $uscita = Artisan::call('vendor:publish', ['--tag' => 'zr-core-config']);
+        $pubblicato = File::exists(config_path('zr-core.php')) ? File::get(config_path('zr-core.php')) : null;
+    } finally {
+        File::delete(config_path('zr-core.php'));
+    }
+
+    expect($origine)->toBeString()
+        ->and($dichiarati)->toBe([config_path('zr-core.php') => $origine])
+        ->and($uscita)->toBe(0)
+        ->and($pubblicato)->toBe(File::get((string) $origine))
+        // `laravel-assets --force` riscriverebbe a ogni aggiornamento le sorgenti che il modulo ha scritto nel suo file.
+        ->and(array_values(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'laravel-assets')))->not->toContain(config_path('zr-core.php'))
+        ->and(array_values(ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, 'zr-core-favicon')))->not->toContain(config_path('zr-core.php'));
+});
+
+/**
+ * Un albero finto: quello di HEAD con dei file in più o cambiati, scritto con un indice a parte (GIT_INDEX_FILE). Il working
+ * tree e l'indice vero non si toccano; in .git restano solo oggetti che nessuno nomina.
+ *
+ * @param  array<string, string>  $file  percorso → contenuto
+ * @return string lo sha dell'albero
+ */
+function alberoFintoCon(array $file): string
+{
+    $radice = dirname(__DIR__, 2);
+    $indice = sys_get_temp_dir().'/zr-core-indice-'.bin2hex(random_bytes(8));
+    $git = fn (array $comando, ?string $ingresso = null): string => trim((new Process(['git', ...$comando], $radice, ['GIT_INDEX_FILE' => $indice], $ingresso))->mustRun()->getOutput());
+
+    try {
+        $git(['read-tree', 'HEAD']);
+        foreach ($file as $percorso => $contenuto) {
+            $git(['update-index', '--add', '--cacheinfo', '100644,'.$git(['hash-object', '-w', '--stdin'], $contenuto).','.$percorso]);
+        }
+
+        return $git(['write-tree']);
+    } finally {
+        File::delete($indice);
+    }
+}
+
+/** @return array{0: int|null, 1: string} il codice d'uscita della guardia dello zip su quell'albero, e ciò che dice */
+function guardiaDelloZipSu(string $albero): array
+{
+    $guardia = new Process(['bash', '.github/zip-del-pacchetto.sh', $albero], dirname(__DIR__, 2));
+    $guardia->run();
+
+    return [$guardia->getExitCode(), $guardia->getOutput()];
+}
+
+it('la guardia dello zip, su un albero finto: config/zr-core.php è fra ciò che serve a chi installa, e se .gitattributes lo toglie dallo zip la guardia dice che manca; una cartella dal nome simile resta fuori (sprint 16 · T2.5)', function (array $file, int $uscita, array $dice) {
+    [$codice, $testo] = guardiaDelloZipSu(alberoFintoCon($file));
+
+    expect($codice)->toBe($uscita)
+        ->and($testo)->toContain(...$dice);
+})->with([
+    'l\'albero di HEAD, com\'è' => [[], 0, ['tutti del pacchetto e nessuno che manca']],
+    'con config/zr-core.php' => [['config/zr-core.php' => "<?php\n\nreturn [];\n"], 0, ['tutti del pacchetto e nessuno che manca']],
+    'con config/zr-core.php, che .gitattributes toglie dallo zip' => [
+        ['config/zr-core.php' => "<?php\n\nreturn [];\n", '.gitattributes' => file_get_contents(__DIR__.'/../../.gitattributes')."/config export-ignore\n"],
+        1, ['manca ciò che serve a chi installa', 'config/zr-core.php'],
+    ],
+    'con una cartella dal nome simile' => [['configurazioni/zr-core.php' => "<?php\n\nreturn [];\n"], 1, ['ciò che non serve a chi installa', 'configurazioni/zr-core.php']],
+]);
