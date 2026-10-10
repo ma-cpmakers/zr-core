@@ -7,7 +7,10 @@
 // mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
 // «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la POST
 // col corpo e gli header, e così una richiesta annullata e la risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
-// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Non entra nel pacchetto.
+// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
+// notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
+// tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
+// entra nel pacchetto.
 const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
@@ -46,8 +49,12 @@ export const notifichePartite = {
     quante: () => partite,
 };
 
-/** Mette le rotte finte al posto di `fetch`. Il workspace della «sessione» lo dice la pagina di prova, ogni volta che serve. */
-export function rotteFinte(slugDellaSessione: () => string | undefined): void {
+/**
+ * Mette le rotte finte al posto di `fetch`. Il workspace della «sessione» lo dice la pagina di prova, ogni volta che serve.
+ * `istante` è l'orologio della sua parte server, lo stesso che mette il segno nei dati: con quello le due rotte delle notifiche
+ * dicono quando, e i loro istanti si confrontano con quelli dei dati; senza, non lo dicono.
+ */
+export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {
     const fetchDelBrowser = window.fetch.bind(window);
     const cookieCsrf = 'XSRF-TOKEN';
     document.cookie = `${cookieCsrf}=uat-gettone-csrf%3D%3D; path=/`;
@@ -79,6 +86,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined): void {
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
             });
         }
+        // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
+        const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
         if (percorso === '/cornice/notifiche') {
             caricamenti += 1;
@@ -89,7 +98,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined): void {
                 notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm' });
             }
 
-            return json({ data: notificheDiProva });
+            // Senza orologio l'istante manca, e nel JSON la chiave non c'è.
+            return json({ data: notificheDiProva, aggiornati_il: lettoIl });
         }
         if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
             letture += 1;
@@ -97,8 +107,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined): void {
                 return json({ errore: 'uat_errore' }, 502);
             }
             const { fino_a: finoA, workspace } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown };
-            const istante = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
-            if (Number.isNaN(istante) || typeof workspace !== 'string' || workspace === '') {
+            const finoAIl = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
+            if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
             }
             // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione.
@@ -106,12 +116,13 @@ export function rotteFinte(slugDellaSessione: () => string | undefined): void {
                 return json({ errore: 'workspace_diverso' }, 409);
             }
             for (const notifica of notificheDiProva) {
-                if (new Date(notifica.creata_il).getTime() <= istante) {
+                if (new Date(notifica.creata_il).getTime() <= finoAIl) {
                     notifica.letta = true;
                 }
             }
 
-            return json({ data: { fino_a: new Date(istante).toISOString() } });
+            // A notifiche segnate: ciò che è stato letto prima di adesso può non saperlo.
+            return json({ data: { fino_a: new Date(finoAIl).toISOString() }, segnate_il: istante?.() });
         }
 
         return json({ errore: 'non_trovato' }, 404);
