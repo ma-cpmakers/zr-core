@@ -49,7 +49,11 @@ workspace, le sue aziende coi loro workspace, le notifiche non lette — li dà 
 di `zr-auth` e da quattro letture del backoffice: `app.elenca` e `io.mostra` col gettone del workspace,
 `io.aziende.elenca` e `io.workspace.elenca` col gettone della persona. Il gettone resta nella sessione: nei dati non c'è.
 
-zr-core richiede `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11` (la CI lo prova con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10 e l'ultima 0.11), installato e
+L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: può cambiare da una versione all'altra (dalla
+`v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
+prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
+
+zr-core richiede `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11 || ^0.12` (la CI lo prova con l'ultima 0.6, l'ultima 0.7, l'ultima 0.8, l'ultima 0.9, l'ultima 0.10, l'ultima 0.11 e l'ultima 0.12), installato e
 configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json`
 del frontend, accanto a quello di zr-core.
 
@@ -88,7 +92,9 @@ più vecchi.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli che zr-auth ha messo in sessione all'ingresso nel workspace: un cambio fatto dopo (il nome,
-la lingua) arriva alla cornice al prossimo ingresso.
+la lingua) arriva alla cornice al prossimo ingresso. Dalla 0.12 zr-auth ha `Sessione::aggiorna`, che rimette il nome e la
+lingua della sessione uguali a quelli di `io.mostra`: zr-core in questa versione non la chiama; se la chiama il frontend
+prima di `Cornice::dati()`, la cornice ha il nome e la lingua nuovi da quella richiesta.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
@@ -103,9 +109,9 @@ esce.
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
-| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a}, segnate_il}`: segna lette, con una richiesta sola, le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; `segnate_il` è l'istante preso dopo la risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; con migliaia di non lette il backoffice può non rispondere in tempo: è un errore (5xx) anche se può averle segnate lo stesso, e la stessa richiesta ripetuta non cambia niente |
+| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dalla prima; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato |
 | `GET /cornice/ricerca?q=` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}` |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
@@ -132,6 +138,7 @@ cornice === null ? pagina : (
         dati={cornice}                    // i dati di Cornice::dati(), condivisi dalla parte server
         product="pm"                      // solo nei prodotti: l'id del registro; senza, è una pagina di app.zeiras.com
         nav={[{ group: '…', items: [ … ] }]} // le voci del prodotto, sotto il suo pulsante
+        active="board"                    // l'id della voce attiva della barra; null: nessuna
         onLogout={esci}                   // obbligatorio: «Esci» chiude la sessione ovunque, ed è il frontend a farlo
     >
         {pagina}
@@ -139,12 +146,18 @@ cornice === null ? pagina : (
 );
 ```
 
-- **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese.
+- **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese. Le non lette hanno due
+  testi, uno per una sola e uno per ogni altro numero: una lingua con più forme di plurale (il polacco, l'arabo) oggi non
+  entra con un file solo.
 - **Il menu Prodotti** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
+- **La voce attiva** della barra è quella che ha l'id dato in `active`; senza `active` è la Dashboard. Una pagina che non
+  sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto,
+  e non serve inventare un id che la barra non ha. Il prodotto aperto lo dice `product`, non `active`: con `null` il suo
+  pulsante resta com'è.
 - **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
@@ -164,10 +177,17 @@ cornice === null ? pagina : (
   Vale dove la cornice resta montata, sotto il layout della cornice: con la cornice montata da ogni pagina quella nuova
   non sa niente di prima, e Indietro porta ancora il numero di allora. I segni vengono dall'orologio della parte server: i
   server del frontend devono avere l'ora allineata. Coi dati senza il segno la cornice non ha niente da confrontare: i
-  dati sono nuovi quando è nuovo l'oggetto, e vale sempre ciò che dà la pagina.
-- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
-  lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
-  non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
+  dati sono nuovi quando è nuovo l'oggetto, e vale sempre ciò che dà la pagina. Per il lettore di schermo la campanella si
+  chiama col suo numero («Notifiche, 3 non lette»), e con una sola al singolare («Notifiche, 1 non letta»). Il design
+  system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello: il
+  pallino dice «non letta» quando sulla campanella ce n'è una sola, «non lette» negli altri casi.
+- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo del suo
+  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora nella lingua («5 minuti fa», «ieri»,
+  «1 ott»), in «Per me» come in «Tutte» (il backoffice non dice per chi è una notifica). Il titolo lo dice `tipo`, e i
+  titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto: una notifica di un tipo che zr-core non
+  conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»), mai il codice del tipo. Un tipo di notifica
+  nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Di che prodotto è
+  lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
@@ -178,11 +198,27 @@ cornice === null ? pagina : (
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
   un numero, fino alla prossima visita che porta dati letti dopo (vedi «La campanella»), col numero del backoffice; se la
   richiesta fallisce, nel pannello non
-  cambia niente e il pulsante resta per riprovare. Con migliaia di notifiche non lette la scrittura nel backoffice può
-  durare più di 5 secondi (dichiarato da zr-backoffice, non misurato), che è quanto zr-auth aspetta ogni risposta del
-  backoffice se il frontend non ha cambiato quel tempo: in quel caso la richiesta fallisce e il pannello resta com'era,
-  anche se il backoffice può averle segnate lo stesso — il pannello le ricarica alla prossima apertura della campanella —
-  e riprovare non fa danni, perché il metodo ripetuto non cambia niente. Il pulsante c'è quando la campanella ha un numero
+  cambia niente e il pulsante resta per riprovare. Il backoffice ne segna 5000 per chiamata, e la parte server lo richiama
+  finché ne restano, entro i due tetti della rotta: con più di 25.000 non lette, o se i richiami durano più di 10 secondi,
+  un clic non le segna tutte. Allora la risposta dice `altre: true`, e la cornice non fa finta che siano tutte lette: la
+  campanella tiene il numero dei dati, il pannello si ricarica e «Segna tutte come lette» resta, per continuare con un
+  altro clic. Mentre il pannello si ricarica l'elenco di prima resta in pagina e il pulsante resta dov'è, col fuoco della
+  tastiera. Due cose la cornice oggi non le dice: che una parte è stata
+  segnata — se le segnate non sono fra quelle in pagina, il pannello ricaricato è uguale a prima, come dopo un clic
+  fallito — e che la richiesta è in corso: fino alla risposta, che con migliaia di non lette può arrivare dopo circa 15
+  secondi, il pulsante resta com'è. Il pannello del design system non ha un posto per un avviso; il testo del pulsante lo
+  dà zr-core, e in questa versione è sempre lo stesso. Se una chiamata al backoffice dura più di quanto zr-auth aspetta ogni risposta (5 secondi, se il frontend non
+  ha cambiato quel tempo) la richiesta fallisce e il pannello resta com'era, anche se il backoffice può averne segnate — il
+  pannello le ricarica alla prossima apertura della campanella — e riprovare non fa danni, perché il metodo ripetuto non
+  cambia niente. Un limite, che non è solo di questa rotta: una richiesta lenta, quando finisce, riscrive la sessione com'era
+  all'inizio e ne rimanda il cookie (lo fa Laravel). Se mentre «Segna tutte come lette» gira — fino a circa 15 secondi, solo
+  con più di 5000 non lette — la persona esce o entra in un altro workspace da un'altra scheda, la sessione torna quella di
+  prima: dopo un cambio di workspace la persona si ritrova in quello di prima; dopo un'uscita torna la sessione coi gettoni
+  di prima: se l'uscita li ha chiusi nel backoffice, la prima chiamata la richiude; se all'uscita il backoffice non ha
+  risposto — la sessione si chiude lo stesso — possono valere ancora, fino alla loro scadenza. zr-core da solo non lo
+  chiude: serve il blocco della sessione di Laravel sia su questa rotta sia sulle rotte che fanno uscire o entrare in un
+  workspace — quelle del frontend e il ricevitore dell'ingresso di zr-auth —, per più dei 10 secondi predefiniti: messo da
+  una parte sola non ferma niente. Il pulsante c'è quando la campanella ha un numero
   e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette. Una notifica e «Vedi tutte» aprono
   `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `GET /cornice/ricerca?q=` dal secondo carattere, 300 ms dopo l'ultimo tasto; una
@@ -241,11 +277,13 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   `product` non deve arrivare alla cornice.
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
   (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
-  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Le funzioni
-  possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e due:
-  due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche
-  quello dell'altra). Il tipo di ciò che accetta è `CorniceDellaPagina`. Dove la cornice non c'è (senza dati, o fuori dal
-  layout) non fa niente.
+  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Nessuna voce
+  attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
+  valore, e quello della pagina vince anche su una voce data dal layout; ciò che la pagina non dà, o dà `undefined`, resta
+  del layout. Le funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo
+  involucro, non in tutti e due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando
+  una si smonta sparisce anche quello dell'altra). Il tipo di ciò che accetta è `CorniceDellaPagina`. Dove la cornice non
+  c'è (senza dati, o fuori dal layout) non fa niente.
 - **Ciò che dà la pagina** arriva alla cornice subito dopo il suo montaggio, prima che il browser disegni: un effetto di
   montaggio della pagina trova l'area ancora com'era (col margine, anche se la pagina dà `flush`), e chi la misura lo fa
   con un `ResizeObserver`. Con l'SSR di Inertia gli effetti non girano: l'HTML del server esce senza ciò che dà

@@ -26,7 +26,8 @@ const niente: CorniceDellaPagina = {};
 
 /**
  * Ciò che la pagina ha dato, dopo che lo ha dato di nuovo: solo i suoi sei nomi, e senza quelli che non dà (anche scritti
- * `undefined`), che restano del layout. Se nessun valore è cambiato resta l'oggetto di prima, e il layout non si rende di nuovo.
+ * `undefined`), che restano del layout. `null` è un valore: `active: null` (nessuna voce attiva) resta, e vince sul layout.
+ * Se nessun valore è cambiato resta l'oggetto di prima, e il layout non si rende di nuovo.
  */
 function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina): CorniceDellaPagina {
     const dopo: CorniceDellaPagina = Object.fromEntries(nomiDellaPagina.flatMap((nome) => (adesso[nome] === undefined ? [] : [[nome, adesso[nome]]])));
@@ -85,11 +86,11 @@ function CorniceMontata({ children, ...dellaCornice }: CorniceProps) {
 
 /**
  * Dalla pagina, o dal suo involucro, mentre è montata sotto `LayoutDellaCornice`: dà alla cornice le voci del prodotto (`nav`),
- * la voce attiva (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza
- * margine (`flush`). Vince sulle props del layout, e quando la pagina se ne va ciò che aveva dato sparisce. Le funzioni possono
- * essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e due: due chiamate
- * non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche quello dell'altra).
- * Dove la cornice non c'è (fuori dal layout, o senza dati) non fa niente.
+ * la voce attiva (`active`; `null`: nessuna), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e
+ * l'area senza margine (`flush`). Vince sulle props del layout, e quando la pagina se ne va ciò che aveva dato sparisce. Le
+ * funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e
+ * due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche
+ * quello dell'altra). Dove la cornice non c'è (fuori dal layout, o senza dati) non fa niente.
  */
 export function useCornice(dellaPagina: CorniceDellaPagina): void {
     const daAllaCornice = useContext(ContestoDellaCornice);

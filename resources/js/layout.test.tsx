@@ -462,3 +462,43 @@ describe('useCornice', () => {
         expect(contaDopo.montaggi).toBe(1);
     });
 });
+
+// Sprint 12 · T5 (voce #1464). Sotto il layout `active: null` arriva alla cornice come `null`, dal layout o dalla pagina: nessuna
+// voce della barra è accesa. `null` è un valore: quello della pagina vince anche su una voce data dal layout.
+describe('nessuna voce attiva, sotto il layout', () => {
+    /** I nomi di tutte le voci della barra: «nessuna accesa» non vuol dire niente se la barra è vuota. */
+    const nomiDelleVoci = () => tutti('a.zr-nav-item').map((voce) => voce.querySelector('.zr-nav-label')?.textContent);
+
+    it('active={null} dato a LayoutDellaCornice arriva alla cornice come null: nessuna voce è accesa, nemmeno la Dashboard (sprint 12 · T5.3)', async () => {
+        await visita(dati, <PaginaA key="1" />, { nav: voci, active: null });
+
+        expect(nomiDelleVoci()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'UAT A', 'UAT B', 'Impostazioni']);
+        expect(accese()).toStrictEqual([]);
+    });
+
+    it('active: null dato dalla pagina con useCornice vince sulla voce che dà il layout: nessuna è accesa; quando la pagina se ne va torna quella del layout, e al ritorno di nuovo nessuna (sprint 12 · T5.3)', async () => {
+        const delLayout = { nav: voci, active: 'uat-a' };
+        await visita(dati, <PaginaCheDa key="1" cose={{ active: null }} />, delLayout);
+        expect(nomiDelleVoci()).toContain('UAT A');
+        expect(accese()).toStrictEqual([]);
+
+        await visita(dati, <PaginaB key="2" />, delLayout);
+        expect(accese()).toStrictEqual(['UAT A']);
+
+        await visita(dati, <PaginaCheDa key="3" cose={{ active: null }} />, delLayout);
+        expect(accese()).toStrictEqual([]);
+    });
+
+    it('col layout che dà null la voce data dalla pagina vince, e quando la pagina se ne va torna nessuna (sprint 12 · T5.3)', async () => {
+        const delLayout = { nav: voci, active: null };
+        await visita(dati, <PaginaCheDa key="1" cose={{ active: 'uat-b' }} />, delLayout);
+        expect(accese()).toStrictEqual(['UAT B']);
+
+        await visita(dati, <PaginaB key="2" />, delLayout);
+        expect(accese()).toStrictEqual([]);
+
+        // Ciò che la pagina scrive `undefined` resta del layout: nessuna, non la Dashboard.
+        await visita(dati, <PaginaCheDa key="3" cose={{ active: undefined }} />, delLayout);
+        expect(accese()).toStrictEqual([]);
+    });
+});

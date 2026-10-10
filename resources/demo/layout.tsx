@@ -10,9 +10,10 @@ import { clientFinto, colSegno, istanteDellaLettura, lettura } from './parte-ser
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
 // La pagina di prova del layout, per la UAT: `LayoutDellaCornice` sotto Inertia vera, la versione dei frontend, senza server.
-// Cinque pagine: «Lunga» (più alta della finestra: dà alla cornice le sue cose con `useCornice`), «Corta» (non lo chiama, e porta
+// Sei pagine: «Lunga» (più alta della finestra: dà alla cornice le sue cose con `useCornice`), «Corta» (non lo chiama, e porta
 // altri dati dello stesso workspace: un altro nome, 3 non lette), «Altro workspace» (un altro slug: la cornice si rifà), «Senza
-// dati» (`cornice` `null`, e chiama `useCornice` lo stesso) e «Percorso» (dà il percorso al layout con `Percorso.layout`). Da una
+// dati» (`cornice` `null`, e chiama `useCornice` lo stesso), «Percorso» (dà il percorso al layout con `Percorso.layout`) e
+// «Nessuna attiva» (dà `active: null` con `useCornice`: nessuna voce della barra è attiva, anche se il layout dà «UAT Oggi»). Da una
 // all'altra si passa con una visita vera di Inertia (`router.visit`) e con Indietro e Avanti del browser: la parte server è un
 // client HTTP finto (parte-server-finta.ts), che risponde la pagina che l'indirizzo dice coi dati di una lettura nuova. È nella
 // risposta di una visita che Inertia ridà l'oggetto di prima per i dati uguali: per questo ogni lettura porta in `cornice` il
@@ -204,7 +205,22 @@ function Percorso({ visita }: Props) {
 // Il percorso viene dai dati del «server»: Inertia lo dà al layout mentre lo rende, prima che la pagina si monti.
 Percorso.layout = (props: Props) => ({ crumbs: [{ label: props.cornice?.workspace.nome ?? '' }, { label: props.cartella ?? '' }] });
 
-const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso };
+function NessunaAttiva({ visita }: Props) {
+    const contatori = useContatori();
+    // `null` è un valore: vince sulla voce che dà il layout («UAT Oggi»), finché la pagina è montata.
+    useCornice({ active: null });
+
+    return (
+        <>
+            <h1>UAT Nessuna attiva</h1>
+            <p>UAT visita {visita}. Chiama useCornice con active: null: nessuna voce della barra è attiva, anche se il layout dà «UAT Oggi». Su un'altra pagina torna attiva «UAT Oggi».</p>
+            {contatori}
+            <Collegamenti />
+        </>
+    );
+}
+
+const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva };
 type Nome = keyof typeof pagine;
 
 const propsDi: Record<Nome, Props> = {
@@ -213,6 +229,7 @@ const propsDi: Record<Nome, Props> = {
     'altro-workspace': { cornice: vendite },
     'senza-dati': { cornice: null },
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
+    'nessuna-attiva': { cornice: marketing },
 };
 
 /** Quanto aspetta la risposta di una visita lenta, in millisecondi: il tempo di fare altro sulla pagina prima che arrivi. */
@@ -273,6 +290,7 @@ function Collegamenti() {
                 <a href={indirizzoDi('altro-workspace')} data-uat="vai-altro-workspace" onClick={apri('altro-workspace')}>UAT alla Altro workspace</a>{' · '}
                 <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
                 <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
+                <a href={indirizzoDi('nessuna-attiva')} data-uat="vai-nessuna-attiva" onClick={apri('nessuna-attiva')}>UAT alla Nessuna attiva</a>{' · '}
                 <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
             </p>
             {/* Una risposta letta adesso e arrivata dopo: la visita lenta, e la pagina che Inertia scarica prima e tiene trenta secondi. */}

@@ -13,9 +13,12 @@ import { rotteFinte } from './rotte-finte';
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
 // elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
-// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?arriva=1` dal secondo caricamento delle
-// notifiche ce n'è una nuova, non letta. Gli indirizzi che la cornice apre (account, notifiche, un altro
-// workspace, un risultato della ricerca) non si aprono: si scrivono in console. Non entra nel pacchetto.
+// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?altre=1` il primo che riesce si ferma come la
+// parte server a un tetto (`altre: true`: la più recente resta da leggere) e il secondo le segna tutte; con `?arriva=1` dal
+// secondo caricamento delle notifiche ce n'è una nuova, non letta. Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
+// (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
+// indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
+// scrivono in console. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -52,7 +55,7 @@ function Prova() {
             dati={{ ...datiDiProva, lingua, aziende, non_lette: nonLette }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
-            active={prodotto ? 'oggi' : undefined}
+            active={scelti.get('attiva') === 'nessuna' ? null : prodotto ? 'oggi' : undefined}
             crumbs={[{ label: 'UAT Marketing', href: '#' }, { label: 'UAT Q4' }]}
             create={[{ label: 'UAT Board', icon: 'board' }]}
             onLogout={() => console.info('UAT esci')}

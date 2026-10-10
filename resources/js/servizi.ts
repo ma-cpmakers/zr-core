@@ -10,6 +10,8 @@ export interface NotificaDellaCornice {
     letta: boolean;
     /** Il codice dell'app da cui viene (`pm`, `crm`…), com'è nel backoffice: `null` se non è di un'app. Di che prodotto è, e come si mostra, lo dice il registro. */
     app: string | null;
+    /** Il tipo dell'evento che l'ha generata (`com.zeiras.board.scheda.creata`…), com'è nel backoffice: che titolo ha lo dicono le lingue. La parte server lo dà sempre; senza, il titolo è quello di ripiego. */
+    tipo?: string;
 }
 
 /** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
@@ -57,19 +59,21 @@ export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
  * altro (un'altra scheda) la parte server non segna niente. Una risposta senza `fino_a` è un errore come le altre. Dà
  * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
+ * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
+ * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano.
  */
-export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<string | undefined> {
+export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<{ il: string | undefined; altre: boolean }> {
     const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ fino_a: finoA, workspace }),
-    })) as { data?: { fino_a?: unknown } | null; segnate_il?: unknown } | null;
+    })) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
         throw new Error(`POST ${indirizzo}: fino_a`);
     }
 
-    return segno(corpo.segnate_il);
+    return { il: segno(corpo.segnate_il), altre: corpo.data.altre === true };
 }
 
 /** Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */

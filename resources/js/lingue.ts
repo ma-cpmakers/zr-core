@@ -3,20 +3,33 @@ import type { AppShellLabels } from '../zeiras/index';
 import type { IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
-// più, senza toccare il codice. Dove una lingua non ha un testo si mostra l'inglese di zr-core: per questo i testi si danno
-// all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui col suo default italiano.
+// più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
+// si mostra l'inglese di zr-core: per questo i testi si danno all'`AppShell` sempre tutti, perché uno che manca lo
+// riempirebbe lui col suo default italiano.
 
 /**
- * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id e quello
- * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>`.
+ * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
+ * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>` e il titolo di ogni tipo di notifica per
+ * `notificationTitle.<tipo>`.
  */
 export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Prodotti. */
     dashboard: string;
-    /** Il titolo di una notifica nel pannello: uno per tutte, finché il contratto non dice di che cosa è una notifica. */
+    /**
+     * Il singolare di `unread`, che è dell'`AppShell` e ha solo il plurale: con una sola non letta la campanella dice «1 non letta».
+     * Le forme sono due, e quale vale lo decide la cornice («è una sola?»): una lingua con più forme di plurale non entra con un
+     * file solo, finché il design system ha un testo solo per le non lette (README, «La lingua»).
+     */
+    unreadOne: string;
+    /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
+    /**
+     * Il titolo di una notifica di quel tipo, col tipo dell'evento com'è nel backoffice (`notificationTitle.com.zeiras.board.scheda.creata`).
+     * Quali tipi zr-core conosce lo dicono le chiavi dell'inglese: un tipo che l'inglese non ha non ha un titolo, in nessuna lingua.
+     */
+    [delTipo: `notificationTitle.${string}`]: string | undefined;
 };
 
 /** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */

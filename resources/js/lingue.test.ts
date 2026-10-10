@@ -64,4 +64,26 @@ describe('le lingue della cornice', () => {
         expect(conIlFrancese.lingue).toStrictEqual(['en', 'fr']);
         expect(conIlFrancese.testi('fr')).toStrictEqual({ ...inglese, soon: 'Bientôt' });
     });
+
+    // Sprint 12 · T3 (voce #1463): il titolo di una notifica è quello del suo tipo, con `notificationTitle.<tipo>` per chiave.
+    it('il titolo di un tipo di notifica che una lingua non ha è in inglese, e un tipo che l\'inglese non ha non esiste (sprint 12 · T3.3)', () => {
+        const { 'notificationTitle.com.zeiras.board.scheda.creata': tolto, ...senzaUnTitolo } = spagnolo;
+        const conLoSpagnoloCambiato = caricaLingue({
+            '../lingue/en.json': inglese,
+            '../lingue/es.json': { ...senzaUnTitolo, 'notificationTitle.com.zeiras.crm.contatto.creato': 'Nuevo contacto' },
+        });
+        const t = conLoSpagnoloCambiato.testi('es');
+        const tipiCheHa = (testi: object) => Object.keys(testi).filter((chiave) => chiave.startsWith('notificationTitle.')).sort();
+
+        expect(tolto).toBe('Nueva tarjeta');
+        expect(t['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
+        // Gli altri titoli restano in spagnolo, e il ripiego pure.
+        expect(t['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
+        expect(t.notificationTitle).toBe('Novedades en el workspace');
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 19, in ogni lingua, anche con un file che ne ha uno in più.
+        expect(tipiCheHa(inglese)).toHaveLength(19);
+        expect(tipiCheHa(t)).toStrictEqual(tipiCheHa(inglese));
+        expect(tipiCheHa(testi('it'))).toStrictEqual(tipiCheHa(inglese));
+        expect(tipiCheHa(testi('zz'))).toStrictEqual(tipiCheHa(inglese));
+    });
 });

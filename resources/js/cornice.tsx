@@ -45,8 +45,8 @@ export interface CorniceProps {
     product?: string;
     /** Le voci del prodotto aperto. */
     nav?: GruppoDiVoci[];
-    /** L'id della voce attiva; senza, la Dashboard. */
-    active?: string;
+    /** L'id della voce attiva; senza, la Dashboard. Con `null` nessuna voce della barra è attiva. */
+    active?: string | null;
     onNavigate?: (id: string) => void;
     /** Il percorso Workspace › Cartella › Oggetto: l'ultima voce è la pagina. */
     crumbs?: ShellCrumb[];
@@ -70,6 +70,22 @@ const dashboard = registro.find((voce) => voce.id === 'home')!;
 /** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
 function prodottoDelRegistro(codice: string | null | undefined) {
     return registro.find((voce) => voce.id === codice && voce !== dashboard);
+}
+
+/**
+ * Un id che nessuna di quelle voci ha. L'`AppShell` segna la voce che ha l'id attivo, e senza un id la Dashboard: «nessuna» gli
+ * si dice con un id che non è di nessuna. Si calcola dalle voci di quel render, e non è un valore fisso: un frontend potrebbe
+ * dare una voce proprio con quell'id. È fatto di soli trattini, perché una voce la cornice non la vede: «Impostazioni», che
+ * l'`AppShell` mette da sé in fondo alla barra, e il suo id è una parola.
+ */
+function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
+    const presi = new Set(gruppi.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)));
+    let id = '-';
+    while (presi.has(id)) {
+        id += '-';
+    }
+
+    return id;
 }
 
 /** Di che prodotto è ogni tipo di risorsa del registro, e come si mostra: un tipo sta in un prodotto solo. */
@@ -124,7 +140,18 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 }
 
 /**
- * Una notifica della parte server nel pannello: il titolo della lingua, uno per tutte, e l'ora nella lingua dei testi. Di che
+ * Il titolo di una notifica: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi zr-core
+ * conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è un
+ * testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai.
+ */
+function titoloDi(tipo: unknown, t: TestiDellaCornice): string {
+    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
+
+    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
+}
+
+/**
+ * Una notifica della parte server nel pannello: il titolo del suo tipo e l'ora, nella lingua dei testi. Di che
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Il contratto non dice per
@@ -135,7 +162,7 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
 
     return {
         id: notifica.id,
-        title: t.notificationTitle,
+        title: titoloDi(notifica.tipo, t),
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: delProdotto?.icona,
@@ -233,7 +260,7 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
 }
 
-export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
+export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), ...pagina }: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
     // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
@@ -289,27 +316,33 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
     // rotta che non lo dà — «dati nuovi» vuol dire un altro oggetto `dati`, come prima che la cornice confrontasse i segni; e
     // lì, con la cornice montata fra una visita e l'altra, Inertia ridà alla pagina l'oggetto di prima quando i dati della
     // visita sono uguali in profondità.
-    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[] }>({ stato: 'ready', elenco: [] });
+    // Con l'elenco, la richiesta da cui viene (`richiesta`): mentre il pannello si ricarica senza svuotarsi è una di prima
+    // dell'ultima partita. Sta nello stato insieme all'elenco, non in un ref: un clic la prende dallo stesso disegno della
+    // pagina da cui prende l'istante mandato, anche se cade fra l'arrivo di un elenco nuovo e il ridisegno.
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     const ultimaRichiesta = useRef(0);
-    const carica = () => {
+    const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
-        setNotifiche({ stato: 'loading', elenco: [] });
+        if (svuota) {
+            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
+        }
         caricaNotifiche().then(
             ({ elenco, il }) => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'ready', elenco });
+                    setNotifiche({ stato: 'ready', elenco, richiesta: questa });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
                 }
             },
             () => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'error', elenco: [] });
+                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa });
                 }
             },
         );
     };
+    const carica = () => chiedi(true);
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
     // caricate, anche quelle oltre la prima pagina. Fin lì e non fino all'ora del browser: ciò che arriva dopo, mai visto,
@@ -317,7 +350,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
     // letti dopo l'istante in cui la parte server le ha segnate: una risposta letta prima del clic e arrivata dopo non rimette
     // il numero, e coi dati letti dopo (un'altra visita, con la cornice montata) vale il loro numero, anche se è lo stesso di
     // prima del clic. Se la richiesta fallisce non cambia niente, e il pulsante resta per riprovare. Un clic mentre è in volo
-    // non ne fa partire un'altra.
+    // non ne fa partire un'altra. Se la parte server dice che ne restano (`altre`: si è fermata a un tetto) non sono tutte
+    // lette: il numero resta, le notifiche in pagina non si danno per lette, e il pannello si ricarica con ciò che c'è
+    // davvero, senza svuotarsi: finché l'elenco nuovo non arriva resta in pagina quello di prima, e il pulsante resta dov'è,
+    // col fuoco, per il clic che continua. Che una parte è segnata, e che la richiesta è in corso, la cornice oggi non lo
+    // dice: il pannello del design system non ha un posto per un avviso, e il testo del pulsante, che è di zr-core, in
+    // questa versione è sempre lo stesso (README, «Le notifiche»).
     const [segnate, setSegnate] = useState<Saputo>();
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
@@ -328,26 +366,37 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
     // numero nei dati le conta il design system.
     const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette, elencoDiQuestiDati ? caricate.nonLette : 0);
     const nonLetteInElenco = notifiche.elenco.filter((notifica) => !notifica.letta).length;
+    // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
+    const sullaCampanella = nonLette ?? nonLetteInElenco;
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !((nonLette ?? nonLetteInElenco) > 0) ? undefined : async () => {
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
         leStaSegnando.current = true;
         const questi = dati;
-        const elencoDelClic = ultimaRichiesta.current;
+        // L'elenco in pagina al clic: è quello da cui viene l'istante mandato.
+        const elencoDelClic = notifiche.richiesta;
         let il: string | undefined;
+        let altre: boolean;
         try {
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente.
-            il = await segnaLetteFinoA(finoA, caricate.con.workspace.slug);
+            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug));
         } catch {
             // Non cambia niente: il pulsante resta, per riprovare.
             return;
         } finally {
             leStaSegnando.current = false;
+        }
+        if (altre) {
+            // Ne restano da leggere: niente è «segnato fino a qui», e le non lette dell'ultimo elenco contano finché non
+            // arriva quello nuovo. Senza svuotare il pannello: il pulsante resta montato, col fuoco.
+            chiedi(false);
+
+            return;
         }
         setSegnate({ con: questi, il });
         if (ultimaRichiesta.current === elencoDelClic && elencoDiQuestiDati) {
@@ -355,10 +404,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
             setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
             setCaricate({ con: questi, nonLette: 0, il });
         } else {
-            // Il pannello è stato ricaricato fra il clic e la risposta, e quell'elenco è di prima della lettura; oppure
-            // l'elenco del clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che
-            // è arrivato dopo. Si ricarica, invece di dare per lette quelle in pagina; e le non lette di quell'elenco non
-            // contano più sulla campanella, perché la lettura le ha coperte: conteranno quelle dell'elenco che arriva.
+            // Un elenco è stato chiesto dopo quello del clic — il pannello ricaricato fra il clic e la risposta, o che si
+            // stava già ricaricando al clic, dopo un `altre` — e quell'elenco è di prima della lettura; oppure l'elenco del
+            // clic era più vecchio dei dati (cambiati a pannello aperto), e l'istante mandato non copre ciò che è arrivato
+            // dopo. Si ricarica, invece di dare per lette quelle in pagina; e le non lette di quell'elenco non contano più
+            // sulla campanella, perché la lettura le ha coperte: conteranno quelle dell'elenco che arriva.
             setCaricate(undefined);
             carica();
         }
@@ -389,11 +439,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
         );
     };
     const risultati = perGruppo(ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, dati.workspace.slug) ?? []));
+    const voci = [prodotti, ...nav];
 
     return (
         <Zeiras.AppShell
             {...pagina}
-            nav={[prodotti, ...nav]}
+            nav={voci}
+            // Solo `null` vuol dire «nessuna voce attiva»: senza `active` resta la Dashboard, come decide l'`AppShell`.
+            active={active === null ? idDiNessunaVoce(voci) : active}
             product={aperto?.id}
             user={dati.persona.nome}
             email={dati.persona.email}
@@ -420,7 +473,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
                     naviga(scelto.href);
                 }
             }}
-            labels={t}
+            // Con una sola non letta il nome della campanella per il lettore di schermo è al singolare: il design system ha un
+            // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
+            // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»).
+            labels={sullaCampanella === 1 ? { ...t, unread: t.unreadOne } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
             // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
