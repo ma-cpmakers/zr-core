@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 // all'originale del design system alla versione del registro dell'allineamento. Il registro (indirizzo dell'originale, versione, una
 // riga per file) sta fuori dal repo pubblico, in prompts/ che git ignora; qui resta tests/zeiras.sha256, l'elenco degli sha256 delle
 // copie nella forma di sha256sum (`sha256sum -c tests/zeiras.sha256` dalla radice), coi valori del registro.
+// Sprint 15 · T2 (voce #1585): fra le copie ci sono i cinque file del logo, nella sottocartella logos/.
 
 /**
  * Le copie del design system che non tornano con l'elenco degli sha256: una copia che l'elenco non nomina (anche nascosta, anche in
@@ -50,14 +51,23 @@ function copieNonAllineate(string $elenco, string $cartella): array
     return $problemi;
 }
 
-it('ogni copia in resources/zeiras/ ha lo sha256 di tests/zeiras.sha256, e ogni riga dell\'elenco ha la sua copia (T1.2)', function () {
+it('ogni copia in resources/zeiras/ ha lo sha256 di tests/zeiras.sha256, e ogni riga dell\'elenco ha la sua copia: bundle, tipi e token, e in logos/ i cinque file del logo (T1.2; sprint 15 · T2.1)', function () {
     $copie = collect(File::allFiles(__DIR__.'/../../resources/zeiras', true))->map->getRelativePathname()->sort()->values()->all();
 
-    expect($copie)->toBe(['bundle.css', 'bundle.js', 'index.d.ts', 'tokens.json'])
-        ->and(copieNonAllineate(File::get(__DIR__.'/../zeiras.sha256'), __DIR__.'/../../resources/zeiras'))->toBe([]);
+    expect($copie)->toBe([
+        'bundle.css',
+        'bundle.js',
+        'index.d.ts',
+        'logos/zeiras-favicon.svg',
+        'logos/zeiras-logo-dark.svg',
+        'logos/zeiras-logo.svg',
+        'logos/zeiras-mark-dark.svg',
+        'logos/zeiras-mark.svg',
+        'tokens.json',
+    ])->and(copieNonAllineate(File::get(__DIR__.'/../zeiras.sha256'), __DIR__.'/../../resources/zeiras'))->toBe([]);
 });
 
-it('il controllo trova la copia cambiata di un byte, quella che l\'elenco non nomina (anche nascosta o in una sottocartella), quella nominata due volte e la riga senza la sua copia (T1.2)', function () {
+it('il controllo trova la copia cambiata di un byte, quella che l\'elenco non nomina (anche nascosta o in una sottocartella), quella nominata due volte e la riga senza la sua copia; e in logos/, che l\'elenco nomina, il file cambiato di un byte e quello che manca (T1.2; sprint 15 · T2.1)', function () {
     $copie = __DIR__.'/../../resources/zeiras';
     $cartella = sys_get_temp_dir().'/zr-core-copie-'.Str::random(12);
     File::ensureDirectoryExists("$cartella/vecchia");
@@ -68,6 +78,10 @@ it('il controllo trova la copia cambiata di un byte, quella che l\'elenco non no
     File::put("$cartella/bundle.json", '{}');
     File::put("$cartella/.bundle.js", '');
     File::copy("$copie/bundle.js", "$cartella/vecchia/bundle.js");
+    // I file del logo: tre come sono, uno con un byte in più, uno che manca.
+    File::copyDirectory("$copie/logos", "$cartella/logos");
+    File::put("$cartella/logos/zeiras-mark.svg", File::get("$copie/logos/zeiras-mark.svg").' ');
+    File::delete("$cartella/logos/zeiras-logo-dark.svg");
     $elenco = File::get(__DIR__.'/../zeiras.sha256');
 
     expect(copieNonAllineate($elenco, $cartella))->toEqualCanonicalizing([
@@ -76,6 +90,8 @@ it('il controllo trova la copia cambiata di un byte, quella che l\'elenco non no
         'resources/zeiras/.bundle.js: l\'elenco non la nomina',
         'resources/zeiras/vecchia/bundle.js: l\'elenco non la nomina',
         'resources/zeiras/bundle.js: l\'elenco la nomina, ma la copia non c\'è',
+        'resources/zeiras/logos/zeiras-mark.svg: lo sha256 non è quello dell\'elenco',
+        'resources/zeiras/logos/zeiras-logo-dark.svg: l\'elenco la nomina, ma la copia non c\'è',
     ])->and(copieNonAllineate($elenco.hash_file('sha256', "$copie/tokens.json")."  resources/zeiras/tokens.json\n", $cartella))
         ->toContain('resources/zeiras/tokens.json: l\'elenco la nomina in 2 righe')
         ->and(copieNonAllineate($elenco.'bc6b  resources/zeiras/tokens.json', $cartella))

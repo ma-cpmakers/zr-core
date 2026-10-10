@@ -1094,3 +1094,28 @@ it('il README dice, nel punto «Il menu del profilo», una frase per cosa: che d
     'la prop che la accende' => ['Si accende con la prop `piano`'],
     'quando si accende' => ['quando la pagina del piano esiste su app.zeiras.com'],
 ]);
+
+// Sprint 15 · T2 (voce #1585): i cinque file del logo stanno nel pacchetto, e il README dice dove e come li importa una pagina
+// senza cornice. Il simbolo è più piccolo del limite sotto cui Vite, nella build, scrive un file dentro il JS come indirizzo
+// `data:`, che la CSP del README non lascia passare (misurato il 10/10/2026 con Vite 8.3.2 e Chromium: `img-src` bloccato): per
+// questo il suo import porta `?no-inline`.
+it('il README dice, in «Il logo», la cartella dei file del logo, ognuno dei cinque file, come una pagina senza cornice importa logo e simbolo, e perché il simbolo vuole ?no-inline (sprint 15 · T2.2)', function (string $cosa) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.5.0, senza quella sezione: la cosa non si trova più.
+    $diPrima = str_replace("\n## Il logo\n", "\n## Il marchio\n", $readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'Il logo'), $cosa))->toBe(true)
+        ->and(substr_count($readme, "\n## Il logo\n"))->toBe(1)
+        ->and(sezioneDelReadme($diPrima, 'Il logo'))->toBe('');
+})->with([
+    'la cartella' => ['in `resources/zeiras/logos/`'],
+    'il logo per i fondi chiari' => ['`zeiras-logo.svg`'],
+    'il logo per i fondi scuri' => ['`zeiras-logo-dark.svg`'],
+    'il simbolo' => ['`zeiras-mark.svg`'],
+    'il simbolo coi colori del tema scuro' => ['`zeiras-mark-dark.svg`'],
+    'la favicon' => ['`zeiras-favicon.svg`'],
+    'come si importa il logo' => ['import logo from \'../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-logo.svg\';'],
+    'come si importa il simbolo' => ['import simbolo from \'../../vendor/zeiras/zr-core/resources/zeiras/logos/zeiras-mark.svg?no-inline\';'],
+    'senza ?no-inline il simbolo non passa la CSP' => ['come indirizzo `data:`, che la CSP scritta più sotto non lascia passare'],
+    'con ?no-inline la CSP non cambia' => ['Con `?no-inline` resta un file della stessa origine'],
+]);
