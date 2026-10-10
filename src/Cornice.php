@@ -14,6 +14,10 @@ use Zeiras\Auth\Sessione;
  * resta nella sessione. Il frontend li condivide con la pagina (con Inertia, nel suo `share()`), e la `Cornice` di
  * resources/js li riceve in `dati`.
  *
+ * La lingua e il nome della sessione sono quelli dell'ingresso: un cambio fatto dopo nel profilo non ci arriva da solo. Per
+ * questo a ogni lettura la risposta di io.mostra, che la cornice legge già per le non lette, va a `Sessione::aggiorna` di
+ * zr-auth (dalla 0.12): la sessione prende la lingua e il nome del profilo, e i dati li portano da quella stessa lettura.
+ *
  * Ogni lettura porta un segno, `aggiornati_il`: l'istante in cui è cominciata. La `Cornice` lo confronta con quello dei dati
  * che ha e con gli istanti delle due rotte delle notifiche, e non torna a dati letti prima: per questo la sua forma è una
  * sola, quella di `Segno::adesso()`, che `segno()` di resources/js/servizi.ts riconosce; in un'altra forma nel browser
@@ -35,6 +39,10 @@ final class Cornice
      * stringhe. Le non lette si contano per prime, subito dopo il segno: è il numero che la cornice confronta col segno, e
      * contato dopo le altre letture sarebbe più fresco del suo segno di tre chiamate.
      *
+     * La lingua e il nome sono quelli della sessione riletta dopo `Sessione::aggiorna`, mai quelli di io.mostra presi da qui:
+     * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
+     * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
+     *
      * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{nome: string, slug: string}>}>, non_lette: int, aggiornati_il: string}|null
      */
     public static function dati(): ?array
@@ -47,7 +55,13 @@ final class Cornice
         }
 
         $aggiornatiIl = Segno::adesso();
-        $nonLette = self::nonLette();
+        $io = self::ioMostra();
+
+        Sessione::aggiorna($io);
+        // Se intanto la sessione è scaduta zr-auth non dà più la persona, e la lettura dopo lancia GettoneRifiutato prima che
+        // la persona serva: il ripiego su quella letta all'inizio tiene `$utente` un array qualunque sia l'ordine delle letture
+        // (`Sessione::utente()` può dare null). Oggi nessun test lo distingue, e l'analisi statica non lo chiede.
+        $utente = Sessione::utente() ?? $utente;
 
         $prodotti = [];
         foreach (Api::workspace()->tutti('/v1/app') as $app) {
@@ -60,7 +74,7 @@ final class Cornice
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             'prodotti' => $prodotti,
             'aziende' => self::aziende(),
-            'non_lette' => $nonLette,
+            'non_lette' => $io['notifiche_non_lette'],
             'aggiornati_il' => $aggiornatiIl,
         ];
     }
@@ -90,19 +104,23 @@ final class Cornice
     }
 
     /**
-     * Le notifiche non lette della persona nel workspace in cui è entrata: `notifiche_non_lette` di io.mostra, il numero
-     * intero e non una pagina contata. Col gettone del workspace: con quello dell'accesso il backoffice non ha un workspace
-     * e risponde null. Un numero che manca, o che non è un intero da zero in su, è un guasto e non «zero non lette»: una
-     * campanella vuota per un guasto non si distinguerebbe da nessuna notifica.
+     * io.mostra (GET /v1/io), letto una volta per `dati()`: porta le notifiche non lette della persona nel workspace in cui è
+     * entrata (`notifiche_non_lette`, il numero intero e non una pagina contata) e la persona com'è nel profilo, che va a
+     * `Sessione::aggiorna`. Col gettone del workspace: con quello dell'accesso il backoffice non ha un workspace e alle non
+     * lette risponde null. Un numero che manca, o che non è un intero da zero in su, è un guasto e non «zero non lette»: una
+     * campanella vuota per un guasto non si distinguerebbe da nessuna notifica. E di una risposta guasta non si prende
+     * niente, nemmeno la persona: lancia prima che la sessione cambi.
+     *
+     * @return array{notifiche_non_lette: int<0, max>, ...} i `data` di io.mostra
      */
-    private static function nonLette(): int
+    private static function ioMostra(): array
     {
-        $nonLette = Api::workspace()->get('/v1/io')['data']['notifiche_non_lette'] ?? null;
+        $io = Api::workspace()->get('/v1/io')['data'] ?? null;
 
-        if (! is_int($nonLette) || $nonLette < 0) {
+        if (! is_array($io) || ! is_int($io['notifiche_non_lette'] ?? null) || $io['notifiche_non_lette'] < 0) {
             throw new BackofficeNonRisponde('La risposta di GET /v1/io non porta le notifiche non lette del workspace.');
         }
 
-        return $nonLette;
+        return $io;
     }
 }

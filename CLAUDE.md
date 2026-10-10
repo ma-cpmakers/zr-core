@@ -60,9 +60,11 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` + vitest + build + pagine di prova, Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.6.6 || ^0.7 || ^0.8 || ^0.9.1 || ^0.10 || ^0.11 || ^0.12`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il
-  verde è di tutti i giri. Una minore nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non
-  scende sotto una patch che nessun giro ha provato.
+- `zeiras/zr-auth` `^0.12.1`: la CI fa un giro per ogni versione minore accettata, con l'ultima di ognuna, e il verde è
+  di tutti i giri (dalla `v1.4.0` la minore è una: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12). Una minore
+  nuova entra in `composer.json` e nella matrice di `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro
+  ha provato col codice che la usa (per questo parte dalla 0.12.1: la 0.12.0 l'ha provata solo una cornice che `aggiorna`
+  non la chiamava).
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit`, vitest e la build;
   Pest gira solo in CI.
 
@@ -80,5 +82,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 12 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 13 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

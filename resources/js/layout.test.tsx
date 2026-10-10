@@ -226,6 +226,43 @@ describe('LayoutDellaCornice', () => {
         expect(uno('aside.zr-side')).toBe(barra);
     });
 
+    // Sprint 13 · T3 (voce #1480). La parte server rimette nella sessione la lingua e il nome cambiati nel profilo: una visita
+    // può portare, nello stesso workspace, dati letti dopo con un'altra lingua e un altro nome. La cornice legge la lingua dai
+    // dati a ogni render: resta montata e cambia i testi.
+    it('una visita coi dati letti dopo nello stesso workspace, in spagnolo e con un altro nome, lascia la cornice montata e la porta alla lingua e al nome nuovi: gli stessi nodi e il testo scritto nella ricerca, e in spagnolo il titolo dei prodotti, i loro nomi e il segnaposto della ricerca (sprint 13 · T3.1)', async () => {
+        // Due letture della parte server, col loro segno: la seconda è di un secondo dopo.
+        const inItaliano: DatiDellaCornice = { ...dati, aggiornati_il: '2026-10-10T09:00:00.123456Z' };
+        const inSpagnolo: DatiDellaCornice = { ...inItaliano, lingua: 'es', persona: { nome: 'Augusta King', email: 'ada@example.com' }, aggiornati_il: '2026-10-10T09:00:01.123456Z' };
+        const titoloDeiProdotti = () => uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent;
+        const nomiDeiProdotti = () => tutti('.zr-nav .zr-nav-group a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent);
+        const segnaposto = () => (uno('.zr-search input[type=search]') as HTMLInputElement).placeholder;
+
+        await visita(inItaliano, <PaginaA key="1" />);
+        await scrivi('uat');
+        const barra = uno('aside.zr-side');
+        const topbar = uno('header.zr-top');
+        expect(barra).not.toBeNull();
+        expect(topbar).not.toBeNull();
+        expect(titoloDeiProdotti()).toBe('Prodotti');
+        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
+        expect(segnaposto()).toBe('Cerca progetti, schede, contatti…');
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
+
+        await visita(inSpagnolo, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')?.textContent).toBe('UAT pagina B');
+        // È la cornice di prima, non una rifatta: i nodi sono quelli, e il campo della ricerca porta ancora il testo scritto.
+        expect(uno('aside.zr-side')).toBe(barra);
+        expect(uno('header.zr-top')).toBe(topbar);
+        expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('uat');
+        // I testi sono quelli di `resources/lingue/es.json`.
+        expect(titoloDeiProdotti()).toBe('Productos');
+        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
+        expect(segnaposto()).toBe('Busca proyectos, tarjetas, contactos…');
+        // Il menu del profilo porta il nome nuovo.
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);
+    });
+
     it('quando una visita porta un altro workspace la cornice si rifà: il campo della ricerca è vuoto e senza i risultati di prima, il pannello delle notifiche è chiuso, e riaprire la campanella fa partire un\'altra GET /cornice/notifiche; la pagina nuova si monta una volta sola (sprint 9 · T1.6)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : risultatiDelServer })));
         await visita(dati, <PaginaA key="1" />);
