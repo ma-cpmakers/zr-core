@@ -1701,6 +1701,29 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
     });
 
+    // Review della PR #20, R3. Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, a pannello aperto: i
+    // dati della visita dopo non contano più non lette, e il pulsante se ne va. Una notifica arrivata dopo è un altro giro.
+    it('se il giro di letture finisce altrove, a pannello aperto, una notifica arrivata dopo trova «Segna tutte come lette» e non «Segna le altre» (sprint 17 · review, R3)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+        expect(segnaTutte()?.textContent).toBe('Segna le altre');
+
+        // Una visita dopo: le rimaste le ha segnate un'altra scheda, e i dati nuovi non contano più non lette.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 0 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+        expect(segnaTutte()).toBeNull();
+
+        // Un'altra visita ancora: è arrivata una notifica nuova.
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBe('1');
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        // Nessuna richiesta in più: il pannello non è stato ricaricato, e il testo non viene da un elenco chiesto da capo.
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
+    });
+
     it('dopo altre: true, chiuso e riaperto il pannello il pulsante dice di nuovo «Segna tutte come lette»: l\'elenco è stato chiesto da capo (sprint 17 · T1.3)', async () => {
         const fetchFinto = rotteConLetture([notificheDelServer, dopoUnaParte], [letturaFatta(true)]);
         vi.stubGlobal('fetch', fetchFinto);

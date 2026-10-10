@@ -85,7 +85,11 @@ public function share(Request $request): array
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
-costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore.
+costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore. L'`id` c'è dalla
+`v1.7.0`. Il contratto di `/v1` lo dà sempre: nei test di un frontend un backoffice finto scritto a mano lo deve dare come
+dà `nome` e `slug` (gli esempi di zr-auth lo danno), perché una riga senza `id` fa fallire `Cornice::dati()`. Il workspace
+in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso `slug` in
+`aziende`.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -178,9 +182,10 @@ cornice === null ? pagina : (
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
   resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina. Ogni workspace ha il pallino del suo colore:
   lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
-  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. Nel tipo
-  `DatiDellaCornice` l'`id` di un workspace è facoltativo: un workspace senza `id` non ha un colore suo, e il suo pallino è
-  quello che il design system mette da sé.
+  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. I colori
+  sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
+  aiuta a riconoscere un workspace, non lo distingue da tutti gli altri. Nel tipo `DatiDellaCornice` l'`id` di un workspace
+  è facoltativo: un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato, finché i dati non sono stati letti dopo quell'elenco (una notifica può essere
   arrivata dopo che la parte server le ha contate). Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
@@ -226,8 +231,9 @@ cornice === null ? pagina : (
   (dalla `v1.7.0`). Dal clic alla risposta, che con migliaia di non lette può arrivare dopo circa 15 secondi, dice
   «Segno…», e un clic lì non fa partire un'altra richiesta. Dopo una risposta con `altre: true` dice «Segna le altre»: una
   parte è segnata, anche quando l'elenco ricaricato è uguale a prima perché le segnate non erano fra quelle in pagina. Lo
-  dice finché quel giro di letture non è finito — con una lettura completa, o con l'elenco chiesto da capo (il pannello
-  riaperto, «Riprova») —, poi torna «Segna tutte come lette». Se la richiesta fallisce il pulsante torna al testo che
+  dice finché quel giro di letture non è finito — con una lettura completa, con l'elenco chiesto da capo (il pannello
+  riaperto, «Riprova»), o quando la campanella non conta più non lette perché il giro è finito altrove, in un'altra
+  scheda —, poi torna «Segna tutte come lette». Se la richiesta fallisce il pulsante torna al testo che
   aveva prima del clic. I due testi sono di zr-core, `markingAllRead` e `markRestRead` nelle sue lingue: in una lingua
   che zr-core non ha sono in inglese. Una cosa la cornice ancora non la dice: l'avviso per il lettore di schermo. Il
   testo del pulsante cambia sullo schermo, ma niente lo annuncia: il pannello del design system non ha un posto per un
@@ -312,10 +318,11 @@ apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in
 registro (`resources/registro/prodotti.json`).
 
 Il colore di un workspace fuori dalla cornice — un elenco dei workspace in una pagina del frontend — lo dà
-`tonoDelWorkspace(id)`, dallo stesso ingresso: è la regola che usa il selettore della cornice, quindi per lo stesso `id` il
-tono è lo stesso. `id` è l'`id` del workspace, com'è nei dati della cornice. Dà il nome di uno dei toni che il design system
-ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un colore: il colore lo mette il CSS del design
-system (`var(--<tono>)`). Un `id` vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
+`tonoDelWorkspace(id)`, dallo stesso ingresso (dalla `v1.7.0`): è la regola che usa il selettore della cornice, quindi per
+lo stesso `id` il tono è lo stesso. `id` è l'`id` del workspace, com'è in ogni workspace di `aziende` nei dati della cornice.
+Dà il nome di uno dei toni che il design system ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un
+colore: il colore lo mette il CSS del design system (`var(--<tono>)`). Due workspace possono avere lo stesso tono. Un `id`
+vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
 
 ### La cornice montata una volta sola
 

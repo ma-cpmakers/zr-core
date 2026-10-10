@@ -12,7 +12,9 @@ set -euo pipefail
 composer="${1:-}"
 minore="${2:-}"
 
-numero='(0|[1-9][0-9]*)'
+# Un numero ha al più nove cifre: uno più lungo di quanto la shell sa confrontare farebbe uscire 2 il confronto più sotto, che
+# dentro un `if` vale «falso» in silenzio, e passerebbe per il minimo una versione che non lo è.
+numero='(0|[1-9][0-9]{0,8})'
 pezzo='\^0\.'"$numero"'(\.'"$numero"')?'
 forma_della_minore="^0\.${numero}\$"
 forma_del_vincolo="^${pezzo}( \|\| ${pezzo})*\$"

@@ -125,7 +125,6 @@ function menuDelProfiloSenzaPiano(t: TestiDellaCornice, suAccount: (azione: Acco
     ];
 }
 
-/** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
 /**
  * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col tono del suo id (tono.ts), mai del nome, dello slug o del
  * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
@@ -136,6 +135,7 @@ function nelSelettore(workspace: { id?: string; nome: string; slug: string }): S
     return tone === undefined ? { slug: workspace.slug, name: workspace.nome } : { slug: workspace.slug, name: workspace.nome, tone };
 }
 
+/** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
 function nelWorkspace(indirizzo: string, slug: string): string {
     return `${indirizzo}/w/${encodeURIComponent(slug)}`;
 }
@@ -347,8 +347,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
-    // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, o con un
-    // elenco chiesto da capo. Sono testo, e stanno nello stato; il guardiano del doppio clic resta un ref, che è sincrono.
+    // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
+    // elenco chiesto da capo, o altrove (sotto, dove la campanella non conta più non lette). Sono testo, e stanno nello stato;
+    // il guardiano del doppio clic resta un ref, che è sincrono.
     const [inCorso, setInCorso] = useState(false);
     const [neRestano, setNeRestano] = useState(false);
     const ultimaRichiesta = useRef(0);
@@ -404,6 +405,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
     const sullaCampanella = nonLette ?? nonLetteInElenco;
     const unaSola = sullaCampanella === 1;
+    // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: se la campanella non
+    // conta più non lette non ne restano, e una notifica che arriva dopo è un altro giro, con «Segna tutte come lette».
+    if (neRestano && !(sullaCampanella > 0)) {
+        setNeRestano(false);
+    }
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina.

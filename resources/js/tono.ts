@@ -14,17 +14,21 @@ type TonoDiUnWorkspace = NonNullable<ShellWorkspace['tone']>;
  */
 const toni = ['pine', 'citrus', 'coral', 'sky', 'plum'] as const satisfies readonly TonoDiUnWorkspace[];
 
-// Se il design system aggiunge un tono `tsc` si ferma qui (il tipo non è più `true`), e se ne toglie uno si ferma al `satisfies`
-// qui sopra: l'elenco non resta indietro in silenzio, e chi lo cambia sa che cosa cambia.
-type Vero<T extends true> = T;
-type OgniTonoDelDesignSystem = Vero<[Exclude<TonoDiUnWorkspace, (typeof toni)[number]>] extends [never] ? true : false>;
+// Se il design system aggiunge un tono `tsc` si ferma qui (il tono nuovo non sta nell'elenco), e se ne toglie uno si ferma al
+// `satisfies` qui sopra: l'elenco non resta indietro in silenzio. Succede anche per un tono nato per un altro componente, perché
+// il design system ha un tipo solo per i toni. Allora non si allunga l'elenco per tornare verdi: che cosa fare dei colori dei
+// workspace che ci sono già è una scelta di prodotto, e si chiede. I due tipi sono usati dalla funzione qui sotto: un frontend
+// compila questo file col suo tsconfig, e una dichiarazione mai usata lì può fermare il suo `tsc`.
+type SeStaIn<Elenco, Tono extends Elenco> = Tono;
+/** Il tono che la regola dà: uno dell'elenco, che sono tutti quelli del design system. */
+type TonoDellaRegola = SeStaIn<(typeof toni)[number], TonoDiUnWorkspace>;
 
 /**
  * Il tono del workspace con quell'id, sempre lo stesso: FNV-1a a 32 bit sui code point dell'id, e il resto della divisione per
  * il numero dei toni sceglie il tono dall'elenco. È la regola del selettore della cornice: chi mostra un workspace in una pagina
  * sua la chiama con lo stesso id e ha lo stesso tono. Un id vuoto, mancante o che non è un testo non ha tono.
  */
-export function tonoDelWorkspace(id: string | undefined): TonoDiUnWorkspace | undefined {
+export function tonoDelWorkspace(id: string | undefined): TonoDellaRegola | undefined {
     if (typeof id !== 'string' || id === '') {
         return undefined;
     }
