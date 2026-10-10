@@ -1490,3 +1490,37 @@ it('CLAUDE.md nomina la classe delle intestazioni di sicurezza fra ciò che zr-c
         ->and(indirizziENomiDiServerIn($punto.' su web-1.example.net'))->toBe(['zr-core.php', 'web-1.example.net'])
         ->and(indirizziENomiDiServerIn($punto.' Lo manda Nginx.'))->toBe(['zr-core.php', 'Nginx']);
 });
+
+// Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo di notifica lo dà `titoloDellaNotifica`, dallo stesso
+// ingresso di `nomeDellaVoce`, e il README lo dice nello stesso paragrafo.
+
+/** Il paragrafo del README che comincia con «Fuori dalla cornice», su una riga sola: fino alla riga vuota. Vuoto se non c'è. */
+function paragrafoFuoriDallaCornice(string $readme): string
+{
+    preg_match('/^Fuori dalla cornice .*?(?=^$|\z)/ms', $readme, $paragrafo);
+
+    return suUnaRiga($paragrafo[0] ?? '');
+}
+
+it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titolo di un tipo di notifica, una frase per cosa: nome e argomenti, da dove si importa, che cosa dà, che cosa sono tipo e lingua, quali tipi zr-core conosce, il ripiego (sprint 16 · T5.3)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README con quel paragrafo sotto un altro inizio: la frase c'è ancora, ma non accanto a `nomeDellaVoce`.
+    $altrove = str_replace("\nFuori dalla cornice ", "\nDentro la cornice ", $readme);
+
+    expect(str_contains(paragrafoFuoriDallaCornice($readme), $frase))->toBe(true)
+        ->and(str_contains(paragrafoFuoriDallaCornice($readme), '`registro` e `nomeDellaVoce(voce, lingua)`'))->toBe(true)
+        ->and(substr_count($readme, "\nFuori dalla cornice "))->toBe(1)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
+})->with([
+    'nome e argomenti' => ['`titoloDellaNotifica(tipo, lingua)`'],
+    'da dove si importa, e per chi' => ['Dallo stesso ingresso si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    'che cosa dà' => ['dà il titolo di una notifica di quel tipo nella lingua'],
+    'è la funzione del pannello' => ['è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso'],
+    'che cos\'è tipo' => ['`tipo` è il `tipo` della notifica, com\'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`)'],
+    'che cos\'è lingua' => ['`lingua` è il codice della lingua della persona, e vale come per la cornice: `it-IT` è `it`'],
+    'una lingua che zr-core non ha' => ['con una lingua che zr-core non ha il titolo è in inglese'],
+    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
+    'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
+    'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
+]);

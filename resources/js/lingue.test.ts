@@ -86,4 +86,51 @@ describe('le lingue della cornice', () => {
         expect(tipiCheHa(testi('it'))).toStrictEqual(tipiCheHa(inglese));
         expect(tipiCheHa(testi('zz'))).toStrictEqual(tipiCheHa(inglese));
     });
+
+    // Sprint 16 · T5 (voce #1479): il titolo di un tipo di notifica per chi lo mostra fuori dalla cornice, dall'ingresso del
+    // pacchetto. Che sia lo stesso testo del pannello delle notifiche lo prova cornice.test.tsx.
+    /** I tipi che zr-core conosce: le chiavi dell'inglese, senza `notificationTitle.` davanti. */
+    const tipiConosciuti = Object.keys(inglese).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
+    /** Il titolo di ripiego, per lingua. */
+    const diRipiego = { it: 'Novità nel workspace', es: 'Novedades en el workspace', en: 'News in the workspace' };
+
+    it.each<[lingua: 'it' | 'es' | 'en', file: Record<string, string>, dellaSchedaCreata: string]>([
+        ['it', italiano, 'Nuova scheda'],
+        ['es', spagnolo, 'Nueva tarjeta'],
+        ['en', inglese, 'New card'],
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 19 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1)', async (lingua, file, dellaSchedaCreata) => {
+        const { titoloDellaNotifica } = await import('./index');
+        const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
+
+        expect(tipiConosciuti).toHaveLength(19);
+        expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
+        expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 19 titoli sono 19 testi diversi.
+        expect(titoli).not.toContain(diRipiego[lingua]);
+        expect(new Set(titoli).size).toBe(19);
+    });
+
+    it.each(['it', 'es', 'en'] as const)('con la lingua "%s", titoloDellaNotifica dà il titolo di ripiego a un tipo che zr-core non conosce, vuoto, mancante o che non è un testo: mai il codice del tipo, mai un testo vuoto (sprint 16 · T5.2)', async (lingua) => {
+        const { titoloDellaNotifica } = await import('./index');
+        const tipi: unknown[] = [
+            // Un tipo che il contratto non ha ancora, e uno che ha solo il nome di un altro davanti o dietro.
+            'com.zeiras.crm.contatto.creato', 'com.zeiras.board.scheda', 'com.zeiras.board.scheda.creata.poi', 'COM.ZEIRAS.BOARD.SCHEDA.CREATA', ' com.zeiras.board.scheda.creata',
+            // Nomi che ogni oggetto ha, e il vuoto.
+            'constructor', '__proto__', 'toString', '',
+            // Mancante, e ciò che non è un testo: anche un elenco che, scritto come testo, sarebbe un tipo conosciuto.
+            undefined, null, 7, true, ['com.zeiras.board.scheda.creata'], { toString: () => 'com.zeiras.board.scheda.creata' },
+        ];
+
+        expect(tipi.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(tipi.map(() => diRipiego[lingua]));
+    });
+
+    it('con una lingua che zr-core non ha, titoloDellaNotifica dà l\'inglese, per un tipo conosciuto e per il ripiego; con una variante regionale, la lingua base (sprint 16 · T5.2)', async () => {
+        const { titoloDellaNotifica } = await import('./index');
+        const cheNonHa = ['pt-BR', 'zz', '', 'constructor'];
+
+        expect(cheNonHa.map((lingua) => titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua))).toStrictEqual(cheNonHa.map(() => 'New card'));
+        expect(cheNonHa.map((lingua) => titoloDellaNotifica('uat-tipo-ignoto', lingua))).toStrictEqual(cheNonHa.map(() => 'News in the workspace'));
+        expect(['it-IT', 'IT', 'es_ES'].map((lingua) => titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua))).toStrictEqual(['Nuova scheda', 'Nuova scheda', 'Nueva tarjeta']);
+        expect(['it-IT', 'IT', 'es_ES'].map((lingua) => titoloDellaNotifica(undefined, lingua))).toStrictEqual(['Novità nel workspace', 'Novità nel workspace', 'Novedades en el workspace']);
+    });
 });

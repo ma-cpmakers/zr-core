@@ -1189,6 +1189,27 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif')?.textContent).not.toMatch(/com\.zeiras|constructor|__proto__/i);
     });
 
+    // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
+    // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 19 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1)', async (lingua) => {
+        const { titoloDellaNotifica } = await import('./index');
+        // I 19 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
+        const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
+        const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${90 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
+        expect(titoli()).toStrictEqual(dellaFunzione);
+        // Non sono due elenchi di ripieghi: i primi 19 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // ha), e gli altri sette il ripiego.
+        const deiTesti = lingua in diRipiego ? lingua : 'en';
+        expect(dellaFunzione.slice(0, 19)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(19)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+    });
+
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
         ['it', 0, 0, 'Notifiche'],
         ['it', 1, 0, 'Notifiche, 1 non letta'],
