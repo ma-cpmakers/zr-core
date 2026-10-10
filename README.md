@@ -40,6 +40,9 @@ system. React lo porta il frontend: il pacchetto non ne ha una copia.
 import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
 ```
 
+**Le intestazioni di sicurezza**: una riga nel `bootstrap/app.php` del frontend registra la classe che le scrive su ogni
+risposta di Laravel — più sotto, «Le intestazioni di sicurezza».
+
 Il design system è uno solo per app, quello di zr-core: il frontend non ne tiene una copia sua.
 
 ## La parte server
@@ -394,16 +397,160 @@ di `public/`.
 `favicon.ico` e `apple-touch-icon.png` sono la resa di `zeiras-favicon.svg`: in questo repo li genera `npm run favicon`, non
 si ritoccano a mano, e la CI a ogni giro li confronta pixel per pixel con la resa di adesso.
 
+## Le intestazioni di sicurezza
+
+Dalla `v1.6.0` le intestazioni di sicurezza di un frontend le scrive una classe di zr-core,
+`Zeiras\Core\Http\IntestazioniSicurezza`: una sola per tutti i moduli, con la CSP di tutti e, per ogni modulo, solo ciò che
+dichiara di aggiungere. zr-core non la registra da sé: la registra il frontend, prima dei middleware globali, nel suo
+`bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->prepend(\Zeiras\Core\Http\IntestazioniSicurezza::class);
+})
+```
+
+Prima dei globali, e non nel gruppo `web`: così le intestazioni le hanno anche le risposte fuori dal gruppo (`/up`), le
+risposte d'errore e il 503 della manutenzione. Una classe del frontend con lo stesso compito si cancella: ne resta una.
+
+Su ogni risposta di Laravel la classe scrive cinque intestazioni, al posto di ciò che la risposta aveva:
+
+| Intestazione | Valore |
+|---|---|
+| `Strict-Transport-Security` | `max-age=31536000`: un anno, per questo host solo (senza `includeSubDomains` né `preload`) |
+| `Content-Security-Policy` | la CSP di tutti, qui sotto, più ciò che il modulo aggiunge |
+| `Referrer-Policy` | `strict-origin-when-cross-origin`; una risposta che ha già `no-referrer`, e solo quello, lo tiene |
+| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` |
+| `X-Content-Type-Options` | `nosniff` |
+
+La CSP di tutti, quella di un modulo che non aggiunge niente:
+
+```
+default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+### Le sorgenti di un modulo
+
+Ciò che un modulo aggiunge alla CSP di tutti sta in un file solo, `config/zr-core.php` del frontend: è l'unico posto dove
+un modulo scrive un'origine. Il file di partenza, che non aggiunge niente, arriva nel frontend col comando:
+
+```
+php artisan vendor:publish --tag=zr-core-config
+```
+
+e si compila così — nell'esempio, un modulo che serve dei font suoi e ha una pagina col widget di un altro sito:
+
+```php
+return [
+    // Per sempre, su ogni risposta.
+    'csp' => [
+        'font-src' => ["'self'"],
+    ],
+
+    // Per una pagina sola: insiemi con un nome.
+    'csp_pagine' => [
+        'turnstile' => [
+            'script-src' => ['https://challenges.cloudflare.com'],
+            'frame-src' => ['https://challenges.cloudflare.com'],
+        ],
+    ],
+];
+```
+
+- **Le direttive**: si aggiungono sorgenti a sei direttive sole — `script-src`, `style-src`, `img-src`, `font-src`,
+  `connect-src`, `frame-src`. Un modulo e una pagina aggiungono: non tolgono niente e non toccano le altre direttive.
+- **Le sorgenti ammesse**: `'self'`, oppure un'origine `https://` scritta per intero — un nome di dominio in minuscolo, con
+  almeno un punto, e la porta se serve (`https://cdn.example.com`, `https://cdn.example.com:8443`). Niente jolly, schemi
+  interi (`https:`, `data:`), percorsi, indirizzi IP, nomi in punycode (`xn--`), `'unsafe-inline'`, `'unsafe-eval'`, nonce
+  o hash.
+- **Una sorgente non ammessa** è scartata, mai aggiustata: la CSP esce senza, e la classe scrive un avviso nel log a ogni
+  risposta, finché il file non è corretto. L'avviso dice di chi era lo scarto (il modulo o la pagina), la direttiva e il
+  motivo; non porta valori della richiesta.
+- **La configurazione in cache**: senza il file nel frontend valgono i valori di partenza. Un frontend che tiene la
+  configurazione in cache (`php artisan config:cache`) la rifà dopo l'aggiornamento di zr-core e dopo ogni modifica del
+  file: fino ad allora la classe non vede le sorgenti nuove.
+
+### Per una pagina sola
+
+Una pagina che ha bisogno di sorgenti sue le chiede per nome dal suo controller, con
+`IntestazioniSicurezza::perLaPagina('<nome>')`:
+
+```php
+use Zeiras\Core\Http\IntestazioniSicurezza;
+
+IntestazioniSicurezza::perLaPagina('turnstile');
+```
+
+Il controller dice solo il nome di un insieme di `csp_pagine`: le origini stanno nella configurazione. Il nome si scrive nel
+codice, e non si prende mai dalla richiesta. Vale per la risposta a quella richiesta sola; chiamata due volte, vale l'ultimo
+nome. Un nome che la configurazione non dichiara non aggiunge niente, e lascia un avviso nel log.
+
+**Con Inertia la CSP è del documento.** Il browser applica la CSP della risposta che ha caricato il documento, e una visita
+di Inertia cambia la pagina senza ricaricarlo: la CSP resta quella di prima. Per questo una pagina con sorgenti sue si apre
+e si lascia con un caricamento intero: ci si arriva con un link normale (`<a href>`, non `<Link>`), e se ne esce allo
+stesso modo o, dal server, con `Inertia::location()`. Aperta con una visita di Inertia, le sue sorgenti restano bloccate;
+lasciata con una visita di Inertia, la sua CSP più larga resta sulle pagine dopo.
+
+### Il test nel modulo
+
+Ogni modulo tiene nel suo repo un test che chiede una sua pagina e confronta le cinque intestazioni coi valori scritti per
+intero: la CSP che il modulo si aspetta, carattere per carattere, e non una costante di zr-core. È un obbligo, non un
+consiglio: le intestazioni arrivano da un pacchetto, e un test che rilegge la costante del pacchetto resta verde qualunque
+cosa il pacchetto scriva. Coi valori per intero, un aggiornamento di zr-core che cambia un'intestazione fa rosso nella CI
+del modulo, e il valore nuovo lo conferma chi lo legge.
+
+```php
+it('ogni risposta porta le intestazioni di sicurezza, coi valori scritti per intero', function () {
+    $this->get('/non-esiste')
+        ->assertHeader('Strict-Transport-Security', 'max-age=31536000')
+        ->assertHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+        ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+        ->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+});
+```
+
+Un modulo che aggiunge sorgenti scrive per intero la sua CSP, e ha un caso per ogni pagina che ne chiede di sue.
+
+Le intestazioni comuni non cambiano in una versione di correzione di zr-core: un cambio che le allarga esce in una minore,
+con l'annuncio ai frontend; uno che le stringe, in una maggiore.
+
+### La barra d'avanzamento di Inertia
+
+La CSP di tutti non ammette stili in linea, e la barra d'avanzamento di Inertia, di suo, aggiunge alla pagina un `<style>`.
+Un modulo la tiene senza `<style>` — `progress: { includeCSS: false }` in `createInertiaApp`, con gli stili della barra in
+un suo file CSS — oppure la spegne (`progress: false`).
+
+### Che cosa resta al server web
+
+La classe scrive sulle risposte di Laravel. Ciò che non passa da Laravel non ha le sue intestazioni, e resta al server
+web:
+
+- **i file statici** di `public/` (la build, la favicon, `robots.txt`): li serve il server web;
+- **gli errori del server web**: una risposta che il server web dà da sé, senza arrivare a Laravel;
+- **la pagina di manutenzione pre-renderizzata** (`php artisan down --render=…`): esce prima che Laravel parta, senza
+  passare dai middleware. Il 503 della manutenzione senza `--render` passa dalla classe;
+- **`X-Frame-Options`**: la classe non la manda. L'incorniciamento lo vieta già `frame-ancestors 'none'` della CSP; chi la
+  vuole anche come intestazione la mette nel server web.
+
+Se il server web aggiunge alle risposte di Laravel un'intestazione che scrive anche la classe, la risposta la porta due
+volte: nel server web si toglie, o si tiene con lo stesso valore.
+
 ## La CSP
 
 Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`
 aggiunto da JS e nessun attributo `style` nell'HTML. I pochi stili che i componenti mettono su un elemento passano da
-JS (CSSOM), che `style-src` non governa. Chi installa zr-core apre la sua CSP almeno a questo:
+JS (CSSOM), che `style-src` non governa.
+
+La CSP intera la dà la classe delle intestazioni di sicurezza, qui sopra: chi la registra non ne scrive una sua, e ciò che
+serve al modulo lo aggiunge in `config/zr-core.php`. `frame-ancestors`, `base-uri` e `form-action`, che non ricadono su
+`default-src`, lì ci sono già.
+
+Chi non la registra scrive la CSP per conto suo, e per la cornice la apre almeno a questo:
 
 ```
 Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com
 ```
 
-e ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue immagini in `img-src`). È il minimo per la cornice,
-non una policy completa: `frame-ancestors`, `base-uri` e `form-action` non ricadono su `default-src`, e il frontend li
-mette da sé.
+È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
+immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.

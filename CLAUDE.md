@@ -29,6 +29,11 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 - **La parte server**: ciò che serve al frontend per dare alla cornice i dati della persona — chi è, la sua lingua, le
   sue aziende e i suoi workspace (con lo slug), i prodotti attivi nel workspace, il numero di notifiche. Si leggono
   **solo** dalle API `/v1` di `zr-backoffice`, col gettone, attraverso `zr-auth`.
+- **Le intestazioni di sicurezza**: una classe sola per tutti i frontend, `Zeiras\Core\Http\IntestazioniSicurezza` — HSTS, la
+  CSP di tutti, `Referrer-Policy`, `Permissions-Policy`, `nosniff`. zr-core non la registra da sé: la registra il frontend,
+  prima dei middleware globali. Le sorgenti che un modulo aggiunge alla CSP stanno nel suo `config/zr-core.php`, e solo lì.
+  Ogni modifica della classe o di `config/zr-core.php` passa da una revisione di sicurezza prima del tag; un cambio alle
+  intestazioni comuni non esce in una versione di correzione: minore con l'annuncio se allarga, maggiore se stringe.
 
 ## Cosa NON fa
 - **Niente dati salvati**: il pacchetto non ha tabelle. Un dato o un'operazione che manca si chiede a `zr-backoffice`,
