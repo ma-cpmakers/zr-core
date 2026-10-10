@@ -124,7 +124,18 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 }
 
 /**
- * Una notifica della parte server nel pannello: il titolo della lingua, uno per tutte, e l'ora nella lingua dei testi. Di che
+ * Il titolo di una notifica: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi zr-core
+ * conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è un
+ * testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai.
+ */
+function titoloDi(tipo: unknown, t: TestiDellaCornice): string {
+    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
+
+    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
+}
+
+/**
+ * Una notifica della parte server nel pannello: il titolo del suo tipo e l'ora, nella lingua dei testi. Di che
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Il contratto non dice per
@@ -135,7 +146,7 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, t: TestiDel
 
     return {
         id: notifica.id,
-        title: t.notificationTitle,
+        title: titoloDi(notifica.tipo, t),
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: delProdotto?.icona,
@@ -420,7 +431,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], onLogout, naviga
                     naviga(scelto.href);
                 }
             }}
-            labels={t}
+            // Con una sola non letta il nome della campanella per il lettore di schermo è al singolare: il design system ha un
+            // testo solo per le non lette, e zr-core gli dà il suo. Il numero è quello che la campanella mostra: quello dei dati
+            // o, senza, le non lette caricate, che conta il design system.
+            labels={(nonLette ?? nonLetteInElenco) === 1 ? { ...t, unread: t.unreadOne } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={(azione) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]))}
             // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.

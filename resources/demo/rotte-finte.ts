@@ -1,7 +1,9 @@
 // Le rotte della cornice, finte, per le pagine di prova: rispondono dopo un attimo, per vedere il caricamento, nella forma della
 // parte server. Le notifiche d'esempio: due non lette di oggi, di due prodotti del registro (`pm`, `crm`), una letta ieri con un
 // codice che il registro non ha e una letta nove giorni fa che non è di un'app; con `?arriva=1`, dal secondo caricamento, una
-// nuova non letta nata in quel momento. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// nuova non letta nata in quel momento. Ognuna ha il tipo dell'evento, com'è nel backoffice, tranne una: due sono di tipi che
+// zr-core conosce (una scheda creata, una persona entrata nel workspace) e hanno il titolo del tipo, una è di un tipo che non
+// conosce e una non ha `tipo`, e hanno il titolo di ripiego. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC; con `?errore=letture` la prima fallisce e la seconda riesce. La ricerca dà i risultati
 // d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
 // mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
@@ -16,10 +18,10 @@ const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm' },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm' },
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata' },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato' },
     { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota' },
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato' },
 ];
 let letture = 0;
 let caricamenti = 0;
@@ -95,7 +97,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'uat_errore' }, 502);
             }
             if (arriva && caricamenti === 2) {
-                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm' });
+                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata' });
             }
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è.

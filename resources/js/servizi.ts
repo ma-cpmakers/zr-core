@@ -10,6 +10,8 @@ export interface NotificaDellaCornice {
     letta: boolean;
     /** Il codice dell'app da cui viene (`pm`, `crm`…), com'è nel backoffice: `null` se non è di un'app. Di che prodotto è, e come si mostra, lo dice il registro. */
     app: string | null;
+    /** Il tipo dell'evento che l'ha generata (`com.zeiras.board.scheda.creata`…), com'è nel backoffice: che titolo ha lo dicono le lingue. La parte server lo dà sempre; senza, il titolo è quello di ripiego. */
+    tipo?: string;
 }
 
 /** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */

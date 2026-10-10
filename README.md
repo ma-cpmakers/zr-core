@@ -169,9 +169,13 @@ cornice === null ? pagina : (
   non sa niente di prima, e Indietro porta ancora il numero di allora. I segni vengono dall'orologio della parte server: i
   server del frontend devono avere l'ora allineata. Coi dati senza il segno la cornice non ha niente da confrontare: i
   dati sono nuovi quando è nuovo l'oggetto, e vale sempre ciò che dà la pagina.
-- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo della
-  lingua, uno per tutte, e l'ora nella lingua («5 minuti fa», «ieri», «1 ott»), in «Per me» come in «Tutte» (il backoffice
-  non dice per chi è una notifica). Di che prodotto è lo dice `app`: se è il codice di un prodotto del registro, la notifica
+- **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo del suo
+  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora nella lingua («5 minuti fa», «ieri»,
+  «1 ott»), in «Per me» come in «Tutte» (il backoffice non dice per chi è una notifica). Il titolo lo dice `tipo`, e i
+  titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto: una notifica di un tipo che zr-core non
+  conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»), mai il codice del tipo. Un tipo di notifica
+  nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Di che prodotto è
+  lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
