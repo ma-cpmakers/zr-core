@@ -17,12 +17,13 @@ use Zeiras\Auth\Errori\BackofficeNonRisponde;
 final class RicercaDellaCornice
 {
     /**
-     * GET /cornice/ricerca?q=: `q` da 2 a 100 caratteri, come vuole ricerca.elenca, senza gli spazi ai bordi (anche in un
-     * frontend senza TrimStrings); altrimenti 422 e il backoffice non si chiama.
+     * POST /cornice/ricerca con `{q}`: `q` da 2 a 100 caratteri, come vuole ricerca.elenca, senza gli spazi ai bordi (anche in
+     * un frontend senza TrimStrings); altrimenti 422 e il backoffice non si chiama. La parola si legge solo dal corpo JSON: ciò
+     * che una persona cerca non deve stare in un indirizzo, e un `q` dell'indirizzo non conta.
      */
     public function cerca(Request $richiesta): JsonResponse
     {
-        $q = $richiesta->query('q');
+        $q = $richiesta->json('q');
         $q = is_string($q) ? Str::trim($q) : $q;
 
         if (! is_string($q) || mb_strlen($q) < 2 || mb_strlen($q) > 100) {
