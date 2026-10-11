@@ -1581,6 +1581,19 @@ describe('il pannello delle notifiche', () => {
         expect(delleViste.map((notifica) => destinazioneDellaNotifica(notifica, dati.workspace.slug, dati.prodotti))).toStrictEqual([undefined, undefined, undefined]);
     });
 
+    // Un'azienda del CRM, che nel contratto è una `organizzazione`: creata o modificata, si apre la sua pagina in `/aziende`.
+    const delleAziende = ['creata', 'modificata'].map((cosa, indice) => ({
+        id: `uat-n${79 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: `com.zeiras.crm.organizzazione.${cosa}`, ids: { id: `uat-azienda-${indice + 1}` },
+    }));
+
+    it.each([[undefined], ['pm'], ['crm']])('un clic su una notifica di un\'azienda del CRM apre la pagina di quell\'azienda, `/aziende/<id>` dopo `/w/<slug>`, mai `/organizzazioni/<id>` — dal prodotto «%s» (sprint 21 · T5.2)', async (prodotto) => {
+        expect(await apertiDalPannello(dati, prodotto, delleAziende)).toStrictEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-2`]);
+    });
+
+    it('in un workspace dove il CRM non si può aprire, un clic su una notifica di un\'azienda apre la pagina delle notifiche (sprint 21 · T5.2, T3.4)', async () => {
+        expect(await apertiDalPannello({ ...dati, prodotti: { pm: 'attivo', crm: 'in_arrivo' } }, undefined, delleAziende)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+    });
+
     /**
      * I titoli dei 31 tipi di evento che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10

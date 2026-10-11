@@ -181,6 +181,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`,
             null, null, null,
         ]);
+        // Sprint 21 · T5: le due di un'azienda aprono la sua pagina nel CRM.
+        expect(notifiche.slice(14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-1`]);
         // Le prime quattro, quelle di ogni pagina di prova, non hanno una destinazione: aprono la pagina delle notifiche.
         expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual([null, null, null, null]);
         // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.

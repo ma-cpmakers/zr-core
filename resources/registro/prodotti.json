@@ -17,7 +17,9 @@
                 { "tipo": "com.zeiras.crm.pipeline.modificata", "percorso": "/pipeline/{id}/impostazioni" },
                 { "tipo": "com.zeiras.crm.nota.creata", "percorso": "/contatti/{persona_id}" },
                 { "tipo": "com.zeiras.crm.nota.modificata", "percorso": "/contatti/{persona_id}" },
-                { "tipo": "com.zeiras.crm.nota.eliminata", "percorso": "/contatti/{persona_id}" }
+                { "tipo": "com.zeiras.crm.nota.eliminata", "percorso": "/contatti/{persona_id}" },
+                { "tipo": "com.zeiras.crm.organizzazione.creata", "percorso": "/aziende/{id}" },
+                { "tipo": "com.zeiras.crm.organizzazione.modificata", "percorso": "/aziende/{id}" }
             ]
         },
         { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true },

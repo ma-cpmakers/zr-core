@@ -383,11 +383,13 @@ cornice === null ? pagina : (
   quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette.
   Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati: una
   notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
-  impostazioni, una di una nota il contatto a cui è attaccata. Dove si apre ogni tipo lo dice il registro (`notifiche`
+  impostazioni, una di una nota il contatto a cui è attaccata, una di un'azienda l'elenco delle aziende col suo pannello
+  aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`). Dove si apre ogni tipo lo dice il registro (`notifiche`
   della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
   mostra le notifiche in una pagina sua importa dall'ingresso. Una notifica che non ha dove andare apre
-  `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (oggi ci sono i sette del CRM), le
-  manca un id che il percorso chiede, o il modulo in quel workspace non si può aprire («Presto», o né `attivo` né
+  `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (oggi ci sono i nove del CRM;
+  le viste di una board non hanno una destinazione), le manca un id che il percorso chiede, o il modulo in quel
+  workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
 - **La ricerca** (Ctrl/Cmd+K) chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola
   nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell'header `X-XSRF-TOKEN`, come «Segna tutte come lette»: dalla

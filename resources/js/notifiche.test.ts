@@ -22,11 +22,14 @@ describe('la destinazione di una notifica', () => {
         ['nota.creata', { id: 'uat-nota-1', persona_id: 'uat-persona-2' }, '/contatti/uat-persona-2'],
         ['nota.modificata', { id: 'uat-nota-1', persona_id: 'uat-persona-2' }, '/contatti/uat-persona-2'],
         ['nota.eliminata', { id: 'uat-nota-1', persona_id: 'uat-persona-2' }, '/contatti/uat-persona-2'],
-    ])('una notifica del CRM di tipo «%s» apre la sua risorsa nel CRM, dopo `/w/<slug>` del workspace (sprint 21 · T3.1)', (tipo, ids, percorso) => {
+        // Sprint 21 · T5: nel contratto un'azienda è una `organizzazione`; la pagina del CRM è `/aziende`, mai `/organizzazioni`.
+        ['organizzazione.creata', { id: 'uat-azienda-1' }, '/aziende/uat-azienda-1'],
+        ['organizzazione.modificata', { id: 'uat-azienda-1' }, '/aziende/uat-azienda-1'],
+    ])('una notifica del CRM di tipo «%s» apre la sua risorsa nel CRM, dopo `/w/<slug>` del workspace (sprint 21 · T3.1, T5.2)', (tipo, ids, percorso) => {
         expect(apre(delCrm(tipo, ids))).toBe(CRM + percorso);
     });
 
-    it('le sette destinazioni del CRM sono quelle del registro: nessun altro prodotto ne ha, e ogni tipo ha il suo percorso (sprint 21 · T3.1)', () => {
+    it('le nove destinazioni del CRM sono quelle del registro: nessun altro prodotto ne ha, e ogni tipo ha il suo percorso (sprint 21 · T3.1, T5.2)', () => {
         expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['crm']);
         expect(registro.find((voce) => voce.id === 'crm')?.notifiche).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
@@ -36,6 +39,8 @@ describe('la destinazione di una notifica', () => {
             { tipo: 'com.zeiras.crm.nota.creata', percorso: '/contatti/{persona_id}' },
             { tipo: 'com.zeiras.crm.nota.modificata', percorso: '/contatti/{persona_id}' },
             { tipo: 'com.zeiras.crm.nota.eliminata', percorso: '/contatti/{persona_id}' },
+            { tipo: 'com.zeiras.crm.organizzazione.creata', percorso: '/aziende/{id}' },
+            { tipo: 'com.zeiras.crm.organizzazione.modificata', percorso: '/aziende/{id}' },
         ]);
     });
 
@@ -55,6 +60,10 @@ describe('la destinazione di una notifica', () => {
         ['del CRM, di un tipo che zr-core non conosce', delCrm('persona.assegnata', { id: 'uat-persona-1' })],
         ['del CRM, di un tipo che ne continua uno conosciuto', delCrm('persona.creata.v2', { id: 'uat-persona-1' })],
         ['del CRM, col solo pezzo di un tipo conosciuto', delCrm('persona', { id: 'uat-persona-1' })],
+        // Il contratto non ha l'eliminazione di un'azienda, né un tipo `azienda`: la parola del modulo sta nel percorso, non nel tipo.
+        ['del CRM, di un\'azienda eliminata, che il contratto non ha', delCrm('organizzazione.eliminata', { id: 'uat-azienda-1' })],
+        ['del CRM, con `azienda` nel tipo', delCrm('azienda.creata', { id: 'uat-azienda-1' })],
+        ['di una vista di una board, di Project Management', { app: 'pm', tipo: 'com.zeiras.board.vista.creata', ids: { id: 'uat-vista-1', board_id: 'uat-board-1' } }],
         ['del CRM, col tipo in maiuscole', { app: 'crm', tipo: 'COM.ZEIRAS.CRM.PERSONA.CREATA', ids: { id: 'uat-persona-1' } }],
         // La destinazione si cerca nella voce dell'app della notifica: un tipo del CRM con l'app di un altro prodotto non la trova.
         ['con un tipo del CRM ma l\'app di Project Management', { app: 'pm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } }],
@@ -97,6 +106,8 @@ describe('la destinazione di una notifica', () => {
         ['l\'id ha una lettera accentata', delCrm('persona.creata', { id: 'uat-personà' })],
         ['l\'id è lungo 65 caratteri', delCrm('persona.creata', { id: 'a'.repeat(65) })],
         ['la pipeline ha solo `pipeline_id`', delCrm('pipeline.creata', { pipeline_id: 'uat-pipeline-1' })],
+        ['l\'azienda ha solo `organizzazione_id`', delCrm('organizzazione.creata', { organizzazione_id: 'uat-azienda-1' })],
+        ['l\'azienda ha un id con una barra', delCrm('organizzazione.modificata', { id: 'uat-azienda-1/x' })],
     ])('una notifica del CRM a cui manca l\'id che il percorso chiede, o che ne ha uno che non ha la forma di un id, non ha una destinazione — %s (sprint 21 · T3.3)', (_quale, notifica) => {
         expect(apre(notifica)).toBeUndefined();
     });
