@@ -126,10 +126,12 @@ più vecchi.
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
 lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non
-lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati. Cambiano solo quei due: email, workspace,
-ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome nuovi da quella stessa
-richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della
-pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo.
+lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende: quali
+prende lo decide zr-auth (per la lingua vedi «Quale lingua c'è nella sessione», più sotto). Cambiano solo quei due: email,
+workspace, ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome della sessione
+dopo `Sessione::aggiorna`, da quella stessa richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare
+`Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e
+dalla richiesta dopo è nuovo.
 
 Per avere la pagina nella lingua nuova già da quella richiesta c'è `Cornice::lingua()` (dalla `v1.8.0`): una riga nel
 middleware che mette la lingua, prima del controller, al posto della lingua letta dalla sessione.
@@ -138,12 +140,13 @@ middleware che mette la lingua, prima del controller, al posto della lingua lett
 App::setLocale(Cornice::lingua() ?? config('app.locale'));
 ```
 
-Dà la lingua della persona già aggiornata dal profilo: legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la
-lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un workspace dà la lingua della sessione,
-senza chiamare il backoffice. È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di
-lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a `App::setLocale` non arriva mai un valore che
-Laravel rifiuta. Una lingua ben fatta che il modulo non ha passa com'è: per i testi dei file a gruppi (`lang/<lingua>/…`)
-Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com'è; se il modulo vuole
+Dà la lingua della sessione dopo che `Sessione::aggiorna` ha visto il profilo: legge `io.mostra`, lo dà a
+`Sessione::aggiorna` e risponde con la lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un
+workspace dà la lingua della sessione, senza chiamare il backoffice. È la lingua della sessione, se ha la forma di una
+lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a
+`App::setLocale` non arriva mai un valore che Laravel rifiuta. Una lingua della sessione ben fatta che il modulo non ha
+passa com'è: per i testi dei file a gruppi (`lang/<lingua>/…`) Laravel ripiega sul suo `fallback_locale`, per quelli JSON
+(`lang/<lingua>.json`) dà la chiave com'è; se il modulo vuole
 altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice
 non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
 invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
@@ -157,10 +160,18 @@ suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la pr
 se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
 
-Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`): con un'altra, anche ben
-fatta, la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`. Fino alla 0.12.11 la sessione prende
-il testo del profilo com'è, e vale ciò che è scritto qui sopra: una lingua ben fatta passa, una malfatta dà `null`. zr-core le
-accetta tutte e due: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata.
+Quale lingua c'è nella sessione lo decide zr-auth, in due momenti. All'ingresso `Sessione::apri` e `Sessione::entra` mettono
+nella sessione la persona come la dà il backoffice, con la lingua del profilo com'è: vale dalla 0.12.4 alla 0.12.12. Dopo, a
+ogni lettura, `Sessione::aggiorna` cambia la lingua della sessione solo con una lingua del profilo che prende: fino alla
+0.12.11 ogni testo che non sia vuoto o di soli spazi, com'è; dalla 0.12.12 solo una lingua di Zeiras (`it`, `en`, `es`:
+l'elenco `Sessione::LINGUE` di zr-auth), col confronto esatto — `IT` e `it-IT` non sono `it` —, e con un'altra, anche ben
+fatta, la sessione tiene la lingua che aveva. Se il profilo non ne porta una (`null`, un testo vuoto o di soli spazi) la
+sessione tiene la sua con tutte e due le versioni. Con una sessione, quindi, `Cornice::lingua()` dà `null` quando la lingua
+che la sessione ha dopo la lettura non ha la forma di una lingua: fino alla 0.12.11 anche per una malfatta appena arrivata
+dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall'ingresso. E per una lingua del profilo ben
+fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la
+forma di una lingua. zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda
+quale zr-auth è installata.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
 rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione, e la riga costerebbe una
@@ -174,7 +185,9 @@ Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di 
 `Sessione::utente()` dopo, funziona come prima. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza
 chiamarla un'altra volta: `Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto
 letture invece di quattro, con due segni — e in un middleware parte a ogni richiesta che ci passa, anche senza una pagina
-da mostrare.
+da mostrare. E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()['lingua']` e
+`Cornice::dati()['lingua']` sono la lingua della sessione com'è, anche malfatta. Chi resta col suo codice e la dà a
+`App::setLocale`, all'attributo `lang` della pagina o al nome di un file ne guarda prima la forma.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
