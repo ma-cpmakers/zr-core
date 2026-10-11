@@ -111,11 +111,32 @@ lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `
 lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati. Cambiano solo quei due: email, workspace,
 ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome nuovi da quella stessa
 richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della
-pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo. Un frontend che
-vuole la pagina nella lingua nuova già da quella richiesta chiama `Cornice::dati()` prima di leggere la lingua, o rilegge
-`Sessione::utente()` dopo. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza chiamarla un'altra
-volta: `Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto letture invece di
-quattro, con due segni — e in un middleware parte a ogni richiesta che ci passa, anche senza una pagina da mostrare.
+pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo.
+
+Per avere la pagina nella lingua nuova già da quella richiesta c'è `Cornice::lingua()` (dalla `v1.8.0`): una riga nel
+middleware che mette la lingua, prima del controller, al posto della lingua letta dalla sessione.
+
+```php
+App::setLocale(Cornice::lingua() ?? config('app.locale'));
+```
+
+Dà la lingua della persona già aggiornata dal profilo: legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la
+lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un workspace dà la lingua della sessione,
+senza chiamare il backoffice. È la lingua del profilo com'è: se il modulo non ce l'ha, quale mettere al suo posto lo decide
+il modulo. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c'è; dove c'è non ne costa una
+in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()` invece di rifarla, e
+`Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non lette e il segno dei
+dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una notifica segnata come
+letta in quella richiesta — arriva alla campanella con la lettura dopo. Se il backoffice non risponde `Cornice::lingua()`
+non lancia: dà la lingua della sessione, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia `Cornice::dati()`, se
+in quella richiesta la chiami, senza chiamare `io.mostra` un'altra volta. `GettoneRifiutato` invece passa anche da
+`Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
+
+Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere
+`Sessione::utente()` dopo, funziona come prima. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza
+chiamarla un'altra volta: `Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto
+letture invece di quattro, con due segni — e in un middleware parte a ogni richiesta che ci passa, anche senza una pagina
+da mostrare.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
