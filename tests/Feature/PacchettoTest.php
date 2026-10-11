@@ -964,7 +964,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1031,7 +1031,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3117,7 +3117,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati'],
+    'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'i tre casi del CRM' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di una nota il contatto a cui è attaccata'],
     'il caso delle aziende (sprint 21 · T5.2)' => ['punto', 'una di un\'azienda l\'elenco delle aziende col suo pannello aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`)'],
     'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
@@ -3157,3 +3157,25 @@ it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un
     expect(scritteNellaPaginaDiProva('demo.tsx', ['const dati = useMemo(', 'dati={dati}', 'dati={{']))
         ->toBe(['const dati = useMemo(' => 1, 'dati={dati}' => 1, 'dati={{' => 0]);
 });
+
+// Sprint 22 · T1 (voce #1713): la risposta dell'elenco dice di quale workspace è, e il clic apre lì la risorsa. Il README lo
+// dice nella riga della rotta (la chiave, che cos'è, da quando) e al punto «Le notifiche» (dove si apre, nei tre casi).
+
+it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo workspace e che un clic apre lì la risorsa: nella riga della rotta la chiave e che cos\'è, al punto «Le notifiche» i tre casi (sprint 22 · T1.6)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = ['punto' => suUnaRiga($punto[0] ?? ''), 'rotta' => rigaDellaRotta($readme, 'GET /cornice/notifiche')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
+        ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
+})->with([
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
+    'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
+    'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
+    'lo stesso workspace' => ['punto', 'Se l\'elenco è del workspace dei dati della pagina decide lo stato dei moduli nei dati, come prima'],
+    'un altro workspace' => ['punto', 'se è di un altro, quello stato non decide — è di un altro workspace — e la risorsa si apre: se lì il modulo non è attivo lo dice il modulo'],
+    'non detto' => ['punto', 'se la risposta non dice il workspace, o lo dice senza la forma di uno slug, il clic apre la pagina delle notifiche'],
+]);

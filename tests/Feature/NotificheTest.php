@@ -221,7 +221,7 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
         ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z']);
+    ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
     Http::assertSentCount(1);
@@ -574,6 +574,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
         'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
+        'workspace' => 'uat-marketing',
     ]);
 
     expect(strlen((string) $risposta->json('aggiornati_il')))->toBe(27)
@@ -640,7 +641,7 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
         ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z']);
+    ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing']);
 
     // Dell'evento esce il tipo; di `dati`, in `ids`, i soli id che servono ad aprire la risorsa (sprint 21 · T3.5), e queste non
     // ne hanno: né il soggetto né i dati, con la chiave o col valore. Il soggetto di queste notifiche è `/v1/board/cartelle/…`,
@@ -1263,7 +1264,7 @@ it('GET /cornice/notifiche dà di ogni notifica nove chiavi: le cinque di prima,
         ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + SENZA_ID,
         ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z']);
+    ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing']);
 
     // Le stesse nove chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
     foreach ($risposta->json('data') as $notifica) {
@@ -1623,4 +1624,32 @@ it('una notifica senza `dati`, o con un `dati` che non è un oggetto, non è un 
     'dati è una lista di oggetti coi loro id' => [true, [['id' => 'uat-x', 'persona_id' => 'uat-x-2']]],
     'dati è un oggetto senza id' => [true, ['aggiornata_il' => '2026-10-11T12:29:00.123Z', 'campi' => ['uat-x']]],
     'dati è un testo che è la chiave del percorso' => [true, 'persona_id'],
+]);
+
+// Sprint 22 · T1 (voce #1713): la sessione ha un workspace solo. Con due schede su due workspace, la scheda rimasta indietro
+// chiede l'elenco e riceve le notifiche di quello in cui la persona è entrata per ultimo: la risposta dice di quale workspace
+// sono, e la cornice apre lì la risorsa di una notifica. Lo slug è quello della sessione, col cui gettone l'elenco è stato
+// letto: niente di ciò che manda il browser lo cambia.
+
+it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del workspace della sessione, quello col cui gettone le ha lette, e mai ciò che manda il browser (sprint 22 · T1.1)', function (array $workspace, string $indirizzo, array $intestazioni) {
+    $gettoni = sessioneAMano($workspace);
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche' => $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace'])
+            ? Http::response(['data' => [notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null)], 'successivo' => null])
+            : problemaDelBackoffice(403, 'gettone_senza_workspace'),
+    });
+
+    $risposta = senzaGettone($this->getJson($indirizzo, $intestazioni))->assertOk();
+
+    expect($risposta->json('workspace'))->toBe($workspace['slug'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'aggiornati_il', 'workspace'])
+        ->and($risposta->json('data.*.id'))->toBe(['uat-n1']);
+    Http::assertSentCount(1);
+})->with([
+    'il workspace della sessione' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', []],
+    'un altro workspace nella sessione' => [['id' => 'uat-ws-2', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'], 'cornice/notifiche', []],
+    'un altro slug nella query' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche?workspace=uat-vendite', []],
+    'un altro slug nella query, come lista' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche?workspace[slug]=uat-vendite', []],
+    'un altro slug in un\'intestazione' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['X-Workspace' => 'uat-vendite', 'X-Zeiras-Workspace' => 'uat-vendite']],
+    'la pagina da cui si chiede è di un altro workspace' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['Referer' => 'https://app.zeiras.com/w/uat-vendite/notifiche']],
 ]);
