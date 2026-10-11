@@ -22,10 +22,11 @@ use Zeiras\Core\Segno;
  * notifica è rivolta alla persona (`per_me`).
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
- * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola del browser,
- * fino a un istante, non una per notifica: il backoffice ne segna 5000 per chiamata, e la parte server lo richiama finché ne
- * restano, entro due tetti. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
- * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ * confronta con un elenco. `soggetto` resta qui, e di `dati` passano i soli id che alla cornice servono per aprire la risorsa
+ * della notifica (`ids`): quelli che il registro dei moduli chiede per il suo tipo, e nessuno per un tipo che il registro non
+ * ha. Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
+ * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
+ * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
  * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
  * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
@@ -40,6 +41,15 @@ final class NotificheDellaCornice
      * metodo. È il vincolo della rotta (routes/cornice.php): un id diverso non arriva qui, ed è un 404.
      */
     public const ID = '[A-Za-z0-9_-]{1,64}';
+
+    /** La stessa forma, per un id dei `dati` di una notifica: intera, e `\z` e non `$`, che lascia passare un a capo in fondo. */
+    private const FORMA_DI_UN_ID = '/\A'.self::ID.'\z/';
+
+    /**
+     * Un segnaposto in un percorso del registro dei moduli: `{id}`, o `{<nome>_id}`. È quello che il browser cerca per comporre
+     * l'indirizzo di una notifica (resources/js/notifiche.ts): un caso di RegistroTest tiene uguali i due.
+     */
+    private const SEGNAPOSTO = '/\{(id|[a-z][a-z_]*_id)\}/';
 
     /**
      * Com'è fatto l'istante che la rotta accetta in `fino_a`: data, `T`, ora coi secondi (e sei decimali al più: di più il
@@ -249,7 +259,11 @@ final class NotificheDellaCornice
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
+     * Di `dati` passano, in `ids`, i soli id che alla cornice servono per aprire la risorsa della notifica (`idDi()`): una
+     * notifica di un tipo che nel registro non ha una destinazione non ne ha. `dati` non è fra le chiavi che fanno una notifica:
+     * se manca, o non è un oggetto, `ids` è vuoto, e non è un guasto.
+     *
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: object}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -268,6 +282,57 @@ final class NotificheDellaCornice
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
+            // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
+            'ids' => (object) self::idDi($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null),
         ];
+    }
+
+    /**
+     * Gli id che servono ad aprire la risorsa di una notifica, presi dai suoi `dati`, per chiave: quelli che il percorso del
+     * registro chiede per il suo tipo (`chiaviDelPercorso()`), ognuno solo se il valore ha la forma di un id del backoffice — un
+     * testo di lettere, cifre, `-` e `_`, da 1 a 64, la stessa che la rotta della lettura chiede all'id di una notifica. Solo le
+     * coppie di `dati`, non quelle di un oggetto più dentro. Tutto il resto resta qui: gli altri id (quello di una nota, di una
+     * lista, di una persona entrata nel workspace), `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani — una
+     * chiave nuova non arriva in pagina perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
+     *
+     * @return array<string, string>
+     */
+    private static function idDi(?string $app, string $tipo, mixed $dati): array
+    {
+        $ids = [];
+        foreach (self::chiaviDelPercorso($app, $tipo) as $chiave) {
+            $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
+            if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
+                $ids[$chiave] = $valore;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Le chiavi degli id che il percorso di una notifica chiede, dal registro dei moduli del pacchetto
+     * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
+     * che il browser usa. La voce è quella dell'app della notifica, e il tipo si cerca intero. Nessuna chiave per un tipo che lì
+     * non ha una destinazione, per un'app che il registro non ha, o senza app.
+     *
+     * @return list<string>
+     */
+    private static function chiaviDelPercorso(?string $app, string $tipo): array
+    {
+        static $registro = null;
+        $registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+
+        foreach ($registro as $voce) {
+            foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
+                if ($notifica['tipo'] === $tipo) {
+                    preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
+
+                    return $segnaposto[1];
+                }
+            }
+        }
+
+        return [];
     }
 }

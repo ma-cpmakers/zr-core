@@ -6,8 +6,8 @@ import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, testi } from './li
 import { registro } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
-// italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system e che nessuna lingua sia elencata
-// nel codice lo prova tests/Feature/LingueTest.php.
+// italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system (o, dove c'è una decisione, quello
+// deciso prima che il design system lo porti) e che nessuna lingua sia elencata nel codice lo prova tests/Feature/LingueTest.php.
 
 describe('le lingue della cornice', () => {
     it("dove una lingua non ha un testo, o l'ha vuoto, quel testo è in inglese (T5.2)", () => {
@@ -128,8 +128,8 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure.
         expect(t['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(t.notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 19, in ogni lingua, anche con un file che ne ha uno in più.
-        expect(tipiCheHa(inglese)).toHaveLength(19);
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 31, in ogni lingua, anche con un file che ne ha uno in più.
+        expect(tipiCheHa(inglese)).toHaveLength(31);
         expect(tipiCheHa(t)).toStrictEqual(tipiCheHa(inglese));
         expect(tipiCheHa(testi('it'))).toStrictEqual(tipiCheHa(inglese));
         expect(tipiCheHa(testi('zz'))).toStrictEqual(tipiCheHa(inglese));
@@ -146,16 +146,77 @@ describe('le lingue della cornice', () => {
         ['it', italiano, 'Nuova scheda'],
         ['es', spagnolo, 'Nueva tarjeta'],
         ['en', inglese, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 19 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 31 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./index');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(19);
+        expect(tipiConosciuti).toHaveLength(31);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 19 titoli sono 19 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 31 titoli sono 31 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(19);
+        expect(new Set(titoli).size).toBe(31);
+    });
+
+    // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
+    // letta dai file delle lingue: nel CRM una `persona` è un «contatto», e in italiano e in spagnolo «pipeline» e «nota» sono
+    // al femminile. Un titolo è un testo intero per tipo, mai «Nuovo» più il nome della cosa.
+    const titoliDelCrm: [tipo: string, it: string, en: string, es: string][] = [
+        ['com.zeiras.crm.persona.creata', 'Nuovo contatto', 'New contact', 'Nuevo contacto'],
+        ['com.zeiras.crm.persona.modificata', 'Contatto modificato', 'Contact changed', 'Contacto modificado'],
+        ['com.zeiras.crm.pipeline.creata', 'Nuova pipeline', 'New pipeline', 'Nueva pipeline'],
+        ['com.zeiras.crm.pipeline.modificata', 'Pipeline modificata', 'Pipeline changed', 'Pipeline modificada'],
+        ['com.zeiras.crm.nota.creata', 'Nuova nota', 'New note', 'Nueva nota'],
+        ['com.zeiras.crm.nota.modificata', 'Nota modificata', 'Note changed', 'Nota modificada'],
+        ['com.zeiras.crm.nota.eliminata', 'Nota eliminata', 'Note deleted', 'Nota eliminada'],
+    ];
+
+    it.each(titoliDelCrm.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
+        'titoloDellaNotifica dà a %s, con la lingua "%s", il titolo «%s» (sprint 21 · T2.1)',
+        async (tipo, lingua, titolo) => {
+            const { titoloDellaNotifica } = await import('./index');
+
+            expect(titoloDellaNotifica(tipo, lingua)).toBe(titolo);
+        },
+    );
+
+    it.each(['it', 'es', 'en'] as const)('con la lingua "%s", un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, non quello del tipo a cui somiglia (sprint 21 · T2.2)', async (lingua) => {
+        const { titoloDellaNotifica } = await import('./index');
+        // `…persona.assegnata` non è ancora nel contratto; gli altri sono pezzi di un tipo che zr-core conosce.
+        const cheNonConosce = ['com.zeiras.crm.persona.assegnata', 'com.zeiras.crm.persona', 'com.zeiras.crm.persona.creata.poi', 'com.zeiras.crm.nota', 'com.zeiras.crm'];
+
+        expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
+    });
+
+    // Sprint 21 · T5 (voce #1706): i cinque tipi che il contratto porta dall'11/10/2026, le viste salvate di una board e le
+    // aziende del CRM, con le parole dei due moduli. Nel contratto un'azienda è una `organizzazione`: il titolo non si ricava
+    // dal tipo.
+    const titoliDiVisteEAziende: [tipo: string, it: string, en: string, es: string][] = [
+        ['com.zeiras.board.vista.creata', 'Nuova vista', 'New view', 'Nueva vista'],
+        ['com.zeiras.board.vista.modificata', 'Vista modificata', 'View changed', 'Vista modificada'],
+        ['com.zeiras.board.vista.eliminata', 'Vista eliminata', 'View deleted', 'Vista eliminada'],
+        ['com.zeiras.crm.organizzazione.creata', 'Nuova azienda', 'New company', 'Nueva empresa'],
+        ['com.zeiras.crm.organizzazione.modificata', 'Azienda modificata', 'Company changed', 'Empresa modificada'],
+    ];
+
+    it.each(titoliDiVisteEAziende.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
+        'titoloDellaNotifica dà a %s, con la lingua "%s", il titolo «%s» (sprint 21 · T5.1)',
+        async (tipo, lingua, titolo) => {
+            const { titoloDellaNotifica } = await import('./index');
+
+            expect(titoloDellaNotifica(tipo, lingua)).toBe(titolo);
+        },
+    );
+
+    it.each(['it', 'en', 'es'] as const)('con la lingua "%s", nessun titolo chiama «organizzazione» un\'azienda del CRM, e un tipo delle viste o delle aziende che il contratto non ha resta col titolo di ripiego (sprint 21 · T5.1, T5.3)', async (lingua) => {
+        const { titoloDellaNotifica } = await import('./index');
+        const delleAziende = ['com.zeiras.crm.organizzazione.creata', 'com.zeiras.crm.organizzazione.modificata'].map((tipo) => titoloDellaNotifica(tipo, lingua));
+        // Il contratto non ha l'eliminazione di un'azienda, né un tipo `azienda`: la parola del modulo sta nel titolo, non nel tipo.
+        const cheIlContrattoNonHa = ['com.zeiras.crm.organizzazione.eliminata', 'com.zeiras.crm.azienda.creata', 'com.zeiras.crm.organizzazione', 'com.zeiras.board.vista', 'com.zeiras.board.vista.creata.poi'];
+
+        expect(delleAziende.join(' · ')).not.toMatch(/organi[zs]/i);
+        expect(delleAziende).not.toContain(diRipiego[lingua]);
+        expect(cheIlContrattoNonHa.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheIlContrattoNonHa.map(() => diRipiego[lingua]));
     });
 
     it.each(['it', 'es', 'en'] as const)('con la lingua "%s", titoloDellaNotifica dà il titolo di ripiego a un tipo che zr-core non conosce, vuoto, mancante o che non è un testo: mai il codice del tipo, mai un testo vuoto (sprint 16 · T5.2)', async (lingua) => {

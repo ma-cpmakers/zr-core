@@ -123,12 +123,129 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-1', null, 'com.zeiras.workspace.membro.creato'],
         ]);
         // Senza tipo: la chiave non c'è, come in una risposta di prima della v1.3.0. Dallo sprint 20 ognuna ha anche chi, su che
-        // cosa e per chi, come la parte server.
+        // cosa e per chi, come la parte server; dallo sprint 21 anche gli id che la parte server dà di `dati` (`ids`).
         const treDati = ['autore_nome', 'risorsa_nome', 'per_me'];
         expect(notifiche.map((notifica) => Object.keys(notifica))).toEqual([
-            ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati],
+            ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'],
         ]);
         expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
+    });
+
+    // Sprint 21 · T2 (voce #1641): le notifiche del CRM stanno nella pagina di prova solo con `?crm=1`. Senza, l'elenco è quello
+    // del tag di prima (il caso qui sopra), e le schermate della smoke non cambiano.
+    it('con `?crm=1` in fondo all\'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette tipi che zr-core conosce, e una di un tipo che non conosce ancora; poi due note che non hanno dove andare, e due di un\'azienda. Ognuna porta i suoi id, e mai `dati` né `soggetto` (sprint 21 · T2.1, T2.2, T3.1, T3.3, T3.5, T5.1)', async () => {
+        await rotte(false, '?crm=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string; risorsa_nome: string | null; ids: Record<string, string> }[];
+        const conosciuto = (tipo: string | undefined) => tipo !== undefined && Object.keys(inglese).includes(`notificationTitle.${tipo}`);
+
+        expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(notifiche.slice(4, 12).map(({ id, app, tipo, letta }) => [id, app, tipo, letta])).toEqual([
+            ['uat-c1', 'crm', 'com.zeiras.crm.persona.creata', true],
+            ['uat-c2', 'crm', 'com.zeiras.crm.persona.modificata', true],
+            ['uat-c3', 'crm', 'com.zeiras.crm.pipeline.creata', true],
+            ['uat-c4', 'crm', 'com.zeiras.crm.pipeline.modificata', true],
+            ['uat-c5', 'crm', 'com.zeiras.crm.nota.creata', true],
+            ['uat-c6', 'crm', 'com.zeiras.crm.nota.modificata', true],
+            ['uat-c7', 'crm', 'com.zeiras.crm.nota.eliminata', true],
+            ['uat-c8', 'crm', 'com.zeiras.crm.persona.assegnata', true],
+        ]);
+        expect(notifiche.slice(4, 12).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
+        // Sprint 21 · T3: gli id che la parte server dà di `dati`, i soli che servono ad aprire la risorsa (review della PR #31, R1).
+        // Una nota porta quello del contatto a cui è attaccata, non il suo; un tipo che il registro non ha, nessuno.
+        expect(notifiche.slice(4, 12).map(({ ids }) => ids)).toEqual([
+            { id: 'uat-persona-1' }, { id: 'uat-persona-1' }, { id: 'uat-pipeline-1' }, { id: 'uat-pipeline-1' },
+            { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' },
+            {},
+        ]);
+        // Le ultime due non hanno dove andare, e la riga sotto il titolo dice quale: una senza il contatto, una col contatto malfatto.
+        expect(notifiche.slice(12, 14).map(({ id, tipo, risorsa_nome, ids }) => [id, tipo, risorsa_nome, ids])).toEqual([
+            ['uat-c9', 'com.zeiras.crm.nota.creata', 'UAT nota senza contatto', {}],
+            ['uat-c10', 'com.zeiras.crm.nota.creata', 'UAT nota con un id malfatto', { persona_id: '../x' }],
+        ]);
+        // Sprint 21 · T5: in fondo, le due di un'azienda, di tipi che zr-core conosce, con l'id dell'azienda.
+        expect(notifiche.slice(14).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
+            ['uat-c11', 'crm', 'com.zeiras.crm.organizzazione.creata', true, { id: 'uat-azienda-1' }],
+            ['uat-c12', 'crm', 'com.zeiras.crm.organizzazione.modificata', true, { id: 'uat-azienda-1' }],
+        ]);
+        expect(notifiche.slice(14).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true]);
+        // Ogni notifica ha `ids`, e nessuna `dati` né `soggetto`, come dalla parte server.
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+        // Ciò che la UAT vede aprirsi nel workspace di prova: il contatto, le impostazioni della pipeline, il contatto della nota; e
+        // niente per il tipo che zr-core non conosce e per le due note senza un contatto buono.
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
+        expect(notifiche.slice(4, 14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([
+            `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/contatti/uat-persona-1`,
+            `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`, `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`,
+            `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`,
+            null, null, null,
+        ]);
+        // Sprint 21 · T5: le due di un'azienda aprono la sua pagina nel CRM.
+        expect(notifiche.slice(14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-1`]);
+        // Le prime quattro, quelle di ogni pagina di prova, non hanno una destinazione: aprono la pagina delle notifiche.
+        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual([null, null, null, null]);
+        // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.
+        const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
+        expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
+    });
+
+    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
+    // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
+    // quello di una nota, né quello di una persona entrata nel workspace.
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?chi=1&crm=1&viste=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (review della PR #31, R1)', async (query) => {
+        await rotte(false, query);
+        const { registro } = await import('../js/registro');
+
+        await rispostaDi('/cornice/notifiche');
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; ids: Record<string, string> }[];
+        const chieste = ({ app, tipo }: { app: string | null; tipo?: string }) => {
+            const percorso = registro.find((voce) => voce.id === app)?.notifiche?.find((notifica) => notifica.tipo === tipo)?.percorso ?? '';
+
+            return [...percorso.matchAll(/\{([^{}]*)\}/g)].map(([, chiave]) => chiave);
+        };
+
+        expect(notifiche.length).toBeGreaterThanOrEqual(4);
+        expect(notifiche.map((notifica) => [notifica.id, Object.keys(notifica.ids).filter((chiave) => !chieste(notifica).includes(chiave))])).toEqual(notifiche.map(({ id }) => [id, []]));
+        // E quelle che nel registro hanno una destinazione portano il loro id, tranne la nota senza contatto.
+        expect(notifiche.filter((notifica) => chieste(notifica).length > 0 && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
+    });
+
+    // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
+    // pagine di prova di prima restano com'erano.
+    it('con `?viste=1` in fondo all\'elenco ci sono tre notifiche delle viste di una board, di Project Management, lette: una creata, una modificata, una eliminata, di tipi che zr-core conosce; nessuna ha una destinazione (sprint 21 · T5.1, T5.2)', async () => {
+        await rotte(false, '?viste=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string; ids: Record<string, string> }[];
+
+        expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(notifiche.slice(4).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
+            ['uat-v1', 'pm', 'com.zeiras.board.vista.creata', true, {}],
+            ['uat-v2', 'pm', 'com.zeiras.board.vista.modificata', true, {}],
+            ['uat-v3', 'pm', 'com.zeiras.board.vista.eliminata', true, {}],
+        ]);
+        expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual([true, true, true]);
+        // Una vista non ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche con Project Management attivo.
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([null, null, null]);
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+    });
+
+    it.each([
+        ['', ['uat-4', 'uat-3', 'uat-2', 'uat-1']],
+        ['?crm=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`)]],
+        ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
+    ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm` (sprint 21 · T5.1)', async (query, attese) => {
+        await rotte(false, query);
+
+        const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; creata_il: string }[];
+        const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
+
+        expect(notifiche.map(({ id }) => id)).toEqual(attese);
+        expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
     // Sprint 12 · T4 (voce #1461): fermata da un tetto, la parte server dice che ne restano (`altre: true`). Sulla pagina di prova lo
@@ -200,14 +317,14 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         // Quella su un'app non è di un prodotto (`app` è `null`): che cosa è cambiato lo dice il tipo, quale app `risorsa_nome`.
         expect((corpo.data as Record<string, unknown>[]).filter(({ id }) => id === 'uat-0').map(({ app, tipo, letta }) => ({ app, tipo, letta }))).toStrictEqual([{ app: null, tipo: 'com.zeiras.app.modificata', letta: true }]);
-        // Le otto chiavi della parte server, e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
+        // Le nove chiavi della parte server (dallo sprint 21 anche `ids`), e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
         expect((corpo.data as Record<string, unknown>[]).map((notifica) => Object.keys(notifica).sort().join(' '))).toStrictEqual([
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
         ]);
     });
 });

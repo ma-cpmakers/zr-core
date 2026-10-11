@@ -3,12 +3,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice } from './cornice';
-import { tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
+import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
 // Sprint 1 · T6 (voce #1255), riscritto nello sprint 2 · T4 (voce #1256). La `Cornice` resa in un DOM finto coi dati della parte
-// server (`Cornice::dati()`): il menu Prodotti dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
+// server (`Cornice::dati()`): il menu Moduli dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
 // prodotto aperto, i testi della lingua dei dati, persona e workspace dove li mette il design system, e dove portano account e
 // notifiche (linea guida 15, passi 8 e 10).
 
@@ -213,6 +213,17 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
+    it.each([
+        ['it', 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.'],
+        ['en', 'Search across all modules: type at least 2 characters.'],
+        ['es', 'Busca en todos los módulos: escribe al menos 2 caracteres.'],
+    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice «moduli»: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «prodotti» (sprint 21 · T1.3)', async (lingua, aiuto) => {
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await act(async () => uno('.zr-search input')?.focus());
+
+        expect(uno('.zr-search-note')?.textContent).toBe(aiuto);
+    });
+
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
         const ingresso = await import('./index');
 
@@ -326,7 +337,7 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
-    it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Prodotti resta esteso', async (prodotto) => {
+    it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Moduli resta esteso', async (prodotto) => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product={prodotto} />);
 
         expect(uno('.zr-product-switch')).toBeNull();
@@ -1480,7 +1491,7 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('12');
     });
 
-    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6)', async () => {
+    it('il clic su una notifica che non ha una destinazione nel registro e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6; sprint 21 · T3.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -1493,8 +1504,111 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
     });
 
+    // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
+    // prodotto, col tipo intero), e gli id li porta la notifica (`ids`, dalla parte server): senza una destinazione, o senza
+    // l'id che il percorso chiede, o in un workspace dove il modulo non si può aprire, resta la pagina delle notifiche.
+    const paginaDelleNotifiche = 'https://app.zeiras.com/notifiche';
+    const nelCrm = 'https://crm.zeiras.com/w/acme-marketing';
     /**
-     * I titoli dei 19 tipi di evento del contratto, in italiano, inglese e spagnolo: la tabella dello sprint 12, scritta qui e
+     * Notifiche con gli id che la parte server dà di `dati`, dalla più recente. Le prime tre hanno la loro destinazione nel
+     * registro: un contatto, una pipeline, una nota (che apre il contatto a cui è attaccata, anche da eliminata). Le altre no:
+     * una nota senza il contatto, una col contatto malfatto, una di Project Management, una del workspace, una del CRM di un
+     * tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
+     */
+    const conGliId = [
+        { id: 'uat-n59', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } },
+        { id: 'uat-n58', creata_il: '2026-10-06T11:50:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.pipeline.modificata', ids: { id: 'uat-pipeline-1' } },
+        { id: 'uat-n57', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } },
+        { id: 'uat-n56', creata_il: '2026-10-06T11:40:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-2' } },
+        { id: 'uat-n55', creata_il: '2026-10-06T11:35:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-3', persona_id: '../x' } },
+        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
+        { id: 'uat-n53', creata_il: '2026-10-06T11:25:00Z', letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ids: {} },
+        { id: 'uat-n52', creata_il: '2026-10-06T11:20:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.assegnata', ids: { id: 'uat-persona-1' } },
+        { id: 'uat-n51', creata_il: '2026-10-06T11:15:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.creata' },
+    ];
+
+    /** Gli indirizzi che la cornice apre con un clic su ognuna di quelle notifiche, una alla volta: a ogni clic il pannello si chiude. */
+    async function apertiDalPannello(datiDellaPagina: DatiDellaCornice, prodotto?: string, elenco: { id: string }[] = conGliId): Promise<unknown[]> {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco })));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={datiDellaPagina} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await clic(uno('.zr-bell'));
+            expect(voci()).toHaveLength(elenco.length);
+            await clic(voci()[indice] ?? null);
+            expect(uno('.zr-notif')).toBeNull();
+        }
+
+        expect(naviga.mock.calls.every((chiamata) => chiamata.length === 1)).toBe(true);
+
+        return naviga.mock.calls.map(([indirizzo]) => indirizzo);
+    }
+
+    it.each([[undefined], ['pm'], ['crm']])('un clic su una notifica del CRM apre la sua risorsa nel CRM, nel workspace dei dati: il contatto, le impostazioni della pipeline, e per una nota il contatto a cui è attaccata; ogni altra apre la pagina delle notifiche — dal prodotto «%s» (sprint 21 · T3.1, T3.2, T3.3)', async (prodotto) => {
+        expect(await apertiDalPannello(dati, prodotto)).toStrictEqual([
+            `${nelCrm}/contatti/uat-persona-1`,
+            `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`,
+            // Il contatto della nota, non la nota.
+            `${nelCrm}/contatti/uat-persona-2`,
+            // Senza l'id che il percorso chiede, o con un id malfatto: mai un indirizzo composto a metà.
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            // Senza una destinazione nel registro: di Project Management, del workspace, di un tipo che zr-core non conosce.
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            // Senza `ids`.
+            paginaDelleNotifiche,
+        ]);
+    });
+
+    it.each([
+        ['il backoffice lo dà in arrivo', { pm: 'attivo', crm: 'in_arrivo' }],
+        ['i dati non lo elencano', { pm: 'attivo' }],
+        ['il suo stato è scritto `undefined`', { pm: 'attivo', crm: undefined }],
+    ] satisfies [string, DatiDellaCornice['prodotti']][])('in un workspace dove il CRM non si può aprire — %s — un clic su una sua notifica apre la pagina delle notifiche, mai il CRM (sprint 21 · T3.4)', async (_quale, prodotti) => {
+        expect(await apertiDalPannello({ ...dati, prodotti })).toStrictEqual(conGliId.map(() => paginaDelleNotifiche));
+    });
+
+    it('la funzione che il pacchetto esporta dà, per ogni notifica, l\'indirizzo che apre il pannello, e niente quando il pannello apre la pagina delle notifiche (sprint 21 · T3.6)', async () => {
+        const dellaFunzione = (prodotti: DatiDellaCornice['prodotti']) => conGliId.map((notifica) => destinazioneDellaNotifica(notifica, dati.workspace.slug, prodotti));
+
+        // Non è un confronto fra due vuoti: tre hanno una destinazione, le altre no.
+        expect(dellaFunzione(dati.prodotti).map((indirizzo) => indirizzo !== undefined)).toStrictEqual([true, true, true, false, false, false, false, false, false]);
+        expect(await apertiDalPannello(dati)).toStrictEqual(dellaFunzione(dati.prodotti).map((indirizzo) => indirizzo ?? paginaDelleNotifiche));
+        // Anche dove il CRM non si può aprire: tutte e due dicono di no.
+        const senzaCrm: DatiDellaCornice['prodotti'] = { pm: 'attivo' };
+        expect(dellaFunzione(senzaCrm)).toStrictEqual(conGliId.map(() => undefined));
+    });
+
+    // Sprint 21 · T5 (voce #1706): una vista salvata è di Project Management, che nel registro non ha destinazioni. Gli id
+    // la notifica li porta lo stesso (`id`, `board_id`): un indirizzo per una vista non lo decide zr-core.
+    const delleViste = ['creata', 'modificata', 'eliminata'].map((cosa, indice) => ({
+        id: `uat-n${69 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: `com.zeiras.board.vista.${cosa}`, ids: { id: 'uat-vista-1', board_id: 'uat-board-1' },
+    }));
+
+    it.each([[undefined], ['pm'], ['crm']])('un clic su una notifica di una vista di una board apre la pagina delle notifiche, come le altre di Project Management, mai una pagina del modulo — dal prodotto «%s» (sprint 21 · T5.2)', async (prodotto) => {
+        expect(await apertiDalPannello(dati, prodotto, delleViste)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche, paginaDelleNotifiche]);
+        expect(delleViste.map((notifica) => destinazioneDellaNotifica(notifica, dati.workspace.slug, dati.prodotti))).toStrictEqual([undefined, undefined, undefined]);
+    });
+
+    // Un'azienda del CRM, che nel contratto è una `organizzazione`: creata o modificata, si apre la sua pagina in `/aziende`.
+    const delleAziende = ['creata', 'modificata'].map((cosa, indice) => ({
+        id: `uat-n${79 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: `com.zeiras.crm.organizzazione.${cosa}`, ids: { id: `uat-azienda-${indice + 1}` },
+    }));
+
+    it.each([[undefined], ['pm'], ['crm']])('un clic su una notifica di un\'azienda del CRM apre la pagina di quell\'azienda, `/aziende/<id>` dopo `/w/<slug>`, mai `/organizzazioni/<id>` — dal prodotto «%s» (sprint 21 · T5.2)', async (prodotto) => {
+        expect(await apertiDalPannello(dati, prodotto, delleAziende)).toStrictEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-2`]);
+    });
+
+    it('in un workspace dove il CRM non si può aprire, un clic su una notifica di un\'azienda apre la pagina delle notifiche (sprint 21 · T5.2, T3.4)', async () => {
+        expect(await apertiDalPannello({ ...dati, prodotti: { pm: 'attivo', crm: 'in_arrivo' } }, undefined, delleAziende)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+    });
+
+    /**
+     * I titoli dei 31 tipi di evento che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
+     * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`), scritta qui e
      * non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
@@ -1517,14 +1631,26 @@ describe('il pannello delle notifiche', () => {
         ['com.zeiras.board.etichetta.creata', 'Nuova etichetta', 'New label', 'Nueva etiqueta'],
         ['com.zeiras.board.etichetta.modificata', 'Etichetta modificata', 'Label changed', 'Etiqueta modificada'],
         ['com.zeiras.board.etichetta.eliminata', 'Etichetta eliminata', 'Label deleted', 'Etiqueta eliminada'],
+        ['com.zeiras.board.vista.creata', 'Nuova vista', 'New view', 'Nueva vista'],
+        ['com.zeiras.board.vista.modificata', 'Vista modificata', 'View changed', 'Vista modificada'],
+        ['com.zeiras.board.vista.eliminata', 'Vista eliminata', 'View deleted', 'Vista eliminada'],
+        ['com.zeiras.crm.persona.creata', 'Nuovo contatto', 'New contact', 'Nuevo contacto'],
+        ['com.zeiras.crm.persona.modificata', 'Contatto modificato', 'Contact changed', 'Contacto modificado'],
+        ['com.zeiras.crm.pipeline.creata', 'Nuova pipeline', 'New pipeline', 'Nueva pipeline'],
+        ['com.zeiras.crm.pipeline.modificata', 'Pipeline modificata', 'Pipeline changed', 'Pipeline modificada'],
+        ['com.zeiras.crm.nota.creata', 'Nuova nota', 'New note', 'Nueva nota'],
+        ['com.zeiras.crm.nota.modificata', 'Nota modificata', 'Note changed', 'Nota modificada'],
+        ['com.zeiras.crm.nota.eliminata', 'Nota eliminata', 'Note deleted', 'Nota eliminada'],
+        ['com.zeiras.crm.organizzazione.creata', 'Nuova azienda', 'New company', 'Nueva empresa'],
+        ['com.zeiras.crm.organizzazione.modificata', 'Azienda modificata', 'Company changed', 'Empresa modificada'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 19 tipi, tutti diversi (sprint 12 · T3.1)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(19);
-        expect(titoliPerTipo).toHaveLength(19);
+    it('la tabella dei titoli ha 31 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(31);
+        expect(titoliPerTipo).toHaveLength(31);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -1565,11 +1691,43 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif')?.textContent).not.toMatch(/com\.zeiras|constructor|__proto__/i);
     });
 
+    // Sprint 21 · T2 (voce #1641): le notifiche del CRM arrivano con `app: 'crm'`, e davanti all'ora c'è il nome del modulo.
+    it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche del CRM, comprese le due delle aziende, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, con «CRM» (sprint 21 · T2.1, T2.2, T5.1)', async (lingua, pocoFa) => {
+        const delCrm = titoliPerTipo.filter(([tipo]) => tipo.startsWith('com.zeiras.crm.'));
+        const elenco = [
+            ...delCrm.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'crm' })),
+            { ...nata('uat-n70', '2026-10-06T11:55:00Z'), tipo: 'com.zeiras.crm.persona.assegnata', app: 'crm' },
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 10 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(delCrm).toHaveLength(9);
+        // Le due delle aziende sono fra le nove, col titolo che dà il CRM.
+        expect(titoli().slice(7, 9)).toStrictEqual({ it: ['Nuova azienda', 'Azienda modificata'], en: ['New company', 'Company changed'], es: ['Nueva empresa', 'Empresa modificada'] }[lingua]);
+        expect(titoli()).toStrictEqual([...delCrm.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(lingua)]), diRipiego[lingua]]);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(10).fill(`CRM · ${pocoFa}`));
+    });
+
+    // Sprint 21 · T5 (voce #1706): le viste salvate sono di Project Management, e arrivano con `app: 'pm'`.
+    it.each([['it', '5 minuti fa', 'Project Management'], ['en', '5 minutes ago', 'Project Management'], ['es', 'hace 5 minutos', 'Gestión de proyectos']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
+        const delleViste = titoliPerTipo.filter(([tipo]) => tipo.startsWith('com.zeiras.board.vista.'));
+        const elenco = delleViste.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'pm' }));
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(delleViste).toHaveLength(3);
+        expect(titoli()).toStrictEqual(delleViste.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(lingua)]));
+        expect(titoli()).not.toContain(diRipiego[lingua]);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(3).fill(`${nomeDelModulo} · ${pocoFa}`));
+    });
+
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 19 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 31 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./index');
-        // I 19 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 31 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${90 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -1579,11 +1737,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 19 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 31 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 19)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(19)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 31)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(31)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
@@ -2449,10 +2607,10 @@ describe('la voce attiva della barra', () => {
         return conLaClasse;
     };
 
-    it('con active={null} nessuna voce della barra è segnata, in una pagina di app.zeiras.com: né la Dashboard né un prodotto del menu Prodotti (sprint 12 · T5.1)', async () => {
+    it('con active={null} nessuna voce della barra è segnata, in una pagina di app.zeiras.com: né la Dashboard né un prodotto del menu Moduli (sprint 12 · T5.1)', async () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} active={null} />);
 
-        // Le voci del menu Prodotti e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
+        // Le voci del menu Moduli e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
         expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'Impostazioni']);
         expect(segnate()).toStrictEqual([]);
     });

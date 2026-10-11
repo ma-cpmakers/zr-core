@@ -15,7 +15,7 @@ import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDe
 export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
-    /** Il nome della Dashboard, la prima voce del menu Prodotti. */
+    /** Il nome della Dashboard, la prima voce del menu Moduli. */
     dashboard: string;
     /**
      * Il singolare di `unread`, che è dell'`AppShell` e ha solo il plurale: con una sola non letta la campanella dice «1 non letta».

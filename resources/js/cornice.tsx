@@ -1,13 +1,14 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
-import { prodottoDelRegistro, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
+import { destinazioneDellaNotifica } from './notifiche';
+import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
-// il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Prodotti dal
+// il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
 // registro, incrociato con lo stato dei prodotti nel workspace, gli indirizzi del workspace, i testi della lingua, e dove
 // portano account, notifiche e risultati della ricerca (linea guida 15).
 
@@ -53,7 +54,7 @@ export interface GruppoDiVoci {
 export interface CorniceProps {
     /** I dati della parte server: `Cornice::dati()`. */
     dati: DatiDellaCornice;
-    /** Il prodotto aperto, un id del registro (`pm`, `crm`, `bookings`…). Senza, la pagina è di app.zeiras.com e il menu Prodotti è esteso. */
+    /** Il prodotto aperto, un id del registro (`pm`, `crm`, `bookings`…). Senza, la pagina è di app.zeiras.com e il menu Moduli è esteso. */
     product?: string | undefined;
     /** Le voci del prodotto aperto. */
     nav?: GruppoDiVoci[] | undefined;
@@ -150,16 +151,6 @@ function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: 
     const tone = tonoDelWorkspace(workspace.id);
 
     return tone === undefined ? { slug: workspace.slug, name: workspace.nome } : { slug: workspace.slug, name: workspace.nome, tone };
-}
-
-/** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
-function nelWorkspace(indirizzo: string, slug: string): string {
-    return `${indirizzo}/w/${encodeURIComponent(slug)}`;
-}
-
-/** Porta al prodotto solo uno stato che zr-core conosce: `attivo` o `disponibile`. Ogni altro, anche nuovo, è «Presto». */
-function raggiungibile(stato: string | undefined): boolean {
-    return stato === 'attivo' || stato === 'disponibile';
 }
 
 /**
@@ -576,8 +567,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             labels={unaSola || sulPulsante !== t.markAllRead ? { ...t, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
-            // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
-            onOpenNotification={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
+            // Una notifica apre la sua risorsa, dove dice il registro (`destinazioneDellaNotifica`): nel prodotto da cui viene, nel
+            // workspace dei dati. Una che non ha dove andare, e «Vedi tutte», portano alla pagina delle notifiche di
+            // app.zeiras.com, anche da un prodotto.
+            onOpenNotification={(aperta) => {
+                const notifica = notifiche.elenco.find(({ id }) => id === aperta.id);
+                naviga((notifica && destinazioneDellaNotifica(notifica, dati.workspace.slug, dati.prodotti)) ?? dashboard.indirizzo + pagineDiApp.notifiche);
+            }}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
         />
     );

@@ -29,7 +29,7 @@ Come si legge:
 
 ## Prima di tutto: ciò che si chiede ad altri
 
-Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
+Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
 
 - **Il prodotto nel registro** — all'agente di zr-core (come gli si scrive lo dice la skill `zr-core-uso`). Guarda prima
   `vendor/zeiras/zr-core/resources/registro/prodotti.json`: porta anche i prodotti non ancora usciti, con due sì o no.
@@ -41,6 +41,10 @@ Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e int
   scegli tu — un codice nuovo lo decide zr-pm, a cui lo porta zr-core), il nome in ogni lingua di Zeiras (`it`, `en`,
   `es`), l'icona (un nome del set di Zeiras), il tono, l'indirizzo senza workspace, e le risorse che la ricerca deve
   mostrare (passo 9). Entra con una versione di zr-core: fino a quella vale «Durante lo sviluppo», al passo 8.
+- **Le notifiche del tuo modulo nella campanella** — all'agente di zr-core, allo stesso modo: per ogni tipo di evento
+  che il tuo modulo genera gli dai il titolo in ogni lingua di Zeiras, con le tue parole, e la pagina che si apre con
+  un clic (il percorso dopo `/w/<slug>`, con l'id che serve). Senza, la campanella dice «Novità nel workspace» e un clic
+  apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche».
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o

@@ -208,7 +208,7 @@ esce.
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave (`{"id": "…"}` per un contatto, `{"persona_id": "…"}` per una nota): di `dati` del backoffice passano i soli id che il percorso del registro chiede per il tipo della notifica, nella voce della sua app (`{id}`, `{persona_id}`), e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64) — gli altri id, il resto di `dati` e `soggetto` non arrivano al browser; una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
 | `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dal server del modulo al backoffice la parola viaggia ancora nell'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo |
@@ -253,8 +253,12 @@ cornice === null ? pagina : (
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
-  Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». I nomi nel codice — la prop
-  `product`, il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
+  Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». Con la stessa versione
+  cambiano altri due testi, che un frontend può avere nei suoi test: l'aiuto della ricerca, ora «Cerca in tutti i
+  moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»), e il titolo che
+  `titoloDellaNotifica` dà a `com.zeiras.app.modificata`, «Un modulo è stato attivato o disattivato» (prima «Un'app del
+  workspace è stata attivata o disattivata»); lo stesso in inglese e in spagnolo. I nomi nel codice — la prop `product`,
+  il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
 - **La voce attiva** della barra è quella che ha l'id dato in `active`; senza `active` è la Dashboard. Una pagina che non
   sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto,
   e non serve inventare un id che la barra non ha. Il prodotto aperto lo dice `product`, non `active`: con `null` il suo
@@ -296,7 +300,12 @@ cornice === null ? pagina : (
   «1 ott»). Il titolo lo dice `tipo`, e i
   titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto: una notifica di un tipo che zr-core non
   conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»), mai il codice del tipo. Un tipo di notifica
-  nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Di che prodotto è
+  nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Dalla
+  `v1.11.0` hanno un titolo anche le nove notifiche del CRM (contatti, pipeline, note, aziende): «Nuovo contatto»,
+  «Pipeline modificata», «Nota eliminata», «Nuova azienda»; e le tre delle viste salvate di una board, di Project
+  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli sono 31, uno per ogni tipo di
+  evento del contratto pubblicato l'11/10/2026. Per quel contratto i dodici tipi nuovi non generano ancora notifiche per i
+  colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -377,7 +386,18 @@ cornice === null ? pagina : (
   notifiche, la ricerca, una chiamata del modulo). I dati della cornice restano giusti; alla visita dopo ciò che il frontend
   legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima, e quella lettura li rimette. Il pulsante c'è
   quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette.
-  Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
+  Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati: una
+  notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
+  impostazioni, una di una nota il contatto a cui è attaccata, una di un'azienda l'elenco delle aziende col suo pannello
+  aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`). Dove si apre ogni tipo lo dice il registro (`notifiche`
+  della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
+  mostra le notifiche in una pagina sua importa dall'ingresso. Un id non è un permesso: chi riceve la notifica può non
+  poter vedere quella risorsa, la cornice non lo controlla, e lo decide il modulo che apre la pagina. Una notifica che
+  non ha dove andare apre
+  `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (oggi ci sono i nove del CRM;
+  le viste di una board non hanno una destinazione), le manca un id che il percorso chiede, o il modulo in quel
+  workspace non si può aprire («Presto», o né `attivo` né
+  `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
 - **La ricerca** (Ctrl/Cmd+K) chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola
   nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell'header `X-XSRF-TOKEN`, come «Segna tutte come lette»: dalla
   `v1.8.0` ciò che la persona cerca non sta più nell'indirizzo della richiesta del browser. Il tratto dal server del modulo
@@ -414,7 +434,18 @@ riferisce, ed è la funzione che usa il pannello. `notifica` è la notifica com'
 intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
 (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
 c'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del
-registro: lì la riga non si mostra, e il codice mai.
+registro: lì la riga non si mostra, e il codice mai. Dalla `v1.11.0` si importa anche
+`destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua: dà l'indirizzo che il
+pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello. `notifica` è la
+notifica di `GET /cornice/notifiche`: la funzione ne legge `app`, `tipo` e `ids`; `slug` è il workspace della sessione e
+`prodotti` lo stato dei moduli nel workspace, quelli dei dati della cornice (`dati.workspace.slug`, `dati.prodotti`). Non
+dà niente (`undefined`) quando la notifica non ha dove andare — vedi «Le notifiche», più sopra —, e allora si apre la
+pagina delle notifiche: mai un indirizzo composto a metà, nemmeno con uno `slug` che non ha la forma di uno slug
+(vuoto, `..`, con una barra): anche allora non dà niente. Le destinazioni stanno nel registro, non nel codice: la voce
+di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell'evento (`com.zeiras.crm.nota.creata`) e il
+percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id}` e prende l'id che la notifica ha con
+quella chiave (`/contatti/{persona_id}` per una nota). Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+li chiede all'agente di zr-core, e arrivano con una versione.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il

@@ -1,7 +1,7 @@
 import dati from '../registro/prodotti.json';
 import type { IconName, Tone } from '../zeiras/index';
 
-// Il registro dei prodotti di zr-core (resources/registro/prodotti.json): le voci del menu Prodotti nell'ordine della linea guida
+// Il registro dei prodotti di zr-core (resources/registro/prodotti.json): le voci del menu Moduli nell'ordine della linea guida
 // 10 del design system, Dashboard per prima. Come si mostra un prodotto lo dice questo registro, e il suo nome le lingue; il
 // backoffice dice solo quali prodotti sono attivi in un workspace.
 
@@ -28,7 +28,22 @@ export interface RisorsaDelProdotto {
     contenitore: boolean;
 }
 
-/** Una voce del menu Prodotti. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */
+/** Una notifica di un prodotto che dal pannello della cornice apre la sua risorsa: il tipo dell'evento, e dove si apre. */
+export interface NotificaDelProdotto {
+    /**
+     * Il tipo intero dell'evento che l'ha generata (`com.zeiras.crm.persona.creata`), com'è nel backoffice. Sta una volta sola in
+     * tutto il registro, nella voce dell'app da cui la notifica viene, e ha il suo titolo in ogni lingua.
+     */
+    tipo: string;
+    /**
+     * Il percorso nel prodotto, dopo `/w/<slug>`. Un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la notifica porta con
+     * quella chiave (`ids`): `{persona_id}` per una nota, che si apre nel contatto a cui è attaccata. Senza uno dei suoi id la
+     * notifica non ha una destinazione.
+     */
+    percorso: string;
+}
+
+/** Una voce del menu Moduli. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */
 export interface VoceDelRegistro {
     /** L'id del design system (`active` e `product` dell'`AppShell`); `home` è la Dashboard. */
     id: 'home' | IdDiProdotto;
@@ -47,6 +62,11 @@ export interface VoceDelRegistro {
     in_arrivo: boolean;
     /** Le risorse del prodotto che la ricerca mostra: un risultato di un tipo che non è qui non si mostra. */
     risorse?: RisorsaDelProdotto[];
+    /**
+     * Le notifiche del prodotto che dal pannello aprono la loro risorsa (`destinazioneDellaNotifica`): una notifica di un tipo che
+     * non è qui apre la pagina delle notifiche.
+     */
+    notifiche?: NotificaDelProdotto[];
 }
 
 export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegistro[];
@@ -54,4 +74,14 @@ export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegi
 /** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
 export function prodottoDelRegistro(codice: string | null | undefined): VoceDelRegistro | undefined {
     return registro.find((voce) => voce.id === codice && voce.id !== 'home');
+}
+
+/** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
+export function nelWorkspace(indirizzo: string, slug: string): string {
+    return `${indirizzo}/w/${encodeURIComponent(slug)}`;
+}
+
+/** Porta al prodotto solo uno stato che zr-core conosce: `attivo` o `disponibile`. Ogni altro, anche nuovo, è «Presto». */
+export function raggiungibile(stato: string | undefined): boolean {
+    return stato === 'attivo' || stato === 'disponibile';
 }

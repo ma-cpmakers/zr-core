@@ -34,12 +34,22 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // server lo richiama con lo stesso istante finché ne restano, entro due tetti, e dice al browser se ne restano ancora.
 // Sprint 20 · T1 (voce #1674): l'elenco porta anche chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
 // `per_me`), quando il backoffice li manda; i casi sono in fondo.
+// Sprint 21 · T3 (voce #1641): l'elenco porta anche `ids`, gli id che alla cornice servono per aprire la risorsa di una
+// notifica: di `dati`, i soli che il percorso del registro chiede per il suo tipo, col valore di un id (review della PR #31, R1:
+// prima erano ogni `id` e ogni `*_id`). Gli altri id, il resto di `dati` e `soggetto` restano nella parte server; i casi sono in
+// fondo.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
 /** Ciò che la rotta dice, dei tre dati del #1670, di una notifica del backoffice di prima, che non li manda (sprint 20 · T1). */
 const SENZA_CHI_E_COSA = ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null];
+
+/**
+ * Ciò che la rotta dà, di `dati`, per una notifica di `notificaDelBackoffice()`: nessun id. Il suo tipo non ha una destinazione
+ * nel registro, e l'id della cartella resta nella parte server (sprint 21 · T3.5; review della PR #31, R1).
+ */
+const SENZA_ID = ['ids' => []];
 
 /**
  * Una notifica come la dava /v1 prima del #1670 (schema Notifica, senza `autore`, `risorsa_nome` e `per_me`): tipo, soggetto e
@@ -208,9 +218,9 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -562,7 +572,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
-        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA],
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
     ]);
 
@@ -616,7 +626,7 @@ it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ric
 
 // Sprint 12 · T2 (voce #1463): il tipo di ogni notifica, per il titolo che la cornice le dà.
 
-it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backoffice così com\'è, anche un tipo che zr-core non conosce; soggetto e dati restano nella parte server (sprint 12 · T2.1)', function () {
+it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backoffice così com\'è, anche un tipo che zr-core non conosce; il soggetto e i dati restano nella parte server: queste notifiche non hanno una destinazione, e `ids` è vuoto (sprint 12 · T2.1; sprint 21 · T3.5)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 05:20:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [
@@ -627,16 +637,20 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
     ], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'] + SENZA_CHI_E_COSA,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z']);
 
-    // Dell'evento esce solo il tipo: né il soggetto né i dati, con la chiave o col valore.
+    // Dell'evento esce il tipo; di `dati`, in `ids`, i soli id che servono ad aprire la risorsa (sprint 21 · T3.5), e queste non
+    // ne hanno: né il soggetto né i dati, con la chiave o col valore. Il soggetto di queste notifiche è `/v1/board/cartelle/…`,
+    // l'id della cartella e `aggiornata_il` stanno solo in `dati`.
     expect(substr_count((string) $risposta->getContent(), '"tipo"'))->toBe(3)
         ->and(substr_count((string) $risposta->getContent(), '"soggetto"'))->toBe(0)
         ->and(substr_count((string) $risposta->getContent(), '"dati"'))->toBe(0)
-        ->and(substr_count((string) $risposta->getContent(), 'uat-cartella'))->toBe(0);
+        ->and(substr_count((string) $risposta->getContent(), 'uat-cartella'))->toBe(0)
+        ->and(substr_count((string) $risposta->getContent(), 'cartelle'))->toBe(0)
+        ->and(substr_count((string) $risposta->getContent(), 'aggiornata_il'))->toBe(0);
 });
 
 it('una notifica del backoffice senza tipo, o con un tipo che non è una stringa, è un guasto dell\'elenco: mai un elenco con una notifica senza tipo, e mai un elenco che la salta (sprint 12 · T2.2)', function (array $notifica) {
@@ -1229,7 +1243,7 @@ function notificheColChiECosaSbagliato(): array
     ];
 }
 
-it('GET /cornice/notifiche dà di ogni notifica otto chiavi: le cinque di prima più autore_nome, risorsa_nome e per_me, coi valori del backoffice; di autore passa solo il nome, e una notifica del backoffice di prima le ha tutte e tre null (sprint 20 · T1.5)', function () {
+it('GET /cornice/notifiche dà di ogni notifica nove chiavi: le cinque di prima, autore_nome, risorsa_nome e per_me coi valori del backoffice, e ids; di autore passa solo il nome, e una notifica del backoffice di prima le ha tutte e tre null (sprint 20 · T1.5; sprint 21 · T3.5)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-11 06:40:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [
@@ -1244,16 +1258,16 @@ it('GET /cornice/notifiche dà di ogni notifica otto chiavi: le cinque di prima 
 
     $diPrima = ['creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'];
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true],
-        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false],
-        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null],
-        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null],
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null],
+        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true] + SENZA_ID,
+        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false] + SENZA_ID,
+        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + SENZA_ID,
+        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z']);
 
-    // Le stesse otto chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
+    // Le stesse nove chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
     foreach ($risposta->json('data') as $notifica) {
-        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me']);
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'ids']);
     }
     // `false` e null non sono la stessa cosa: «non è per te» e «non si sa».
     expect($risposta->json('data.1.per_me'))->toBeFalse()->and($risposta->json('data.2.per_me'))->toBeNull();
@@ -1264,7 +1278,11 @@ it('GET /cornice/notifiche dà di ogni notifica otto chiavi: le cinque di prima 
         ->and(substr_count($corpo, 'uat-persona-7'))->toBe(0)
         ->and(substr_count($corpo, '"soggetto"'))->toBe(0)
         ->and(substr_count($corpo, '"dati"'))->toBe(0)
-        ->and(substr_count($corpo, 'uat-cartella'))->toBe(0);
+        // Di `dati` escono i soli id che servono ad aprire la risorsa, in `ids` (sprint 21 · T3.5): queste notifiche non ne hanno,
+        // e l'id della cartella resta qui, come il soggetto (`/v1/board/cartelle/…`).
+        ->and(substr_count($corpo, 'uat-cartella'))->toBe(0)
+        ->and(substr_count($corpo, 'cartelle'))->toBe(0)
+        ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0);
 });
 
 it('una notifica a cui manca una sola delle tre chiavi non è un guasto: quella vale null e le altre due passano (sprint 20 · T1.5)', function (string $manca, string $nelBrowser) {
@@ -1278,7 +1296,7 @@ it('una notifica a cui manca una sola delle tre chiavi non è un guasto: quella 
 
     expect($risposta->json('data.0'))->toBe([
         'id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata',
-    ] + $attesa);
+    ] + $attesa + SENZA_ID);
 })->with([
     'senza autore' => ['autore', 'autore_nome'],
     'senza risorsa_nome' => ['risorsa_nome', 'risorsa_nome'],
@@ -1344,3 +1362,265 @@ it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando
 
     expect(substr_count((string) $lettura->getContent(), 'UAT'))->toBe(0);
 });
+
+// Sprint 21 · T3 (voce #1641): da una notifica la cornice apre la sua risorsa, e le servono gli id. Di `dati` la rotta dà, in
+// `ids`, i soli id che servono ad aprirla: quelli che il percorso del registro di zr-core chiede per quel tipo (`{id}`,
+// `{persona_id}`), cercato col tipo intero nella voce dell'app della notifica, e solo con un valore che ha la forma di un id
+// (lettere, cifre, `-` e `_`, da 1 a 64). Una notifica di un tipo che nel registro non ha una destinazione — una scheda di una
+// board, una persona entrata nel workspace, un tipo di domani — ha `ids` vuoto: un id non va al browser solo perché la sua chiave
+// è `id` o finisce in `_id` (review della PR #31, R1: prima passavano tutti). Il resto di `dati` resta qui, come `soggetto`.
+// `dati` che manca, o che non è un oggetto, non è un guasto: `ids` è vuoto.
+
+/**
+ * Una notifica di /v1 non letta coi `dati` che si vogliono; il soggetto resta quello di `notificaDelBackoffice()`, una cartella.
+ * Senza altro è una nota del CRM, che nel registro si apre nel contatto a cui è attaccata (`/contatti/{persona_id}`).
+ *
+ * @return array<string, mixed>
+ */
+function notificaConDati(string $id, mixed $dati, string $tipo = 'com.zeiras.crm.nota.creata', ?string $app = 'crm'): array
+{
+    return ['dati' => $dati] + notificaDelBackoffice($id, '2026-10-07T09:03:00.123Z', null, $app, $tipo);
+}
+
+/**
+ * Coppie di `dati` con una chiave che somiglia a `persona_id`, quella che il percorso di una nota chiede, e non lo è; il valore
+ * da solo passerebbe. Ognuna si aggiunge ai `dati` di una nota che ha il suo id e non quello del contatto.
+ *
+ * @return array<string, array{array<array-key, mixed>}>
+ */
+function chiaviCheSomiglianoAPersonaId(): array
+{
+    $buono = 'uat-valore-9';
+
+    return [
+        'persona_ID' => [['persona_ID' => $buono]],
+        'Persona_id' => [['Persona_id' => $buono]],
+        'personaId' => [['personaId' => $buono]],
+        'persona-id' => [['persona-id' => $buono]],
+        'persona.id' => [['persona.id' => $buono]],
+        'id_persona' => [['id_persona' => $buono]],
+        'persone_id' => [['persone_id' => $buono]],
+        'contatto_id' => [['contatto_id' => $buono]],
+        'persona_id con uno spazio in fondo' => [['persona_id ' => $buono]],
+        'persona_id con un a capo in fondo' => [["persona_id\n" => $buono]],
+        'persona_id con uno spazio davanti' => [[' persona_id' => $buono]],
+        'persona_id_' => [['persona_id_' => $buono]],
+        '{persona_id}, con le graffe del percorso' => [['{persona_id}' => $buono]],
+        // Si guardano le coppie di `dati`, non quelle di un oggetto più dentro.
+        'persona_id in un oggetto più dentro' => [['persona' => ['id' => $buono, 'persona_id' => $buono]]],
+        'persona_id in una lista' => [[['persona_id' => $buono]]],
+    ];
+}
+
+/**
+ * Valori che non hanno la forma di un id del backoffice (un testo di lettere, cifre, `-` e `_`, da 1 a 64): in un indirizzo non
+ * ci entrano, e al browser non vanno.
+ *
+ * @return array<string, array{mixed}>
+ */
+function valoriCheNonSonoUnId(): array
+{
+    return [
+        'vuoto' => [''],
+        'uno spazio' => [' '],
+        'un numero' => [42],
+        'un numero con la virgola' => [4.2],
+        'true' => [true],
+        'false' => [false],
+        'null' => [null],
+        'una lista' => [['uat-valore-9']],
+        'un oggetto col suo id' => [['id' => 'uat-valore-9']],
+        'con ../ davanti' => ['../uat-valore-9'],
+        'con una barra' => ['uat-valore-9/x'],
+        'con un punto di domanda' => ['uat-valore-9?x=1'],
+        'con un cancelletto' => ['uat-valore-9#x'],
+        'con uno spazio' => ['uat-valore 9'],
+        'con un punto' => ['uat-valore.9'],
+        'con una barra già codificata' => ['uat-valore-9%2Fx'],
+        'con un a capo in fondo' => ["uat-valore-9\n"],
+        'con una lettera accentata' => ['uat-valoré-9'],
+        'lungo 65 caratteri' => ['uat-valore-'.str_repeat('a', 54)],
+    ];
+}
+
+it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la risorsa della notifica, nel campo `ids`: quelli che il percorso del registro chiede per il suo tipo — l\'id di un contatto, di una pipeline o di un\'azienda, e per una nota quello del contatto, non il suo —; gli altri id, `aggiornata_il`, `campi` e `soggetto` restano nella parte server (sprint 21 · T3.5; review della PR #31, R1)', function () {
+    // Un altro giorno da quello degli `aggiornata_il` di qui sotto: nella risposta la data di oggi è solo in `aggiornati_il`.
+    Carbon::setTestNow(Carbon::parse('2026-10-09 08:00:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        // Una nota: il percorso chiede il contatto a cui è attaccata, e l'id della nota resta qui.
+        notificaConDati('uat-n5', ['id' => 'uat-nota-1', 'persona_id' => 'uat-persona-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z']),
+        // Una pipeline modificata: il suo id; `campi` dice che cosa è cambiato, e resta qui.
+        notificaConDati('uat-n4', ['id' => 'uat-pipeline-1', 'aggiornata_il' => '2026-10-11T12:28:00.123Z', 'campi' => ['uat-campo-nome', 'uat-campo-fasi']], 'com.zeiras.crm.pipeline.modificata'),
+        // Un contatto con la sua azienda: il percorso chiede `id`, e l'id dell'azienda resta qui.
+        notificaConDati('uat-n3', ['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-persona-3', 'aggiornata_il' => '2026-10-11T12:27:00.123Z'], 'com.zeiras.crm.persona.creata'),
+        // Un'azienda.
+        notificaConDati('uat-n2', ['id' => 'uat-azienda-2', 'aggiornata_il' => '2026-10-11T12:26:00.123Z'], 'com.zeiras.crm.organizzazione.modificata'),
+        // Una nota eliminata: i soli id, senza `aggiornata_il`.
+        notificaConDati('uat-n1', ['id' => 'uat-nota-2', 'persona_id' => 'uat-persona-2'], 'com.zeiras.crm.nota.eliminata'),
+    ], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect($risposta->json('data.*.ids'))->toBe([
+        ['persona_id' => 'uat-persona-1'],
+        ['id' => 'uat-pipeline-1'],
+        ['id' => 'uat-persona-3'],
+        ['id' => 'uat-azienda-2'],
+        ['persona_id' => 'uat-persona-2'],
+    ]);
+    // `ids` è la nona chiave di ogni notifica, dopo le otto di prima.
+    foreach ($risposta->json('data') as $notifica) {
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'ids']);
+    }
+    // Degli id che il percorso non chiede, del resto di `dati` e del soggetto (`/v1/board/cartelle/uat-cartella-…`), né la chiave
+    // né il valore.
+    $corpo = (string) $risposta->getContent();
+    expect(substr_count($corpo, '"ids"'))->toBe(5)
+        ->and(substr_count($corpo, 'uat-nota'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-azienda-1'))->toBe(0)
+        ->and(substr_count($corpo, 'organizzazione_id'))->toBe(0)
+        ->and(substr_count($corpo, '"dati"'))->toBe(0)
+        ->and(substr_count($corpo, 'soggetto'))->toBe(0)
+        ->and(substr_count($corpo, 'cartell'))->toBe(0)
+        ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0)
+        ->and(substr_count($corpo, '2026-10-11'))->toBe(0)
+        ->and(substr_count($corpo, 'campi'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-campo'))->toBe(0);
+});
+
+it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vuoto, anche se i suoi `dati` hanno degli id: nessun id va al browser solo perché la sua chiave è `id` o finisce in `_id`; il tipo si cerca intero, nella voce dell\'app della notifica (sprint 21 · T3.5; review della PR #31, R1)', function (?string $app, string $tipo) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $dati = ['id' => 'uat-x-1', 'persona_id' => 'uat-x-2', 'board_id' => 'uat-x-3', 'lista_id' => 'uat-x-4', 'invito_id' => 'uat-x-5', 'aggiornata_il' => '2026-10-11T12:29:00.123Z'];
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, $app)], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect($risposta->json('data.0.ids'))->toBe([])
+        // Vuoto, ma un oggetto: nel browser `ids` ha una forma sola.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(1)
+        ->and(substr_count($corpo, 'uat-x'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0);
+})->with([
+    'una scheda di una board, di Project Management' => ['pm', 'com.zeiras.board.scheda.creata'],
+    'una vista di una board' => ['pm', 'com.zeiras.board.vista.creata'],
+    'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
+    'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
+    'un tipo del CRM che nel registro non c\'è' => ['crm', 'com.zeiras.crm.persona.eliminata'],
+    'un tipo di domani' => ['crm', 'com.zeiras.crm.uat.domani'],
+    'un tipo del registro con un pezzo in più in fondo' => ['crm', 'com.zeiras.crm.persona.creata.v2'],
+    'un tipo del registro con un pezzo in più davanti' => ['crm', 'x.com.zeiras.crm.persona.creata'],
+    'la sola coda di un tipo del registro' => ['crm', 'persona.creata'],
+    'un tipo del registro con una maiuscola' => ['crm', 'com.zeiras.crm.Persona.creata'],
+    'un tipo del registro con uno spazio in fondo' => ['crm', 'com.zeiras.crm.persona.creata '],
+    'un tipo del registro con un a capo in fondo' => ['crm', "com.zeiras.crm.persona.creata\n"],
+    'un tipo vuoto' => ['crm', ''],
+    'un tipo del CRM in una notifica di Project Management' => ['pm', 'com.zeiras.crm.persona.creata'],
+    'un tipo del CRM in una notifica che non è di un\'app' => [null, 'com.zeiras.crm.persona.creata'],
+    'un tipo del CRM in una notifica di un\'app che il registro non ha' => ['uat-ignota', 'com.zeiras.crm.persona.creata'],
+    'un tipo del CRM in una notifica della Dashboard' => ['home', 'com.zeiras.crm.persona.creata'],
+    'il codice dell\'app con le maiuscole' => ['CRM', 'com.zeiras.crm.persona.creata'],
+    'il codice dell\'app con uno spazio in fondo' => ['crm ', 'com.zeiras.crm.persona.creata'],
+]);
+
+it('per ogni notifica del registro la rotta dà gli id che il suo percorso chiede, e solo quelli: la parte server legge il registro del pacchetto, lo stesso del browser, e una destinazione nuova ha i suoi id senza un elenco in più da tenere allineato (sprint 21 · T3.5; review della PR #31, R1)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $dati = [
+        'id' => 'uat-id-1', 'persona_id' => 'uat-persona-1', 'organizzazione_id' => 'uat-azienda-1', 'pipeline_id' => 'uat-pipeline-1',
+        'board_id' => 'uat-board-1', 'lista_id' => 'uat-lista-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z',
+    ];
+    $notifiche = [];
+    $attesi = [];
+    foreach (registroDeiProdotti() as $voce) {
+        foreach ($voce['notifiche'] ?? [] as $notifica) {
+            preg_match_all('/\{([^{}]*)\}/', $notifica['percorso'], $segnaposto);
+            // Un segnaposto con un nome nuovo vuole il suo id qui sopra: senza, questo caso non proverebbe quella destinazione.
+            expect(array_diff($segnaposto[1], array_keys($dati)))->toBe([]);
+            $notifiche[] = notificaConDati('uat-r'.count($notifiche), $dati, $notifica['tipo'], $voce['id']);
+            $attesi[] = array_intersect_key($dati, array_flip($segnaposto[1]));
+        }
+    }
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect(count($attesi))->toBeGreaterThanOrEqual(9)
+        ->and(count(array_filter($attesi)))->toBeGreaterThanOrEqual(9)
+        ->and($risposta->json('data.*.ids'))->toEqual($attesi);
+});
+
+it('l\'id che il percorso chiede si cerca in `dati` con la sua chiave, com\'è: una chiave che le somiglia non la sostituisce, e il suo valore non arriva al browser (sprint 21 · T3.5; review della PR #31, R1)', function (array $coppia) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', ['id' => 'uat-nota-1'] + $coppia)], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect($risposta->json('data.0.ids'))->toBe([])
+        ->and(substr_count($corpo, 'uat-valor'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-nota'))->toBe(0);
+})->with(chiaviCheSomiglianoAPersonaId());
+
+it('un id che il percorso chiede passa solo con la forma di un id: con un altro valore la notifica ha `ids` vuoto, non è un guasto, e il valore non arriva al browser (sprint 21 · T3.5)', function (mixed $valore) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n3', ['id' => 'uat-nota-1', 'persona_id' => $valore]),
+        notificaConDati('uat-n2', ['id' => $valore], 'com.zeiras.crm.persona.creata'),
+    ], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect($risposta->json('data.*.ids'))->toBe([[], []])
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-valor'))->toBe(0);
+})->with(valoriCheNonSonoUnId());
+
+it('un id che il percorso chiede passa com\'è, con la sua chiave: lettere, cifre, `-` e `_`, da 1 a 64 caratteri; anche un testo di sole cifre, che non è un numero (sprint 21 · T3.5)', function (string $id) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n3', ['id' => 'uat-nota-1', 'persona_id' => $id, 'aggiornata_il' => '2026-10-11T12:29:00.123Z']),
+        notificaConDati('uat-n2', ['id' => $id], 'com.zeiras.crm.pipeline.creata'),
+    ], 'successivo' => null])]);
+
+    expect(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids'))->toBe([['persona_id' => $id], ['id' => $id]]);
+})->with([
+    '64 caratteri' => [str_repeat('a', 64)],
+    'sole cifre' => ['42'],
+    'un trattino' => ['-'],
+    'un trattino basso' => ['_'],
+    'maiuscole, minuscole, cifre, - e _' => ['A-b_9'],
+]);
+
+it('una notifica senza `dati`, o con un `dati` che non è un oggetto, non è un guasto: ha `ids` vuoto, sempre un oggetto, e le altre dell\'elenco hanno i loro id (sprint 21 · T3.5)', function (bool $conLaChiave, mixed $dati) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifica = notificaConDati('uat-n3', $dati);
+    if (! $conLaChiave) {
+        unset($notifica['dati']);
+    }
+    Http::fake(['*' => Http::response(['data' => [$notifica, notificaConDati('uat-n2', ['id' => 'uat-nota-2', 'persona_id' => 'uat-persona-2'])], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2'])
+        ->and($risposta->json('data.0.ids'))->toBe([])
+        ->and($risposta->json('data.1.ids'))->toBe(['persona_id' => 'uat-persona-2'])
+        // Vuoto, ma un oggetto: nel browser `ids` ha una forma sola.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(1)
+        ->and(substr_count($corpo, '"ids":[]'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-x'))->toBe(0);
+})->with([
+    'senza dati' => [false, null],
+    'dati è null' => [true, null],
+    'dati è un testo' => [true, 'uat-x'],
+    'dati è un numero' => [true, 7],
+    'dati è true' => [true, true],
+    'dati è false' => [true, false],
+    'dati è una lista vuota' => [true, []],
+    'dati è una lista di testi' => [true, ['uat-x', 'uat-x-2']],
+    'dati è una lista di oggetti coi loro id' => [true, [['id' => 'uat-x', 'persona_id' => 'uat-x-2']]],
+    'dati è un oggetto senza id' => [true, ['aggiornata_il' => '2026-10-11T12:29:00.123Z', 'campi' => ['uat-x']]],
+    'dati è un testo che è la chiave del percorso' => [true, 'persona_id'],
+]);
