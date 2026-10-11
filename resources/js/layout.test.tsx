@@ -174,8 +174,8 @@ function tutti(selettore: string): HTMLElement[] {
     return [...contenitore.querySelectorAll<HTMLElement>(selettore)];
 }
 
-/** Gli indirizzi delle richieste partite, nell'ordine. */
-const richieste = () => vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(indirizzo));
+/** Le richieste partite, nell'ordine: metodo, indirizzo e, se c'è, il corpo (la ricerca ci porta la parola cercata). */
+const richieste = () => vi.mocked(fetch).mock.calls.map(([indirizzo, opzioni]) => [opzioni?.method ?? 'GET', String(indirizzo), ...(opzioni?.body == null ? [] : [String(opzioni.body)])].join(' '));
 
 /** I titoli dei risultati nel pannello della ricerca. */
 const titoliDellaRicerca = () => tutti('.zr-search-panel [role="option"] .zr-search-title').map((titolo) => titolo.textContent);
@@ -200,7 +200,7 @@ describe('LayoutDellaCornice', () => {
         expect(barra).not.toBeNull();
         expect(topbar).not.toBeNull();
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
-        expect(richieste()).toStrictEqual(['/cornice/ricerca', '/cornice/notifiche']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche']);
 
         // Un'altra pagina dello stesso workspace, coi dati della sua visita: un altro componente e un altro oggetto `cornice`.
         await visita(datiDopo, <PaginaB key="2" />);
@@ -210,7 +210,7 @@ describe('LayoutDellaCornice', () => {
         expect(uno('header.zr-top')).toBe(topbar);
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('uat');
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
-        expect(richieste()).toStrictEqual(['/cornice/ricerca', '/cornice/notifiche']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche']);
     });
 
     it('dopo il cambio di pagina la cornice montata mostra i dati nuovi: le non lette sulla campanella e il nome del workspace in cima alla barra (sprint 9 · T1.2)', async () => {
@@ -285,19 +285,19 @@ describe('LayoutDellaCornice', () => {
         expect(uno('aside.zr-side')).not.toBe(barra);
         expect(uno('#uat-pagina-che-si-conta')?.textContent).toBe('UAT pagina che si conta');
         expect(conta.montaggi).toBe(1);
-        expect(richieste()).toStrictEqual(['/cornice/ricerca', '/cornice/notifiche']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche']);
 
         // I risultati di prima non ci sono più: scrivendo, il pannello si riapre subito, prima che la cornice cerchi (i 300 ms
         // non passano), e non ne mostra nessuno. Il pannello chiuso da solo non lo dice: lo aveva già chiuso la campanella.
         await scrivi('ua', 0);
         expect(uno('.zr-search-panel')).not.toBeNull();
         expect(titoliDellaRicerca()).toStrictEqual([]);
-        expect(richieste()).toStrictEqual(['/cornice/ricerca', '/cornice/notifiche']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche']);
 
         // Le notifiche sono del workspace nuovo: la campanella le chiede di nuovo.
         await clic(uno('.zr-bell'));
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
-        expect(richieste()).toStrictEqual(['/cornice/ricerca', '/cornice/notifiche', '/cornice/notifiche']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche', 'GET /cornice/notifiche']);
     });
 
     it('quando una visita porta un altro workspace ciò che aveva dato la pagina di prima non si monta nella cornice rifatta, nemmeno per un render (sprint 9 · T1.6)', async () => {

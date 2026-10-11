@@ -80,9 +80,16 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         if (percorso.split('?')[0] === '/cornice/ricerca') {
             // Come la parte server: la parola si legge solo dal corpo di una POST, da 2 a 100 caratteri senza gli spazi ai bordi.
             if (opzioni?.method !== 'POST') {
-                return json({ errore: 'metodo_non_ammesso' }, 405);
+                // Come Laravel a una rotta che c'è solo in POST: i metodi ammessi, e nessun corpo che la rotta vera non ha.
+                return new Response(null, { status: 405, headers: { Allow: 'POST' } });
             }
-            const { q } = JSON.parse(String(opzioni.body ?? '{}')) as { q?: unknown };
+            let corpo: unknown = null;
+            try {
+                corpo = JSON.parse(String(opzioni.body ?? ''));
+            } catch {
+                // Un corpo che non è JSON non porta una parola.
+            }
+            const q = typeof corpo === 'object' && corpo !== null ? (corpo as { q?: unknown }).q : undefined;
             const parola = typeof q === 'string' ? q.trim() : '';
             if (Array.from(parola).length < 2 || Array.from(parola).length > 100) {
                 return json({ errore: 'dati_non_validi' }, 422);

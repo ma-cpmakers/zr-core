@@ -6,8 +6,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
@@ -570,6 +573,25 @@ function laRigaEPoiIDati(): array
     return ['lingua' => $lingua, 'errore' => null];
 }
 
+/** Il log dell'app in memoria, per i casi che guardano l'avviso della riga: un canale vero di Laravel, con un registro di Monolog. */
+function logDellaRiga(): void
+{
+    config(['logging.default' => 'della-riga', 'logging.channels.della-riga' => ['driver' => 'monolog', 'handler' => TestHandler::class]]);
+}
+
+/** @return list<string> le righe d'avviso scritte in quel log, nell'ordine */
+function avvisiDellaRiga(): array
+{
+    $righe = [];
+    foreach (Log::channel('della-riga')->getLogger()->getHandlers()[0]->getRecords() as $riga) {
+        if ($riga->level === Level::Warning) {
+            $righe[] = $riga->message;
+        }
+    }
+
+    return $righe;
+}
+
 it('dopo un cambio di lingua nel profilo la riga dà già la lingua nuova al middleware, prima del controller; i dati della cornice di quella richiesta e la sessione hanno la stessa (sprint 18 · T2.1)', function () {
     sessioneAMano(marketing());
     // La sessione è entrata in italiano, e poi nel profilo la persona ha scelto l'inglese: io.mostra dà `en`.
@@ -733,6 +755,63 @@ it('anche nell\'altro ordine la lettura fallita non riparte: Cornice::dati() lan
         ->and(Http::recorded())->toHaveCount(1);
 });
 
+// Review della PR #22, R6: l'errore che la riga prende non restava da nessuna parte, se in quella richiesta `Cornice::dati()`
+// non c'era (una rotta JSON, una pagina senza cornice). Ora lascia una riga d'avviso: il tipo dell'errore, mai il suo messaggio,
+// che può portare l'indirizzo del backoffice.
+
+it('quando la riga prende l\'errore di io.mostra lo scrive nel log: una riga d\'avviso col tipo dell\'errore, mai il suo messaggio; una per lettura fallita, anche se la riga è chiamata due volte e poi arrivano i dati (sprint 18 · T2.5)', function (int $stato, ?string $codice, string $tipo) {
+    sessioneAMano(marketing());
+    logDellaRiga();
+    $problema = ['type' => 'about:blank', 'title' => 'segno-del-titolo', 'status' => $stato, 'detail' => 'segno-del-dettaglio', 'codice' => $codice];
+    // Lo stato 0 è la connessione che cade: nessuna risposta.
+    backoffice(['/v1/io' => match (true) {
+        $stato === 0 => Http::failedConnection(),
+        $codice === null => Http::response('segno-del-corpo', $stato),
+        default => Http::response((string) json_encode($problema), $stato, ['Content-Type' => 'application/problem+json']),
+    }]);
+
+    expect(Cornice::lingua())->toBe('en');
+    $esito = laRigaEPoiIDati();
+
+    // La riga intera: né il messaggio, né il dettaglio del problema, né l'indirizzo.
+    expect($esito['lingua'])->toBe('en')
+        ->and($esito['errore'])->toBeInstanceOf($tipo)
+        ->and(avvisiDellaRiga())->toBe(['zr-core, lingua della pagina: la lettura di io.mostra è fallita ('.$tipo.'): resta la lingua della sessione'])
+        ->and(Http::recorded())->toHaveCount(1);
+})->with([
+    'un 502' => [502, null, BackofficeNonRisponde::class],
+    'la connessione cade' => [0, null, BackofficeNonRisponde::class],
+    'un errore di /v1' => [403, 'gettone_senza_workspace', ErroreApi::class],
+]);
+
+it('la riga non scrive niente nel log quando l\'errore non lo prende lei: la lettura fallita di Cornice::dati(), che lancia, non lascia un avviso nemmeno se la riga viene dopo (sprint 18 · T2.5)', function () {
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backoffice(['/v1/io' => Http::response('', 502)]);
+
+    expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class)
+        ->and(Cornice::lingua())->toBe('en')
+        ->and(avvisiDellaRiga())->toBe([]);
+});
+
+it('un GettoneRifiutato che passa dalla riga non lascia un avviso: non è un errore che la riga prende (sprint 18 · T2.5)', function () {
+    sessioneAMano(marketing());
+    logDellaRiga();
+    $problema = ['type' => 'about:blank', 'title' => 'uat', 'status' => 401, 'detail' => 'uat', 'codice' => 'gettone_non_valido'];
+    backoffice(['/v1/io' => Http::response((string) json_encode($problema), 401, ['Content-Type' => 'application/problem+json'])]);
+
+    expect(fn () => Cornice::lingua())->toThrow(GettoneRifiutato::class)
+        ->and(avvisiDellaRiga())->toBe([]);
+});
+
+it('un log che non scrive non fa lanciare la riga: dà la lingua della sessione lo stesso (sprint 18 · T2.5)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::response('', 502)]);
+    Log::shouldReceive('warning')->once()->andThrow(new RuntimeException('uat: il log non scrive'));
+
+    expect(Cornice::lingua())->toBe('en');
+});
+
 it('un 401 da io.mostra passa dalla riga com\'è: GettoneRifiutato di zr-auth, che il frontend tratta come da ogni altra chiamata, e non una lingua (sprint 18 · T2.5)', function () {
     sessioneAMano(marketing());
     $problema = ['type' => 'about:blank', 'title' => 'uat', 'status' => 401, 'detail' => 'uat', 'codice' => 'gettone_non_valido'];
@@ -762,16 +841,21 @@ it('quando Cornice::dati() usa la lettura fatta dalla riga, aggiornati_il è l\'
         ->and(Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z'))->toBe('2026-10-11T08:00:04.000001Z');
 });
 
-it('la lettura tenuta vale per quella richiesta: la richiesta dopo rilegge io.mostra, e i suoi dati sono quelli della sua lettura (sprint 18 · T2.7)', function () {
+it('la lettura tenuta vale per quella richiesta: la richiesta dopo rilegge io.mostra, e la riga e i dati sono quelli della sua lettura (sprint 18 · T2.7)', function () {
     sessioneAMano(marketing());
-    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(5))]);
+    // Fra le due richieste la persona cambia ancora lingua nel profilo, e le arrivano due notifiche.
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostraCon(['lingua' => 'es'], 3))->push(ioMostraCon(['lingua' => 'it'], 5))]);
     paginaConLaRiga();
 
     $laPrima = $this->get('w/uat-marketing/pagina')->assertOk();
     $laSeconda = $this->get('w/uat-marketing/pagina')->assertOk();
 
-    // Quattro letture per richiesta, io.mostra una volta in ognuna: la seconda non usa la lettura della prima.
-    expect([$laPrima->json('cornice.non_lette'), $laSeconda->json('cornice.non_lette')])->toBe([3, 5])
+    // Con una lettura che sopravvive alla richiesta la riga della seconda darebbe ancora `es`: Cornice::dati(), che la
+    // troverebbe già usata, rileggerebbe comunque, e le non lette e i conteggi da soli non lo direbbero (review, R7).
+    expect([$laPrima->json('lingua_della_pagina'), $laSeconda->json('lingua_della_pagina')])->toBe(['es', 'it'])
+        ->and([$laPrima->json('cornice.lingua'), $laSeconda->json('cornice.lingua')])->toBe(['es', 'it'])
+        ->and([$laPrima->json('cornice.non_lette'), $laSeconda->json('cornice.non_lette')])->toBe([3, 5])
+        // Quattro letture per richiesta, io.mostra una volta in ognuna: la seconda non usa la lettura della prima.
         ->and(richiesteA('/v1/io'))->toHaveCount(2)
         ->and(Http::recorded())->toHaveCount(8);
 });
@@ -810,4 +894,72 @@ it('la lettura tenuta vale per quella persona: se fra la riga e i dati nella ses
         ->and($dati['non_lette'])->toBe(9)
         ->and(richiesteA('/v1/io'))->toHaveCount(2)
         ->and(richiesteA('/v1/io')->last()->hasHeader('Authorization', 'Bearer '.$suo))->toBeTrue();
+});
+
+// Review della PR #22, B2: «di chi è» la lettura tenuta sono l'id della persona e il workspace. Senza l'id non si sa di chi è, e
+// due persone senza id sembrerebbero la stessa: la lettura allora non si usa.
+it('una sessione senza l\'id della persona non usa la lettura tenuta: senza sapere di chi è, Cornice::dati() rilegge io.mostra (sprint 18 · T2.7)', function () {
+    sessioneAMano(marketing());
+    // zr-auth una sessione così non la produce: è il ramo sicuro per il giorno in cui succedesse.
+    session()->forget(Sessione::CHIAVE.'.utente.id');
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(9))]);
+
+    Cornice::lingua();
+    $dati = Cornice::dati();
+
+    expect($dati['non_lette'])->toBe(9)
+        ->and(richiesteA('/v1/io'))->toHaveCount(2);
+});
+
+// Review della PR #22, R9 (T2.9): la riga del README passa a `App::setLocale` ciò che `Cornice::lingua()` dà, e Laravel
+// lancia su una lingua con `/`, `\`, `..` o un byte nullo, dopo aver già scritto `app.locale`: un 500 su ogni pagina di quella
+// persona. La forma la guarda la riga: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`, 35 caratteri al più.
+
+it('la riga dà la lingua della sessione solo se ha la forma di una lingua, se no null: alla riga del README non arriva mai un valore che Laravel rifiuta, e il modulo mette la sua (sprint 18 · T2.9)', function (string $lingua, ?string $attesa) {
+    // Senza un workspace la riga non legge: se leggesse, il backoffice finto lo registrerebbe.
+    backoffice();
+    sessioneAMano(null);
+    session()->put(Sessione::CHIAVE.'.utente.lingua', $lingua);
+
+    expect(Cornice::lingua())->toBe($attesa);
+
+    // La riga del README, con la lingua del modulo al posto di `config('app.locale')`: non lancia, qualunque sia il valore.
+    App::setLocale(Cornice::lingua() ?? 'del-modulo');
+
+    expect(App::getLocale())->toBe($attesa ?? 'del-modulo');
+    Http::assertNothingSent();
+})->with([
+    'it' => ['it', 'it'],
+    'en' => ['en', 'en'],
+    'tre lettere' => ['ita', 'ita'],
+    'una lingua che la cornice non ha' => ['zz', 'zz'],
+    'con la regione' => ['pt-BR', 'pt-BR'],
+    'con la regione, col trattino basso' => ['pt_BR', 'pt_BR'],
+    'con la scrittura e la regione' => ['zh-Hans-CN', 'zh-Hans-CN'],
+    'con una parte di una lettera' => ['de-DE-u-co-phonebk', 'de-DE-u-co-phonebk'],
+    '35 caratteri' => ['it-'.str_repeat('abcdefgh-', 3).'abcde', 'it-'.str_repeat('abcdefgh-', 3).'abcde'],
+    'un testo vuoto' => ['', null],
+    'uno spazio davanti' => [' it', null],
+    'uno spazio in fondo' => ['it ', null],
+    'un a capo in fondo' => ["it\n", null],
+    'una lettera sola' => ['i', null],
+    'una cifra davanti' => ['1t', null],
+    'un trattino in fondo' => ['it-', null],
+    'una risalita davanti' => ['../it', null],
+    'una risalita dietro' => ['it/..', null],
+    'una barra' => ['it/IT', null],
+    'una barra rovescia' => ['it\\x', null],
+    'due punti' => ['it..IT', null],
+    'un byte nullo' => ["it\0", null],
+    '36 caratteri' => ['it-'.str_repeat('abcdefgh-', 3).'abcdef', null],
+]);
+
+it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è, come prima (sprint 18 · T2.9)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => '../it']), ...aziendeEWorkspace()]);
+
+    expect(Cornice::lingua())->toBeNull()
+        ->and(Sessione::utente()['lingua'])->toBe('../it')
+        ->and(Cornice::dati()['lingua'])->toBe('../it')
+        ->and(richiesteA('/v1/io'))->toHaveCount(1);
 });

@@ -1165,13 +1165,29 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     'come la prende' => ['legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la lingua della sessione'],
     'senza una sessione' => ['Senza una sessione dà `null`'],
     'senza un workspace' => ['con la sessione ma senza un workspace dà la lingua della sessione, senza chiamare il backoffice'],
-    'una lingua che il modulo non ha' => ['È la lingua del profilo com\'è: se il modulo non ce l\'ha, quale mettere al suo posto lo decide il modulo'],
+    // Review della PR #22, R9: la forma della lingua la guarda la riga, e il README lo dice.
+    'la forma di una lingua' => ['È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`'],
+    'mai un valore che Laravel rifiuta' => ['a `App::setLocale` non arriva mai un valore che Laravel rifiuta'],
+    'una lingua che il modulo non ha' => ['Una lingua ben fatta che il modulo non ha passa com\'è: Laravel prende i testi dal suo `fallback_locale`'],
     'quanto costa dove la cornice non c\'è' => ['Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c\'è'],
     'nessuna in più dove c\'è' => ['dove c\'è non ne costa una in più'],
     'le letture restano quattro' => ['e le letture restano quattro'],
     'di quale lettura sono le non lette e il segno' => ['Le non lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`'],
     'se il backoffice non risponde non lancia' => ['Se il backoffice non risponde `Cornice::lingua()` non lancia: dà la lingua della sessione'],
-    'l\'errore lo lancia Cornice::dati(), senza un\'altra lettura' => ['lo lancia `Cornice::dati()`, se in quella richiesta la chiami, senza chiamare `io.mostra` un\'altra volta'],
+    // Review, A4: vale per la prima `Cornice::dati()`; e ciò che il controller cambia dopo comprende lingua e nome.
+    'l\'errore lo lancia la prima Cornice::dati(), senza un\'altra lettura' => ['lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami, senza chiamare `io.mostra` un\'altra volta'],
+    'anche la lingua e il nome cambiati dal controller' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
+    'subito solo con Sessione::aggiorna' => ['subito solo se il controller dà la risposta del backoffice a `Sessione::aggiorna`'],
+    // Review, R6: l'errore che la riga prende lascia un avviso.
+    'l\'avviso nel log' => ['lascia nel log una riga d\'avviso col tipo dell\'errore, mai il suo messaggio'],
+    // Review, R5: dove la riga non va, e quanto costerebbe.
+    'dove va la riga' => ['La riga va dove si mette la lingua di una pagina, non su ogni richiesta'],
+    'dove non va' => ['su una richiesta che non mostra una pagina — le rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione'],
+    'quanto costerebbe' => ['la riga costerebbe una lettura del backoffice in più a ogni richiesta (una ricerca ne farebbe due)'],
+    'col blocco della sessione' => ['su una rotta che tiene il blocco della sessione quel tempo passerebbe a blocco preso'],
+    'il gruppo web passa anche dalle rotte della cornice' => ['Un middleware del gruppo `web` passa anche dalle rotte della cornice'],
+    // Review, R11: la lettura parte prima che la lingua della pagina sia messa.
+    'la lingua del dettaglio di un errore' => ['il `dettaglio` di un errore del backoffice che `Cornice::dati()` poi rilancia è nella lingua che l\'app aveva in quel momento'],
     'GettoneRifiutato passa' => ['`GettoneRifiutato` invece passa anche da `Cornice::lingua()`'],
     'chi resta col suo codice' => ['Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere `Sessione::utente()` dopo, funziona come prima'],
 ]);
@@ -1541,14 +1557,22 @@ it('il README dice, nella riga di POST /cornice/ricerca, una frase per cosa (spr
     'una GET non ha una rotta' => ['dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice'],
     'che cosa risponde una GET' => ['risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`)'],
     'il test di un frontend' => ['un test del frontend che la chiama passa alla POST'],
+    // Review della PR #22, R4 e R2: ciò che la versione non fa.
+    'una scheda aperta prima dell\'aggiornamento' => ['una scheda aperta prima dell\'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l\'errore della ricerca'],
+    'il tratto dal server del modulo al backoffice' => ['dal server del modulo al backoffice la parola viaggia ancora nell\'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo'],
 ]);
 
-it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, e che il frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6)', function () {
+it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, che la parola non sta più nell\'indirizzo della richiesta del browser ma resta in quello della richiesta al backoffice, e che nel codice del frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDellaCornice($readme, 'La ricerca');
 
     expect(str_contains($punto, 'chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l\'ultimo tasto, con la parola nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell\'header `X-XSRF-TOKEN`'))->toBe(true)
-        ->and(str_contains($punto, 'dalla `v1.8.0` ciò che la persona cerca non sta più nell\'indirizzo di una richiesta, e il frontend non cambia niente'))->toBe(true)
+        ->and(str_contains($punto, 'dalla `v1.8.0` ciò che la persona cerca non sta più nell\'indirizzo della richiesta del browser'))->toBe(true)
+        // Review della PR #22, R2: la promessa vale per il tratto del browser, e il README dice l'altro.
+        ->and(str_contains($punto, 'Il tratto dal server del modulo al backoffice resta una GET con la parola nell\'indirizzo, finché il backoffice non dà un metodo col termine nel corpo'))->toBe(true)
+        ->and(str_contains(suUnaRiga($readme), 'non sta più nell\'indirizzo di una richiesta'))->toBe(false)
+        // Review, R4: una frase sola, la stessa della riga della rotta.
+        ->and(str_contains($punto, 'Nel codice del frontend non cambia niente; un suo test che chiama la GET passa alla POST'))->toBe(true)
         ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
         // La rotta di prima: né una riga della tabella, né nominata altrove.
         ->and(rigaDellaRotta($readme, 'GET /cornice/ricerca?q='))->toBe('')
@@ -1953,7 +1977,7 @@ it('il README non dice più che una CSP della risposta lascia il posto a quella 
 
 // Sprint 18 · T3.5 (voce #1628): dalla v1.8.0 una CSP della risposta che non si può mandare non resta. Il README lo dice dove
 // dice che una risposta la sua CSP la tiene, subito dopo: lo scarto, e l'avviso.
-it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene», che una CSP della risposta che non si può mandare è scartata e che lo scarto lascia un avviso nel log, una frase per cosa (sprint 18 · T3.5)', function (string $frase) {
+it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene», che una CSP della risposta che non si può mandare è scartata, che al suo posto esce la politica più stretta e che lo scarto lascia un avviso nel log, una frase per cosa (sprint 18 · T3.5)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il README di prima della v1.6.0, senza quella sezione: la frase non si trova più.
     $senzaLaSezione = str_replace("\n## Le intestazioni di sicurezza\n", "\n## Le intestazioni\n", $readme);
@@ -1963,12 +1987,25 @@ it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene
 })->with([
     'lo scarto, subito dopo «la tiene»' => ['la risposta le porta tutte e due. Una sola non resta: quella che non si può mandare'],
     'che cosa non si può mandare' => ['una lista, un oggetto che non si legge come testo, un testo con un a capo in mezzo o con un byte nullo'],
-    'che cosa succedeva' => ['all\'invio PHP si fermerebbe lì, fuori dai middleware: un 500 senza intestazioni'],
-    'da quale versione, e come esce la risposta' => ['Dalla `v1.8.0` la classe la scarta, e la risposta esce col suo stato, il suo corpo, le altre sue CSP e quella del modulo'],
-    'l\'avviso' => ['Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP: dice il tipo del valore, mai il valore'],
-    'la pagina esce senza quella CSP' => ['La pagina esce quindi senza quella CSP: se doveva stringere quella del modulo, l\'avviso è il solo segno che manca'],
+    'che cosa succedeva' => ['all\'invio PHP su quel valore avvisa o si ferma, e Laravel di ogni avviso fa un\'eccezione: l\'invio si interrompe fuori dai middleware, ed è un 500 senza intestazioni'],
+    'da quale versione, e che cosa esce al suo posto' => ['Dalla `v1.8.0` la classe la scarta e al suo posto mette la politica più stretta, una volta sola per risposta'],
+    'la politica più stretta, per intero' => ["`default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox`"],
+    'come esce la risposta' => ['La risposta esce col suo stato, il suo corpo, le altre sue CSP e quella del modulo'],
+    'che cosa fa il browser' => ['con quella politica il browser non carica e non esegue niente di quella pagina, finché l\'errore non è corretto nel codice del modulo'],
+    'mai una CSP più larga di quella chiesta' => ['una pagina non esce mai con una CSP più larga di quella che il suo codice aveva chiesto'],
+    'l\'avviso' => ['Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP e per primo: dice il tipo del valore, mai il valore'],
     'ciò che PHP sa scrivere resta' => ['Ciò che PHP sa scrivere resta com\'è: anche un testo con un a capo in fondo, che PHP all\'invio taglia'],
 ]);
+
+// Review della PR #22, R1: lo scarto semplice faceva uscire la pagina con una CSP più larga di quella chiesta, e il README lo
+// diceva. Quella frase non c'è più.
+it('il README non dice più che la pagina esce senza quella CSP e basta (sprint 18 · T3.5)', function () {
+    $delleIntestazioni = delleIntestazioniNelReadme((string) file_get_contents(__DIR__.'/../../README.md'), null);
+
+    expect($delleIntestazioni)->not->toBe('')
+        ->and(str_contains($delleIntestazioni, 'esce quindi senza quella CSP'))->toBe(false)
+        ->and(str_contains($delleIntestazioni, 'l\'avviso è il solo segno che manca'))->toBe(false);
+});
 
 // Sprint 16 · lettura di sicurezza, D2: `assertHeader` guarda solo il primo valore, e da T2.7 una risposta può portare più di una CSP.
 it('il test che il README dà a ogni modulo confronta la CSP con tutti i suoi valori, non col primo (sprint 16 · lettura di sicurezza, D2)', function () {
