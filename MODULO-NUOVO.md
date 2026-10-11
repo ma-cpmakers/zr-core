@@ -16,7 +16,7 @@ Come si legge:
 | # | Passo | Di chi è il codice |
 |---|---|---|
 | 1 | Installare zr-core (zr-auth arriva con lui) | tuo: `composer.json`, il CSS e il JS d'ingresso |
-| 2 | L'ingresso, la sessione, l'uscita | zr-auth; tu scrivi la pagina di casa e l'uscita |
+| 2 | L'ingresso, la sessione, l'uscita | zr-auth; tuoi il middleware del workspace, l'uscita e il blocco |
 | 3 | Le intestazioni di sicurezza | zr-core; tu la registri |
 | 4 | La CSP del modulo | tuo: `config/zr-core.php`, solo se aggiungi un'origine |
 | 5 | La lingua | zr-core; tu scrivi un middleware di una riga |
@@ -43,7 +43,8 @@ Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e int
   mostrare (passo 9). Entra con una versione di zr-core: fino a quella vale «Durante lo sviluppo», al passo 8.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Prodotti la tua voce resta «Presto» anche col
-  registro a posto. È la stessa strada per ogni dato o metodo di `/v1` che ti manca.
+  registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
+  metodo di `/v1` che ti manca.
 - **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
   `zr-start-flow`): il backoffice deve conoscere `https://<modulo>/ingresso/ritorno`, l'indirizzo a cui la persona torna
   dopo l'ingresso (README di zr-auth, «L'ingresso da zr-home: la partenza e il ricevitore»). Finché manca, dal sito vero
@@ -70,7 +71,7 @@ file statici: README, «La favicon». Il design system nella build è quello di 
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
 la build passano; nella build il design system c'è una volta sola:
-`grep -rhoE 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 1.
+`grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 1.
 
 **Errore già pagato**: Composer non eredita i repository di un pacchetto, e senza quello di zr-auth nel tuo `composer.json`
 zr-core non si installa. Una seconda copia del design system accanto a quella del pacchetto si sovrascrive con la prima.
@@ -89,30 +90,41 @@ ricopiato da zr-board ed è andata liscia. Tre cose sono tue:
   sessione, o averla in un altro workspace. La guardia da sola non basta: chi non ha una sessione lo manda alla pagina
   d'accesso, non dentro il workspace dell'indirizzo, e chi ha la sessione in un altro workspace lo lascia passare: la
   pagina mostrerebbe i dati dell'altro, perché il workspace è quello della sessione. Scrivi un middleware tuo sul gruppo
-  delle rotte `w/{workspace}` (zr-board e zr-crm lo chiamano `NelWorkspace`, in `app/Http/Middleware/`): se
-  `Sessione::workspace()` non c'è, o il suo `slug` non è quello dell'indirizzo, risponde con la partenza,
-  `Ingresso::verso($slug)`. Prima ricorda la pagina chiesta, come fa la guardia — solo da un GET, in `url.intended`: al
-  ritorno la persona arriva lì —; a una visita di Inertia risponde 409 con l'indirizzo della partenza in
-  `X-Inertia-Location`, a una richiesta JSON 401: le stesse forme della guardia (`ConGettone::versoLIngresso`). Deve
-  girare **prima** della guardia, che entra da sé nel gruppo `web`: in `bootstrap/app.php` lo metti nella lista delle
-  priorità prima di `ConGettone` (`prependToPriorityList`); se no risponde la guardia, e manda alla pagina d'accesso;
+  delle rotte sotto `/w/{slug}` (zr-board e zr-crm lo chiamano `NelWorkspace`, in `app/Http/Middleware/`), che fa la
+  partenza al posto della rotta `entra/{workspace}` dell'esempio di zr-auth: quella non serve. Nell'ordine: uno slug
+  oltre i 200 caratteri è un 404 (con uno così `Ingresso::verso()` lancia un'eccezione, e sarebbe un 500 alla portata di
+  chiunque); se `Sessione::workspace()` c'è e il suo `slug` è quello dell'indirizzo, la richiesta passa; se no, a una
+  richiesta JSON che non è di Inertia risponde 401, senza ricordare la pagina e senza far partire niente
+  (`Ingresso::verso()` scrive nella sessione una partenza nuova al posto di quella in corso); a ogni altra ricorda la
+  pagina chiesta come fa la guardia — solo da un GET, in `url.intended`: al ritorno la persona arriva lì — e risponde
+  con la partenza, `Ingresso::verso($slug)`: a una visita di Inertia come 409, con l'indirizzo della partenza in
+  `X-Inertia-Location` e le intestazioni di `INTESTAZIONI` di `Ingresso`. Sono le forme della guardia
+  (`ConGettone::versoLIngresso`). Deve girare **prima** della guardia, che entra da sé nel gruppo `web`: in
+  `bootstrap/app.php` lo metti nella lista delle priorità (`prependToPriorityList`) prima di `ConGettone` **e** di
+  `SubstituteBindings` — `before: [ConGettone::class, SubstituteBindings::class]` —, perché quando `bootstrap/app.php`
+  gira `ConGettone` in lista non c'è ancora, e col suo nome solo il tuo middleware finisce in fondo: risponde la
+  guardia, e manda alla pagina d'accesso;
 - **l'uscita**: una rotta POST del modulo che chiude l'accesso nel backoffice e chiama `Sessione::chiudi()` (il codice è
   nel README di zr-auth, «La sessione col gettone»). Nel browser, la funzione che chiama quella rotta la scrivi tu: una
   visita POST di Inertia alla rotta dell'uscita (negli esempi del README di zr-core si chiama `esci`). È quella che dai
   alla cornice in `onLogout`, al passo 7: «Esci» chiude la sessione, ed è il frontend a farlo. La rotta sta fuori dal
   middleware della pagina di casa: con un gettone scaduto farebbe ripartire l'ingresso invece di chiudere la sessione
-  (zr-crm). Dopo, la persona non ha una sessione: dove rimandarla lo decidi tu, e da ogni pagina del modulo si ritrova
-  comunque all'accesso;
+  (zr-crm). Dopo, la persona non ha una sessione: dove rimandarla lo decidi tu — fuori dal modulo, con
+  `Inertia::location()`: a una visita di Inertia un rimando verso un altro sito non arriva —, e da ogni pagina del
+  modulo si ritrova comunque all'accesso;
 - **il blocco della sessione**: `->bloccaSessione()` di zr-auth sulle tue rotte che aprono, cambiano o chiudono la
   sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, l'uscita compresa — e
   sulle tue rotte lente, non su tutte. Quali, e perché: README, «La cornice», al punto «Le notifiche».
 
 **Prova**: entrato in un workspace su app.zeiras.com, apri `/w/<slug>` del modulo (dal menu Prodotti, quando il registro
 ha il tuo prodotto: passo 8): sei dentro, con la sessione in quel workspace, senza passare dalla pagina d'accesso. Con lo
-slug di un altro tuo workspace nell'indirizzo, il modulo mostra quello, non il primo. Il test della guardia di zr-auth
-(`Rotte::senzaGuardia()`) non elenca nessuna tua rotta che deve averla. Sul sito vero si prova quando l'indirizzo di
-ritorno c'è («Prima di tutto»): fino ad allora nei test, col backoffice finto di zr-auth. «Esci» si prova dal passo 7,
-quando la cornice è montata: la sessione è chiusa, e tornando a una pagina del modulo ti ritrovi all'accesso.
+slug di un altro tuo workspace nell'indirizzo, il modulo mostra quello, non il primo; e aprendo senza sessione una pagina
+interna (`/w/<slug>/…`), dopo l'ingresso sei lì. In un test, senza sessione: un GET risponde 302 verso l'ingresso di
+zr-home, lo stesso GET con `X-Inertia` 409 con `X-Inertia-Location`, una richiesta JSON 401. Il test della guardia di
+zr-auth (`Rotte::senzaGuardia()`) non elenca nessuna tua rotta che deve averla. Sul sito vero si prova quando l'indirizzo
+di ritorno c'è («Prima di tutto»): fino ad allora nei test, col backoffice finto di zr-auth, dove l'unica app che si
+attiva è `pm` (nel test il codice dell'app, `ZR_APP`, è quello). «Esci» si prova dal passo 7, quando la cornice è
+montata: la sessione è chiusa, e tornando a una pagina del modulo ti ritrovi all'accesso.
 
 **Errore già pagato**: il blocco messo da una parte sola non ferma niente, e vuole uno store che sappia fare i lock
 (Redis, database, file; `array` nei test): con uno che non li fa la rotta risponde 500 a ogni clic. Lo store è
@@ -126,9 +138,10 @@ Poi scrivi il tuo test, coi cinque valori per intero — README, «Il test nel m
 in `tests/Feature/`).
 
 **Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP. Guarda la risposta della pagina,
-non quella di chi non è entrato: senza il cookie della sessione risponde il rimando della guardia, e una classe del
-modulo rimasta più all'interno non si vede. Dalla scheda Rete del browser, o con
-`curl -sI -b '<il cookie della sessione>' <una tua pagina> | grep -ci '^content-security-policy:'`, che risponde 1.
+non quella di chi non è entrato: senza il cookie della sessione risponde un rimando — la partenza del passo 2, o la
+guardia —, e una classe del modulo rimasta più all'interno non si vede. Dalla scheda Rete del browser, o con
+`curl -sI -b '<nome>=<valore>' <una tua pagina> | grep -iE '^(HTTP/|content-security-policy:)'`: la prima riga dice 200
+(con un 302 stai guardando un rimando: il cookie è scaduto, o scritto senza `nome=`), e la CSP è una riga sola.
 
 **Errore già pagato**: con la classe del modulo rimasta, la risposta porta due CSP e il browser le applica tutte e due
 (zr-crm). Un test che guarda solo la prima CSP, o che rilegge una costante del pacchetto, resta verde lo stesso. E la
@@ -147,9 +160,8 @@ visita di Inertia): lasciata con una visita, la sua CSP più larga resta sulle p
 Una `fetch` verso un'altra origine vuole `connect-src`; verso il tuo stesso sito, niente.
 
 **Prova**: la console del browser non segna violazioni della CSP in nessuna tua pagina. La CSP nuova la leggi una volta
-dalla risposta della pagina (col cookie della sessione o dalla scheda Rete, come al passo 3: il rimando della guardia non
-porta le sorgenti di `csp_pagine`) e la incolli per intero nel test del passo 3, con un caso per ogni pagina che ne
-chiede di sue.
+dalla risposta della pagina (col cookie della sessione o dalla scheda Rete, come al passo 3: un rimando non porta le
+sorgenti di `csp_pagine`) e la incolli per intero nel test del passo 3, con un caso per ogni pagina che ne chiede di sue.
 
 **Errore già pagato**: la barra d'avanzamento di Inertia aggiunge un `<style>` che la CSP ferma —
 README, «La barra d'avanzamento di Inertia». Una sorgente scritta male è scartata, non corretta: lo dice il log, non la
@@ -187,9 +199,10 @@ scrivere — README, «La parte server», da «Per avere la pagina nella lingua 
 
 - `Cornice::lingua()` dà la lingua **della sessione**, com'è, se ha la forma di una lingua; se no dà `null`, e la riga
   ripiega sulla lingua dell'app. Non la riduce: `it-IT` resta `it-IT`, e se le tue cartelle `lang/` hanno solo `it` la
-  riduzione la fai tu (la cornice, per i suoi testi, la fa da sé). La forma la guarda solo lei: `cornice.lingua` nei
-  dati della pagina (passo 6) e `Sessione::utente()['lingua']` sono la lingua della sessione com'è, anche malfatta, e
-  chi ne fa un `lang`, il nome di un file o la lingua di una libreria del browser ne guarda prima la forma;
+  riduzione la fai tu (la cornice, per i suoi testi, la fa da sé). La forma la guarda solo `Cornice::lingua()`:
+  `cornice.lingua` nei dati della pagina (passo 6) e `Sessione::utente()['lingua']` sono la lingua della sessione com'è,
+  anche malfatta, e chi ne fa un `lang`, il nome di un file o la lingua di una libreria del browser ne guarda prima la
+  forma;
 - le lingue di Zeiras sono `it`, `en`, `es`. Quale lingua c'è nella sessione lo decide zr-auth, all'ingresso e a ogni
   lettura, e cambia fra le sue versioni: il capoverso che comincia con «Quale lingua c'è nella sessione» dice che cosa
   aspettarsi con ognuna, e un tuo test su una lingua che non è di Zeiras guarda quale zr-auth è installata;
@@ -282,7 +295,7 @@ tipo.
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo
 che la ricerca funziona. Che trovi le tue cose lo prova il titolo di una tua risorsa: compare sotto il nome del suo tipo,
 e sceglierla apre la sua pagina nel tuo prodotto. Un tuo test che chiama la rotta usa `postJson`, con `q` nel corpo
-JSON: la rotta lo legge solo da lì, e a una POST di modulo risponde 422.
+JSON: la rotta lo legge solo da lì, e a una POST coi campi di un form (`$this->post(…, ['q' => …])`) risponde 422.
 
 **Errore già pagato**: nessuno dai due moduli. Da sapere: fino alla `v1.7.0` era una GET; un test rimasto alla GET oggi
 non trova la rotta.

@@ -2775,8 +2775,9 @@ function fraAccentiGravi(string $testo): array
  * dev'essere nello zip (una cartella, col `/` in fondo, deve avere almeno un file); `METODO /cornice/…` è una rotta
  * registrata; una classe di `Zeiras\Core`, col suo metodo se lo nomina, esiste; `Cornice::metodo(` è un metodo della classe;
  * `--tag=…` è un'etichetta con cui zr-core pubblica qualcosa. Un nome da solo (`LayoutDellaCornice`, `in_arrivo`: con una
- * maiuscola o un trattino basso) e un `Classe::metodo` si cercano come parola intera nel codice che si installa, poi in
- * quello di zr-auth; se non sono lì devono essere fra quelli detti di altri (Laravel, Inertia, il browser, il frontend).
+ * maiuscola o un trattino basso) e un `Classe::metodo` — anche con gli argomenti e con ciò che segue,
+ * `Classe::metodo($x)['chiave']` — si cercano come parola intera nel codice che si installa, poi in quello di zr-auth; se
+ * non sono lì devono essere fra quelli detti di altri (Laravel, Inertia, il browser, il frontend).
  *
  * @param  list<string>  $nelloZip
  * @param  list<string>  $rotte
@@ -2802,7 +2803,7 @@ function nominatiENonTrovati(string $guida, array $nelloZip, array $rotte, strin
             if (! in_array($rotta[1].' '.preg_replace('/\{[^}]*\}/', '{}', $rotta[2]), $rotte, true)) {
                 $mancano[] = $scritto.': non è una rotta';
             }
-        } elseif (preg_match('/^([A-Z][A-Za-z0-9]*)::([A-Za-z_][A-Za-z0-9_]*)(\(\))?$/', $scritto, $statico) === 1) {
+        } elseif (preg_match('/^([A-Z][A-Za-z0-9]*)::([A-Za-z_][A-Za-z0-9_]*)(?:\(.*)?$/', $scritto, $statico) === 1) {
             $suo = array_key_exists($statico[1].'::'.$statico[2], $diAltri)
                 || ($parola($statico[1], $delPacchetto) && $parola('function '.$statico[2], $delPacchetto))
                 || ($parola($statico[1], $diZrAuth) && $parola('function '.$statico[2], $diZrAuth));
@@ -2862,6 +2863,7 @@ function nomiDiAltriNellaGuida(): array
         'NelWorkspace' => 'il middleware del frontend sulle rotte del workspace, col nome che gli danno zr-board e zr-crm',
         'prependToPriorityList' => 'Laravel',
         'postJson' => 'Laravel, nei test',
+        'Inertia::location' => 'Inertia, dal server',
     ];
 }
 
@@ -2951,6 +2953,7 @@ it('il controllo dei nomi della guida vede ciò che non c\'è: un caso per forma
     'una rotta che non c\'è' => ['La ricerca è `GET /cornice/ricerca`.', ['GET /cornice/ricerca: non è una rotta']],
     'un nome che nessuno ha' => ['Usa `LayoutCornice` e `in_arrivi`.', ['LayoutCornice: nessuno ha questo nome', 'in_arrivi: nessuno ha questo nome']],
     'un metodo che nessuno ha' => ['Chiama `Sessione::rinfresca()`.', ['Sessione::rinfresca(): nessuno ha questo metodo']],
+    'un metodo che nessuno ha, scritto con gli argomenti o con ciò che segue' => ['`Ingresso::verso($slug)` c\'è; `Ingresso::versoNessuno($slug)` e `Sessione::utenteCheNonCe()[\'lingua\']` no.', ['Ingresso::versoNessuno($slug): nessuno ha questo metodo', 'Sessione::utenteCheNonCe()[\'lingua\']: nessuno ha questo metodo']],
     'un\'etichetta con cui zr-core non pubblica' => ['`php artisan vendor:publish --tag=zr-core`', ['--tag=zr-core: zr-core non pubblica niente con questa etichetta']],
 ]);
 
@@ -3036,6 +3039,10 @@ function citatiCheNonCiSono(array $citati, string $testo, bool $ancheTitoli): ar
     return array_values(array_filter($citati, fn (string $citato): bool => ! ($ancheTitoli && in_array($citato, $titoli[1], true)) && ! cominciaCosiUnCapoverso($citato, $testo)));
 }
 
+// Che cosa questo caso non prova (seconda lettura della PR #26, S14): che il capoverso stia nella sezione citata (si cerca
+// in tutto il README), che le parole citate non comincino anche un altro capoverso, che un titolo di zr-auth non valga
+// come inizio di capoverso, e una citazione scritta in una forma che le due espressioni non prendono. Le due soglie sono
+// i conti di oggi: fermano una citazione che sparisce dal controllo, non una aggiunta in un'altra forma.
 it('ciò che la guida cita per le prime parole c\'è: i capoversi e i punti del README, i titoli e i punti del README di zr-auth installato (sprint 20 · review della PR #26, R10)', function () {
     $guida = guidaDelModuloNuovo();
     $delReadme = capoversiCitatiDelReadme($guida);
