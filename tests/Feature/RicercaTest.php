@@ -3,14 +3,19 @@
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Testing\Gettone;
+use Zeiras\Auth\Testing\Rotte;
 
-// Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice, GET /cornice/ricerca?q=, nel gruppo
-// `web` del frontend: la parte server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
+// Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
+// server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
 // backoffice è Http::fake, mai il finto di zr-auth: non conosce la ricerca. Nessuna richiesta esce (TestCase).
 // Sprint 5 · T4 (voce #1257): la ricerca sul contratto di ricerca.elenca. Un risultato è `{tipo, id, titolo}`, senza `app`: di
 // che prodotto è lo dice il registro, nel browser. Una risposta che non ha quella forma è un guasto, mai un elenco più corto.
+// Sprint 18 · T1 (voce #1638): la rotta è POST /cornice/ricerca, e la parola cercata sta nel corpo JSON (`{q}`), mai
+// nell'indirizzo; una GET, quella delle versioni fino alla `v1.7.0`, non ha più una rotta. Dalla parte server al backoffice
+// resta la GET di ricerca.elenca: è un altro tratto (#1639).
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLA_RICERCA = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -38,16 +43,16 @@ function risultatoDelBackoffice(string $tipo, string $id, string $titolo): array
     return ['tipo' => $tipo, 'id' => $id, 'titolo' => $titolo];
 }
 
-/** La ricerca della cornice, con `q` nella query; ogni sua risposta è senza gettone. */
+/** La ricerca della cornice, con `q` nel corpo JSON; ogni sua risposta è senza gettone. */
 function cerca(string $q): TestResponse
 {
-    $risposta = test()->getJson('cornice/ricerca?'.http_build_query(['q' => $q]));
+    $risposta = test()->postJson('cornice/ricerca', ['q' => $q]);
     Gettone::assenteDa($risposta);
 
     return $risposta;
 }
 
-it('GET /cornice/ricerca?q= cerca nel workspace del gettone e dà tipo, id e titolo dei risultati di ricerca.elenca, nell\'ordine del backoffice (sprint 5 · T4.1)', function () {
+it('POST /cornice/ricerca cerca nel workspace del gettone e dà tipo, id e titolo dei risultati di ricerca.elenca, nell\'ordine del backoffice (sprint 5 · T4.1)', function () {
     $gettoni = sessioneAMano(WORKSPACE_DELLA_RICERCA);
     // Col gettone dell'accesso il backoffice risponderebbe 403 gettone_senza_workspace: qui dà altri risultati, per vederlo.
     Http::fake(fn (Request $richiesta) => match (parse_url($richiesta->url(), PHP_URL_PATH)) {
@@ -98,7 +103,7 @@ it('con meno di 2 o più di 100 caratteri risponde 422 e non chiama il backoffic
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake();
 
-    $risposta = $q === null ? test()->getJson('cornice/ricerca') : cerca($q);
+    $risposta = $q === null ? test()->postJson('cornice/ricerca') : cerca($q);
 
     $risposta->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
     Gettone::assenteDa($risposta);
@@ -165,3 +170,67 @@ it('se il backoffice non risponde, o dà risultati che non sono di /v1, la ricer
         risultatoDelBackoffice('board.cartelle', 'uat-c1', 'UAT Clienti'), ['tipo' => 'board.board', 'id' => 'uat-b1'],
     ], 'successivo' => null]],
 ]);
+
+it('la parola si legge solo dal corpo JSON: una POST che la porta altrove, o che in `q` non porta un testo, risponde 422 e non chiama il backoffice (sprint 18 · T1.2)', function (Closure $manda) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    // Se la parola arrivasse, il backoffice risponderebbe: la rotta darebbe 200 coi risultati.
+    Http::fake(['*' => Http::response(esempioDelContratto())]);
+
+    $risposta = $manda();
+
+    $risposta->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Gettone::assenteDa($risposta);
+    Http::assertNothingSent();
+})->with([
+    'solo nell\'indirizzo, col corpo vuoto' => [fn () => test()->postJson('cornice/ricerca?q=uat')],
+    'solo nell\'indirizzo, col corpo che ha altro' => [fn () => test()->postJson('cornice/ricerca?q=uat', ['parola' => 'uat'])],
+    'in un corpo che non è JSON' => [fn () => test()->post('cornice/ricerca', ['q' => 'uat'], ['Accept' => 'application/json'])],
+    'q è una lista' => [fn () => test()->postJson('cornice/ricerca', ['q' => ['uat']])],
+    'q è un oggetto' => [fn () => test()->postJson('cornice/ricerca', ['q' => ['testo' => 'uat']])],
+    'q è un numero' => [fn () => test()->postJson('cornice/ricerca', ['q' => 12])],
+    'q è true' => [fn () => test()->postJson('cornice/ricerca', ['q' => true])],
+]);
+
+it('con una parola nel corpo e un\'altra nell\'indirizzo si cerca quella del corpo: l\'indirizzo non conta (sprint 18 · T1.2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+
+    $risposta = test()->postJson('cornice/ricerca?q=uat-indirizzo', ['q' => 'uat-corpo']);
+
+    $risposta->assertOk()->assertExactJson(['data' => []]);
+    Gettone::assenteDa($risposta);
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $richiesta) {
+        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
+
+        return $query === ['q' => 'uat-corpo'];
+    });
+});
+
+it('una GET /cornice/ricerca?q=, quella delle versioni fino alla v1.7.0, non ha più una rotta: 405, con la sessione e senza, e il backoffice non si chiama (sprint 18 · T1.3)', function (bool $conLaSessione) {
+    if ($conLaSessione) {
+        sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    }
+    // Se la GET cercasse ancora, il backoffice risponderebbe: la rotta darebbe 200 coi risultati.
+    Http::fake(['*' => Http::response(esempioDelContratto())]);
+
+    $risposta = test()->getJson('cornice/ricerca?q=uat');
+
+    $risposta->assertStatus(405);
+    expect($risposta->json('data'))->toBeNull();
+    Gettone::assenteDa($risposta);
+    Http::assertNothingSent();
+})->with([
+    'con la sessione' => [true],
+    'senza sessione' => [false],
+]);
+
+it('la ricerca è una rotta sola, POST cornice/ricerca: nel gruppo `web` come le altre della cornice (sessione e CSRF), con la guardia di zr-auth e senza il blocco della sessione (sprint 18 · T1.4)', function () {
+    $dellaRicerca = fn () => array_values(array_filter(Route::getRoutes()->getRoutes(), fn ($rotta) => $rotta->uri() === 'cornice/ricerca'));
+    $senzaGuardia = fn () => array_values(array_filter(Rotte::senzaGuardia(), fn (string $voce) => str_ends_with($voce, ' cornice/ricerca')));
+
+    expect(array_map(fn ($rotta) => $rotta->methods(), $dellaRicerca()))->toBe([['POST']])
+        ->and(in_array('web', $dellaRicerca()[0]->gatherMiddleware(), true))->toBe(true)
+        ->and($dellaRicerca()[0]->locksFor())->toBeNull()
+        ->and($senzaGuardia())->toBe([]);
+});

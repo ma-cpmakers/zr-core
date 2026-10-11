@@ -24,7 +24,8 @@ use Throwable;
  * vale solo ciò che è scritto lì — chi incornicia anche la propria origine scrive anche `'self'`. La classe non lo aggiunge
  * da sé: alla CSP di una pagina non aggiunge niente che il modulo non abbia dichiarato.
  *
- * Una CSP che la risposta porta già non si tocca: resta, e quella del modulo le esce accanto (handle).
+ * Una CSP che la risposta porta già non si tocca: resta, e quella del modulo le esce accanto. Una sola è scartata, quella che
+ * PHP all'invio non saprebbe scrivere: al suo posto esce la più stretta (PIU_STRETTA), e lo dice il log (handle).
  */
 final class IntestazioniSicurezza
 {
@@ -43,6 +44,13 @@ final class IntestazioniSicurezza
     /** L'attributo della richiesta su cui una pagina scrive il nome del suo insieme di sorgenti (perLaPagina). */
     private const PAGINA = 'zr-core.csp-pagina';
 
+    /**
+     * La politica più stretta, che esce al posto di una CSP della risposta che non si può mandare: il browser non carica e non
+     * esegue niente, non manda moduli, non lascia incorniciare la pagina, e `sandbox` senza permessi toglie il resto. Che cosa
+     * chiedesse il valore scartato non si sa, o non si può dire al browser: di sicuro questa non è più larga.
+     */
+    private const PIU_STRETTA = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox";
+
     /** Quanti scarti porta, al più, la riga d'avviso di una risposta: degli altri dice solo quanti sono. */
     private const SCARTI_NELL_AVVISO = 5;
 
@@ -51,10 +59,15 @@ final class IntestazioniSicurezza
      * risposta aveva. La CSP no: quella che la risposta porta già resta, e quella del modulo le esce accanto, dopo — il
      * browser le applica tutte e due, e passa solo ciò che ammettono entrambe. Così una risposta può stringere la CSP del
      * modulo e mai allargarla: Laravel ne mette una con `sandbox` sui file che serve da un disco, e toglierla farebbe girare
-     * nell'origine del modulo un file caricato da una persona. È il middleware più esterno, e un suo errore sarebbe un 500
-     * senza intestazioni: dopo la risposta non lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro
-     * escono lo stesso. Ciò che è stato scartato va nel log come avviso, una riga per risposta: una sorgente sbagliata nella
-     * configurazione lo scrive finché non la si corregge.
+     * nell'origine del modulo un file caricato da una persona. Una sola non resta: quella che non si può mandare, su cui
+     * l'invio si fermerebbe fuori da qui (nonSiPuoMandare). Toglierla e basta farebbe uscire la pagina con una CSP più larga
+     * di quella che il suo codice aveva chiesto, dove prima non usciva affatto: al suo posto esce la più stretta, e la pagina,
+     * caricata come documento, resta ferma finché l'errore non è corretto (a una visita di Inertia o a una risposta JSON il
+     * browser non applica nessuna CSP: lì resta solo l'avviso). È il middleware più esterno, e un suo errore sarebbe un 500 senza
+     * intestazioni: dopo la risposta non lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro escono
+     * lo stesso. Ciò che è stato scartato va nel log come avviso, una riga per risposta, con gli scarti della risposta per
+     * primi: una sorgente sbagliata nella configurazione lo scrive a ogni risposta finché non la si corregge, e riempirebbe
+     * la riga da sola.
      */
     public function handle(Request $richiesta, Closure $next): Response
     {
@@ -71,7 +84,9 @@ final class IntestazioniSicurezza
         try {
             // Senza includeSubDomains né preload: gli altri indirizzi del dominio non sono di questo servizio.
             $risposta->headers->set('Strict-Transport-Security', 'max-age=31536000');
-            $risposta->headers->set('Content-Security-Policy', [...self::giaNellaRisposta($risposta, $csp), $csp]);
+            [$sue, $nonInviabili] = self::giaNellaRisposta($risposta, $csp);
+            $scartate = [...$nonInviabili, ...$scartate];
+            $risposta->headers->set('Content-Security-Policy', [...$sue, $csp]);
             // Una risposta che ne chiede una più stretta la tiene, se è il suo unico valore: il rimando dell'ingresso di zr-auth
             // porta il codice nell'indirizzo, ed è `no-referrer`.
             if ($risposta->headers->all('referrer-policy') !== ['no-referrer']) {
@@ -98,19 +113,65 @@ final class IntestazioniSicurezza
     /**
      * Le CSP che la risposta porta già, e che restano: ogni valore com'è, nel suo ordine. Non restano un valore vuoto, che non
      * è una CSP, e uno uguale a quella del modulo, che esce una volta sola (il middleware passato due volte sulla stessa
-     * risposta).
+     * risposta). E non resta un valore che non si può mandare (nonSiPuoMandare): quello è uno scarto, e di lui l'avviso dice
+     * il tipo, mai il valore. Al posto del primo scarto va la politica più stretta, una volta sola per risposta, e non se la
+     * risposta la porta già uguale, scritta dal suo codice: allora resta dov'è. (Al secondo passaggio del middleware non c'è
+     * più niente da scartare.)
      *
-     * @return list<mixed>
+     * @return array{list<mixed>, list<string>} le CSP che restano, e gli scarti
      */
     private static function giaNellaRisposta(Response $risposta, string $csp): array
     {
-        /** @var list<mixed> $valori Symfony li dice testi, ma non lo impone: un valore di un altro tipo resta com'è, non si perde. */
+        /** @var list<mixed> $valori Symfony li dice testi, ma non lo impone: un valore di un altro tipo, se si può mandare, resta com'è. */
         $valori = $risposta->headers->all('Content-Security-Policy');
 
-        return array_values(array_filter(
-            $valori,
-            static fn (mixed $valore): bool => is_string($valore) ? trim($valore) !== '' && $valore !== $csp : $valore !== null,
-        ));
+        $restano = [];
+        $scartate = [];
+        $posto = null;
+        foreach ($valori as $valore) {
+            if (is_string($valore) ? trim($valore) === '' || $valore === $csp : $valore === null) {
+                continue;
+            }
+            $perche = self::nonSiPuoMandare($valore);
+            if ($perche === null) {
+                $restano[] = $valore;
+            } else {
+                $posto ??= count($restano);
+                $scartate[] = 'risposta: una sua CSP '.$perche.' ('.get_debug_type($valore).'), sostituita dalla più stretta';
+            }
+        }
+
+        if ($posto !== null && ! in_array(self::PIU_STRETTA, $restano, true)) {
+            array_splice($restano, $posto, 0, [self::PIU_STRETTA]);
+        }
+
+        return [$restano, $scartate];
+    }
+
+    /**
+     * Perché PHP all'invio non saprebbe scrivere questo valore in un'intestazione, o `null` se lo sa scrivere. Symfony lo
+     * concatena al nome: su un oggetto che non si legge come testo PHP lancia; su una lista avvisa, e `header()` avvisa su un
+     * a capo o un byte nullo, e Laravel di ogni avviso fa un'eccezione. Succederebbe fuori dai middleware: un 500 senza
+     * intestazioni. Come `header()`, non guarda gli spazi e gli a capo in fondo al testo, che all'invio taglia: una CSP che
+     * finisce con un a capo si può mandare, e resta.
+     *
+     * Di un oggetto si guarda il testo di questa lettura, e l'oggetto resta lo stesso: all'invio Symfony lo rilegge. È una
+     * lettura in più di quelle della v1.7.0: un `__toString()` che non dà sempre lo stesso testo può passare di qui e fermare
+     * l'invio, anche con un testo che alla prima lettura si poteva mandare.
+     */
+    private static function nonSiPuoMandare(mixed $valore): ?string
+    {
+        if (is_array($valore)) {
+            return 'non si può leggere come testo';
+        }
+        try {
+            $testo = (string) $valore;
+        } catch (Throwable) {
+            // Un oggetto senza `__toString()`, o il cui `__toString()` lancia. Dell'errore non si dice niente.
+            return 'non si può leggere come testo';
+        }
+
+        return strpbrk(rtrim($testo, " \t\n\v\f\r"), "\r\n\0") === false ? null : 'ha un a capo in mezzo o un byte nullo';
     }
 
     /**
@@ -216,8 +277,9 @@ final class IntestazioniSicurezza
     }
 
     /**
-     * La riga d'avviso di una risposta: quanti scarti, e i primi. Ogni scarto sta su una riga, e viene dalla configurazione o
-     * dal codice, mai dalla richiesta.
+     * La riga d'avviso di una risposta: quanti scarti, e i primi (handle mette davanti quelli della risposta). Ogni scarto
+     * sta su una riga, e viene dalla configurazione, dal codice o dal tipo di un valore della risposta: mai dalla richiesta,
+     * né dal valore.
      *
      * @param  list<string>  $scartate
      */

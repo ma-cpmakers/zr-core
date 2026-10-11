@@ -14,7 +14,7 @@ export interface NotificaDellaCornice {
     tipo?: string;
 }
 
-/** Un risultato della ricerca come lo dà GET /cornice/ricerca: il contratto non dice di che prodotto è. */
+/** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */
 export interface RisultatoDellaRicerca {
     /** Il tipo della risorsa nel backoffice (`board.board`, `board.cartelle`): di che prodotto è, e come si mostra, lo dice il registro. */
     tipo: string;
@@ -76,11 +76,22 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
     return { il: segno(corpo.segnate_il), altre: corpo.data.altre === true };
 }
 
-/** Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): GET /cornice/ricerca?q=. `segnale` annulla la richiesta. */
+/**
+ * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
+ * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
+ * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
+ * corpo). `segnale` annulla la richiesta.
+ */
 export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
-    const corpo = (await chiama(`/cornice/ricerca?q=${encodeURIComponent(parola)}`, { signal: segnale })) as { data?: unknown } | null;
+    const indirizzo = '/cornice/ricerca';
+    const corpo = (await chiama(indirizzo, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
+        body: JSON.stringify({ q: parola }),
+        signal: segnale,
+    })) as { data?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
-        throw new Error('GET /cornice/ricerca: data');
+        throw new Error(`POST ${indirizzo}: data`);
     }
 
     return corpo.data as RisultatoDellaRicerca[];
