@@ -1552,7 +1552,16 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
         ->and(substr_count($corpo, 'uat-x'))->toBe(0)
         ->and(substr_count($corpo, '_id'))->toBe(0);
 })->with([
-    'una scheda di una board, di Project Management' => ['pm', 'com.zeiras.board.scheda.creata'],
+    // Sprint 24 · T3: una scheda nuova, modificata o assegnata ora ha una destinazione, e sta nei casi in fondo al file. Qui resta
+    // ciò che di Project Management non ce l'ha: una scheda eliminata, che non ha più una pagina, gli altri tipi della board, e
+    // un tipo scritto quasi come uno del registro — «assegnata» arriva senza `com.zeiras.` davanti, un evento con.
+    'una scheda eliminata, di Project Management' => ['pm', 'com.zeiras.board.scheda.eliminata'],
+    'una lista di una board' => ['pm', 'com.zeiras.board.lista.creata'],
+    'una board modificata' => ['pm', 'com.zeiras.board.board.modificata'],
+    'una scheda assegnata, con `com.zeiras.` davanti' => ['pm', 'com.zeiras.board.scheda.assegnata'],
+    'una scheda nuova, senza `com.zeiras.` davanti' => ['pm', 'board.scheda.creata'],
+    'una scheda assegnata, in una notifica del CRM' => ['crm', 'board.scheda.assegnata'],
+    'una scheda assegnata, in una notifica che non è di un\'app' => [null, 'board.scheda.assegnata'],
     'una vista di una board' => ['pm', 'com.zeiras.board.vista.creata'],
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
@@ -2055,4 +2064,53 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un al
     'GET /cornice/notifiche' => ['elenco'],
     'PATCH /cornice/notifiche/{id}/lettura' => ['lettura'],
     'POST /cornice/notifiche/letture' => ['letture'],
+]);
+
+// Sprint 24 · T3 (voce #1748; indirizzo di zr-board, nota 10451 del #95; decisione di zr-pm, nota 10565). Una scheda di Project
+// Management — nuova, modificata, o assegnata a chi riceve la notifica — apre la sua pagina in zr-board, `/c/{id}`: al browser
+// va il solo `id` dei `dati`, che nei due eventi del contratto portano anche `aggiornata_il`, `lista_id` e `board_id`, e nella
+// notifica a chi viene assegnata la scheda il solo `id`. Una scheda eliminata non ha più una pagina: `ids` vuoto.
+
+it('GET /cornice/notifiche dà a una scheda nuova, modificata o assegnata il suo `id` e nient\'altro dei `dati`, né la lista né la board, e a una scheda eliminata `ids` vuoto; `idsDellaNotifica()` dà lo stesso (sprint 24 · T3.2, T3.4)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n4', ['id' => 'uat-scheda-1'], 'board.scheda.assegnata', 'pm'),
+        notificaConDati('uat-n3', ['id' => 'uat-scheda-2', 'aggiornata_il' => '2026-10-11T12:29:00.123Z', 'lista_id' => 'uat-lista-1', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.creata', 'pm'),
+        notificaConDati('uat-n2', ['id' => 'uat-scheda-3', 'aggiornata_il' => '2026-10-11T12:28:00.123Z', 'lista_id' => 'uat-lista-2', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.modificata', 'pm'),
+        notificaConDati('uat-n1', ['id' => 'uat-scheda-4', 'lista_id' => 'uat-lista-1', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.eliminata', 'pm'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-scheda-1'], ['id' => 'uat-scheda-2'], ['id' => 'uat-scheda-3'], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Per la scheda eliminata `ids` è vuoto, ma un oggetto; del suo id, della lista, della board e del resto di `dati`, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(1)
+        ->and(substr_count($corpo, 'uat-scheda-4'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-lista'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-board'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0)
+        ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0);
+});
+
+it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, 'pm')], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, $dati))->toBe([])
+        ->and($risposta->json('data.0.ids'))->toBe([])
+        ->and(substr_count((string) $risposta->getContent(), 'uat-fuori'))->toBe(0);
+})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'])->with([
+    'due punti' => [['id' => '..']],
+    'con una barra' => [['id' => 'uat-fuori/x']],
+    'con ../ davanti' => [['id' => '../uat-fuori']],
+    'lungo 65 caratteri' => [['id' => 'uat-fuori-'.str_repeat('a', 55)]],
+    'un numero' => [['id' => 42]],
+    'senza `id`, con la board e la lista' => [['board_id' => 'uat-fuori-board', 'lista_id' => 'uat-fuori-lista']],
+    'senza `dati`' => [null],
 ]);

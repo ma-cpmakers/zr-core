@@ -106,13 +106,14 @@ function tipiDiNotificaDelContratto(): array
 
 /**
  * I tipi che hanno un titolo: i tipi di evento del contratto più le quattro notifiche «assegnata» del CRM, che non sono eventi e
- * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4).
+ * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4), e quella di Project Management a
+ * chi viene assegnata una scheda, che non è un evento nemmeno lei (sprint 24 · T3).
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata())];
 }
 
 /**
@@ -188,6 +189,20 @@ function titoliDelleNotificheDiCioCheVieneAssegnato(): array
         'crm.organizzazione.assegnata' => ['it' => "Ti è stata assegnata un'azienda", 'en' => 'A company was assigned to you', 'es' => 'Se te ha asignado una empresa'],
         'crm.trattativa.assegnata' => ['it' => "Ti è stata assegnata un'opportunità", 'en' => 'An opportunity was assigned to you', 'es' => 'Se te ha asignado una oportunidad'],
         'crm.attivita.assegnata' => ['it' => "Ti è stata assegnata un'attività", 'en' => 'An activity was assigned to you', 'es' => 'Se te ha asignado una actividad'],
+    ];
+}
+
+/**
+ * Il titolo della notifica che Project Management manda a chi viene assegnata una scheda, con le parole di zr-board (nota 10451
+ * del #95). Non è un evento: il `tipo` arriva com'è nel backoffice, senza `com.zeiras.` davanti, e la chiave del titolo è
+ * `notificationTitle.board.scheda.assegnata`. Scritto qui, non letto dai file delle lingue (sprint 24 · T3.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoloDellaNotificaDellaSchedaAssegnata(): array
+{
+    return [
+        'board.scheda.assegnata' => ['it' => 'Ti è stata assegnata una scheda', 'en' => 'A card was assigned to you', 'es' => 'Se te ha asignado una tarjeta'],
     ];
 }
 
@@ -386,14 +401,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 40 tipi di notifica, i 36 tipi di evento del contratto più i quattro «assegnata» che non sono eventi, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 41 tipi di notifica, i 36 tipi di evento del contratto più i cinque «assegnata» che non sono eventi — quattro del CRM e uno di Project Management —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(36)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(40)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(41)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -458,6 +473,20 @@ it('i quattro «assegnata» hanno il titolo sotto il tipo com\'è nel backoffice
         ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
         ->and(array_filter($colPrefisso))->toBe([])
         ->and(array_intersect(array_keys($tabella), tipiDiNotificaDelContratto()))->toBe([]);
+})->with(['it', 'en', 'es']);
+
+it('la notifica a chi viene assegnata una scheda ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: lo stesso nome col prefisso resta senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (sprint 24 · T3.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoloDellaNotificaDellaSchedaAssegnata();
+    $titolo = $testi['notificationTitle.board.scheda.assegnata'] ?? null;
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['board.scheda.assegnata'])
+        ->and($titolo)->toBe($tabella['board.scheda.assegnata'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.board.scheda.assegnata', $testi))->toBe(false)
+        ->and(tipiDiNotificaDelContratto())->not->toContain('board.scheda.assegnata', 'com.zeiras.board.scheda.assegnata')
+        // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
+        ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.scheda.assegnata']);
 })->with(['it', 'en', 'es']);
 
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {

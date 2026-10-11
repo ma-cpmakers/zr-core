@@ -3242,7 +3242,7 @@ it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende 
     'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
     'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
     'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
-    'R8: quelli che hanno una destinazione, diciotto dalla `v1.13.0` (sprint 23 · T3.7)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; le viste di una board e le schede non hanno una destinazione'],
+    'R8: quelli che hanno una destinazione, diciotto del CRM dalla `v1.13.0` e tre di Project Management dalla `v1.14.0` (sprint 23 · T3.7; sprint 24 · T3.5)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; dalla `v1.14.0` tre di Project Management'],
     'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
 ]);
 
@@ -3262,7 +3262,7 @@ it('il README non dice più ciò che la review della PR #44 ha trovato falso, e 
 // titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che
 // nessuno dei nove apre una risorsa.
 
-it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apriva una risorsa fino alla v1.12.0, mentre dalla v1.13.0 ognuno apre la sua pagina (sprint 22 · T5.5; sprint 23 · T3.7)', function (string $frase) {
+it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che con quelli i titoli erano 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apriva una risorsa fino alla v1.12.0, mentre dalla v1.13.0 ognuno apre la sua pagina (sprint 22 · T5.5; sprint 23 · T3.7)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = suUnaRiga($punto[0] ?? '');
@@ -3276,7 +3276,8 @@ it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi lo
     'le quattro notifiche a chi diventa responsabile' => ['e le quattro notifiche che il CRM manda a chi diventa responsabile («Ti è stato assegnato un contatto», «Ti è stata assegnata un\'azienda», «Ti è stata assegnata un\'opportunità», «Ti è stata assegnata un\'attività»)'],
     'il tipo senza `com.zeiras.` davanti' => ['Queste quattro non sono eventi: il loro `tipo` arriva senza `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`, `crm.attivita.assegnata`)'],
     'la chiave del titolo' => ['la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non `notificationTitle.com.zeiras.crm.persona.assegnata`'],
-    'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
+    // Sprint 24 · T3: con la scheda assegnata i titoli sono 41, e i 40 restano al passato.
+    'quanti erano i titoli' => ['Con quelli i titoli erano 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
     'nessuno dei nove apriva una risorsa, e ora sì' => ['Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM'],
 ]);
 
@@ -3318,6 +3319,41 @@ it('il README non dice più che i tipi con una destinazione sono nove, né che o
         ->and(substr_count($readme, 'una di una nota il contatto a cui è attaccata'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'la pagina che si apre con un clic (il percorso dopo `/w/<slug>`, con l\'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare in più pagine, i percorsi in ordine, dal più specifico)'))->toBe(1);
+});
+
+// Sprint 24 · T3 (voce #1748): la notifica a chi viene assegnata una scheda ha il suo titolo, e una scheda nuova, modificata o
+// assegnata si apre con un clic. Il README lo dice dove dice le altre: titolo e tipo nel punto «Le notifiche», coi titoli che
+// ora sono 41; dove si apre, e che una scheda eliminata non si apre; le righe del registro. `MODULO-NUOVO.md` la porta come
+// esempio di una notifica che non è un evento.
+
+it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che i titoli sono 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo' => ['punto', 'Dalla `v1.14.0` ha un titolo anche la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda»'],
+    'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Come le quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la chiave del titolo è `notificationTitle.board.scheda.assegnata`'],
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
+    'il contratto non la elenca ancora' => ['punto', 'Il contratto pubblicato l\'11/10/2026 non la elenca ancora: titolo e destinazione sono pronti per quando il backoffice la manderà'],
+    'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
+    'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
+    'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
+    'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
+]);
+
+it('il README non dice più che i titoli sono 40 né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($readme, 'i titoli sono 40'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 40'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(1)
+        ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
+        ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
+        ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
 });
 
 it('il README non dice più ciò che la review della PR #51 ha trovato falso: che una nota apriva sempre il contatto, e che gli `ids` sono gli id che il percorso del registro chiede per il tipo (review della PR #51, R2 e R10)', function () {
