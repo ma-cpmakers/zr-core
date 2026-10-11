@@ -124,17 +124,19 @@ Dà la lingua della persona già aggiornata dal profilo: legge `io.mostra`, lo d
 lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un workspace dà la lingua della sessione,
 senza chiamare il backoffice. È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di
 lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a `App::setLocale` non arriva mai un valore che
-Laravel rifiuta. Una lingua ben fatta che il modulo non ha passa com'è: Laravel prende i testi dal suo `fallback_locale`,
-e se il modulo vuole altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice
+Laravel rifiuta. Una lingua ben fatta che il modulo non ha passa com'è: per i testi dei file a gruppi (`lang/<lingua>/…`)
+Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com'è; se il modulo vuole
+altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice
 non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
 invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
 lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una
 notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per la lingua e
 il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo
-se il controller dà la risposta del backoffice a `Sessione::aggiorna`. Se il backoffice non risponde `Cornice::lingua()`
-non lancia: dà la lingua della sessione, lascia nel log una riga d'avviso col tipo dell'errore, mai il suo messaggio, e
-l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami,
-senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
+se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l'`utente` col suo `id`, la
+`lingua` e il `nome`): con un'altra forma `Sessione::aggiorna` non cambia niente. Se il backoffice non risponde
+`Cornice::lingua()` non lancia: dà la lingua della sessione, lascia nel log una riga d'avviso col tipo dell'errore, mai il
+suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la prima `Cornice::dati()` di quella richiesta,
+se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
@@ -549,11 +551,18 @@ capo in mezzo o con un byte nullo. È un errore nel codice che ha scritto la ris
 o si ferma, e Laravel di ogni avviso fa un'eccezione: l'invio si interrompe fuori dai middleware, ed è un 500 senza
 intestazioni. Dalla `v1.8.0` la classe la scarta e al suo posto mette la politica più stretta, una volta sola per risposta:
 `default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox`. La risposta esce col suo stato,
-il suo corpo, le altre sue CSP e quella del modulo; ma con quella politica il browser non carica e non esegue niente di
-quella pagina, finché l'errore non è corretto nel codice del modulo: una pagina non esce mai con una CSP più larga di
-quella che il suo codice aveva chiesto. Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP e per
+il suo corpo, le altre sue CSP e quella del modulo; ma con quella politica, quando il browser la carica come documento,
+non carica e non esegue niente di quella pagina, finché l'errore non è corretto nel codice del modulo: una pagina non esce
+mai con una CSP più larga di quella che il suo codice aveva chiesto. Dove il browser non applica nessuna CSP — una visita
+di Inertia, una risposta JSON, un rimando, un file scaricato — non si ferma niente, come niente avrebbe stretto la CSP
+scartata: lì il solo segno è l'avviso. Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP e per
 primo: dice il tipo del valore, mai il valore. Ciò che PHP sa scrivere resta com'è: anche un testo con un a capo in fondo,
-che PHP all'invio taglia.
+che PHP all'invio taglia. Di un oggetto che si legge come testo la classe guarda il testo e tiene l'oggetto, che all'invio
+è letto di nuovo: se a ogni lettura dà un testo diverso, ciò che l'invio trova può non essere ciò che la classe ha guardato.
+E il 500 di prima c'era perché Laravel, col gestore degli errori che mette all'avvio, di ogni avviso fa un'eccezione:
+in un frontend che lo cambia, o che abbassa `error_reporting`, una lista o un testo con un a capo non fermavano l'invio
+(PHP avvisa e va avanti: della lista scrive `Array`, il testo con l'a capo non lo scrive) — lì, dalla `v1.8.0`, al loro
+posto esce la più stretta.
 
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 

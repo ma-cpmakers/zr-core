@@ -61,8 +61,9 @@ final class IntestazioniSicurezza
      * modulo e mai allargarla: Laravel ne mette una con `sandbox` sui file che serve da un disco, e toglierla farebbe girare
      * nell'origine del modulo un file caricato da una persona. Una sola non resta: quella che non si può mandare, su cui
      * l'invio si fermerebbe fuori da qui (nonSiPuoMandare). Toglierla e basta farebbe uscire la pagina con una CSP più larga
-     * di quella che il suo codice aveva chiesto, dove prima non usciva affatto: al suo posto esce la più stretta, e la pagina
-     * resta ferma finché l'errore non è corretto. È il middleware più esterno, e un suo errore sarebbe un 500 senza
+     * di quella che il suo codice aveva chiesto, dove prima non usciva affatto: al suo posto esce la più stretta, e la pagina,
+     * caricata come documento, resta ferma finché l'errore non è corretto (a una visita di Inertia o a una risposta JSON il
+     * browser non applica nessuna CSP: lì resta solo l'avviso). È il middleware più esterno, e un suo errore sarebbe un 500 senza
      * intestazioni: dopo la risposta non lancia mai. Se la CSP non si compone esce quella di tutti, e le altre quattro escono
      * lo stesso. Ciò che è stato scartato va nel log come avviso, una riga per risposta, con gli scarti della risposta per
      * primi: una sorgente sbagliata nella configurazione lo scrive a ogni risposta finché non la si corregge, e riempirebbe
@@ -114,7 +115,8 @@ final class IntestazioniSicurezza
      * è una CSP, e uno uguale a quella del modulo, che esce una volta sola (il middleware passato due volte sulla stessa
      * risposta). E non resta un valore che non si può mandare (nonSiPuoMandare): quello è uno scarto, e di lui l'avviso dice
      * il tipo, mai il valore. Al posto del primo scarto va la politica più stretta, una volta sola per risposta, e non se la
-     * risposta la porta già uguale (il middleware passato due volte).
+     * risposta la porta già uguale, scritta dal suo codice: allora resta dov'è. (Al secondo passaggio del middleware non c'è
+     * più niente da scartare.)
      *
      * @return array{list<mixed>, list<string>} le CSP che restano, e gli scarti
      */
@@ -153,8 +155,9 @@ final class IntestazioniSicurezza
      * intestazioni. Come `header()`, non guarda gli spazi e gli a capo in fondo al testo, che all'invio taglia: una CSP che
      * finisce con un a capo si può mandare, e resta.
      *
-     * Di un oggetto si guarda il testo di questa lettura, e l'oggetto resta lo stesso: all'invio Symfony lo rilegge. Un
-     * `__toString()` che non dà sempre lo stesso testo può quindi passare di qui e fermare l'invio, come prima della v1.8.0.
+     * Di un oggetto si guarda il testo di questa lettura, e l'oggetto resta lo stesso: all'invio Symfony lo rilegge. È una
+     * lettura in più di quelle della v1.7.0: un `__toString()` che non dà sempre lo stesso testo può passare di qui e fermare
+     * l'invio, anche con un testo che alla prima lettura si poteva mandare.
      */
     private static function nonSiPuoMandare(mixed $valore): ?string
     {
