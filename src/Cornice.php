@@ -122,6 +122,7 @@ final class Cornice
         }
 
         $workspace = Sessione::workspace();
+        $prima = $utente['lingua'] ?? null;
 
         if ($workspace !== null) {
             self::lettura($utente, $workspace, false);
@@ -131,7 +132,7 @@ final class Cornice
 
         $lingua = $utente['lingua'] ?? null;
 
-        return is_string($lingua) && strlen($lingua) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) === 1 ? $lingua : null;
+        return is_string($lingua) && is_string($prima) && strlen($prima) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $prima) === 1 ? $lingua : null;
     }
 
     /**
