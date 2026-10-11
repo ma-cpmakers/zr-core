@@ -364,6 +364,6 @@ final class NotificheDellaCornice
             }
         }
 
-        return [];
+        return $app === 'crm' ? ['id'] : [];
     }
 }

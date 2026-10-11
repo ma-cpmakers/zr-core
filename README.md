@@ -303,7 +303,7 @@ cornice === null ? pagina : (
   nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Dalla
   `v1.11.0` hanno un titolo anche le nove notifiche del CRM (contatti, pipeline, note, aziende): «Nuovo contatto»,
   «Pipeline modificata», «Nota eliminata», «Nuova azienda»; e le tre delle viste salvate di una board, di Project
-  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli erano 31, uno per ogni tipo di
+  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli sono 31, uno per ogni tipo di
   evento del contratto pubblicato l'11/10/2026. Per quel contratto i dodici tipi nuovi non generano ancora notifiche per i
   colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà. Dalla `v1.12.0` hanno un titolo altri
   nove tipi del CRM: i cinque eventi di opportunità e attività («Nuova opportunità», «Opportunità modificata», «Nuova
