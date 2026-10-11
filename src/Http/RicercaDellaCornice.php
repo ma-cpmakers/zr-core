@@ -36,7 +36,7 @@ final class RicercaDellaCornice
             return new JsonResponse(['errore' => 'dati_non_validi'], 422);
         }
 
-        $workspace = Sessione::workspace()['slug'] ?? null;
+        $workspace = $richiesta->input('workspace', Sessione::workspace()['slug'] ?? null);
         $risultati = Api::workspace()->get('/v1/ricerca', ['q' => $q])['data'] ?? null;
 
         if (! is_array($risultati) || ! array_is_list($risultati)) {
