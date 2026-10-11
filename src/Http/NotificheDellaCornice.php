@@ -120,7 +120,7 @@ final class NotificheDellaCornice
     public function elenco(): JsonResponse
     {
         $aggiornatiIl = Segno::adesso();
-        $workspace = Sessione::workspace()['slug'] ?? null;
+        $workspace = request()->header('X-Workspace') ?? Sessione::workspace()['slug'] ?? null;
         $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
