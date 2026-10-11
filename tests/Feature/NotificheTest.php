@@ -1975,6 +1975,27 @@ it('una nota dà al browser i soli id della cosa più specifica a cui è legata 
     'nessun legame: nessun id' => [[], []],
 ]);
 
+// Sprint 24 · T4 (voce #1754; lettura della PR #51, R6). Un percorso può ripetere un segnaposto: l'id che chiede è uno, e con
+// quello è intero. Contato due volte non lo sarebbe mai: si aprirebbe il percorso dopo, e i suoi id sparirebbero in silenzio.
+it('un percorso che ripete un segnaposto chiede quell\'id una volta sola: con l\'id è intero, e la parte server dà quello, non gli id del percorso dopo; la rotta dà gli stessi del metodo (sprint 24 · T4.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    registroGiaLetto([
+        ['id' => 'crm', 'presto' => false, 'notifiche' => [
+            ['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/x/{id}/y/{id}', 'altrimenti' => ['/elenco']],
+            ['tipo' => 'com.zeiras.crm.nota.modificata', 'percorso' => '/x/{id}/y/{id}', 'altrimenti' => ['/a/{primo_id}']],
+        ]],
+    ]);
+    $dati = ['id' => 'uat-nota-1', 'primo_id' => 'uat-primo-1'];
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n2', $dati),
+        notificaConDati('uat-n1', $dati, 'com.zeiras.crm.nota.modificata'),
+    ], 'successivo' => null])]);
+
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', $dati))->toBe(['id' => 'uat-nota-1'])
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.modificata', $dati))->toBe(['id' => 'uat-nota-1'])
+        ->and(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids'))->toBe([['id' => 'uat-nota-1'], ['id' => 'uat-nota-1']]);
+});
+
 it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa per intero, nell\'ordine del registro: mai gli id di due percorsi insieme, nessuno se si apre un percorso senza segnaposto, e se nessun percorso è intero quelli in forma del primo, com\'era con un percorso solo; la rotta dà gli stessi del metodo (sprint 23 · T3.5)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     registroGiaLetto([

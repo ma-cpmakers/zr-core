@@ -436,7 +436,7 @@ it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ogn
         ['tipo' => 'com.zeiras.board.uat.domanda', 'percorso' => '/b/{id}', 'altrimenti' => ['/b?x=1']],
         // Ripetuto: uguale a `percorso`, o due volte nella lista.
         ['tipo' => 'com.zeiras.board.uat.uguale', 'percorso' => '/b/{id}', 'altrimenti' => ['/b/{id}']],
-        ['tipo' => 'com.zeiras.board.uat.doppio', 'percorso' => '/b/{id}', 'altrimenti' => ['/b', '/c', '/b']],
+        ['tipo' => 'com.zeiras.board.uat.doppio', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/b/{board_id}', '/c/{id}', '/b/{board_id}']],
         // Un'altra chiave accanto ad `altrimenti`.
         ['tipo' => 'com.zeiras.board.uat.poi', 'percorso' => '/b/{id}', 'altrimenti' => ['/b'], 'poi' => ['/c']],
         // Un tipo che non è un evento: `crm.…` è del CRM, e fra quelli di Project Management non si aprirebbe mai.
@@ -466,7 +466,7 @@ it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ogn
         $sbagliato('numero', ''),
         $sbagliato('domanda', '/b?x=1'),
         'pm, notifica com.zeiras.board.uat.uguale: il percorso «/b/{id}» di «altrimenti» è scritto due volte',
-        'pm, notifica com.zeiras.board.uat.doppio: il percorso «/b» di «altrimenti» è scritto due volte',
+        'pm, notifica com.zeiras.board.uat.doppio: il percorso «/b/{board_id}» di «altrimenti» è scritto due volte',
         'pm, notifica com.zeiras.board.uat.poi: ha una chiave che non è tipo, percorso né altrimenti',
         'pm, notifica crm.uat.assegnata: il tipo è di crm, e nella voce di pm non si aprirebbe mai',
         'crm, notifica crmx.uat.attaccato: il controllo non sa di che app è questo tipo',
@@ -475,6 +475,34 @@ it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ogn
         'crm, notifica boardx.uat.attaccato: il controllo non sa di che app è questo tipo',
         'crm, notifica x.board.uat.davanti: il controllo non sa di che app è questo tipo',
     ]);
+});
+
+// Sprint 24 · T4 (voce #1754; lettura della PR #51, R6). Browser e parte server provano i percorsi in ordine e si fermano al
+// primo che ha tutti i suoi id: un percorso che chiede almeno gli id di uno che viene prima non si aprirebbe mai, perché quando
+// li ha tutti li ha anche quello. Vale per uno le cui chiavi comprendono quelle di uno prima, e per ogni percorso dopo uno senza
+// segnaposto, che si apre sempre.
+it('il controllo trova un percorso di `altrimenti` che non si aprirebbe mai: uno che chiede almeno gli id di un percorso che viene prima, e uno dopo un percorso senza segnaposto; il registro di oggi non ne ha (sprint 24 · T4.3)', function () {
+    $voci = registroDeiProdotti();
+    $voci[1]['notifiche'] = [
+        // Buone: ogni percorso fa a meno di un id che quelli prima chiedono, e quello senza segnaposto è l'ultimo.
+        ['tipo' => 'com.zeiras.board.uat.stretto', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/b/{board_id}', '/elenco']],
+        ['tipo' => 'com.zeiras.board.uat.altri', 'percorso' => '/a/{trattativa_id}', 'altrimenti' => ['/p/{persona_id}', '/o/{organizzazione_id}']],
+        // Mai: chiede gli id di `percorso`, e uno in più.
+        ['tipo' => 'com.zeiras.board.uat.largo', 'percorso' => '/b/{board_id}', 'altrimenti' => ['/b/{board_id}/c/{id}']],
+        // Mai: chiede gli stessi id di `percorso`, in un altro percorso.
+        ['tipo' => 'com.zeiras.board.uat.stessi', 'percorso' => '/b/{id}', 'altrimenti' => ['/c/{id}']],
+        // Mai: viene dopo un percorso senza segnaposto — `percorso`, o uno di `altrimenti`.
+        ['tipo' => 'com.zeiras.board.uat.dopo-il-fisso', 'percorso' => '/elenco', 'altrimenti' => ['/b/{id}']],
+        ['tipo' => 'com.zeiras.board.uat.in-mezzo', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/elenco', '/b/{board_id}']],
+    ];
+    $mai = fn (string $tipo, string $percorso, string $prima) => "pm, notifica com.zeiras.board.uat.$tipo: il percorso «{$percorso}» di «altrimenti» non si aprirebbe mai: quando ha i suoi id li ha anche «{$prima}», che viene prima";
+
+    expect(problemiDelRegistro($voci))->toEqualCanonicalizing([
+        $mai('largo', '/b/{board_id}/c/{id}', '/b/{board_id}'),
+        $mai('stessi', '/c/{id}', '/b/{id}'),
+        $mai('dopo-il-fisso', '/b/{id}', '/elenco'),
+        $mai('in-mezzo', '/b/{board_id}', '/elenco'),
+    ])->and(problemiDelRegistro(registroDeiProdotti()))->toBe([]);
 });
 
 it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scritto due volte nello stesso prodotto o in un altro, uno di un\'altra app o di un\'app che non conosce, un percorso che non comincia con /, un segnaposto che non è `{id}` né `{…_id}`, un carattere che in un percorso non ci sta e una chiave in più (sprint 21 · T3, guardia; review della PR #31, R11)', function () {
