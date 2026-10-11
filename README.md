@@ -18,6 +18,9 @@ non si modifica a mano.
 
 ## Come si installa in un frontend
 
+Un modulo che nasce parte da `MODULO-NUOVO.md`, la guida accanto a questo file (dalla `v1.10.1`): i passi nell'ordine in cui
+si fanno, come si prova ognuno e gli errori già pagati da chi è venuto prima. Qui sotto c'è il dettaglio di ogni passo.
+
 Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza credenziali:
 
 ```json
