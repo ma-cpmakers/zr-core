@@ -1676,6 +1676,289 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif-state')).toBeNull();
     });
 
+    // Sprint 22 · T2 (voce #1712): il clic che apre la risorsa di una notifica non letta la segna letta. La richiesta parte col
+    // clic (`PATCH /cornice/notifiche/<id>/lettura`, con `keepalive` perché la pagina sta cambiando) e l'apertura non la
+    // aspetta; il numero scende solo quando la parte server risponde `letta: true`, una volta sola, e un avviso che non si vede
+    // lo dice a chi usa un lettore di schermo.
+
+    /** Due non lette con la loro destinazione nel registro: un contatto e una pipeline del CRM. */
+    const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+    const dellaPipeline = { id: 'uat-n68', creata_il: '2026-10-06T11:50:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.pipeline.modificata', ids: { id: 'uat-pipeline-1' } };
+    /** Una già letta, con la sua destinazione: il contatto a cui la nota era attaccata. */
+    const dellaNota = { id: 'uat-n67', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } };
+    /** Una non letta di Project Management, che nel registro non ha dove andare: il suo clic apre la pagina delle notifiche. */
+    const dellaScheda = { id: 'uat-n66', creata_il: '2026-10-06T11:40:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: {} };
+    /** Le quattro, dalla più recente: tre non lette. */
+    const daAprire = [delContatto, dellaPipeline, dellaNota, dellaScheda];
+    const laLettura = (id: string) => `PATCH /cornice/notifiche/${id}/lettura`;
+    /** La parte server ha segnato letta quella notifica; con `il`, in quell'istante (`segnata_il`, dalla `v1.12.0`). */
+    const segnata = (id: string, il?: string) => risposta({ data: { id, letta: true }, ...(il === undefined ? {} : { segnata_il: il }) });
+    /**
+     * Le due rotte del clic. L'elenco: a ogni caricamento il prossimo di `elenchi` (l'ultimo si ripete), del workspace della
+     * pagina se non ne dice un altro, con l'istante in cui è stato letto se lo si dà. La lettura di una notifica: ciò che
+     * `allaLettura` risponde; se non lo si dà, `letta: true` senza istante. Un'altra richiesta è un errore del caso.
+     */
+    const rotteDelClic = (elenchi: { data: unknown[]; lettoIl?: string; workspace?: string }[], allaLettura: (id: string) => Response | Promise<Response> = (id) => segnata(id)) => {
+        let caricamenti = 0;
+
+        return vi.fn(async (indirizzo: string, opzioni?: RequestInit) => {
+            if (indirizzo === '/cornice/notifiche') {
+                const { data, lettoIl, workspace = dati.workspace.slug } = elenchi[Math.min(caricamenti++, elenchi.length - 1)] ?? { data: [] };
+
+                return risposta({ data, workspace, ...(lettoIl === undefined ? {} : { aggiornati_il: lettoIl }) });
+            }
+            const id = /^\/cornice\/notifiche\/([^/]+)\/lettura$/.exec(indirizzo)?.[1];
+            if (id === undefined || opzioni?.method !== 'PATCH') {
+                throw new Error(`il caso non aspetta ${opzioni?.method ?? 'GET'} ${indirizzo}`);
+            }
+
+            return allaLettura(id);
+        });
+    };
+    /** L'avviso della cornice per il lettore di schermo: accanto all'`AppShell`, non dentro. */
+    const avviso = () => [...contenitore.children].find((figlio) => figlio.getAttribute('role') === 'status') ?? null;
+    const detto = () => avviso()?.textContent ?? null;
+    /** Apre la campanella e fa clic sulla notifica in quella posizione: il pannello si chiude. */
+    const apre = async (indice: number) => {
+        await clic(uno('.zr-bell'));
+        await clic(voci()[indice] ?? null);
+        expect(uno('.zr-notif')).toBeNull();
+    };
+
+    it('un clic su una notifica non letta che ha una destinazione chiede PATCH /cornice/notifiche/<id>/lettura con {"letta": true}, col gettone CSRF e con keepalive, e apre la risorsa: la richiesta parte prima dell\'apertura (sprint 22 · T2.1)', async () => {
+        cookieCsrf('eyJpdiI6Ik1h%3D%3D');
+        const fetchFinto = rotteDelClic([{ data: daAprire }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        const opzioni = fetchFinto.mock.calls[1]?.[1];
+        expect([opzioni?.method, opzioni?.body, opzioni?.keepalive]).toStrictEqual(['PATCH', '{"letta":true}', true]);
+        expect(['Accept', 'Content-Type', 'X-XSRF-TOKEN'].map((nome) => new Headers(opzioni?.headers).get(nome))).toStrictEqual(['application/json', 'application/json', 'eyJpdiI6Ik1h==']);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        // Con `window.location.assign` dopo l'apertura la pagina non c'è più: la richiesta deve essere già partita.
+        expect(fetchFinto.mock.invocationCallOrder[1]).toBeLessThan(naviga.mock.invocationCallOrder[0] ?? 0);
+
+        // Ogni notifica chiede la sua lettura.
+        await apre(1);
+        expect(richieste(fetchFinto).slice(2)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n68')]);
+        expect(naviga.mock.calls[1]).toStrictEqual([`${nelCrm}/pipeline/uat-pipeline-1/impostazioni`]);
+    });
+
+    it.each([
+        ['una già letta, con la sua destinazione', dati, {}, 2, `${nelCrm}/contatti/uat-persona-2`],
+        ['una non letta che nel registro non ha dove andare', dati, {}, 3, paginaDelleNotifiche],
+        ['una non letta di un modulo che nel workspace non si può aprire', { ...dati, prodotti: { pm: 'attivo', crm: 'in_arrivo' } }, {}, 0, paginaDelleNotifiche],
+        ['una non letta di un elenco di cui la parte server non dice il workspace', dati, { workspace: '' }, 0, paginaDelleNotifiche],
+    ] satisfies [string, DatiDellaCornice, { workspace?: string }, number, string][])('%s non chiede la lettura: il clic apre soltanto, e il numero resta (sprint 22 · T2.2)', async (_quale, dellaPagina, dellElenco, indice, aperto) => {
+        const fetchFinto = rotteDelClic([{ data: daAprire, ...dellElenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dellaPagina, non_lette: 3 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(indice);
+        expect(naviga.mock.calls).toStrictEqual([[aperto]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    it.each([
+        ['la rete cade', async () => { throw new TypeError('uat: la rete è caduta'); }],
+        ['la notifica non c\'è più (404)', async () => risposta({ errore: 'non_trovato' }, 404)],
+        ['la parte server non risponde (503)', async () => risposta({}, 503)],
+        ['la risposta dice che è rimasta non letta', async (id: string) => risposta({ data: { id, letta: false }, segnata_il: '2026-10-06T12:00:08.123456Z' })],
+        ['la risposta dice `letta` con un testo', async (id: string) => risposta({ data: { id, letta: 'true' }, segnata_il: '2026-10-06T12:00:08.123456Z' })],
+        ['la risposta non ha `data`', async () => risposta({ segnata_il: '2026-10-06T12:00:08.123456Z' })],
+        ['la risposta non è un oggetto', async () => risposta(null)],
+        ['la risposta non è JSON', async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('uat: non è JSON'); } }) as unknown as Response],
+    ] satisfies [string, (id: string) => Promise<Response>][])('se la lettura fallisce — %s — la risorsa si è aperta lo stesso e in pagina non cambia niente: né il numero, né la notifica, né l\'avviso, e nessun errore resta non gestito (sprint 22 · T2.3)', async (_come, allaLettura) => {
+        const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], allaLettura);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={letti(alSecondo(3), 3)} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+
+        // Riaperto il pannello, con l'elenco che la parte server dà ancora: quella notifica è ancora da leggere.
+        await clic(uno('.zr-bell'));
+        expect(nonLette()).toStrictEqual([true, true, false, true]);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    it('la risorsa si apre senza aspettare la lettura; quando la parte server risponde `letta: true` il numero scende di uno — non al clic, e una volta sola — e la notifica è letta nel pannello; coi dati letti dopo la lettura vale il loro numero (sprint 22 · T2.3, T2.4)', async () => {
+        const lettura = inAttesa();
+        // L'elenco è letto al secondo 5, e riletto uguale — con quella notifica ancora da leggere — al 7 e al 9: la lettura è dell'8.
+        const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }, { data: daAprire, lettoIl: alSecondo(7) }, { data: daAprire, lettoIl: alSecondo(9) }], () => lettura.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />;
+        await mostra(pagina(letti(alSecondo(3), 3)));
+
+        await apre(0);
+        // La risorsa è già aperta, e la parte server non ha ancora risposto: il numero aspetta lei.
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(campanella()).toBe('3');
+
+        await lettura.arriva(segnata('uat-n69', alSecondo(8)));
+        expect(campanella()).toBe('2');
+        expect(naviga).toHaveBeenCalledTimes(1);
+
+        // Dati letti prima della lettura e arrivati dopo la contano ancora: il numero resta sceso.
+        await mostra(pagina(letti(alSecondo(6), 3)));
+        expect(campanella()).toBe('2');
+
+        // Un elenco letto prima che la lettura fosse segnata la dà ancora da leggere: nel pannello è letta lo stesso.
+        await clic(uno('.zr-bell'));
+        expect(nonLette()).toStrictEqual([false, true, false, true]);
+        expect(campanella()).toBe('2');
+
+        // Un elenco letto dopo vale per ciò che dice: lì è tornata da leggere (un'altra scheda), e si conta.
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(nonLette()).toStrictEqual([true, true, false, true]);
+        expect(campanella()).toBe('3');
+
+        // Dati letti dopo la lettura la contano già letta: vale il loro numero, e non scende una seconda volta.
+        await mostra(pagina(letti(alSecondo(10), 2)));
+        expect(campanella()).toBe('2');
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n69')]);
+    });
+
+    it('senza gli istanti della parte server — una di prima della v1.12.0, dati senza segno — il numero scende per i dati con cui la lettura è partita, e con dati nuovi vale il loro numero (sprint 22 · T2.4)', async () => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire }]));
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        const senzaSegno = { ...dati, non_lette: 3 };
+        await mostra(pagina(senzaSegno));
+
+        await apre(0);
+        expect([campanella(), detto()]).toStrictEqual(['2', 'Notifiche, 2 non lette']);
+        // Gli stessi dati, ridati dalla pagina: resta sceso.
+        await mostra(pagina(senzaSegno));
+        expect(campanella()).toBe('2');
+        // Dati nuovi: senza istanti non si sa se contano già la lettura, e vale il loro numero.
+        await mostra(pagina({ ...dati, non_lette: 3 }));
+        expect(campanella()).toBe('3');
+    });
+
+    it('due clic su due notifiche: il numero scende due volte, e l\'avviso dice ogni volta il numero nuovo (sprint 22 · T2.4, T2.6)', async () => {
+        const istanti = [alSecondo(8), alSecondo(12)];
+        // Il secondo elenco è letto dopo la prima lettura, e la dà letta.
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }, { data: [{ ...delContatto, letta: true }, dellaPipeline, dellaNota, dellaScheda], lettoIl: alSecondo(10) }], (id) => segnata(id, istanti.shift())));
+        await mostra(<Cornice dati={letti(alSecondo(3), 3)} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect([campanella(), detto()]).toStrictEqual(['2', 'Notifiche, 2 non lette']);
+        await apre(1);
+        expect([campanella(), detto()]).toStrictEqual(['1', 'Notifiche, 1 non letta']);
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche, 1 non letta');
+    });
+
+    it('la stessa notifica aperta due volte — fra l\'una e l\'altra è tornata da leggere — si toglie dal numero una volta sola (sprint 22 · T2.4)', async () => {
+        const istanti = [alSecondo(8), alSecondo(12)];
+        // I dati contano tre non lette: due stanno oltre la prima pagina. Il secondo elenco è letto dopo la prima lettura.
+        const elenco = [delContatto, dellaNota];
+        vi.stubGlobal('fetch', rotteDelClic([{ data: elenco, lettoIl: alSecondo(5) }, { data: elenco, lettoIl: alSecondo(9) }], (id) => segnata(id, istanti.shift())));
+        await mostra(<Cornice dati={letti(alSecondo(3), 3)} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(campanella()).toBe('2');
+        await apre(0);
+        expect(campanella()).toBe('2');
+    });
+
+    it.each([
+        ['i dati non contano non lette, e l\'elenco ne ha una arrivata dopo', letti('2026-10-06T12:00:03.123456Z', 0), '1'],
+        ['i dati, più recenti dell\'elenco, non contano non lette', letti('2026-10-06T12:00:06.123456Z', 0), null],
+    ] satisfies [string, DatiDellaCornice, string | null][])('il numero non scende sotto zero: %s (sprint 22 · T2.4)', async (_quando, dellaPagina, prima) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: [delContatto, dellaNota], lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(8))));
+        await mostra(<Cornice dati={dellaPagina} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe(prima);
+        await clic(voci()[0] ?? null);
+        expect(campanella()).toBeNull();
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche');
+    });
+
+    it('senza il numero nei dati le non lette le conta il design system dall\'elenco: alla risposta della lettura scendono di una (sprint 22 · T2.4)', async () => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire }]));
+        await mostra(<Cornice dati={dati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('3');
+        await clic(voci()[0] ?? null);
+        expect([campanella(), detto()]).toStrictEqual(['2', 'Notifiche, 2 non lette']);
+    });
+
+    it('con l\'elenco di un altro workspace la lettura parte lo stesso e la risorsa si apre lì, ma il numero dei dati della pagina non scende, e l\'avviso tace: quella notifica non è fra le sue (sprint 22 · T2.4)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5), workspace: 'acme-vendite' }], (id) => segnata(id, alSecondo(8)));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={letti(alSecondo(3), 3)} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrmDellAltro}/contatti/uat-persona-1`]]);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    it.each([
+        ['it', [delContatto, dellaPipeline, dellaScheda], 'Notifiche, 2 non lette', 'Notifiche, 2 non lette'],
+        ['it', [delContatto, dellaPipeline], 'Notifiche, 1 non letta', 'Notifiche, 1 non letta'],
+        ['it', [delContatto, dellaNota], 'Nessuna notifica non letta', 'Notifiche'],
+        ['en', [delContatto, dellaPipeline, dellaScheda], 'Notifications, 2 unread', 'Notifications, 2 unread'],
+        ['en', [delContatto, dellaPipeline], 'Notifications, 1 unread', 'Notifications, 1 unread'],
+        ['en', [delContatto, dellaNota], 'No unread notifications', 'Notifications'],
+        ['es', [delContatto, dellaPipeline, dellaScheda], 'Notificaciones, 2 sin leer', 'Notificaciones, 2 sin leer'],
+        ['es', [delContatto, dellaPipeline], 'Notificaciones, 1 sin leer', 'Notificaciones, 1 sin leer'],
+        ['es', [delContatto, dellaNota], 'Ninguna notificación sin leer', 'Notificaciones'],
+        // Una lingua che zr-core non ha: in inglese, come ogni altro testo.
+        ['pt-BR', [delContatto, dellaNota], 'No unread notifications', 'Notifications'],
+    ])('in "%s" la cornice ha un avviso che non si vede, vuoto finché il numero non scende per un clic; allora dice il nome della campanella col numero nuovo, e a zero il testo di zr-core — «%s» (sprint 22 · T2.6)', async (lingua, elenco, daDire, dellaCampanella) => {
+        const lettura = inAttesa();
+        vi.stubGlobal('fetch', rotteDelClic([{ data: elenco, lettoIl: alSecondo(5) }], () => lettura.promessa));
+        await mostra(<Cornice dati={letti(alSecondo(3), elenco.filter((notifica) => !notifica.letta).length, { lingua })} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        // Al caricamento c'è già, fuori dall'`AppShell`, con la classe del design system per ciò che non si vede: ed è vuoto.
+        expect([avviso()?.tagName, avviso()?.className, detto()]).toStrictEqual(['DIV', 'zr-visually-hidden', '']);
+        expect(avviso()?.closest('.zr-shell')).toBeNull();
+        expect(tutti('[role="status"]')).toHaveLength(1);
+
+        // Vuoto anche con l'elenco arrivato, e con la lettura in volo.
+        await apre(0);
+        expect(detto()).toBe('');
+
+        await lettura.arriva(segnata('uat-n69', alSecondo(8)));
+        expect(detto()).toBe(daDire);
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(dellaCampanella);
+    });
+
+    it('l\'avviso parla solo per il numero che scende con un clic: quando il numero cambia coi dati nuovi, o con un elenco arrivato, non lo dice, e ciò che aveva detto non resta lì a dire un numero che non è più quello (sprint 22 · T2.6)', async () => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(8))));
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        await mostra(pagina(letti(alSecondo(3), 1)));
+
+        // Il numero sale con l'elenco, più recente dei dati; poi cambia coi dati nuovi. L'avviso tace.
+        await clic(uno('.zr-bell'));
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+        await mostra(pagina(letti(alSecondo(6), 5)));
+        expect([campanella(), detto()]).toStrictEqual(['5', '']);
+
+        await clic(voci()[0] ?? null);
+        expect([campanella(), detto()]).toStrictEqual(['4', 'Notifiche, 4 non lette']);
+        // Dati letti dopo la lettura, con lo stesso numero: l'avviso dice ancora il vero, e resta.
+        await mostra(pagina(letti(alSecondo(9), 4)));
+        expect([campanella(), detto()]).toStrictEqual(['4', 'Notifiche, 4 non lette']);
+        // Con un altro numero: non lo dice, e non resta a dire quello di prima.
+        await mostra(pagina(letti(alSecondo(10), 6)));
+        expect([campanella(), detto()]).toStrictEqual(['6', '']);
+    });
+
     /**
      * I titoli dei 31 tipi di evento che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10

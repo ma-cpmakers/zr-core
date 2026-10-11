@@ -41,6 +41,7 @@
     "unreadOne": "sin leer",
     "markingAllRead": "Marcando…",
     "markRestRead": "Marcar las demás",
+    "unreadNone": "Ninguna notificación sin leer",
     "notificationTitle": "Novedades en el workspace",
     "notificationTitle.com.zeiras.app.modificata": "Se activó o desactivó un módulo",
     "notificationTitle.com.zeiras.workspace.creato": "Se creó el workspace",

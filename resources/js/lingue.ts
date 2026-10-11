@@ -30,6 +30,12 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
     markingAllRead: string;
     /** Il testo dello stesso pulsante quando la parte server ha detto che ne restano da segnare: il clic continua la lettura. */
     markRestRead: string;
+    /**
+     * Ciò che l'avviso della cornice dice a chi usa un lettore di schermo quando l'ultima non letta è stata letta con un clic.
+     * Con un numero l'avviso dice il nome della campanella, coi testi dell'`AppShell` (`notifications`, `unread`): a zero quel
+     * nome non ha un numero da dire (README, «Le notifiche»).
+     */
+    unreadNone: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
     /**

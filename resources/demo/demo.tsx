@@ -13,7 +13,8 @@ import { rotteFinte } from './rotte-finte';
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` scritto `undefined` e
 // `content` non elencato. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `membro`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
-// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?altre=1` il primo che riesce si ferma come la
+// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce), `?errore=lettura` la lettura della notifica che un
+// clic apre (la risorsa si apre lo stesso, e la notifica resta da leggere), e con `?da_leggere=1` le prime otto del CRM (`?crm=1`) sono da leggere; con `?altre=1` il primo che riesce si ferma come la
 // parte server a un tetto (`altre: true`: la più recente resta da leggere) e il secondo le segna tutte; con `?arriva=1` dal
 // secondo caricamento delle notifiche ce n'è una nuova, non letta; con `?chi=1` le notifiche dicono chi ha fatto, su che cosa e
 // per chi (una rivolta alla persona, una solo in «Tutte», una su un'app, col nome del prodotto al posto del codice, le altre com'erano). Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva

@@ -307,6 +307,43 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, false]);
     });
 
+    // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa.
+    const leggi = (letta: unknown = true): RequestInit => ({ method: 'PATCH', body: JSON.stringify({ letta }) });
+    const letteDelCrm = async () => ((await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean }[]).filter(({ id }) => id.startsWith('uat-c')).map(({ letta }) => letta);
+
+    it('PATCH /cornice/notifiche/<id>/lettura segna quella notifica e risponde con `letta` e con l\'istante preso a notifica segnata: una lettura fatta mentre la risposta aspetta è più indietro (sprint 22 · T2.5)', async () => {
+        const orologio = await rotte(true, '?crm=1&da_leggere=1');
+        // Con `?da_leggere=1` le prime otto del CRM sono da leggere; le altre restano lette.
+        expect(await letteDelCrm()).toEqual([false, false, false, false, false, false, false, false, true, true, true, true]);
+
+        let nelFrattempo = '';
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche/uat-c1/lettura', leggi(), () => (nelFrattempo = orologio()));
+        expect([stato, corpo.data]).toEqual([200, { id: 'uat-c1', letta: true }]);
+        expect(String(corpo.segnata_il) > nelFrattempo).toBe(true);
+        expect(await letteDelCrm()).toEqual([true, false, false, false, false, false, false, false, true, true, true, true]);
+    });
+
+    it('senza `?da_leggere` le notifiche del CRM sono lette come prima, e senza orologio la lettura non porta un istante, nemmeno vuoto (sprint 22 · T2.5)', async () => {
+        await rotte(false, '?crm=1');
+        expect((await letteDelCrm()).every((letta) => letta)).toBe(true);
+
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche/uat-4/lettura', leggi());
+        expect([stato, corpo]).toEqual([200, { data: { id: 'uat-4', letta: true } }]);
+    });
+
+    it.each<[string, string, string, RequestInit, number]>([
+        ['con ?errore=lettura fallisce sempre', '?crm=1&da_leggere=1&errore=lettura', 'uat-c1', leggi(), 502],
+        ['una notifica che non c\'è', '?crm=1&da_leggere=1', 'uat-c99', leggi(), 404],
+        ['un `letta` che non è un booleano', '?crm=1&da_leggere=1', 'uat-c1', leggi('true'), 422],
+        ['un altro metodo', '?crm=1&da_leggere=1', 'uat-c1', { method: 'POST', body: '{"letta":true}' }, 404],
+    ])('una lettura che non riesce — %s — non segna niente e non porta un istante (sprint 22 · T2.3)', async (_come, query, id, opzioni, atteso) => {
+        await rotte(true, query);
+
+        const { stato, corpo } = await rispostaDi(`/cornice/notifiche/${id}/lettura`, opzioni);
+        expect([stato, Object.keys(corpo)]).toEqual([atteso, ['errore']]);
+        expect((await letteDelCrm()).slice(0, 8)).toEqual([false, false, false, false, false, false, false, false]);
+    });
+
     it('senza `?chi` ogni notifica ha chi, su che cosa e per chi a `null`, come li dà la parte server quando il backoffice non li manda: il pannello è quello di prima (sprint 20 · T1.7)', async () => {
         await rotte(false);
 

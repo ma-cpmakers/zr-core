@@ -303,4 +303,14 @@ describe('le lingue della cornice', () => {
         expect([tedesco.markAllRead, tedesco.markingAllRead, tedesco.markRestRead]).toStrictEqual(['Alle als gelesen markieren', 'Marking…', 'Mark the rest']);
         expect([testi('pt-BR').markingAllRead, testi('pt-BR').markRestRead]).toStrictEqual(['Marking…', 'Mark the rest']);
     });
+
+    // Sprint 22 · T2 (voce #1712): ciò che l'avviso della cornice dice quando l'ultima non letta è stata letta. Con un numero
+    // dice il nome della campanella, coi testi dell'`AppShell`; a zero quel nome non ha un numero da dire, e il testo è di zr-core.
+    it('il testo dell\'avviso senza non lette è una chiave di zr-core nelle tre lingue, e in una lingua che zr-core non ha è in inglese (sprint 22 · T2.6)', () => {
+        expect([italiano, spagnolo, inglese].map((file) => file.unreadNone)).toStrictEqual(['Nessuna notifica non letta', 'Ninguna notificación sin leer', 'No unread notifications']);
+        expect(['it', 'es', 'en', 'pt-BR'].map((lingua) => testi(lingua).unreadNone)).toStrictEqual(['Nessuna notifica non letta', 'Ninguna notificación sin leer', 'No unread notifications', 'No unread notifications']);
+
+        const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
+        expect([tedesco.notifications, tedesco.unreadNone]).toStrictEqual(['Benachrichtigungen', 'No unread notifications']);
+    });
 });

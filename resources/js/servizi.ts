@@ -35,7 +35,7 @@ export interface RisultatoDellaRicerca {
     titolo: string;
 }
 
-async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {}): Promise<unknown> {
+async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
     if (!risposta.ok) {
         throw new Error(`${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`);
@@ -89,6 +89,29 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
     }
 
     return { il: segno(corpo.segnate_il), altre: corpo.data.altre === true };
+}
+
+/**
+ * Segna letta una notifica della persona: PATCH /cornice/notifiche/<id>/lettura con `{"letta": true}`. La cornice la chiama col
+ * clic che apre la risorsa di una notifica non letta, e subito dopo apre un'altra pagina: la richiesta parte nello stesso giro
+ * di chi la chiama, e con `keepalive` il browser la porta in fondo anche se la pagina se ne va. L'id sta nel suo pezzo
+ * dell'indirizzo, codificato. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un errore, come una
+ * che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se manca, o ha un'altra
+ * forma, non è un errore, è senza segno.
+ */
+export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
+    const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
+    const corpo = (await chiama(indirizzo, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
+        body: JSON.stringify({ letta: true }),
+        keepalive: true,
+    })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
+    if (corpo?.data?.letta !== true) {
+        throw new Error(`PATCH ${indirizzo}: letta`);
+    }
+
+    return { il: segno(corpo.segnata_il) };
 }
 
 /**

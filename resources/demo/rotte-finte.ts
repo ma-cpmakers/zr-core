@@ -17,7 +17,9 @@
 // né `soggetto`. Da una del CRM la cornice apre la sua risorsa, nel workspace che l'elenco dice (`workspace`: quello della «sessione»). «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
-// `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
+// `?errore=letture` la prima fallisce e la seconda riesce. La lettura di una notifica sola (PATCH /cornice/notifiche/<id>/lettura,
+// che la cornice chiede col clic che apre la risorsa di una non letta) la segna e risponde con `letta` e con l'istante; con
+// `?errore=lettura` fallisce sempre, e la notifica resta da leggere. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
 // risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
 // di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
 // (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di
@@ -33,6 +35,8 @@ ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const chi = new URLSearchParams(window.location.search).has('chi');
 const crm = new URLSearchParams(window.location.search).has('crm');
+// Con `?da_leggere=1` le prime otto notifiche del CRM sono da leggere: per provare il clic che apre la risorsa e le segna lette.
+const daLeggere = new URLSearchParams(window.location.search).has('da_leggere');
 const viste = new URLSearchParams(window.location.search).has('viste');
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
@@ -55,7 +59,7 @@ const notificheDiProva = [
               ...['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
                   id: `uat-c${indice + 1}`,
                   creata_il: fa((10 + indice) * 24 * 60),
-                  letta: true,
+                  letta: !daLeggere,
                   app: 'crm',
                   tipo: `com.zeiras.crm.${tipo}`,
                   ...nonDetti,
@@ -194,6 +198,27 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
 
             // A notifiche segnate: ciò che è stato letto prima di adesso può non saperlo.
             return json({ data: { fino_a: new Date(finoAIl).toISOString(), altre: restano }, segnate_il: istante?.() });
+        }
+
+        // La lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa: la segna e risponde come la
+        // parte server dalla `v1.12.0`, con l'istante preso a notifica segnata. Con `?errore=lettura` fallisce sempre: la
+        // risorsa si apre lo stesso, e la notifica resta da leggere.
+        const daSegnare = /^\/cornice\/notifiche\/([A-Za-z0-9_-]{1,64})\/lettura$/.exec(percorso)?.[1];
+        if (daSegnare !== undefined && opzioni?.method === 'PATCH') {
+            if (errore === 'lettura') {
+                return json({ errore: 'uat_errore' }, 502);
+            }
+            const { letta } = JSON.parse(String(opzioni.body)) as { letta?: unknown };
+            if (typeof letta !== 'boolean') {
+                return json({ errore: 'dati_non_validi' }, 422);
+            }
+            const notifica = notificheDiProva.find(({ id }) => id === daSegnare);
+            if (notifica === undefined) {
+                return json({ errore: 'non_trovato' }, 404);
+            }
+            notifica.letta = letta;
+
+            return json({ data: { id: notifica.id, letta: notifica.letta }, segnata_il: istante?.() });
         }
 
         return json({ errore: 'non_trovato' }, 404);

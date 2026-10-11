@@ -137,6 +137,8 @@ final class NotificheDellaCornice
     /**
      * PATCH /cornice/notifiche/{notifica}/lettura: segna letta o non letta una notifica della persona nel workspace
      * (io.notifiche.lettura.modifica). `letta` della risposta è ciò che il backoffice ha segnato, non ciò che si è chiesto.
+     * `segnata_il` è l'istante preso dopo la risposta del backoffice: da lì la notifica è com'è stata segnata, e dei dati letti
+     * fin lì possono contarla ancora com'era. Preso prima, dei dati letti nel frattempo la conterebbero due volte.
      */
     public function lettura(Request $richiesta, string $notifica): JsonResponse
     {
@@ -164,7 +166,7 @@ final class NotificheDellaCornice
             throw new BackofficeNonRisponde("La risposta di PATCH {$percorso} è un'altra notifica.");
         }
 
-        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']]]);
+        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']], 'segnata_il' => Segno::adesso()]);
     }
 
     /**

@@ -8,7 +8,7 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 
 // Le rotte di zr-core per il browser, sull'origine del frontend: nel gruppo `web`, con la sessione, la guardia di zr-auth e
 // il CSRF, e nel workspace della sessione (ConWorkspace). La cornice chiama l'elenco delle notifiche, le letture e la
-// ricerca; la lettura di una notifica sola non la chiama più dalla v1.1.0, e resta per i frontend che la usano. La parte
+// ricerca e, dalla v1.12.0, di nuovo la lettura di una notifica sola (col clic che apre la sua risorsa). La parte
 // server le gira al backoffice col gettone del workspace, che resta nella sessione. Un valore che dall'indirizzo finisce nel
 // percorso chiamato sul backoffice ha il suo vincolo qui: fuori dai caratteri ammessi la rotta non c'è (404).
 // La ricerca è una POST dalla v1.8.0: la parola cercata sta nel corpo, mai nell'indirizzo della richiesta del browser, e una

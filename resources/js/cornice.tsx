@@ -3,7 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { destinazioneDellaNotifica } from './notifiche';
 import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
 
@@ -289,6 +289,17 @@ interface Saputo {
 }
 
 /**
+ * Una notifica che un clic ha segnato letta (README, «Le notifiche»): ciò che la cornice ha saputo dalla rotta — i dati che aveva
+ * al clic, l'istante in cui la parte server l'ha segnata — con l'elenco che era in pagina al clic (la richiesta da cui veniva)
+ * e il workspace di quell'elenco, come lo ha detto la parte server.
+ */
+interface LettaConUnClic extends Saputo {
+    id: string;
+    elenco: number;
+    workspace: string;
+}
+
+/**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
  * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
  * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
@@ -377,7 +388,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // E il workspace di cui è (`workspace`), come lo dice la parte server: quello della sessione, che non è sempre quello dei
     // dati della pagina (due schede su due workspace). `undefined` finché non si sa.
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0, workspace: undefined });
-    const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
+    const [caricate, setCaricate] = useState<Saputo & { nonLette: string[]; richiesta: number }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
     // elenco chiesto da capo, o altrove (sotto, dove dei dati letti dopo non contano più non lette). «Ne restano» è ciò che la
@@ -396,7 +407,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             ({ elenco, il, workspace }) => {
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'ready', elenco, richiesta: questa, workspace });
-                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
+                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa });
                 }
             },
             () => {
@@ -429,15 +440,61 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const leStaSegnando = useRef(false);
     // I dati non sono più recenti dell'ultimo elenco arrivato: l'elenco è più recente del loro numero.
     const elencoDiQuestiDati = caricate !== undefined && nonPiuRecentiDi(dati, caricate);
-    // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco più recente: una può essere
-    // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra visita,
-    // con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio. Senza il
-    // numero nei dati le conta il design system.
-    const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette, elencoDiQuestiDati ? caricate.nonLette : 0);
-    const nonLetteInElenco = notifiche.elenco.filter((notifica) => !notifica.letta).length;
-    // Il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
-    const sullaCampanella = nonLette ?? nonLetteInElenco;
+    // Un clic che apre la risorsa di una notifica non letta la segna letta (sotto, `leggi`). Di ogni notifica segnata così resta
+    // ciò che la rotta ha detto, una voce per notifica: vale l'ultima lettura. Nient'altro cambia nello stato: che cosa è letto,
+    // e quante ne restano, si calcola da qui mentre si rende, confrontando gli istanti come per «Segna tutte come lette».
+    // Una notifica è letta nell'elenco arrivato per ultimo se quell'elenco non è più recente della sua lettura: letto dalla
+    // parte server prima, la dà ancora da leggere; letto dopo, vale ciò che dice (può essere tornata da leggere, da un'altra
+    // scheda). Senza un istante da una parte vale solo per l'elenco che era in pagina al clic. E dal numero dei dati se ne
+    // toglie una per ogni lettura di cui i dati non sono più recenti: letti dopo, la contano già letta. Solo se l'elenco del
+    // clic era del workspace dei dati: con due schede su due workspace quella notifica non è fra le loro.
+    const [letteConUnClic, setLetteConUnClic] = useState<LettaConUnClic[]>([]);
+    const conLeLetture = (letture: LettaConUnClic[]) => {
+        const lettaNellElenco = (id: string) => caricate !== undefined && letture.some((una) => una.id === id && (caricate.il !== undefined && una.il !== undefined ? caricate.il <= una.il : caricate.richiesta === una.elenco));
+        const elenco = notifiche.elenco.map((notifica) => (!notifica.letta && lettaNellElenco(notifica.id) ? { ...notifica, letta: true } : notifica));
+        const tolteDaiDati = letture.filter((una) => una.workspace === dati.workspace.slug && nonPiuRecentiDi(dati, una)).length;
+        // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco più recente: una può essere
+        // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra
+        // visita, con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio.
+        // Non scende sotto zero: le non lette dell'elenco, o zero, lo tengono. Senza il numero nei dati le conta il design system.
+        const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette - tolteDaiDati, caricate !== undefined && elencoDiQuestiDati ? caricate.nonLette.filter((id) => !lettaNellElenco(id)).length : 0);
+
+        // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
+        return { elenco, nonLette, sullaCampanella: nonLette ?? elenco.filter((notifica) => !notifica.letta).length };
+    };
+    const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
     const unaSola = sullaCampanella === 1;
+    // La richiesta parte qui, nello stesso giro del clic, e chi la chiama apre la risorsa senza aspettarla: se fallisce non
+    // cambia niente, né in pagina né nell'apertura. Alla risposta resta ciò che la rotta ha detto, coi dati e l'elenco del clic.
+    const [daDire, setDaDire] = useState<string>();
+    const leggi = (id: string, workspace: string) => {
+        const questi = dati;
+        const elencoDelClic = notifiche.richiesta;
+        segnaLetta(id).then(
+            ({ il }) => {
+                setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace }]);
+                setDaDire(id);
+            },
+            // La notifica resta da leggere, e il numero com'era.
+            () => {},
+        );
+    };
+    // L'avviso per chi usa un lettore di schermo: l'`AppShell` non ha un posto per dire che il numero è cambiato, e la cornice lo
+    // dice accanto, in un `role="status"` che non si vede. Parla solo quando il numero scende per una lettura fatta con un
+    // clic: arrivata la risposta (`daDire`) confronta il numero con quello che sarebbe senza quella lettura, e se è sceso dice
+    // il nome della campanella col numero nuovo — quello vero, anche oltre 99, dove la campanella scrive «99+» — o, a zero,
+    // il testo di zr-core. Tace quando il numero cambia per altro (dati nuovi, un elenco arrivato, «Segna tutte come lette»),
+    // e allora ciò che aveva detto si toglie: non resta in pagina a dire un numero che non è più quello. Si decide mentre si
+    // rende, come per i dati tenuti (sopra).
+    const [avviso, setAvviso] = useState<{ testo: string; numero: number }>();
+    if (daDire !== undefined) {
+        setDaDire(undefined);
+        if (sullaCampanella < conLeLetture(letteConUnClic.filter((una) => una.id !== daDire)).sullaCampanella) {
+            setAvviso({ numero: sullaCampanella, testo: sullaCampanella === 0 ? t.unreadNone : `${t.notifications}, ${sullaCampanella} ${unaSola ? t.unreadOne : t.unread}` });
+        }
+    } else if (avviso !== undefined && avviso.numero !== sullaCampanella) {
+        setAvviso(undefined);
+    }
     // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
     // risposta con `altre`, se contano zero non lette. Una notifica che arriva dopo è un altro giro, con «Segna tutte come
     // lette». Non lo dice la campanella a zero: senza il numero nei dati conta le non lette in pagina, che vanno a zero anche
@@ -484,7 +541,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         if (ultimaRichiesta.current === elencoDelClic && elencoDiQuestiDati) {
             // Le caricate sono lette dall'istante della lettura: per i dati letti fin lì non ce ne sono di non lette.
             setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
-            setCaricate({ con: questi, nonLette: 0, il });
+            setCaricate({ con: questi, nonLette: [], il, richiesta: elencoDelClic });
         } else {
             // Un elenco è stato chiesto dopo quello del clic — il pannello ricaricato fra il clic e la risposta, o che si
             // stava già ricaricando al clic, dopo un `altre` — e quell'elenco è di prima della lettura; oppure l'elenco del
@@ -528,7 +585,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
     const suAccount = (azione: AccountAction) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]));
 
-    return (
+    const shell = (
         <Zeiras.AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
@@ -554,7 +611,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
-            notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
+            notifications={elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}
             onRetryNotifications={carica}
@@ -581,14 +638,25 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // workspace solo, e la scheda rimasta su un altro riceve le notifiche di quello. Se l'elenco è del workspace dei
             // dati decide lo stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra,
             // `inUnAltroWorkspace`). Una che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi
-            // tutte», portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
+            // tutte», portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua
+            // risorsa è segnata letta (`leggi`): la richiesta parte prima dell'apertura, che non la aspetta.
             onOpenNotification={(aperta) => {
-                const notifica = notifiche.elenco.find(({ id }) => id === aperta.id);
+                const notifica = elenco.find(({ id }) => id === aperta.id);
                 const elencoDi = notifiche.workspace;
                 const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+                if (notifica !== undefined && elencoDi !== undefined && risorsa !== undefined && !notifica.letta) {
+                    leggi(notifica.id, elencoDi);
+                }
                 naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
             }}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
         />
+    );
+
+    return (
+        <>
+            {shell}
+            <div role="status" className="zr-visually-hidden">{avviso?.testo}</div>
+        </>
     );
 }
