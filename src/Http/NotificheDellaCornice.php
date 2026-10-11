@@ -263,7 +263,8 @@ final class NotificheDellaCornice
             || ! is_string($notifica['tipo'] ?? null)
             || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
             || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
-            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))) {
+            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))
+            || ! is_array($notifica['dati'] ?? null)) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
@@ -273,7 +274,7 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
-            'ids' => (object) self::idDi($notifica['dati'] ?? null),
+            'ids' => (object) self::idDi($notifica['dati']),
         ];
     }
 
