@@ -22,7 +22,7 @@ final class Accettazione
 
     public static function richiesta(Throwable $errore): bool
     {
-        return $errore instanceof ErroreApi && $errore->stato === 403 && $errore->codice === self::CODICE;
+        return $errore instanceof ErroreApi && $errore->codice === self::CODICE;
     }
 
     /**
