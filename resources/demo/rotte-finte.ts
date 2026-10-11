@@ -10,7 +10,9 @@
 // il pannello ne mostra il nome. Con `?crm=1` in fondo all'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette
 // tipi che zr-core conosce (contatti, pipeline, note) e una di un tipo che non conosce ancora (`com.zeiras.crm.persona.assegnata`),
 // col titolo di ripiego, e due note che non hanno dove andare (la riga sotto il titolo dice quale: «UAT nota senza contatto»,
-// «UAT nota con un id malfatto»); senza `?crm`, l'elenco è quello di prima. Ogni notifica porta gli id che la parte server dà di
+// «UAT nota con un id malfatto»), e in fondo due di un'azienda, una creata e una modificata; senza `?crm`, l'elenco è quello di
+// prima. Con `?viste=1` in fondo all'elenco ci sono tre notifiche delle viste salvate di una board (creata, modificata,
+// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Ogni notifica porta gli id che la parte server dà di
 // `dati` (`ids`), e mai `dati` né `soggetto`: da una del CRM la cornice apre la sua risorsa. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
@@ -30,6 +32,7 @@ ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const chi = new URLSearchParams(window.location.search).has('chi');
 const crm = new URLSearchParams(window.location.search).has('crm');
+const viste = new URLSearchParams(window.location.search).has('viste');
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -59,7 +62,14 @@ const notificheDiProva = [
               })),
               { id: 'uat-c9', creata_il: fa(18 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota senza contatto', per_me: null, ids: { id: 'uat-nota-9' } },
               { id: 'uat-c10', creata_il: fa(19 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota con un id malfatto', per_me: null, ids: { id: 'uat-nota-10', persona_id: '../x' } },
+              // Le due di un'azienda: nel contratto è una `organizzazione`, e porta il suo id.
+              ...['creata', 'modificata'].map((cosa, indice) => ({ id: `uat-c${indice + 11}`, creata_il: fa((20 + indice) * 24 * 60), letta: true, app: 'crm', tipo: `com.zeiras.crm.organizzazione.${cosa}`, ...nonDetti, ids: { id: 'uat-azienda-1' } as Record<string, string> })),
           ]
+        : []),
+    // Solo con `?viste=1`, le notifiche delle viste salvate di una board: di Project Management, più vecchie di tutte le altre.
+    // Portano l'id della vista e quello della board, come li dà la parte server.
+    ...(viste
+        ? ['creata', 'modificata', 'eliminata'].map((cosa, indice) => ({ id: `uat-v${indice + 1}`, creata_il: fa((22 + indice) * 24 * 60), letta: true, app: 'pm', tipo: `com.zeiras.board.vista.${cosa}`, ...nonDetti, ids: { id: 'uat-vista-1', board_id: 'uat-board-1' } as Record<string, string> }))
         : []),
 ];
 let letture = 0;

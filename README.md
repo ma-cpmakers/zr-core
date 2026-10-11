@@ -297,8 +297,10 @@ cornice === null ? pagina : (
   titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto: una notifica di un tipo che zr-core non
   conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»), mai il codice del tipo. Un tipo di notifica
   nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Dalla
-  `v1.11.0` hanno un titolo anche le sette notifiche del CRM (contatti, pipeline, note): «Nuovo contatto», «Pipeline
-  modificata», «Nota eliminata». Di che prodotto è
+  `v1.11.0` hanno un titolo anche le nove notifiche del CRM (contatti, pipeline, note, aziende): «Nuovo contatto»,
+  «Pipeline modificata», «Nota eliminata», «Nuova azienda»; e le tre delle viste salvate di una board, di Project
+  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli sono 31, uno per ogni tipo di
+  evento del contratto pubblicato l'11/10/2026. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
