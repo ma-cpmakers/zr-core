@@ -239,7 +239,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
     expect(chiaviDiAppShellLabels())->toContain('soon', 'logout', 'crumbs')
         ->and(array_keys($italiano))->toEqualCanonicalizing([...chiaviDiAppShellLabels(), 'products', 'dashboard', ...idDeiProdotti()])
         ->and($italiano['searchEmptyText'])->toStartWith("Prova con un'altra parola")
-        ->and($italiano['products'])->toBe('Prodotti')
+        ->and($italiano['products'])->toBe('Moduli')
         ->and($italiano['dashboard'])->toBe('Dashboard')
         ->and($italiano['automations'])->toBe('Automazioni')
         ->and(problemiDelleLingue($lingue))->toEqualCanonicalizing([
@@ -293,7 +293,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Prodotti', 'Dashboard', 'Esci')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);
 });
@@ -332,4 +332,52 @@ it('il controllo trova i testi e le lingue scritti nel codice, non quelli citati
     expect(testiScrittiNelCodice($codice, ['Prodotti', 'Dashboard', 'Esci']))
         ->toBe(['Prodotti', 'Dashboard', 'Esci', 'Benvenuto'])
         ->and(lingueElencateNelCodice($codice, ['it', 'es', 'en']))->toBe(['../lingue/it.json', 'it', 'es']);
+});
+
+/**
+ * I testi delle lingue che chiamano «prodotti» o «app» i moduli: il nome è uno solo, «Moduli» (sprint 21 · T1.4).
+ *
+ * @param  array<string, array<string, string>>  $lingue
+ * @return list<string>
+ */
+function testiCheNonDiconoModuli(array $lingue): array
+{
+    $trovati = [];
+    foreach ($lingue as $codice => $testi) {
+        foreach ($testi as $chiave => $testo) {
+            if (preg_match('/prodott|product|\bapps?\b|applicazion|application|aplicaci/iu', $testo) === 1) {
+                $trovati[] = "{$codice}: {$chiave}";
+            }
+        }
+    }
+
+    return $trovati;
+}
+
+it('il menu si chiama «Moduli», la ricerca cerca «in tutti i moduli» e la notifica di un modulo dice «modulo», nelle tre lingue (sprint 21 · T1.1, T1.3, T1.4)', function () {
+    $lingue = lingueDellaCornice();
+    $nelleTre = fn (string $chiave): array => [$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]];
+
+    expect($nelleTre('products'))->toBe(['Moduli', 'Modules', 'Módulos'])
+        ->and($nelleTre('searchHint'))->toBe([
+            'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
+            'Search across all modules: type at least 2 characters.',
+            'Busca en todos los módulos: escribe al menos 2 caracteres.',
+        ])
+        ->and($nelleTre('notificationTitle.com.zeiras.app.modificata'))->toBe([
+            'Un modulo è stato attivato o disattivato',
+            'A module was turned on or off',
+            'Se activó o desactivó un módulo',
+        ])
+        ->and(testiCheNonDiconoModuli($lingue))->toBe([]);
+});
+
+it('il controllo vede un testo che chiama «prodotti» o «app» i moduli in qualunque chiave, e non una parola che li contiene (sprint 21 · T1.4)', function () {
+    $lingue = [
+        'it' => ['soon' => 'Prodotto in arrivo', 'account' => 'Appena arrivato', 'products' => 'Moduli'],
+        'en' => ['retry' => 'Reload the app', 'all' => 'What happened'],
+        'es' => ['logout' => 'Salir de los productos'],
+    ];
+
+    expect(testiCheNonDiconoModuli($lingue))->toBe(['it: soon', 'en: retry', 'es: logout']);
 });
