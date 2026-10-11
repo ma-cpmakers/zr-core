@@ -92,6 +92,28 @@ function tipiDiNotificaDelContratto(): array
         'com.zeiras.board.etichetta.creata',
         'com.zeiras.board.etichetta.modificata',
         'com.zeiras.board.etichetta.eliminata',
+        ...array_keys(titoliDelleNotificheDelCrm()),
+    ];
+}
+
+/**
+ * I titoli delle sette notifiche del CRM che il contratto ha (contatti, pipeline, note), con le parole di zr-crm: nel CRM una
+ * `persona` è un «contatto». La tabella è scritta qui, non letta dai file delle lingue. Ogni titolo è un testo intero per tipo:
+ * in italiano e in spagnolo «pipeline» e «nota» sono al femminile, e un titolo composto da «Nuovo» e dal nome della cosa lo
+ * sbaglierebbe (sprint 21 · T2.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDelCrm(): array
+{
+    return [
+        'com.zeiras.crm.persona.creata' => ['it' => 'Nuovo contatto', 'en' => 'New contact', 'es' => 'Nuevo contacto'],
+        'com.zeiras.crm.persona.modificata' => ['it' => 'Contatto modificato', 'en' => 'Contact changed', 'es' => 'Contacto modificado'],
+        'com.zeiras.crm.pipeline.creata' => ['it' => 'Nuova pipeline', 'en' => 'New pipeline', 'es' => 'Nueva pipeline'],
+        'com.zeiras.crm.pipeline.modificata' => ['it' => 'Pipeline modificata', 'en' => 'Pipeline changed', 'es' => 'Pipeline modificada'],
+        'com.zeiras.crm.nota.creata' => ['it' => 'Nuova nota', 'en' => 'New note', 'es' => 'Nueva nota'],
+        'com.zeiras.crm.nota.modificata' => ['it' => 'Nota modificata', 'en' => 'Note changed', 'es' => 'Nota modificada'],
+        'com.zeiras.crm.nota.eliminata' => ['it' => 'Nota eliminata', 'en' => 'Note deleted', 'es' => 'Nota eliminada'],
     ];
 }
 
@@ -281,15 +303,29 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 19 tipi di notifica del contratto, né uno in più né uno in meno (sprint 12 · T3.3)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 26 tipi di notifica che zr-core conosce, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
-    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(19)
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(26)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
+
+it('le sette notifiche del CRM hanno il titolo della tabella nella lingua, e un tipo del CRM che il contratto non ha ancora non ha un titolo (sprint 21 · T2.1, T2.2)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $titoli = [];
+    foreach (array_keys(titoliDelleNotificheDelCrm()) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+    }
+
+    // Tutti e sette insieme: un rosso li mostra tutti, non solo il primo che manca.
+    expect($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], titoliDelleNotificheDelCrm()))
+        // `…persona.assegnata` non è ancora nel contratto: finché non ha un titolo suo, ha quello di ripiego.
+        ->and(array_keys($testi))->not->toContain('notificationTitle.com.zeiras.crm.persona.assegnata')
+        ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli));
+})->with(['it', 'en', 'es']);
 
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
     $lingue = lingueDellaCornice();
