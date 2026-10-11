@@ -300,7 +300,7 @@ final class NotificheDellaCornice
     private static function idDi(?string $app, string $tipo, mixed $dati): array
     {
         $ids = [];
-        foreach (array_filter(array_keys(is_array($dati) ? $dati : []), fn ($c) => is_string($c) && preg_match('/\A(?:id|[a-z][a-z_]*_id)\z/', $c) === 1) as $chiave) {
+        foreach ([...self::chiaviDelPercorso($app, $tipo), ...array_filter(array_keys(is_array($dati) ? $dati : []), fn ($c) => is_string($c) && preg_match('/\A(?:id|[a-z][a-z_]*_id)\z/', $c) === 1)] as $chiave) {
             $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
             if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
                 $ids[$chiave] = $valore;
