@@ -150,6 +150,7 @@ final class NotificheDellaCornice
         }
 
         $percorso = '/v1/io/notifiche/'.rawurlencode($notifica).'/lettura';
+        $segnataIl = Segno::adesso();
 
         try {
             $segnata = self::perLaCornice(Api::workspace()->patch($percorso, ['letta' => $letta])['data'] ?? null, "PATCH {$percorso}");
@@ -166,7 +167,7 @@ final class NotificheDellaCornice
             throw new BackofficeNonRisponde("La risposta di PATCH {$percorso} è un'altra notifica.");
         }
 
-        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']], 'segnata_il' => Segno::adesso()]);
+        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']], 'segnata_il' => $segnataIl]);
     }
 
     /**
