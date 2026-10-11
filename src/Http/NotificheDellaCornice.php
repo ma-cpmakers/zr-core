@@ -43,7 +43,7 @@ final class NotificheDellaCornice
     public const ID = '[A-Za-z0-9_-]{1,64}';
 
     /** La stessa forma, per un id dei `dati` di una notifica: intera, e `\z` e non `$`, che lascia passare un a capo in fondo. */
-    private const FORMA_DI_UN_ID = '/\A'.self::ID.'\z/';
+    private const FORMA_DI_UN_ID = '/\A'.self::ID.'$/';
 
     /**
      * Un segnaposto in un percorso del registro dei moduli: `{id}`, o `{<nome>_id}`. È quello che il browser cerca per comporre
