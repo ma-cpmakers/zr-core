@@ -254,8 +254,9 @@ cornice === null ? pagina : (
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
   Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». Con la stessa versione
-  cambiano altri due testi, che un frontend può avere nei suoi test: l'aiuto della ricerca, ora «Cerca in tutti i
-  moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»), e il titolo che
+  cambiano altri due testi, che un frontend può avere nei suoi test: l'aiuto della ricerca, allora «Cerca in tutti i
+  moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0`
+  dice altro: vedi «La ricerca»), e il titolo che
   `titoloDellaNotifica` dà a `com.zeiras.app.modificata`, «Un modulo è stato attivato o disattivato» (prima «Un'app del
   workspace è stata attivata o disattivata»); lo stesso in inglese e in spagnolo. I nomi nel codice — la prop `product`,
   il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
@@ -468,7 +469,14 @@ cornice === null ? pagina : (
   vuoto, è un errore della ricerca: senza non c'è un indirizzo sicuro, e la cornice non ripiega sul workspace della
   pagina. Così risponde anche una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si
   aggiunge `workspace`, con lo slug dei dati della pagina (si trovano cercando `cornice/ricerca` nei test del frontend). Se
-  la rotta fallisce, l'errore della ricerca, mai «Nessun risultato».
+  la rotta fallisce, l'errore della ricerca, mai «Nessun risultato». Dalla `v1.12.0` il segnaposto del campo e l'aiuto
+  che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle: «Cerca board e cartelle…»
+  e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e «Search boards and
+  folders: type at least 2 characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas:
+  escribe al menos 2 caracteres.»). Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi
+  almeno 2 caratteri.»: un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in
+  inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`). Tornano
+  larghi, una fonte alla volta, quando la ricerca del backoffice trova altro.
 - **Il menu del profilo** ha Profilo, Impostazioni, Azienda e, dopo una linea, Esci: le prime tre aprono le loro pagine su
   app.zeiras.com (`/impostazioni/profilo`, `/impostazioni/preferenze`, `/azienda`), «Esci» chiama `onLogout`. La voce
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con

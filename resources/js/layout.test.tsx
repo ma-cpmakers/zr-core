@@ -245,7 +245,7 @@ describe('LayoutDellaCornice', () => {
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(segnaposto()).toBe('Cerca progetti, schede, contatti…');
+        expect(segnaposto()).toBe('Cerca board e cartelle…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
         await visita(inSpagnolo, <PaginaB key="2" />);
@@ -257,7 +257,7 @@ describe('LayoutDellaCornice', () => {
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
-        expect(segnaposto()).toBe('Busca proyectos, tarjetas, contactos…');
+        expect(segnaposto()).toBe('Busca tableros y carpetas…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);

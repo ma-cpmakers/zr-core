@@ -360,4 +360,30 @@ describe('le lingue della cornice', () => {
         const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
         expect([tedesco.notifications, tedesco.unreadNone]).toStrictEqual(['Benachrichtigungen', 'No unread notifications']);
     });
+
+    // Sprint 22 · T8 (voce #1728): il segnaposto del campo di ricerca e l'invito sotto il campo dicono ciò che la ricerca trova
+    // oggi, board e cartelle, con le parole che la lingua ha per i due tipi. I puntini del segnaposto sono il carattere «…».
+    it('il segnaposto e l\'invito della ricerca dicono board e cartelle nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 22 · T8.1, T8.2)', () => {
+        expect([italiano, inglese, spagnolo].map((file) => [file.searchPlaceholder, file.searchHint])).toStrictEqual([
+            ['Cerca board e cartelle…', 'Cerca board e cartelle: scrivi almeno 2 caratteri.'],
+            ['Search boards and folders…', 'Search boards and folders: type at least 2 characters.'],
+            ['Busca tableros y carpetas…', 'Busca tableros y carpetas: escribe al menos 2 caracteres.'],
+        ]);
+        expect([testi('pt-BR').searchPlaceholder, testi('pt-BR').searchHint]).toStrictEqual(['Search boards and folders…', 'Search boards and folders: type at least 2 characters.']);
+    });
+
+    it.each<[lingua: string, file: Record<string, string>, nonTrova: string[]]>([
+        ['it', italiano, ['progett', 'sched', 'contatt', 'tutti i moduli']],
+        ['en', inglese, ['project', 'card', 'contact', 'all modules']],
+        ['es', spagnolo, ['proyecto', 'tarjeta', 'contacto', 'todos los módulos']],
+    ])('con la lingua "%s", il segnaposto e l\'invito della ricerca usano le parole dei due tipi e non nominano ciò che la ricerca non trova: progetti, schede, contatti, «tutti i moduli» (sprint 22 · T8.1, T8.2)', (_lingua, file, nonTrova) => {
+        const segnaposto = file['searchPlaceholder'] ?? '';
+        const iDue = `${segnaposto} ${file['searchHint'] ?? ''}`.toLowerCase();
+        const volte = (parola: string | undefined) => iDue.split((parola ?? '?').toLowerCase()).length - 1;
+
+        expect(nonTrova.filter((parola) => iDue.includes(parola))).toStrictEqual([]);
+        expect([volte(file['pm.board.board']), volte(file['pm.board.cartelle'])]).toStrictEqual([2, 2]);
+        // I puntini in fondo sono il carattere «…», non tre punti.
+        expect([segnaposto.endsWith('…'), segnaposto.includes('.')]).toStrictEqual([true, false]);
+    });
 });

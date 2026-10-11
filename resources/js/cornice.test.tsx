@@ -214,10 +214,10 @@ describe('la Cornice', () => {
     });
 
     it.each([
-        ['it', 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.'],
-        ['en', 'Search across all modules: type at least 2 characters.'],
-        ['es', 'Busca en todos los módulos: escribe al menos 2 caracteres.'],
-    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice «moduli»: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «prodotti» (sprint 21 · T1.3)', async (lingua, aiuto) => {
+        ['it', 'Cerca board e cartelle: scrivi almeno 2 caratteri.'],
+        ['en', 'Search boards and folders: type at least 2 characters.'],
+        ['es', 'Busca tableros y carpetas: escribe al menos 2 caracteres.'],
+    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice board e cartelle, ciò che la ricerca trova oggi: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «in tutti i prodotti» (sprint 21 · T1.3; sprint 22 · T8.2)', async (lingua, aiuto) => {
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
         await act(async () => uno('.zr-search input')?.focus());
 
