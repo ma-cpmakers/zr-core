@@ -358,7 +358,8 @@ it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<pro
 
 // Sprint 21 · T3 (voce #1641): da una notifica del CRM si apre la sua risorsa. Dove, lo dice il registro: parole e indirizzi sono
 // di zr-crm (11/10/2026). Un contatto ha la sua pagina; una pipeline apre le sue impostazioni; una nota non ha una pagina sua, e
-// si vede nella pagina del contatto a cui è attaccata (`persona_id`), anche quando è stata eliminata.
+// si vede nella pagina della cosa più specifica a cui è attaccata — l'opportunità, poi il contatto, poi l'azienda (sprint 23 ·
+// T3; fino alla `v1.12.0` solo il contatto, `persona_id`) —, anche quando è stata eliminata.
 
 it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, col tipo intero: un contatto apre la sua pagina, una pipeline le sue impostazioni, un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
     $voci = registroDeiProdotti();

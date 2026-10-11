@@ -3208,7 +3208,7 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
     // Review della PR #51, R1: dalla `v1.13.0` non scende nemmeno per i dati del clic, se l'elenco del clic era più vecchio di loro.
     'solo con un elenco non più vecchio dei dati (review della PR #51, R1)' => ['punto', 'Dalla `v1.13.0` scende solo se l\'elenco in pagina al clic non era più vecchio dei dati del clic'],
-    'quando un elenco non è più vecchio (review della PR #51, R1)' => ['punto', 'L\'elenco non è più vecchio dei dati quando il suo `aggiornati_il` non viene prima del loro; senza i due segni, solo quando è stato chiesto con quello stesso oggetto `dati`'],
+    'quando un elenco non è più vecchio (review della PR #51, R1)' => ['punto', 'L\'elenco non è più vecchio dei dati quando il suo `aggiornati_il` non viene prima del loro; se uno dei due segni manca, solo quando è stato chiesto con quello stesso oggetto `dati`'],
     'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
     'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],

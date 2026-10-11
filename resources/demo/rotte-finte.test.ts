@@ -209,10 +209,10 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
-    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
-    // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
+    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
+    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
     // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 

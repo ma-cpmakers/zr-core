@@ -305,6 +305,7 @@ interface LettaConUnClic extends Saputo {
 /**
  * La ricerca della cornice dopo la prima parola: in volo, fallita, o arrivata. Arrivata, i risultati stanno col workspace di cui
  * sono, come lo dice la parte server: è lì che si aprono, e dei risultati senza il loro workspace non hanno un indirizzo.
+ * Si esporta per i casi (`cornice.test.tsx`): non è dell'ingresso, e `index.ts` non lo riesporta.
  */
 export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready'; risultati: RisultatoDellaRicerca[]; workspace: string };
 

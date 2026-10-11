@@ -22,9 +22,10 @@ export interface NotificaDellaCornice {
     per_me?: boolean | null;
     /**
      * Gli id che servono ad aprire la risorsa della notifica (`destinazioneDellaNotifica`), per chiave (`id`, `persona_id`…): dei
-     * `dati` dell'evento la parte server dà solo quelli che il registro chiede per il suo tipo, e solo con la forma di un id.
-     * Vuoto per un tipo che nel registro non ha una destinazione. Una parte server di prima della `v1.11.0` non li dà, e allora
-     * la notifica apre la pagina delle notifiche.
+     * `dati` dell'evento la parte server dà solo quelli del percorso che si apre — il primo del suo tipo, nel registro, che
+     * `dati` soddisfa per intero —, e solo con la forma di un id. Vuoto per un tipo che nel registro non ha una destinazione, e
+     * anche quando il percorso non chiede un id (un'attività, che apre «Da fare»). Una parte server di prima della `v1.11.0` non
+     * li dà, e allora la notifica apre la pagina delle notifiche.
      */
     ids?: Record<string, string>;
 }

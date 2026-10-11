@@ -23,8 +23,8 @@ use Zeiras\Core\Segno;
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
  * confronta con un elenco. `soggetto` resta qui, e di `dati` passano i soli id che alla cornice servono per aprire la risorsa
- * della notifica (`ids`): quelli che il registro dei moduli chiede per il suo tipo, e nessuno per un tipo che il registro non
- * ha. Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
+ * della notifica (`ids`): quelli del percorso che si apre — il primo che il registro dei moduli dà al suo tipo e che `dati`
+ * soddisfa per intero —, e nessuno per un tipo che il registro non ha, o quando il percorso non chiede un id. Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
  * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
