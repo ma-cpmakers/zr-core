@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\File;
+use Zeiras\Core\Http\NotificheDellaCornice;
 
 // Sprint 1 · T4 e T7 (voce #1255). Il registro dei prodotti di zr-core, resources/registro/prodotti.json: nell'ordine della linea
 // guida 10 del design system, Dashboard e i sei prodotti, ognuno con un id del design system, un'icona del set (`IconName`), un
@@ -19,6 +20,20 @@ use Illuminate\Support\Facades\File;
 // Sprint 21 · T3 (voce #1641): le notifiche di un prodotto che dal pannello aprono la loro risorsa (`notifiche`), ognuna col tipo
 // intero dell'evento e il percorso nel prodotto, dopo `/w/<slug>`: un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la
 // notifica ha con quella chiave. Un tipo sta una volta sola in tutto il registro, e ha il suo titolo in ogni lingua.
+// Review della PR #31: un tipo sta nella voce della sua app (R11), e la forma di un id e quella di un segnaposto sono scritte
+// uguali nella parte server, nel browser e in questo controllo (R8).
+
+/**
+ * La chiave di un segnaposto in un percorso di notifica: `id`, o `<nome>_id` (minuscole e `_`). È quella che la parte server e
+ * il browser cercano nei percorsi del registro: un caso, più sotto, le lega.
+ */
+const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
+
+/**
+ * Di che app è un tipo di notifica, dal suo inizio: il backoffice dice `app` dall'evento, e la cornice cerca la destinazione
+ * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
+ */
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -48,8 +63,9 @@ function mappaDegliIndirizzi(): array
  * mappa, un nome (i nomi stanno nelle lingue), «Presto» o «in arrivo» che non sono un sì o un no, una voce «Presto» che non è
  * in arrivo, la Dashboard in arrivo; in una risorsa, un tipo vuoto, ripetuto o già
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
- * «contenitore» che non è un sì o un no, un nome; in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un percorso che
- * non comincia con / o che ha un carattere o un segnaposto non ammesso, una chiave che non è `tipo` né `percorso`.
+ * «contenitore» che non è un sì o un no, un nome; in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
+ * un'altra app, o di un'app che il controllo non conosce, un percorso che non comincia con / o che ha un carattere o un
+ * segnaposto non ammesso, una chiave che non è `tipo` né `percorso`.
  *
  * @param  list<array<string, mixed>>  $voci
  * @return list<string>
@@ -132,8 +148,20 @@ function problemiDelRegistro(array $voci): array
             } else {
                 $prodottoDellaNotifica[$tipo] = $id;
             }
+            // Il tipo sta nella voce della sua app: la cornice lo cerca lì (review della PR #31, R11).
+            if (is_string($tipo) && trim($tipo) !== '') {
+                $app = null;
+                foreach (APP_DI_UN_TIPO_DI_NOTIFICA as $inizio => $codice) {
+                    $app = str_starts_with($tipo, $inizio) ? $codice : $app;
+                }
+                if ($app === null) {
+                    $problemi[] = "$nome: il controllo non sa di che app è questo tipo";
+                } elseif ($app !== $id) {
+                    $problemi[] = "$nome: il tipo è di $app, e nella voce di $id non si aprirebbe mai";
+                }
+            }
             $percorso = $notifica['percorso'] ?? null;
-            if (! is_string($percorso) || preg_match('~^/(?:[a-z0-9/_-]|\{(?:id|[a-z][a-z_]*_id)\})*$~D', $percorso) !== 1) {
+            if (! is_string($percorso) || preg_match('~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*$~D', $percorso) !== 1) {
                 $problemi[] = "$nome: il percorso «".(is_string($percorso) ? $percorso : '').'» non comincia con /, o ha un carattere o un segnaposto che non è ammesso';
             }
             if (array_diff(array_keys($notifica), ['tipo', 'percorso']) !== []) {
@@ -331,7 +359,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono nove, col 
         ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['crm']);
 });
 
-it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scritto due volte nello stesso prodotto o in un altro, un percorso che non comincia con /, un segnaposto che non è `{id}` né `{…_id}`, un carattere che in un percorso non ci sta e una chiave in più (sprint 21 · T3, guardia)', function () {
+it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scritto due volte nello stesso prodotto o in un altro, uno di un\'altra app o di un\'app che non conosce, un percorso che non comincia con /, un segnaposto che non è `{id}` né `{…_id}`, un carattere che in un percorso non ci sta e una chiave in più (sprint 21 · T3, guardia; review della PR #31, R11)', function () {
     $voci = registroDeiProdotti();
     $voci[1]['notifiche'] = [
         // Buone: senza segnaposto, con uno, con due, e la pagina del prodotto nel workspace.
@@ -358,9 +386,17 @@ it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scri
         ['tipo' => 'com.zeiras.board.uat.a-capo', 'percorso' => "/b/{id}\n"],
         // Una chiave in più: il titolo sta nelle lingue.
         ['tipo' => 'com.zeiras.board.uat.titolo', 'percorso' => '/b/{id}', 'titolo' => 'UAT'],
+        // Un tipo del CRM fra quelli di Project Management, e tre di cui il controllo non sa l'app: un inizio che non conosce, uno
+        // che conosce ma non all'inizio, e uno a cui manca il punto.
+        ['tipo' => 'com.zeiras.crm.uat.contatto', 'percorso' => '/b/{id}'],
+        ['tipo' => 'com.zeiras.uat.ignota', 'percorso' => '/b/{id}'],
+        ['tipo' => 'x.com.zeiras.board.uat.davanti', 'percorso' => '/b/{id}'],
+        ['tipo' => 'com.zeiras.boardx.uat.attaccato', 'percorso' => '/b/{id}'],
     ];
     // Lo stesso tipo in un altro prodotto: la cornice cerca nella voce dell'app, e uno dei due non si aprirebbe mai.
     $voci[2]['notifiche'][] = ['tipo' => 'com.zeiras.board.uat.scheda', 'percorso' => '/contatti/{id}'];
+    // Un tipo di una board, scritto una volta sola, ma fra quelli del CRM.
+    $voci[2]['notifiche'][] = ['tipo' => 'com.zeiras.board.uat.altrove', 'percorso' => '/contatti/{id}'];
 
     $sbagliato = fn (string $tipo, string $percorso) => "pm, notifica com.zeiras.board.uat.$tipo: il percorso «{$percorso}» non comincia con /, o ha un carattere o un segnaposto che non è ammesso";
 
@@ -381,8 +417,27 @@ it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scri
         $sbagliato('spazio', '/b/{id} '),
         $sbagliato('a-capo', "/b/{id}\n"),
         'pm, notifica com.zeiras.board.uat.titolo: ha una chiave che non è tipo né percorso',
+        'pm, notifica com.zeiras.crm.uat.contatto: il tipo è di crm, e nella voce di pm non si aprirebbe mai',
+        'pm, notifica com.zeiras.uat.ignota: il controllo non sa di che app è questo tipo',
+        'pm, notifica x.com.zeiras.board.uat.davanti: il controllo non sa di che app è questo tipo',
+        'pm, notifica com.zeiras.boardx.uat.attaccato: il controllo non sa di che app è questo tipo',
         'crm, notifica com.zeiras.board.uat.scheda: il tipo è già di pm',
+        'crm, notifica com.zeiras.board.uat.scheda: il tipo è di pm, e nella voce di crm non si aprirebbe mai',
+        'crm, notifica com.zeiras.board.uat.altrove: il tipo è di pm, e nella voce di crm non si aprirebbe mai',
     ]);
+});
+
+it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte server, nel browser e nel controllo del registro: un id che la parte server dà, il browser non lo scarta (review della PR #31, R8)', function () {
+    $browser = (string) file_get_contents(__DIR__.'/../../resources/js/notifiche.ts');
+    preg_match('~^const FORMA_DI_UN_ID = /\^(.+)\$/;$~m', $browser, $forma);
+    preg_match('~^const SEGNAPOSTO = /(.+)/g;$~m', $browser, $segnaposto);
+    $delServer = fn (string $costante): mixed => (new ReflectionClassConstant(NotificheDellaCornice::class, $costante))->getValue();
+
+    expect($forma[1] ?? null)->toBe(NotificheDellaCornice::ID)
+        ->and($segnaposto[1] ?? null)->toBe('\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}')
+        ->and($delServer('SEGNAPOSTO'))->toBe('/\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}/')
+        // La parte server confronta un id con la forma intera, senza un a capo in fondo: `\z`, non `$`.
+        ->and($delServer('FORMA_DI_UN_ID'))->toBe('/\A'.NotificheDellaCornice::ID.'\z/');
 });
 
 it('ogni tipo di notifica del registro ha il suo titolo in ogni lingua, e il controllo trova un tipo che in una lingua non ce l\'ha, o ce l\'ha vuoto (sprint 21 · T3, guardia)', function () {

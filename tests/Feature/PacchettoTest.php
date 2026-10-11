@@ -3122,14 +3122,36 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
     'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa dall\'ingresso'],
     'quando no' => ['punto', 'Una notifica che non ha dove andare apre `https://app.zeiras.com/notifiche`, come «Vedi tutte»'],
+    'un id non è un permesso (review della PR #31, R12)' => ['punto', 'Un id non è un permesso: chi riceve la notifica può non poter vedere quella risorsa, la cornice non lo controlla, e lo decide il modulo che apre la pagina'],
+    'oggi il backoffice non le manda (review della PR #31, R3)' => ['punto', 'Per quel contratto i dodici tipi nuovi non generano ancora notifiche per i colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà'],
     'nome, argomenti e versione' => ['paragrafo', 'Dalla `v1.11.0` si importa anche `destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua'],
     'che cosa dà' => ['paragrafo', 'dà l\'indirizzo che il pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello'],
     'che cosa legge' => ['paragrafo', 'la funzione ne legge `app`, `tipo` e `ids`'],
     'quando non dà niente' => ['paragrafo', 'Non dà niente (`undefined`) quando la notifica non ha dove andare'],
     'mai a metà' => ['paragrafo', 'mai un indirizzo composto a metà'],
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
-    'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che la notifica porta, per chiave'],
-    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano le sole coppie con la chiave `id`, o una che finisce in `_id`, e con un valore che ha la forma di un id'],
-    'che cosa non passa' => ['rotta', 'il resto di `dati` e `soggetto` non arrivano al browser'],
-    'senza dati' => ['rotta', 'ha `ids` vuoto (`{}`) e non è un errore'],
+    // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
+    'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],
+    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id che il percorso del registro chiede per il tipo della notifica, nella voce della sua app'],
+    'la forma del valore' => ['rotta', 'e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64)'],
+    'che cosa non passa' => ['rotta', 'gli altri id, il resto di `dati` e `soggetto` non arrivano al browser'],
+    'senza destinazione, o senza dati' => ['rotta', 'una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore'],
 ]);
+
+it('lo zip porta il registro dei moduli: la parte server lo legge per sapere quali id servono ad aprire una notifica (review della PR #31, R1)', function () {
+    expect(fileDelloZipDiHead())->toContain('resources/registro/prodotti.json');
+});
+
+it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle del suo elenco: una voce in più cambia anche il numero (review della PR #31, R2)', function () {
+    preg_match('/^## Prima di tutto: ciò che si chiede ad altri\n(.*?)(?=^## )/ms', guidaDelModuloNuovo(), $capitolo);
+    preg_match('/^(\S+) cose non le scrivi tu/m', $capitolo[1] ?? '', $quante);
+    $numeri = ['Tre' => 3, 'Quattro' => 4, 'Cinque' => 5, 'Sei' => 6, 'Sette' => 7, 'Otto' => 8];
+
+    expect($numeri[$quante[1] ?? ''] ?? null)->not->toBeNull()
+        ->and($numeri[$quante[1] ?? ''] ?? null)->toBe(preg_match_all('/^- \*\*/m', $capitolo[1] ?? ''));
+});
+
+it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un clic che naviga non glieli ridà come nuovi, e dopo «Segna tutte come lette» il numero non torna sulla campanella (review della PR #31, R5)', function () {
+    expect(scritteNellaPaginaDiProva('demo.tsx', ['const dati = useMemo(', 'dati={dati}', 'dati={{']))
+        ->toBe(['const dati = useMemo(' => 1, 'dati={dati}' => 1, 'dati={{' => 0]);
+});
