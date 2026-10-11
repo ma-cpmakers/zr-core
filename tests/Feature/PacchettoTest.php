@@ -3119,7 +3119,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
     'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
-    'i tre casi del CRM' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di una nota il contatto a cui è attaccata'],
+    'i due casi del CRM della `v1.11.0`; la nota ha il suo caso (sprint 23 · T3.7)' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di un\'azienda'],
     'il caso delle aziende (sprint 21 · T5.2)' => ['punto', 'una di un\'azienda l\'elenco delle aziende col suo pannello aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`)'],
     'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
     'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa dall\'ingresso'],
@@ -3137,7 +3137,10 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],
-    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id che il percorso del registro chiede per il tipo della notifica, nella voce della sua app'],
+    // Review della PR #51, R2: dalla `v1.13.0` un tipo può avere più percorsi, e gli id sono quelli di uno solo, quello che si apre.
+    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, nella voce della sua app'],
+    'più percorsi, nella riga della rotta (review della PR #51, R2)' => ['rotta', 'dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un\'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`'],
+    'vuoto anche con una destinazione (review della PR #51, R2)' => ['rotta', 'e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un\'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`'],
     'la forma del valore' => ['rotta', 'e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64)'],
     'che cosa non passa' => ['rotta', 'gli altri id, il resto di `dati` e `soggetto` non arrivano al browser'],
     'senza destinazione, o senza dati' => ['rotta', 'una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore'],
@@ -3203,6 +3206,9 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
     // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
     'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
+    // Review della PR #51, R1: dalla `v1.13.0` non scende nemmeno per i dati del clic, se l'elenco del clic era più vecchio di loro.
+    'solo con un elenco non più vecchio dei dati (review della PR #51, R1)' => ['punto', 'Dalla `v1.13.0` scende solo se l\'elenco in pagina al clic non era più vecchio dei dati del clic'],
+    'quando un elenco non è più vecchio (review della PR #51, R1)' => ['punto', 'L\'elenco non è più vecchio dei dati quando il suo `aggiornati_il` non viene prima del loro; se uno dei due segni manca, solo quando è stato chiesto con quello stesso oggetto `dati`'],
     'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
     'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
@@ -3236,7 +3242,7 @@ it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende 
     'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
     'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
     'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
-    'R8: i nove che hanno una destinazione' => ['punto', 'oggi ci sono nove tipi del CRM, quelli di contatti, pipeline, note e aziende; opportunità, attività, i quattro «assegnata» e le viste di una board non hanno una destinazione'],
+    'R8: quelli che hanno una destinazione, diciotto dalla `v1.13.0` (sprint 23 · T3.7)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; le viste di una board e le schede non hanno una destinazione'],
     'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
 ]);
 
@@ -3256,7 +3262,7 @@ it('il README non dice più ciò che la review della PR #44 ha trovato falso, e 
 // titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che
 // nessuno dei nove apre una risorsa.
 
-it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apre una risorsa (sprint 22 · T5.5)', function (string $frase) {
+it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apriva una risorsa fino alla v1.12.0, mentre dalla v1.13.0 ognuno apre la sua pagina (sprint 22 · T5.5; sprint 23 · T3.7)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = suUnaRiga($punto[0] ?? '');
@@ -3271,8 +3277,56 @@ it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi lo
     'il tipo senza `com.zeiras.` davanti' => ['Queste quattro non sono eventi: il loro `tipo` arriva senza `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`, `crm.attivita.assegnata`)'],
     'la chiave del titolo' => ['la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non `notificationTitle.com.zeiras.crm.persona.assegnata`'],
     'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
-    'nessuno dei nove apre una risorsa' => ['Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche'],
+    'nessuno dei nove apriva una risorsa, e ora sì' => ['Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM'],
 ]);
+
+// Sprint 23 · T3 (voce #1743): le notifiche di opportunità, attività e «assegnata» aprono la loro pagina nel CRM, e una nota la
+// cosa più specifica a cui è attaccata. Il README dice quali tipi aprono una risorsa e dove, che cos'è `altrimenti` e in che
+// ordine si prova, che un percorso può non avere un id — e allora `ids` è vuoto senza che manchi la destinazione —, e non dice
+// più che quei nove non ne hanno una; `MODULO-NUOVO.md` lo dice a chi chiede una destinazione.
+
+it('il README dice quali notifiche del CRM aprono una risorsa e dove — diciotto tipi dalla v1.13.0 —, che una nota apre la cosa più specifica, che cos\'è `altrimenti` e in che ordine si prova, e che un percorso può non avere un id (sprint 23 · T3.7)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'un\'opportunità' => ['punto', 'Dalla `v1.13.0` una di un\'opportunità — nuova, modificata o assegnata — apre `https://crm.zeiras.com/w/<slug>/opportunita/<id>`, un contatto o un\'azienda assegnati la loro pagina'],
+    'un\'attività, senza un id' => ['punto', 'e una di un\'attività — nuova, modificata, eliminata o assegnata — la pagina «Da fare» (`https://crm.zeiras.com/w/<slug>/da-fare`), senza un id: un\'attività non ha una pagina sua'],
+    'una nota, la cosa più specifica' => ['punto', 'Una nota apre la cosa più specifica a cui è attaccata: l\'opportunità se ne ha una, altrimenti il contatto, altrimenti l\'azienda (fino alla `v1.12.0` apriva solo il contatto, e senza quello la pagina delle notifiche)'],
+    'diciotto tipi' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM'],
+    'quando non ha dove andare' => ['punto', 'le mancano gli id di ogni percorso del suo tipo'],
+    'il metodo, con più percorsi' => ['readme', 'Dalla `v1.13.0` un tipo può avere più percorsi, e il metodo dà gli id del primo che `dati` soddisfa per intero, e solo quelli: per una nota legata a un\'opportunità e a un contatto la sola `[\'trattativa_id\' => \'<id>\']`'],
+    'un `ids` vuoto non è «nessuna destinazione»' => ['readme', 'Per un tipo il cui percorso non chiede un id — un\'attività, che apre «Da fare» — dà `[]`: un `ids` vuoto non vuol dire che la notifica non ha una destinazione, e se ce l\'ha lo dice `destinazioneDellaNotifica`'],
+    // Review della PR #51, R7 e R11: che cosa dà il metodo quando nessun percorso è intero, e quali dei nove tipi oggi arrivano.
+    'se nessun percorso è intero (review della PR #51, R7)' => ['readme', 'Se `dati` non ne soddisfa nessuno per intero dà gli id in forma del primo percorso, che da soli non aprono niente'],
+    'i cinque eventi che oggi non arrivano (review della PR #51, R11)' => ['punto', 'Per il contratto nemmeno i cinque eventi di opportunità e attività generano ancora notifiche per i colleghi: delle nove arrivano le quattro «assegnata»'],
+    'un percorso senza segnaposto, nel registro' => ['readme', 'Un percorso può non avere un segnaposto (`/da-fare`, per un\'attività): allora non chiede un id'],
+    '`altrimenti`, e l\'ordine' => ['readme', 'Dalla `v1.13.0` una riga può avere anche `altrimenti`, la lista dei percorsi che si provano dopo `percorso`, in ordine, quando la risorsa può stare in più pagine: si apre il primo che ha tutti i suoi id — per una nota `/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`'],
+    'un tipo che non è un evento' => ['readme', 'Un tipo che non è un evento, come ciò che il CRM manda a chi diventa responsabile (`crm.persona.assegnata`), è scritto com\'è nel backoffice, senza `com.zeiras.` davanti'],
+]);
+
+it('il README non dice più che i tipi con una destinazione sono nove, né che opportunità, attività e i quattro «assegnata» non ne hanno una; e `MODULO-NUOVO.md` dice a chi chiede una destinazione che il percorso può non avere un id e che i percorsi possono essere più d\'uno, in ordine (sprint 23 · T3.7)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($readme, 'oggi ci sono nove tipi del CRM'))->toBe(0)
+        ->and(substr_count($readme, 'i quattro «assegnata» e le viste di una board non hanno una destinazione'))->toBe(0)
+        ->and(substr_count($readme, 'Nessuno dei nove apre una risorsa'))->toBe(0)
+        ->and(substr_count($readme, 'una di una nota il contatto a cui è attaccata'))->toBe(0)
+        ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
+        ->and(substr_count($guida, 'la pagina che si apre con un clic (il percorso dopo `/w/<slug>`, con l\'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare in più pagine, i percorsi in ordine, dal più specifico)'))->toBe(1);
+});
+
+it('il README non dice più ciò che la review della PR #51 ha trovato falso: che una nota apriva sempre il contatto, e che gli `ids` sono gli id che il percorso del registro chiede per il tipo (review della PR #51, R2 e R10)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(substr_count($readme, 'apriva sempre il contatto'))->toBe(0)
+        ->and(substr_count($readme, 'i soli id che il percorso del registro chiede per il tipo della notifica'))->toBe(0)
+        ->and(substr_count($readme, '`{"persona_id": "…"}` per una nota)'))->toBe(0);
+});
 
 // Sprint 22 · T6 (voce #1726): con due schede su due workspace la ricerca è di quello della sessione, e la risposta lo dice
 // (`workspace`): un risultato si apre lì, e senza `workspace` la ricerca è un errore. Le non lette di un elenco di un altro
@@ -3331,10 +3385,10 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'la firma, e da quando' => ['dalla `v1.12.0` li dà un metodo PHP pubblico e statico, `Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`'],
     'la regola dell\'elenco' => ['ed è la regola con cui li dà `GET /cornice/notifiche`, non una copia'],
     'gli argomenti' => ['`app`, `tipo` e `dati` sono quelli della notifica, com\'è nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi'],
-    'che cosa dà' => ['il metodo dà gli id per chiave (`[\'persona_id\' => \'<id>\']` per una nota), da dare al browser come `ids` della notifica'],
+    'che cosa dà' => ['il metodo dà gli id per chiave (`[\'persona_id\' => \'<id>\']` per una nota legata al solo contatto), da dare al browser come `ids` della notifica'],
     'vuoto senza una destinazione' => ['Dà `[]`, senza eccezioni, quando la notifica non ha una destinazione — un tipo o un\'app che il registro non ha, nessuna app, una voce «Presto» — e quando `dati` manca o non è un array con le chiavi'],
     'un id che manca, o fuori dalla forma' => ['un id che manca, o che non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64), nell\'array non c\'è'],
-    'che cosa fa allora il browser' => ['Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà niente, e si apre la pagina delle notifiche'],
+    'che cosa fa allora il browser' => ['Senza gli id di nessuno dei percorsi del tipo `destinazioneDellaNotifica` non dà niente, e si apre la pagina delle notifiche'],
     'i dati interi restano sul server' => ['Al browser vanno questi `ids` e non `dati`: i `dati` interi di una notifica restano sul server del frontend'],
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
@@ -3380,7 +3434,7 @@ it('il README dice ciò che la seconda lettura della PR #44 ha chiesto: le cinqu
     'S2: quante sono, e di chi' => ['punto', 'Per i test di un frontend che passa alla `v1.12.0` cambiano cinque cose: tre sono delle notifiche, e sono quelle che seguono; due sono della ricerca, e stanno nel punto «La ricerca», qui sotto'],
     'S2: le due della ricerca' => ['punto', 'senza `workspace` in una risposta finta di `POST /cornice/ricerca` la ricerca mostra il suo errore, e il segnaposto e l\'aiuto del campo hanno testi nuovi'],
     'S2: dove cercare le due della ricerca' => ['punto', 'le due della ricerca cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca'],
-    'S3: un array di PHP, e la forma di `ids` nell\'elenco' => ['paragrafo', 'da dare al browser come `ids` della notifica. È un array di PHP, e vuoto in JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto)'],
+    'S3: un array di PHP, e la forma di `ids` nell\'elenco' => ['paragrafo', 'È un array di PHP, e vuoto in JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto)'],
     'S3: chi lo dà al browser lo converte' => ['paragrafo', 'chi lo dà al browser lo converte in un oggetto (`(object)`), e nel browser `ids` ha una forma sola'],
     'S3: un id non è un permesso' => ['paragrafo', 'Un id non è un permesso nemmeno qui: il metodo non controlla che chi riceve la notifica possa vedere quella risorsa, e lo decide il modulo che apre la pagina'],
     'S3: quale slug' => ['paragrafo', 'Lo `slug` da dare a `destinazioneDellaNotifica`, per notifiche lette così, è quello del workspace della sessione nella richiesta che le ha lette (lo `slug` di `Sessione::workspace()` di zr-auth), e la parte server del frontend lo manda insieme a loro, come `GET /cornice/notifiche` manda `workspace`'],
@@ -3409,3 +3463,40 @@ it('ciò che il README dice della forma di `ids` è vero: il metodo dà un array
         // L'elenco: un oggetto anche quando è vuoto.
         ->and(substr_count($sorgente, "'ids' => (object) self::idsDellaNotifica("))->toBe(1);
 });
+
+// Sprint 23 · T1 (voce #1732): con l'elenco di un altro workspace il pannello non ha «Segna tutte come lette». Il README lo dice
+// al punto «Le notifiche», accanto a quando il pulsante c'è: l'eccezione, da quale versione, perché, e che cosa vale se la
+// parte server non dice di quale workspace è l'elenco.
+
+it('il README dice, al punto «Le notifiche», che dalla v1.13.0 «Segna tutte come lette» non c\'è quando l\'elenco è di un altro workspace, e che c\'è come prima se la parte server non dice di quale workspace è (sprint 23 · T1.4)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = suUnaRiga($punto[0] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true)
+        // Senza l'eccezione la frase finiva qui: il pulsante c'era ogni volta.
+        ->and(str_contains($testo, 'anche se quelle caricate sono già lette.'))->toBe(false);
+})->with([
+    'quando c\'è' => ['Il pulsante c\'è quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette;'],
+    'l\'eccezione, e da quando' => ['dalla `v1.13.0` non c\'è quando la parte server dice che l\'elenco è di un altro workspace rispetto ai dati della pagina'],
+    'perché' => ['con due schede su due workspace, da lì la rotta risponde 409 `workspace_diverso` e non segna niente'],
+    'non detto' => ['Se la risposta dell\'elenco non dice di quale workspace è, il pulsante c\'è come prima'],
+]);
+
+// Sprint 23 · T2 (voce #1742, S4): lo `workspace` della risposta della ricerca entra nell'indirizzo di ogni risultato solo con la
+// forma di uno slug. Il README lo dice al punto «La ricerca», dopo l'errore di una risposta senza `workspace`.
+
+it('il README dice, al punto «La ricerca», che dalla v1.13.0 anche un `workspace` fuori dalla forma di uno slug è un errore della ricerca: quale forma, perché, e che cosa fa chi ha una parte server finta (sprint 23 · T2.4)', function (string $frase) {
+    $ricerca = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca');
+
+    expect($ricerca)->not->toBe('')
+        ->and(str_contains($ricerca, $frase))->toBe(true);
+})->with([
+    'l\'errore, e da quando' => ['Dalla `v1.13.0` è un errore della ricerca anche un `workspace` che non ha la forma di uno slug'],
+    'quale forma' => ['minuscole e cifre, a pezzi uniti da un trattino, la stessa che vale per una notifica'],
+    'perché' => ['con `..` l\'indirizzo di un risultato sarebbe un altro'],
+    'la parte server finta di un frontend' => ['Una parte server finta che risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta'],
+    // L'errore di prima resta detto com'era.
+    'senza `workspace`, come prima' => ['Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
+]);

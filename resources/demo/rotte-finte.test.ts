@@ -170,10 +170,11 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         expect(notifiche.slice(4, 12).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
         // Sprint 21 · T3: gli id che la parte server dà di `dati`, i soli che servono ad aprire la risorsa (review della PR #31, R1).
-        // Una nota porta quello del contatto a cui è attaccata, non il suo; un tipo che il registro non ha, nessuno.
+        // Una nota porta quello della cosa più specifica a cui è attaccata, non il suo — la prima l'opportunità, la seconda il
+        // contatto, la terza l'azienda (sprint 23 · T3.4, T3.5) —; un tipo che il registro non ha, nessuno.
         expect(notifiche.slice(4, 12).map(({ ids }) => ids)).toEqual([
             { id: 'uat-persona-1' }, { id: 'uat-persona-1' }, { id: 'uat-pipeline-1' }, { id: 'uat-pipeline-1' },
-            { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' },
+            { trattativa_id: 'uat-opp-1' }, { persona_id: 'uat-persona-2' }, { organizzazione_id: 'uat-azienda-1' },
             {},
         ]);
         // Le ultime due non hanno dove andare, e la riga sotto il titolo dice quale: una senza il contatto, una col contatto malfatto.
@@ -189,14 +190,14 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.slice(14).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true]);
         // Ogni notifica ha `ids`, e nessuna `dati` né `soggetto`, come dalla parte server.
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
-        // Ciò che la UAT vede aprirsi nel workspace di prova: il contatto, le impostazioni della pipeline, il contatto della nota; e
-        // niente per il tipo che zr-core non conosce e per le due note senza un contatto buono.
+        // Ciò che la UAT vede aprirsi nel workspace di prova: il contatto, le impostazioni della pipeline, e per le tre note
+        // l'opportunità, il contatto e l'azienda; e niente per il tipo che zr-core non conosce e per le due note senza un legame buono.
         const { destinazioneDellaNotifica } = await import('../js/index');
         const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
         expect(notifiche.slice(4, 14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([
             `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/contatti/uat-persona-1`,
             `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`, `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`,
-            `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`,
+            `${nelCrm}/opportunita/uat-opp-1`, `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/aziende/uat-azienda-1`,
             null, null, null,
         ]);
         // Sprint 21 · T5: le due di un'azienda aprono la sua pagina nel CRM.
@@ -208,26 +209,28 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
-    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
-    // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
+    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
+    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
     // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
         await rispostaDi('/cornice/notifiche');
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; ids: Record<string, string> }[];
-        const chieste = ({ app, tipo }: { app: string | null; tipo?: string }) => {
-            const percorso = registro.find((voce) => voce.id === app)?.notifiche?.find((notifica) => notifica.tipo === tipo)?.percorso ?? '';
+        // Sprint 23 · T3.5: un tipo può avere più percorsi (`altrimenti`), e la parte server dà gli id di uno solo, quello che si apre.
+        const chiesteDaOgniPercorso = ({ app, tipo }: { app: string | null; tipo?: string }) => {
+            const delTipo = registro.find((voce) => voce.id === app)?.notifiche?.find((notifica) => notifica.tipo === tipo);
 
-            return [...percorso.matchAll(/\{([^{}]*)\}/g)].map(([, chiave]) => chiave);
+            return [delTipo?.percorso ?? '', ...(delTipo?.altrimenti ?? [])].map((percorso) => [...percorso.matchAll(/\{([^{}]*)\}/g)].map(([, chiave]) => chiave));
         };
+        const diUnPercorsoSolo = (notifica: (typeof notifiche)[number]) => chiesteDaOgniPercorso(notifica).some((chieste) => Object.keys(notifica.ids).every((chiave) => chieste.includes(chiave)));
 
         expect(notifiche.length).toBeGreaterThanOrEqual(4);
-        expect(notifiche.map((notifica) => [notifica.id, Object.keys(notifica.ids).filter((chiave) => !chieste(notifica).includes(chiave))])).toEqual(notifiche.map(({ id }) => [id, []]));
-        // E quelle che nel registro hanno una destinazione portano il loro id, tranne la nota senza contatto.
-        expect(notifiche.filter((notifica) => chieste(notifica).length > 0 && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
+        expect(notifiche.map((notifica) => [notifica.id, diUnPercorsoSolo(notifica)])).toEqual(notifiche.map(({ id }) => [id, true]));
+        // E quelle i cui percorsi chiedono tutti un id portano il loro, tranne la nota senza legami.
+        expect(notifiche.filter((notifica) => chiesteDaOgniPercorso(notifica).every((chieste) => chieste.length > 0) && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
@@ -252,8 +255,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     });
 
     // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM stanno dietro `?opportunita=1`, così le pagine di prova di prima
-    // restano com'erano. Non portano id: nel registro nessuno dei nove ha una destinazione, e la parte server non ne dà.
-    it('con `?opportunita=1` in fondo all\'elenco ci sono le nove notifiche nuove del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro «assegnata» col tipo senza `com.zeiras.` davanti; zr-core conosce tutti e nove i tipi, e nessuna ha una destinazione (sprint 22 · T5.1, T5.2, T5.3)', async () => {
+    // restano com'erano. Sprint 23 · T3 (voce #1743): portano l'id che il loro percorso chiede, come dalla parte server —
+    // un'attività nessuno —, e ognuna apre la sua pagina nel CRM.
+    it('con `?opportunita=1` in fondo all\'elenco ci sono le nove notifiche nuove del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro «assegnata» col tipo senza `com.zeiras.` davanti; zr-core conosce tutti e nove i tipi, e ognuna apre la sua pagina: l\'opportunità, il contatto e l\'azienda col loro id, un\'attività «Da fare» (sprint 22 · T5.1, T5.2; sprint 23 · T3.1, T3.2, T3.3)', async () => {
         await rotte(false, '?opportunita=1');
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
@@ -261,20 +265,26 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
         expect(notifiche.slice(4).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
-            ['uat-o1', 'crm', 'com.zeiras.crm.trattativa.creata', true, {}],
-            ['uat-o2', 'crm', 'com.zeiras.crm.trattativa.modificata', true, {}],
+            ['uat-o1', 'crm', 'com.zeiras.crm.trattativa.creata', true, { id: 'uat-opp-1' }],
+            ['uat-o2', 'crm', 'com.zeiras.crm.trattativa.modificata', true, { id: 'uat-opp-1' }],
             ['uat-o3', 'crm', 'com.zeiras.crm.attivita.creata', true, {}],
             ['uat-o4', 'crm', 'com.zeiras.crm.attivita.modificata', true, {}],
             ['uat-o5', 'crm', 'com.zeiras.crm.attivita.eliminata', true, {}],
-            ['uat-o6', 'crm', 'crm.persona.assegnata', true, {}],
-            ['uat-o7', 'crm', 'crm.organizzazione.assegnata', true, {}],
-            ['uat-o8', 'crm', 'crm.trattativa.assegnata', true, {}],
+            ['uat-o6', 'crm', 'crm.persona.assegnata', true, { id: 'uat-persona-1' }],
+            ['uat-o7', 'crm', 'crm.organizzazione.assegnata', true, { id: 'uat-azienda-1' }],
+            ['uat-o8', 'crm', 'crm.trattativa.assegnata', true, { id: 'uat-opp-1' }],
             ['uat-o9', 'crm', 'crm.attivita.assegnata', true, {}],
         ]);
         expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual(Array(9).fill(true));
-        // Nessuna ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche col CRM attivo.
+        // Ciò che la UAT vede aprirsi nel workspace di prova; col CRM che non si può aprire, la pagina delle notifiche.
         const { destinazioneDellaNotifica } = await import('../js/index');
-        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual(Array(9).fill(null));
+        const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([
+            `${nelCrm}/opportunita/uat-opp-1`, `${nelCrm}/opportunita/uat-opp-1`,
+            `${nelCrm}/da-fare`, `${nelCrm}/da-fare`, `${nelCrm}/da-fare`,
+            `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/opportunita/uat-opp-1`, `${nelCrm}/da-fare`,
+        ]);
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo' }) ?? null)).toEqual(Array(9).fill(null));
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 

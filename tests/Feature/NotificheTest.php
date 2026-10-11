@@ -35,7 +35,7 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // Sprint 20 · T1 (voce #1674): l'elenco porta anche chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
 // `per_me`), quando il backoffice li manda; i casi sono in fondo.
 // Sprint 21 · T3 (voce #1641): l'elenco porta anche `ids`, gli id che alla cornice servono per aprire la risorsa di una
-// notifica: di `dati`, i soli che il percorso del registro chiede per il suo tipo, col valore di un id (review della PR #31, R1:
+// notifica: di `dati`, i soli del percorso che si apre per il suo tipo, col valore di un id (review della PR #31, R1:
 // prima erano ogni `id` e ogni `*_id`). Gli altri id, il resto di `dati` e `soggetto` restano nella parte server; i casi sono in
 // fondo.
 
@@ -1412,8 +1412,8 @@ it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando
 });
 
 // Sprint 21 · T3 (voce #1641): da una notifica la cornice apre la sua risorsa, e le servono gli id. Di `dati` la rotta dà, in
-// `ids`, i soli id che servono ad aprirla: quelli che il percorso del registro di zr-core chiede per quel tipo (`{id}`,
-// `{persona_id}`), cercato col tipo intero nella voce dell'app della notifica, e solo con un valore che ha la forma di un id
+// `ids`, i soli id che servono ad aprirla: quelli del percorso che il registro di zr-core dà a quel tipo (`{id}`,
+// `{persona_id}`; dalla `v1.13.0` il primo dei suoi percorsi che `dati` soddisfa per intero), cercato col tipo intero nella voce dell'app della notifica, e solo con un valore che ha la forma di un id
 // (lettere, cifre, `-` e `_`, da 1 a 64). Una notifica di un tipo che nel registro non ha una destinazione — una scheda di una
 // board, una persona entrata nel workspace, un tipo di domani — ha `ids` vuoto: un id non va al browser solo perché la sua chiave
 // è `id` o finisce in `_id` (review della PR #31, R1: prima passavano tutti). Il resto di `dati` resta qui, come `soggetto`.
@@ -1421,7 +1421,8 @@ it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando
 
 /**
  * Una notifica di /v1 non letta coi `dati` che si vogliono; il soggetto resta quello di `notificaDelBackoffice()`, una cartella.
- * Senza altro è una nota del CRM, che nel registro si apre nel contatto a cui è attaccata (`/contatti/{persona_id}`).
+ * Senza altro è una nota del CRM, che nel registro si apre nella cosa più specifica a cui è attaccata: l'opportunità, poi il
+ * contatto (`/contatti/{persona_id}`), poi l'azienda (fino alla `v1.12.0` solo il contatto).
  *
  * @return array<string, mixed>
  */
@@ -1431,7 +1432,7 @@ function notificaConDati(string $id, mixed $dati, string $tipo = 'com.zeiras.crm
 }
 
 /**
- * Coppie di `dati` con una chiave che somiglia a `persona_id`, quella che il percorso di una nota chiede, e non lo è; il valore
+ * Coppie di `dati` con una chiave che somiglia a `persona_id`, quella che un percorso di una nota chiede, e non lo è; il valore
  * da solo passerebbe. Ognuna si aggiunge ai `dati` di una nota che ha il suo id e non quello del contatto.
  *
  * @return array<string, array{array<array-key, mixed>}>
@@ -1491,12 +1492,12 @@ function valoriCheNonSonoUnId(): array
     ];
 }
 
-it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la risorsa della notifica, nel campo `ids`: quelli che il percorso del registro chiede per il suo tipo — l\'id di un contatto, di una pipeline o di un\'azienda, e per una nota quello del contatto, non il suo —; gli altri id, `aggiornata_il`, `campi` e `soggetto` restano nella parte server (sprint 21 · T3.5; review della PR #31, R1)', function () {
+it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la risorsa della notifica, nel campo `ids`: quelli del percorso che si apre per il suo tipo — l\'id di un contatto, di una pipeline o di un\'azienda, e per una nota col solo contatto quello del contatto, non il suo —; gli altri id, `aggiornata_il`, `campi` e `soggetto` restano nella parte server (sprint 21 · T3.5; review della PR #31, R1)', function () {
     // Un altro giorno da quello degli `aggiornata_il` di qui sotto: nella risposta la data di oggi è solo in `aggiornati_il`.
     Carbon::setTestNow(Carbon::parse('2026-10-09 08:00:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [
-        // Una nota: il percorso chiede il contatto a cui è attaccata, e l'id della nota resta qui.
+        // Una nota col solo contatto: il percorso che si apre chiede il contatto a cui è attaccata, e l'id della nota resta qui.
         notificaConDati('uat-n5', ['id' => 'uat-nota-1', 'persona_id' => 'uat-persona-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z']),
         // Una pipeline modificata: il suo id; `campi` dice che cosa è cambiato, e resta qui.
         notificaConDati('uat-n4', ['id' => 'uat-pipeline-1', 'aggiornata_il' => '2026-10-11T12:28:00.123Z', 'campi' => ['uat-campo-nome', 'uat-campo-fasi']], 'com.zeiras.crm.pipeline.modificata'),
@@ -1556,17 +1557,14 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
     'un tipo del CRM che nel registro non c\'è' => ['crm', 'com.zeiras.crm.persona.eliminata'],
-    // Sprint 22 · T5.3: i nove tipi nuovi del CRM hanno un titolo e nessuna destinazione. I quattro «assegnata» arrivano senza
-    // `com.zeiras.` davanti, e i loro `dati` hanno il solo `id` della risorsa assegnata.
-    'un\'opportunità nuova' => ['crm', 'com.zeiras.crm.trattativa.creata'],
-    'un\'opportunità modificata' => ['crm', 'com.zeiras.crm.trattativa.modificata'],
-    'un\'attività nuova' => ['crm', 'com.zeiras.crm.attivita.creata'],
-    'un\'attività modificata' => ['crm', 'com.zeiras.crm.attivita.modificata'],
-    'un\'attività eliminata' => ['crm', 'com.zeiras.crm.attivita.eliminata'],
-    'un contatto assegnato' => ['crm', 'crm.persona.assegnata'],
-    'un\'azienda assegnata' => ['crm', 'crm.organizzazione.assegnata'],
-    'un\'opportunità assegnata' => ['crm', 'crm.trattativa.assegnata'],
-    'un\'attività assegnata' => ['crm', 'crm.attivita.assegnata'],
+    // Sprint 23 · T3: i nove tipi dello sprint 22 (T5.3) ora hanno una destinazione, e stanno nei casi in fondo al file. Qui
+    // resta ciò che non ce l'ha: un tipo `eliminata` di una risorsa con una pagina sua, che aprirebbe una pagina che non c'è, e
+    // un tipo scritto quasi come uno del registro — un «assegnata» arriva senza `com.zeiras.` davanti, un evento con.
+    'un\'opportunità eliminata, che il contratto non ha' => ['crm', 'com.zeiras.crm.trattativa.eliminata'],
+    'un\'opportunità assegnata, con `com.zeiras.` davanti' => ['crm', 'com.zeiras.crm.trattativa.assegnata'],
+    'un\'opportunità nuova, senza `com.zeiras.` davanti' => ['crm', 'crm.trattativa.creata'],
+    'un contatto assegnato, in una notifica di Project Management' => ['pm', 'crm.persona.assegnata'],
+    'un contatto assegnato, in una notifica che non è di un\'app' => [null, 'crm.persona.assegnata'],
     'un tipo di domani' => ['crm', 'com.zeiras.crm.uat.domani'],
     'un tipo del registro con un pezzo in più in fondo' => ['crm', 'com.zeiras.crm.persona.creata.v2'],
     'un tipo del registro con un pezzo in più davanti' => ['crm', 'x.com.zeiras.crm.persona.creata'],
@@ -1587,12 +1585,13 @@ it('per ogni notifica del registro la rotta dà gli id che il suo percorso chied
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     $dati = [
         'id' => 'uat-id-1', 'persona_id' => 'uat-persona-1', 'organizzazione_id' => 'uat-azienda-1', 'pipeline_id' => 'uat-pipeline-1',
-        'board_id' => 'uat-board-1', 'lista_id' => 'uat-lista-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z',
+        'trattativa_id' => 'uat-opp-1', 'board_id' => 'uat-board-1', 'lista_id' => 'uat-lista-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z',
     ];
     $notifiche = [];
     $attesi = [];
     foreach (registroDeiProdotti() as $voce) {
         foreach ($voce['notifiche'] ?? [] as $notifica) {
+            // Con tutti gli id in `dati` si apre `percorso`, il primo: quelli di `altrimenti` hanno i loro casi, in fondo al file.
             preg_match_all('/\{([^{}]*)\}/', $notifica['percorso'], $segnaposto);
             // Un segnaposto con un nome nuovo vuole il suo id qui sopra: senza, questo caso non proverebbe quella destinazione.
             expect(array_diff($segnaposto[1], array_keys($dati)))->toBe([]);
@@ -1898,4 +1897,108 @@ it('l\'elenco e `idsDellaNotifica()` sono una regola sola, non due copie: la rot
         ->and(substr_count($sorgente, 'self::FORMA_DI_UN_ID'))->toBe(1)
         // Il nome di prima non c'è più: né il metodo privato, né chi lo chiama.
         ->and(substr_count($sorgente, 'idDi('))->toBe(0);
+});
+
+// Sprint 23 · T3 (voce #1743; indirizzi di zr-crm, nota 10406 del #95; decisione di zr-pm, nota 10252 punto 3). I nove tipi
+// che dallo sprint 22 avevano solo un titolo hanno una destinazione: un'opportunità, un contatto o un'azienda assegnati la loro
+// pagina, con l'`id` di `dati`; un'attività «Da fare», un percorso senza segnaposto, e quindi nessun id. Una nota ha tre
+// percorsi, dal più specifico (`percorso`, poi `altrimenti`): al browser vanno i soli id del primo che `dati` soddisfa per
+// intero — mai tutti gli `*_id` che i percorsi di quel tipo nominano —, e se nessuno lo è quelli in forma del primo, com'era
+// con un percorso solo. `idsDellaNotifica()` e l'elenco restano una regola sola.
+
+it('GET /cornice/notifiche dà a un\'opportunità, a un contatto e a un\'azienda assegnati il loro `id`, e a un\'attività `ids` vuoto: il suo id non va al browser, perché «Da fare» non lo chiede; `idsDellaNotifica()` dà lo stesso (sprint 23 · T3.1, T3.2, T3.3, T3.5)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n9', ['id' => 'uat-opp-1', 'pipeline_id' => 'uat-pipeline-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z'], 'com.zeiras.crm.trattativa.creata'),
+        notificaConDati('uat-n8', ['id' => 'uat-opp-2', 'campi' => ['uat-campo-fase']], 'com.zeiras.crm.trattativa.modificata'),
+        notificaConDati('uat-n7', ['id' => 'uat-opp-3'], 'crm.trattativa.assegnata'),
+        notificaConDati('uat-n6', ['id' => 'uat-persona-1'], 'crm.persona.assegnata'),
+        notificaConDati('uat-n5', ['id' => 'uat-azienda-1'], 'crm.organizzazione.assegnata'),
+        notificaConDati('uat-n4', ['id' => 'uat-attivita-1', 'aggiornata_il' => '2026-10-11T12:28:00.123Z'], 'com.zeiras.crm.attivita.creata'),
+        notificaConDati('uat-n3', ['id' => 'uat-attivita-2', 'trattativa_id' => 'uat-opp-9'], 'com.zeiras.crm.attivita.modificata'),
+        notificaConDati('uat-n2', ['id' => 'uat-attivita-3'], 'com.zeiras.crm.attivita.eliminata'),
+        notificaConDati('uat-n1', ['id' => 'uat-attivita-4'], 'crm.attivita.assegnata'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-opp-1'], ['id' => 'uat-opp-2'], ['id' => 'uat-opp-3'], ['id' => 'uat-persona-1'], ['id' => 'uat-azienda-1'], [], [], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Per un'attività `ids` è vuoto, ma un oggetto; del suo id, di un'opportunità a cui è legata e del resto di `dati`, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(4)
+        ->and(substr_count($corpo, 'uat-attivita'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-opp-9'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-pipeline'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-campo'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0);
+});
+
+it('una nota dà al browser i soli id della cosa più specifica a cui è legata — l\'opportunità, poi il contatto, poi l\'azienda —: un legame che manca, `null` o fuori forma scarta il suo percorso e si prova il successivo; `idsDellaNotifica()` dà lo stesso dell\'elenco (sprint 23 · T3.4, T3.5)', function (string $tipo, array $legami, array $attesi) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $dati = ['id' => 'uat-nota-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z'] + $legami;
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo)], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', $tipo, $dati))->toBe($attesi)
+        ->and($risposta->json('data.0.ids'))->toBe($attesi)
+        // L'id della nota non apre niente, e degli altri legami né la chiave né il valore.
+        ->and(substr_count($corpo, 'uat-nota'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(count($attesi))
+        ->and(substr_count($corpo, 'uat-legame'))->toBe(count($attesi));
+})->with(['com.zeiras.crm.nota.creata', 'com.zeiras.crm.nota.modificata', 'com.zeiras.crm.nota.eliminata'])->with([
+    'opportunità, contatto e azienda: la sola opportunità' => [['trattativa_id' => 'uat-legame-1', 'persona_id' => 'uat-legame-2', 'organizzazione_id' => 'uat-legame-3'], ['trattativa_id' => 'uat-legame-1']],
+    'opportunità e contatto: la sola opportunità' => [['persona_id' => 'uat-legame-2', 'organizzazione_id' => null, 'trattativa_id' => 'uat-legame-1'], ['trattativa_id' => 'uat-legame-1']],
+    'la sola opportunità' => [['trattativa_id' => 'uat-legame-1', 'persona_id' => null, 'organizzazione_id' => null], ['trattativa_id' => 'uat-legame-1']],
+    'contatto e azienda: il solo contatto' => [['trattativa_id' => null, 'persona_id' => 'uat-legame-2', 'organizzazione_id' => 'uat-legame-3'], ['persona_id' => 'uat-legame-2']],
+    'il solo contatto, senza le altre chiavi' => [['persona_id' => 'uat-legame-2'], ['persona_id' => 'uat-legame-2']],
+    'la sola azienda' => [['trattativa_id' => null, 'persona_id' => null, 'organizzazione_id' => 'uat-legame-3'], ['organizzazione_id' => 'uat-legame-3']],
+    'un\'opportunità fuori forma e un contatto buono: il contatto' => [['trattativa_id' => '../x', 'persona_id' => 'uat-legame-2', 'organizzazione_id' => 'uat-legame-3'], ['persona_id' => 'uat-legame-2']],
+    'opportunità e contatto fuori forma e un\'azienda buona: l\'azienda' => [['trattativa_id' => 'a/b', 'persona_id' => '..', 'organizzazione_id' => 'uat-legame-3'], ['organizzazione_id' => 'uat-legame-3']],
+    'un\'opportunità che è un numero e un contatto buono: il contatto' => [['trattativa_id' => 42, 'persona_id' => 'uat-legame-2'], ['persona_id' => 'uat-legame-2']],
+    'i tre legami `null`: nessun id' => [['trattativa_id' => null, 'persona_id' => null, 'organizzazione_id' => null], []],
+    'i tre legami fuori forma: nessun id' => [['trattativa_id' => '../x', 'persona_id' => 'a/b', 'organizzazione_id' => ''], []],
+    'nessun legame: nessun id' => [[], []],
+]);
+
+it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa per intero, nell\'ordine del registro: mai gli id di due percorsi insieme, nessuno se si apre un percorso senza segnaposto, e se nessun percorso è intero quelli in forma del primo, com\'era con un percorso solo; la rotta dà gli stessi del metodo (sprint 23 · T3.5)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    registroGiaLetto([
+        ['id' => 'crm', 'presto' => false, 'notifiche' => [
+            ['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/b/{board_id}', '/elenco']],
+            ['tipo' => 'com.zeiras.crm.nota.modificata', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/a/{primo_id}']],
+        ]],
+    ]);
+    $scelta = fn (array $dati): array => NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', $dati);
+    $due = fn (array $dati): array => NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.modificata', $dati);
+    $tutti = ['id' => 'uat-scheda-1', 'board_id' => 'uat-board-1', 'primo_id' => 'uat-primo-1', 'altro_id' => 'uat-altro-1'];
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n4', $tutti),
+        notificaConDati('uat-n3', ['id' => 'uat-scheda-1']),
+        notificaConDati('uat-n2', ['id' => 'uat-scheda-1', 'primo_id' => 'uat-primo-1'], 'com.zeiras.crm.nota.modificata'),
+        notificaConDati('uat-n1', ['id' => 'uat-scheda-1'], 'com.zeiras.crm.nota.modificata'),
+    ], 'successivo' => null])]);
+
+    // Il primo percorso, intero: i suoi due id, nell'ordine del percorso, e non quello di un altro percorso.
+    expect($scelta($tutti))->toBe(['board_id' => 'uat-board-1', 'id' => 'uat-scheda-1'])
+        // Manca l'id della scheda, o è fuori forma: si apre la board, col solo suo id.
+        ->and($scelta(['board_id' => 'uat-board-1']))->toBe(['board_id' => 'uat-board-1'])
+        ->and($scelta(['id' => 'uat/scheda', 'board_id' => 'uat-board-1']))->toBe(['board_id' => 'uat-board-1'])
+        // Senza la board si apre l'elenco, che non chiede un id: quello della scheda resta nella parte server.
+        ->and($scelta(['id' => 'uat-scheda-1']))->toBe([])
+        ->and($scelta([]))->toBe([])
+        // Il secondo percorso quando il primo non è intero: il solo suo id, non quello a metà del primo.
+        ->and($due(['id' => 'uat-scheda-1', 'primo_id' => 'uat-primo-1']))->toBe(['primo_id' => 'uat-primo-1'])
+        ->and($due($tutti))->toBe(['board_id' => 'uat-board-1', 'id' => 'uat-scheda-1'])
+        // Nessun percorso intero: gli id in forma del primo, com'era con un percorso solo (sprint 22 · T7.2).
+        ->and($due(['id' => 'uat-scheda-1']))->toBe(['id' => 'uat-scheda-1'])
+        ->and($due(['id' => 'uat-scheda-1', 'board_id' => 'uat/board', 'primo_id' => '..']))->toBe(['id' => 'uat-scheda-1'])
+        ->and($due(['primo_id' => '..']))->toBe([])
+        ->and(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids'))->toBe([
+            ['board_id' => 'uat-board-1', 'id' => 'uat-scheda-1'], [], ['primo_id' => 'uat-primo-1'], ['id' => 'uat-scheda-1'],
+        ]);
 });

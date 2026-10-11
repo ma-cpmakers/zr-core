@@ -291,14 +291,23 @@ interface Saputo {
 
 /**
  * Una notifica che un clic ha segnato letta (README, «Le notifiche»): ciò che la cornice ha saputo dalla rotta — i dati che aveva
- * al clic, l'istante in cui la parte server l'ha segnata — con l'elenco che era in pagina al clic (la richiesta da cui veniva)
- * e il workspace di quell'elenco, come lo ha detto la parte server.
+ * al clic, l'istante in cui la parte server l'ha segnata — con l'elenco che era in pagina al clic (la richiesta da cui veniva),
+ * il workspace di quell'elenco, come lo ha detto la parte server, e se quell'elenco non era più vecchio dei dati del clic
+ * (`elencoDiQueiDati`): solo allora quei dati contavano la notifica da leggere, e la lettura ne toglie una dal loro numero.
  */
 interface LettaConUnClic extends Saputo {
     id: string;
     elenco: number;
     workspace: string;
+    elencoDiQueiDati: boolean;
 }
+
+/**
+ * La ricerca della cornice dopo la prima parola: in volo, fallita, o arrivata. Arrivata, i risultati stanno col workspace di cui
+ * sono, come lo dice la parte server: è lì che si aprono, e dei risultati senza il loro workspace non hanno un indirizzo.
+ * Si esporta per i casi (`cornice.test.tsx`): non è dell'ingresso, e `index.ts` non lo riesporta.
+ */
+export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready'; risultati: RisultatoDellaRicerca[]; workspace: string };
 
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
@@ -467,12 +476,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // preso prima della lettura dal backoffice e `segnata_il` dopo la sua risposta. Lì vale il loro numero: al più una in più
     // fino alla visita dopo, mai una in meno. Per un elenco non serve la stessa cautela: dare per letta una notifica due
     // volte non cambia niente, togliere due volte dal numero sì. Solo se l'elenco del clic era del workspace dei dati: con
-    // due schede su due workspace quella notifica non è fra le loro.
+    // due schede su due workspace quella notifica non è fra le loro. E solo se quell'elenco non era più vecchio dei dati del
+    // clic: se il pannello è rimasto aperto mentre i dati cambiavano, la notifica può essere stata letta altrove nel mezzo, e
+    // allora i dati la contano già letta. Lì non si sa, e vale il loro numero: al più una in più, mai una in meno.
     const [letteConUnClic, setLetteConUnClic] = useState<LettaConUnClic[]>([]);
     const conLeLetture = (letture: LettaConUnClic[]) => {
         const lettaNellElenco = (id: string) => caricate !== undefined && letture.some((una) => una.id === id && (caricate.il !== undefined && una.il !== undefined ? caricate.il <= una.il : caricate.richiesta === una.elenco));
         const elenco = notifiche.elenco.map((notifica) => (!notifica.letta && lettaNellElenco(notifica.id) ? { ...notifica, letta: true } : notifica));
-        const tolteDaiDati = letture.filter((una) => una.workspace === dati.workspace.slug && nonPiuRecentiDeiDatiDi(dati, una)).length;
+        const tolteDaiDati = letture.filter((una) => una.elencoDiQueiDati && una.workspace === dati.workspace.slug && nonPiuRecentiDeiDatiDi(dati, una)).length;
         // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco più recente: una può essere
         // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra
         // visita, con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio.
@@ -494,9 +505,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const leggi = (id: string, workspace: string) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
+        const elencoDiQueiDati = elencoDiQuestiDati;
         segnaLetta(id).then(
             ({ il }) => {
-                setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace }]);
+                setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
                 setDaDire(id);
             },
             // La notifica resta da leggere, e il numero com'era.
@@ -529,8 +541,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     }
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
-    // le non lette stanno oltre la prima pagina.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) ? undefined : async () => {
+    // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
+    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Se non lo dice, il pulsante c'è.
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && caricate.workspace !== dati.workspace.slug) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
@@ -586,13 +599,15 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
     // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
     // un errore della ricerca, perché non c'è una pagina di ripiego: mai i risultati aperti nel workspace della pagina a tentoni.
-    const [ricerca, setRicerca] = useState<{ stato: 'ready' | 'loading' | 'error'; risultati: RisultatoDellaRicerca[]; workspace: string | undefined }>({ stato: 'ready', risultati: [], workspace: undefined });
+    // Lo stato è un'unione: dei risultati stanno sempre col loro workspace. `undefined` finché non si è cercato niente: per
+    // l'`AppShell` è una ricerca pronta, senza risultati.
+    const [ricerca, setRicerca] = useState<StatoDellaRicerca>();
     const ricercaInVolo = useRef<AbortController>(undefined);
     const cercaParola = (parola: string) => {
         ricercaInVolo.current?.abort();
         const questa = new AbortController();
         ricercaInVolo.current = questa;
-        setRicerca({ stato: 'loading', risultati: [], workspace: undefined });
+        setRicerca({ stato: 'loading' });
         cerca(Array.from(parola).slice(0, 100).join(''), questa.signal).then(
             ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
@@ -601,13 +616,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
             () => {
                 if (ricercaInVolo.current === questa) {
-                    setRicerca({ stato: 'error', risultati: [], workspace: undefined });
+                    setRicerca({ stato: 'error' });
                 }
             },
         );
     };
-    const { workspace: workspaceDeiRisultati } = ricerca;
-    const risultati = perGruppo(workspaceDeiRisultati === undefined ? [] : ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, workspaceDeiRisultati) ?? []));
+    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, ricerca.workspace) ?? []) : []);
     const voci = [prodotti, ...nav];
 
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
@@ -645,7 +659,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             onRetryNotifications={carica}
             onSearch={cercaParola}
             searchResults={risultati}
-            searchState={ricerca.stato}
+            searchState={ricerca?.stato ?? 'ready'}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
             // contenitore a pagina intera.
             onSelectResult={(scelto) => {

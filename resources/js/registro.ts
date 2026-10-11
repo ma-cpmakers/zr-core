@@ -37,10 +37,17 @@ export interface NotificaDelProdotto {
     tipo: string;
     /**
      * Il percorso nel prodotto, dopo `/w/<slug>`. Un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la notifica porta con
-     * quella chiave (`ids`): `{persona_id}` per una nota, che si apre nel contatto a cui è attaccata. Senza uno dei suoi id la
-     * notifica non ha una destinazione.
+     * quella chiave (`ids`): `{trattativa_id}` per una nota, che si apre nell'opportunità a cui è attaccata. Un percorso può non
+     * avere un segnaposto (`/da-fare`, per un'attività, che non ha una pagina sua): allora non chiede un id. Senza uno dei suoi
+     * id questo percorso non si apre, e si provano quelli di `altrimenti`.
      */
     percorso: string;
+    /**
+     * Gli altri percorsi, quando la risorsa può stare in più posti, dal più specifico: si provano in ordine dopo `percorso`, e
+     * si apre il primo che ha tutti i suoi id — per una nota il contatto, poi l'azienda. Senza questa chiave il percorso è uno
+     * solo; se nessuno ha i suoi id la notifica non ha una destinazione.
+     */
+    altrimenti?: string[];
 }
 
 /** Una voce del menu Moduli. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */

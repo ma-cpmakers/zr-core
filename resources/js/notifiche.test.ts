@@ -29,18 +29,31 @@ describe('la destinazione di una notifica', () => {
         expect(apre(delCrm(tipo, ids))).toBe(CRM + percorso);
     });
 
-    it('le nove destinazioni del CRM sono quelle del registro: nessun altro prodotto ne ha, e ogni tipo ha il suo percorso (sprint 21 · T3.1, T5.2)', () => {
+    // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
+    // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
+    it('le diciotto destinazioni del CRM sono quelle del registro: nessun altro prodotto ne ha, e ogni tipo ha il suo percorso (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', () => {
+        const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
+
         expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['crm']);
         expect(registro.find((voce) => voce.id === 'crm')?.notifiche).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.persona.modificata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.pipeline.creata', percorso: '/pipeline/{id}/impostazioni' },
             { tipo: 'com.zeiras.crm.pipeline.modificata', percorso: '/pipeline/{id}/impostazioni' },
-            { tipo: 'com.zeiras.crm.nota.creata', percorso: '/contatti/{persona_id}' },
-            { tipo: 'com.zeiras.crm.nota.modificata', percorso: '/contatti/{persona_id}' },
-            { tipo: 'com.zeiras.crm.nota.eliminata', percorso: '/contatti/{persona_id}' },
+            { tipo: 'com.zeiras.crm.nota.creata', ...dellaNota },
+            { tipo: 'com.zeiras.crm.nota.modificata', ...dellaNota },
+            { tipo: 'com.zeiras.crm.nota.eliminata', ...dellaNota },
             { tipo: 'com.zeiras.crm.organizzazione.creata', percorso: '/aziende/{id}' },
             { tipo: 'com.zeiras.crm.organizzazione.modificata', percorso: '/aziende/{id}' },
+            { tipo: 'com.zeiras.crm.trattativa.creata', percorso: '/opportunita/{id}' },
+            { tipo: 'com.zeiras.crm.trattativa.modificata', percorso: '/opportunita/{id}' },
+            { tipo: 'crm.trattativa.assegnata', percorso: '/opportunita/{id}' },
+            { tipo: 'com.zeiras.crm.attivita.creata', percorso: '/da-fare' },
+            { tipo: 'com.zeiras.crm.attivita.modificata', percorso: '/da-fare' },
+            { tipo: 'com.zeiras.crm.attivita.eliminata', percorso: '/da-fare' },
+            { tipo: 'crm.attivita.assegnata', percorso: '/da-fare' },
+            { tipo: 'crm.persona.assegnata', percorso: '/contatti/{id}' },
+            { tipo: 'crm.organizzazione.assegnata', percorso: '/aziende/{id}' },
         ]);
     });
 
@@ -93,6 +106,13 @@ describe('la destinazione di una notifica', () => {
         ['del CRM, col solo pezzo di un tipo conosciuto', delCrm('persona', { id: 'uat-persona-1' })],
         // Il contratto non ha l'eliminazione di un'azienda, né un tipo `azienda`: la parola del modulo sta nel percorso, non nel tipo.
         ['del CRM, di un\'azienda eliminata, che il contratto non ha', delCrm('organizzazione.eliminata', { id: 'uat-azienda-1' })],
+        // Sprint 23 · T3: un tipo `eliminata` di una risorsa con una pagina sua non è nel registro, e il tipo si cerca intero —
+        // un «assegnata» non ha `com.zeiras.` davanti, un evento sì.
+        ['del CRM, di un\'opportunità eliminata, che aprirebbe una pagina che non c\'è', delCrm('trattativa.eliminata', { id: 'uat-opp-1' })],
+        ['del CRM, di un\'opportunità assegnata, con `com.zeiras.` davanti', delCrm('trattativa.assegnata', { id: 'uat-opp-1' })],
+        ['del CRM, di un\'opportunità nuova, senza `com.zeiras.` davanti', { app: 'crm', tipo: 'crm.trattativa.creata', ids: { id: 'uat-opp-1' } }],
+        ['del CRM, di un\'attività nuova, senza `com.zeiras.` davanti', { app: 'crm', tipo: 'crm.attivita.creata', ids: {} }],
+        ['di un\'attività assegnata, con l\'app di Project Management', { app: 'pm', tipo: 'crm.attivita.assegnata', ids: {} }],
         ['del CRM, con `azienda` nel tipo', delCrm('azienda.creata', { id: 'uat-azienda-1' })],
         ['di una vista di una board, di Project Management', { app: 'pm', tipo: 'com.zeiras.board.vista.creata', ids: { id: 'uat-vista-1', board_id: 'uat-board-1' } }],
         ['del CRM, col tipo in maiuscole', { app: 'crm', tipo: 'COM.ZEIRAS.CRM.PERSONA.CREATA', ids: { id: 'uat-persona-1' } }],
@@ -109,17 +129,69 @@ describe('la destinazione di una notifica', () => {
         expect(apre(notifica)).toBeUndefined();
     });
 
-    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM hanno un titolo e nessuna destinazione. La pagina di un'opportunità in
-    // produzione è spenta e un'attività non ne ha una; per un contatto o un'azienda assegnati è una scelta di prodotto ancora da fare.
-    // I quattro «assegnata» arrivano senza `com.zeiras.` davanti.
+    // Sprint 23 · T3 (voce #1743). I nove tipi che dallo sprint 22 (T5, voce #1720) avevano un titolo e nessuna destinazione ora
+    // aprono la loro risorsa, coi nomi delle pagine di zr-crm (nota 10406 del #95): un'opportunità `/opportunita/<id>` — nel
+    // contratto è una `trattativa`, e `/trattative` in un indirizzo è il difetto —, un contatto o un'azienda assegnati la loro
+    // pagina. I quattro «assegnata» arrivano senza `com.zeiras.` davanti. Resta ciò che il caso di prima provava per gli altri id:
+    // conta solo quello che il percorso chiede.
     it.each([
-        ['com.zeiras.crm.trattativa.creata'], ['com.zeiras.crm.trattativa.modificata'],
-        ['com.zeiras.crm.attivita.creata'], ['com.zeiras.crm.attivita.modificata'], ['com.zeiras.crm.attivita.eliminata'],
-        ['crm.persona.assegnata'], ['crm.organizzazione.assegnata'], ['crm.trattativa.assegnata'], ['crm.attivita.assegnata'],
-    ])('una notifica del CRM di tipo «%s» non apre una risorsa, nemmeno con tutti gli id: il pannello apre la pagina delle notifiche (sprint 22 · T5.3)', (tipo) => {
-        const ids = { id: 'uat-x-1', persona_id: 'uat-x-2', organizzazione_id: 'uat-x-3', trattativa_id: 'uat-x-4' };
+        ['com.zeiras.crm.trattativa.creata', '/opportunita/uat-risorsa-1'],
+        ['com.zeiras.crm.trattativa.modificata', '/opportunita/uat-risorsa-1'],
+        ['crm.trattativa.assegnata', '/opportunita/uat-risorsa-1'],
+        ['crm.persona.assegnata', '/contatti/uat-risorsa-1'],
+        ['crm.organizzazione.assegnata', '/aziende/uat-risorsa-1'],
+    ])('una notifica del CRM di tipo «%s» apre la sua risorsa, con l\'`id` che porta; senza, o con un id fuori forma, il pannello apre la pagina delle notifiche (sprint 23 · T3.1, T3.3)', (tipo, percorso) => {
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-risorsa-1' } })).toBe(CRM + percorso);
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-risorsa-1', persona_id: 'uat-x-2', organizzazione_id: 'uat-x-3', trattativa_id: 'uat-x-4' } })).toBe(CRM + percorso);
+        // Gli altri id non prendono il posto di quello che il percorso chiede.
+        expect(apre({ app: 'crm', tipo, ids: { persona_id: 'uat-x-2', organizzazione_id: 'uat-x-3', trattativa_id: 'uat-x-4' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { id: '../x' } })).toBeUndefined();
+    });
 
-        expect(apre({ app: 'crm', tipo, ids })).toBeUndefined();
+    // Un'attività non ha una pagina sua: la sua notifica apre «Da fare», e il suo id non entra mai in un indirizzo. Dalla parte
+    // server `ids` arriva vuoto, perché il percorso non ha un segnaposto; chi mostra le notifiche in una pagina sua può darle di più.
+    it.each([
+        ['com.zeiras.crm.attivita.creata'], ['com.zeiras.crm.attivita.modificata'], ['com.zeiras.crm.attivita.eliminata'], ['crm.attivita.assegnata'],
+    ])('una notifica di un\'attività, di tipo «%s», apre la pagina «Da fare» del CRM, e l\'id dell\'attività non entra nell\'indirizzo (sprint 23 · T3.2)', (tipo) => {
+        expect(apre({ app: 'crm', tipo, ids: {} })).toBe(`${CRM}/da-fare`);
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-attivita-1' } })).toBe(`${CRM}/da-fare`);
+        expect(apre({ app: 'crm', tipo, ids: null })).toBe(`${CRM}/da-fare`);
+        expect(apre({ app: 'crm', tipo })).toBe(`${CRM}/da-fare`);
+        // Il resto vale come per ogni destinazione: lo slug con la forma di uno slug, e un modulo che si può aprire.
+        expect(destinazioneDellaNotifica({ app: 'crm', tipo, ids: {} }, 'Acme', prodotti)).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: {} }, { crm: 'in_arrivo' })).toBeUndefined();
+    });
+
+    // Una nota non ha una pagina sua, e può essere legata a più cose: si apre la più specifica (decisione di zr-pm, nota 10252
+    // del #95, punto 3) — l'opportunità, poi il contatto, poi l'azienda. Un legame che manca nel contratto è `null`. Dalla parte
+    // server arrivano i soli id del percorso che si apre; qui la regola è la stessa anche con tutti e tre.
+    describe.each(['creata', 'modificata', 'eliminata'])('una nota %s', (quando) => {
+        const nota = (ids: unknown) => apre(delCrm(`nota.${quando}`, ids));
+
+        it.each<[string, Record<string, unknown>, string]>([
+            ['legata a un\'opportunità, a un contatto e a un\'azienda apre l\'opportunità', { trattativa_id: 'uat-opp-1', persona_id: 'uat-persona-2', organizzazione_id: 'uat-azienda-3' }, '/opportunita/uat-opp-1'],
+            ['legata a un\'opportunità e a un contatto apre l\'opportunità', { trattativa_id: 'uat-opp-1', persona_id: 'uat-persona-2' }, '/opportunita/uat-opp-1'],
+            ['con la sola opportunità, come la dà la parte server, apre l\'opportunità', { trattativa_id: 'uat-opp-1' }, '/opportunita/uat-opp-1'],
+            ['legata a un contatto e a un\'azienda apre il contatto', { trattativa_id: null, persona_id: 'uat-persona-2', organizzazione_id: 'uat-azienda-3' }, '/contatti/uat-persona-2'],
+            ['col solo contatto apre il contatto', { persona_id: 'uat-persona-2' }, '/contatti/uat-persona-2'],
+            ['con la sola azienda apre l\'azienda', { trattativa_id: null, persona_id: null, organizzazione_id: 'uat-azienda-3' }, '/aziende/uat-azienda-3'],
+            ['con l\'opportunità fuori forma e il contatto buono apre il contatto', { trattativa_id: '../x', persona_id: 'uat-persona-2', organizzazione_id: 'uat-azienda-3' }, '/contatti/uat-persona-2'],
+            ['con opportunità e contatto fuori forma e l\'azienda buona apre l\'azienda', { trattativa_id: 'uat/opp', persona_id: '..', organizzazione_id: 'uat-azienda-3' }, '/aziende/uat-azienda-3'],
+            ['con un\'opportunità che è un numero e il contatto buono apre il contatto', { trattativa_id: 42, persona_id: 'uat-persona-2' }, '/contatti/uat-persona-2'],
+        ])('%s (sprint 23 · T3.4)', (_quale, legami, percorso) => {
+            expect(nota({ id: 'uat-nota-1', ...legami })).toBe(CRM + percorso);
+            expect(nota(legami)).toBe(CRM + percorso);
+        });
+
+        it.each<[string, unknown]>([
+            ['senza legami, col solo suo id', { id: 'uat-nota-1' }],
+            ['coi tre legami `null`', { id: 'uat-nota-1', trattativa_id: null, persona_id: null, organizzazione_id: null }],
+            ['coi tre legami fuori forma', { id: 'uat-nota-1', trattativa_id: '../x', persona_id: 'uat/persona', organizzazione_id: '' }],
+            ['senza `ids`', undefined],
+        ])('%s non ha una destinazione, e l\'id della nota non apre niente (sprint 23 · T3.4)', (_quale, ids) => {
+            expect(nota(ids)).toBeUndefined();
+        });
     });
 
     it.each([
@@ -174,7 +246,10 @@ describe('la destinazione di una notifica, con un registro di prova', () => {
         vi.resetModules();
     });
 
-    /** La funzione letta con un registro di prova: un prodotto «Presto» con una notifica, e uno aperto con un percorso a due id. */
+    /**
+     * La funzione letta con un registro di prova: un prodotto «Presto» con una notifica, e uno aperto con un percorso a due id e
+     * con due tipi che hanno più percorsi (`altrimenti`).
+     */
     async function conUnRegistroDiProva() {
         vi.resetModules();
         vi.doMock('../registro/prodotti.json', () => ({
@@ -190,6 +265,8 @@ describe('la destinazione di una notifica, con un registro di prova', () => {
                         notifiche: [
                             { tipo: 'com.zeiras.bookings.uat.scheda', percorso: '/b/{board_id}/c/{id}' },
                             { tipo: 'com.zeiras.bookings.uat.elenco', percorso: '/elenco' },
+                            { tipo: 'com.zeiras.bookings.uat.scelta', percorso: '/b/{board_id}/c/{id}', altrimenti: ['/b/{board_id}', '/elenco'] },
+                            { tipo: 'com.zeiras.bookings.uat.due', percorso: '/a/{primo_id}', altrimenti: ['/b/{secondo_id}/c/{id}'] },
                         ],
                     },
                 ],
@@ -218,5 +295,31 @@ describe('la destinazione di una notifica, con un registro di prova', () => {
         expect(scheda({ board_id: 'uat-board-1' })).toBeUndefined();
         expect(scheda({ id: 'uat-scheda-1', board_id: '../x' })).toBeUndefined();
         expect(scheda({ id: '{board_id}', board_id: 'uat-board-1' })).toBeUndefined();
+    });
+
+    it('con più percorsi si apre il primo che ha tutti i suoi id, nell\'ordine del registro — `percorso`, poi `altrimenti` —: un percorso a metà si scarta intero, e senza nessuno non c\'è un indirizzo (sprint 23 · T3.4)', async () => {
+        const destinazione = await conUnRegistroDiProva();
+        const stati: DatiDellaCornice['prodotti'] = { bookings: 'attivo' };
+        const B = 'https://bookings.zeiras.com/w/acme-marketing';
+        const scelta = (ids?: unknown) => destinazione({ app: 'bookings', tipo: 'com.zeiras.bookings.uat.scelta', ids }, 'acme-marketing', stati);
+        const due = (ids: unknown) => destinazione({ app: 'bookings', tipo: 'com.zeiras.bookings.uat.due', ids }, 'acme-marketing', stati);
+
+        expect(scelta({ id: 'uat-scheda-1', board_id: 'uat-board-1' })).toBe(`${B}/b/uat-board-1/c/uat-scheda-1`);
+        // Manca l'id della scheda, o è fuori forma: il primo percorso si scarta intero, e si apre la board.
+        expect(scelta({ board_id: 'uat-board-1' })).toBe(`${B}/b/uat-board-1`);
+        expect(scelta({ id: '../x', board_id: 'uat-board-1' })).toBe(`${B}/b/uat-board-1`);
+        // Senza la board resta l'elenco, che non chiede un id: mai `/b//c/uat-scheda-1`.
+        expect(scelta({ id: 'uat-scheda-1' })).toBe(`${B}/elenco`);
+        expect(scelta({ id: 'uat-scheda-1', board_id: 'uat/board' })).toBe(`${B}/elenco`);
+        expect(scelta({})).toBe(`${B}/elenco`);
+        expect(scelta()).toBe(`${B}/elenco`);
+        // Due percorsi che chiedono tutti e due un id: vince il primo quando c'è, e senza gli id di nessuno non c'è un indirizzo.
+        expect(due({ primo_id: 'uat-1' })).toBe(`${B}/a/uat-1`);
+        expect(due({ primo_id: 'uat-1', secondo_id: 'uat-2', id: 'uat-3' })).toBe(`${B}/a/uat-1`);
+        expect(due({ secondo_id: 'uat-2', id: 'uat-3' })).toBe(`${B}/b/uat-2/c/uat-3`);
+        expect(due({ primo_id: 'uat/1', secondo_id: 'uat-2', id: 'uat-3' })).toBe(`${B}/b/uat-2/c/uat-3`);
+        expect(due({ secondo_id: 'uat-2' })).toBeUndefined();
+        expect(due({ id: 'uat-3' })).toBeUndefined();
+        expect(due({})).toBeUndefined();
     });
 });

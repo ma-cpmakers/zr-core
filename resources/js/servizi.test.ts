@@ -138,4 +138,20 @@ describe('cerca', () => {
 
         await expect(cerca('uat', new AbortController().signal)).rejects.toThrow(errore);
     });
+
+    // Sprint 23 · T2 (voce #1742, S4): lo `workspace` della risposta entra nell'indirizzo di ogni risultato, e ci entra solo con la
+    // forma di uno slug, la stessa che vale per una notifica: `..` e `.` cambierebbero l'indirizzo (`encodeURIComponent` non
+    // tocca i punti). Fuori forma è l'errore della ricerca, come senza `workspace`.
+    it.each(['..', '.', 'Acme', 'a/b', 'acme_marketing', 'acme-', 'acme marketing'])('una risposta con un `workspace` fuori dalla forma di uno slug — «%s» — è un errore: nessun risultato (sprint 23 · T2.3)', async (workspace) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }], workspace })));
+
+        await expect(cerca('uat', new AbortController().signal)).rejects.toThrow('POST /cornice/ricerca: workspace');
+    });
+
+    it.each(['acme', 'acme-marketing', 'a', '9', 'uat-marketing-2'])('uno slug buono — «%s» — non è un errore: i risultati arrivano col loro workspace (sprint 23 · T2.3)', async (workspace) => {
+        const risultati = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }];
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultati, workspace })));
+
+        await expect(cerca('uat', new AbortController().signal)).resolves.toStrictEqual({ risultati, workspace });
+    });
 });
