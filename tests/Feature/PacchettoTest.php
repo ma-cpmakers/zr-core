@@ -3313,3 +3313,27 @@ it('il README non dice più che un risultato della ricerca si apre nel workspace
         ->and(str_contains($punto, 'apre l\'indirizzo del suo prodotto nel workspace seguito dal percorso del tipo'))->toBe(false)
         ->and(str_contains($rotta, '| `{data: [{tipo, id, titolo}]}`:'))->toBe(false);
 });
+
+// Sprint 22 · T7 (voce #1727): un frontend che le notifiche le legge da sé dal backoffice ha gli `ids` da un metodo PHP
+// pubblico, `NotificheDellaCornice::idsDellaNotifica()`. Il README lo dice accanto a `destinazioneDellaNotifica`, nello stesso
+// paragrafo: la firma, che cosa dà, `[]` senza una destinazione, e che i `dati` interi restano sul server del frontend.
+
+it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà gli `ids` di una notifica a chi la legge da sé: la firma e da quando, che cosa dà, `[]` senza una destinazione, e che i `dati` interi restano sul server del frontend (sprint 22 · T7.3)', function (string $frase) {
+    $paragrafo = paragrafoFuoriDallaCornice((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($paragrafo)->not->toBe('')
+        ->and(str_contains($paragrafo, $frase))->toBe(true)
+        // Accanto: nello stesso paragrafo, dopo la funzione del browser a cui quegli `ids` si danno.
+        ->and(strpos($paragrafo, '`destinazioneDellaNotifica(notifica, slug, prodotti)`'))->toBeLessThan((int) strpos($paragrafo, '::idsDellaNotifica('));
+})->with([
+    'chi, e che cosa gli manca' => ['Chi le notifiche le legge da sé dal backoffice, sul suo server — una pagina delle notifiche sua —, gli `ids` non li ha'],
+    'la firma, e da quando' => ['dalla `v1.12.0` li dà un metodo PHP pubblico e statico, `Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`'],
+    'la regola dell\'elenco' => ['ed è la regola con cui li dà `GET /cornice/notifiche`, non una copia'],
+    'gli argomenti' => ['`app`, `tipo` e `dati` sono quelli della notifica, com\'è nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi'],
+    'che cosa dà' => ['il metodo dà gli id per chiave (`[\'persona_id\' => \'<id>\']` per una nota), da dare al browser come `ids` della notifica'],
+    'vuoto senza una destinazione' => ['Dà `[]`, senza eccezioni, quando la notifica non ha una destinazione — un tipo o un\'app che il registro non ha, nessuna app, una voce «Presto» — e quando `dati` manca o non è un array con le chiavi'],
+    'un id che manca, o fuori dalla forma' => ['un id che manca, o che non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64), nell\'array non c\'è'],
+    'che cosa fa allora il browser' => ['Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà niente, e si apre la pagina delle notifiche'],
+    'i dati interi restano sul server' => ['Al browser vanno questi `ids` e non `dati`: i `dati` interi di una notifica restano sul server del frontend'],
+    'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
+]);

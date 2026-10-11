@@ -1730,13 +1730,13 @@ function registroGiaLetto(?array $voci): void
 
 afterEach(fn () => registroGiaLetto(null));
 
-it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte e la tenuta del blocco, e il file del registro non si sceglie (review della PR #44, R5)', function () {
+it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie (review della PR #44, R5; sprint 22 · T7.3)', function () {
     $classe = new ReflectionClass(NotificheDellaCornice::class);
     $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
     sort($pubblici);
     $sorgente = (string) file_get_contents((string) $classe->getFileName());
 
-    expect($pubblici)->toBe(['elenco', 'lettura', 'letture', 'tenutaDelBlocco'])
+    expect($pubblici)->toBe(['elenco', 'idsDellaNotifica', 'lettura', 'letture', 'tenutaDelBlocco'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
         // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
@@ -1779,4 +1779,122 @@ it('la parte server prende dal registro l\'id di ogni segnaposto del percorso, e
     expect($risposta->json('data.0.ids'))->toEqual(['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1'])
         // «Presto»: il browser non la apre, e i suoi id non servono ad aprire niente.
         ->and($risposta->json('data.1.ids'))->toBe([]);
+});
+
+// Sprint 22 · T7 (voce #1727; nota `Decisione:` 10255). Un frontend che le notifiche le legge da sé dal backoffice, sul suo
+// server — la pagina delle notifiche di zr-home —, non ha gli `ids` dell'elenco della cornice: glieli dà
+// `NotificheDellaCornice::idsDellaNotifica()`, pubblico e statico. È la regola dell'elenco, non una copia accanto: la rotta
+// chiama lo stesso metodo. Senza una destinazione dà `[]`, e non lancia mai un'eccezione: `dati` è ciò che il backoffice dà,
+// com'è. Nome e firma sono un contratto con chi installa il pacchetto, non un aggancio per i test.
+
+it('`idsDellaNotifica()` dà gli stessi `ids` che `GET /cornice/notifiche` dà per quella notifica: per un contatto il suo id e non un altro `*_id` di `dati`, per una nota l\'id del contatto e non il suo, e su ogni notifica dell\'elenco il metodo e la rotta dicono lo stesso (sprint 22 · T7.1)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n9', ['id' => 'p1', 'altro_id' => 'x'], 'com.zeiras.crm.persona.creata'),
+        notificaConDati('uat-n8', ['id' => 'n1', 'persona_id' => 'p1']),
+        notificaConDati('uat-n7', ['id' => 'uat-pipeline-1', 'campi' => ['uat-campo-nome']], 'com.zeiras.crm.pipeline.creata'),
+        notificaConDati('uat-n6', ['id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1'], 'com.zeiras.crm.organizzazione.creata'),
+        // Senza una destinazione: una nota senza il suo contatto, un id con una barra, un tipo e un'app che il registro non
+        // ha, nessuna app, e una notifica senza `dati`.
+        notificaConDati('uat-n5', ['id' => 'n2']),
+        notificaConDati('uat-n4', ['id' => 'p1/x'], 'com.zeiras.crm.persona.creata'),
+        notificaConDati('uat-n3', ['id' => 'p1'], 'com.zeiras.crm.uat.inesistente'),
+        notificaConDati('uat-n2', ['id' => 'p1'], 'com.zeiras.crm.persona.creata', 'uat-app'),
+        notificaConDati('uat-n1', ['id' => 'p1'], 'com.zeiras.crm.persona.creata', null),
+        notificaDelBackoffice('uat-n0', '2026-10-07T09:01:00.123Z', null, 'crm', 'com.zeiras.crm.persona.creata'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $dellElenco = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids');
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'p1'], ['persona_id' => 'p1'], ['id' => 'uat-pipeline-1'], ['id' => 'uat-azienda-1'], [], [], [], [], [], []])
+        ->and($dellElenco)->toBe($delMetodo);
+});
+
+it('`idsDellaNotifica()` legge il registro dei moduli come l\'elenco: con un registro di prova un percorso con due segnaposto dà i due id, nell\'ordine del percorso, uno solo se l\'altro è fuori dalla forma, e una voce «Presto» non ne dà; la rotta dà gli stessi (sprint 22 · T7.1, T7.2)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    registroGiaLetto([
+        ['id' => 'crm', 'presto' => false, 'notifiche' => [['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/aziende/{organizzazione_id}/note/{id}']]],
+        ['id' => 'reports', 'presto' => true, 'notifiche' => [['tipo' => 'com.zeiras.reports.report.creato', 'percorso' => '/report/{id}']]],
+    ]);
+    // Una nota con tre id: il percorso di prova ne chiede due, e quello del contatto resta dov'è.
+    $nota = ['id' => 'uat-nota-1', 'organizzazione_id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1'];
+    $dueId = ['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1'];
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n2', $nota),
+        notificaConDati('uat-n1', ['id' => 'uat-report-1'], 'com.zeiras.reports.report.creato', 'reports'),
+    ], 'successivo' => null])]);
+
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', $nota))->toBe($dueId)
+        // Uno dei due fuori dalla forma: resta l'altro, e non è un guasto.
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', ['organizzazione_id' => 'uat/azienda'] + $nota))->toBe(['id' => 'uat-nota-1'])
+        // «Presto»: il browser non la apre, e i suoi id non servono ad aprire niente.
+        ->and(NotificheDellaCornice::idsDellaNotifica('reports', 'com.zeiras.reports.report.creato', ['id' => 'uat-report-1']))->toBe([])
+        ->and(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids'))->toBe([$dueId, []]);
+});
+
+it('`idsDellaNotifica()` dà `[]`, senza eccezioni, per una notifica che non ha una destinazione: un tipo o un\'app che il registro non ha, nessuna app, `dati` che manca o non è un oggetto, un id che manca, o con una barra o due punti (sprint 22 · T7.2)', function (?string $app, string $tipo, mixed $dati) {
+    expect(NotificheDellaCornice::idsDellaNotifica($app, $tipo, $dati))->toBe([]);
+})->with([
+    'un tipo che il registro non ha' => ['crm', 'com.zeiras.crm.uat.inesistente', ['id' => 'p1']],
+    'un tipo a metà: si cerca intero' => ['crm', 'com.zeiras.crm.persona', ['id' => 'p1']],
+    'un tipo con una maiuscola' => ['crm', 'com.zeiras.crm.persona.Creata', ['id' => 'p1']],
+    'un tipo vuoto' => ['crm', '', ['id' => 'p1']],
+    'un tipo del CRM con un\'altra app' => ['pm', 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
+    'un\'app che il registro non ha' => ['uat-app', 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
+    'un\'app vuota' => ['', 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
+    'nessuna app' => [null, 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
+    '`dati` che manca' => ['crm', 'com.zeiras.crm.persona.creata', null],
+    '`dati` vuoto' => ['crm', 'com.zeiras.crm.persona.creata', []],
+    '`dati` che è un testo, anche con l\'id dentro' => ['crm', 'com.zeiras.crm.persona.creata', '{"id":"p1"}'],
+    '`dati` che è l\'id' => ['crm', 'com.zeiras.crm.persona.creata', 'p1'],
+    '`dati` che è un numero' => ['crm', 'com.zeiras.crm.persona.creata', 42],
+    '`dati` che è true' => ['crm', 'com.zeiras.crm.persona.creata', true],
+    '`dati` che è una lista' => ['crm', 'com.zeiras.crm.persona.creata', [['id' => 'p1']]],
+    '`dati` che è un oggetto di PHP e non un array' => ['crm', 'com.zeiras.crm.persona.creata', (object) ['id' => 'p1']],
+    'senza l\'id che il percorso chiede' => ['crm', 'com.zeiras.crm.persona.creata', ['persona_id' => 'p1']],
+    'una nota senza il suo contatto' => ['crm', 'com.zeiras.crm.nota.creata', ['id' => 'n1']],
+    'l\'id in un oggetto più dentro' => ['crm', 'com.zeiras.crm.persona.creata', ['persona' => ['id' => 'p1']]],
+    'un id con una barra' => ['crm', 'com.zeiras.crm.persona.creata', ['id' => 'p1/x']],
+    'un id che è `..`' => ['crm', 'com.zeiras.crm.persona.creata', ['id' => '..']],
+    'un id con `:`' => ['crm', 'com.zeiras.crm.persona.creata', ['id' => 'p1:x']],
+]);
+
+it('`idsDellaNotifica()` lascia passare un id solo con la forma di un id — lettere, cifre, `-` e `_`, da 1 a 64 —, e lo dà com\'è (sprint 22 · T7.2)', function (string $id) {
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.persona.creata', ['id' => $id]))->toBe(['id' => $id])
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', ['id' => 'uat-nota-1', 'persona_id' => $id]))->toBe(['persona_id' => $id]);
+})->with([
+    'una lettera' => ['a'],
+    'una cifra' => ['7'],
+    'un trattino' => ['-'],
+    'un trattino basso' => ['_'],
+    'lettere, cifre, trattino e trattino basso' => ['Uat_persona-9'],
+    'lungo 64 caratteri' => [str_repeat('a', 64)],
+]);
+
+it('`idsDellaNotifica()` non lascia passare un valore che non ha la forma di un id: né per un contatto né per una nota (sprint 22 · T7.2)', function (mixed $valore) {
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.persona.creata', ['id' => $valore]))->toBe([])
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', ['id' => 'uat-nota-1', 'persona_id' => $valore]))->toBe([]);
+})->with(valoriCheNonSonoUnId());
+
+it('`idsDellaNotifica()` è pubblico e statico, con la firma concordata: `?string $app, string $tipo, mixed $dati`, senza valori già messi, e dà un array (sprint 22 · T7.1, T7.3)', function () {
+    $metodo = new ReflectionMethod(NotificheDellaCornice::class, 'idsDellaNotifica');
+    $parametri = array_map(fn (ReflectionParameter $parametro): string => $parametro->getType().' $'.$parametro->getName().($parametro->isOptional() ? ' = …' : ''), $metodo->getParameters());
+
+    expect($metodo->isPublic())->toBe(true)
+        ->and($metodo->isStatic())->toBe(true)
+        ->and($parametri)->toBe(['?string $app', 'string $tipo', 'mixed $dati'])
+        ->and((string) $metodo->getReturnType())->toBe('array');
+});
+
+it('l\'elenco e `idsDellaNotifica()` sono una regola sola, non due copie: la rotta chiama il metodo, e un punto solo del codice chiede al registro le chiavi del percorso e guarda la forma di un id (sprint 22 · T7.1)', function () {
+    $sorgente = (string) file_get_contents((string) (new ReflectionClass(NotificheDellaCornice::class))->getFileName());
+
+    expect(substr_count($sorgente, "'ids' => (object) self::idsDellaNotifica("))->toBe(1)
+        ->and(substr_count($sorgente, 'function idsDellaNotifica('))->toBe(1)
+        ->and(substr_count($sorgente, 'self::chiaviDelPercorso('))->toBe(1)
+        ->and(substr_count($sorgente, 'self::FORMA_DI_UN_ID'))->toBe(1)
+        // Il nome di prima non c'è più: né il metodo privato, né chi lo chiama.
+        ->and(substr_count($sorgente, 'idDi('))->toBe(0);
 });
