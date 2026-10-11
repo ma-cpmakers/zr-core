@@ -2704,7 +2704,8 @@ it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifi
 
     expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti, ids: ', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
         // Cinque dallo sprint 21 · T5: alle tre di prima si aggiungono le due righe delle aziende del CRM e delle viste di una board.
-        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 5, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+        // Sei dallo sprint 24 · T3: la scheda eliminata di `?schede=1`.
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 6, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });
 

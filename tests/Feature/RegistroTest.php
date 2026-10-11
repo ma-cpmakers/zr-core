@@ -227,7 +227,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto'],
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse', 'tono'],
+            // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
             ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
