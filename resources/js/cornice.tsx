@@ -535,6 +535,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 active: active === null ? idDiNessunaVoce(voci) : active,
                 product: aperto?.id,
                 companies,
+                // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
+                onNewWorkspace: nuovoWorkspace,
                 unreadCount: nonLette,
                 onMarkAllRead: segnaTutteLette,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
@@ -546,8 +548,6 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
-            // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
-            {...(nuovoWorkspace ? { onNewWorkspace: nuovoWorkspace } : {})}
             notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}

@@ -10,8 +10,8 @@ import { rotteFinte } from './rotte-finte';
 
 // La pagina di prova della UAT: la `Cornice` coi dati d'esempio marcati «UAT» nella forma di `Cornice::dati()`, in ogni lingua di
 // zr-core e in una che non esiste (`zz`), senza prodotto o con uno del registro. Gli stati dei prodotti coprono ogni caso: `pm`
-// attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` e `content` non
-// elencati. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `membro`, `nessuna`,
+// attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` scritto `undefined` e
+// `content` non elencato. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `membro`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
 // `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?altre=1` il primo che riesce si ferma come la
 // parte server a un tetto (`altre: true`: la più recente resta da leggere) e il secondo le segna tutte; con `?arriva=1` dal
