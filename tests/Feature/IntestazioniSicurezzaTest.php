@@ -750,7 +750,7 @@ it('un valore che non è un testo, ma che la risposta manderebbe come CSP, resta
 
 // Sprint 18 · T3 (voce #1628; rilievo D1 della lettura di sicurezza della v1.6.0). Symfony i valori di un'intestazione li dice
 // testi ma non lo impone, e dalla v1.6.0 la classe tiene ogni CSP che la risposta porta già: una che PHP non sa scrivere — una
-// lista, un oggetto che non si legge come testo, un testo con un a capo o un byte nullo in mezzo — fermava l'invio, fuori dai
+// lista, un oggetto che non si legge come testo, un testo con un a capo in mezzo o con un byte nullo — fermava l'invio, fuori dai
 // middleware: un 500 senza intestazioni, per un errore nel codice che ha scritto la risposta. La classe la scarta e lo scrive
 // nel log: il tipo, mai il valore. Ciò che PHP sa scrivere resta com'è: gli spazi e gli a capo in fondo a un testo li taglia
 // PHP all'invio (misurato l'11/10/2026 con PHP 8.4: `header()` si ferma su un a capo o un ritorno in mezzo o in testa al

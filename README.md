@@ -529,6 +529,14 @@ resta: un file caricato da una persona non gira nell'origine del modulo. Una CSP
 sola. Vale anche per una classe del frontend rimasta accanto a questa: se scrive la sua CSP più all'interno, la risposta le
 porta tutte e due.
 
+Una sola non resta: quella che non si può mandare — una lista, un oggetto che non si legge come testo, un testo con un a
+capo in mezzo o con un byte nullo. È un errore nel codice che ha scritto la risposta, e all'invio PHP si fermerebbe lì,
+fuori dai middleware: un 500 senza intestazioni. Dalla `v1.8.0` la classe la scarta, e la risposta esce col suo stato, il
+suo corpo, le altre sue CSP e quella del modulo. Lo scarto lascia nel log un avviso, nella riga degli altri scarti della
+CSP: dice il tipo del valore, mai il valore. La pagina esce quindi senza quella CSP: se doveva stringere quella del modulo,
+l'avviso è il solo segno che manca, e l'errore si corregge nel codice del modulo. Ciò che PHP sa scrivere resta com'è:
+anche un testo con un a capo in fondo, che PHP all'invio taglia.
+
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 
 ```

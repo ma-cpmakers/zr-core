@@ -1962,7 +1962,7 @@ it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene
         ->and(delleIntestazioniNelReadme($senzaLaSezione, null))->toBe('');
 })->with([
     'lo scarto, subito dopo «la tiene»' => ['la risposta le porta tutte e due. Una sola non resta: quella che non si può mandare'],
-    'che cosa non si può mandare' => ['una lista, un oggetto che non si legge come testo, un testo con un a capo o un byte nullo in mezzo'],
+    'che cosa non si può mandare' => ['una lista, un oggetto che non si legge come testo, un testo con un a capo in mezzo o con un byte nullo'],
     'che cosa succedeva' => ['all\'invio PHP si fermerebbe lì, fuori dai middleware: un 500 senza intestazioni'],
     'da quale versione, e come esce la risposta' => ['Dalla `v1.8.0` la classe la scarta, e la risposta esce col suo stato, il suo corpo, le altre sue CSP e quella del modulo'],
     'l\'avviso' => ['Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP: dice il tipo del valore, mai il valore'],
