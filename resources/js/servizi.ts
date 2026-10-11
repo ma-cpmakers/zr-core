@@ -2,7 +2,7 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-/** Una notifica come la dà GET /cornice/notifiche: il contratto non dice per chi è. */
+/** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
     id: string;
     /** Un istante RFC 3339, con l'ora e il fuso. */
@@ -12,6 +12,12 @@ export interface NotificaDellaCornice {
     app: string | null;
     /** Il tipo dell'evento che l'ha generata (`com.zeiras.board.scheda.creata`…), com'è nel backoffice: che titolo ha lo dicono le lingue. La parte server lo dà sempre; senza, il titolo è quello di ripiego. */
     tipo?: string;
+    /** Il nome di chi ha fatto ciò che la notifica racconta: `null` se non c'è una persona, o se il backoffice non lo dice. */
+    autore_nome?: string | null;
+    /** Il nome della cosa a cui la notifica si riferisce (una board, una scheda…): `null` se non ha un nome, o se il backoffice non lo dice. */
+    risorsa_nome?: string | null;
+    /** `true` se è rivolta alla persona, `false` se è per tutto il workspace, `null` se il backoffice non lo sa: `null` non è `false`. */
+    per_me?: boolean | null;
 }
 
 /** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */

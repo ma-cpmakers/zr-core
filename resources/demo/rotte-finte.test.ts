@@ -122,9 +122,11 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-2', 'uat-ignota', null],
             ['uat-1', null, 'com.zeiras.workspace.membro.creato'],
         ]);
-        // Senza tipo: la chiave non c'è, come in una risposta di prima della v1.3.0.
+        // Senza tipo: la chiave non c'è, come in una risposta di prima della v1.3.0. Dallo sprint 20 ognuna ha anche chi, su che
+        // cosa e per chi, come la parte server.
+        const treDati = ['autore_nome', 'risorsa_nome', 'per_me'];
         expect(notifiche.map((notifica) => Object.keys(notifica))).toEqual([
-            ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app', 'tipo'], ['id', 'creata_il', 'letta', 'app'], ['id', 'creata_il', 'letta', 'app', 'tipo'],
+            ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati],
         ]);
         expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
     });
@@ -169,6 +171,40 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, true]);
         expect(await lette()).toEqual([false, true, true, true]);
         expect(await segnate()).toEqual([200, false]);
+    });
+
+    it('senza `?chi` ogni notifica ha chi, su che cosa e per chi a `null`, come li dà la parte server quando il backoffice non li manda: il pannello è quello di prima (sprint 20 · T1.7)', async () => {
+        await rotte(false);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        expect((corpo.data as Record<string, unknown>[]).map(({ id, autore_nome, risorsa_nome, per_me }) => ({ id, autore_nome, risorsa_nome, per_me }))).toStrictEqual([
+            { id: 'uat-4', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-3', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-2', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-1', autore_nome: null, risorsa_nome: null, per_me: null },
+        ]);
+    });
+
+    it('con `?chi=1` le notifiche d\'esempio sono i tre casi: una con chi e su che cosa rivolta alla persona, una con chi per tutto il workspace, le altre com\'erano; e quella che arriva dopo non li dice (sprint 20 · T1.7)', async () => {
+        await rotte(false, '?chi=1&arriva=1');
+
+        await rispostaDi('/cornice/notifiche');
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        expect((corpo.data as Record<string, unknown>[]).map(({ id, autore_nome, risorsa_nome, per_me }) => ({ id, autore_nome, risorsa_nome, per_me }))).toStrictEqual([
+            { id: 'uat-5', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-4', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Scrivere il brief del lancio', per_me: true },
+            { id: 'uat-3', autore_nome: 'Bruno Neri', risorsa_nome: null, per_me: false },
+            { id: 'uat-2', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-1', autore_nome: null, risorsa_nome: null, per_me: null },
+        ]);
+        // Le otto chiavi della parte server, e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
+        expect((corpo.data as Record<string, unknown>[]).map((notifica) => Object.keys(notifica).sort().join(' '))).toStrictEqual([
+            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id letta per_me risorsa_nome',
+            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+        ]);
     });
 });
 

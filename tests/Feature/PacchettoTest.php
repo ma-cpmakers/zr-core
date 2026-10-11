@@ -963,7 +963,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1030,7 +1030,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -2564,4 +2564,57 @@ it('il target che il README dice per i sorgenti è quello con cui li guarda il t
 
     expect($base['compilerOptions']['target'] ?? null)->toBe('ES2022')
         ->and(str_contains(puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), 'Vogliono `target` '.$base['compilerOptions']['target'].' o più recente'))->toBe(true);
+});
+
+// Sprint 20 · T1 (voce #1674): le notifiche dicono chi, su che cosa e per chi. Il README lo dice nel punto «Le notifiche» e nella
+// riga della rotta, con la versione, e dice che finché il backoffice non manda i tre dati il pannello resta com'era.
+
+it('il README dice, nel punto «Le notifiche», le tre regole dei dati nuovi, da quale versione valgono e che cosa succede finché il backoffice non li manda (sprint 20 · T1.7)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiati = conNotificheERicercaScambiate($readme);
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
+})->with([
+    'la versione' => ['Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il backoffice lo dice'],
+    'la seconda riga' => ['con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa'],
+    'l\'avatar' => ['con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di chi ha fatto'],
+    'le due schede' => ['`per_me` dice la scheda: `true` in «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due'],
+    'null non è false' => ['`null` vuol dire che il backoffice non lo sa, non che la notifica è per altri'],
+    'un nome vuoto' => ['Un nome vuoto o di soli spazi non si mostra'],
+    'finché il backoffice non li manda' => ['Finché il backoffice non manda i tre dati il pannello resta com\'era'],
+    'per_me resta null' => ['anche dopo `per_me` è `null` finché il backoffice non conosce il destinatario diretto di una notifica'],
+]);
+
+it('il README non dice più che il backoffice non dice per chi è una notifica (sprint 20 · T1.7)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'il backoffice non dice per chi è una notifica'))->toBe(false);
+});
+
+it('il README dice, nella riga di GET /cornice/notifiche, i tre dati nuovi: da quale versione, da dove vengono, quando sono null, che di autore passa solo il nome e che un\'altra forma è un errore (sprint 20 · T1.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $elenco = '| `GET /cornice/notifiche` |';
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
+    $cosaDice = fn (string $testo): array => array_map(fn (string $frase) => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), $frase), [
+        'la versione e che cosa sono' => 'dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce',
+        'per_me, e null che non è false' => '`per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`)',
+        'quando sono null' => 'ognuna è `null` quando il backoffice dà `null` o non manda la chiave',
+        'di autore solo il nome' => 'di `autore` passa solo il nome',
+        'un\'altra forma è un errore' => 'una delle tre con una forma che il contratto non ammette',
+        'mai tolta in silenzio' => 'mai una chiave tolta in silenzio',
+    ]);
+    $tutto = fn (bool $detto): array => array_fill_keys(['la versione e che cosa sono', 'per_me, e null che non è false', 'quando sono null', 'di autore solo il nome', 'un\'altra forma è un errore', 'mai tolta in silenzio'], $detto);
+
+    // Il README con la riga dell'elenco e quella della ricerca scambiate di rotta: ogni frase c'è, ma nella riga di un'altra rotta.
+    expect($cosaDice($readme))->toBe($tutto(true))
+        ->and($cosaDice(strtr($readme, [$elenco => $ricerca, $ricerca => $elenco])))->toBe($tutto(false));
+});
+
+it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, e senza resta com\'era: lo dicono il file delle rotte finte e la testa della pagina (sprint 20 · T1.7)', function () {
+    $conChiECosa = "...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },";
+    $perTutti = "...detti('Bruno Neri', null, false) },";
+
+    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti }', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti }' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+        ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });

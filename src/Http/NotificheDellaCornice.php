@@ -17,7 +17,9 @@ use Zeiras\Core\Segno;
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
- * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata.
+ * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata;
+ * e, quando il backoffice li manda, il nome di chi ha fatto (`autore_nome`), quello della cosa (`risorsa_nome`) e se la
+ * notifica è rivolta alla persona (`per_me`).
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
  * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola del browser,
@@ -241,20 +243,31 @@ final class NotificheDellaCornice
      * un'app. Il `tipo` è una stringa, e passa com'è. Una risposta senza uno dei cinque non è una notifica, ed è un guasto: mai
      * una notifica non letta, mai una notifica senza app o senza tipo.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string}
+     * Dal #1670 del backoffice una notifica dice anche chi ha fatto, su che cosa e per chi: `autore` (null, o un oggetto col
+     * `nome`), `risorsa_nome` (null o un testo) e `per_me` (null o un booleano). Qui sono facoltative: un backoffice che non le
+     * manda è quello di prima, e valgono null. Se ci sono, con un'altra forma è lo stesso guasto: mai un valore tolto in silenzio.
+     * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
+     * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
+     *
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
         if (! is_array($notifica) || ! is_string($notifica['id'] ?? null) || ! is_string($notifica['creata_il'] ?? null)
             || ! array_key_exists('letta_il', $notifica) || ! ($notifica['letta_il'] === null || is_string($notifica['letta_il']))
             || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))
-            || ! is_string($notifica['tipo'] ?? null)) {
+            || ! is_string($notifica['tipo'] ?? null)
+            || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
+            || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
+            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
         return [
             'id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
+            'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
+            'per_me' => $notifica['per_me'] ?? null,
         ];
     }
 }
