@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { linguaDeiTesti, nomeDellaVoce, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
+import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
@@ -206,9 +206,10 @@ function testoDaMostrare(valore: unknown): string | undefined {
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Quando il backoffice li
- * manda, il nome della cosa è la seconda riga e quello di chi ha fatto dà l'avatar, al posto dell'icona. `per_me` dice la
- * scheda: `false` solo in «Tutte»; `true`, o un backoffice che non lo dice (`null`, la chiave che manca), in «Per me» come in
- * «Tutte» — `forMe` allora non arriva all'`AppShell`, e non è mai `false` per una notifica di cui non si sa.
+ * manda, il nome della cosa è la seconda riga (`risorsaDellaNotifica`: di un'app il nome del prodotto, mai il codice) e quello
+ * di chi ha fatto dà l'avatar, al posto dell'icona. `per_me` dice la scheda: `false` solo in «Tutte»; `true`, o un backoffice
+ * che non lo dice (`null`, la chiave che manca), in «Per me» come in «Tutte» — `forMe` allora non arriva all'`AppShell`, e non
+ * è mai `false` per una notifica di cui non si sa.
  */
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
@@ -216,7 +217,7 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Dat
     return senzaUndefined({
         id: notifica.id,
         title: titoloDellaNotifica(notifica.tipo, lingua),
-        text: testoDaMostrare(notifica.risorsa_nome),
+        text: risorsaDellaNotifica(notifica, lingua),
         actor: testoDaMostrare(notifica.autore_nome),
         forMe: typeof notifica.per_me === 'boolean' ? notifica.per_me : undefined,
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),

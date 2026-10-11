@@ -808,6 +808,52 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Project Management · 5 minuti fa'));
     });
 
+    /** Una notifica su un'app: il backoffice dà in `risorsa_nome` il codice dell'app, non un nome. */
+    const suUnApp = (id: string, risorsa_nome: unknown, tipo = 'com.zeiras.app.modificata') => conInPiu(id, { app: null, tipo, risorsa_nome });
+
+    it('una notifica su un\'app (un tipo `com.zeiras.app.…`) arriva con `risorsa_nome` uguale al codice dell\'app: la seconda riga è il nome del prodotto, dal registro e nella lingua, mai il codice; con un codice che il registro non ha non c\'è; per ogni altro tipo «pm» è un nome come un altro (sprint 20 · T1.8)', async () => {
+        await apriSu([
+            suUnApp('uat-n51', 'pm'),
+            // Anche un prodotto «Presto», o che il workspace non ha attivo: come per `app`.
+            suUnApp('uat-n52', 'reports'),
+            suUnApp('uat-n53', ' crm '),
+            // Un codice che il registro non ha, la Dashboard, lo stesso codice scritto in un altro modo: niente, mai il codice.
+            suUnApp('uat-n54', 'uat-app-nuova'),
+            suUnApp('uat-n55', 'home'),
+            suUnApp('uat-n56', 'PM'),
+            suUnApp('uat-n57', null),
+            // Un tipo della stessa famiglia che le lingue non hanno ancora: il titolo di ripiego, e la stessa regola.
+            suUnApp('uat-n58', 'pm', 'com.zeiras.app.uat-nuovo'),
+            suUnApp('uat-n59', 'uat-app-nuova', 'com.zeiras.app.uat-nuovo'),
+            // Una cartella che si chiama «pm»: è il suo nome, e resta.
+            conInPiu('uat-n60', { app: null, risorsa_nome: 'pm' }),
+            // Due tipi che cominciano allo stesso modo ma non sono di quella famiglia.
+            conInPiu('uat-n61', { app: null, tipo: 'com.zeiras.applicazione.uat', risorsa_nome: 'pm' }),
+            conInPiu('uat-n62', { app: null, tipo: 'com.zeiras.app', risorsa_nome: 'pm' }),
+        ]);
+
+        expect(secondeRighe()).toStrictEqual(['Project Management', 'Report', 'CRM', null, null, null, null, 'Project Management', null, 'pm', 'pm', 'pm']);
+        expect(titoli()).toStrictEqual([
+            ...Array(7).fill('Un\'app del workspace è stata attivata o disattivata'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova cartella', 'Novità nel workspace', 'Novità nel workspace',
+        ]);
+        // Il nome sta nella seconda riga e solo lì: davanti all'ora c'è il prodotto di `app`, che queste notifiche non hanno.
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 minuti fa'));
+        expect(voci().slice(0, 9).map((voce) => /\bpm\b|reports|crm|uat-app-nuova|home/.test(voce.textContent ?? ''))).toStrictEqual(Array(9).fill(false));
+    });
+
+    it.each([
+        ['es', 'Gestión de proyectos', 'Informes'],
+        ['en', 'Project Management', 'Reports'],
+        // Una lingua che zr-core non ha: l'inglese, come per ogni altro testo.
+        ['fr', 'Project Management', 'Reports'],
+    ] as const)('con la lingua "%s" il nome del prodotto di una notifica su un\'app è quello che il prodotto ha in quella lingua (sprint 20 · T1.8)', async (lingua, pm, reports) => {
+        vi.stubGlobal('fetch', rotte([suUnApp('uat-n51', 'pm'), suUnApp('uat-n52', 'reports'), conInPiu('uat-n53', { risorsa_nome: 'pm' })]));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(secondeRighe()).toStrictEqual([pm, reports, 'pm']);
+    });
+
     it('una notifica con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di quel nome; con `null`, un nome vuoto o di soli spazi, senza la chiave, o con un valore che non è un testo, resta l\'icona di prima; il nome non entra nel titolo né nella seconda riga (sprint 20 · T1.2)', async () => {
         await apriSu([
             conInPiu('uat-n51', { autore_nome: 'Marta Rossi' }),
@@ -857,6 +903,26 @@ describe('il pannello delle notifiche', () => {
         expect(secondeRighe()).toStrictEqual(tutte);
         await clic(schede()[0]);
         expect(secondeRighe()).toStrictEqual(perMe);
+    });
+
+    it('all\'`AppShell` `forMe` arriva solo quando `per_me` è un booleano, ed è quel booleano: con `null`, senza la chiave o con un valore che non è un booleano la chiave non c\'è, nemmeno con `undefined` o col valore com\'è (sprint 20 · T1.3; review, R3)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await apriSu([
+            conInPiu('uat-n51', { per_me: true }),
+            conInPiu('uat-n52', { per_me: false }),
+            conInPiu('uat-n53', { per_me: null }),
+            conInPiu('uat-n54'),
+            // Nel pannello di oggi questi stanno in «Per me» anche se passano com'è: l'`AppShell` toglie solo `false`. Si guarda
+            // ciò che gli arriva, perché un `AppShell` di domani potrebbe leggere `forMe` in un altro modo.
+            conInPiu('uat-n55', { per_me: 0 }),
+            conInPiu('uat-n56', { per_me: 'false' }),
+            conInPiu('uat-n57', { per_me: 1 }),
+            conInPiu('uat-n58', { per_me: 'true' }),
+        ]);
+
+        const date = appShell.mock.lastCall?.[0].notifications ?? [];
+        expect(date.map((notifica) => notifica.id)).toStrictEqual(['uat-n51', 'uat-n52', 'uat-n53', 'uat-n54', 'uat-n55', 'uat-n56', 'uat-n57', 'uat-n58']);
+        expect(date.map((notifica) => ('forMe' in notifica ? notifica.forMe : 'manca'))).toStrictEqual([true, false, 'manca', 'manca', 'manca', 'manca', 'manca', 'manca']);
     });
 
     it('con le sole notifiche che non sono per me «Per me» è vuota e «Tutte» le mostra: la campanella conta le non lette di tutte e due (sprint 20 · T1.3)', async () => {

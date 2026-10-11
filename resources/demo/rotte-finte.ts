@@ -6,7 +6,8 @@
 // conosce e una non ha `tipo`, e hanno il titolo di ripiego. Chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
 // `per_me`) sono `null`, come li dà la parte server quando il backoffice non li manda; con `?chi=1` la più recente dice chi e
 // su che cosa ed è rivolta alla persona, la seconda dice chi ed è per tutto il workspace (solo in «Tutte»), le altre restano
-// com'erano. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// com'erano, e ce n'è una in più, letta tre giorni fa, su un'app: ha in `risorsa_nome` il codice dell'app, com'è nel backoffice, e
+// il pannello ne mostra il nome. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
 // `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
@@ -32,6 +33,8 @@ const notificheDiProva = [
     { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },
     { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false) },
     { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti },
+    // Solo con `?chi=1`, una notifica su un'app: lì il backoffice dà il codice dell'app (`pm`), e il pannello ne mostra il nome.
+    ...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),
     { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti },
 ];
 let letture = 0;

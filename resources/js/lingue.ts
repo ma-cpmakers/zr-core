@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
+import { registro, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -123,4 +123,28 @@ export function titoloDellaNotifica(tipo: unknown, lingua: string): string {
     const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
 
     return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
+}
+
+/** Così comincia il tipo di una notifica su un'app (`com.zeiras.app.modificata`): la cosa a cui si riferisce è un prodotto. */
+const TIPO_SU_UN_APP = 'com.zeiras.app.';
+
+/**
+ * Il nome della cosa a cui si riferisce una notifica, in una lingua: la riga sotto il titolo. È il suo `risorsa_nome`, senza gli
+ * spazi intorno. Per una notifica su un'app (un tipo `com.zeiras.app.…`) il backoffice dà lì il codice dell'app (`pm`), e il nome
+ * è quello che il prodotto ha nel registro e nelle lingue, anche per un prodotto «Presto» o non attivo nel workspace: un codice che
+ * il registro non ha, o la Dashboard, non dà niente, e il codice non si mostra mai. Niente (`undefined`) anche quando il nome non
+ * c'è: `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo. È la funzione del pannello delle notifiche
+ * della cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
+ */
+export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: unknown }, lingua: string): string | undefined {
+    const nome = typeof notifica.risorsa_nome === 'string' ? notifica.risorsa_nome.trim() : '';
+    if (nome === '') {
+        return undefined;
+    }
+    if (typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
+        return nome;
+    }
+    const prodotto = registro.find((voce) => voce.id === nome && voce.id !== 'home');
+
+    return prodotto && nomeDellaVoce(prodotto, lingua);
 }

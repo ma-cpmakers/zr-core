@@ -243,7 +243,7 @@ final class NotificheDellaCornice
      * un'app. Il `tipo` è una stringa, e passa com'è. Una risposta senza uno dei cinque non è una notifica, ed è un guasto: mai
      * una notifica non letta, mai una notifica senza app o senza tipo.
      *
-     * Dal #1670 del backoffice una notifica dice anche chi ha fatto, su che cosa e per chi: `autore` (null, o un oggetto col
+     * Una notifica del backoffice può dire anche chi ha fatto, su che cosa e per chi: `autore` (null, o un oggetto col
      * `nome`), `risorsa_nome` (null o un testo) e `per_me` (null o un booleano). Qui sono facoltative: un backoffice che non le
      * manda è quello di prima, e valgono null. Se ci sono, con un'altra forma è lo stesso guasto: mai un valore tolto in silenzio.
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.

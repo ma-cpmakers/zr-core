@@ -185,7 +185,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
     });
 
-    it('con `?chi=1` le notifiche d\'esempio sono i tre casi: una con chi e su che cosa rivolta alla persona, una con chi per tutto il workspace, le altre com\'erano; e quella che arriva dopo non li dice (sprint 20 · T1.7)', async () => {
+    it('con `?chi=1` le notifiche d\'esempio sono i tre casi — una con chi e su che cosa rivolta alla persona, una con chi per tutto il workspace, le altre com\'erano — più una su un\'app, col codice dell\'app in `risorsa_nome`; e quella che arriva dopo non li dice (sprint 20 · T1.7, T1.8)', async () => {
         await rotte(false, '?chi=1&arriva=1');
 
         await rispostaDi('/cornice/notifiche');
@@ -195,14 +195,18 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             { id: 'uat-4', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Scrivere il brief del lancio', per_me: true },
             { id: 'uat-3', autore_nome: 'Bruno Neri', risorsa_nome: null, per_me: false },
             { id: 'uat-2', autore_nome: null, risorsa_nome: null, per_me: null },
+            { id: 'uat-0', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null },
             { id: 'uat-1', autore_nome: null, risorsa_nome: null, per_me: null },
         ]);
+        // Quella su un'app non è di un prodotto (`app` è `null`): che cosa è cambiato lo dice il tipo, quale app `risorsa_nome`.
+        expect((corpo.data as Record<string, unknown>[]).filter(({ id }) => id === 'uat-0').map(({ app, tipo, letta }) => ({ app, tipo, letta }))).toStrictEqual([{ app: null, tipo: 'com.zeiras.app.modificata', letta: true }]);
         // Le otto chiavi della parte server, e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
         expect((corpo.data as Record<string, unknown>[]).map((notifica) => Object.keys(notifica).sort().join(' '))).toStrictEqual([
             'app autore_nome creata_il id letta per_me risorsa_nome tipo',
             'app autore_nome creata_il id letta per_me risorsa_nome tipo',
             'app autore_nome creata_il id letta per_me risorsa_nome tipo',
             'app autore_nome creata_il id letta per_me risorsa_nome',
+            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
             'app autore_nome creata_il id letta per_me risorsa_nome tipo',
         ]);
     });

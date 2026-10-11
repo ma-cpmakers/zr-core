@@ -182,6 +182,45 @@ describe('le lingue della cornice', () => {
         expect(['it-IT', 'IT', 'es_ES'].map((lingua) => titoloDellaNotifica(undefined, lingua))).toStrictEqual(['Novità nel workspace', 'Novità nel workspace', 'Novedades en el workspace']);
     });
 
+    // Sprint 20 · T1.8 (review della PR #24, R1): la seconda riga di una notifica è il nome della cosa, che il backoffice dà in
+    // `risorsa_nome`. Per una notifica su un'app dà il codice dell'app: il nome lo dicono il registro e le lingue, come per `app`.
+    it.each([
+        ['it', 'Project Management', 'Report', 'Contenuti'],
+        ['es', 'Gestión de proyectos', 'Informes', 'Contenidos'],
+        ['en', 'Project Management', 'Reports', 'Content'],
+        // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
+        ['es_ES', 'Gestión de proyectos', 'Informes', 'Contenidos'],
+        ['fr', 'Project Management', 'Reports', 'Content'],
+    ] as const)('risorsaDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s": per una notifica su un\'app (un tipo `com.zeiras.app.…`) dà il nome che il prodotto ha nella lingua, mai il codice, e niente se il registro non ha quel codice; per ogni altro tipo dà `risorsa_nome` com\'è, senza gli spazi intorno (sprint 20 · T1.8)', async (lingua, pm, reports, content) => {
+        const { risorsaDellaNotifica } = await import('./index');
+        const suUnApp = (risorsa_nome: unknown, tipo: unknown = 'com.zeiras.app.modificata') => risorsaDellaNotifica({ tipo, risorsa_nome }, lingua);
+
+        expect([suUnApp('pm'), suUnApp(' reports\n'), suUnApp('content'), suUnApp('crm')]).toStrictEqual([pm, reports, content, 'CRM']);
+        // Ogni prodotto del registro ha il suo nome, anche «Presto»; la Dashboard non è un prodotto.
+        expect(registro.filter((voce) => voce.id !== 'home').map((voce) => suUnApp(voce.id))).toStrictEqual(registro.filter((voce) => voce.id !== 'home').map((voce) => nomeDellaVoce(voce, lingua)));
+        expect([suUnApp('home'), suUnApp('uat-app-nuova'), suUnApp('PM'), suUnApp('Project Management'), suUnApp('pm crm')]).toStrictEqual(Array(5).fill(undefined));
+        // Un tipo della stessa famiglia che zr-core non conosce ancora ha la stessa regola.
+        expect([suUnApp('pm', 'com.zeiras.app.uat-nuovo'), suUnApp('uat-app-nuova', 'com.zeiras.app.uat-nuovo')]).toStrictEqual([pm, undefined]);
+        // Fuori da quella famiglia «pm» è il nome di una cosa: una cartella, una board, una scheda.
+        expect(['com.zeiras.board.cartella.creata', 'com.zeiras.applicazione.uat', 'com.zeiras.app', 'uat.com.zeiras.app.modificata', '', undefined, null, 7].map((tipo) => risorsaDellaNotifica({ tipo, risorsa_nome: ' pm ' }, lingua))).toStrictEqual(Array(8).fill('pm'));
+        expect(risorsaDellaNotifica({ tipo: 'com.zeiras.board.board.creata', risorsa_nome: '  UAT Lancio Q4 ' }, lingua)).toBe('UAT Lancio Q4');
+    });
+
+    it('risorsaDellaNotifica non dà niente quando il nome non c\'è — `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo — per ogni tipo; e prende una notifica com\'è, del backoffice o della rotta della cornice (sprint 20 · T1.8)', async () => {
+        const { risorsaDellaNotifica } = await import('./index');
+        const senzaNome = [null, undefined, '', ' \t\n ', 0, 7, false, true, ['pm'], { nome: 'pm' }];
+
+        for (const tipo of ['com.zeiras.board.cartella.creata', 'com.zeiras.app.modificata', undefined]) {
+            expect(senzaNome.map((risorsa_nome) => risorsaDellaNotifica({ tipo, risorsa_nome }, 'it'))).toStrictEqual(senzaNome.map(() => undefined));
+            expect(risorsaDellaNotifica({ tipo }, 'it')).toBeUndefined();
+        }
+        expect(risorsaDellaNotifica({}, 'it')).toBeUndefined();
+        // Le altre chiavi di una notifica non contano: né `app`, né `soggetto`.
+        const delBackoffice = { id: 'uat-n1', tipo: 'com.zeiras.app.modificata', app: null, soggetto: '/v1/app/crm', dati: {}, letta_il: null, creata_il: '2026-10-11T07:00:00Z', autore: null, risorsa_nome: 'pm', per_me: null };
+        const dellaCornice = { id: 'uat-n2', creata_il: '2026-10-11T07:00:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.board.scheda.creata', autore_nome: null, risorsa_nome: 'UAT Scrivere il brief', per_me: null };
+        expect([risorsaDellaNotifica(delBackoffice, 'it'), risorsaDellaNotifica(dellaCornice, 'it')]).toStrictEqual(['Project Management', 'UAT Scrivere il brief']);
+    });
+
     // Sprint 17 · T1 (voce #1481): i due testi che il pulsante «Segna tutte come lette» ha mentre la richiesta è in corso e quando
     // ne restano sono chiavi di zr-core, non valori cambiati a `markAllRead`, che è dell'`AppShell` e resta com'è in ogni lingua.
     it('i due testi del pulsante delle notifiche sono chiavi di zr-core nelle tre lingue, e `markAllRead` resta il testo di prima; in una lingua che zr-core non ha sono in inglese (sprint 17 · T1.6)', () => {
