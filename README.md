@@ -151,10 +151,13 @@ altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la c
 non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
 invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
 lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una
-notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per la lingua e
-il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo
-se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l'`utente` col suo `id`, la
-`lingua` e il `nome`): con un'altra forma `Sessione::aggiorna` non cambia niente. Se il backoffice non risponde
+notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per il nome, e
+per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia
+vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c'è nella sessione», più sotto): se il
+controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo se il
+controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l'`utente` col suo `id`, la
+`lingua` e il `nome`): con un'altra forma `Sessione::aggiorna` non cambia niente. Una lingua che `Sessione::aggiorna`
+non prende i dati non la portano né subito né dopo: tengono quella che la sessione aveva. Se il backoffice non risponde
 `Cornice::lingua()` non lancia: dà la lingua della sessione, lascia nel log una riga d'avviso col tipo dell'errore, mai il
 suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la prima `Cornice::dati()` di quella richiesta,
 se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
