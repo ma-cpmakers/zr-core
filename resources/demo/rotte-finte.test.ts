@@ -61,7 +61,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         });
 
         expect(stato).toBe(200);
-        expect(Object.keys(corpo)).toEqual(['data', 'aggiornati_il']);
+        expect(Object.keys(corpo)).toEqual(['data', 'aggiornati_il', 'workspace']);
         expect(corpo.data).toHaveLength(4);
         expect(corpo.aggiornati_il).toBe('2026-10-10T00:00:00.000001Z');
         expect(nelFrattempo).toBe('2026-10-10T00:00:00.000002Z');
@@ -92,11 +92,28 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         const letture = await rispostaDi('/cornice/notifiche/letture', segnaTutte());
 
         expect(elenco.stato).toBe(200);
-        expect(Object.keys(elenco.corpo)).toEqual(['data']);
+        // Dalla `v1.12.0` l'elenco dice di quale workspace è: non è un istante, e c'è anche senza orologio.
+        expect(Object.keys(elenco.corpo)).toEqual(['data', 'workspace']);
         expect(letture.stato).toBe(200);
         expect(Object.keys(letture.corpo)).toEqual(['data']);
         // Dalla `v1.3.0` la parte server dice sempre se ne restano: `altre` non è un istante, e c'è anche senza orologio.
         expect(Object.keys(letture.corpo.data as object)).toEqual(['fino_a', 'altre']);
+    });
+
+    it.each<[string, string | undefined, string[]]>([
+        ['nel workspace dei dati di prova', 'uat-marketing', ['data', 'workspace']],
+        ['in un altro workspace, come da un\'altra scheda', 'uat-vendite', ['data', 'workspace']],
+        ['che la pagina di prova non dice', undefined, ['data']],
+    ])('GET /cornice/notifiche dice di quale workspace è l\'elenco, quello della «sessione» — %s —, come la parte server dalla v1.12.0 (sprint 22 · T1.1)', async (_quale, dellaSessione, chiavi) => {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => dellaSessione);
+
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche');
+
+        expect(stato).toBe(200);
+        expect(Object.keys(corpo)).toEqual(chiavi);
+        expect(corpo.workspace).toBe(dellaSessione);
     });
 
     // Una guardia: è così anche prima dell'orologio. Come nella parte server, un errore non dice quando.

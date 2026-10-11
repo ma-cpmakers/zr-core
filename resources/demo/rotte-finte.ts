@@ -14,7 +14,7 @@
 // prima. Con `?viste=1` in fondo all'elenco ci sono tre notifiche delle viste salvate di una board (creata, modificata,
 // eliminata), di Project Management, lette: nel registro non hanno una destinazione. Ogni notifica porta gli id che la parte server dà di
 // `dati` (`ids`): i soli che il percorso del registro chiede per il suo tipo, e nessuno se il tipo non ha una destinazione; mai `dati`
-// né `soggetto`. Da una del CRM la cornice apre la sua risorsa. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// né `soggetto`. Da una del CRM la cornice apre la sua risorsa, nel workspace che l'elenco dice (`workspace`: quello della «sessione»). «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
 // `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
@@ -166,8 +166,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti, ids: {} });
             }
 
-            // Senza orologio l'istante manca, e nel JSON la chiave non c'è.
-            return json({ data: notificheDiProva, aggiornati_il: lettoIl });
+            // Senza orologio l'istante manca, e nel JSON la chiave non c'è. `workspace` è quello della «sessione», come lo dice
+            // la parte server dalla `v1.12.0`: se la pagina di prova non lo dà, manca anche lui.
+            return json({ data: notificheDiProva, aggiornati_il: lettoIl, workspace: slugDellaSessione() });
         }
         if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
             letture += 1;

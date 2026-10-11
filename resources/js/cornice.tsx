@@ -303,6 +303,13 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
 }
 
+/**
+ * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
+ * niente di lì. Ogni modulo del registro si apre come uno `disponibile`, e se in quel workspace non è attivo lo dice il modulo,
+ * come quando lo si apre dal menu. Un modulo «Presto» resta senza destinazione: quello lo dice il registro, non i dati.
+ */
+const inUnAltroWorkspace: DatiDellaCornice['prodotti'] = Object.fromEntries(registro.filter((voce) => voce.id !== 'home').map((voce) => [voce.id, 'disponibile']));
+
 export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
@@ -367,7 +374,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Con l'elenco, la richiesta da cui viene (`richiesta`): mentre il pannello si ricarica senza svuotarsi è una di prima
     // dell'ultima partita. Sta nello stato insieme all'elenco, non in un ref: un clic la prende dallo stesso disegno della
     // pagina da cui prende l'istante mandato, anche se cade fra l'arrivo di un elenco nuovo e il ridisegno.
-    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number }>({ stato: 'ready', elenco: [], richiesta: 0 });
+    // E il workspace di cui è (`workspace`), come lo dice la parte server: quello della sessione, che non è sempre quello dei
+    // dati della pagina (due schede su due workspace). `undefined` finché non si sa.
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0, workspace: undefined });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: number }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
@@ -381,18 +390,18 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
-            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
+            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa, workspace: undefined });
         }
         caricaNotifiche().then(
-            ({ elenco, il }) => {
+            ({ elenco, il, workspace }) => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'ready', elenco, richiesta: questa });
+                    setNotifiche({ stato: 'ready', elenco, richiesta: questa, workspace });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).length, il });
                 }
             },
             () => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa });
+                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa, workspace: undefined });
                 }
             },
         );
@@ -568,11 +577,16 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
             // Una notifica apre la sua risorsa, dove dice il registro (`destinazioneDellaNotifica`): nel prodotto da cui viene, nel
-            // workspace dei dati. Una che non ha dove andare, e «Vedi tutte», portano alla pagina delle notifiche di
-            // app.zeiras.com, anche da un prodotto.
+            // workspace dell'elenco — quello che la parte server dice, mai quello dei dati della pagina: la sessione ha un
+            // workspace solo, e la scheda rimasta su un altro riceve le notifiche di quello. Se l'elenco è del workspace dei
+            // dati decide lo stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra,
+            // `inUnAltroWorkspace`). Una che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi
+            // tutte», portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
             onOpenNotification={(aperta) => {
                 const notifica = notifiche.elenco.find(({ id }) => id === aperta.id);
-                naviga((notifica && destinazioneDellaNotifica(notifica, dati.workspace.slug, dati.prodotti)) ?? dashboard.indirizzo + pagineDiApp.notifiche);
+                const elencoDi = notifiche.workspace;
+                const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+                naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
             }}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
         />

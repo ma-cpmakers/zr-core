@@ -1527,9 +1527,13 @@ describe('il pannello delle notifiche', () => {
         { id: 'uat-n51', creata_il: '2026-10-06T11:15:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.creata' },
     ];
 
-    /** Gli indirizzi che la cornice apre con un clic su ognuna di quelle notifiche, una alla volta: a ogni clic il pannello si chiude. */
-    async function apertiDalPannello(datiDellaPagina: DatiDellaCornice, prodotto?: string, elenco: { id: string }[] = conGliId): Promise<unknown[]> {
-        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco })));
+    /**
+     * Gli indirizzi che la cornice apre con un clic su ognuna di quelle notifiche, una alla volta: a ogni clic il pannello si
+     * chiude. `dellElenco` è ciò che la parte server dice accanto a `data`: se non lo si dà, che l'elenco è del workspace della
+     * pagina (`workspace`, dalla `v1.12.0`), come succede con una scheda sola.
+     */
+    async function apertiDalPannello(datiDellaPagina: DatiDellaCornice, prodotto?: string, elenco: { id: string }[] = conGliId, dellElenco: Record<string, unknown> = { workspace: datiDellaPagina.workspace.slug }): Promise<unknown[]> {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, ...dellElenco })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={datiDellaPagina} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
         for (let indice = 0; indice < elenco.length; indice++) {
@@ -1603,6 +1607,73 @@ describe('il pannello delle notifiche', () => {
 
     it('in un workspace dove il CRM non si può aprire, un clic su una notifica di un\'azienda apre la pagina delle notifiche (sprint 21 · T5.2, T3.4)', async () => {
         expect(await apertiDalPannello({ ...dati, prodotti: { pm: 'attivo', crm: 'in_arrivo' } }, undefined, delleAziende)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+    });
+
+    // Sprint 22 · T1 (voce #1713): la sessione ha un workspace solo. Con due schede su due workspace, la scheda rimasta
+    // indietro mostra ancora il suo, ma l'elenco che la parte server dà è di quello in cui la persona è entrata per ultimo: lo
+    // dice la risposta (`workspace`), e l'indirizzo si compone con quello slug, mai con quello dei dati della pagina.
+    const nelCrmDellAltro = 'https://crm.zeiras.com/w/acme-vendite';
+
+    it.each([[undefined], ['pm'], ['crm']])('con l\'elenco di un altro workspace un clic apre la risorsa in quel workspace, mai in quello dei dati della pagina — dal prodotto «%s» (sprint 22 · T1.2)', async (prodotto) => {
+        const aperti = await apertiDalPannello(dati, prodotto, conGliId, { workspace: 'acme-vendite' });
+
+        expect(aperti).toStrictEqual([
+            `${nelCrmDellAltro}/contatti/uat-persona-1`,
+            `${nelCrmDellAltro}/pipeline/uat-pipeline-1/impostazioni`,
+            `${nelCrmDellAltro}/contatti/uat-persona-2`,
+            // Ciò che non ha dove andare resta alla pagina delle notifiche, in qualunque workspace sia l'elenco.
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+        ]);
+        expect(aperti.some((indirizzo) => String(indirizzo).includes('/w/acme-marketing'))).toBe(false);
+        expect(await apertiDalPannello(dati, prodotto, delleAziende, { workspace: 'acme-vendite' })).toStrictEqual([`${nelCrmDellAltro}/aziende/uat-azienda-1`, `${nelCrmDellAltro}/aziende/uat-azienda-2`]);
+    });
+
+    it.each([
+        ['il backoffice lo dà in arrivo', { pm: 'attivo', crm: 'in_arrivo' }],
+        ['i dati non lo elencano', { pm: 'attivo' }],
+        ['il suo stato è scritto `undefined`', { pm: 'attivo', crm: undefined }],
+        ['i dati non elencano nessun modulo', {}],
+    ] satisfies [string, DatiDellaCornice['prodotti']][])('con l\'elenco di un altro workspace lo stato dei moduli nei dati della pagina non decide: è di un altro workspace. Anche se lì il CRM non si può aprire — %s — la risorsa si apre nel workspace dell\'elenco (sprint 22 · T1.5)', async (_quale, prodotti) => {
+        const dellaPagina = { ...dati, prodotti };
+
+        expect((await apertiDalPannello(dellaPagina, undefined, conGliId, { workspace: 'acme-vendite' })).slice(0, 3)).toStrictEqual([
+            `${nelCrmDellAltro}/contatti/uat-persona-1`,
+            `${nelCrmDellAltro}/pipeline/uat-pipeline-1/impostazioni`,
+            `${nelCrmDellAltro}/contatti/uat-persona-2`,
+        ]);
+        // Nel workspace della pagina, invece, lo stato dei suoi dati decide come prima.
+        expect(await apertiDalPannello(dellaPagina)).toStrictEqual(conGliId.map(() => paginaDelleNotifiche));
+    });
+
+    it.each([
+        ['la chiave manca', {}],
+        ['è `null`', { workspace: null }],
+        ['è un numero', { workspace: 7 }],
+        ['è un oggetto con lo slug dentro', { workspace: { slug: 'acme-marketing' } }],
+        ['è vuota', { workspace: '' }],
+        ['è `..`', { workspace: '..' }],
+        ['ha una barra', { workspace: 'acme-marketing/x' }],
+        ['ha una maiuscola', { workspace: 'Acme-marketing' }],
+        ['ha uno spazio in fondo', { workspace: 'acme-marketing ' }],
+    ] satisfies [string, Record<string, unknown>][])('se la parte server non dice di quale workspace è l\'elenco — `workspace` %s — ogni clic apre la pagina delle notifiche, mai una risorsa nel workspace dei dati della pagina (sprint 22 · T1.3)', async (_quale, dellElenco) => {
+        expect(await apertiDalPannello(dati, 'crm', conGliId, dellElenco)).toStrictEqual(conGliId.map(() => paginaDelleNotifiche));
+        expect(await apertiDalPannello(dati, undefined, delleAziende, dellElenco)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+    });
+
+    it('con l\'elenco del workspace della pagina tutto è come prima: gli stessi indirizzi, e l\'elenco si mostra anche quando la parte server non dice di quale workspace è (sprint 22 · T1.4)', async () => {
+        expect((await apertiDalPannello(dati)).slice(0, 3)).toStrictEqual([`${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`, `${nelCrm}/contatti/uat-persona-2`]);
+
+        // Senza `workspace` non è un errore: il pannello mostra le notifiche, solo che un clic non sa dove aprirle.
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: conGliId })));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(voci()).toHaveLength(conGliId.length);
+        expect(uno('.zr-notif-state')).toBeNull();
     });
 
     /**

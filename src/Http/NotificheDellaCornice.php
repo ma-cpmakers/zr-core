@@ -113,11 +113,14 @@ final class NotificheDellaCornice
     /**
      * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
-     * quanto il suo segno.
+     * quanto il suo segno. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
+     * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
+     * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
      */
     public function elenco(): JsonResponse
     {
         $aggiornatiIl = Segno::adesso();
+        $workspace = Sessione::workspace()['slug'] ?? null;
         $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
@@ -127,6 +130,7 @@ final class NotificheDellaCornice
         return new JsonResponse([
             'data' => array_map(fn (mixed $notifica) => self::perLaCornice($notifica, 'GET /v1/io/notifiche'), $notifiche),
             'aggiornati_il' => $aggiornatiIl,
+            'workspace' => $workspace,
         ]);
     }
 

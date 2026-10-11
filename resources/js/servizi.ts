@@ -56,14 +56,16 @@ export function segno(valore: unknown): string | undefined {
 /**
  * Le notifiche del workspace, dalla più recente: GET /cornice/notifiche. `il` è l'istante in cui la parte server ha cominciato
  * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
+ * `workspace` è lo slug del workspace di cui sono, come lo dice la parte server (dalla `v1.12.0`): quello della sessione, che
+ * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
  */
-export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined }> {
-    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown } | null;
+export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
+    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
 
-    return { elenco: corpo.data as NotificaDellaCornice[], il: segno(corpo.aggiornati_il) };
+    return { elenco: corpo.data as NotificaDellaCornice[], il: segno(corpo.aggiornati_il), workspace: typeof corpo.workspace === 'string' ? corpo.workspace : undefined };
 }
 
 /**
