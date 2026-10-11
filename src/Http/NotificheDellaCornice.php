@@ -302,7 +302,7 @@ final class NotificheDellaCornice
         $ids = [];
         foreach (self::chiaviDelPercorso($app, $tipo) as $chiave) {
             $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
-            if (is_string($valore)) {
+            if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) !== false) {
                 $ids[$chiave] = $valore;
             }
         }
