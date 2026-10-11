@@ -1086,3 +1086,131 @@ it('una lingua del profilo ben fatta che non è una di Zeiras: con zr-auth fino 
     'una di Zeiras in maiuscole' => ['IT'],
     'una di Zeiras con la regione' => ['it-IT'],
 ]);
+
+// Sprint 24 · T1 (voce #1745): chi non ha ancora accettato i documenti legali in vigore riceve da /v1 un 403
+// `accettazione_richiesta` da quasi ogni metodo (restano aperti io.mostra, i documenti, l'accettazione e l'uscita). Per la
+// cornice non è un guasto: Cornice::dati() non lancia e dà i dati ridotti — lingua, persona e workspace della sessione, nessuna
+// app, nessuna azienda, zero non lette — con `accettazione_richiesta: true`, e dopo il primo 403 non chiama più il backoffice.
+// La chiave c'è solo lì: i dati di chi ha accettato sono quelli di sempre, senza la chiave. Il 403 si riconosce dallo stato e
+// dal codice insieme: ogni altra risposta resta l'errore che era. Il 403 è accettazioneRichiesta() di tests/Pest.php.
+
+/**
+ * I dati ridotti della cornice per la sessione dei test entrata in «UAT Marketing», nel loro ordine: le sette chiavi di sempre,
+ * senza app, senza aziende e con zero non lette, e `accettazione_richiesta` in fondo.
+ *
+ * @param  array<string, mixed>  $cambi
+ * @return array<string, mixed>
+ */
+function datiRidotti(string $aggiornatiIl, array $cambi = []): array
+{
+    return [
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'prodotti' => [],
+        'aziende' => [],
+        'non_lette' => 0,
+        'aggiornati_il' => $aggiornatiIl,
+        'accettazione_richiesta' => true,
+        ...$cambi,
+    ];
+}
+
+/**
+ * Il backoffice di chi ha accettato, quello dei dati di datiAttesi(): due app, tre non lette, le aziende e i workspace di
+ * aziendeEWorkspace(); con ciò che un caso gli fa rispondere diverso al posto suo.
+ *
+ * @param  array<string, mixed>  $alPosto  per percorso, come per backoffice()
+ */
+function backofficeDiChiHaAccettato(array $alPosto = []): void
+{
+    backoffice([
+        '/v1/app' => ['data' => [['codice' => 'pm', 'stato' => 'attivo'], ['codice' => 'crm', 'stato' => 'disponibile']], 'successivo' => null],
+        '/v1/io' => ioMostra(3),
+        ...aziendeEWorkspace(),
+        ...$alPosto,
+    ]);
+}
+
+/** @return list<string> i percorsi di /v1 chiamati, nell'ordine in cui le richieste sono partite */
+function percorsiChiamati(): array
+{
+    return Http::recorded()->map(fn (array $coppia) => (string) parse_url($coppia[0]->url(), PHP_URL_PATH))->values()->all();
+}
+
+it('con app.elenca che risponde 403 accettazione_richiesta la pagina ha i dati della cornice lo stesso: lingua, persona e workspace della sessione, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; aziende e workspace non li chiede (sprint 24 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/app' => accettazioneRichiesta()]);
+
+    $this->get('w/uat-marketing/cornice')->assertOk()->assertExactJson(datiRidotti('2026-10-09T21:31:05.123456Z'));
+
+    expect(percorsiChiamati())->toBe(['/v1/io', '/v1/app']);
+});
+
+it('i dati ridotti portano la lingua e il nome che io.mostra ha appena dato, come i dati di sempre: la sessione li ha già presi quando il 403 arriva (sprint 24 · T1.1)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace']), '/v1/app' => accettazioneRichiesta()]);
+
+    $dati = Cornice::dati();
+
+    expect([$dati['lingua'], $dati['persona'], $dati['accettazione_richiesta']])->toBe(['es', ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'], true])
+        ->and([Sessione::utente()['lingua'], Sessione::utente()['nome']])->toBe(['es', 'UAT Ada Lovelace']);
+});
+
+it('da qualunque delle quattro letture arrivi quel 403, anche a metà di un elenco, i dati sono quelli ridotti, interi e nel loro ordine — mai le app senza accettazione_richiesta —, e dopo il 403 il backoffice non è più chiamato (sprint 24 · T1.1, T1.2)', function (string $percorso, int $allaPagina, array $chiamate) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    $workspace = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing', 'ruolo' => 'proprietario', 'azienda_id' => 'az-b'];
+    backofficeDiChiHaAccettato([$percorso => $allaPagina === 1
+        ? accettazioneRichiesta()
+        : Http::sequence()->push(['data' => [$workspace], 'successivo' => 'uat-cursore-2'])->pushResponse(accettazioneRichiesta())]);
+
+    expect(Cornice::dati())->toBe(datiRidotti('2026-10-09T21:31:05.123456Z'))
+        ->and(percorsiChiamati())->toBe($chiamate);
+})->with([
+    'da io.mostra' => ['/v1/io', 1, ['/v1/io']],
+    'da app.elenca' => ['/v1/app', 1, ['/v1/io', '/v1/app']],
+    'da io.aziende.elenca' => ['/v1/io/aziende', 1, ['/v1/io', '/v1/app', '/v1/io/aziende']],
+    'da io.workspace.elenca' => ['/v1/io/workspace', 1, ['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace']],
+    'da io.workspace.elenca, alla seconda pagina' => ['/v1/io/workspace', 2, ['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']],
+]);
+
+it('quel 403 da io.mostra non è un guasto nemmeno per la riga: dà la lingua della sessione senza scrivere niente nel log, e Cornice::dati(), nella stessa richiesta, dà i dati ridotti col segno di quella lettura, senza richiamare il backoffice (sprint 24 · T1.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato(['/v1/io' => accettazioneRichiesta()]);
+
+    expect(Cornice::lingua())->toBe('en');
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000000', 'UTC'));
+
+    expect(Cornice::dati())->toBe(datiRidotti('2026-10-09T21:31:05.123456Z'))
+        ->and(Log::channel('della-riga')->getLogger()->getHandlers()[0]->getRecords())->toBe([])
+        ->and(percorsiChiamati())->toBe(['/v1/io']);
+});
+
+it('chi ha accettato ha i dati di sempre: senza quel 403 la chiave accettazione_richiesta non c\'è, nemmeno a false (sprint 24 · T1.4)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    $dati = Cornice::dati();
+
+    expect($dati)->not->toHaveKey('accettazione_richiesta')
+        ->and(array_keys($dati))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il'])
+        ->and($dati['prodotti'])->toBe(['pm' => 'attivo', 'crm' => 'disponibile']);
+});
+
+it('ogni altra risposta resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, fanno lanciare a Cornice::dati() il loro ErroreApi, da qualunque lettura arrivino (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $percorso) {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([$percorso => accettazioneRichiesta($stato, $codice)]);
+
+    expect(fn () => Cornice::dati())->toThrow(function (ErroreApi $errore) use ($stato, $codice) {
+        expect([$errore->stato, $errore->codice])->toBe([$stato, $codice]);
+    });
+})->with(quasiAccettazioneRichiesta())->with([
+    'da io.mostra' => ['/v1/io'],
+    'da app.elenca' => ['/v1/app'],
+    'da io.aziende.elenca' => ['/v1/io/aziende'],
+    'da io.workspace.elenca' => ['/v1/io/workspace'],
+]);

@@ -2002,3 +2002,57 @@ it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa p
             ['board_id' => 'uat-board-1', 'id' => 'uat-scheda-1'], [], ['primo_id' => 'uat-primo-1'], ['id' => 'uat-scheda-1'],
         ]);
 });
+
+// Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) le rotte
+// della cornice rispondono 403 col solo codice, nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
+// backoffice restano nella parte server. Il 403 si riconosce dallo stato e dal codice insieme: ogni altra risposta resta
+// l'errore che era. La quarta rotta, la ricerca, è in RicercaTest. Il 403 è accettazioneRichiesta() di tests/Pest.php.
+
+/** Una delle tre rotte delle notifiche, chiamata come la chiama la cornice: `elenco`, `lettura` o `letture`. */
+function rottaDelleNotifiche(string $rotta): TestResponse
+{
+    return senzaGettone(match ($rotta) {
+        'elenco' => test()->getJson('cornice/notifiche'),
+        'lettura' => test()->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]),
+        'letture' => test()->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
+    });
+}
+
+it('davanti al 403 accettazione_richiesta del backoffice le tre rotte delle notifiche rispondono 403 col solo codice: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3)', function (string $rotta) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => accettazioneRichiesta()]);
+
+    $risposta = rottaDelleNotifiche($rotta)->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    Http::assertSentCount(1);
+})->with([
+    'GET /cornice/notifiche' => ['elenco'],
+    'PATCH /cornice/notifiche/{id}/lettura' => ['lettura'],
+    'POST /cornice/notifiche/letture' => ['letture'],
+]);
+
+it('quel 403 a un richiamo delle letture è lo stesso 403 col solo codice, e dopo non parte un\'altra chiamata (sprint 24 · T1.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true), fn () => accettazioneRichiesta(), lettureDopo(0, false)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    Http::assertSentCount(2);
+});
+
+it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere accettazione_richiesta a nessuna delle tre rotte delle notifiche (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $rotta) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => accettazioneRichiesta($stato, $codice)]);
+
+    $risposta = rottaDelleNotifiche($rotta);
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull();
+    Http::assertSentCount(1);
+})->with(quasiAccettazioneRichiesta())->with([
+    'GET /cornice/notifiche' => ['elenco'],
+    'PATCH /cornice/notifiche/{id}/lettura' => ['lettura'],
+    'POST /cornice/notifiche/letture' => ['letture'],
+]);

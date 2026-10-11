@@ -297,3 +297,28 @@ it('lo `workspace` della risposta della ricerca è quello della sessione prima d
         ->and(Sessione::workspace()['slug'] ?? null)->toBe('uat-vendite');
     Http::assertSentCount(1);
 });
+
+// Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) la ricerca
+// risponde 403 col solo codice, come le tre rotte delle notifiche (NotificheTest): i documenti mancanti, il titolo e il
+// dettaglio del backoffice restano nella parte server. Il 403 è accettazioneRichiesta() di tests/Pest.php.
+
+it('davanti al 403 accettazione_richiesta del backoffice la ricerca risponde 403 col solo codice: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3)', function () {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => accettazioneRichiesta()]);
+
+    $risposta = cerca('UAT')->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    Http::assertSentCount(1);
+});
+
+it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere accettazione_richiesta alla ricerca (sprint 24 · T1.5)', function (int $stato, ?string $codice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => accettazioneRichiesta($stato, $codice)]);
+
+    $risposta = cerca('UAT');
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull();
+    Http::assertSentCount(1);
+})->with(quasiAccettazioneRichiesta());

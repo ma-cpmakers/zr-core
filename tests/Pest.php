@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Tests\TestCase;
@@ -63,4 +64,35 @@ function sessioneAMano(?array $workspace, string $lingua = 'en'): array
     }
 
     return $gettoni;
+}
+
+/**
+ * Il 403 `accettazione_richiesta` di /v1: la persona non ha ancora accettato i documenti legali in vigore. Un problem details
+ * (RFC 9457) coi `mancanti` accanto al codice, com'è nel contratto. Titolo, dettaglio, documento e versione sono segni: testi
+ * che dalla parte server della cornice non devono uscire. Con un altro stato, o con un altro codice (null: senza codice), è
+ * una risposta che gli somiglia e non lo è.
+ */
+function accettazioneRichiesta(int $stato = 403, ?string $codice = 'accettazione_richiesta'): mixed
+{
+    $problema = ['type' => 'about:blank', 'title' => 'segno-del-titolo', 'status' => $stato, 'detail' => 'segno-del-dettaglio']
+        + ($codice === null ? [] : ['codice' => $codice])
+        + ['mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]];
+
+    return Http::response((string) json_encode($problema), $stato, ['Content-Type' => 'application/problem+json']);
+}
+
+/**
+ * Le risposte del backoffice che somigliano al 403 `accettazione_richiesta` e non lo sono, perché lo stato o il codice è un
+ * altro: le righe di un dataset, stato e codice per `accettazioneRichiesta()`.
+ *
+ * @return array<string, array{int, ?string}>
+ */
+function quasiAccettazioneRichiesta(): array
+{
+    return [
+        'un 403 con un altro codice' => [403, 'gettone_senza_workspace'],
+        'un 403 senza codice' => [403, null],
+        'quel codice con un 409' => [409, 'accettazione_richiesta'],
+        'quel codice con un 500' => [500, 'accettazione_richiesta'],
+    ];
 }
