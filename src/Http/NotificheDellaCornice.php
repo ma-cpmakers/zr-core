@@ -359,7 +359,7 @@ final class NotificheDellaCornice
                 if ($notifica['tipo'] === $tipo) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
 
-                    return $segnaposto[1];
+                    return array_slice($segnaposto[1], 0, 1);
                 }
             }
         }
