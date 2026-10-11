@@ -79,9 +79,9 @@ function Prova() {
     const dati = useMemo(() => {
         const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
 
-        const diSempre = { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
+        const ridotti = daAccettare ? { prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
 
-        return daAccettare ? { ...diSempre, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true } : diSempre;
+        return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
     }, [senzaCrm, lingua, aziende, nonLette, daAccettare]);
     // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1` o `?opportunita=1`, così le altre pagine
     // restano com'erano.
