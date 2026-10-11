@@ -38,25 +38,24 @@ const marketing: DatiDellaCornice = {
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
-    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }] }],
+    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }], nuovo_workspace: true }],
     non_lette: Number(scelti.get('non_lette') ?? 7),
 };
 // Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
 const marketingDopo: DatiDellaCornice = {
     ...marketing,
     workspace: { nome: 'UAT Marketing Europa', slug: 'uat-marketing' },
-    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing Europa', slug: 'uat-marketing' }] }],
+    aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing Europa', slug: 'uat-marketing' }], nuovo_workspace: true }],
     non_lette: 3,
 };
 // Un altro workspace (un altro slug): la cornice si rifà.
 const vendite: DatiDellaCornice = { ...marketing, workspace: { nome: 'UAT Vendite', slug: 'uat-vendite' }, non_lette: 5 };
 
 // Le voci del prodotto: quelle del layout, e quelle che dà la «Lunga», con una in più. Senza indirizzo: il clic chiama `onNavigate`.
-const vociDelLayout: GruppoDiVoci[] = [
-    { group: 'UAT Agenda', items: [{ id: 'oggi', label: 'UAT Oggi', icon: 'calendar' }, { id: 'risorse', label: 'UAT Risorse', icon: 'users' }] },
-];
+const vociDellAgenda: GruppoDiVoci['items'] = [{ id: 'oggi', label: 'UAT Oggi', icon: 'calendar' }, { id: 'risorse', label: 'UAT Risorse', icon: 'users' }];
+const vociDelLayout: GruppoDiVoci[] = [{ group: 'UAT Agenda', items: vociDellAgenda }];
 const vociDellaLunga: GruppoDiVoci[] = [
-    { group: 'UAT Agenda', items: [...vociDelLayout[0].items, { id: 'solo-lunga', label: 'UAT Solo della Lunga', icon: 'star' }] },
+    { group: 'UAT Agenda', items: [...vociDellAgenda, { id: 'solo-lunga', label: 'UAT Solo della Lunga', icon: 'star' }] },
 ];
 
 /** Ciò che il «server» dà a ogni pagina: i dati della cornice, la cartella della «Percorso» e il numero della visita. */
@@ -303,6 +302,15 @@ function Collegamenti() {
     );
 }
 
+// Sprint 19 · T2 (voce #1652): un frontend con `exactOptionalPropertyTypes` può scrivere `undefined` in ogni prop facoltativa
+// del layout. Qui sono scritte tutte, e il layout della pagina le dà a `LayoutDellaCornice` prima delle sue: se una non lo
+// accetta `tsc` si ferma col file stretto, e se ne nasce una che qui manca si ferma anche con quello di base.
+type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;
+const propsScritteUndefined = {
+    cornice: undefined, product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined,
+    create: undefined, actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
+} satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;
+
 /**
  * Il layout della pagina di prova, come quello di un frontend: un componente a livello di modulo, dato a `createInertiaApp`.
  * Di ciò che Inertia gli passa (le props della pagina, e quelle di `Percorso.layout`) prende per nome i dati e il percorso.
@@ -310,6 +318,7 @@ function Collegamenti() {
 function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'cornice' | 'crumbs' | 'children'>) {
     return (
         <LayoutDellaCornice
+            {...propsScritteUndefined}
             cornice={cornice}
             product="pm"
             nav={vociDelLayout}

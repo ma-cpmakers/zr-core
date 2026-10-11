@@ -420,7 +420,7 @@ describe('la Cornice', () => {
 // Sprint 3 · T2 (voce #1277). Il selettore «Azienda › workspace» e il numero sulla campanella, dalle aziende e dalle non lette
 // dei dati (linea guida 15, passo 8).
 describe('il selettore «Azienda › workspace» e la campanella', () => {
-    it('in cima alla sidebar azienda e workspace attivo; aperto, ogni azienda coi suoi workspace nell\'ordine dei dati, la ✓ sull\'attivo, nessun «Nuovo workspace» (T2.1)', async () => {
+    it('in cima alla sidebar azienda e workspace attivo; aperto, ogni azienda coi suoi workspace nell\'ordine dei dati, la ✓ sull\'attivo; senza `nuovo_workspace` nei dati, nessun «Nuovo workspace» (T2.1)', async () => {
         const appShell = vi.spyOn(Zeiras, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
 
@@ -428,7 +428,8 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
         expect(pulsante?.querySelector('.zr-ws-company')?.textContent).toBe('Acme');
         expect(pulsante?.querySelector('.zr-ws-name')?.textContent).toBe('Marketing');
         expect(uno('.zr-workspace')).toBeNull();
-        // Il tono di ogni workspace viene dal suo id (sprint 17 · T4). Nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
+        // Il tono di ogni workspace viene dal suo id (sprint 17 · T4). Queste aziende non dicono se la persona può creare un
+        // workspace, come quelle di una parte server di prima della v1.9.0: nessun «Nuovo workspace» (sprint 19 · T1).
         expect(appShell.mock.lastCall?.[0].companies).toStrictEqual([
             { id: '7', name: 'Zeta Srl', workspaces: [{ slug: 'zeta-ricerca', name: 'Ricerca', tone: 'citrus' }] },
             { id: '3', name: 'Acme', workspaces: [{ slug: 'acme-vendite', name: 'Vendite', tone: 'coral' }, { slug: 'acme-marketing', name: 'Marketing', tone: 'plum' }] },
@@ -559,6 +560,104 @@ describe('il colore di ogni workspace nel selettore', () => {
     it('nel tipo dei dati l\'id di un workspace è facoltativo: i dati di un frontend che non lo danno restano validi, lo guarda tsc (sprint 17 · T4.5)', () => {
         expectTypeOf<{ nome: string; slug: string }>().toExtend<Aziende[number]['workspace'][number]>();
         expectTypeOf<Aziende[number]['workspace'][number]['id']>().toEqualTypeOf<string | undefined>();
+    });
+});
+
+// Sprint 19 · T1 (voce #1669). «Nuovo workspace» in fondo al selettore. La parte server dice per ogni azienda se la persona può
+// crearvi un workspace (`nuovo_workspace`: un booleano, il ruolo non arriva al browser), e conta l'azienda del workspace dei dati,
+// quella che l'`AppShell` mostra in cima al selettore. Il pulsante apre la pagina di zr-home nel workspace dei dati: una pagina di
+// app.zeiras.com da ogni prodotto. Il pulsante, il suo testo e la sua icona sono dell'`AppShell`: la cornice gli dà solo che cosa
+// fare al clic.
+describe('«Nuovo workspace» in fondo al selettore', () => {
+    type Aziende = NonNullable<DatiDellaCornice['aziende']>;
+    const [zeta, acme] = aziende;
+    /** La persona può creare un workspace in Acme, l'azienda del workspace dei dati, e non in Zeta. */
+    const soloInAcme: Aziende = [{ ...zeta, nuovo_workspace: false }, { ...acme, nuovo_workspace: true }];
+    /** Acme una seconda volta, con un altro id e un altro nome: il workspace dei dati sta in due aziende. */
+    const holding = { ...acme, id: '9', nome: 'Acme Holding' };
+
+    it.each([
+        ['it', 'Nuovo workspace'],
+        ['es', 'Nuevo workspace'],
+        ['en', 'New workspace'],
+    ])('con `nuovo_workspace` vero nell\'azienda del workspace dei dati, in %s il selettore aperto finisce con una riga di separazione e col pulsante «%s», col «+» (sprint 19 · T1.2)', async (lingua, testo) => {
+        await mostra(<Cornice dati={{ ...dati, lingua, aziende: soloInAcme }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-ws-switch'));
+        // In fondo: dopo l'ultima azienda la riga di separazione, e per ultimo il pulsante.
+        const figli = [...(uno('.zr-ws-menu')?.children ?? [])];
+        expect(figli.map((figlio) => figlio.className)).toStrictEqual(['zr-ws-group', 'zr-ws-group', 'zr-product-sep', 'zr-ws-item zr-ws-new']);
+        expect(figli[2].getAttribute('role')).toBe('separator');
+        const pulsante = figli[3];
+        expect([pulsante.tagName, pulsante.getAttribute('type')]).toStrictEqual(['BUTTON', 'button']);
+        expect(pulsante.querySelector('.zr-nav-label')?.textContent).toBe(testo);
+        expect(pulsante.querySelector('svg path')?.getAttribute('d')).toBe(tracciatoDi('plus'));
+    });
+
+    it.each<[string, Aziende]>([
+        ['falso lì e vero in un\'altra', [{ ...zeta, nuovo_workspace: true }, { ...acme, nuovo_workspace: false }]],
+        ['assente lì e vero in un\'altra', [{ ...zeta, nuovo_workspace: true }, acme]],
+        // Solo il booleano `true` apre: nei dati composti a mano un altro valore vale «no».
+        ['il testo «true» lì', [zeta, { ...acme, nuovo_workspace: 'true' as unknown as boolean }]],
+        ['il numero 1 lì', [zeta, { ...acme, nuovo_workspace: 1 as unknown as boolean }]],
+        ['un ruolo al posto del booleano lì', [zeta, { ...acme, nuovo_workspace: 'proprietario' as unknown as boolean }]],
+        // Lo stesso workspace in due aziende: l'`AppShell` mostra in cima l'ultima, e conta quella.
+        ['vero nella prima delle due aziende che hanno quel workspace e falso nell\'ultima', [{ ...holding, nuovo_workspace: true }, { ...acme, nuovo_workspace: false }]],
+    ])('con `nuovo_workspace` %s, nell\'azienda del workspace dei dati il pulsante non c\'è (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe('Acme');
+        expect(appShell.mock.lastCall?.[0].onNewWorkspace).toBeUndefined();
+        await clic(uno('.zr-ws-switch'));
+        expect([...(uno('.zr-ws-menu')?.children ?? [])].map((figlio) => figlio.className)).toStrictEqual(['zr-ws-group', 'zr-ws-group']);
+    });
+
+    it('con lo stesso workspace in due aziende, falso nella prima e vero nell\'ultima, il pulsante c\'è: conta quella che l\'`AppShell` mostra in cima (sprint 19 · T1.2)', async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende: [{ ...holding, nuovo_workspace: false }, { ...acme, nuovo_workspace: true }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe('Acme');
+        await clic(uno('.zr-ws-switch'));
+        expect(tutti('.zr-ws-menu > .zr-ws-new')).toHaveLength(1);
+    });
+
+    it.each<[string, DatiDellaCornice['aziende']]>([
+        ['con un elenco vuoto', []],
+        ['col workspace dei dati in nessuna azienda', [{ ...zeta, nuovo_workspace: true }, { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }], nuovo_workspace: true }]],
+    ])('%s il workspace resta testo e la cornice non dà «Nuovo workspace» all\'`AppShell`, nemmeno se ogni azienda lo permette (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(appShell.mock.lastCall?.[0].onNewWorkspace).toBeUndefined();
+    });
+
+    it.each([[undefined], ['pm'], ['bookings'], ['board']])('con product=%s un clic apre la pagina di zr-home nel workspace dei dati, su app.zeiras.com, una volta sola, e chiude il selettore (sprint 19 · T1.3)', async (product) => {
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, aziende: soloInAcme }} product={product} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-ws-switch'));
+        await clic(uno('.zr-ws-new'));
+        // Lo slug dei dati, non quello di un altro workspace dell'elenco (`zeta-ricerca`, `acme-vendite`).
+        expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/w/acme-marketing/nuovo-workspace']]);
+        expect(uno('.zr-ws-menu')).toBeNull();
+    });
+
+    it('lo slug del workspace dei dati entra nell\'indirizzo codificato (sprint 19 · T1.3)', async () => {
+        const naviga = vi.fn();
+        const slug = 'acme marketing/è?#';
+        const conQuelloSlug: Aziende = [zeta, { ...acme, workspace: [acme.workspace[0], { ...acme.workspace[1], slug }], nuovo_workspace: true }];
+        await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Marketing', slug }, aziende: conQuelloSlug }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-ws-switch'));
+        await clic(uno('.zr-ws-new'));
+        expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/w/acme%20marketing%2F%C3%A8%3F%23/nuovo-workspace']]);
+    });
+
+    it('nel tipo dei dati `nuovo_workspace` è un booleano facoltativo: le aziende di una parte server di prima restano valide, lo guarda tsc (sprint 19 · T1.2)', () => {
+        expectTypeOf<{ id: string; nome: string; workspace: { nome: string; slug: string }[] }>().toExtend<Aziende[number]>();
+        expectTypeOf<Aziende[number]['nuovo_workspace']>().toEqualTypeOf<boolean | undefined>();
     });
 });
 
@@ -2267,5 +2366,28 @@ describe('la voce attiva della barra', () => {
         expect(await delProdotto(null)).toStrictEqual(conUnaVoce);
         // Con la lista aperta l'unica voce segnata è il prodotto aperto, nella lista: nessuna voce del prodotto.
         expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(['Project Management']);
+    });
+});
+
+// Sprint 19 · review della PR #23, R3 e N1: ciò che la cornice decide da sé — il selettore, «Nuovo workspace», il numero sulla
+// campanella, «Segna tutte come lette», le voci del menu del profilo — non lo cambia una prop con lo stesso nome arrivata fuori dal tipo, con uno
+// spread, nemmeno quando la cornice non ha niente da dare: come nella `v1.8.0`, dove la sua prop valeva `undefined` e copriva
+// quella del frontend.
+describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decide la cornice', () => {
+    it('con uno spread di props che `Cornice` non ha, quando la cornice non dà niente al loro posto all\'`AppShell` non arrivano (sprint 19 · review, R3)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const fuoriDalTipo = {
+            companies: [{ id: 'x', name: 'X', workspaces: [{ slug: 'x', name: 'X' }] }],
+            unreadCount: 99,
+            onMarkAllRead: () => {},
+            accountItems: [{ label: 'Voce del frontend' }],
+            onNewWorkspace: () => {},
+        };
+        // Senza aziende, senza non lette, senza notifiche caricate, con `piano`: la cornice non dà nessuna delle cinque.
+        await mostra(<Cornice {...(fuoriDalTipo as object)} dati={dati} onLogout={esciSenzaEffetto} piano />);
+
+        expect(appShell).toHaveBeenCalled();
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
     });
 });

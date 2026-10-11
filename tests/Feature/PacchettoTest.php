@@ -2210,7 +2210,7 @@ it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni 
         ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
         ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
 })->with([
-    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}`'],
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}`'],
     'l\'id è quello di io.workspace.elenca' => ['Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`'],
     'nessuna lettura in più' => ['sta nella riga che `Cornice::dati()` legge già, e non costa una lettura in più'],
     'dall\'id viene il colore' => ['È dall\'`id` che la cornice ricava il colore del workspace nel selettore'],
@@ -2329,3 +2329,239 @@ it('il tsc di zr-core si ferma su una dichiarazione o su un parametro mai usati,
     'una dichiarazione mai usata' => ['noUnusedLocals'],
     'un parametro mai usato' => ['noUnusedParameters'],
 ]);
+
+// Sprint 19 · T1 (voce #1669): «Nuovo workspace» in fondo al selettore, per chi può crearne uno. Il README lo dice dove chi
+// legge lo cerca: in «La parte server» la forma dei dati con `nuovo_workspace` e la regola che lo dà; nel punto del selettore
+// di «La cornice» quando il pulsante c'è, che cosa apre, di chi è il dialogo, chi decide, e che un frontend non deve fare niente.
+
+it('il README dice, in «La parte server», la forma dei dati con nuovo_workspace e la regola che lo dà: chi, da quale lettura, che cosa vale false, da quale versione (sprint 19 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Con «La parte server» e «La cornice» scambiate la frase c'è ancora, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}]'],
+    'che cosa dice' => ['`nuovo_workspace` dice se la persona può creare un workspace in quell\'azienda'],
+    'da quale versione' => ['in quell\'azienda, e c\'è dalla `v1.9.0`'],
+    'da quale lettura' => ['in almeno una riga di `io.workspace.elenca` di quell\'azienda'],
+    'chi' => ['il `ruolo` della persona è `proprietario` o `amministratore`'],
+    'che cosa vale false' => ['in ogni altro caso è `false`: solo `membro`, un ruolo che zr-core non conosce, una riga senza `ruolo`, un\'azienda senza workspace'],
+    'il ruolo non passa a un\'altra azienda' => ['Il `ruolo` in un\'azienda non vale per un\'altra'],
+    'nessuna lettura in più' => ['per saperlo non parte nessuna lettura in più'],
+    'al browser solo il booleano' => ['al browser arriva solo il booleano, mai il `ruolo`'],
+]);
+
+it('il README dice, nel punto del selettore di «La cornice», quando c\'è «Nuovo workspace», che cosa apre, di chi è il dialogo, chi decide, e che un frontend non deve fare niente (sprint 19 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $selettore = 'Il selettore «Azienda › workspace»';
+    // Il README col punto del selettore e quello della campanella scambiati di nome: la frase c'è, ma dove si legge della campanella.
+    $scambiati = strtr($readme, ["- **{$selettore}**" => '- **La campanella**', '- **La campanella**' => "- **{$selettore}**"]);
+
+    expect(str_contains(puntoDellaCornice($readme, $selettore), $frase))->toBe(true)
+        ->and(substr_count($readme, "- **{$selettore}**"))->toBe(1)
+        ->and(substr_count($readme, '- **La campanella**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, $selettore), $frase))->toBe(false);
+})->with([
+    'quando c\'è' => ['In fondo al selettore c\'è «Nuovo workspace» quando `nuovo_workspace` è `true` nell\'azienda del workspace dei dati'],
+    'da quale versione' => ['nell\'azienda del workspace dei dati (dalla `v1.9.0`)'],
+    'che cosa apre' => ['apre `https://app.zeiras.com/w/<slug>/nuovo-workspace`'],
+    'con quale slug' => ['con lo slug del workspace dei dati'],
+    'da ogni prodotto' => ['è una pagina di app.zeiras.com da ogni prodotto'],
+    'il dialogo è di zr-home' => ['Il dialogo è di zr-home'],
+    'chi decide è il backoffice' => ['se la persona può davvero lo decide il backoffice (`io.workspace.crea`)'],
+    'un frontend non deve fare niente' => ['Un frontend non deve fare niente per averlo'],
+]);
+
+it('il README non dice più che «Nuovo workspace» non c\'è finché zr-home non ha la sua pagina (sprint 19 · T1.5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'non c\'è finché zr-home non ha la sua pagina'))->toBe(false);
+});
+
+it('sulla pagina di prova del layout la persona può creare un workspace nell\'azienda dei dati, prima e dopo il cambio di nome del workspace (sprint 19 · T1.6)', function () {
+    $puo = "slug: 'uat-marketing' }], nuovo_workspace: true }],";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$puo, 'nuovo_workspace']))->toBe([$puo => 2, 'nuovo_workspace' => 2]);
+});
+
+// Sprint 19 · T2 (voce #1652): un frontend compila i sorgenti di zr-core col proprio tsconfig, e lì non li può correggere. Se
+// accende un'opzione di `tsc` più stretta di `strict` non deve fermarsi sui file del pacchetto: `tsconfig.stretto.json` accende
+// le nove opzioni sui sorgenti che si installano e sulle pagine di prova, che usano la cornice come un frontend; la CI lo lancia
+// a ogni giro, nel passo dei tipi; il README dice quali sono, e che cosa accetta `undefined`.
+
+/**
+ * Le nove opzioni di `tsc` più strette di `strict` che i sorgenti del pacchetto reggono, nell'ordine del file stretto.
+ *
+ * @return list<string>
+ */
+function opzioniStretteDiTsc(): array
+{
+    return [
+        'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'noImplicitReturns', 'noFallthroughCasesInSwitch', 'noImplicitOverride',
+        'noPropertyAccessFromIndexSignature', 'verbatimModuleSyntax', 'erasableSyntaxOnly', 'noUncheckedSideEffectImports',
+    ];
+}
+
+/** Il punto «I tipi» di «Come si installa in un frontend», su una riga sola: fino alla riga vuota. Vuoto se non c'è, o se sta sotto un altro titolo. */
+function puntoDeiTipi(string $readme): string
+{
+    preg_match('/^## Come si installa in un frontend$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    preg_match('/^\*\*I tipi\*\*.*?(?=^$|\z)/ms', $sezione[1] ?? '', $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il file stretto di tsc accende le nove opzioni e nient\'altro, su ciò che guarda il tsc di base tolti i file di test, e non entra nello zip (sprint 19 · T2.1, T2.2)', function () {
+    $stretto = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.stretto.json'), true, flags: JSON_THROW_ON_ERROR);
+    $base = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    // Né `include` né `files`: guarda ciò che guarda il file di base, cioè i sorgenti che si installano e le pagine di prova. I
+    // file di test no: un loro errore fermerebbe il giro per file che non si installano.
+    expect($stretto)->toBe([
+        'extends' => './tsconfig.json',
+        'compilerOptions' => array_fill_keys(opzioniStretteDiTsc(), true),
+        'exclude' => ['resources/**/*.test.ts', 'resources/**/*.test.tsx'],
+    ])
+        ->and($base['include'])->toBe(['resources/js/**/*.ts', 'resources/js/**/*.tsx', 'resources/demo/**/*.ts', 'resources/demo/**/*.tsx'])
+        ->and(array_values(array_intersect(opzioniStretteDiTsc(), array_keys($base['compilerOptions']))))->toBe([])
+        ->and(preg_match('/^\/tsconfig\.stretto\.json\s+export-ignore$/m', (string) file_get_contents(__DIR__.'/../../.gitattributes')))->toBe(1);
+});
+
+it('la CI lancia il tsc stretto nel passo dei tipi, a ogni giro: una volta, dopo il tsc di base e prima di vitest (sprint 19 · T2.2)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    // Il passo: dal suo nome a quello del passo dopo.
+    preg_match('/^      - name: Dipendenze JS, tipi.*?(?=^      - name: |\z)/ms', $ci, $passo);
+
+    expect(substr_count($ci, 'npx tsc --noEmit -p tsconfig.stretto.json'))->toBe(1)
+        ->and(str_contains($passo[0] ?? '', "          npx tsc --noEmit\n          npx tsc --noEmit -p tsconfig.stretto.json\n          npx vitest run\n"))->toBe(true)
+        // Nessuna condizione sul passo, e un suo errore ferma il giro: vale in ogni giro della matrice. Senza `shell:` il passo
+        // gira con `bash -e`, come lo lancia il caso qui sotto.
+        ->and(preg_match('/^\s+(if|continue-on-error|shell):/m', $passo[0] ?? ''))->toBe(0)
+        ->and(substr_count($ci, 'continue-on-error'))->toBe(0)
+        // Né una shell di partenza per tutto il workflow o per il job, che potrebbe non avere `-e` (review, N2).
+        ->and(substr_count($ci, 'defaults:'))->toBe(0);
+});
+
+/**
+ * Lo script del passo dei tipi di ci.yml, cioè il suo blocco `run: |` senza il rientro: vuoto se il passo o il blocco non ci sono.
+ */
+function passoDeiTipi(string $ci): string
+{
+    if (preg_match('/^ {6}- name: Dipendenze JS, tipi.*\n(?: {8}.*\n)*? {8}run: \|\n((?:(?: {10}.*)?\n)+)/m', $ci, $passo) !== 1) {
+        return '';
+    }
+
+    return trim((string) preg_replace('/^ {10}/m', '', $passo[1]))."\n";
+}
+
+/**
+ * Il passo dei tipi lanciato come lo lancia la CI (un passo senza `shell:` gira con `bash -e`), in una cartella vuota con un
+ * `npm` e un `npx` finti: scrivono ciò che gli si chiede e, se è il comando che deve fallire, escono con 1.
+ *
+ * @return array{0: int|null, 1: list<string>} il codice d'uscita e i comandi lanciati, nell'ordine
+ */
+function passoDeiTipiCon(?string $cheFallisce): array
+{
+    $prova = sys_get_temp_dir().'/zr-core-passo-'.bin2hex(random_bytes(8));
+    mkdir($prova.'/bin', 0700, true);
+
+    try {
+        file_put_contents($prova.'/passo.sh', passoDeiTipi((string) file_get_contents(dirname(__DIR__, 2).'/.github/workflows/ci.yml')));
+        foreach (['npm', 'npx'] as $comando) {
+            file_put_contents($prova.'/bin/'.$comando, <<<BASH
+                #!/usr/bin/env bash
+                printf '%s\n' "{$comando} \$*" >>chiesto
+                if [ "{$comando} \$*" = "\$FALLISCE" ]; then exit 1; fi
+
+                BASH);
+            chmod($prova.'/bin/'.$comando, 0700);
+        }
+
+        $passo = new Process(['bash', '--noprofile', '--norc', '-e', 'passo.sh'], $prova, ['PATH' => $prova.'/bin:'.getenv('PATH'), 'FALLISCE' => $cheFallisce ?? '']);
+        $passo->run();
+
+        return [$passo->getExitCode(), is_file($prova.'/chiesto') ? explode("\n", trim((string) file_get_contents($prova.'/chiesto'))) : []];
+    } finally {
+        (new Filesystem)->deleteDirectory($prova);
+    }
+}
+
+// Review della PR #23, R6: che il passo fermi il giro non si legge in ci.yml, si prova lanciando il suo `run:`. Con un comando
+// che fallisce il passo esce con 1 e quelli dopo non partono: un `tsc` stretto rosso non arriva a vitest, e meno ancora a Pest.
+it('il passo dei tipi, lanciato: lancia i suoi comandi in quest\'ordine, e si ferma al primo che fallisce (sprint 19 · review, R6)', function (?string $cheFallisce, int $uscita, array $lanciati) {
+    expect(passoDeiTipiCon($cheFallisce))->toBe([$uscita, $lanciati]);
+})->with([
+    'tutto riesce' => [null, 0, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json', 'npx vitest run', 'npm run build', 'npm run demo']],
+    'il tsc stretto fallisce' => ['npx tsc --noEmit -p tsconfig.stretto.json', 1, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json']],
+    'il tsc di base fallisce' => ['npx tsc --noEmit', 1, ['npm ci', 'npx tsc --noEmit']],
+    'vitest fallisce' => ['npx vitest run', 1, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json', 'npx vitest run']],
+]);
+
+it('le opzioni di tsc che il README elenca in «I tipi» sono quelle che il file stretto accende, nello stesso ordine: tutte, e nessun\'altra (sprint 19 · T2.5)', function () {
+    $stretto = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.stretto.json'), true, flags: JSON_THROW_ON_ERROR);
+    // L'elenco: dai due punti dopo «le nove opzioni» al primo punto fermo.
+    preg_match('/le nove opzioni[^:]*: (.*?)\.(?= |$)/', puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), $elenco);
+    preg_match_all('/`([^`]+)`/', $elenco[1] ?? '', $nomi);
+
+    expect($nomi[1])->toBe(array_keys($stretto['compilerOptions']))
+        ->and($nomi[1])->toHaveCount(9);
+});
+
+it('il README dice, in «I tipi», una frase per cosa: con quali opzioni reggono i sorgenti, che un frontend le può accendere, che cosa accetta undefined e che cosa no (sprint 19 · T2.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDeiTipi($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\n**I tipi**"))->toBe(1);
+})->with([
+    'chi li compila' => ['il frontend li compila col proprio `tsconfig`'],
+    'le opzioni di base' => ['Reggono `strict`, `noUnusedLocals` e `noUnusedParameters`'],
+    'da quale versione le nove' => ['dalla `v1.9.0`, le nove opzioni più strette'],
+    'chi le guarda' => ['che la CI di zr-core accende a ogni giro (il suo `tsconfig.stretto.json`, che nello zip non arriva)'],
+    'un frontend le può accendere' => ['Un frontend le può accendere senza fermarsi sui file di zr-core'],
+    'che cosa accetta undefined' => ['Con `exactOptionalPropertyTypes` ciò che il frontend dà alla cornice ed è facoltativo accetta `undefined`'],
+    'le props facoltative' => ['le props facoltative di `Cornice` e di `LayoutDellaCornice` (`product={undefined}`)'],
+    'le chiavi facoltative dei dati' => ['le chiavi facoltative dei dati della cornice (`aziende: undefined`)'],
+    'i tipi del design system no' => ['I tipi del design system (`index.d.ts`) no: lì una chiave che non si dà si omette'],
+    // Review della PR #23, R9: `tone` delle voci di `nav` lo dichiara zr-core, con la forma che vuole l'`AppShell`: non è «suo».
+    'le voci hanno la forma del design system' => ['le voci di `nav`, di `crumbs` e di `create` hanno la sua forma'],
+    // R1: anche le chiavi di `prodotti`, e quelle dentro un'azienda.
+    'anche le chiavi dentro i dati' => ['anche quelle di `prodotti` e quelle dentro un\'azienda'],
+    // R2: i sorgenti usano la libreria di ES2022 (`Array.prototype.at`).
+    'con quale target' => ['Vogliono `target` ES2022 o più recente'],
+    'con skipLibCheck' => ['La misura è con `skipLibCheck`, come nei `tsconfig` dei frontend'],
+]);
+
+// T2.3: le pagine di prova stanno nel file stretto e scrivono `undefined` in ogni prop facoltativa di `Cornice` e di
+// `LayoutDellaCornice` e in ogni chiave facoltativa dei dati: se una non lo accetta, o se ne nasce una che lì manca, `tsc` si
+// ferma sulla pagina di prova. Qui, che quelle righe ci sono e che la pagina le dà davvero alla cornice.
+it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice e del layout e in ogni chiave facoltativa dei dati, e li danno alla cornice (sprint 19 · T2.3)', function (string $file, array $scritte) {
+    expect(scritteNellaPaginaDiProva($file, $scritte))->toBe(array_fill_keys($scritte, 1));
+})->with([
+    'la pagina della cornice' => ['demo.tsx', [
+        'type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;',
+        '} satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;',
+        '} satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;',
+        '            {...propsScritteUndefined}',
+        'dati={{ ...datiScrittiUndefined, ...datiDiProva, ',
+        // Review della PR #23, R1 e R8: le chiavi facoltative dentro i dati — uno stato di `prodotti`, l'`id` di un workspace,
+        // `nuovo_workspace` — le prova un valore scritto a mano, che qui non può sparire in silenzio.
+        "prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo', automations: undefined },",
+        "workspace: [{ id: undefined, nome: 'UAT Ricerca', slug: 'uat-ricerca' }], nuovo_workspace: undefined }],",
+    ]],
+    'la pagina del layout' => ['layout.tsx', [
+        'type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;',
+        '} satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;',
+        '            {...propsScritteUndefined}',
+    ]],
+]);
+
+// Review della PR #23, R2: i sorgenti che si installano usano la libreria di ES2022, e il `tsc` di zr-core li guarda con quel
+// `target`: un frontend con un `target` più basso si fermerebbe su un file che non può correggere. Il README lo dice.
+it('il target che il README dice per i sorgenti è quello con cui li guarda il tsc di zr-core (sprint 19 · review, R2)', function () {
+    $base = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($base['compilerOptions']['target'] ?? null)->toBe('ES2022')
+        ->and(str_contains(puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), 'Vogliono `target` '.$base['compilerOptions']['target'].' o più recente'))->toBe(true);
+});

@@ -9,6 +9,7 @@
 /phpstan.neon       export-ignore
 /package-lock.json  export-ignore
 /tsconfig.json      export-ignore
+/tsconfig.stretto.json export-ignore
 /vite.config.ts     export-ignore
 /vitest.config.ts   export-ignore
 /vite.demo.config.ts export-ignore
