@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
-import { registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
+import { prodottoDelRegistro, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { caricaNotifiche, cerca, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
@@ -83,11 +83,6 @@ export interface CorniceProps {
 
 /** La Dashboard: il registro la porta sempre, per prima. */
 const dashboard = registro.find((voce) => voce.id === 'home')!;
-
-/** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
-function prodottoDelRegistro(codice: string | null | undefined) {
-    return registro.find((voce) => voce.id === codice && voce !== dashboard);
-}
 
 /**
  * Un id che nessuna di quelle voci ha. L'`AppShell` segna la voce che ha l'id attivo, e senza un id la Dashboard: «nessuna» gli

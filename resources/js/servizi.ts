@@ -14,7 +14,7 @@ export interface NotificaDellaCornice {
     tipo?: string;
     /** Il nome di chi ha fatto ciò che la notifica racconta: `null` se non c'è una persona, o se il backoffice non lo dice. */
     autore_nome?: string | null;
-    /** Il nome della cosa a cui la notifica si riferisce (una board, una scheda…): `null` se non ha un nome, o se il backoffice non lo dice. */
+    /** Il nome della cosa a cui la notifica si riferisce (una board, una scheda…), com'è nel backoffice: `null` se non ha un nome, o se il backoffice non lo dice. Per una notifica su un'app (un tipo `com.zeiras.app.…`) è il codice dell'app, e non si mostra: il testo da mostrare lo dà `risorsaDellaNotifica`. */
     risorsa_nome?: string | null;
     /** `true` se è rivolta alla persona, `false` se è per tutto il workspace, `null` se il backoffice non lo sa: `null` non è `false`. */
     per_me?: boolean | null;

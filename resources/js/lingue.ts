@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import { registro, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
+import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -144,7 +144,7 @@ export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: 
     if (typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
         return nome;
     }
-    const prodotto = registro.find((voce) => voce.id === nome && voce.id !== 'home');
+    const prodotto = prodottoDelRegistro(nome);
 
     return prodotto && nomeDellaVoce(prodotto, lingua);
 }

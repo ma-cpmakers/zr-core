@@ -199,6 +199,12 @@ describe('le lingue della cornice', () => {
         // Ogni prodotto del registro ha il suo nome, anche «Presto»; la Dashboard non è un prodotto.
         expect(registro.filter((voce) => voce.id !== 'home').map((voce) => suUnApp(voce.id))).toStrictEqual(registro.filter((voce) => voce.id !== 'home').map((voce) => nomeDellaVoce(voce, lingua)));
         expect([suUnApp('home'), suUnApp('uat-app-nuova'), suUnApp('PM'), suUnApp('Project Management'), suUnApp('pm crm')]).toStrictEqual(Array(5).fill(undefined));
+        // Seconda lettura della PR #24, S2: il codice si cerca nel registro, non fra i testi delle lingue né fra i nomi che ogni oggetto ha.
+        const prodotti = registro.filter((voce) => voce.id !== 'home').map((voce): string => voce.id);
+        const testiCheNonSonoProdotti = Object.keys(italiano).filter((chiave) => !prodotti.includes(chiave));
+        expect(testiCheNonSonoProdotti).toEqual(expect.arrayContaining(['dashboard', 'products', 'unread', 'pm.board.board']));
+        const nonSonoApp = [...testiCheNonSonoProdotti, 'constructor', 'toString', '__proto__', 'hasOwnProperty'];
+        expect(nonSonoApp.map((codice) => suUnApp(codice))).toStrictEqual(nonSonoApp.map(() => undefined));
         // Un tipo della stessa famiglia che zr-core non conosce ancora ha la stessa regola.
         expect([suUnApp('pm', 'com.zeiras.app.uat-nuovo'), suUnApp('uat-app-nuova', 'com.zeiras.app.uat-nuovo')]).toStrictEqual([pm, undefined]);
         // Fuori da quella famiglia «pm» è il nome di una cosa: una cartella, una board, una scheda.
