@@ -747,3 +747,181 @@ it('un valore che non è un testo, ma che la risposta manderebbe come CSP, resta
         ->and($valori[0])->toBe($sua)
         ->and($valori[1])->toBe(CSP_DI_TUTTI);
 });
+
+// Sprint 18 · T3 (voce #1628; rilievo D1 della lettura di sicurezza della v1.6.0). Symfony i valori di un'intestazione li dice
+// testi ma non lo impone, e dalla v1.6.0 la classe tiene ogni CSP che la risposta porta già: una che PHP non sa scrivere — una
+// lista, un oggetto che non si legge come testo, un testo con un a capo o un byte nullo in mezzo — fermava l'invio, fuori dai
+// middleware: un 500 senza intestazioni, per un errore nel codice che ha scritto la risposta. La classe la scarta e lo scrive
+// nel log: il tipo, mai il valore. Ciò che PHP sa scrivere resta com'è: gli spazi e gli a capo in fondo a un testo li taglia
+// PHP all'invio (misurato l'11/10/2026 con PHP 8.4: `header()` si ferma su un a capo o un ritorno in mezzo o in testa al
+// valore, e su un byte nullo ovunque; non su quelli in fondo).
+
+/** Sta in ogni valore che non si può mandare: se la classe scrivesse il valore nel log, i casi ce lo troverebbero. */
+const SEGNO_DELLO_SCARTO = 'segno-dello-scarto';
+
+/** Un oggetto che si legge come testo: il testo è quello che gli si dà. */
+final class CspComeOggetto implements Stringable
+{
+    public function __construct(private readonly string $testo) {}
+
+    public function __toString(): string
+    {
+        return $this->testo;
+    }
+}
+
+/** Un oggetto che lancia mentre lo si legge come testo. */
+final class CspCheLancia implements Stringable
+{
+    public function __toString(): string
+    {
+        throw new RuntimeException(SEGNO_DELLO_SCARTO.': questo oggetto non si legge');
+    }
+}
+
+/** I nomi dei valori di cspCheNonSiPuoMandare(): i casi li prendono da qui. */
+const CSP_CHE_NON_SI_POSSONO_MANDARE = [
+    'una lista dentro la lista',
+    'un oggetto che non si legge come testo',
+    'una funzione',
+    'un testo con un a capo in mezzo',
+    'un testo con un ritorno in mezzo',
+    'un testo che comincia con un a capo',
+    'un testo con un byte nullo in mezzo',
+    'un testo con un byte nullo in fondo',
+    'un oggetto il cui testo ha un a capo in mezzo',
+];
+
+/**
+ * Un valore che una risposta può portare fra le sue CSP e che PHP all'invio non sa scrivere, col tipo che l'avviso ne dice.
+ *
+ * @return array{mixed, string}
+ */
+function cspCheNonSiPuoMandare(string $quale): array
+{
+    return match ($quale) {
+        'una lista dentro la lista' => [["default-src 'none'", SEGNO_DELLO_SCARTO], 'array'],
+        'un oggetto che non si legge come testo' => [(object) ['csp' => SEGNO_DELLO_SCARTO], 'stdClass'],
+        'una funzione' => [fn (): string => SEGNO_DELLO_SCARTO, 'Closure'],
+        'un testo con un a capo in mezzo' => ["default-src 'none';\n".SEGNO_DELLO_SCARTO, 'string'],
+        'un testo con un ritorno in mezzo' => ["default-src 'none';\r".SEGNO_DELLO_SCARTO, 'string'],
+        'un testo che comincia con un a capo' => ["\n".SEGNO_DELLO_SCARTO, 'string'],
+        'un testo con un byte nullo in mezzo' => ["default-src 'none';\0".SEGNO_DELLO_SCARTO, 'string'],
+        'un testo con un byte nullo in fondo' => [SEGNO_DELLO_SCARTO."\0", 'string'],
+        'un oggetto il cui testo ha un a capo in mezzo' => [new CspComeOggetto("default-src 'none';\n".SEGNO_DELLO_SCARTO), 'CspComeOggetto'],
+    };
+}
+
+it('una risposta che porta fra le sue CSP un valore che non si può mandare esce col suo stato e il suo corpo, senza quel valore: restano le altre sue CSP nel loro ordine e quella del modulo in fondo, e le altre quattro intestazioni come sempre (sprint 18 · T3.1)', function (string $quale, string $dove) {
+    primoDeiGlobali();
+    [$nonInviabile] = cspCheNonSiPuoMandare($quale);
+    [$dellaRisposta, $attesa] = match ($dove) {
+        'da solo' => [[$nonInviabile], [CSP_DI_TUTTI]],
+        'prima di una valida' => [[$nonInviabile, 'sandbox'], ['sandbox', CSP_DI_TUTTI]],
+        'dopo una valida' => [['sandbox', $nonInviabile], ['sandbox', CSP_DI_TUTTI]],
+        'fra due valide' => [["default-src 'none'", $nonInviabile, 'sandbox'], ["default-src 'none'", 'sandbox', CSP_DI_TUTTI]],
+    };
+    Route::get('/prova/csp', function () use ($dellaRisposta) {
+        $risposta = response('con una CSP che non si può mandare', 202);
+        $risposta->headers->set('Content-Security-Policy', $dellaRisposta);
+
+        return $risposta;
+    });
+
+    $risposta = $this->get('/prova/csp')->assertStatus(202)->assertSee('con una CSP che non si può mandare');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => $attesa]);
+})->with(CSP_CHE_NON_SI_POSSONO_MANDARE)->with(['da solo', 'prima di una valida', 'dopo una valida', 'fra due valide']);
+
+it('lo scarto di una CSP che non si può mandare lascia nel log una riga d\'avviso: dice che il valore era della risposta e di che tipo era, mai il valore né qualcosa della richiesta (sprint 18 · T3.2)', function (string $quale) {
+    primoDeiGlobali();
+    logInMemoria();
+    [$nonInviabile, $tipo] = cspCheNonSiPuoMandare($quale);
+    Route::get('/prova/csp', function () use ($nonInviabile) {
+        $risposta = response('con una CSP che non si può mandare');
+        $risposta->headers->set('Content-Security-Policy', [$nonInviabile, 'sandbox']);
+
+        return $risposta;
+    });
+
+    $this->get('/prova/csp?parola=segno-della-richiesta')->assertOk();
+
+    expect(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toStartWith('zr-core, intestazioni di sicurezza: scartato dalla CSP (1) — risposta: ')
+        ->and(avvisiNelLog()[0])->toEndWith(' ('.$tipo.')')
+        ->and(avvisiNelLog()[0])->not->toContain(SEGNO_DELLO_SCARTO)->not->toContain('segno-della-richiesta')->not->toContain('/prova/csp')->not->toContain('sandbox')
+        ->and(preg_match('/[\x00-\x1F\x7F]/', avvisiNelLog()[0]))->toBe(0);
+})->with(CSP_CHE_NON_SI_POSSONO_MANDARE);
+
+it('gli scarti della risposta stanno nella riga degli altri scarti della CSP, dopo quelli della configurazione: una riga per risposta, coi primi cinque (sprint 18 · T3.2)', function () {
+    primoDeiGlobali();
+    logInMemoria();
+    config(['zr-core.csp' => ['img-src' => ['https://*.example.com']]]);
+    Route::get('/prova/csp', function () {
+        $risposta = response('con sei CSP che non si possono mandare');
+        $risposta->headers->set('Content-Security-Policy', [['a'], ['b'], ['c'], 'sandbox', ['d'], ['e'], ['f']]);
+
+        return $risposta;
+    });
+
+    $risposta = $this->get('/prova/csp')->assertOk()->assertSee('con sei CSP che non si possono mandare');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => ['sandbox', CSP_DI_TUTTI]])
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toStartWith('zr-core, intestazioni di sicurezza: scartato dalla CSP (7) — ')
+        ->and(avvisiNelLog()[0])->toEndWith(' (array) · e altri 2')
+        ->and(substr_count(avvisiNelLog()[0], 'img-src'))->toBe(1)
+        ->and(substr_count(avvisiNelLog()[0], 'risposta: '))->toBe(4)
+        ->and(strpos(avvisiNelLog()[0], 'img-src'))->toBeLessThan(strpos(avvisiNelLog()[0], 'risposta: '));
+});
+
+it('ciò che PHP sa scrivere resta com\'è e non lascia avvisi: un testo, anche con un a capo o degli spazi in fondo, e un oggetto che si legge come testo, lo stesso oggetto; quella del modulo esce accanto, dopo (sprint 18 · T3.3)', function () {
+    primoDeiGlobali();
+    logInMemoria();
+    $sue = [
+        "default-src 'none'",
+        // Come un testo letto da un file, o scritto su più righe e chiuso da un a capo: all'invio PHP taglia ciò che sta in fondo.
+        "script-src 'none'\n",
+        "style-src 'none'\r\n",
+        "img-src 'none' \t",
+        new CspComeOggetto('sandbox'),
+        new CspComeOggetto("frame-ancestors 'none'\n"),
+    ];
+    Route::get('/prova/csp', function () use ($sue) {
+        $risposta = response('con sei CSP sue');
+        $risposta->headers->set('Content-Security-Policy', $sue);
+
+        return $risposta;
+    });
+
+    $risposta = $this->get('/prova/csp')->assertOk()->assertSee('con sei CSP sue');
+
+    // `toBe` confronta con `===`: i due oggetti sono gli stessi, non due uguali.
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [...$sue, CSP_DI_TUTTI]])
+        ->and(avvisiNelLog())->toBe([]);
+});
+
+it('un oggetto che lancia mentre lo si legge come testo è scartato come gli altri: l\'errore non esce dal middleware, la risposta esce col suo stato, il suo corpo e le cinque intestazioni, e l\'avviso non porta il messaggio dell\'errore (sprint 18 · T3.4)', function (array $dellaRisposta, array $attesa) {
+    primoDeiGlobali();
+    logInMemoria();
+    Route::get('/prova/csp', function () use ($dellaRisposta) {
+        $risposta = response('con una CSP che lancia', 202);
+        $risposta->headers->set('Content-Security-Policy', $dellaRisposta);
+
+        return $risposta;
+    });
+
+    // L'oggetto lancia davvero: senza, il caso non proverebbe niente.
+    expect(fn () => (string) new CspCheLancia)->toThrow(RuntimeException::class, 'questo oggetto non si legge');
+
+    $risposta = $this->get('/prova/csp')->assertStatus(202)->assertSee('con una CSP che lancia');
+
+    expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => $attesa])
+        ->and(avvisiNelLog())->toHaveCount(1)
+        ->and(avvisiNelLog()[0])->toStartWith('zr-core, intestazioni di sicurezza: scartato dalla CSP (1) — risposta: ')
+        ->and(avvisiNelLog()[0])->toEndWith(' (CspCheLancia)')
+        ->and(avvisiNelLog()[0])->not->toContain(SEGNO_DELLO_SCARTO)->not->toContain('non si legge');
+})->with([
+    'da solo' => [[new CspCheLancia], [CSP_DI_TUTTI]],
+    'accanto a una valida' => [['sandbox', new CspCheLancia], ['sandbox', CSP_DI_TUTTI]],
+]);

@@ -1951,6 +1951,25 @@ it('il README non dice più che una CSP della risposta lascia il posto a quella 
     'il tetto sono 10 secondi di richiami (N2)' => ['o se i richiami durano più di 10 secondi', 'o passati 10 secondi dall\'arrivo della richiesta, un clic'],
 ]);
 
+// Sprint 18 · T3.5 (voce #1628): dalla v1.8.0 una CSP della risposta che non si può mandare non resta. Il README lo dice dove
+// dice che una risposta la sua CSP la tiene, subito dopo: lo scarto, e l'avviso.
+it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene», che una CSP della risposta che non si può mandare è scartata e che lo scarto lascia un avviso nel log, una frase per cosa (sprint 18 · T3.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Il README di prima della v1.6.0, senza quella sezione: la frase non si trova più.
+    $senzaLaSezione = str_replace("\n## Le intestazioni di sicurezza\n", "\n## Le intestazioni\n", $readme);
+
+    expect(substr_count(delleIntestazioniNelReadme($readme, null), $frase))->toBe(1)
+        ->and(delleIntestazioniNelReadme($senzaLaSezione, null))->toBe('');
+})->with([
+    'lo scarto, subito dopo «la tiene»' => ['la risposta le porta tutte e due. Una sola non resta: quella che non si può mandare'],
+    'che cosa non si può mandare' => ['una lista, un oggetto che non si legge come testo, un testo con un a capo o un byte nullo in mezzo'],
+    'che cosa succedeva' => ['all\'invio PHP si fermerebbe lì, fuori dai middleware: un 500 senza intestazioni'],
+    'da quale versione, e come esce la risposta' => ['Dalla `v1.8.0` la classe la scarta, e la risposta esce col suo stato, il suo corpo, le altre sue CSP e quella del modulo'],
+    'l\'avviso' => ['Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP: dice il tipo del valore, mai il valore'],
+    'la pagina esce senza quella CSP' => ['La pagina esce quindi senza quella CSP: se doveva stringere quella del modulo, l\'avviso è il solo segno che manca'],
+    'ciò che PHP sa scrivere resta' => ['Ciò che PHP sa scrivere resta com\'è: anche un testo con un a capo in fondo, che PHP all\'invio taglia'],
+]);
+
 // Sprint 16 · lettura di sicurezza, D2: `assertHeader` guarda solo il primo valore, e da T2.7 una risposta può portare più di una CSP.
 it('il test che il README dà a ogni modulo confronta la CSP con tutti i suoi valori, non col primo (sprint 16 · lettura di sicurezza, D2)', function () {
     $nelModulo = delleIntestazioniNelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il test nel modulo');
