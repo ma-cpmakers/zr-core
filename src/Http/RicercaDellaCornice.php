@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
+use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Sessione;
+use Zeiras\Core\Accettazione;
 
 /**
  * La ricerca della cornice (Ctrl/Cmd+K), per il browser: la parte server la gira a ricerca.elenca col gettone del workspace
@@ -15,7 +17,8 @@ use Zeiras\Auth\Sessione;
  * la prima pagina. Di che prodotto è un risultato il contratto non lo dice: lo trova la cornice, dal tipo, nel registro. Un
  * backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Coi risultati la risposta dice di
  * quale workspace sono (`workspace`): la sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa
- * così dove si apre ciò che ha trovato.
+ * così dove si apre ciò che ha trovato. Se la persona non ha ancora accettato i documenti legali in vigore il backoffice
+ * risponde 403 `accettazione_richiesta`, e la rotta lo stesso, col solo codice (Accettazione).
  */
 final class RicercaDellaCornice
 {
@@ -37,7 +40,12 @@ final class RicercaDellaCornice
         }
 
         $workspace = Sessione::workspace()['slug'] ?? null;
-        $risultati = Api::workspace()->get('/v1/ricerca', ['q' => $q])['data'] ?? null;
+
+        try {
+            $risultati = Api::workspace()->get('/v1/ricerca', ['q' => $q])['data'] ?? null;
+        } catch (ErroreApi $errore) {
+            return Accettazione::rispostaA($errore);
+        }
 
         if (! is_array($risultati) || ! array_is_list($risultati)) {
             throw new BackofficeNonRisponde('La risposta di GET /v1/ricerca non è una lista di /v1.');
