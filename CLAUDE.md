@@ -13,7 +13,7 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 `prompts/zr-core-build.md` (non versionato).
 
 ## Cosa scrive questa sessione
-- **I componenti React della cornice**: `AppShell` (sidebar, menu Prodotti esteso o chiuso, topbar, percorso), il
+- **I componenti React della cornice**: `AppShell` (sidebar, menu Moduli esteso o chiuso, topbar, percorso), il
   selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
   «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano.
 - **Il design system intero nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua).
@@ -91,5 +91,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 20 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 21 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

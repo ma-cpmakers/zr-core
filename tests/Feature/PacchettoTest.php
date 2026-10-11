@@ -1542,14 +1542,14 @@ function puntoDellaCornice(string $readme, string $grassetto): string
 it('il README dice, nel punto «La voce attiva» di «La cornice», che nessuna voce attiva si dice con active={null} (sprint 12 · T5.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $frase = 'Una pagina che non sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto';
-    // Il README col punto della voce attiva e quello del menu Prodotti scambiati di nome: la frase c'è, ma dove si legge del menu.
-    $scambiati = strtr($readme, ['- **La voce attiva**' => '- **Il menu Prodotti**', '- **Il menu Prodotti**' => '- **La voce attiva**']);
+    // Il README col punto della voce attiva e quello del menu Moduli scambiati di nome: la frase c'è, ma dove si legge del menu.
+    $scambiati = strtr($readme, ['- **La voce attiva**' => '- **Il menu Moduli**', '- **Il menu Moduli**' => '- **La voce attiva**']);
     // Il README che in quel punto parla di `active` senza nominare `null`.
     $senzaNull = str_replace('lo dice con `active={null}`', 'lo dice con `active`', $readme);
 
     expect(str_contains(puntoDellaCornice($readme, 'La voce attiva'), $frase))->toBe(true)
         ->and(substr_count($readme, '- **La voce attiva**'))->toBe(1)
-        ->and(substr_count($readme, '- **Il menu Prodotti**'))->toBe(1)
+        ->and(substr_count($readme, '- **Il menu Moduli**'))->toBe(1)
         ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
         ->and(str_contains(puntoDellaCornice($scambiati, 'La voce attiva'), $frase))->toBe(false)
         ->and($senzaNull)->not->toBe($readme)
@@ -3064,4 +3064,16 @@ it('il controllo delle citazioni per le prime parole vede ciò che non c\'è: un
         ->and(citatiDelReadmeDiZrAuth($guida))->toBe(['Titolo', 'Un punto', 'Un titolo sotto', 'Un titolo che manca'])
         ->and(citatiCheNonCiSono(citatiDelReadmeDiZrAuth($guida), $readme, true))->toBe(['Un titolo che manca'])
         ->and(citatiCheNonCiSono(['Titolo'], $readme, false))->toBe(['Titolo']);
+});
+
+it('README e guida chiamano il menu «menu Moduli», e il README dice da quale versione ha questo nome (sprint 21 · T1.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $ilMenu = fn (string $nome, string $testo): int => (int) preg_match_all('/\bmenu\s+'.$nome.'\b/u', $testo);
+
+    expect([$ilMenu('Prodotti', $readme), $ilMenu('Prodotti', $guida)])->toBe([0, 0])
+        ->and($ilMenu('Moduli', $readme))->toBeGreaterThan(0)
+        ->and($ilMenu('Moduli', $guida))->toBeGreaterThan(0)
+        ->and(puntoDellaCornice($readme, 'Il menu Moduli'))->toContain('`v1.10.2`', '«Prodotti»')
+        ->and(array_values(array_intersect(['MODULO-NUOVO.md', 'README.md'], fileDelloZipDiHead())))->toBe(['MODULO-NUOVO.md', 'README.md']);
 });

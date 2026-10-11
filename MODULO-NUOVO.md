@@ -33,7 +33,7 @@ Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e int
 
 - **Il prodotto nel registro** — all'agente di zr-core (come gli si scrive lo dice la skill `zr-core-uso`). Guarda prima
   `vendor/zeiras/zr-core/resources/registro/prodotti.json`: porta anche i prodotti non ancora usciti, con due sì o no.
-  Con `presto` la voce del menu Prodotti è «Presto» e non porta da nessuna parte, in nessun workspace; con `in_arrivo`
+  Con `presto` la voce del menu Moduli è «Presto» e non porta da nessuna parte, in nessun workspace; con `in_arrivo`
   il prodotto non è ancora per tutti, e le pagine senza sessione lo mostrano «In arrivo» — README, «La cornice». Se il
   tuo c'è, il codice è quello: se ha `presto`, chiedi di toglierlo; `in_arrivo` si spegne quando il prodotto esce per
   tutti: lo decide zr-pm, e lo chiedi allo stesso modo. Se non c'è, chiedi il prodotto nuovo.
@@ -42,7 +42,7 @@ Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e int
   `es`), l'icona (un nome del set di Zeiras), il tono, l'indirizzo senza workspace, e le risorse che la ricerca deve
   mostrare (passo 9). Entra con una versione di zr-core: fino a quella vale «Durante lo sviluppo», al passo 8.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
-  prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Prodotti la tua voce resta «Presto» anche col
+  prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
   metodo di `/v1` che ti manca.
 - **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
@@ -86,7 +86,7 @@ dietro un ingresso»), «L'ingresso da zr-home: la partenza e il ricevitore», �
 ricopiato da zr-board ed è andata liscia. Tre cose sono tue:
 
 - **la pagina di casa, che è anche la partenza**: la cornice manda al tuo prodotto con `<indirizzo>/w/<slug>`, dal menu
-  Prodotti e dal selettore dei workspace, quindi il modulo serve `/w/{slug}` — e chi ci arriva può non avere una
+  Moduli e dal selettore dei workspace, quindi il modulo serve `/w/{slug}` — e chi ci arriva può non avere una
   sessione, o averla in un altro workspace. La guardia da sola non basta: chi non ha una sessione lo manda alla pagina
   d'accesso, non dentro il workspace dell'indirizzo, e chi ha la sessione in un altro workspace lo lascia passare: la
   pagina mostrerebbe i dati dell'altro, perché il workspace è quello della sessione. Scrivi un middleware tuo sul gruppo
@@ -116,7 +116,7 @@ ricopiato da zr-board ed è andata liscia. Tre cose sono tue:
   sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, l'uscita compresa — e
   sulle tue rotte lente, non su tutte. Quali, e perché: README, «La cornice», al punto «Le notifiche».
 
-**Prova**: entrato in un workspace su app.zeiras.com, apri `/w/<slug>` del modulo (dal menu Prodotti, quando il registro
+**Prova**: entrato in un workspace su app.zeiras.com, apri `/w/<slug>` del modulo (dal menu Moduli, quando il registro
 ha il tuo prodotto: passo 8): sei dentro, con la sessione in quel workspace, senza passare dalla pagina d'accesso. Con lo
 slug di un altro tuo workspace nell'indirizzo, il modulo mostra quello, non il primo; e aprendo senza sessione una pagina
 interna (`/w/<slug>/…`), dopo l'ingresso sei lì. In un test, senza sessione: un GET risponde 302 verso l'ingresso di
@@ -268,12 +268,12 @@ Non scrivi niente: nome, icona, tono, indirizzo e «Presto» del prodotto sono d
 chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso del registro e del backoffice.
 
 **Durante lo sviluppo** la cornice non si rompe, in nessuno dei due casi. Finché il registro installato non ha il tuo
-prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Prodotti esteso, nessun
-prodotto aperto —, le tue voci di `nav` ci sono lo stesso, e nel menu Prodotti la tua voce manca. Se il registro lo ha ma
-con `presto`, la cornice lo mostra aperto, con le tue voci, e nel menu Prodotti la tua voce c'è ma è «Presto»: non porta
+prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Moduli esteso, nessun
+prodotto aperto —, le tue voci di `nav` ci sono lo stesso, e nel menu Moduli la tua voce manca. Se il registro lo ha ma
+con `presto`, la cornice lo mostra aperto, con le tue voci, e nel menu Moduli la tua voce c'è ma è «Presto»: non porta
 da nessuna parte finché una versione di zr-core non toglie `presto`. Tutti gli altri passi si fanno lo stesso.
 
-**Prova**: con la versione di zr-core che porta il prodotto, nel menu Prodotti la tua voce ha il suo nome nella lingua
+**Prova**: con la versione di zr-core che porta il prodotto, nel menu Moduli la tua voce ha il suo nome nella lingua
 della persona e porta a `<indirizzo>/w/<slug>`; dentro il modulo il menu mostra aperto il tuo prodotto, con le tue voci.
 
 **Errore già pagato**: nessuno (per zr-board e zr-crm è andata liscia). Da sapere: «in arrivo» vuol dire due cose.

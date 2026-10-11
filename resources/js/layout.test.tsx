@@ -243,7 +243,7 @@ describe('LayoutDellaCornice', () => {
         const topbar = uno('header.zr-top');
         expect(barra).not.toBeNull();
         expect(topbar).not.toBeNull();
-        expect(titoloDeiProdotti()).toBe('Prodotti');
+        expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
         expect(segnaposto()).toBe('Cerca progetti, schede, contatti…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
@@ -255,7 +255,7 @@ describe('LayoutDellaCornice', () => {
         expect(uno('header.zr-top')).toBe(topbar);
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('uat');
         // I testi sono quelli di `resources/lingue/es.json`.
-        expect(titoloDeiProdotti()).toBe('Productos');
+        expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
         expect(segnaposto()).toBe('Busca proyectos, tarjetas, contactos…');
         // Il menu del profilo porta il nome nuovo.

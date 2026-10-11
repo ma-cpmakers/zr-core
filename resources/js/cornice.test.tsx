@@ -151,7 +151,7 @@ describe('la Cornice', () => {
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
-        expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Prodotti');
+        expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Moduli');
         const voci = [...(gruppo?.querySelectorAll<HTMLAnchorElement>('a.zr-nav-item') ?? [])];
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
             .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
@@ -174,7 +174,7 @@ describe('la Cornice', () => {
 
         const pulsante = uno('.zr-product-switch');
         expect(pulsante?.querySelector('.zr-product-name')?.textContent).toBe('Bookings');
-        expect(pulsante?.querySelector('.zr-product-over')?.textContent).toBe('Prodotti');
+        expect(pulsante?.querySelector('.zr-product-over')?.textContent).toBe('Moduli');
         expect(pulsante?.querySelector('.zr-product-icon')?.classList.contains('zr-label-sky')).toBe(true);
         expect(pulsante?.querySelector('.zr-product-icon path')?.getAttribute('d')).toBe(tracciatoDi('calendar'));
         expect(tutti('.zr-nav .zr-nav-title').map((titolo) => titolo.textContent)).toStrictEqual(['Agenda']);
@@ -193,19 +193,21 @@ describe('la Cornice', () => {
     });
 
     it.each([
-        ['es', ['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas'],
-        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
-        ['zz', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings'],
-    ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2)', async (lingua, nomi, bookings) => {
+        ['es', ['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas', 'Módulos'],
+        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
+        ['zz', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
+    ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2; sprint 21 · T1.1: il nome del menu, esteso e chiuso)', async (lingua, nomi, bookings, menu) => {
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
         const appShell = vi.spyOn(Zeiras, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
         expect(appShell.mock.lastCall?.[0].labels).toStrictEqual(testi(lingua));
         expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
+        expect(uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent).toBe(menu);
 
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} product="bookings" />);
         expect(uno('.zr-product-switch .zr-product-name')?.textContent).toBe(bookings);
+        expect(uno('.zr-product-switch .zr-product-over')?.textContent).toBe(menu);
         expect(uno('.zr-top-product')?.textContent).toBe(bookings);
         await clic(uno('.zr-product-switch'));
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
@@ -834,7 +836,7 @@ describe('il pannello delle notifiche', () => {
 
         expect(secondeRighe()).toStrictEqual(['Project Management', 'Report', 'CRM', null, null, null, null, 'Project Management', null, 'pm', 'pm', 'pm']);
         expect(titoli()).toStrictEqual([
-            ...Array(7).fill('Un\'app del workspace è stata attivata o disattivata'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova cartella', 'Novità nel workspace', 'Novità nel workspace',
+            ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova cartella', 'Novità nel workspace', 'Novità nel workspace',
         ]);
         // Il nome sta nella seconda riga e solo lì: davanti all'ora c'è il prodotto di `app`, che queste notifiche non hanno.
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 minuti fa'));
@@ -1496,7 +1498,7 @@ describe('il pannello delle notifiche', () => {
      * non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
-        ['com.zeiras.app.modificata', "Un'app del workspace è stata attivata o disattivata", 'An app in the workspace was turned on or off', 'Se activó o desactivó una app del workspace'],
+        ['com.zeiras.app.modificata', 'Un modulo è stato attivato o disattivato', 'A module was turned on or off', 'Se activó o desactivó un módulo'],
         ['com.zeiras.workspace.creato', 'Il workspace è stato creato', 'The workspace was created', 'Se creó el workspace'],
         ['com.zeiras.workspace.modificato', 'Il workspace è stato modificato', 'The workspace was changed', 'Se modificó el workspace'],
         ['com.zeiras.workspace.membro.creato', 'Una persona è entrata nel workspace', 'Someone joined the workspace', 'Una persona entró en el workspace'],
