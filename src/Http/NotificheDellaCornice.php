@@ -28,10 +28,15 @@ use Zeiras\Core\Segno;
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
  * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
- * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
- * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
- * risposto per l'ultima volta, `segnate_il`. La cornice li confronta col segno dei dati per non tornare a ciò che è più
- * vecchio. Le risposte d'errore non portano un istante.
+ * L'elenco, «segna tutte» e la lettura di una notifica dicono anche quando, col segno della parte server (`Segno::adesso()`,
+ * lo stesso orologio e la stessa forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`;
+ * «segna tutte» quando il backoffice ha risposto per l'ultima volta, `segnate_il`; la lettura di una notifica dopo la
+ * risposta del backoffice, `segnata_il`. La cornice li confronta fra loro e col segno dei dati per non tornare a ciò che è
+ * più vecchio. L'elenco dice anche di quale workspace è, `workspace`: lo slug di quello della sessione. Le risposte d'errore
+ * non portano un istante.
+ *
+ * `idsDellaNotifica()` è pubblico per i frontend: chi le notifiche le legge da sé dal backoffice, per una pagina sua, ha da
+ * lì gli stessi `ids` dell'elenco, da dare al browser al posto di `dati`.
  */
 final class NotificheDellaCornice
 {
@@ -82,6 +87,15 @@ final class NotificheDellaCornice
     private const MARGINE = 5;
 
     /**
+     * Le voci del registro dei moduli, lette una volta per processo da quello del pacchetto
+     * (resources/registro/prodotti.json), sempre: nessun metodo e nessuna configurazione sceglie un altro file. Un test
+     * che vuole un registro di prova scrive questa proprietà con la reflection.
+     *
+     * @var list<array<string, mixed>>|null
+     */
+    private static ?array $registro = null;
+
+    /**
      * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
      * durare, cioè SECONDI di richiami, più il tempo che zr-auth aspetta l'ultima risposta (`zr-auth.timeout`), più un margine.
      * Non i 10 secondi di `->bloccaSessione()` di zr-auth: col lock scaduto a metà corsa un'uscita da un'altra scheda lo
@@ -113,11 +127,16 @@ final class NotificheDellaCornice
     /**
      * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
-     * quanto il suo segno.
+     * quanto il suo segno. Di `dati` di ogni notifica passano, in `ids`, i soli id che alla cornice servono per aprire la sua
+     * risorsa (`idsDellaNotifica()`): una notifica di un tipo che nel registro non ha una destinazione non ne ha, e se `dati` manca, o non è
+     * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte, il registro dei moduli lo legge solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
+     * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
+     * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
      */
     public function elenco(): JsonResponse
     {
         $aggiornatiIl = Segno::adesso();
+        $workspace = Sessione::workspace()['slug'] ?? null;
         $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
@@ -125,14 +144,55 @@ final class NotificheDellaCornice
         }
 
         return new JsonResponse([
-            'data' => array_map(fn (mixed $notifica) => self::perLaCornice($notifica, 'GET /v1/io/notifiche'), $notifiche),
+            'data' => array_map(function (mixed $notifica): array {
+                $perLaCornice = self::perLaCornice($notifica, 'GET /v1/io/notifiche');
+
+                // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
+                return [...$perLaCornice, 'ids' => (object) self::idsDellaNotifica($perLaCornice['app'], $perLaCornice['tipo'], $notifica['dati'] ?? null)];
+            }, $notifiche),
             'aggiornati_il' => $aggiornatiIl,
+            'workspace' => $workspace,
         ]);
+    }
+
+    /**
+     * Gli id che servono ad aprire la risorsa di una notifica, presi dai suoi `dati`, per chiave: quelli che il percorso del
+     * registro chiede per il suo tipo (`chiaviDelPercorso()`), ognuno solo se il valore ha la forma di un id del backoffice — un
+     * testo di lettere, cifre, `-` e `_`, da 1 a 64, la stessa che la rotta della lettura chiede all'id di una notifica. Solo le
+     * coppie di `dati`, non quelle di un oggetto più dentro. Tutto il resto resta qui: gli altri id (quello di una nota, di una
+     * lista, di una persona entrata nel workspace), `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani — una
+     * chiave nuova non arriva in pagina solo perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
+     *
+     * È pubblico, ed è un'API del pacchetto (dalla v1.12.0): l'elenco lo chiama per ogni notifica, e un frontend che le
+     * notifiche le legge da sé dal backoffice, per una pagina sua, lo chiama con `app`, `tipo` e `dati` di una notifica, com'è
+     * nella risposta di /v1, e dà al browser gli stessi `ids`. Una regola sola, non due copie. Nome e firma sono un contratto
+     * con chi installa il pacchetto: cambiarli è una versione maggiore. `$dati` è ciò che il backoffice dà, com'è — un array con
+     * le sue chiavi, ma anche `null` o un testo —, e ciò che non è un array non ha id. Senza una destinazione nel registro dà
+     * `[]`, e per nessun `app`, `tipo` o `dati` lancia un'eccezione.
+     *
+     * @return array<string, string>
+     */
+    public static function idsDellaNotifica(?string $app, string $tipo, mixed $dati): array
+    {
+        $ids = [];
+        foreach (self::chiaviDelPercorso($app, $tipo) as $chiave) {
+            $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
+            if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
+                $ids[$chiave] = $valore;
+            }
+        }
+
+        return $ids;
     }
 
     /**
      * PATCH /cornice/notifiche/{notifica}/lettura: segna letta o non letta una notifica della persona nel workspace
      * (io.notifiche.lettura.modifica). `letta` della risposta è ciò che il backoffice ha segnato, non ciò che si è chiesto.
+     * `segnata_il` è l'istante preso dopo la risposta del backoffice: da lì la notifica è com'è stata segnata. Un elenco letto
+     * fin lì può darla ancora com'era, e la cornice la mostra com'è stata segnata. Per il numero delle non lette non basta:
+     * dei dati letti fra la richiesta e quell'istante possono contarla già com'è stata segnata, o ancora com'era — il loro
+     * segno è preso prima della lettura dal backoffice (Cornice) —, e la cornice toglie dal numero solo per i dati che aveva
+     * quando ha chiesto.
      */
     public function lettura(Request $richiesta, string $notifica): JsonResponse
     {
@@ -160,7 +220,7 @@ final class NotificheDellaCornice
             throw new BackofficeNonRisponde("La risposta di PATCH {$percorso} è un'altra notifica.");
         }
 
-        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']]]);
+        return new JsonResponse(['data' => ['id' => $segnata['id'], 'letta' => $segnata['letta']], 'segnata_il' => Segno::adesso()]);
     }
 
     /**
@@ -259,11 +319,10 @@ final class NotificheDellaCornice
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
-     * Di `dati` passano, in `ids`, i soli id che alla cornice servono per aprire la risorsa della notifica (`idDi()`): una
-     * notifica di un tipo che nel registro non ha una destinazione non ne ha. `dati` non è fra le chiavi che fanno una notifica:
-     * se manca, o non è un oggetto, `ids` è vuoto, e non è un guasto.
+     * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
+     * l'elenco (`ids`), che delle rotte è la sola a leggere il registro dei moduli. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: object}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -282,49 +341,24 @@ final class NotificheDellaCornice
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
-            // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
-            'ids' => (object) self::idDi($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null),
         ];
-    }
-
-    /**
-     * Gli id che servono ad aprire la risorsa di una notifica, presi dai suoi `dati`, per chiave: quelli che il percorso del
-     * registro chiede per il suo tipo (`chiaviDelPercorso()`), ognuno solo se il valore ha la forma di un id del backoffice — un
-     * testo di lettere, cifre, `-` e `_`, da 1 a 64, la stessa che la rotta della lettura chiede all'id di una notifica. Solo le
-     * coppie di `dati`, non quelle di un oggetto più dentro. Tutto il resto resta qui: gli altri id (quello di una nota, di una
-     * lista, di una persona entrata nel workspace), `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani — una
-     * chiave nuova non arriva in pagina perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
-     *
-     * @return array<string, string>
-     */
-    private static function idDi(?string $app, string $tipo, mixed $dati): array
-    {
-        $ids = [];
-        foreach (self::chiaviDelPercorso($app, $tipo) as $chiave) {
-            $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
-            if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
-                $ids[$chiave] = $valore;
-            }
-        }
-
-        return $ids;
     }
 
     /**
      * Le chiavi degli id che il percorso di una notifica chiede, dal registro dei moduli del pacchetto
      * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
      * che il browser usa. La voce è quella dell'app della notifica, e il tipo si cerca intero. Nessuna chiave per un tipo che lì
-     * non ha una destinazione, per un'app che il registro non ha, o senza app.
+     * non ha una destinazione, per un'app che il registro non ha, o senza app; e nessuna per una voce «Presto», che il browser
+     * non apre: i suoi id non servono ad aprire niente.
      *
      * @return list<string>
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
-        static $registro = null;
-        $registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+        self::$registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
 
-        foreach ($registro as $voce) {
-            foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
+        foreach (self::$registro as $voce) {
+            foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
 

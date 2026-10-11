@@ -16,6 +16,8 @@ use Zeiras\Auth\Testing\Rotte;
 // Sprint 18 · T1 (voce #1638): la rotta è POST /cornice/ricerca, e la parola cercata sta nel corpo JSON (`{q}`), mai
 // nell'indirizzo; una GET, quella delle versioni fino alla `v1.7.0`, non ha più una rotta. Dalla parte server al backoffice
 // resta la GET di ricerca.elenca: è un altro tratto (#1639).
+// Sprint 22 · T6 (voce #1726): la risposta dice anche di quale workspace sono i risultati (`workspace`), ed è lì che la cornice li
+// apre: lo slug è quello della sessione, col cui gettone la ricerca è fatta, mai uno che arriva dal browser.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLA_RICERCA = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -65,7 +67,7 @@ it('POST /cornice/ricerca cerca nel workspace del gettone e dà tipo, id e titol
     cerca('UAT là')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing'],
         ['tipo' => 'board.board', 'id' => '01k6w2d5f7h9k1n3q5s7v9x1z3', 'titolo' => 'Report marketing'],
-    ]]);
+    ], 'workspace' => 'uat-marketing']);
     Http::assertSentCount(1);
     Http::assertSent(function (Request $richiesta) use ($gettoni) {
         parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
@@ -85,14 +87,14 @@ it('ciò che la risposta del backoffice ha in più non arriva al browser: un `ap
     cerca('UAT')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio'],
         ['tipo' => 'uat-ignoto', 'id' => 'uat-x1', 'titolo' => 'UAT Tipo nuovo'],
-    ]]);
+    ], 'workspace' => 'uat-marketing']);
 });
 
 it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', function (string $q) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
 
-    cerca($q)->assertOk()->assertExactJson(['data' => []]);
+    cerca($q)->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing']);
     Http::assertSentCount(1);
 })->with([
     'due' => ['ab'],
@@ -197,7 +199,7 @@ it('con una parola nel corpo e un\'altra nell\'indirizzo si cerca quella del cor
 
     $risposta = test()->postJson('cornice/ricerca?q=uat-indirizzo', ['q' => 'uat-corpo']);
 
-    $risposta->assertOk()->assertExactJson(['data' => []]);
+    $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing']);
     Gettone::assenteDa($risposta);
     Http::assertSentCount(1);
     Http::assertSent(function (Request $richiesta) {
@@ -206,6 +208,43 @@ it('con una parola nel corpo e un\'altra nell\'indirizzo si cerca quella del cor
         return $query === ['q' => 'uat-corpo'];
     });
 });
+
+// Sprint 22 · T6 (voce #1726): la sessione ha un workspace solo. Con due schede su due workspace, la scheda rimasta indietro
+// cerca e riceve i risultati di quello in cui la persona è entrata per ultimo: la risposta dice di quale workspace sono, e la
+// cornice li apre lì. Lo slug è quello della sessione, col cui gettone la ricerca è fatta: niente di ciò che manda il browser
+// lo cambia, e al backoffice va la parola e basta.
+
+it('POST /cornice/ricerca dice di quale workspace sono i risultati: lo slug del workspace della sessione, quello col cui gettone ha cercato, e mai ciò che manda il browser (sprint 22 · T6.4)', function (array $workspace, string $indirizzo, array $accantoAQ, array $intestazioni) {
+    $gettoni = sessioneAMano($workspace);
+    // Col gettone di un altro workspace il backoffice darebbe i suoi risultati: qui ne dà altri, per vederlo.
+    Http::fake(fn (Request $richiesta) => match (parse_url($richiesta->url(), PHP_URL_PATH)) {
+        '/v1/ricerca' => Http::response($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace'])
+            ? esempioDelContratto()
+            : ['data' => [risultatoDelBackoffice('board.board', 'uat-di-un-altro-workspace', 'UAT Altro')], 'successivo' => null]),
+    });
+
+    $risposta = test()->postJson($indirizzo, ['q' => 'UAT', ...$accantoAQ], $intestazioni)->assertOk();
+    Gettone::assenteDa($risposta);
+
+    expect($risposta->json('workspace'))->toBe($workspace['slug'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'workspace'])
+        ->and($risposta->json('data.*.id'))->toBe(['01k6w2c4e6g8j0m2p4r6t8v0x2', '01k6w2d5f7h9k1n3q5s7v9x1z3']);
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $richiesta) {
+        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
+
+        return $query === ['q' => 'UAT'];
+    });
+})->with([
+    'il workspace della sessione' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', [], []],
+    'un altro workspace nella sessione' => [['id' => 'uat-ws-2', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'], 'cornice/ricerca', [], []],
+    'un altro slug nel corpo, accanto a q' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', ['workspace' => 'uat-vendite'], []],
+    'un altro slug nel corpo, in un oggetto' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', ['workspace' => ['slug' => 'uat-vendite']], []],
+    'un altro slug nell\'indirizzo' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca?workspace=uat-vendite', [], []],
+    'un altro slug nell\'indirizzo, come lista' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca?workspace[slug]=uat-vendite', [], []],
+    'un altro slug in un\'intestazione' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', [], ['X-Workspace' => 'uat-vendite', 'X-Zeiras-Workspace' => 'uat-vendite']],
+    'la pagina da cui si cerca è di un altro workspace' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', [], ['Referer' => 'https://board.zeiras.com/w/uat-vendite']],
+]);
 
 it('una GET /cornice/ricerca?q=, quella delle versioni fino alla v1.7.0, non ha più una rotta: 405, con la sessione e senza, e il backoffice non si chiama (sprint 18 · T1.3)', function (bool $conLaSessione) {
     if ($conLaSessione) {

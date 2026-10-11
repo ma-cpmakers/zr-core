@@ -12,12 +12,17 @@
 // col titolo di ripiego, e due note che non hanno dove andare (la riga sotto il titolo dice quale: «UAT nota senza contatto»,
 // «UAT nota con un id malfatto»), e in fondo due di un'azienda, una creata e una modificata; senza `?crm`, l'elenco è quello di
 // prima. Con `?viste=1` in fondo all'elenco ci sono tre notifiche delle viste salvate di una board (creata, modificata,
-// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Ogni notifica porta gli id che la parte server dà di
+// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Con `?opportunita=1` in fondo all'elenco ci
+// sono le nove notifiche dei tipi nuovi del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro che il CRM manda a
+// chi diventa responsabile, col tipo com'è nel backoffice, senza `com.zeiras.` davanti (`crm.persona.assegnata`); zr-core conosce
+// tutti e nove i tipi, e nel registro nessuno ha una destinazione. Ogni notifica porta gli id che la parte server dà di
 // `dati` (`ids`): i soli che il percorso del registro chiede per il suo tipo, e nessuno se il tipo non ha una destinazione; mai `dati`
-// né `soggetto`. Da una del CRM la cornice apre la sua risorsa. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// né `soggetto`. Da una del CRM la cornice apre la sua risorsa, nel workspace che l'elenco dice (`workspace`: quello della «sessione»). «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
-// `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
+// `?errore=letture` la prima fallisce e la seconda riesce. La lettura di una notifica sola (PATCH /cornice/notifiche/<id>/lettura,
+// che la cornice chiede col clic che apre la risorsa di una non letta) la segna e risponde con `letta` e con l'istante; con
+// `?errore=lettura` fallisce sempre, e la notifica resta da leggere. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
 // risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
 // di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
 // (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di
@@ -33,7 +38,10 @@ ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const chi = new URLSearchParams(window.location.search).has('chi');
 const crm = new URLSearchParams(window.location.search).has('crm');
+// Con `?da_leggere=1` le prime otto notifiche del CRM sono da leggere: per provare il clic che apre la risorsa e le segna lette.
+const daLeggere = new URLSearchParams(window.location.search).has('da_leggere');
 const viste = new URLSearchParams(window.location.search).has('viste');
+const opportunita = new URLSearchParams(window.location.search).has('opportunita');
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -55,7 +63,7 @@ const notificheDiProva = [
               ...['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
                   id: `uat-c${indice + 1}`,
                   creata_il: fa((10 + indice) * 24 * 60),
-                  letta: true,
+                  letta: !daLeggere,
                   app: 'crm',
                   tipo: `com.zeiras.crm.${tipo}`,
                   ...nonDetti,
@@ -71,6 +79,17 @@ const notificheDiProva = [
     // Non portano id: nel registro una vista non ha una destinazione, e la parte server non ne dà.
     ...(viste
         ? ['creata', 'modificata', 'eliminata'].map((cosa, indice) => ({ id: `uat-v${indice + 1}`, creata_il: fa((22 + indice) * 24 * 60), letta: true, app: 'pm', tipo: `com.zeiras.board.vista.${cosa}`, ...nonDetti, ids: {} as Record<string, string> }))
+        : []),
+    // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
+    // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`). Non portano id: nel registro nessuno dei nove ha una
+    // destinazione, e la parte server non ne dà.
+    ...(opportunita
+        ? [
+              'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
+              'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
+              'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: {} as Record<string, string> }))
         : []),
 ];
 let letture = 0;
@@ -148,10 +167,13 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'uat_errore' }, 502);
             }
 
+            // `workspace` è quello della «sessione», come lo dice la parte server dalla `v1.12.0`, mai uno della richiesta: se la
+            // pagina di prova non lo dà manca, e per la cornice la ricerca è un errore.
             return json({
                 data: parola === 'ua'
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+                workspace: slugDellaSessione(),
             });
         }
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
@@ -166,8 +188,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti, ids: {} });
             }
 
-            // Senza orologio l'istante manca, e nel JSON la chiave non c'è.
-            return json({ data: notificheDiProva, aggiornati_il: lettoIl });
+            // Senza orologio l'istante manca, e nel JSON la chiave non c'è. `workspace` è quello della «sessione», come lo dice
+            // la parte server dalla `v1.12.0`: se la pagina di prova non lo dà, manca anche lui.
+            return json({ data: notificheDiProva, aggiornati_il: lettoIl, workspace: slugDellaSessione() });
         }
         if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
             letture += 1;
@@ -193,6 +216,27 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
 
             // A notifiche segnate: ciò che è stato letto prima di adesso può non saperlo.
             return json({ data: { fino_a: new Date(finoAIl).toISOString(), altre: restano }, segnate_il: istante?.() });
+        }
+
+        // La lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa: la segna e risponde come la
+        // parte server dalla `v1.12.0`, con l'istante preso a notifica segnata. Con `?errore=lettura` fallisce sempre: la
+        // risorsa si apre lo stesso, e la notifica resta da leggere.
+        const daSegnare = /^\/cornice\/notifiche\/([A-Za-z0-9_-]{1,64})\/lettura$/.exec(percorso)?.[1];
+        if (daSegnare !== undefined && opzioni?.method === 'PATCH') {
+            if (errore === 'lettura') {
+                return json({ errore: 'uat_errore' }, 502);
+            }
+            const { letta } = JSON.parse(String(opzioni.body)) as { letta?: unknown };
+            if (typeof letta !== 'boolean') {
+                return json({ errore: 'dati_non_validi' }, 422);
+            }
+            const notifica = notificheDiProva.find(({ id }) => id === daSegnare);
+            if (notifica === undefined) {
+                return json({ errore: 'non_trovato' }, 404);
+            }
+            notifica.letta = letta;
+
+            return json({ data: { id: notifica.id, letta: notifica.letta }, segnata_il: istante?.() });
         }
 
         return json({ errore: 'non_trovato' }, 404);

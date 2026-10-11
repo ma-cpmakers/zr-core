@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\File;
 // `unreadOne`, il singolare delle non lette: `unread` è dell'`AppShell`, e in italiano resta quello del design system.
 // Sprint 17 · T1 (voce #1481): di zr-core sono anche `markingAllRead` e `markRestRead`, i testi del pulsante «Segna tutte come
 // lette» mentre la richiesta è in corso e quando ne restano: `markAllRead` è dell'`AppShell`, e in italiano resta quello del design system.
+// Sprint 22 · T2 (voce #1712): di zr-core è anche `unreadNone`, ciò che l'avviso della cornice dice al lettore di schermo quando
+// l'ultima non letta è stata letta: `notifications` e `unread`, con cui dice un numero, sono dell'`AppShell`.
 
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
@@ -95,7 +97,19 @@ function tipiDiNotificaDelContratto(): array
         'com.zeiras.board.etichetta.eliminata',
         ...array_keys(titoliDelleNotificheDelCrm()),
         ...array_keys(titoliDelleNotificheDiVisteEAziende()),
+        ...array_keys(titoliDelleNotificheDiOpportunitaEAttivita()),
     ];
+}
+
+/**
+ * I tipi che hanno un titolo: i tipi di evento del contratto più le quattro notifiche «assegnata» del CRM, che non sono eventi e
+ * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4).
+ *
+ * @return list<string>
+ */
+function tipiDiNotificaConUnTitolo(): array
+{
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato())];
 }
 
 /**
@@ -138,10 +152,46 @@ function titoliDelleNotificheDiVisteEAziende(): array
     ];
 }
 
-/** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo del contratto */
+/**
+ * I titoli dei cinque tipi di evento che il contratto porta dallo sprint 25g di zr-backoffice (11/10/2026, sera): le opportunità e
+ * le attività del CRM, con le parole di zr-crm. Nel contratto un'opportunità è una `trattativa`: nel CRM si chiama «opportunità»,
+ * «opportunity», «oportunidad», e il titolo non si ricava dal tipo. La tabella è scritta qui, non letta dai file delle lingue
+ * (sprint 22 · T5.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDiOpportunitaEAttivita(): array
+{
+    return [
+        'com.zeiras.crm.trattativa.creata' => ['it' => 'Nuova opportunità', 'en' => 'New opportunity', 'es' => 'Nueva oportunidad'],
+        'com.zeiras.crm.trattativa.modificata' => ['it' => 'Opportunità modificata', 'en' => 'Opportunity changed', 'es' => 'Oportunidad modificada'],
+        'com.zeiras.crm.attivita.creata' => ['it' => 'Nuova attività', 'en' => 'New activity', 'es' => 'Nueva actividad'],
+        'com.zeiras.crm.attivita.modificata' => ['it' => 'Attività modificata', 'en' => 'Activity changed', 'es' => 'Actividad modificada'],
+        'com.zeiras.crm.attivita.eliminata' => ['it' => 'Attività eliminata', 'en' => 'Activity deleted', 'es' => 'Actividad eliminada'],
+    ];
+}
+
+/**
+ * I titoli delle quattro notifiche che il CRM manda a chi diventa responsabile di un contatto, di un'azienda, di un'opportunità o
+ * di un'attività. Non sono eventi: il `tipo` arriva com'è nel backoffice, senza `com.zeiras.` davanti, e la chiave del titolo è
+ * `notificationTitle.crm.persona.assegnata`. La tabella è scritta qui, non letta dai file delle lingue (sprint 22 · T5.1, T5.2).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDiCioCheVieneAssegnato(): array
+{
+    return [
+        'crm.persona.assegnata' => ['it' => 'Ti è stato assegnato un contatto', 'en' => 'A contact was assigned to you', 'es' => 'Se te ha asignado un contacto'],
+        'crm.organizzazione.assegnata' => ['it' => "Ti è stata assegnata un'azienda", 'en' => 'A company was assigned to you', 'es' => 'Se te ha asignado una empresa'],
+        'crm.trattativa.assegnata' => ['it' => "Ti è stata assegnata un'opportunità", 'en' => 'An opportunity was assigned to you', 'es' => 'Se te ha asignado una oportunidad'],
+        'crm.attivita.assegnata' => ['it' => "Ti è stata assegnata un'attività", 'en' => 'An activity was assigned to you', 'es' => 'Se te ha asignado una actividad'],
+    ];
+}
+
+/** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
-    return array_map(fn (string $tipo) => "notificationTitle.$tipo", tipiDiNotificaDelContratto());
+    return array_map(fn (string $tipo) => "notificationTitle.$tipo", tipiDiNotificaConUnTitolo());
 }
 
 /**
@@ -149,6 +199,9 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * il nome unico di Project Management, CRM e gli altri (regola di Luciano dell'11/10/2026; sprint 21 · T1), e il design system
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
  * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
+ * Il segnaposto e l'invito della ricerca dicono ciò che la ricerca trova oggi, board e cartelle (zr-pm, note 10255 e 10288 del
+ * progetto; sprint 22 · T8): il design system dice ancora progetti, schede e contatti, che la ricerca non trova. Tornano larghi,
+ * una fonte alla volta, quando il backoffice le dà.
  *
  * @return array<string, string>
  */
@@ -156,7 +209,8 @@ function italianoDecisoPrimaDelDesignSystem(): array
 {
     return [
         'products' => 'Moduli',
-        'searchHint' => 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
+        'searchHint' => 'Cerca board e cartelle: scrivi almeno 2 caratteri.',
+        'searchPlaceholder' => 'Cerca board e cartelle…',
     ];
 }
 
@@ -183,7 +237,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
     $chiavi = [
-        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead',
+        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
     ];
 
@@ -328,13 +382,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 31 tipi di evento del contratto, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 40 tipi di notifica, i 36 tipi di evento del contratto più i quattro «assegnata» che non sono eventi, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
-    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(31)
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(36)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(40)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -347,7 +402,8 @@ it('le sette notifiche del CRM hanno il titolo della tabella nella lingua, e un 
 
     // Tutti e sette insieme: un rosso li mostra tutti, non solo il primo che manca.
     expect($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], titoliDelleNotificheDelCrm()))
-        // `…persona.assegnata` non è ancora nel contratto: finché non ha un titolo suo, ha quello di ripiego.
+        // Il tipo vero è `crm.persona.assegnata`, senza `com.zeiras.` davanti (sprint 22 · T5.2): col prefisso resta un tipo che
+        // zr-core non conosce, col titolo di ripiego.
         ->and(array_keys($testi))->not->toContain('notificationTitle.com.zeiras.crm.persona.assegnata')
         ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli));
 })->with(['it', 'en', 'es']);
@@ -367,6 +423,39 @@ it('le cinque notifiche nuove del contratto, viste di una board e aziende del CR
         ->and(implode(' · ', array_map(fn (?string $titolo) => (string) $titolo, $titoli)))->not->toMatch('/organi[zs]/iu');
 })->with(['it', 'en', 'es']);
 
+it('le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato a una persona, hanno il titolo della tabella nella lingua, e un\'opportunità non è chiamata con la parola del contratto (sprint 22 · T5.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = [...titoliDelleNotificheDiOpportunitaEAttivita(), ...titoliDelleNotificheDiCioCheVieneAssegnato()];
+    $titoli = [];
+    foreach (array_keys($tabella) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+    }
+
+    // Tutti e nove insieme: un rosso li mostra tutti, non solo il primo che manca.
+    expect($tabella)->toHaveCount(9)
+        ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
+        // Nessuno dei nove è il titolo di ripiego.
+        ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli))
+        // La parola è quella del CRM, non quella del contratto: «trattativa», «deal», «negociación».
+        ->and(implode(' · ', array_map(fn (?string $titolo) => (string) $titolo, $titoli)))->not->toMatch('/trattativ|\bdeals?\b|negociaci/iu');
+})->with(['it', 'en', 'es']);
+
+it('i quattro «assegnata» hanno il titolo sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: lo stesso nome col prefisso resta senza titolo, e nessuno dei quattro è un tipo di evento del contratto (sprint 22 · T5.2, T5.4)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelleNotificheDiCioCheVieneAssegnato();
+    $titoli = [];
+    $colPrefisso = [];
+    foreach (array_keys($tabella) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+        $colPrefisso[$tipo] = array_key_exists("notificationTitle.com.zeiras.$tipo", $testi);
+    }
+
+    expect(array_keys($tabella))->toBe(['crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata'])
+        ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
+        ->and(array_filter($colPrefisso))->toBe([])
+        ->and(array_intersect(array_keys($tabella), tipiDiNotificaDelContratto()))->toBe([]);
+})->with(['it', 'en', 'es']);
+
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
     $lingue = lingueDellaCornice();
     // Un tipo che il contratto non ha: in una lingua sola, e anche nell'inglese, che è il ripiego. Un tipo del contratto tolto
@@ -381,6 +470,14 @@ it('il controllo trova un tipo di notifica in più, uno in meno e il singolare d
         'it: manca «notificationTitle.com.zeiras.board.scheda.creata»',
         'es: manca «unreadOne»',
     ]);
+});
+
+it('il testo dell\'avviso senza non lette c\'è nelle tre lingue ed è di zr-core: l\'AppShell non ha una chiave con quel nome (sprint 22 · T2.6)', function () {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it']['unreadNone'] ?? null, $lingue['en']['unreadNone'] ?? null, $lingue['es']['unreadNone'] ?? null])
+        ->toBe(['Nessuna notifica non letta', 'No unread notifications', 'Ninguna notificación sin leer'])
+        ->and(chiaviDiAppShellLabels())->not->toContain('unreadNone');
 });
 
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
@@ -483,22 +580,49 @@ function testiCheNonDiconoModuli(array $lingue): array
     return $trovati;
 }
 
-it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima (sprint 21 · T1.1, T1.3, T1.4)', function (string $chiave, array $attesi) {
+it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima; l\'aiuto della ricerca, che la aveva, dalla v1.12.0 dice board e cartelle (sprint 21 · T1.1, T1.4; sprint 22 · T8.2)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
 })->with([
     'T1.1: il nome del menu' => ['products', ['Moduli', 'Modules', 'Módulos']],
-    'T1.3: l\'aiuto della ricerca' => ['searchHint', [
-        'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
-        'Search across all modules: type at least 2 characters.',
-        'Busca en todos los módulos: escribe al menos 2 caracteres.',
-    ]],
     'T1.4: la notifica di un modulo attivato o disattivato' => ['notificationTitle.com.zeiras.app.modificata', [
         'Un modulo è stato attivato o disattivato',
         'A module was turned on or off',
         'Se activó o desactivó un módulo',
     ]],
+]);
+
+// Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto). Il segnaposto del campo di ricerca e l'invito sotto il
+// campo dicono ciò che la ricerca trova oggi, board e cartelle, con le parole che zr-core usa già per i due tipi
+// (`pm.board.board`, `pm.board.cartelle`). Gli altri testi della ricerca restano com'erano.
+
+it('nelle tre lingue il segnaposto e l\'invito della ricerca dicono board e cartelle (sprint 22 · T8.1, T8.2)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
+})->with([
+    'T8.1: il segnaposto' => ['searchPlaceholder', ['Cerca board e cartelle…', 'Search boards and folders…', 'Busca tableros y carpetas…']],
+    'T8.2: l\'invito' => ['searchHint', [
+        'Cerca board e cartelle: scrivi almeno 2 caratteri.',
+        'Search boards and folders: type at least 2 characters.',
+        'Busca tableros y carpetas: escribe al menos 2 caracteres.',
+    ]],
+]);
+
+it('in ogni lingua il segnaposto e l\'invito della ricerca usano le parole dei due tipi e non nominano ciò che la ricerca non trova: progetti, schede, contatti, «tutti i moduli»; i puntini del segnaposto sono il carattere «…» (sprint 22 · T8.1, T8.2)', function (string $codice, array $nonTrova) {
+    $testi = lingueDellaCornice()[$codice];
+    $iDue = mb_strtolower($testi['searchPlaceholder'].' '.$testi['searchHint']);
+
+    expect(array_values(array_filter($nonTrova, fn (string $parola): bool => str_contains($iDue, $parola))))->toBe([])
+        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.board'])))->toBe(2)
+        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.cartelle'])))->toBe(2)
+        ->and(mb_substr($testi['searchPlaceholder'], -1))->toBe('…')
+        ->and(substr_count($testi['searchPlaceholder'], '.'))->toBe(0);
+})->with([
+    'italiano' => ['it', ['progett', 'sched', 'contatt', 'tutti i moduli']],
+    'inglese' => ['en', ['project', 'card', 'contact', 'all modules']],
+    'spagnolo' => ['es', ['proyecto', 'tarjeta', 'contacto', 'todos los módulos']],
 ]);
 
 it('nessun testo delle lingue di zr-core chiama «prodotti» o «app» i moduli, e ogni lingua ha le sue parole da cercare (sprint 21 · T1.4)', function () {
@@ -533,15 +657,20 @@ it('il controllo dice che per una lingua che non conosce non ha parole da cercar
         ->toBe(['fr: nessuna parola da cercare per questa lingua']);
 });
 
-it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta (sprint 21 · T1)', function () {
+it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta: il nome del menu, e il segnaposto e l\'invito della ricerca (sprint 21 · T1; sprint 22 · T8)', function () {
     $delDesignSystem = testiItalianiDelDesignSystem();
     $conIlTestoDiPrima = lingueDellaCornice();
     $conIlTestoDiPrima['it']['products'] = 'Prodotti';
+    $colSegnapostoDelDesignSystem = lingueDellaCornice();
+    $colSegnapostoDelDesignSystem['it']['searchPlaceholder'] = $delDesignSystem['searchPlaceholder'];
 
-    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint'])
+    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint', 'searchPlaceholder'])
         // Il design system dice ancora il testo di prima: quando dirà «Moduli», questa riga è rossa e lo scostamento si toglie.
         ->and($delDesignSystem['products'])->toBe('Prodotti')
         ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i prodotti: scrivi almeno 2 caratteri.')
+        // Il segnaposto del design system promette ciò che la ricerca non trova ancora: nella cornice è un problema.
+        ->and($delDesignSystem['searchPlaceholder'])->toBe('Cerca progetti, schede, contatti…')
+        ->and(problemiDelleLingue($colSegnapostoDelDesignSystem))->toBe(['it: «searchPlaceholder» non è il testo deciso prima del design system'])
         // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
         ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
 });

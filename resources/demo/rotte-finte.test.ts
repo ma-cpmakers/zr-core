@@ -61,7 +61,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         });
 
         expect(stato).toBe(200);
-        expect(Object.keys(corpo)).toEqual(['data', 'aggiornati_il']);
+        expect(Object.keys(corpo)).toEqual(['data', 'aggiornati_il', 'workspace']);
         expect(corpo.data).toHaveLength(4);
         expect(corpo.aggiornati_il).toBe('2026-10-10T00:00:00.000001Z');
         expect(nelFrattempo).toBe('2026-10-10T00:00:00.000002Z');
@@ -92,11 +92,28 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         const letture = await rispostaDi('/cornice/notifiche/letture', segnaTutte());
 
         expect(elenco.stato).toBe(200);
-        expect(Object.keys(elenco.corpo)).toEqual(['data']);
+        // Dalla `v1.12.0` l'elenco dice di quale workspace è: non è un istante, e c'è anche senza orologio.
+        expect(Object.keys(elenco.corpo)).toEqual(['data', 'workspace']);
         expect(letture.stato).toBe(200);
         expect(Object.keys(letture.corpo)).toEqual(['data']);
         // Dalla `v1.3.0` la parte server dice sempre se ne restano: `altre` non è un istante, e c'è anche senza orologio.
         expect(Object.keys(letture.corpo.data as object)).toEqual(['fino_a', 'altre']);
+    });
+
+    it.each<[string, string | undefined, string[]]>([
+        ['nel workspace dei dati di prova', 'uat-marketing', ['data', 'workspace']],
+        ['in un altro workspace, come da un\'altra scheda', 'uat-vendite', ['data', 'workspace']],
+        ['che la pagina di prova non dice', undefined, ['data']],
+    ])('GET /cornice/notifiche dice di quale workspace è l\'elenco, quello della «sessione» — %s —, come la parte server dalla v1.12.0 (sprint 22 · T1.1)', async (_quale, dellaSessione, chiavi) => {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => dellaSessione);
+
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche');
+
+        expect(stato).toBe(200);
+        expect(Object.keys(corpo)).toEqual(chiavi);
+        expect(corpo.workspace).toBe(dellaSessione);
     });
 
     // Una guardia: è così anche prima dell'orologio. Come nella parte server, un errore non dice quando.
@@ -194,7 +211,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
     // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
     // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?chi=1&crm=1&viste=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -234,11 +251,40 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
+    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM stanno dietro `?opportunita=1`, così le pagine di prova di prima
+    // restano com'erano. Non portano id: nel registro nessuno dei nove ha una destinazione, e la parte server non ne dà.
+    it('con `?opportunita=1` in fondo all\'elenco ci sono le nove notifiche nuove del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro «assegnata» col tipo senza `com.zeiras.` davanti; zr-core conosce tutti e nove i tipi, e nessuna ha una destinazione (sprint 22 · T5.1, T5.2, T5.3)', async () => {
+        await rotte(false, '?opportunita=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string; ids: Record<string, string> }[];
+
+        expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(notifiche.slice(4).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
+            ['uat-o1', 'crm', 'com.zeiras.crm.trattativa.creata', true, {}],
+            ['uat-o2', 'crm', 'com.zeiras.crm.trattativa.modificata', true, {}],
+            ['uat-o3', 'crm', 'com.zeiras.crm.attivita.creata', true, {}],
+            ['uat-o4', 'crm', 'com.zeiras.crm.attivita.modificata', true, {}],
+            ['uat-o5', 'crm', 'com.zeiras.crm.attivita.eliminata', true, {}],
+            ['uat-o6', 'crm', 'crm.persona.assegnata', true, {}],
+            ['uat-o7', 'crm', 'crm.organizzazione.assegnata', true, {}],
+            ['uat-o8', 'crm', 'crm.trattativa.assegnata', true, {}],
+            ['uat-o9', 'crm', 'crm.attivita.assegnata', true, {}],
+        ]);
+        expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual(Array(9).fill(true));
+        // Nessuna ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche col CRM attivo.
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual(Array(9).fill(null));
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+    });
+
     it.each([
         ['', ['uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`)]],
         ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
-    ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm` (sprint 21 · T5.1)', async (query, attese) => {
+        ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
+        ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
+    ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
         await rotte(false, query);
 
         const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; creata_il: string }[];
@@ -288,6 +334,43 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, true]);
         expect(await lette()).toEqual([false, true, true, true]);
         expect(await segnate()).toEqual([200, false]);
+    });
+
+    // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa.
+    const leggi = (letta: unknown = true): RequestInit => ({ method: 'PATCH', body: JSON.stringify({ letta }) });
+    const letteDelCrm = async () => ((await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean }[]).filter(({ id }) => id.startsWith('uat-c')).map(({ letta }) => letta);
+
+    it('PATCH /cornice/notifiche/<id>/lettura segna quella notifica e risponde con `letta` e con l\'istante preso a notifica segnata: una lettura fatta mentre la risposta aspetta è più indietro (sprint 22 · T2.5)', async () => {
+        const orologio = await rotte(true, '?crm=1&da_leggere=1');
+        // Con `?da_leggere=1` le prime otto del CRM sono da leggere; le altre restano lette.
+        expect(await letteDelCrm()).toEqual([false, false, false, false, false, false, false, false, true, true, true, true]);
+
+        let nelFrattempo = '';
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche/uat-c1/lettura', leggi(), () => (nelFrattempo = orologio()));
+        expect([stato, corpo.data]).toEqual([200, { id: 'uat-c1', letta: true }]);
+        expect(String(corpo.segnata_il) > nelFrattempo).toBe(true);
+        expect(await letteDelCrm()).toEqual([true, false, false, false, false, false, false, false, true, true, true, true]);
+    });
+
+    it('senza `?da_leggere` le notifiche del CRM sono lette come prima, e senza orologio la lettura non porta un istante, nemmeno vuoto (sprint 22 · T2.5)', async () => {
+        await rotte(false, '?crm=1');
+        expect((await letteDelCrm()).every((letta) => letta)).toBe(true);
+
+        const { stato, corpo } = await rispostaDi('/cornice/notifiche/uat-4/lettura', leggi());
+        expect([stato, corpo]).toEqual([200, { data: { id: 'uat-4', letta: true } }]);
+    });
+
+    it.each<[string, string, string, RequestInit, number]>([
+        ['con ?errore=lettura fallisce sempre', '?crm=1&da_leggere=1&errore=lettura', 'uat-c1', leggi(), 502],
+        ['una notifica che non c\'è', '?crm=1&da_leggere=1', 'uat-c99', leggi(), 404],
+        ['un `letta` che non è un booleano', '?crm=1&da_leggere=1', 'uat-c1', leggi('true'), 422],
+        ['un altro metodo', '?crm=1&da_leggere=1', 'uat-c1', { method: 'POST', body: '{"letta":true}' }, 404],
+    ])('una lettura che non riesce — %s — non segna niente e non porta un istante (sprint 22 · T2.3)', async (_come, query, id, opzioni, atteso) => {
+        await rotte(true, query);
+
+        const { stato, corpo } = await rispostaDi(`/cornice/notifiche/${id}/lettura`, opzioni);
+        expect([stato, Object.keys(corpo)]).toEqual([atteso, ['errore']]);
+        expect((await letteDelCrm()).slice(0, 8)).toEqual([false, false, false, false, false, false, false, false]);
     });
 
     it('senza `?chi` ogni notifica ha chi, su che cosa e per chi a `null`, come li dà la parte server quando il backoffice non li manda: il pannello è quello di prima (sprint 20 · T1.7)', async () => {
@@ -347,11 +430,11 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         window.fetch = fetchDiPrima;
     });
 
-    /** La risposta della rotta finta, che ci mette al più 1500 ms, sulla pagina di prova con quella query. */
-    async function rispostaGrezzaDi(indirizzo: string, opzioni?: RequestInit, query = ''): Promise<Response> {
+    /** La risposta della rotta finta, che ci mette al più 1500 ms, sulla pagina di prova con quella query e con la «sessione» in quel workspace. */
+    async function rispostaGrezzaDi(indirizzo: string, opzioni?: RequestInit, query = '', sessione: () => string | undefined = () => 'uat-marketing'): Promise<Response> {
         (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
         const { rotteFinte } = await import('./rotte-finte');
-        rotteFinte(() => 'uat-marketing');
+        rotteFinte(sessione);
         const inArrivo = fetch(indirizzo, opzioni);
         await vi.advanceTimersByTimeAsync(1500);
 
@@ -359,8 +442,8 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     }
 
     /** Lo stato e il corpo JSON di quella risposta. */
-    async function rispostaDi(indirizzo: string, opzioni?: RequestInit, query = ''): Promise<{ stato: number; corpo: Record<string, unknown> }> {
-        const risposta = await rispostaGrezzaDi(indirizzo, opzioni, query);
+    async function rispostaDi(indirizzo: string, opzioni?: RequestInit, query = '', sessione?: () => string | undefined): Promise<{ stato: number; corpo: Record<string, unknown> }> {
+        const risposta = await rispostaGrezzaDi(indirizzo, opzioni, query, sessione);
 
         return { stato: risposta.status, corpo: (await risposta.json()) as Record<string, unknown> };
     }
@@ -368,11 +451,23 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     /** La richiesta della cornice per quella parola. */
     const cerca = (parola: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify({ q: parola }) });
 
-    it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo (sprint 18 · T1.7)', async () => {
+    it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo, e il workspace della «sessione» (sprint 18 · T1.7; sprint 22 · T6.5)', async () => {
         expect(await rispostaDi('/cornice/ricerca', cerca('marketing'))).toStrictEqual({ stato: 200, corpo: { data: [
             { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
             { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
-        ] } });
+        ], workspace: 'uat-marketing' } });
+    });
+
+    it.each<[string, string | undefined, Record<string, unknown>]>([
+        ['in un altro workspace', 'uat-vendite', { workspace: 'uat-vendite' }],
+        // Come una parte server di prima della `v1.12.0`: nel JSON la chiave non c'è, e per la cornice la ricerca è un errore.
+        ['che la pagina di prova non dice', undefined, {}],
+    ])('con la «sessione» %s la ricerca finta dice quello, come la rotta vera lo prende dalla sessione: mai un workspace mandato dalla richiesta (sprint 22 · T6.5, T6.6)', async (_caso, slug, atteso) => {
+        const richiesta = { method: 'POST', body: JSON.stringify({ q: 'report', workspace: 'uat-della-richiesta' }) };
+
+        expect(await rispostaDi('/cornice/ricerca?workspace=uat-dell-indirizzo', richiesta, '', () => slug)).toStrictEqual({ stato: 200, corpo: { data: [
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+        ], ...atteso } });
     });
 
     it('una GET non cerca, nemmeno con la parola nell\'indirizzo: 405 coi metodi ammessi, come la rotta vera, e senza un corpo che la rotta vera non ha (sprint 18 · T1.7)', async () => {

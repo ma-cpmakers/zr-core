@@ -6,9 +6,10 @@ use Illuminate\Support\Carbon;
 
 /**
  * Il segno di un istante della parte server: quando una lettura è cominciata, quando una lettura è stata segnata. Lo portano
- * i dati della cornice e l'elenco delle notifiche (`aggiornati_il`) e la risposta di «segna tutte come lette» (`segnate_il`):
- * la cornice, nel browser, li confronta per non tornare a ciò che è più vecchio di quello che sa già. Per questo vengono
- * tutti da qui: un orologio solo, quello della parte server, e una forma sola.
+ * i dati della cornice e l'elenco delle notifiche (`aggiornati_il`), la risposta di «segna tutte come lette» (`segnate_il`)
+ * e quella della lettura di una notifica (`segnata_il`): la cornice, nel browser, li confronta per non tornare a ciò che è
+ * più vecchio di quello che sa già. Per questo vengono tutti da qui: un orologio solo, quello della parte server, e una
+ * forma sola.
  */
 final class Segno
 {

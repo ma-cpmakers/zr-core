@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
+use Zeiras\Core\Http\NotificheDellaCornice;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -964,7 +965,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1031,7 +1032,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3117,7 +3118,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati'],
+    'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'i tre casi del CRM' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di una nota il contatto a cui è attaccata'],
     'il caso delle aziende (sprint 21 · T5.2)' => ['punto', 'una di un\'azienda l\'elenco delle aziende col suo pannello aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`)'],
     'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
@@ -3130,7 +3131,9 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'che cosa legge' => ['paragrafo', 'la funzione ne legge `app`, `tipo` e `ids`'],
     'quando non dà niente' => ['paragrafo', 'Non dà niente (`undefined`) quando la notifica non ha dove andare'],
     'mai a metà' => ['paragrafo', 'mai un indirizzo composto a metà'],
-    'nemmeno con uno slug malfatto (review della PR #31, R7)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug (vuoto, `..`, con una barra): anche allora non dà niente'],
+    // Sprint 22 · T3.4 (seconda lettura della PR #31, S5): la forma, non solo gli esempi di ciò che non la ha.
+    'nemmeno con uno slug malfatto, e la forma di uno slug (review della PR #31, R7; sprint 22 · T3.4)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug: minuscole e cifre, a pezzi uniti da un trattino (`acme`, `acme-marketing`)'],
+    'gli slug che la forma non la hanno (sprint 22 · T3.4)' => ['paragrafo', 'Uno vuoto, `..`, uno con una barra, `Acme`, `acme_marketing` non la hanno: anche allora non dà niente'],
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],
@@ -3140,11 +3143,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'senza destinazione, o senza dati' => ['rotta', 'una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore'],
 ]);
 
-it('lo zip porta il registro dei moduli: la parte server lo legge per sapere quali id servono ad aprire una notifica (review della PR #31, R1)', function () {
-    expect(fileDelloZipDiHead())->toContain('resources/registro/prodotti.json');
-});
-
-it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle del suo elenco: una voce in più cambia anche il numero (review della PR #31, R2)', function () {
+it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle del suo elenco: una voce in più cambia anche il numero (sprint 21 · review della PR #31, R2)', function () {
     preg_match('/^## Prima di tutto: ciò che si chiede ad altri\n(.*?)(?=^## )/ms', guidaDelModuloNuovo(), $capitolo);
     preg_match('/^(\S+) cose non le scrivi tu/m', $capitolo[1] ?? '', $quante);
     $numeri = ['Tre' => 3, 'Quattro' => 4, 'Cinque' => 5, 'Sei' => 6, 'Sette' => 7, 'Otto' => 8];
@@ -3153,7 +3152,260 @@ it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle de
         ->and($numeri[$quante[1] ?? ''] ?? null)->toBe(preg_match_all('/^- \*\*/m', $capitolo[1] ?? ''));
 });
 
-it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un clic che naviga non glieli ridà come nuovi, e dopo «Segna tutte come lette» il numero non torna sulla campanella (review della PR #31, R5)', function () {
+it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un clic che naviga non glieli ridà come nuovi, e dopo «Segna tutte come lette» il numero non torna sulla campanella (sprint 21 · review della PR #31, R5)', function () {
     expect(scritteNellaPaginaDiProva('demo.tsx', ['const dati = useMemo(', 'dati={dati}', 'dati={{']))
         ->toBe(['const dati = useMemo(' => 1, 'dati={dati}' => 1, 'dati={{' => 0]);
+});
+
+// Sprint 22 · T1 (voce #1713): la risposta dell'elenco dice di quale workspace è, e il clic apre lì la risorsa. Il README lo
+// dice nella riga della rotta (la chiave, che cos'è, da quando) e al punto «Le notifiche» (dove si apre, nei tre casi).
+
+it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo workspace e che un clic apre lì la risorsa: nella riga della rotta la chiave e che cos\'è, al punto «Le notifiche» i tre casi (sprint 22 · T1.6)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = ['punto' => suUnaRiga($punto[0] ?? ''), 'rotta' => rigaDellaRotta($readme, 'GET /cornice/notifiche')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
+        ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
+})->with([
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
+    'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
+    'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
+    'lo stesso workspace' => ['punto', 'Se l\'elenco è del workspace dei dati della pagina decide lo stato dei moduli nei dati, come prima'],
+    'un altro workspace' => ['punto', 'se è di un altro, quello stato non decide — è di un altro workspace — e la risorsa si apre: se lì il modulo non è attivo lo dice il modulo'],
+    'non detto' => ['punto', 'se la risposta non dice il workspace, o lo dice senza la forma di uno slug, il clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 22 · T2 (voce #1712): il clic che apre la risorsa di una notifica non letta la segna letta. Il README lo dice al punto
+// «Le notifiche» — quando sì e quando no, che l'apertura non aspetta, che cosa succede se la lettura fallisce, quando scende il
+// numero, l'avviso per il lettore di schermo — e nella riga della rotta, che ora porta il suo istante.
+
+it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la notifica: nella riga della rotta l\'istante e che cos\'è, al punto «Le notifiche» quando sì e quando no, il caso in cui la lettura fallisce, il numero e l\'avviso (sprint 22 · T2.7)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = ['punto' => suUnaRiga($punto[0] ?? ''), 'rotta' => rigaDellaRotta($readme, 'PATCH /cornice/notifiche/{id}/lettura')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // La cornice la chiama di nuovo: il README non dice più che la rotta resta solo per i frontend.
+        ->and(str_contains(suUnaRiga($readme), 'che dalla v1.1.0 la cornice non chiama più'))->toBe(false);
+})->with([
+    'l\'istante nella riga della rotta' => ['rotta', '| `{data: {id, letta}, segnata_il}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `segnata_il` è l\'istante preso dopo la risposta del backoffice, nella forma di `aggiornati_il`'],
+    'il clic segna letta, e da quando' => ['punto', 'Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta'],
+    // Review della PR #44, R3: `segnaLetta` non è più fra parentesi come se si importasse (sotto, il caso della review).
+    'la richiesta' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando'],
+    'l\'apertura non aspetta' => ['punto', 'la risorsa si apre senza aspettare la risposta'],
+    'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
+    'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
+    // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
+    'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
+    'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
+    'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
+    'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
+    'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
+]);
+
+// Sprint 22 · T4, la review della PR #44: ciò che il README diceva e non era vero (R1, R2, R3, R9), ciò che era ambiguo (R8) e
+// ciò che non diceva a chi installa (R6, R7).
+
+it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende solo per i dati del clic, lo slug e i moduli da dare a `destinazioneDellaNotifica`, `segnaLetta` che l\'ingresso non esporta, la forma dell\'id, che cosa cambia nei test di un frontend, i nove tipi che hanno una destinazione (sprint 22 · T4; review della PR #44)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = [
+        'punto' => suUnaRiga($punto[0] ?? ''),
+        'paragrafo' => paragrafoFuoriDallaCornice($readme),
+        'rotta' => rigaDellaRotta($readme, 'PATCH /cornice/notifiche/{id}/lettura'),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'R1: mai una in meno' => ['punto', 'e vale il loro numero: al più una in più fino alla visita dopo, mai una in meno'],
+    'R1: perché non si può sapere' => ['punto', 'il loro segno è preso prima della lettura dal backoffice, `segnata_il` dopo la sua risposta'],
+    'R1: con che cosa si confronta segnata_il' => ['rotta', 'la cornice lo confronta con l\'istante dell\'elenco'],
+    'R2: lo slug è quello dell\'elenco' => ['paragrafo', '`slug` è il workspace dell\'elenco, cioè `workspace` nella risposta di `GET /cornice/notifiche` (dalla `v1.12.0`), che non è sempre quello dei dati della pagina'],
+    'R2: i moduli dei dati valgono solo per il loro workspace' => ['paragrafo', '`dati.prodotti` vale solo se quello slug è `dati.workspace.slug`'],
+    'R2: per un altro workspace' => ['paragrafo', 'il pannello dà ogni voce del `registro`, tranne `home`, come `disponibile`'],
+    'R3: segnaLetta è della cornice' => ['punto', 'La funzione che lo fa, `segnaLetta`, è della cornice e l\'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta'],
+    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e la risorsa si apre lo stesso'],
+    'R7: la risposta finta senza workspace' => ['punto', 'Una risposta finta di `GET /cornice/notifiche` senza `workspace` manda ogni clic alla pagina delle notifiche: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
+    'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
+    'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
+    'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
+    'R8: i nove che hanno una destinazione' => ['punto', 'oggi ci sono nove tipi del CRM, quelli di contatti, pipeline, note e aziende; opportunità, attività, i quattro «assegnata» e le viste di una board non hanno una destinazione'],
+    'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
+]);
+
+it('il README non dice più ciò che la review della PR #44 ha trovato falso, e l\'ingresso non esporta `segnaLetta`, come il README dice (review della PR #44, R1, R2, R3, R9)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $ingresso = (string) file_get_contents(__DIR__.'/../../resources/js/index.ts');
+
+    expect(str_contains($readme, 'solo per i dati letti fino a `segnata_il`'))->toBe(false)
+        ->and(str_contains($readme, '`slug` è il workspace della sessione'))->toBe(false)
+        ->and(str_contains($readme, '(la funzione `segnaLetta`'))->toBe(false)
+        ->and(str_contains($readme, 'il numero nuovo lo portano i dati della pagina dopo'))->toBe(false)
+        ->and(str_contains($readme, 'la cornice lo confronta col segno dei dati'))->toBe(false)
+        ->and(str_contains($ingresso, 'segnaLetta'))->toBe(false);
+});
+
+// Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM, opportunità, attività e ciò che viene assegnato a una persona, hanno un
+// titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che
+// nessuno dei nove apre una risorsa.
+
+it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apre una risorsa (sprint 22 · T5.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = suUnaRiga($punto[0] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true)
+        // I titoli non sono più 31: il numero di prima resta solo al passato.
+        ->and(str_contains(suUnaRiga($readme), 'i titoli sono 31'))->toBe(false);
+})->with([
+    'la versione e i cinque eventi' => ['Dalla `v1.12.0` hanno un titolo altri nove tipi del CRM: i cinque eventi di opportunità e attività («Nuova opportunità», «Opportunità modificata», «Nuova attività», «Attività modificata», «Attività eliminata»)'],
+    'le quattro notifiche a chi diventa responsabile' => ['e le quattro notifiche che il CRM manda a chi diventa responsabile («Ti è stato assegnato un contatto», «Ti è stata assegnata un\'azienda», «Ti è stata assegnata un\'opportunità», «Ti è stata assegnata un\'attività»)'],
+    'il tipo senza `com.zeiras.` davanti' => ['Queste quattro non sono eventi: il loro `tipo` arriva senza `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`, `crm.attivita.assegnata`)'],
+    'la chiave del titolo' => ['la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non `notificationTitle.com.zeiras.crm.persona.assegnata`'],
+    'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
+    'nessuno dei nove apre una risorsa' => ['Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 22 · T6 (voce #1726): con due schede su due workspace la ricerca è di quello della sessione, e la risposta lo dice
+// (`workspace`): un risultato si apre lì, e senza `workspace` la ricerca è un errore. Le non lette di un elenco di un altro
+// workspace non contano sulla campanella della pagina. Il README lo dice nella riga della rotta, nel punto «La ricerca» (dove
+// si apre un risultato, l'errore, che cosa cambia nei test di un frontend) e nel punto «La campanella».
+
+it('il README dice che dalla v1.12.0 la ricerca porta il suo workspace e che un risultato si apre lì, che senza `workspace` è un errore, che cosa cambia nei test di un frontend, e che le non lette di un elenco di un altro workspace non contano sulla campanella (sprint 22 · T6.7)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'campanella' => suUnaRiga(puntoDellaCampanella($readme)),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo}], workspace}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser'],
+    'la cornice apre lì' => ['rotta', 'è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca'],
+    'dove si apre un risultato' => ['ricerca', 'Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non è sempre quello dei dati della pagina'],
+    'perché' => ['ricerca', 'con due schede su due workspace la scheda rimasta indietro cerca in quello in cui la persona è entrata per ultimo'],
+    'senza workspace è un errore' => ['ricerca', 'Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
+    'nessun ripiego' => ['ricerca', 'la cornice non ripiega sul workspace della pagina'],
+    'la risposta finta di un frontend' => ['ricerca', 'Così risponde anche una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
+    'dove cercare' => ['ricerca', 'si trovano cercando `cornice/ricerca` nei test del frontend'],
+    'le non lette di un altro workspace' => ['campanella', 'Dalla `v1.12.0` le non lette di un elenco contano solo se l\'elenco è del workspace dei dati della pagina, o se la parte server non dice di quale workspace è'],
+    'che cosa mostra allora la campanella' => ['campanella', 'le sue non lette non sono quelle della pagina, e la campanella mostra il numero dei dati'],
+]);
+
+it('il README non dice più che un risultato della ricerca si apre nel workspace senza dire quale, né che la risposta porta solo i risultati (sprint 22 · T6.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDellaCornice($readme, 'La ricerca');
+    $rotta = rigaDellaRotta($readme, 'POST /cornice/ricerca');
+
+    expect($punto)->not->toBe('')
+        ->and($rotta)->not->toBe('')
+        // Di prima: «nel workspace», che era quello dei dati della pagina.
+        ->and(str_contains($punto, 'apre l\'indirizzo del suo prodotto nel workspace seguito dal percorso del tipo'))->toBe(false)
+        ->and(str_contains($rotta, '| `{data: [{tipo, id, titolo}]}`:'))->toBe(false);
+});
+
+// Sprint 22 · T7 (voce #1727): un frontend che le notifiche le legge da sé dal backoffice ha gli `ids` da un metodo PHP
+// pubblico, `NotificheDellaCornice::idsDellaNotifica()`. Il README lo dice accanto a `destinazioneDellaNotifica`, nello stesso
+// paragrafo: la firma, che cosa dà, `[]` senza una destinazione, e che i `dati` interi restano sul server del frontend.
+
+it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà gli `ids` di una notifica a chi la legge da sé: la firma e da quando, che cosa dà, `[]` senza una destinazione, e che i `dati` interi restano sul server del frontend (sprint 22 · T7.3)', function (string $frase) {
+    $paragrafo = paragrafoFuoriDallaCornice((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($paragrafo)->not->toBe('')
+        ->and(str_contains($paragrafo, $frase))->toBe(true)
+        // Accanto: nello stesso paragrafo, dopo la funzione del browser a cui quegli `ids` si danno.
+        ->and(strpos($paragrafo, '`destinazioneDellaNotifica(notifica, slug, prodotti)`'))->toBeLessThan((int) strpos($paragrafo, '::idsDellaNotifica('));
+})->with([
+    'chi, e che cosa gli manca' => ['Chi le notifiche le legge da sé dal backoffice, sul suo server — una pagina delle notifiche sua —, gli `ids` non li ha'],
+    'la firma, e da quando' => ['dalla `v1.12.0` li dà un metodo PHP pubblico e statico, `Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`'],
+    'la regola dell\'elenco' => ['ed è la regola con cui li dà `GET /cornice/notifiche`, non una copia'],
+    'gli argomenti' => ['`app`, `tipo` e `dati` sono quelli della notifica, com\'è nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi'],
+    'che cosa dà' => ['il metodo dà gli id per chiave (`[\'persona_id\' => \'<id>\']` per una nota), da dare al browser come `ids` della notifica'],
+    'vuoto senza una destinazione' => ['Dà `[]`, senza eccezioni, quando la notifica non ha una destinazione — un tipo o un\'app che il registro non ha, nessuna app, una voce «Presto» — e quando `dati` manca o non è un array con le chiavi'],
+    'un id che manca, o fuori dalla forma' => ['un id che manca, o che non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64), nell\'array non c\'è'],
+    'che cosa fa allora il browser' => ['Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà niente, e si apre la pagina delle notifiche'],
+    'i dati interi restano sul server' => ['Al browser vanno questi `ids` e non `dati`: i `dati` interi di una notifica restano sul server del frontend'],
+    'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
+]);
+
+// Sprint 22 · T8 (voce #1728): il segnaposto e l'aiuto della ricerca dicono board e cartelle. Il README lo dice nel punto «La
+// ricerca» — i testi nuovi nelle tre lingue, quelli di prima, e come un frontend li trova nei suoi test —, e nel punto «Il menu
+// Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+
+it('il README dice che dalla v1.12.0 il segnaposto e l\'aiuto della ricerca dicono board e cartelle: nel punto «La ricerca» i testi nuovi nelle tre lingue, quelli di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.12.0` il segnaposto del campo e l\'aiuto che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle'],
+    'i due testi in italiano' => ['ricerca', '«Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search boards and folders…» e «Search boards and folders: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas: escribe al menos 2 caracteres.»'],
+    'i testi di prima' => ['ricerca', 'Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
+    'come trovarli nei test di un frontend' => ['ricerca', 'un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
+    'quando tornano larghi' => ['ricerca', 'Tornano larghi, una fonte alla volta, quando la ricerca del backoffice trova altro'],
+    'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
+]);
+
+// Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
+// che cambiano nei test di un frontend, e dove stanno quelle della ricerca (S2); per chi le notifiche le legge da sé, la forma di
+// `ids` nel browser, quale `slug` dare a `destinazioneDellaNotifica`, e che un id non è un permesso (S3); che cosa conta la
+// campanella coi dati senza `non_lette` (S5).
+
+it('il README dice ciò che la seconda lettura della PR #44 ha chiesto: le cinque cose che cambiano nei test di un frontend e dove stanno le due della ricerca, la forma di `ids` e lo `slug` per chi le notifiche le legge da sé, che un id non è un permesso, e che cosa conta la campanella senza `non_lette` (sprint 22 · T4; review della PR #44, seconda lettura: S2, S3, S5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = [
+        'punto' => suUnaRiga($punto[0] ?? ''),
+        'paragrafo' => paragrafoFuoriDallaCornice($readme),
+        'campanella' => suUnaRiga(puntoDellaCampanella($readme)),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'S2: quante sono, e di chi' => ['punto', 'Per i test di un frontend che passa alla `v1.12.0` cambiano cinque cose: tre sono delle notifiche, e sono quelle che seguono; due sono della ricerca, e stanno nel punto «La ricerca», qui sotto'],
+    'S2: le due della ricerca' => ['punto', 'senza `workspace` in una risposta finta di `POST /cornice/ricerca` la ricerca mostra il suo errore, e il segnaposto e l\'aiuto del campo hanno testi nuovi'],
+    'S2: dove cercare le due della ricerca' => ['punto', 'le due della ricerca cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca'],
+    'S3: un array di PHP, e la forma di `ids` nell\'elenco' => ['paragrafo', 'da dare al browser come `ids` della notifica. È un array di PHP, e vuoto in JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto)'],
+    'S3: chi lo dà al browser lo converte' => ['paragrafo', 'chi lo dà al browser lo converte in un oggetto (`(object)`), e nel browser `ids` ha una forma sola'],
+    'S3: un id non è un permesso' => ['paragrafo', 'Un id non è un permesso nemmeno qui: il metodo non controlla che chi riceve la notifica possa vedere quella risorsa, e lo decide il modulo che apre la pagina'],
+    'S3: quale slug' => ['paragrafo', 'Lo `slug` da dare a `destinazioneDellaNotifica`, per notifiche lette così, è quello del workspace della sessione nella richiesta che le ha lette (lo `slug` di `Sessione::workspace()` di zr-auth), e la parte server del frontend lo manda insieme a loro, come `GET /cornice/notifiche` manda `workspace`'],
+    'S3: non lo slug dei dati di una pagina rimasta indietro' => ['paragrafo', 'Non è `dati.workspace.slug`: con due schede su due workspace, una pagina rimasta indietro che ricarica le sole notifiche riceve quelle dell\'altro workspace, e coi suoi dati le aprirebbe nel proprio'],
+    'S5: vale coi dati che portano `non_lette`' => ['campanella', 'Vale coi dati che portano `non_lette`, come li dà `Cornice::dati()`'],
+    'S5: senza, le non lette del pannello di qualunque workspace' => ['campanella', 'con dati scritti a mano senza `non_lette`, che il tipo ammette, la pagina non ha un numero suo, e la campanella conta le non lette che il pannello ha caricato, di qualunque workspace sia l\'elenco'],
+]);
+
+it('il README non dice più che nei test di un frontend cambiano tre cose in tutto, e il punto «La ricerca» a cui rimanda sta sotto «Le notifiche» (review della PR #44, seconda lettura: S2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $notifiche = strpos($readme, "\n- **Le notifiche** ");
+    $ricerca = strpos($readme, "\n- **La ricerca** ");
+
+    expect(str_contains(suUnaRiga($readme), 'cambiano tre cose'))->toBe(false)
+        ->and($notifiche)->toBeInt()
+        ->and($ricerca)->toBeInt()
+        ->and($notifiche)->toBeLessThan((int) $ricerca);
+});
+
+it('ciò che il README dice della forma di `ids` è vero: il metodo dà un array di PHP, che vuoto in JSON è `[]` e con un id un oggetto, e l\'elenco lo manda sempre come oggetto (review della PR #44, seconda lettura: S3)', function () {
+    $sorgente = (string) file_get_contents(__DIR__.'/../../src/Http/NotificheDellaCornice.php');
+
+    expect(json_encode(NotificheDellaCornice::idsDellaNotifica(null, 'com.zeiras.crm.nota.creata', null)))->toBe('[]')
+        ->and(json_encode((object) NotificheDellaCornice::idsDellaNotifica(null, 'com.zeiras.crm.nota.creata', null)))->toBe('{}')
+        ->and(json_encode(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', ['persona_id' => 'p-1'])))->toBe('{"persona_id":"p-1"}')
+        // L'elenco: un oggetto anche quando è vuoto.
+        ->and(substr_count($sorgente, "'ids' => (object) self::idsDellaNotifica("))->toBe(1);
 });

@@ -79,7 +79,7 @@ beforeEach(() => {
                 return risposta({ data: { fino_a: new Date(String((JSON.parse(String(opzioni?.body)) as { fino_a?: unknown }).fino_a)).toISOString() } });
             }
 
-            return risposta({ data: [] });
+            return risposta({ data: [], workspace: 'uat-marketing' });
         }),
     );
 });
@@ -369,7 +369,7 @@ describe('la cornice sotto Inertia vera non torna a dati più vecchi', () => {
                     return risposta({ data: { fino_a: finoA }, ...(conSegni ? { segnate_il: istante(adesso) } : {}) });
                 }
 
-                return risposta({ data: [] });
+                return risposta({ data: [], workspace: 'uat-marketing' });
             }),
         );
         // Il browser tiene in cronologia una copia dello stato. happy-dom ridà lo stesso oggetto: senza la copia, Avanti

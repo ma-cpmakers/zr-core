@@ -13,14 +13,16 @@ import { rotteFinte } from './rotte-finte';
 // attivo, `crm` disponibile, `bookings` in arrivo, `reports` attivo ma «Presto» nel registro, `automations` scritto `undefined` e
 // `content` non elencato. `?lingua=es&prodotto=pm` la apre già scelta; `?aziende=` sceglie le aziende del selettore (`due`, `membro`, `nessuna`,
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
-// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?altre=1` il primo che riesce si ferma come la
+// `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce), `?errore=lettura` la lettura della notifica che un
+// clic apre (la risorsa si apre lo stesso, e la notifica resta da leggere), e con `?da_leggere=1` le prime otto del CRM (`?crm=1`) sono da leggere; con `?altre=1` il primo che riesce si ferma come la
 // parte server a un tetto (`altre: true`: la più recente resta da leggere) e il secondo le segna tutte; con `?arriva=1` dal
 // secondo caricamento delle notifiche ce n'è una nuova, non letta; con `?chi=1` le notifiche dicono chi ha fatto, su che cosa e
 // per chi (una rivolta alla persona, una solo in «Tutte», una su un'app, col nome del prodotto al posto del codice, le altre com'erano). Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
 // (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
 // indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
-// scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts) o `?viste=1` (quelle delle viste di una board)
-// l'ultimo si legge anche in pagina, sotto le scelte.
+// scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts), `?viste=1` (quelle delle viste di una board) o
+// `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) l'ultimo si legge anche in
+// pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
@@ -75,7 +77,8 @@ function Prova() {
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
     }, [senzaCrm, lingua, aziende, nonLette]);
-    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1` o `?viste=1`, così le altre pagine restano com'erano.
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1` o `?opportunita=1`, così le altre pagine
+    // restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
     return (
@@ -108,12 +111,17 @@ function Prova() {
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
         </Cornice>
     );
 }
 
-// Le rotte della cornice sono finte (rotte-finte.ts): la «sessione» è nel workspace dei dati di prova.
-rotteFinte(() => datiDiProva.workspace.slug);
+// Le rotte della cornice sono finte (rotte-finte.ts): la «sessione» è nel workspace dei dati di prova. Con `?sessione=<slug>` è
+// in un altro, come quando la persona entra in un altro workspace da un'altra scheda: l'elenco delle notifiche e la ricerca
+// dicono quello, e lì la cornice apre la risorsa di una notifica e un risultato; le non lette di quell'elenco non contano sulla
+// campanella. Con `?sessione=` (vuoto) la parte server finta non dice di quale workspace sono, come una di prima della
+// `v1.12.0`: un clic su una notifica apre la pagina delle notifiche, e la ricerca mostra il suo errore.
+const sessione = new URLSearchParams(window.location.search).get('sessione');
+rotteFinte(() => (sessione === null ? datiDiProva.workspace.slug : sessione === '' ? undefined : sessione));
 
 createRoot(document.getElementById('pagina')!).render(<StrictMode><Prova /></StrictMode>);

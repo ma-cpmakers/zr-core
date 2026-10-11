@@ -2,6 +2,8 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
+import { FORMA_DI_UN_ID } from './notifiche';
+
 /** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
     id: string;
@@ -35,7 +37,7 @@ export interface RisultatoDellaRicerca {
     titolo: string;
 }
 
-async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {}): Promise<unknown> {
+async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
     if (!risposta.ok) {
         throw new Error(`${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`);
@@ -56,14 +58,16 @@ export function segno(valore: unknown): string | undefined {
 /**
  * Le notifiche del workspace, dalla più recente: GET /cornice/notifiche. `il` è l'istante in cui la parte server ha cominciato
  * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
+ * `workspace` è lo slug del workspace di cui sono, come lo dice la parte server (dalla `v1.12.0`): quello della sessione, che
+ * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
  */
-export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined }> {
-    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown } | null;
+export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
+    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
 
-    return { elenco: corpo.data as NotificaDellaCornice[], il: segno(corpo.aggiornati_il) };
+    return { elenco: corpo.data as NotificaDellaCornice[], il: segno(corpo.aggiornati_il), workspace: typeof corpo.workspace === 'string' ? corpo.workspace : undefined };
 }
 
 /**
@@ -90,24 +94,57 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
 }
 
 /**
+ * Segna letta una notifica della persona: PATCH /cornice/notifiche/<id>/lettura con `{"letta": true}`. La cornice la chiama col
+ * clic che apre la risorsa di una notifica non letta, e subito dopo apre un'altra pagina: la richiesta parte nello stesso giro
+ * di chi la chiama, e con `keepalive` il browser la porta in fondo anche se la pagina se ne va. L'id sta nel suo pezzo
+ * dell'indirizzo, e prima di chiedere deve avere la forma che la rotta vuole: `encodeURIComponent` non tocca i punti, e con
+ * `.` o `..` il browser porterebbe la richiesta, col gettone CSRF, a un'altra rotta. Senza quella forma la richiesta non
+ * parte, ed è una lettura non riuscita. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un
+ * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
+ * manca, o ha un'altra forma, non è un errore, è senza segno.
+ */
+export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
+    if (!FORMA_DI_UN_ID.test(id)) {
+        throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
+    }
+    const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
+    const corpo = (await chiama(indirizzo, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
+        body: JSON.stringify({ letta: true }),
+        keepalive: true,
+    })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
+    if (corpo?.data?.letta !== true) {
+        throw new Error(`PATCH ${indirizzo}: letta`);
+    }
+
+    return { il: segno(corpo.segnata_il) };
+}
+
+/**
  * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
  * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
  * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
- * corpo). `segnale` annulla la richiesta.
+ * corpo). `segnale` annulla la richiesta. Coi risultati, il workspace di cui sono, come lo dice la parte server (dalla
+ * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
+ * non lo dice, o non lo dice con un testo, è un errore come una senza la lista: senza, un risultato non ha un indirizzo.
  */
-export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
+export async function cerca(parola: string, segnale: AbortSignal): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ q: parola }),
         signal: segnale,
-    })) as { data?: unknown } | null;
+    })) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
+    if (typeof corpo.workspace !== 'string' || corpo.workspace === '') {
+        throw new Error(`POST ${indirizzo}: workspace`);
+    }
 
-    return corpo.data as RisultatoDellaRicerca[];
+    return { risultati: corpo.data as RisultatoDellaRicerca[], workspace: corpo.workspace };
 }
 
 /** Il gettone CSRF di Laravel: il cookie `XSRF-TOKEN` della pagina, rimandato nell'header `X-XSRF-TOKEN` (senza, 419). */

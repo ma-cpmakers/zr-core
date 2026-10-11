@@ -106,8 +106,8 @@ beforeEach(() => {
     vi.spyOn(console, 'error');
     // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    // Le rotte della cornice: le notifiche qui sopra, e nessun risultato della ricerca.
-    vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : [] })));
+    // Le rotte della cornice: le notifiche qui sopra, e nessun risultato della ricerca, che dice il suo workspace.
+    vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: [], workspace: dati.workspace.slug })));
 });
 
 afterEach(async () => {
@@ -245,7 +245,7 @@ describe('LayoutDellaCornice', () => {
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(segnaposto()).toBe('Cerca progetti, schede, contatti…');
+        expect(segnaposto()).toBe('Cerca board e cartelle…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
         await visita(inSpagnolo, <PaginaB key="2" />);
@@ -257,14 +257,14 @@ describe('LayoutDellaCornice', () => {
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
-        expect(segnaposto()).toBe('Busca proyectos, tarjetas, contactos…');
+        expect(segnaposto()).toBe('Busca tableros y carpetas…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);
     });
 
     it('quando una visita porta un altro workspace la cornice si rifà: il campo della ricerca è vuoto e senza i risultati di prima, il pannello delle notifiche è chiuso, e riaprire la campanella fa partire un\'altra GET /cornice/notifiche; la pagina nuova si monta una volta sola (sprint 9 · T1.6)', async () => {
-        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : risultatiDelServer })));
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         await visita(dati, <PaginaA key="1" />);
         await scrivi('uat');
         expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
@@ -359,13 +359,15 @@ describe('LayoutDellaCornice', () => {
     });
 
     it('la pagina resta figlia di `main.zr-main`, o di `div.zr-main-body` col percorso: il layout non mette nessun elemento suo intorno all\'`AppShell` né alla pagina (sprint 9 · T1)', async () => {
+        // Accanto all'`AppShell` c'è solo l'avviso della cornice per il lettore di schermo (sprint 22 · T2.6): dopo di lui, non intorno.
+        const accantoAllAppShell = () => [...contenitore.children].map((figlio) => figlio.getAttribute('role') ?? figlio.className);
         await visita(dati, <PaginaA key="1" />);
-        expect(contenitore.childElementCount).toBe(1);
+        expect(accantoAllAppShell()).toStrictEqual(['zr-shell', 'status']);
         expect(contenitore.firstElementChild?.className).toBe('zr-shell');
         expect(uno('#uat-pagina-a')?.parentElement).toBe(uno('.zr-shell > main.zr-main'));
 
         await visita(dati, <PaginaA key="1" />, { crumbs: percorso });
-        expect(contenitore.childElementCount).toBe(1);
+        expect(accantoAllAppShell()).toStrictEqual(['zr-shell', 'status']);
         expect(uno('#uat-pagina-a')?.parentElement).toBe(uno('.zr-shell > main.zr-main > div.zr-main-body'));
     });
 

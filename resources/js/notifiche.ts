@@ -6,8 +6,11 @@ import { nelWorkspace, prodottoDelRegistro, raggiungibile } from './registro';
 // (`ids`): dei `dati` dell'evento la parte server dà i soli che questo percorso chiede, già controllati. Qui si controllano di
 // nuovo, e con loro lo slug, perché ciò che arriva dal browser non entra in un indirizzo com'è.
 
-/** La forma di un id del backoffice: lettere, cifre, `-` e `_`, da 1 a 64. La stessa che la parte server chiede a ogni id di `ids`. */
-const FORMA_DI_UN_ID = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * La forma di un id del backoffice: lettere, cifre, `-` e `_`, da 1 a 64. La stessa che la parte server chiede a ogni id di `ids`,
+ * e all'id di una notifica nella rotta della sua lettura: la usa anche `segnaLetta`, prima di chiedere.
+ */
+export const FORMA_DI_UN_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Un segnaposto di un percorso del registro: `{id}`, o `{<nome>_id}`. Lo stesso che la parte server cerca per scegliere gli id di `ids`. */
 const SEGNAPOSTO = /\{(id|[a-z][a-z_]*_id)\}/g;

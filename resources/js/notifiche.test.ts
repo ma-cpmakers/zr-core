@@ -55,7 +55,7 @@ describe('la destinazione di una notifica', () => {
 
     // Review della PR #31, R7: lo slug entra nell'indirizzo solo con la forma che il contratto del backoffice gli dà
     // (`^[a-z0-9]+(-[a-z0-9]+)*$`). `encodeURIComponent` non tocca i punti: con `..` il browser aprirebbe un'altra pagina.
-    it.each([['acme'], ['acme-marketing'], ['a'], ['9'], ['uat-marketing-2'], ['a-b-c']])('lo slug del workspace entra nell\'indirizzo com\'è: %s (review della PR #31, R7)', (slug) => {
+    it.each([['acme'], ['acme-marketing'], ['a'], ['9'], ['uat-marketing-2'], ['a-b-c']])('lo slug del workspace entra nell\'indirizzo com\'è: %s (sprint 21 · review della PR #31, R7)', (slug) => {
         expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug, prodotti)).toBe(`https://crm.zeiras.com/w/${slug}/contatti/uat-persona-1`);
     });
 
@@ -81,7 +81,7 @@ describe('la destinazione di una notifica', () => {
         ['che non è un testo: manca', undefined],
         ['che non è un testo: null', null],
         ['che non è un testo: un numero', 42],
-    ])('senza uno slug con la forma di uno slug non c\'è un indirizzo, nemmeno a metà: %s (review della PR #31, R7)', (_caso, slug) => {
+    ])('senza uno slug con la forma di uno slug non c\'è un indirizzo, nemmeno a metà: %s (sprint 21 · review della PR #31, R7)', (_caso, slug) => {
         expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug as string, prodotti)).toBeUndefined();
     });
 
@@ -107,6 +107,19 @@ describe('la destinazione di una notifica', () => {
         ['del CRM, con un tipo che non è un testo', { app: 'crm', tipo: ['com.zeiras.crm.persona.creata'], ids: { id: 'uat-persona-1' } }],
     ])('una notifica %s non ha una destinazione nel registro: niente, e il pannello apre la pagina delle notifiche (sprint 21 · T3.2)', (_quale, notifica) => {
         expect(apre(notifica)).toBeUndefined();
+    });
+
+    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM hanno un titolo e nessuna destinazione. La pagina di un'opportunità in
+    // produzione è spenta e un'attività non ne ha una; per un contatto o un'azienda assegnati è una scelta di prodotto ancora da fare.
+    // I quattro «assegnata» arrivano senza `com.zeiras.` davanti.
+    it.each([
+        ['com.zeiras.crm.trattativa.creata'], ['com.zeiras.crm.trattativa.modificata'],
+        ['com.zeiras.crm.attivita.creata'], ['com.zeiras.crm.attivita.modificata'], ['com.zeiras.crm.attivita.eliminata'],
+        ['crm.persona.assegnata'], ['crm.organizzazione.assegnata'], ['crm.trattativa.assegnata'], ['crm.attivita.assegnata'],
+    ])('una notifica del CRM di tipo «%s» non apre una risorsa, nemmeno con tutti gli id: il pannello apre la pagina delle notifiche (sprint 22 · T5.3)', (tipo) => {
+        const ids = { id: 'uat-x-1', persona_id: 'uat-x-2', organizzazione_id: 'uat-x-3', trattativa_id: 'uat-x-4' };
+
+        expect(apre({ app: 'crm', tipo, ids })).toBeUndefined();
     });
 
     it.each([
