@@ -129,10 +129,12 @@ più vecchi.
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
 lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non
-lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati. Cambiano solo quei due: email, workspace,
-ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome nuovi da quella stessa
-richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della
-pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo.
+lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende: quali
+prende lo decide zr-auth (per la lingua vedi «Quale lingua c'è nella sessione», più sotto). Cambiano solo quei due: email,
+workspace, ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome della sessione
+dopo `Sessione::aggiorna`, da quella stessa richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare
+`Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e
+dalla richiesta dopo è nuovo.
 
 Per avere la pagina nella lingua nuova già da quella richiesta c'è `Cornice::lingua()` (dalla `v1.8.0`): una riga nel
 middleware che mette la lingua, prima del controller, al posto della lingua letta dalla sessione.
@@ -141,29 +143,41 @@ middleware che mette la lingua, prima del controller, al posto della lingua lett
 App::setLocale(Cornice::lingua() ?? config('app.locale'));
 ```
 
-Dà la lingua della persona già aggiornata dal profilo: legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la
-lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un workspace dà la lingua della sessione,
-senza chiamare il backoffice. È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di
-lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a `App::setLocale` non arriva mai un valore che
-Laravel rifiuta. Una lingua ben fatta che il modulo non ha passa com'è: per i testi dei file a gruppi (`lang/<lingua>/…`)
-Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com'è; se il modulo vuole
+Dà la lingua della sessione dopo che `Sessione::aggiorna` ha visto il profilo: legge `io.mostra`, lo dà a
+`Sessione::aggiorna` e risponde con la lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un
+workspace dà la lingua della sessione, senza chiamare il backoffice. È la lingua della sessione, se ha la forma di una
+lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a
+`App::setLocale` non arriva mai un valore che Laravel rifiuta. Una lingua della sessione ben fatta che il modulo non ha
+passa com'è: per i testi dei file a gruppi (`lang/<lingua>/…`) Laravel ripiega sul suo `fallback_locale`, per quelli JSON
+(`lang/<lingua>.json`) dà la chiave com'è; se il modulo vuole
 altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice
 non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
 invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
 lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una
-notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per la lingua e
-il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo
-se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l'`utente` col suo `id`, la
-`lingua` e il `nome`): con un'altra forma `Sessione::aggiorna` non cambia niente. Se il backoffice non risponde
+notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per il nome, e
+per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia
+vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c'è nella sessione», più sotto): se il
+controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo se il
+controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l'`utente` col suo `id`, la
+`lingua` e il `nome`): con un'altra forma `Sessione::aggiorna` non cambia niente. Una lingua che `Sessione::aggiorna`
+non prende i dati non la portano né subito né dopo: tengono quella che la sessione aveva. Se il backoffice non risponde
 `Cornice::lingua()` non lancia: dà la lingua della sessione, lascia nel log una riga d'avviso col tipo dell'errore, mai il
 suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la prima `Cornice::dati()` di quella richiesta,
 se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
 
-Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`): con un'altra, anche ben
-fatta, la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`. Fino alla 0.12.11 la sessione prende
-il testo del profilo com'è, e vale ciò che è scritto qui sopra: una lingua ben fatta passa, una malfatta dà `null`. zr-core le
-accetta tutte e due: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata.
+Quale lingua c'è nella sessione lo decide zr-auth, in due momenti. All'ingresso `Sessione::apri` e `Sessione::entra` mettono
+nella sessione la persona come la dà il backoffice, con la lingua del profilo com'è: vale dalla 0.12.4 alla 0.12.12. Dopo, a
+ogni lettura, `Sessione::aggiorna` cambia la lingua della sessione solo con una lingua del profilo che prende: fino alla
+0.12.11 ogni testo che non sia vuoto o di soli spazi, com'è; dalla 0.12.12 solo una lingua di Zeiras (`it`, `en`, `es`:
+l'elenco `Sessione::LINGUE` di zr-auth), col confronto esatto — `IT` e `it-IT` non sono `it` —, e con un'altra, anche ben
+fatta, la sessione tiene la lingua che aveva. Se il profilo non ne porta una (`null`, un testo vuoto o di soli spazi) la
+sessione tiene la sua con tutte e due le versioni. Con una sessione, quindi, `Cornice::lingua()` dà `null` quando la lingua
+che la sessione ha dopo la lettura non ha la forma di una lingua: fino alla 0.12.11 anche per una malfatta appena arrivata
+dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall'ingresso. E per una lingua del profilo ben
+fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la
+forma di una lingua. zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda
+quale zr-auth è installata.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
 rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione, e la riga costerebbe una
@@ -177,7 +191,9 @@ Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di 
 `Sessione::utente()` dopo, funziona come prima. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza
 chiamarla un'altra volta: `Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto
 letture invece di quattro, con due segni — e in un middleware parte a ogni richiesta che ci passa, anche senza una pagina
-da mostrare.
+da mostrare. E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()['lingua']` e
+`Cornice::dati()['lingua']` sono la lingua della sessione com'è, anche malfatta. Chi resta col suo codice e la dà a
+`App::setLocale`, all'attributo `lang` della pagina o al nome di un file ne guarda prima la forma.
 
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
@@ -192,7 +208,7 @@ esce.
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
 | `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dal server del modulo al backoffice la parola viaggia ancora nell'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo |
@@ -275,14 +291,24 @@ cornice === null ? pagina : (
   pallino dice «non letta» quando sulla campanella ce n'è una sola, «non lette» negli altri casi.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo del suo
   tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora nella lingua («5 minuti fa», «ieri»,
-  «1 ott»), in «Per me» come in «Tutte» (il backoffice non dice per chi è una notifica). Il titolo lo dice `tipo`, e i
+  «1 ott»). Il titolo lo dice `tipo`, e i
   titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto: una notifica di un tipo che zr-core non
   conosce, o senza `tipo`, ha il titolo di ripiego («Novità nel workspace»), mai il codice del tipo. Un tipo di notifica
   nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
-  prodotto e l'icona della campanella. Se il caricamento fallisce, l'errore e «Riprova».
+  prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
+  backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»); con
+  `autore_nome` ha, al posto dell'icona, l'avatar con le iniziali di chi ha fatto; e `per_me` dice la scheda: `true` in
+  «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due, perché `null` vuol dire che il backoffice non lo
+  sa, non che la notifica è per altri. Un nome vuoto o di soli spazi non si mostra. Per una notifica su un'app (un tipo
+  che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
+  prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
+  registro non ha la seconda riga non c'è. Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
+  titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
+  conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
+  caricamento fallisce, l'errore e «Riprova».
   «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a, workspace}` — la
   `creata_il` più recente fra le notifiche caricate, così com'è, e lo slug del workspace dei dati con cui il pannello le ha
   caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
@@ -379,7 +405,14 @@ tipo nella lingua, ed è la funzione che usa il pannello delle notifiche della c
 della lingua della persona, e vale come per la cornice: `it-IT` è `it`, e con una lingua che zr-core non ha il titolo è in
 inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/en.json`):
 un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
-lingua («Novità nel workspace»), mai il codice del tipo.
+lingua («Novità nel workspace»), mai il codice del tipo. Dalla `v1.10.0` si importa anche
+`risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo: dà il nome della cosa a cui la notifica si
+riferisce, ed è la funzione che usa il pannello. `notifica` è la notifica com'è, del backoffice o di
+`GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`. Di norma dà `risorsa_nome` senza gli spazi
+intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
+(`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
+c'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del
+registro: lì la riga non si mostra, e il codice mai.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il

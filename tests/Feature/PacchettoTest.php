@@ -964,7 +964,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1031,7 +1031,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -1082,9 +1082,9 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
 it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cambiano solo quei due, da quale richiesta valgono, il rimedio, e che chi la chiama prima ne tiene il risultato (sprint 13 · T2.7; review, R2)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
-        'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e la sessione prende la lingua e il nome del profilo, se sono cambiati'),
+        'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende'),
         'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'),
-        'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome nuovi da quella stessa richiesta'),
+        'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome della sessione dopo `Sessione::aggiorna`, da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
         // Dalla v1.8.0 il rimedio di prima è la strada di chi resta col suo codice: la riga è `Cornice::lingua()` (sprint 18 · T2.8).
         'il rimedio' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere `Sessione::utente()` dopo, funziona come prima'),
@@ -1162,15 +1162,15 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     'la riga' => ['App::setLocale(Cornice::lingua() ?? config(\'app.locale\'));'],
     'dove va' => ['una riga nel middleware che mette la lingua, prima del controller'],
     'da quale versione' => ['c\'è `Cornice::lingua()` (dalla `v1.8.0`)'],
-    'che cosa dà' => ['Dà la lingua della persona già aggiornata dal profilo'],
+    'che cosa dà' => ['Dà la lingua della sessione dopo che `Sessione::aggiorna` ha visto il profilo'],
     'come la prende' => ['legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la lingua della sessione'],
     'senza una sessione' => ['Senza una sessione dà `null`'],
     'senza un workspace' => ['con la sessione ma senza un workspace dà la lingua della sessione, senza chiamare il backoffice'],
     // Review della PR #22, R9: la forma della lingua la guarda la riga, e il README lo dice.
-    'la forma di una lingua' => ['È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`'],
+    'la forma di una lingua' => ['È la lingua della sessione, se ha la forma di una lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`'],
     'mai un valore che Laravel rifiuta' => ['a `App::setLocale` non arriva mai un valore che Laravel rifiuta'],
     // Seconda lettura della PR #22, N2: il ripiego di Laravel vale per i file a gruppi, non per i testi JSON.
-    'una lingua che il modulo non ha' => ['Una lingua ben fatta che il modulo non ha passa com\'è: per i testi dei file a gruppi (`lang/<lingua>/…`) Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com\'è'],
+    'una lingua che il modulo non ha' => ['Una lingua della sessione ben fatta che il modulo non ha passa com\'è: per i testi dei file a gruppi (`lang/<lingua>/…`) Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com\'è'],
     'quanto costa dove la cornice non c\'è' => ['Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c\'è'],
     'nessuna in più dove c\'è' => ['dove c\'è non ne costa una in più'],
     'le letture restano quattro' => ['e le letture restano quattro'],
@@ -1178,7 +1178,8 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     'se il backoffice non risponde non lancia' => ['Se il backoffice non risponde `Cornice::lingua()` non lancia: dà la lingua della sessione'],
     // Review, A4: vale per la prima `Cornice::dati()`; e ciò che il controller cambia dopo comprende lingua e nome.
     'l\'errore lo lancia la prima Cornice::dati(), senza un\'altra lettura' => ['lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami, senza chiamare `io.mostra` un\'altra volta'],
-    'anche la lingua e il nome cambiati dal controller' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
+    // Seconda lettura della PR #24, S1: come comincia la frase — per il nome, e per la lingua che `Sessione::aggiorna` prende — lo guarda il caso di T4.3.
+    'anche la lingua e il nome cambiati dal controller' => ['se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
     // Seconda lettura, N3: quale forma `Sessione::aggiorna` prende, e che con un'altra non cambia niente.
     'subito solo con Sessione::aggiorna' => ['subito solo se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l\'`utente` col suo `id`, la `lingua` e il `nome`): con un\'altra forma `Sessione::aggiorna` non cambia niente'],
     // Review, R6: l'errore che la riga prende lascia un avviso.
@@ -1212,6 +1213,60 @@ it('la parte server ha la riga che il README dice: Cornice::lingua() è un metod
 
     expect([$riga->isPublic(), $riga->isStatic(), $riga->getNumberOfParameters(), (string) $riga->getReturnType()])->toBe([true, true, 0, '?string']);
 });
+
+// Sprint 20 · T4 (voce #1677): dalla 0.12.12 `Sessione::aggiorna` di zr-auth prende dal profilo solo una lingua di Zeiras. Il
+// README dice quale lingua c'è nella sessione con le due versioni che zr-core accetta — all'ingresso e dopo —, che cosa dà
+// `Cornice::lingua()` con ognuna, e chi guarda la forma (review della PR #27: R1, R2, R4, R5, R7).
+
+it('il README dice, in «La parte server», quale lingua c\'è nella sessione — all\'ingresso com\'è, poi solo quella che Sessione::aggiorna prende, fino alla 0.12.11 e dalla 0.12.12 —, che cosa dà Cornice::lingua() con ognuna delle due versioni, e che la forma la guarda solo lei (sprint 20 · T4.3)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'il rimando' => ['quali prende lo decide zr-auth (per la lingua vedi «Quale lingua c\'è nella sessione», più sotto)'],
+    'in due momenti' => ['Quale lingua c\'è nella sessione lo decide zr-auth, in due momenti'],
+    'all\'ingresso, com\'è' => ['All\'ingresso `Sessione::apri` e `Sessione::entra` mettono nella sessione la persona come la dà il backoffice, con la lingua del profilo com\'è: vale dalla 0.12.4 alla 0.12.12'],
+    'dopo, solo quella che Sessione::aggiorna prende' => ['Dopo, a ogni lettura, `Sessione::aggiorna` cambia la lingua della sessione solo con una lingua del profilo che prende'],
+    'fino alla 0.12.11' => ['fino alla 0.12.11 ogni testo che non sia vuoto o di soli spazi, com\'è'],
+    'dalla 0.12.12, col confronto esatto' => ['dalla 0.12.12 solo una lingua di Zeiras (`it`, `en`, `es`: l\'elenco `Sessione::LINGUE` di zr-auth), col confronto esatto — `IT` e `it-IT` non sono `it` —'],
+    'con un\'altra, anche ben fatta' => ['con un\'altra, anche ben fatta, la sessione tiene la lingua che aveva'],
+    'se il profilo non ne porta una' => ['Se il profilo non ne porta una (`null`, un testo vuoto o di soli spazi) la sessione tiene la sua con tutte e due le versioni'],
+    'quando la riga dà null' => ['Con una sessione, quindi, `Cornice::lingua()` dà `null` quando la lingua che la sessione ha dopo la lettura non ha la forma di una lingua'],
+    'null fino alla 0.12.11 e dalla 0.12.12' => ['fino alla 0.12.11 anche per una malfatta appena arrivata dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall\'ingresso'],
+    'una ben fatta che non è di Zeiras' => ['per una lingua del profilo ben fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la forma di una lingua'],
+    'il test del modulo' => ['zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'],
+    'la forma la guarda solo la riga' => ['E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()[\'lingua\']` e `Cornice::dati()[\'lingua\']` sono la lingua della sessione com\'è, anche malfatta'],
+    'chi resta col suo codice guarda la forma' => ['Chi resta col suo codice e la dà a `App::setLocale`, all\'attributo `lang` della pagina o al nome di un file ne guarda prima la forma'],
+    // Seconda lettura della PR #24, S1: anche la frase su ciò che il controller cambia nel profilo vale con le due versioni.
+    'ciò che il controller cambia: la lingua solo se Sessione::aggiorna la prende' => ['Vale anche per il nome, e per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c\'è nella sessione», più sotto): se il controller li cambia nel profilo in quella richiesta'],
+    'una lingua che Sessione::aggiorna non prende, né subito né dopo' => ['Una lingua che `Sessione::aggiorna` non prende i dati non la portano né subito né dopo: tengono quella che la sessione aveva'],
+]);
+
+// Review della PR #27, R1 e R2: le frasi che il README non dice più, perché erano vere con una sola delle due versioni di zr-auth,
+// o solo per la lingua che arriva da `Sessione::aggiorna`.
+it('il README non dice più che la sessione prende la lingua del profilo com\'è, che la riga dà la lingua del profilo, né che dalla 0.12.12 non dà mai null (sprint 20 · T4.3; review della PR #27, R1, R2 e R4)', function (string $diPrima, string $alPostoDi) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    // Il README con la frase di prima rimessa al posto di quella di adesso: il controllo la vede.
+    $conLaFraseDiPrima = str_replace($alPostoDi, $diPrima, $readme);
+
+    expect(str_contains($readme, $diPrima))->toBe(false)
+        ->and($conLaFraseDiPrima)->not->toBe($readme)
+        ->and(str_contains($conLaFraseDiPrima, $diPrima))->toBe(true);
+})->with([
+    'passa com\'è, senza dire di chi è la lingua (R2)' => ['Una lingua ben fatta che il modulo non ha passa com\'è', 'Una lingua della sessione ben fatta che il modulo non ha passa com\'è'],
+    'la riga dà la lingua del profilo (R2)' => ['È la lingua del profilo, se ha la forma di una lingua', 'È la lingua della sessione, se ha la forma di una lingua'],
+    'già aggiornata dal profilo (R2)' => ['Dà la lingua della persona già aggiornata dal profilo', 'Dà la lingua della sessione dopo che `Sessione::aggiorna` ha visto il profilo'],
+    'la lingua e il nome nuovi (R2)' => ['portano la lingua e il nome nuovi da quella stessa richiesta', 'portano la lingua e il nome della sessione dopo `Sessione::aggiorna`, da quella stessa richiesta'],
+    'la sessione prende, se sono cambiati (R2)' => ['e la sessione prende la lingua e il nome del profilo, se sono cambiati', 'e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende'],
+    'dalla 0.12.12 la sessione prende solo una lingua di Zeiras, anche all\'ingresso (R1)' => ['Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras', 'Quale lingua c\'è nella sessione lo decide zr-auth, in due momenti'],
+    'dà quella, non null (R1)' => ['la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`', 'la sessione tiene la lingua che aveva'],
+    'fino alla 0.12.11 il testo com\'è, anche vuoto (R2)' => ['Fino alla 0.12.11 la sessione prende il testo del profilo com\'è', 'fino alla 0.12.11 ogni testo che non sia vuoto o di soli spazi, com\'è'],
+    // Seconda lettura della PR #24, S1: vera solo fino alla 0.12.11, dalla 0.12.12 una lingua che non è di Zeiras i dati non la portano mai.
+    'la lingua cambiata dal controller arriva dalla richiesta dopo, qualunque sia (S1)' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo', 'Vale anche per il nome, e per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c\'è nella sessione», più sotto): se il controller li cambia nel profilo'],
+]);
 
 // Sprint 12 · T3 (voce #1463): nel pannello ogni notifica ha il titolo del suo tipo, e il README lo dice nel punto «Le notifiche».
 
@@ -1818,15 +1873,6 @@ function alberoFintoCon(array $file): string
     }
 }
 
-it('il README dice che cosa dà Cornice::lingua() per una lingua del profilo che non è di Zeiras, con zr-auth fino alla 0.12.11 e dalla 0.12.12 (sprint 20 · T4.3)', function () {
-    $server = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
-
-    expect(str_contains($server, 'Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`)'))->toBe(true)
-        ->and(str_contains($server, 'la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`'))->toBe(true)
-        ->and(str_contains($server, 'Fino alla 0.12.11 la sessione prende il testo del profilo com\'è'))->toBe(true)
-        ->and(str_contains($server, 'un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'))->toBe(true);
-});
-
 /** @return array{0: int|null, 1: string} il codice d'uscita della guardia dello zip su quell'albero, e ciò che dice */
 function guardiaDelloZipSu(string $albero): array
 {
@@ -2169,6 +2215,27 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
     'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
     'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
+]);
+
+// Sprint 20 · T1.8 (review della PR #24, R1): per una notifica su un'app il backoffice dà in `risorsa_nome` il codice dell'app. Il
+// nome da mostrare lo dà `risorsaDellaNotifica`, che è la funzione del pannello, e il README lo dice nello stesso paragrafo.
+
+it('il README dice, nel paragrafo di titoloDellaNotifica, la funzione che dà la riga sotto il titolo, una frase per cosa: nome e argomenti, da quale versione, che cosa dà, che cosa legge della notifica, che cosa fa per una notifica su un\'app, e quando non dà niente (sprint 20 · T1.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $altrove = str_replace("\nFuori dalla cornice ", "\nDentro la cornice ", $readme);
+
+    expect(str_contains(paragrafoFuoriDallaCornice($readme), $frase))->toBe(true)
+        ->and(str_contains(paragrafoFuoriDallaCornice($readme), '`titoloDellaNotifica(tipo, lingua)`'))->toBe(true)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
+})->with([
+    'nome, argomenti e versione' => ['Dalla `v1.10.0` si importa anche `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo'],
+    'che cosa dà' => ['dà il nome della cosa a cui la notifica si riferisce, ed è la funzione che usa il pannello'],
+    'che cosa legge' => ['`notifica` è la notifica com\'è, del backoffice o di `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`'],
+    'il nome com\'è' => ['Di norma dà `risorsa_nome` senza gli spazi intorno'],
+    'una notifica su un\'app' => ['per una notifica su un\'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell\'app (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`'],
+    'quando non dà niente' => ['Non dà niente (`undefined`) quando il nome non c\'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del registro'],
+    'mai il codice' => ['lì la riga non si mostra, e il codice mai'],
 ]);
 
 // Sprint 16 · T7 (voce #1621): il registro dice per ogni voce se il prodotto è in arrivo per chi non ha una sessione
@@ -2574,6 +2641,67 @@ it('il target che il README dice per i sorgenti è quello con cui li guarda il t
 
     expect($base['compilerOptions']['target'] ?? null)->toBe('ES2022')
         ->and(str_contains(puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), 'Vogliono `target` '.$base['compilerOptions']['target'].' o più recente'))->toBe(true);
+});
+
+// Sprint 20 · T1 (voce #1674): le notifiche dicono chi, su che cosa e per chi. Il README lo dice nel punto «Le notifiche» e nella
+// riga della rotta, con la versione, e dice che finché il backoffice non manda i tre dati il pannello resta com'era.
+
+it('il README dice, nel punto «Le notifiche», le tre regole dei dati nuovi, da quale versione valgono e che cosa succede finché il backoffice non li manda (sprint 20 · T1.7)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiati = conNotificheERicercaScambiate($readme);
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDelleNotifiche($scambiati), $frase))->toBe(false);
+})->with([
+    'la versione' => ['Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il backoffice lo dice'],
+    'la seconda riga' => ['con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa'],
+    'l\'avatar' => ['con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di chi ha fatto'],
+    'le due schede' => ['`per_me` dice la scheda: `true` in «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due'],
+    'null non è false' => ['`null` vuol dire che il backoffice non lo sa, non che la notifica è per altri'],
+    'un nome vuoto' => ['Un nome vuoto o di soli spazi non si mostra'],
+    'una notifica su un\'app (T1.8)' => ['Per una notifica su un\'app (un tipo che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell\'app (`pm`), e la seconda riga porta il nome del prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice'],
+    'un codice che il registro non ha (T1.8)' => ['con un codice che il registro non ha la seconda riga non c\'è'],
+    'finché il backoffice non li manda' => ['Finché il backoffice non manda i tre dati il pannello resta com\'era'],
+    'per_me resta null' => ['anche dopo `per_me` è `null` finché il backoffice non conosce il destinatario diretto di una notifica'],
+]);
+
+it('il README non dice più che il backoffice non dice per chi è una notifica (sprint 20 · T1.7)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'il backoffice non dice per chi è una notifica'))->toBe(false);
+});
+
+it('il README dice, nella riga di GET /cornice/notifiche, i tre dati nuovi: da quale versione, da dove vengono, quando sono null, che di autore passa solo il nome e che un\'altra forma è un errore (sprint 20 · T1.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $elenco = '| `GET /cornice/notifiche` |';
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
+    $cosaDice = fn (string $testo): array => array_map(fn (string $frase) => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), $frase), [
+        'la versione e che cosa sono' => 'dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce',
+        'il codice di un\'app (T1.8)' => 'per una notifica su un\'app è il codice dell\'app, com\'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`',
+        'per_me, e null che non è false' => '`per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`)',
+        'quando sono null' => 'ognuna è `null` quando il backoffice dà `null` o non manda la chiave',
+        'di autore solo il nome' => 'di `autore` passa solo il nome',
+        'un\'altra forma è un errore' => 'una delle tre con una forma che il contratto non ammette',
+        'mai tolta in silenzio' => 'mai una chiave tolta in silenzio',
+    ]);
+    $tutto = fn (bool $detto): array => array_fill_keys(['la versione e che cosa sono', 'il codice di un\'app (T1.8)', 'per_me, e null che non è false', 'quando sono null', 'di autore solo il nome', 'un\'altra forma è un errore', 'mai tolta in silenzio'], $detto);
+
+    // Il README con la riga dell'elenco e quella della ricerca scambiate di rotta: ogni frase c'è, ma nella riga di un'altra rotta.
+    expect($cosaDice($readme))->toBe($tutto(true))
+        ->and($cosaDice(strtr($readme, [$elenco => $ricerca, $ricerca => $elenco])))->toBe($tutto(false));
+});
+
+it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifica su un\'app col codice dell\'app, e senza resta com\'era: lo dicono il file delle rotte finte e la testa della pagina (sprint 20 · T1.7, T1.8)', function () {
+    $conChiECosa = "...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },";
+    $perTutti = "...detti('Bruno Neri', null, false) },";
+    // La notifica su un'app c'è solo con `?chi=1`: senza, le notifiche d'esempio sono le quattro di prima.
+    $suUnApp = "...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),";
+
+    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [$suUnApp, "tipo: 'com.zeiras.app."]))->toBe([$suUnApp => 1, "tipo: 'com.zeiras.app." => 1])
+        ->and(scritteNellaPaginaDiProva('demo.tsx', ['una su un\'app, col nome del prodotto al posto del codice']))->toBe(['una su un\'app, col nome del prodotto al posto del codice' => 1]);
+
+    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti }', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti }' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+        ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });
 
 // Sprint 20 · T2 (voce #1675). «Come nasce un modulo nuovo»: una guida nel pacchetto, per l'agente di un modulo che nasce.
