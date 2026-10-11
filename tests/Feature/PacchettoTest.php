@@ -3500,3 +3500,75 @@ it('il README dice, al punto «La ricerca», che dalla v1.13.0 anche un `workspa
     // L'errore di prima resta detto com'era.
     'senza `workspace`, come prima' => ['Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
 ]);
+
+// Sprint 24 · T2 (voce #1745): chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Il README lo dice in tre
+// posti — i dati nella parte server, il 403 delle rotte, il punto di «La cornice» con ciò che fa il frontend — e la guida del
+// modulo nuovo ha la riga. Nessuno nomina un documento, né dice che la cornice fa accettare.
+
+it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La cornice», che cosa vede la persona e che cosa fa il frontend (sprint 24 · T2.7)', function (string $frase) {
+    $punto = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Chi non ha accettato i documenti legali');
+
+    expect($punto)->not->toBe('')
+        ->and(str_contains($punto, $frase))->toBe(true);
+})->with([
+    'da quando, e con quali dati' => ['vede la cornice ridotta, dalla `v1.14.0`: coi dati che portano `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta`'],
+    'finché ha quei dati' => ['con dati letti dopo che non lo dicono torna quella di sempre'],
+    'il menu Moduli' => ['Nel menu Moduli c\'è solo la Dashboard, e il pulsante del modulo aperto non c\'è'],
+    'la campanella' => ['La campanella non ha numero, e il suo pannello dice «Non disponibile finché non accetti i documenti.», senza notifiche e senza «Segna tutte come lette», «Riprova» e «Vedi tutte»'],
+    'la ricerca' => ['la ricerca dice la stessa frase sotto il campo e non dà risultati'],
+    'nessuna rotta' => ['In quello stato la cornice non chiama nessuna delle sue rotte'],
+    'l\'avviso e dove porta' => ['c\'è un avviso («Ci sono documenti da accettare») col pulsante «Vai ai documenti», che porta a `https://app.zeiras.com/legale/accetta?ritorno=<indirizzo della pagina>`'],
+    'il ritorno' => ['va nel `ritorno` solo se comincia con `https://` e non supera i 2000 caratteri'],
+    'di chi è la pagina' => ['La pagina dell\'accettazione è di zr-home e sta fuori dalla cornice'],
+    'che cosa la cornice non fa' => ['la cornice non mostra testi legali, non dice quali documenti mancano e non fa accettare niente'],
+    'i dati così come sono' => ['dà i dati alla cornice così come sono'],
+    'non è «Presto»' => ['non legge `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`)'],
+    'il rimando è di zr-auth' => ['lascia a zr-auth il rimando dalle proprie chiamate a `/v1`'],
+    'le voci del modulo e il «+»' => ['se a chi non ha accettato non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`)'],
+]);
+
+it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
+    $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+
+    expect($parteServer)->not->toBe('')
+        ->and(str_contains($parteServer, $frase))->toBe(true);
+})->with([
+    'la riga della tabella' => ['| gli stessi dati, ridotti: `prodotti` `{}`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`'],
+    'non lancia' => ['Per la cornice non è un guasto: `Cornice::dati()` non lancia e dà i dati ridotti'],
+    'mai a false' => ['La chiave c\'è solo lì, mai a `false`'],
+    'non è «Presto»' => ['Con quella chiave `prodotti` vuoto non vuol dire «Presto»'],
+    'chi legge i dati da sé' => ['guarda `accettazione_richiesta` prima di `prodotti`'],
+    'stato e codice' => ['un 403 con un altro codice resta l\'`ErroreApi` che era'],
+    'i documenti mancanti' => ['Quali documenti mancano la parte server non lo dà al browser'],
+    'le chiamate del frontend' => ['da zr-auth `v0.12.17`, se nessuno lo cattura, zr-auth manda la persona alla pagina dell\'accettazione da sé, e il frontend non scrive un rimando suo'],
+    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
+]);
+
+it('ciò che il README e la guida dicono di chi non ha accettato non nomina un documento, e non dice che la cornice fa accettare (sprint 24 · T2.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^\*\*Chi non ha accettato i documenti legali\*\*.*?(?=^$|\z)/ms', $readme, $dellaParteServer);
+    preg_match('/^\*\*Chi non ha accettato i documenti legali\*\*.*?(?=^$|\z)/ms', guidaDelModuloNuovo(), $dellaGuida);
+    $testi = [
+        'il punto di «La cornice»' => puntoDellaCornice($readme, 'Chi non ha accettato i documenti legali'),
+        'il capoverso della parte server' => suUnaRiga($dellaParteServer[0] ?? ''),
+        'il capoverso della guida' => suUnaRiga($dellaGuida[0] ?? ''),
+    ];
+    $documento = '/(?<![\p{L}])(?:termini|condizioni|privacy|cookie|dpa|informativa)(?![\p{L}])/iu';
+
+    expect(array_filter($testi, fn (string $testo): bool => $testo === ''))->toBe([])
+        ->and(array_filter($testi, fn (string $testo): bool => preg_match($documento, $testo) === 1))->toBe([])
+        ->and(array_filter($testi, fn (string $testo): bool => preg_match('/(?<!non )fa accettare/u', $testo) === 1))->toBe([])
+        // Il controllo vede ciò che cerca.
+        ->and(preg_match($documento, 'devi accettare i Termini di servizio'))->toBe(1)
+        ->and(preg_match('/(?<!non )fa accettare/u', 'la cornice fa accettare i documenti'))->toBe(1);
+});
+
+it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti legali: che cosa dà la parte server, che cosa fa il modulo, e dove lo dice il README (sprint 24 · T2.7)', function (string $frase) {
+    expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBe(true);
+})->with([
+    'che cosa dà la parte server' => ['`Cornice::dati()` non lancia e dà i dati ridotti, con `accettazione_richiesta: true`'],
+    'di chi è la pagina' => ['un avviso che porta alla pagina dell\'accettazione, che è di zr-home'],
+    'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» e non scrivi un rimando tuo'],
+    'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`'],
+    'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],
+]);

@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\File;
 // lette» mentre la richiesta è in corso e quando ne restano: `markAllRead` è dell'`AppShell`, e in italiano resta quello del design system.
 // Sprint 22 · T2 (voce #1712): di zr-core è anche `unreadNone`, ciò che l'avviso della cornice dice al lettore di schermo quando
 // l'ultima non letta è stata letta: `notifications` e `unread`, con cui dice un numero, sono dell'`AppShell`.
+// Sprint 24 · T2 (voce #1745): di zr-core sono anche i quattro testi di chi non ha accettato i documenti legali in vigore —
+// `acceptanceTitle`, `acceptanceText` e `acceptanceAction` per l'avviso sopra la pagina, `acceptanceOff` per campanella e ricerca
+// spente —, e nessuno nomina un documento né una versione: quali mancano lo sa la pagina dell'accettazione, non la cornice.
 
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
@@ -238,6 +241,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
     ];
 
@@ -478,6 +482,57 @@ it('il testo dell\'avviso senza non lette c\'è nelle tre lingue ed è di zr-cor
     expect([$lingue['it']['unreadNone'] ?? null, $lingue['en']['unreadNone'] ?? null, $lingue['es']['unreadNone'] ?? null])
         ->toBe(['Nessuna notifica non letta', 'No unread notifications', 'Ninguna notificación sin leer'])
         ->and(chiaviDiAppShellLabels())->not->toContain('unreadNone');
+});
+
+/**
+ * I nomi di documenti legali e le versioni che un testo dice, nelle tre lingue: un testo dell'accettazione non ne deve dire
+ * nessuno, perché la cornice non sa quali documenti mancano. Una parola che ne contiene un'altra non conta («determinato»).
+ *
+ * @return list<string>
+ */
+function documentiNominatiIn(string $testo): array
+{
+    $parole = ['termini', 'terms', 'términos', 'condizioni', 'conditions', 'condiciones', 'privacy', 'privacidad', 'cookie', 'cookies', 'dpa', 'informativa', 'versione', 'version', 'versión'];
+    preg_match_all('/(?<![\p{L}\p{N}])(?:'.implode('|', $parole).'|v?\d+(?:\.\d+)+)(?![\p{L}\p{N}])/iu', $testo, $trovati);
+
+    return array_values(array_unique(array_map(mb_strtolower(...), $trovati[0])));
+}
+
+it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre lingue e sono di zr-core: l\'AppShell non ha una chiave con quei nomi (sprint 24 · T2.4)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null])->toBe($attesi)
+        ->and(chiaviDiAppShellLabels())->not->toContain($chiave);
+})->with([
+    'il titolo dell\'avviso' => ['acceptanceTitle', ['Ci sono documenti da accettare', 'There are documents to accept', 'Hay documentos por aceptar']],
+    'la frase dell\'avviso' => ['acceptanceText', [
+        'Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.',
+        'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.',
+        'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.',
+    ]],
+    'il pulsante dell\'avviso' => ['acceptanceAction', ['Vai ai documenti', 'Go to the documents', 'Ir a los documentos']],
+    'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
+]);
+
+it('nessuno dei quattro testi di chi non ha accettato nomina un documento o una versione, in nessuna lingua (sprint 24 · T2.4)', function () {
+    $nominati = [];
+    foreach (lingueDellaCornice() as $codice => $testi) {
+        foreach (['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff'] as $chiave) {
+            foreach (documentiNominatiIn((string) ($testi[$chiave] ?? '')) as $parola) {
+                $nominati[] = "$codice: «{$chiave}» dice «{$parola}»";
+            }
+        }
+    }
+
+    expect($nominati)->toBe([]);
+});
+
+it('il controllo vede il nome di un documento e una versione, in mezzo a una frase e in maiuscolo, e non una parola che li contiene (sprint 24 · T2.4)', function () {
+    expect(documentiNominatiIn('Devi accettare i Termini di servizio e la Privacy.'))->toBe(['termini', 'privacy'])
+        ->and(documentiNominatiIn('Accept the Terms (version 3) and the DPA v2.1'))->toBe(['terms', 'version', 'dpa', 'v2.1'])
+        ->and(documentiNominatiIn('Acepta los términos, la política de privacidad y las cookies.'))->toBe(['términos', 'privacidad', 'cookies'])
+        ->and(documentiNominatiIn('Per usare Zeiras devi accettare i documenti legali in vigore, a tempo determinato.'))->toBe([])
+        ->and(documentiNominatiIn('Hay 2 documentos por aceptar'))->toBe([]);
 });
 
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
