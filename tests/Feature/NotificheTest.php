@@ -475,7 +475,7 @@ it('senza sessione le quattro rotte della cornice rispondono 401 e non chiamano 
     senzaGettone($this->getJson('cornice/notifiche'))->assertUnauthorized();
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))->assertUnauthorized();
     senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')))->assertUnauthorized();
-    senzaGettone($this->getJson('cornice/ricerca?q=uat'))->assertUnauthorized();
+    senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))->assertUnauthorized();
     Http::assertNothingSent();
 });
 
@@ -487,7 +487,7 @@ it('con la sessione ma senza workspace le quattro rotte della cornice rispondono
         $this->getJson('cornice/notifiche'),
         $this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]),
         $this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
-        $this->getJson('cornice/ricerca?q=uat'),
+        $this->postJson('cornice/ricerca', ['q' => 'uat']),
     ] as $risposta) {
         senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
     }
@@ -595,7 +595,7 @@ it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ric
 
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
         ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
-    senzaGettone($this->getJson('cornice/ricerca?q=uat'))
+    senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))
         ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']]]);
 
     foreach ([

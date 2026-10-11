@@ -171,3 +171,61 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, false]);
     });
 });
+
+// Sprint 18 · T1 (voce #1638). La ricerca delle pagine di prova risponde come la rotta vera: a una POST, con la parola nel corpo.
+// Una GET con la parola nell'indirizzo, quella delle versioni fino alla `v1.7.0`, non cerca; e una POST che la parola la porta
+// solo nell'indirizzo è senza parola.
+describe('la rotta finta della ricerca legge la parola dal corpo di una POST', () => {
+    const fetchDiPrima = window.fetch;
+
+    beforeEach(() => {
+        vi.resetModules();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.fetch = fetchDiPrima;
+    });
+
+    /** La risposta della rotta finta, che ci mette al più 1500 ms, sulla pagina di prova con quella query. */
+    async function rispostaDi(indirizzo: string, opzioni?: RequestInit, query = ''): Promise<{ stato: number; corpo: Record<string, unknown> }> {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => 'uat-marketing');
+        const inArrivo = fetch(indirizzo, opzioni);
+        await vi.advanceTimersByTimeAsync(1500);
+        const risposta = await inArrivo;
+
+        return { stato: risposta.status, corpo: (await risposta.json()) as Record<string, unknown> };
+    }
+
+    /** La richiesta della cornice per quella parola. */
+    const cerca = (parola: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify({ q: parola }) });
+
+    it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo (sprint 18 · T1.7)', async () => {
+        expect(await rispostaDi('/cornice/ricerca', cerca('marketing'))).toStrictEqual({ stato: 200, corpo: { data: [
+            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+        ] } });
+    });
+
+    it('una GET non cerca, nemmeno con la parola nell\'indirizzo: 405, come la rotta vera (sprint 18 · T1.7)', async () => {
+        expect(await rispostaDi('/cornice/ricerca?q=marketing')).toStrictEqual({ stato: 405, corpo: { errore: 'metodo_non_ammesso' } });
+    });
+
+    it.each<[string, string, RequestInit]>([
+        ['con la parola solo nell\'indirizzo', '/cornice/ricerca?q=marketing', { method: 'POST', body: JSON.stringify({}) }],
+        ['senza corpo', '/cornice/ricerca', { method: 'POST' }],
+        ['con una parola di un carattere', '/cornice/ricerca', cerca('m')],
+        ['con una parola che non è un testo', '/cornice/ricerca', cerca(['marketing'])],
+    ])('una POST %s è senza parola: 422, come la rotta vera (sprint 18 · T1.7)', async (_caso, indirizzo, opzioni) => {
+        expect(await rispostaDi(indirizzo, opzioni)).toStrictEqual({ stato: 422, corpo: { errore: 'dati_non_validi' } });
+    });
+
+    it('con ?errore=ricerca la POST fallisce (sprint 18 · T1.7)', async () => {
+        expect((await rispostaDi('/cornice/ricerca', cerca('marketing'), '?errore=ricerca')).stato).toBe(502);
+    });
+});

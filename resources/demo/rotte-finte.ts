@@ -6,11 +6,12 @@
 // conosce e una non ha `tipo`, e hanno il titolo di ripiego. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
-// `?errore=letture` la prima fallisce e la seconda riesce. La ricerca dà i risultati
-// d'esempio che hanno la parola nel titolo, nella forma di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi
-// mescolati e due tipi che il registro non ha (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo,
-// «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, la POST
-// col corpo e gli header, e così una richiesta annullata e la risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
+// `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
+// risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
+// di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
+// (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di
+// seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una
+// richiesta annullata e la risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
 // `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
@@ -76,10 +77,17 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             inAscolto.forEach((avvisa) => avvisa());
         }
         const json = (corpo: unknown, stato = 200) => new Response(JSON.stringify(corpo), { status: stato, headers: { 'Content-Type': 'application/json' } });
-        const [rotta, query = ''] = percorso.split('?');
-        if (rotta === '/cornice/ricerca') {
+        if (percorso.split('?')[0] === '/cornice/ricerca') {
+            // Come la parte server: la parola si legge solo dal corpo di una POST, da 2 a 100 caratteri senza gli spazi ai bordi.
+            if (opzioni?.method !== 'POST') {
+                return json({ errore: 'metodo_non_ammesso' }, 405);
+            }
+            const { q } = JSON.parse(String(opzioni.body ?? '{}')) as { q?: unknown };
+            const parola = typeof q === 'string' ? q.trim() : '';
+            if (Array.from(parola).length < 2 || Array.from(parola).length > 100) {
+                return json({ errore: 'dati_non_validi' }, 422);
+            }
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
-            const parola = new URLSearchParams(query).get('q') ?? '';
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
             if (errore === 'ricerca') {

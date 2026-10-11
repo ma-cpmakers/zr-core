@@ -239,7 +239,7 @@ describe('la cornice sotto Inertia vera', () => {
         const topbar = uno('header.zr-top');
         expect(barra).not.toBeNull();
         expect(topbar).not.toBeNull();
-        expect(richieste()).toStrictEqual(['GET /cornice/ricerca?q=uat', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
 
         await app.visita();
         expect(app.visiteArrivate).toStrictEqual([`get https://uat.example.com${indirizzo}`]);
@@ -249,7 +249,7 @@ describe('la cornice sotto Inertia vera', () => {
         expect(uno('header.zr-top')).toBe(topbar);
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('uat');
         expect(notificheNelPannello()).toHaveLength(2);
-        expect(richieste()).toStrictEqual(['GET /cornice/ricerca?q=uat', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
     });
 
     it('senza il segno, coi dati della v1.2.0, dopo «Segna tutte come lette» la visita dopo con lo stesso numero lascia la campanella senza numero: Inertia ridà l\'oggetto di prima (il difetto; sprint 10 · T2.1)', async () => {

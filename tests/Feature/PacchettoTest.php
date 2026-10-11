@@ -1026,7 +1026,7 @@ function conParteServerECorniceScambiate(string $readme): string
 it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi di ogni notifica, e che è com\'è nel backoffice, dove a non tradurlo è la parte server (sprint 12 · T2.4; review, R9)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
-    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
         'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`:'),
@@ -1208,7 +1208,7 @@ it('il README non dice più che il titolo di una notifica è uno per tutte (spri
 it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per cosa (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
-    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Il README con la riga delle letture e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
     $scambiate = strtr($readme, [$letture => $ricerca, $ricerca => $letture]);
 
@@ -1452,7 +1452,7 @@ it('il README dice, nel punto «La pagina» del layout della cornice, come si di
 
 it('il README dice, nella riga della rotta, che una risposta del backoffice senza quel campo è un errore (sprint 12 · review, R8)', function (string $rotta, string $inizio, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    $ricerca = '| `GET /cornice/ricerca?q=` |';
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Il README con la riga di quella rotta e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
     $scambiate = strtr($readme, [$inizio => $ricerca, $ricerca => $inizio]);
 
@@ -1466,6 +1466,43 @@ it('il README dice, nella riga della rotta, che una risposta del backoffice senz
     'anche nella lettura di una notifica sola' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`'],
     'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
 ]);
+
+// Sprint 18 · T1 (voce #1638): la ricerca è una POST con la parola nel corpo. Il README lo dice nella riga della rotta, che è
+// dove lo legge un frontend che nei suoi test la chiama, e nel punto «La ricerca»; la GET con la parola nell'indirizzo non è
+// più nominata.
+
+it('il README dice, nella riga di POST /cornice/ricerca, una frase per cosa (sprint 18 · T1.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
+    $elenco = '| `GET /cornice/notifiche` |';
+    // Il README con la riga della ricerca e quella dell'elenco scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
+    $scambiate = strtr($readme, [$ricerca => $elenco, $elenco => $ricerca]);
+
+    expect(str_contains(rigaDellaRotta($readme, 'POST /cornice/ricerca'), $frase))->toBe(true)
+        ->and(substr_count($readme, $ricerca))->toBe(1)
+        ->and(substr_count($readme, $elenco))->toBe(1)
+        ->and(str_contains($scambiate, $frase))->toBe(true)
+        ->and(str_contains(rigaDellaRotta($scambiate, 'POST /cornice/ricerca'), $frase))->toBe(false);
+})->with([
+    'la parola solo dal corpo' => ['`q` è la parola cercata e si legge solo dal corpo JSON, mai dall\'indirizzo'],
+    'i limiti di prima' => ['da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`'],
+    'non un testo, o solo nell\'indirizzo' => ['e così se non è un testo o sta solo nell\'indirizzo'],
+    'una GET non ha una rotta' => ['dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice'],
+    'che cosa risponde una GET' => ['risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`)'],
+    'il test di un frontend' => ['un test del frontend che la chiama passa alla POST'],
+]);
+
+it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, e che il frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDellaCornice($readme, 'La ricerca');
+
+    expect(str_contains($punto, 'chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l\'ultimo tasto, con la parola nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell\'header `X-XSRF-TOKEN`'))->toBe(true)
+        ->and(str_contains($punto, 'dalla `v1.8.0` ciò che la persona cerca non sta più nell\'indirizzo di una richiesta, e il frontend non cambia niente'))->toBe(true)
+        ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
+        // La rotta di prima: né una riga della tabella, né nominata altrove.
+        ->and(rigaDellaRotta($readme, 'GET /cornice/ricerca?q='))->toBe('')
+        ->and(str_contains($readme, 'GET /cornice/ricerca'))->toBe(false);
+});
 
 it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');

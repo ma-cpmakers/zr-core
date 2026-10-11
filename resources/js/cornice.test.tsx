@@ -92,6 +92,12 @@ function tutti(selettore: string): HTMLElement[] {
     return [...contenitore.querySelectorAll<HTMLElement>(selettore)];
 }
 
+/** Il cookie del gettone CSRF che Laravel dà alla pagina; senza valore, scaduto. */
+function cookieCsrf(valore?: string): void {
+    const nome = 'XSRF-TOKEN';
+    document.cookie = valore === undefined ? `${nome}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/` : `${nome}=${valore}; path=/`;
+}
+
 /** Il tracciato dell'icona del design system con quel nome: è ciò che distingue un'icona dall'altra nel DOM. */
 function tracciatoDi(icona: IconName): string {
     const svg = Zeiras.Icon({ name: icona }) as ReactElement<{ children: ReactElement<{ d: string }> }>;
@@ -596,12 +602,6 @@ describe('il pannello delle notifiche', () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(adesso);
     });
-
-    /** Il cookie del gettone CSRF che Laravel dà alla pagina; senza valore, scaduto. */
-    const cookieCsrf = (valore?: string) => {
-        const nome = 'XSRF-TOKEN';
-        document.cookie = valore === undefined ? `${nome}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/` : `${nome}=${valore}; path=/`;
-    };
 
     afterEach(() => {
         vi.useRealTimers();
@@ -1913,12 +1913,13 @@ describe('il pannello delle notifiche', () => {
     });
 });
 
-// Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso GET /cornice/ricerca: una richiesta sola in volo, i risultati
+// Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso POST /cornice/ricerca: una richiesta sola in volo, i risultati
 // raggruppati per tipo dal registro, gli stati. Sprint 5 · T4 (voce #1257): un risultato è `{tipo, id, titolo}`, come in
-// ricerca.elenca; di che prodotto è lo dice il registro, dal tipo.
+// ricerca.elenca; di che prodotto è lo dice il registro, dal tipo. Sprint 18 · T1 (voce #1638): la parola cercata sta nel corpo
+// della richiesta, mai nel suo indirizzo.
 describe('la ricerca', () => {
     /**
-     * I risultati come li dà GET /cornice/ricerca, nell'ordine del backoffice (per titolo): i tipi mescolati (l'`AppShell` apre
+     * I risultati come li dà POST /cornice/ricerca, nell'ordine del backoffice (per titolo): i tipi mescolati (l'`AppShell` apre
      * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e le schede,
      * che la ricerca del backoffice ancora non cerca) e un risultato con un `app` che non è il suo prodotto: non conta.
      */
@@ -1937,10 +1938,17 @@ describe('la ricerca', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+        cookieCsrf();
     });
 
     /** Il giro dopo, coi timer finti: le risposte già pronte arrivano. */
     const giro = () => vi.advanceTimersByTimeAsync(0);
+    /** Le richieste partite, nell'ordine: il metodo, l'indirizzo e il corpo, così come sono. */
+    const partite = (fetchFinto: { mock: { calls: [indirizzo: string, opzioni?: RequestInit][] } }) => fetchFinto.mock.calls.map(([indirizzo, opzioni]) => [opzioni?.method, indirizzo, opzioni?.body]);
+    /** La richiesta della ricerca di quella parola, come deve partire: una POST all'indirizzo della rotta e basta, con la parola nel corpo. */
+    const ricercaDi = (parola: string) => ['POST', '/cornice/ricerca', JSON.stringify({ q: parola })];
+    /** La parola nel corpo di una richiesta partita; `undefined` se non ha un corpo. */
+    const parolaDi = (opzioni?: RequestInit) => (typeof opzioni?.body === 'string' ? (JSON.parse(opzioni.body) as { q?: unknown }).q : undefined);
 
     /** Scrive una parola nel campo della ricerca, come una persona, e lascia passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
     async function scrivi(parola: string): Promise<void> {
@@ -1996,13 +2004,13 @@ describe('la ricerca', () => {
     ])('mentre si scrive c\'è al più una ricerca in volo: la parola nuova annulla la richiesta di prima, e restano i risultati dell\'ultima anche se la vecchia %s (T5.2)', async (_caso, rispondono) => {
         const ua = inAttesaDellaRicerca();
         const uat = inAttesaDellaRicerca();
-        const fetchFinto = vi.fn((indirizzo: string, _opzioni?: RequestInit) => (indirizzo.endsWith('=ua') ? ua.promessa : uat.promessa));
+        const fetchFinto = vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? ua.promessa : uat.promessa));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
         await scrivi('ua');
         await scrivi('uat');
-        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/ricerca?q=ua', '/cornice/ricerca?q=uat']);
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ua'), ricercaDi('uat')]);
         expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal?.aborted)).toStrictEqual([true, false]);
         expect(inCaricamento()).toBe('Sto cercando…');
 
@@ -2082,7 +2090,7 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
         await scrivi('caffè latte');
-        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/ricerca?q=caff%C3%A8%20latte']);
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('caffè latte')]);
         expect(inCaricamento()).toBe('Sto cercando…');
         expect(righe()).toHaveLength(0);
 
@@ -2118,8 +2126,41 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
         await scrivi(parola);
-        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual([`/cornice/ricerca?q=${encodeURIComponent(mandata)}`]);
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi(mandata)]);
         expect(titoli()).toStrictEqual(['Lancio Q4']);
+    });
+
+    it.each<[string, string | undefined, string | null]>([
+        ['col cookie del gettone CSRF la POST lo porta in X-XSRF-TOKEN', 'eyJpdiI6Ik1h%3D%3D', 'eyJpdiI6Ik1h=='],
+        ['senza il cookie parte senza X-XSRF-TOKEN', undefined, null],
+    ])('cercare manda una sola POST /cornice/ricerca, con la parola nel corpo JSON e mai nell\'indirizzo, qualunque parola sia; %s (sprint 18 · T1.1)', async (_caso, cookie, gettone) => {
+        cookieCsrf(cookie);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [risultatiDelServer[0]] }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        // Spazi, accenti, e i segni che in un indirizzo aprono la query, ne separano le parti o la chiudono.
+        const parola = 'caffè & latte? #1 100%';
+        await scrivi(parola);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        const [indirizzo, opzioni] = fetchFinto.mock.calls[0];
+        // L'indirizzo è quello della rotta e basta: niente `?`, e della parola nemmeno un pezzo, nemmeno codificato.
+        expect(indirizzo).toBe('/cornice/ricerca');
+        expect(opzioni?.method).toBe('POST');
+        expect(opzioni?.body).toBe(JSON.stringify({ q: parola }));
+        expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
+        expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe(gettone);
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
+    });
+
+    it.each([
+        ['it', 'Cerca'],
+        ['es', 'Buscar'],
+        ['en', 'Search'],
+    ])('con la lingua "%s" il campo della ricerca si chiama «%s» per il lettore di schermo (sprint 18 · T1.8)', async (lingua, nome) => {
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-search input')?.getAttribute('aria-label')).toBe(nome);
     });
 });
 
