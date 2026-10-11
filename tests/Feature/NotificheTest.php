@@ -1801,7 +1801,8 @@ it('`idsDellaNotifica()` dà gli stessi `ids` che `GET /cornice/notifiche` dà p
         notificaConDati('uat-n3', ['id' => 'p1'], 'com.zeiras.crm.uat.inesistente'),
         notificaConDati('uat-n2', ['id' => 'p1'], 'com.zeiras.crm.persona.creata', 'uat-app'),
         notificaConDati('uat-n1', ['id' => 'p1'], 'com.zeiras.crm.persona.creata', null),
-        notificaDelBackoffice('uat-n0', '2026-10-07T09:01:00.123Z', null, 'crm', 'com.zeiras.crm.persona.creata'),
+        // `notificaDelBackoffice()` dà sempre i `dati` di una cartella: qui la chiave si toglie.
+        array_diff_key(notificaDelBackoffice('uat-n0', '2026-10-07T09:01:00.123Z', null, 'crm', 'com.zeiras.crm.persona.creata'), ['dati' => true]),
     ];
     Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
 
