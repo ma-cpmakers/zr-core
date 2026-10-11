@@ -15,7 +15,8 @@ import { rotteFinte } from './rotte-finte';
 // `senza-corrente`), `?non_lette=` il numero sulla campanella, `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta,
 // `?errore=letture` il primo «Segna tutte come lette» (il secondo riesce); con `?altre=1` il primo che riesce si ferma come la
 // parte server a un tetto (`altre: true`: la più recente resta da leggere) e il secondo le segna tutte; con `?arriva=1` dal
-// secondo caricamento delle notifiche ce n'è una nuova, non letta. Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
+// secondo caricamento delle notifiche ce n'è una nuova, non letta; con `?chi=1` le notifiche dicono chi ha fatto, su che cosa e
+// per chi (una rivolta alla persona, una solo in «Tutte», le altre com'erano). Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
 // (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
 // indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
 // scrivono in console. Non entra nel pacchetto.

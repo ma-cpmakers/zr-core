@@ -684,12 +684,13 @@ describe('il pannello delle notifiche', () => {
      * (`pm`), uno solo disponibile (`crm`), uno «Presto» per il registro (`reports`), uno che i dati non elencano (`content`). Poi
      * ciò che non è un prodotto: `null`, un codice che il registro non ha, la Dashboard. Il `tipo` dà il titolo, non il prodotto:
      * due notifiche hanno il tipo di una cartella di Project Management, una con `app` `crm` e una che non è di un'app, e il
-     * prodotto resta quello di `app`; le altre non hanno `tipo`, e hanno il titolo di ripiego. `soggetto` e i campi della bozza
-     * (`per_me`, `motivo`) la parte server non li dà: se arrivassero lo stesso il pannello non li userebbe.
+     * prodotto resta quello di `app`; le altre non hanno `tipo`, e hanno il titolo di ripiego. `soggetto` e il campo della bozza
+     * (`motivo`) la parte server non li dà: se arrivassero lo stesso il pannello non li userebbe. Nessuna dice per chi è
+     * (`per_me`), come il backoffice fino allo sprint 20: stanno tutte in «Per me» come in «Tutte».
      */
     const diOgniApp = [
-        { id: 'uat-n47', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm', per_me: true, motivo: 'menzione' },
-        { id: 'uat-n46', creata_il: '2026-10-05T12:00:00Z', letta: false, app: 'crm', per_me: false, tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-1' },
+        { id: 'uat-n47', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm', motivo: 'menzione' },
+        { id: 'uat-n46', creata_il: '2026-10-05T12:00:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-1' },
         { id: 'uat-n45', creata_il: '2026-10-01T09:00:00Z', letta: true, app: 'reports' },
         { id: 'uat-n44', creata_il: '2026-10-01T09:00:00Z', letta: false, app: 'content' },
         { id: 'uat-n43', creata_il: '2026-10-01T09:00:00Z', letta: true, app: null, tipo: 'com.zeiras.board.cartella.creata', soggetto: '/v1/board/cartelle/uat-cartella-2' },
@@ -742,7 +743,7 @@ describe('il pannello delle notifiche', () => {
 
         await elenco.arriva(risposta({ data: diOgniApp }));
         expect(uno('.zr-notif [role="status"]')).toBeNull();
-        // «Per me», poi «Tutte»: le stesse notifiche, anche quella che la bozza dava per altri.
+        // «Per me», poi «Tutte»: le stesse notifiche, perché nessuna dice per chi è.
         expect(tutti('.zr-notif-tabs [role="tab"]')).toHaveLength(2);
         for (const scheda of [0, 1]) {
             await clic(tutti('.zr-notif-tabs [role="tab"]')[scheda]);
@@ -765,6 +766,108 @@ describe('il pannello delle notifiche', () => {
             expect(voci().map(tono)).toStrictEqual(['zr-label-pine', 'zr-label-sky', 'zr-label-citrus', 'zr-label-coral', 'zr-label-neutral', 'zr-label-neutral', 'zr-label-neutral']);
         }
         expect(fetchFinto).toHaveBeenCalledOnce();
+    });
+
+    // Sprint 20 · T1 (voce #1674): chi, su che cosa e per chi. I tre dati sono del backoffice, e la parte server li dà quando ci
+    // sono: `autore_nome`, `risorsa_nome`, `per_me`. Senza, il pannello è quello di prima.
+
+    /** Una notifica non letta di una cartella nuova di Project Management, coi dati in più che il caso le dà. */
+    const conInPiu = (id: string, inPiu: Record<string, unknown> = {}) => ({ id, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata', ...inPiu });
+    /** Apre la campanella su quell'elenco. */
+    const apriSu = async (elenco: unknown[]) => {
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+    };
+    const schede = () => tutti('.zr-notif-tabs [role="tab"]');
+    const secondeRighe = () => voci().map((voce) => voce.querySelector('.zr-notif-sub')?.textContent ?? null);
+    /** Le righe di ogni notifica, nell'ordine in cui stanno: il titolo, la seconda riga se c'è, il prodotto con l'ora. */
+    const righe = () => voci().map((voce) => [...(voce.querySelector('.zr-notif-text')?.children ?? [])].map((riga) => riga.className));
+
+    it('una notifica con `risorsa_nome` ha una seconda riga con quel testo, sotto il titolo; con `null`, un testo vuoto o di soli spazi, senza la chiave, o con un valore che non è un testo, la seconda riga non c\'è (sprint 20 · T1.1)', async () => {
+        await apriSu([
+            conInPiu('uat-n51', { risorsa_nome: 'UAT Clienti' }),
+            conInPiu('uat-n52', { risorsa_nome: null }),
+            conInPiu('uat-n53', { risorsa_nome: '' }),
+            conInPiu('uat-n54', { risorsa_nome: ' \t\n ' }),
+            conInPiu('uat-n55'),
+            // Gli spazi intorno non sono del nome.
+            conInPiu('uat-n56', { risorsa_nome: '  UAT Lancio Q4 ' }),
+            // La parte server non li dà: se arrivassero lo stesso, non sono un testo da mostrare.
+            conInPiu('uat-n57', { risorsa_nome: 7 }),
+            conInPiu('uat-n58', { risorsa_nome: { nome: 'UAT oggetto' } }),
+        ]);
+
+        // Mai «null», un testo vuoto, l'id o il tipo dell'evento: o il nome, o niente.
+        expect(secondeRighe()).toStrictEqual(['UAT Clienti', null, null, null, null, 'UAT Lancio Q4', null, null]);
+        const senza = ['zr-notif-title', 'zr-notif-meta'];
+        const con = ['zr-notif-title', 'zr-notif-sub', 'zr-notif-meta'];
+        expect(righe()).toStrictEqual([con, senza, senza, senza, senza, con, senza, senza]);
+        // Il titolo resta quello del tipo, e il prodotto con l'ora restano dov'erano.
+        expect(titoli()).toStrictEqual(Array(8).fill('Nuova cartella'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Project Management · 5 minuti fa'));
+    });
+
+    it('una notifica con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di quel nome; con `null`, un nome vuoto o di soli spazi, senza la chiave, o con un valore che non è un testo, resta l\'icona di prima; il nome non entra nel titolo né nella seconda riga (sprint 20 · T1.2)', async () => {
+        await apriSu([
+            conInPiu('uat-n51', { autore_nome: 'Marta Rossi' }),
+            conInPiu('uat-n52', { autore_nome: null }),
+            conInPiu('uat-n53', { autore_nome: '' }),
+            conInPiu('uat-n54', { autore_nome: '   ' }),
+            conInPiu('uat-n55'),
+            // Anche su una notifica che non è di un prodotto: l'avatar al posto della campanella.
+            conInPiu('uat-n56', { autore_nome: ' Bruno ', app: null }),
+            conInPiu('uat-n57', { app: null }),
+            // La parte server passa solo il nome: se arrivasse lo stesso l'oggetto del backoffice, non è un nome.
+            conInPiu('uat-n58', { autore_nome: { nome: 'UAT oggetto', email: 'uat@example.com' } }),
+            conInPiu('uat-n59', { autore: { nome: 'UAT oggetto' } }),
+        ]);
+
+        const avatar = (voce: HTMLElement) => voce.querySelector('.zr-avatar');
+        expect(voci().map((voce) => avatar(voce)?.textContent ?? null)).toStrictEqual(['MR', null, null, null, null, 'B', null, null, null]);
+        expect(voci().map((voce) => avatar(voce)?.getAttribute('aria-label') ?? null)).toStrictEqual(['Marta Rossi', null, null, null, null, 'Bruno', null, null, null]);
+        // Dove c'è l'avatar l'icona non c'è; altrove è quella di prima: del prodotto, o la campanella.
+        expect(voci().map((voce) => voce.querySelector('.zr-iconbox path')?.getAttribute('d') ?? null)).toStrictEqual([
+            null, ...(['board', 'board', 'board', 'board'] as const).map(tracciatoDi), null, tracciatoDi('bell'), tracciatoDi('board'), tracciatoDi('board'),
+        ]);
+        expect(voci().map((voce) => voce.querySelectorAll('.zr-avatar, .zr-iconbox').length)).toStrictEqual(Array(9).fill(1));
+        // Il nome di chi l'ha fatto sta nell'avatar: non nel titolo, e non al posto del nome della cosa.
+        expect(titoli()).toStrictEqual(Array(9).fill('Nuova cartella'));
+        expect(secondeRighe()).toStrictEqual(Array(9).fill(null));
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/Marta|Bruno|UAT oggetto|example\.com/);
+    });
+
+    it('`per_me` dice in quale scheda sta una notifica: `true` in «Per me» e in «Tutte», `false` solo in «Tutte»; `null`, senza la chiave o con un valore che non è un booleano, in tutte e due, come prima (sprint 20 · T1.3)', async () => {
+        await apriSu([
+            conInPiu('uat-n51', { per_me: true, risorsa_nome: 'UAT diretta a me' }),
+            conInPiu('uat-n52', { per_me: false, risorsa_nome: 'UAT per tutti' }),
+            conInPiu('uat-n53', { per_me: null, risorsa_nome: 'UAT non detto' }),
+            conInPiu('uat-n54', { risorsa_nome: 'UAT senza la chiave' }),
+            // La parte server dà un booleano o `null`: un altro valore non dice niente, e non toglie la notifica da «Per me».
+            conInPiu('uat-n55', { per_me: 0, risorsa_nome: 'UAT zero' }),
+            conInPiu('uat-n56', { per_me: 'false', risorsa_nome: 'UAT testo' }),
+        ]);
+
+        const perMe = ['UAT diretta a me', 'UAT non detto', 'UAT senza la chiave', 'UAT zero', 'UAT testo'];
+        const tutte = ['UAT diretta a me', 'UAT per tutti', 'UAT non detto', 'UAT senza la chiave', 'UAT zero', 'UAT testo'];
+        // Il pannello si apre su «Per me».
+        expect(schede().map((scheda) => scheda.getAttribute('aria-selected'))).toStrictEqual(['true', 'false']);
+        expect(secondeRighe()).toStrictEqual(perMe);
+        await clic(schede()[1]);
+        expect(secondeRighe()).toStrictEqual(tutte);
+        await clic(schede()[0]);
+        expect(secondeRighe()).toStrictEqual(perMe);
+    });
+
+    it('con le sole notifiche che non sono per me «Per me» è vuota e «Tutte» le mostra: la campanella conta le non lette di tutte e due (sprint 20 · T1.3)', async () => {
+        await apriSu([conInPiu('uat-n51', { per_me: false }), conInPiu('uat-n52', { per_me: false, letta: true })]);
+
+        expect(voci()).toHaveLength(0);
+        expect(uno('.zr-notif .zr-empty')).not.toBeNull();
+        expect(campanella()).toBe('1');
+        await clic(schede()[1]);
+        expect(nonLette()).toStrictEqual([true, false]);
+        expect(uno('.zr-notif .zr-empty')).toBeNull();
     });
 
     it.each<[string, () => Promise<Response>]>([

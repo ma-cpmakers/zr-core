@@ -32,13 +32,19 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // backoffice: alla cornice serve per il titolo. `soggetto` e `dati` restano nella parte server.
 // Sprint 12 · T4 (voce #1461): il backoffice segna al più 5000 notifiche per chiamata e dice se ne restano (`altre`): la parte
 // server lo richiama con lo stesso istante finché ne restano, entro due tetti, e dice al browser se ne restano ancora.
+// Sprint 20 · T1 (voce #1674): l'elenco porta anche chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
+// `per_me`), quando il backoffice li manda; i casi sono in fondo.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLE_NOTIFICHE = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
+/** Ciò che la rotta dice, dei tre dati del #1670, di una notifica del backoffice di prima, che non li manda (sprint 20 · T1). */
+const SENZA_CHI_E_COSA = ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null];
+
 /**
- * Una notifica come la dà /v1 (schema Notifica): tipo, soggetto e dati sono quelli dell'evento che l'ha generata, e `app` è il
- * codice dell'app di quell'evento (`pm` per la board), o null se l'evento non è di un'app.
+ * Una notifica come la dava /v1 prima del #1670 (schema Notifica, senza `autore`, `risorsa_nome` e `per_me`): tipo, soggetto e
+ * dati sono quelli dell'evento che l'ha generata, e `app` è il codice dell'app di quell'evento (`pm` per la board), o null se
+ * l'evento non è di un'app.
  *
  * @return array<string, mixed>
  */
@@ -186,7 +192,7 @@ function senzaGettone(TestResponse $risposta): TestResponse
     return $risposta;
 }
 
-it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, coi soli id, creata_il, letta, app e tipo, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null; e l\'istante della lettura (sprint 5 · T2.1; sprint 6 · T1.1; sprint 11 · T1.1; sprint 12 · T2.1)', function () {
+it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del gettone, nell\'ordine del backoffice, con id, creata_il, letta, app e tipo — e i tre dati del #1670, null se il backoffice non li manda —, e app è quello del backoffice: un prodotto, un codice che zr-core non conosce, o null; e l\'istante della lettura (sprint 5 · T2.1; sprint 6 · T1.1; sprint 11 · T1.1; sprint 12 · T2.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.elenca risponde 403 gettone_senza_workspace.
@@ -202,9 +208,9 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'],
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'],
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'],
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA,
     ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -556,7 +562,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
-        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata']],
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
     ]);
 
@@ -621,9 +627,9 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
     ], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'],
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'],
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'],
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA,
     ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z']);
 
     // Dell'evento esce solo il tipo: né il soggetto né i dati, con la chiave o col valore.
@@ -1170,4 +1176,168 @@ it('delle rotte della cornice solo POST /cornice/notifiche/letture tiene il bloc
     // Il controllo nei due versi: una GET della cornice col blocco la nomina.
     Route::middleware('web')->get('cornice/uat-in-fila', fn () => 'in fila')->block(5, 1);
     expect($colBlocco())->toBe(['POST cornice/notifiche/letture', 'GET cornice/uat-in-fila']);
+});
+
+// Sprint 20 · T1 (voce #1674): chi ha fatto, su che cosa, e per chi. Dal #1670 di zr-backoffice ogni notifica di /v1 porta
+// `autore` (`{nome}` o null), `risorsa_nome` (un testo o null) e `per_me` (un booleano o null: null finché il backoffice non
+// conosce il destinatario diretto). Al browser la parte server dà tre chiavi in più: `autore_nome`, `risorsa_nome`, `per_me`. Di
+// `autore` passa solo il nome. Una chiave che manca è il backoffice di prima, e vale null; una chiave con una forma che il
+// contratto non ammette è un guasto, come una notifica senza `id`.
+
+/**
+ * Una notifica di /v1 non letta coi tre dati del #1670.
+ *
+ * @return array<string, mixed>
+ */
+function notificaConChiECosa(string $id, mixed $autore, mixed $risorsaNome, mixed $perMe): array
+{
+    return notificaDelBackoffice($id, '2026-10-07T09:03:00.123Z', null) + ['autore' => $autore, 'risorsa_nome' => $risorsaNome, 'per_me' => $perMe];
+}
+
+/**
+ * Notifiche di /v1 in cui una delle tre chiavi ha una forma che il contratto non ammette. Per il resto sono notifiche intere: il
+ * guasto è solo quello. Una riga per forma, per l'elenco e per la lettura di una notifica.
+ *
+ * @return array<string, array{array<string, mixed>}>
+ */
+function notificheColChiECosaSbagliato(): array
+{
+    $notifica = notificaConChiECosa('uat-n3', ['nome' => 'UAT Bruno'], 'UAT Clienti', true);
+
+    return [
+        'autore è un testo' => [['autore' => 'UAT Bruno'] + $notifica],
+        'autore è un numero' => [['autore' => 7] + $notifica],
+        'autore è true' => [['autore' => true] + $notifica],
+        'autore è false' => [['autore' => false] + $notifica],
+        'autore è una lista' => [['autore' => ['UAT Bruno']] + $notifica],
+        'autore è un oggetto vuoto' => [['autore' => []] + $notifica],
+        'autore è un oggetto senza nome' => [['autore' => ['email' => 'uat-ada@example.com']] + $notifica],
+        'il nome di autore è null' => [['autore' => ['nome' => null]] + $notifica],
+        'il nome di autore è un numero' => [['autore' => ['nome' => 7]] + $notifica],
+        'il nome di autore è una lista' => [['autore' => ['nome' => ['UAT Bruno']]] + $notifica],
+        'risorsa_nome è un numero' => [['risorsa_nome' => 7] + $notifica],
+        'risorsa_nome è true' => [['risorsa_nome' => true] + $notifica],
+        'risorsa_nome è una lista' => [['risorsa_nome' => ['UAT Clienti']] + $notifica],
+        'risorsa_nome è un oggetto' => [['risorsa_nome' => ['nome' => 'UAT Clienti']] + $notifica],
+        'per_me è un testo' => [['per_me' => 'true'] + $notifica],
+        'per_me è 1' => [['per_me' => 1] + $notifica],
+        'per_me è 0' => [['per_me' => 0] + $notifica],
+        'per_me è una lista' => [['per_me' => [true]] + $notifica],
+    ];
+}
+
+it('GET /cornice/notifiche dà di ogni notifica otto chiavi: le cinque di prima più autore_nome, risorsa_nome e per_me, coi valori del backoffice; di autore passa solo il nome, e una notifica del backoffice di prima le ha tutte e tre null (sprint 20 · T1.5)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-11 06:40:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConChiECosa('uat-n5', ['nome' => 'UAT Bruno'], 'UAT Clienti', true),
+        notificaConChiECosa('uat-n4', ['nome' => 'UAT Marta Rossi'], null, false),
+        notificaConChiECosa('uat-n3', null, 'UAT Lancio Q4', null),
+        // Una chiave in più dentro `autore`, che il contratto oggi non ha: non arriva al browser, né la chiave né il valore.
+        notificaConChiECosa('uat-n2', ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'id' => 'uat-persona-7'], 'pm', null),
+        // Il backoffice di prima del #1670: nessuna delle tre.
+        notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null),
+    ], 'successivo' => null])]);
+
+    $diPrima = ['creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'];
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
+        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true],
+        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false],
+        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null],
+        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null],
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null],
+    ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z']);
+
+    // Le stesse otto chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
+    foreach ($risposta->json('data') as $notifica) {
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me']);
+    }
+    // `false` e null non sono la stessa cosa: «non è per te» e «non si sa».
+    expect($risposta->json('data.1.per_me'))->toBeFalse()->and($risposta->json('data.2.per_me'))->toBeNull();
+    $corpo = (string) $risposta->getContent();
+    expect(substr_count($corpo, '"autore"'))->toBe(0)
+        ->and(substr_count($corpo, 'email'))->toBe(0)
+        ->and(substr_count($corpo, 'example.com'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-persona-7'))->toBe(0)
+        ->and(substr_count($corpo, '"soggetto"'))->toBe(0)
+        ->and(substr_count($corpo, '"dati"'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-cartella'))->toBe(0);
+});
+
+it('una notifica a cui manca una sola delle tre chiavi non è un guasto: quella vale null e le altre due passano (sprint 20 · T1.5)', function (string $manca, string $nelBrowser) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifica = array_diff_key(notificaConChiECosa('uat-n3', ['nome' => 'UAT Bruno'], 'UAT Clienti', false), [$manca => true]);
+    Http::fake(['*' => Http::response(['data' => [$notifica], 'successivo' => null])]);
+
+    $attesa = ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => false];
+    $attesa[$nelBrowser] = null;
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect($risposta->json('data.0'))->toBe([
+        'id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata',
+    ] + $attesa);
+})->with([
+    'senza autore' => ['autore', 'autore_nome'],
+    'senza risorsa_nome' => ['risorsa_nome', 'risorsa_nome'],
+    'senza per_me' => ['per_me', 'per_me'],
+]);
+
+it('una delle tre chiavi con una forma che il contratto non ammette è un guasto dell\'elenco: mai un 200 che la toglie in silenzio, mai un numero o un oggetto al posto di un testo (sprint 20 · T1.6)', function (array $notifica) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La prima è una notifica intera, coi tre dati: il guasto è della seconda.
+    Http::fake(['*' => Http::response(['data' => [notificaConChiECosa('uat-n4', ['nome' => 'UAT Marta'], 'UAT Lancio Q4', false), $notifica], 'successivo' => null])]);
+
+    $elenco = senzaGettone($this->getJson('cornice/notifiche'));
+
+    expect($elenco->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($elenco->json('data'))->toBeNull();
+})->with(notificheColChiECosaSbagliato());
+
+it('una delle tre chiavi con una forma che il contratto non ammette è un guasto anche nella risposta della lettura di una notifica: mai un 200 (sprint 20 · T1.6)', function (array $notifica) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => $notifica])]);
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => false]));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull();
+})->with(notificheColChiECosaSbagliato());
+
+it('il guasto di una delle tre chiavi è quello di una notifica senza id: la stessa risposta, stato e corpo (sprint 20 · T1.6)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $casi = [
+        'senza id' => array_diff_key(notificaConChiECosa('uat-n3', null, null, null), ['id' => true]),
+        'per_me è un testo' => notificaConChiECosa('uat-n3', null, null, 'true'),
+        'autore senza nome' => notificaConChiECosa('uat-n3', ['email' => 'uat-ada@example.com'], null, null),
+        'risorsa_nome è un numero' => notificaConChiECosa('uat-n3', null, 7, null),
+    ];
+    // Una risposta del backoffice per caso, in fila.
+    $inFila = Http::sequence();
+    foreach ($casi as $notifica) {
+        $inFila->push(['data' => [$notifica], 'successivo' => null]);
+    }
+    Http::fake(['*' => $inFila]);
+    $risposte = [];
+    foreach (array_keys($casi) as $caso) {
+        $risposta = senzaGettone($this->getJson('cornice/notifiche'));
+        $risposte[$caso] = [$risposta->status(), $risposta->json()];
+    }
+    Http::assertSentCount(4);
+
+    expect($risposte['senza id'][0])->toBeGreaterThanOrEqual(500)
+        ->and($risposte['per_me è un testo'])->toBe($risposte['senza id'])
+        ->and($risposte['autore senza nome'])->toBe($risposte['senza id'])
+        ->and($risposte['risorsa_nome è un numero'])->toBe($risposte['senza id'])
+        // Né il valore sbagliato né il resto della notifica finiscono nel corpo dell'errore.
+        ->and(json_encode($risposte))->not->toContain('uat-ada')->not->toContain('uat-cartella');
+});
+
+it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando il backoffice dà i tre dati (sprint 20 · T1.5)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => ['letta_il' => '2026-10-07T09:05:00.456Z'] + notificaConChiECosa('uat-n3', ['nome' => 'UAT Bruno'], 'UAT Clienti', true)])]);
+
+    $lettura = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+
+    expect(substr_count((string) $lettura->getContent(), 'UAT'))->toBe(0);
 });

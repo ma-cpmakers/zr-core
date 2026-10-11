@@ -3,7 +3,10 @@
 // codice che il registro non ha e una letta nove giorni fa che non è di un'app; con `?arriva=1`, dal secondo caricamento, una
 // nuova non letta nata in quel momento. Ognuna ha il tipo dell'evento, com'è nel backoffice, tranne una: due sono di tipi che
 // zr-core conosce (una scheda creata, una persona entrata nel workspace) e hanno il titolo del tipo, una è di un tipo che non
-// conosce e una non ha `tipo`, e hanno il titolo di ripiego. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// conosce e una non ha `tipo`, e hanno il titolo di ripiego. Chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
+// `per_me`) sono `null`, come li dà la parte server quando il backoffice non li manda; con `?chi=1` la più recente dice chi e
+// su che cosa ed è rivolta alla persona, la seconda dice chi ed è per tutto il workspace (solo in «Tutte»), le altre restano
+// com'erano. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
 // `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
@@ -20,11 +23,16 @@ const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOStrin
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
+const chi = new URLSearchParams(window.location.search).has('chi');
+/** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
+const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
+/** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
+const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata' },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato' },
-    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota' },
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato' },
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false) },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti },
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti },
 ];
 let letture = 0;
 let riuscite = 0;
@@ -116,7 +124,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'uat_errore' }, 502);
             }
             if (arriva && caricamenti === 2) {
-                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata' });
+                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti });
             }
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è.
