@@ -8,7 +8,7 @@ import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
-// il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Prodotti dal
+// il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
 // registro, incrociato con lo stato dei prodotti nel workspace, gli indirizzi del workspace, i testi della lingua, e dove
 // portano account, notifiche e risultati della ricerca (linea guida 15).
 
@@ -54,7 +54,7 @@ export interface GruppoDiVoci {
 export interface CorniceProps {
     /** I dati della parte server: `Cornice::dati()`. */
     dati: DatiDellaCornice;
-    /** Il prodotto aperto, un id del registro (`pm`, `crm`, `bookings`…). Senza, la pagina è di app.zeiras.com e il menu Prodotti è esteso. */
+    /** Il prodotto aperto, un id del registro (`pm`, `crm`, `bookings`…). Senza, la pagina è di app.zeiras.com e il menu Moduli è esteso. */
     product?: string | undefined;
     /** Le voci del prodotto aperto. */
     nav?: GruppoDiVoci[] | undefined;

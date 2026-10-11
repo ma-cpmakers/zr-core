@@ -1,7 +1,7 @@
 import dati from '../registro/prodotti.json';
 import type { IconName, Tone } from '../zeiras/index';
 
-// Il registro dei prodotti di zr-core (resources/registro/prodotti.json): le voci del menu Prodotti nell'ordine della linea guida
+// Il registro dei prodotti di zr-core (resources/registro/prodotti.json): le voci del menu Moduli nell'ordine della linea guida
 // 10 del design system, Dashboard per prima. Come si mostra un prodotto lo dice questo registro, e il suo nome le lingue; il
 // backoffice dice solo quali prodotti sono attivi in un workspace.
 
@@ -43,7 +43,7 @@ export interface NotificaDelProdotto {
     percorso: string;
 }
 
-/** Una voce del menu Prodotti. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */
+/** Una voce del menu Moduli. Il nome sta nelle lingue: il testo `dashboard` per la Dashboard, il testo col suo id per un prodotto. */
 export interface VoceDelRegistro {
     /** L'id del design system (`active` e `product` dell'`AppShell`); `home` è la Dashboard. */
     id: 'home' | IdDiProdotto;

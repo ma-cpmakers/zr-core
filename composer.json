@@ -1,6 +1,6 @@
 {
     "name": "zeiras/zr-core",
-    "description": "Zeiras: la cornice comune dei frontend zr-* (AppShell, menu Prodotti, selettore di workspace, ricerca, notifiche, menu del profilo, registro dei prodotti) e il design system nella build.",
+    "description": "Zeiras: la cornice comune dei frontend zr-* (AppShell, menu Moduli, selettore di workspace, ricerca, notifiche, menu del profilo, registro dei prodotti) e il design system nella build.",
     "type": "library",
     "license": "proprietary",
     "repositories": [

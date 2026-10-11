@@ -253,8 +253,12 @@ cornice === null ? pagina : (
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
-  Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». I nomi nel codice — la prop
-  `product`, il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
+  Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». Con la stessa versione
+  cambiano altri due testi, che un frontend può avere nei suoi test: l'aiuto della ricerca, ora «Cerca in tutti i
+  moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»), e il titolo che
+  `titoloDellaNotifica` dà a `com.zeiras.app.modificata`, «Un modulo è stato attivato o disattivato» (prima «Un'app del
+  workspace è stata attivata o disattivata»); lo stesso in inglese e in spagnolo. I nomi nel codice — la prop `product`,
+  il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
 - **La voce attiva** della barra è quella che ha l'id dato in `active`; senza `active` è la Dashboard. Una pagina che non
   sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto,
   e non serve inventare un id che la barra non ha. Il prodotto aperto lo dice `product`, non `active`: con `null` il suo
