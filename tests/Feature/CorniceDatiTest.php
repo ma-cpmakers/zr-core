@@ -1,5 +1,6 @@
 <?php
 
+use Composer\InstalledVersions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Carbon;
@@ -1029,12 +1030,16 @@ it('la riga dà la lingua della sessione solo se ha la forma di una lingua, se n
     '36 caratteri' => ['it-'.str_repeat('abcdefgh-', 3).'abcdef', null],
 ]);
 
-it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è, come prima (sprint 18 · T2.9)', function () {
+it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è — con zr-auth fino alla 0.12.11 la sessione la prende e la riga dà null, dalla 0.12.12 la sessione tiene la lingua che aveva e la riga dà quella (sprint 18 · T2.9, sprint 20 · T4.1, T4.2)', function () {
     sessioneAMano(marketing());
     backoffice(['/v1/io' => ioMostraCon(['lingua' => '../it']), ...aziendeEWorkspace()]);
+    // Dalla 0.12.12 `Sessione::aggiorna` prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`). La versione installata
+    // dice quale dei due comportamenti aspettarsi: uno solo per giro della CI, mai tutti e due.
+    $soloLingueDiZeiras = version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.12', '>=');
 
-    expect(Cornice::lingua())->toBeNull()
-        ->and(Sessione::utente()['lingua'])->toBe('../it')
-        ->and(Cornice::dati()['lingua'])->toBe('../it')
+    expect(Sessione::utente()['lingua'])->toBe('en')
+        ->and(Cornice::lingua())->toBe($soloLingueDiZeiras ? 'en' : null)
+        ->and(Sessione::utente()['lingua'])->toBe($soloLingueDiZeiras ? 'en' : '../it')
+        ->and(Cornice::dati()['lingua'])->toBe($soloLingueDiZeiras ? 'en' : '../it')
         ->and(richiesteA('/v1/io'))->toHaveCount(1);
 });
