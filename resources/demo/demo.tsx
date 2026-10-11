@@ -61,7 +61,7 @@ const propsScritteUndefined = {
     product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined, create: undefined,
     actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
 } satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;
-const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
+const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined, accettazione_richiesta: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
 
 function Prova() {
     const scelti = new URLSearchParams(window.location.search);
@@ -70,13 +70,19 @@ function Prova() {
     const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
     const nonLette = Number(scelti.get('non_lette') ?? 7);
     const senzaCrm = scelti.has('senza_crm');
+    // Con `?accettazione=1` i dati sono quelli di chi non ha accettato i documenti legali in vigore, come li dà la parte server
+    // dalla `v1.14.0`: nessun modulo, nessuna azienda, zero non lette, e `accettazione_richiesta: true` in fondo. Con
+    // `?accettazione=dopo` i dati sono quelli di sempre, e lo dicono le rotte finte (rotte-finte.ts).
+    const daAccettare = scelti.get('accettazione') === '1';
     // Gli stessi dati finché non cambiano, come da una parte server: ridati a ogni disegno, la cornice li prenderebbe per dati
     // nuovi, e dopo «Segna tutte come lette» un clic che naviga rimetterebbe il numero sulla campanella.
     const dati = useMemo(() => {
         const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
 
-        return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
-    }, [senzaCrm, lingua, aziende, nonLette]);
+        const diSempre = { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
+
+        return daAccettare ? { ...diSempre, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true } : diSempre;
+    }, [senzaCrm, lingua, aziende, nonLette, daAccettare]);
     // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1` o `?opportunita=1`, così le altre pagine
     // restano com'erano.
     const [aperto, setAperto] = useState<string>();

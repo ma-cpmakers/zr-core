@@ -122,4 +122,40 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-ws-new')).toBeNull();
     });
+
+    // Sprint 24 · T2 (voce #1745): chi non ha accettato i documenti legali in vigore. Con `?accettazione=1` la pagina dà alla
+    // cornice i dati ridotti, come la parte server; con `?accettazione=dopo` i dati sono quelli di sempre, e lo dicono le rotte finte.
+    const moduli = () => [...(document.querySelector('#pagina .zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent);
+
+    it.each([['?accettazione=1'], ['?accettazione=1&prodotto=pm']])('con «%s» la cornice è ridotta: solo la Dashboard nel menu Moduli, nessun numero sulla campanella, l\'avviso sopra il contenuto della pagina, che resta, e un clic sul pulsante scrive in console la pagina dell\'accettazione (sprint 24 · T2.1, T2.3)', async (query) => {
+        await apri(query);
+
+        expect(moduli()).toStrictEqual(['Dashboard']);
+        expect([uno('.zr-product-switch'), uno('.zr-bell-count')]).toStrictEqual([null, null]);
+        expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
+        expect(uno('main #uat-scelte')).not.toBeNull();
+        await clic(uno('main .zr-alert button'));
+        expect(scritti()).toStrictEqual([[`https://app.zeiras.com/legale/accetta?ritorno=${encodeURIComponent(`https://uat.example.com/${query}`)}`]]);
+    });
+
+    it('con «?accettazione=dopo» la pagina è quella di sempre finché una rotta non risponde: aperta la campanella la cornice passa allo stato ridotto, e il pannello ha la frase, non l\'errore di caricamento (sprint 24 · T2.5)', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await apri('?accettazione=dopo&prodotto=pm');
+            expect([uno('.zr-product-switch') !== null, uno('.zr-bell-count')?.textContent, uno('main .zr-alert')]).toStrictEqual([true, '7', null]);
+
+            await clic(uno('.zr-bell'));
+            // Le rotte finte rispondono dopo 800 ms.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(800);
+            });
+            expect(moduli()).toStrictEqual(['Dashboard']);
+            expect([uno('.zr-product-switch'), uno('.zr-bell-count')]).toStrictEqual([null, null]);
+            expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
+            expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe('Non disponibile finché non accetti i documenti.');
+            expect(uno('main #uat-scelte')).not.toBeNull();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });

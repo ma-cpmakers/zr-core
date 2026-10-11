@@ -126,6 +126,9 @@ const risultatiDiProva = [
 const errore = new URLSearchParams(window.location.search).get('errore');
 const arriva = new URLSearchParams(window.location.search).has('arriva');
 const altre = new URLSearchParams(window.location.search).has('altre');
+// Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
+// dalla `v1.14.0`, le quattro rispondono 403 col solo codice, dopo la loro attesa. I dati della pagina restano quelli di sempre.
+const daAccettare = new URLSearchParams(window.location.search).get('accettazione') === 'dopo';
 
 let partite = 0;
 const inAscolto = new Set<() => void>();
@@ -183,6 +186,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
+            if (daAccettare) {
+                return json({ errore: 'accettazione_richiesta' }, 403);
+            }
             if (errore === 'ricerca') {
                 return json({ errore: 'uat_errore' }, 502);
             }
@@ -199,6 +205,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
+        if (daAccettare) {
+            return json({ errore: 'accettazione_richiesta' }, 403);
+        }
         if (percorso === '/cornice/notifiche') {
             caricamenti += 1;
             if (errore === 'notifiche') {

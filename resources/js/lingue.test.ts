@@ -361,6 +361,23 @@ describe('le lingue della cornice', () => {
         expect([tedesco.notifications, tedesco.unreadNone]).toStrictEqual(['Benachrichtigungen', 'No unread notifications']);
     });
 
+    // Sprint 24 · T2 (voce #1745): i testi di chi non ha accettato i documenti legali in vigore. Titolo, frase e pulsante
+    // dell'avviso sopra la pagina, e la frase di campanella e ricerca spente: nessuno nomina un documento.
+    it('i quattro testi di chi non ha accettato i documenti legali sono chiavi di zr-core nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 24 · T2.4)', () => {
+        const chiavi = ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff'] as const;
+        const inInglese = ['There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'];
+        expect([italiano, spagnolo, inglese].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
+            ['Ci sono documenti da accettare', 'Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.', 'Vai ai documenti', 'Non disponibile finché non accetti i documenti.'],
+            ['Hay documentos por aceptar', 'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.', 'Ir a los documentos', 'No disponible hasta que aceptes los documentos.'],
+            inInglese,
+        ]);
+        expect(chiavi.map((chiave) => testi('pt-BR')[chiave])).toStrictEqual(inInglese);
+
+        // Una lingua che ha solo un testo dell'`AppShell`: i quattro di zr-core li prende dall'inglese.
+        const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
+        expect([tedesco.notifications, ...chiavi.map((chiave) => tedesco[chiave])]).toStrictEqual(['Benachrichtigungen', ...inInglese]);
+    });
+
     // Sprint 22 · T8 (voce #1728): il segnaposto del campo di ricerca e l'invito sotto il campo dicono ciò che la ricerca trova
     // oggi, board e cartelle, con le parole che la lingua ha per i due tipi. I puntini del segnaposto sono il carattere «…».
     it('il segnaposto e l\'invito della ricerca dicono board e cartelle nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 22 · T8.1, T8.2)', () => {

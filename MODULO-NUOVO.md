@@ -236,6 +236,12 @@ eccezioni di `bootstrap/app.php`, che cosa mostrare quando il backoffice non ris
 senza cornice. Nei test guardi **quali** letture partono e con quale gettone, non in che ordine: il backoffice finto di
 zr-auth sta sul finto HTTP di Laravel, e le richieste partite si leggono da lì.
 
+**Chi non ha accettato i documenti legali** in vigore, dalla `v1.14.0`: `Cornice::dati()` non lancia e dà i dati ridotti,
+con `accettazione_richiesta: true`; la cornice esce ridotta, con un avviso che porta alla pagina dell'accettazione, che è
+di zr-home. Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» e non scrivi un rimando tuo: dalle tue
+chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17` — README, «La cornice», al punto «Chi non ha accettato i documenti
+legali».
+
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
 richiesta sono otto letture: chi la chiama prima ne tiene il risultato.

@@ -3314,6 +3314,54 @@ describe('la ricerca', () => {
 
         expect(uno('.zr-search input')?.getAttribute('aria-label')).toBe(nome);
     });
+    // Sprint 24 · T2 (voce #1745): chi non ha accettato i documenti legali in vigore non cerca. Coi dati che lo dicono la
+    // ricerca non parte; coi dati di sempre lo dice la rotta, col suo 403, e da lì la cornice è ridotta (il resto dello stato
+    // lo prova «chi non ha accettato i documenti legali», più sotto).
+    const spenta = 'Non disponibile finché non accetti i documenti.';
+    const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
+
+    it.each([
+        ['una lettera', 'l'],
+        ['tre lettere', 'lan'],
+    ])('a chi non ha accettato i documenti legali, scrivendo %s, sotto il campo c\'è «Non disponibile finché non accetti i documenti.» e nessun risultato, e la ricerca non parte (sprint 24 · T2.2)', async (_quante, parola) => {
+        const fetchFinto = vi.fn(async () => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi(parola);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+        expect(righe()).toHaveLength(0);
+        expect(fetchFinto).not.toHaveBeenCalled();
+    });
+
+    it('coi dati di sempre, se la ricerca risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto: sotto il campo c\'è quella frase, non «La ricerca non ha risposto», e un\'altra parola non parte (sprint 24 · T2.5)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta' }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 7 }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await scrivi('lancio');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+        expect(righe()).toHaveLength(0);
+        expect([uno('main .zr-alert strong')?.textContent, uno('.zr-bell-count'), uno('.zr-product-switch')]).toStrictEqual(['Ci sono documenti da accettare', null, null]);
+
+        await scrivi('lancio q4');
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+    });
+
+    it.each<[string, unknown, number]>([
+        ['un 403 con un altro `errore`', { errore: 'gettone_senza_workspace' }, 403],
+        ['un 409 con lo stesso `errore`', { errore: 'accettazione_richiesta' }, 409],
+        ['un 500 con lo stesso `errore`', { errore: 'accettazione_richiesta' }, 500],
+    ])('%s dalla ricerca non porta la cornice in quello stato: resta l\'errore della ricerca, e la cornice è quella di sempre (sprint 24 · T2.5)', async (_caso, corpo, stato) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta(corpo, stato)));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 7 }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await scrivi('lancio');
+        expect(sottoIlCampo()).toStrictEqual(['La ricerca non ha risposto. Riprova tra poco.']);
+        expect([uno('main .zr-alert'), uno('.zr-bell-count')?.textContent, uno('.zr-product-switch') === null]).toStrictEqual([null, '7', false]);
+    });
 });
 
 // Sprint 12 · T5 (voce #1464). `active={null}`: nessuna voce della barra è attiva. L'`AppShell` segna la voce che ha l'id
@@ -3442,5 +3490,227 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
         expect(appShell).toHaveBeenCalled();
         const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
         expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
+    });
+});
+
+// Sprint 24 · T2 (voce #1745): chi non ha ancora accettato i documenti legali in vigore. La parte server dà i dati ridotti con
+// `accettazione_richiesta: true` (T1), o una rotta della cornice risponde 403 `accettazione_richiesta` mentre la cornice ha i
+// dati di sempre: la cornice esce ridotta — nel menu Moduli solo la Dashboard, campanella e ricerca spente — e sopra la
+// pagina c'è l'avviso col pulsante che porta alla pagina dell'accettazione, che è di zr-home. La ricerca spenta la prova
+// «la ricerca», più sopra.
+describe('chi non ha accettato i documenti legali', () => {
+    /** I dati ridotti, come li dà `Cornice::dati()` davanti al 403 del backoffice. */
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
+    /** I dati di chi ha accettato: moduli, aziende, sette non lette. */
+    const diSempre: DatiDellaCornice = { ...dati, aziende, non_lette: 7, aggiornati_il: '2026-10-11T22:00:00.000001Z' };
+    const spenta = 'Non disponibile finché non accetti i documenti.';
+    const daAccettare = () => risposta({ errore: 'accettazione_richiesta' }, 403);
+    const avviso = () => uno('main .zr-alert');
+    /** I pulsanti del pannello che non sono le sue due schede: «Segna tutte come lette», «Riprova», «Vedi tutte». */
+    const pulsantiDelPannello = () => tutti('.zr-notif button:not([role="tab"])').map((pulsante) => pulsante.textContent);
+    /** Ciò che dice in pagina se la cornice è ridotta: le voci del menu Moduli, il modulo aperto, il numero, il titolo dell'avviso. */
+    const cornice = () => ({
+        moduli: [...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item') ?? [])].map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('href')]),
+        moduloAperto: uno('.zr-product-switch') !== null || uno('.zr-top-product') !== null,
+        numero: uno('.zr-bell-count')?.textContent ?? null,
+        avviso: avviso()?.querySelector('strong')?.textContent ?? null,
+    });
+    const ridotta = { moduli: [['Dashboard', 'https://app.zeiras.com/w/acme-marketing']], moduloAperto: false, numero: null, avviso: 'Ci sono documenti da accettare' };
+    /** La cornice di sempre su una pagina di Project Management: il menu chiuso nel suo pulsante, «7» sulla campanella, nessun avviso. */
+    const diSempreInPagina = () => [uno('.zr-product-switch') !== null, uno('.zr-bell-count')?.textContent ?? null, avviso()];
+    const l = (indirizzo: string) => (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(indirizzo);
+    let diPartenza: string;
+
+    beforeEach(() => {
+        diPartenza = window.location.href;
+    });
+
+    afterEach(() => {
+        l(diPartenza);
+    });
+
+    it.each<[string, string | undefined]>([
+        ['una pagina di app.zeiras.com', undefined],
+        ['una pagina di un modulo', 'pm'],
+    ])('coi dati `accettazione_richiesta: true` %s esce con la cornice ridotta: nel menu Moduli solo la Dashboard, nessun numero sulla campanella, e sopra il contenuto, che resta, l\'avviso con titolo, frase e pulsante (sprint 24 · T2.1)', async (_quale, product) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
+        const crea = [{ label: 'Nuova board' }];
+        await mostra(<Cornice dati={ridotti} product={product} nav={delModulo} active="board" create={crea} flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        expect(uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent).toBe('Moduli');
+        expect(cornice()).toStrictEqual(ridotta);
+        // Nessun modulo, nemmeno «Presto»; e la campanella si chiama col suo nome, senza un numero.
+        expect(uno('.zr-nav-soon')).toBeNull();
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche');
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        expect('product' in props).toBe(false);
+        // Le voci del modulo e il «+» restano quelli che la pagina dà.
+        expect(tutti('.zr-nav .zr-nav-group').map((gruppo) => gruppo.querySelector('.zr-nav-title')?.textContent)).toStrictEqual(['Moduli', 'Lavoro']);
+        expect(props.create).toBe(crea);
+        // L'avviso del design system, col tono di un avviso.
+        expect([avviso()?.classList.contains('zr-alert-warning'), avviso()?.getAttribute('role')]).toStrictEqual([true, 'status']);
+        expect(avviso()?.querySelector('.zr-alert-body > div')?.textContent).toBe('Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.');
+        expect(tutti('main .zr-alert button').map((pulsante) => pulsante.textContent)).toStrictEqual(['Vai ai documenti']);
+        // Sta nel margine della pagina: `flush` non arriva all'`AppShell`.
+        expect('flush' in props).toBe(false);
+        expect(uno('main')?.classList.contains('is-flush')).toBe(false);
+        // Il contenuto della pagina resta, dopo l'avviso.
+        const pagina = uno('main p');
+        expect(pagina?.textContent).toBe('La pagina');
+        expect((avviso()?.compareDocumentPosition(pagina as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    });
+
+    it('la campanella è spenta: il pannello ha la frase e nessuna notifica, senza «Segna tutte come lette», «Riprova» e «Vedi tutte», e la cornice non chiama nessuna delle sue rotte (sprint 24 · T2.2)', async () => {
+        const fetchFinto = vi.fn(async () => risposta({ data: [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' }], workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={ridotti} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(tutti('.zr-notif-list .zr-notif-item')).toHaveLength(0);
+        expect([uno('.zr-notif .zr-empty'), uno('.zr-notif .zr-count')]).toStrictEqual([null, null]);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        expect(fetchFinto).not.toHaveBeenCalled();
+        // Ciò che l'`AppShell` riceve: nessun gestore di campanella e ricerca, e la frase al posto dei suoi tre testi.
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown> & { labels?: Record<string, string> };
+        expect(['onNotificationsOpen', 'onRetryNotifications', 'onMarkAllRead', 'onAllNotifications', 'onOpenNotification', 'onSearch'].filter((nome) => nome in props)).toStrictEqual([]);
+        expect([props.notifications, props.unreadCount, props.notificationsState, props.searchResults, props.searchState]).toStrictEqual([[], 0, 'error', [], 'error']);
+        expect([props.labels?.notificationsError, props.labels?.searchHint, props.labels?.searchError]).toStrictEqual([spenta, spenta, spenta]);
+    });
+
+    it.each([
+        ['es', 'Hay documentos por aceptar', 'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.', 'Ir a los documentos', 'No disponible hasta que aceptes los documentos.'],
+        ['en', 'There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'],
+        ['zz', 'There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'],
+    ])('con la lingua "%s" l\'avviso e la frase della campanella sono in quella lingua, o in inglese se zr-core non la ha (sprint 24 · T2.4)', async (lingua, titolo, frase, pulsante, nonDisponibile) => {
+        await mostra(<Cornice dati={{ ...ridotti, lingua }} onLogout={esciSenzaEffetto} />);
+
+        expect([avviso()?.querySelector('strong')?.textContent, avviso()?.querySelector('.zr-alert-body > div')?.textContent, avviso()?.querySelector('button')?.textContent]).toStrictEqual([titolo, frase, pulsante]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(nonDisponibile);
+    });
+
+    it('il menu del profilo resta intero, ed «Esci» funziona (sprint 24 · T2.1)', async () => {
+        const esci = vi.fn();
+        await mostra(<Cornice dati={ridotti} product="pm" onLogout={esci} />);
+
+        await clic(uno('.zr-avatar-btn'));
+        expect(vociDelProfilo().map((voce) => voce?.testo ?? null)).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', null, 'Esci']);
+        await clic(tutti('.zr-profile-menu [role="menuitem"]').at(-1) ?? null);
+        expect(esci).toHaveBeenCalledTimes(1);
+    });
+
+    const accettazione = 'https://app.zeiras.com/legale/accetta';
+    const lunga = (caratteri: number) => `https://board.zeiras.com/${'a'.repeat(caratteri - 'https://board.zeiras.com/'.length)}`;
+
+    it.each<[string, string, string]>([
+        ['una pagina `https://`, con la sua query e il suo frammento', 'https://board.zeiras.com/w/acme-marketing/b/01k6?vista=lista&ordine=nome#scheda-12', `${accettazione}?ritorno=https%3A%2F%2Fboard.zeiras.com%2Fw%2Facme-marketing%2Fb%2F01k6%3Fvista%3Dlista%26ordine%3Dnome%23scheda-12`],
+        ['una pagina `http://`', 'http://board.zeiras.com/w/acme-marketing', accettazione],
+        ['un indirizzo di 2000 caratteri', lunga(2000), `${accettazione}?ritorno=${encodeURIComponent(lunga(2000))}`],
+        ['un indirizzo di 2001 caratteri', lunga(2001), accettazione],
+    ])('un clic sul pulsante dell\'avviso da %s porta alla pagina dell\'accettazione sull\'host della Dashboard, col `ritorno` solo se l\'indirizzo della pagina comincia con `https://` e non supera i 2000 caratteri (sprint 24 · T2.3)', async (_quale, indirizzo, attesa) => {
+        const naviga = vi.fn();
+        // La pagina in cui la cornice è resa non è quella del clic: una visita di Inertia cambia l'indirizzo senza rifare la cornice.
+        l('https://board.zeiras.com/w/acme-marketing/la-pagina-di-prima');
+        await mostra(<Cornice dati={ridotti} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+        l(indirizzo);
+        expect(window.location.href).toBe(indirizzo);
+
+        await clic(avviso()?.querySelector('button') ?? null);
+        expect(naviga.mock.calls).toStrictEqual([[attesa]]);
+    });
+
+    it('coi dati di sempre, se l\'elenco delle notifiche risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto e ci resta finché ha quei dati; con dati letti dopo che non lo dicono torna quella di sempre (sprint 24 · T2.5)', async () => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Il pannello, rimasto aperto, ha la frase: non l'errore di caricamento con «Riprova».
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        expect(uno('main p')?.textContent).toBe('La pagina');
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+
+        // La pagina si ridisegna con gli stessi dati: resta ridotta.
+        await mostra(laPagina(diSempre));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        // Dati letti dopo, che non lo dicono: la cornice torna quella di sempre.
+        await mostra(laPagina({ ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' }));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    it.each<[string, () => Response]>([
+        ['un 403 con un altro `errore`', () => risposta({ errore: 'gettone_senza_workspace' }, 403)],
+        ['un 403 con un corpo che non è JSON', () => ({ ok: false, status: 403, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } }) as unknown as Response],
+        ['un 409 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 409)],
+        ['un 500 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 500)],
+    ])('%s dall\'elenco delle notifiche non porta la cornice in quello stato: resta l\'errore del pannello, con «Riprova» (sprint 24 · T2.5)', async (_caso, fallisce) => {
+        vi.stubGlobal('fetch', vi.fn(async () => fallisce()));
+        await mostra(<Cornice dati={diSempre} product="pm" onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"] p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(pulsantiDelPannello()).toStrictEqual(['Riprova', 'Vedi tutte']);
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    it('lo dice anche «Segna tutte come lette»: se la rotta risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto (sprint 24 · T2.5)', async () => {
+        const elenco = [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: null }];
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco, workspace: 'acme-marketing' }) : daAccettare()));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif .zr-pop-head button'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/letture']);
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+    });
+
+    it('lo dice anche la lettura di una notifica con un clic: se la rotta risponde 403 `accettazione_richiesta` la risorsa si apre lo stesso, e la cornice passa allo stato ridotto (sprint 24 · T2.5)', async () => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: [delContatto], workspace: 'acme-marketing' }) : daAccettare()));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(cornice()).toStrictEqual(ridotta);
+    });
+
+    it('`accettazione_richiesta: false` vale come assente, e senza la chiave e senza il segnale l\'`AppShell` riceve le prop di prima: né una in più né una in meno (sprint 24 · T2.6)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const date = async (deiDati: DatiDellaCornice) => {
+            await mostra(<Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+            return (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        };
+        /** Una prop senza le sue funzioni, che a ogni render sono altre: conta che ci siano. La pagina (`children`) si guarda nel DOM. */
+        const valori = (valore: unknown): unknown => (typeof valore === 'function' ? 'una funzione' : Array.isArray(valore) ? valore.map(valori) : valore !== null && typeof valore === 'object' ? Object.fromEntries(Object.entries(valore).map(([nome, suo]) => [nome, valori(suo)])) : valore);
+        const senzaLaPagina = (props: Record<string, unknown>) => valori(Object.fromEntries(Object.entries(props).filter(([nome]) => nome !== 'children')));
+
+        const senza = await date(diSempre);
+        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`.
+        expect(Object.keys(senza).sort()).toStrictEqual([
+            'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
+            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
+        ]);
+        expect([senza.product, senza.flush, senza.unreadCount, senza.notificationsState, senza.searchState]).toStrictEqual(['pm', true, 7, 'ready', 'ready']);
+        expect([avviso(), uno('main')?.textContent]).toStrictEqual([null, 'La pagina']);
+
+        const conFalse = await date({ ...diSempre, accettazione_richiesta: false });
+        expect(senzaLaPagina(conFalse)).toStrictEqual(senzaLaPagina(senza));
+        expect([avviso(), uno('main')?.textContent, uno('.zr-bell-count')?.textContent]).toStrictEqual([null, 'La pagina', '7']);
     });
 });

@@ -38,10 +38,33 @@ export interface RisultatoDellaRicerca {
     titolo: string;
 }
 
+/**
+ * Una rotta della cornice ha risposto 403 `{"errore": "accettazione_richiesta"}`: la persona non ha ancora accettato i documenti
+ * legali in vigore, e finché non lo fa il backoffice non dà né notifiche né ricerca (dalla `v1.14.0`). Per la cornice non è un
+ * guasto: passa allo stato ridotto, con l'avviso che porta alla pagina dell'accettazione. Per chi non la guarda è un errore
+ * come gli altri.
+ */
+export class AccettazioneRichiesta extends Error {}
+
+/** Il codice che una rotta della cornice dà al suo errore (`errore`), se la risposta ha un corpo JSON che lo porta. */
+async function erroreDi(risposta: Response): Promise<unknown> {
+    try {
+        return ((await risposta.json()) as { errore?: unknown } | null)?.errore;
+    } catch {
+        return undefined;
+    }
+}
+
 async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
     if (!risposta.ok) {
-        throw new Error(`${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`);
+        const esito = `${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
+        // Il corpo si legge solo di un 403, e solo quel codice cambia l'errore: un 403 con un altro codice (la sessione senza
+        // workspace), o lo stesso codice con un altro stato, restano l'errore di sempre.
+        if (risposta.status === 403 && (await erroreDi(risposta)) === 'accettazione_richiesta') {
+            throw new AccettazioneRichiesta(esito);
+        }
+        throw new Error(esito);
     }
 
     return risposta.json();

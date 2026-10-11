@@ -503,3 +503,51 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect((await rispostaDi('/cornice/ricerca', cerca('marketing'), '?errore=ricerca')).stato).toBe(502);
     });
 });
+
+// Sprint 24 · T2 (voce #1745): con `?accettazione=dopo` la pagina di prova ha i dati di sempre, e che la persona non ha accettato
+// i documenti legali in vigore lo dicono le rotte: le quattro rispondono 403 col solo codice, come la parte server dalla `v1.14.0`.
+// Con `?accettazione=1` lo dicono i dati della pagina, e le rotte restano quelle di sempre (la cornice ridotta non le chiama).
+describe('con `?accettazione=dopo` le quattro rotte finte rispondono 403 `accettazione_richiesta`', () => {
+    const fetchDiPrima = window.fetch;
+
+    beforeEach(() => {
+        vi.resetModules();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.fetch = fetchDiPrima;
+    });
+
+    /** Lo stato e il corpo JSON della risposta di una rotta finta, sulla pagina di prova con quella query. */
+    async function rispostaDi(indirizzo: string, opzioni: RequestInit | undefined, query: string): Promise<{ stato: number; corpo: unknown }> {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => 'uat-marketing');
+        const inArrivo = fetch(indirizzo, opzioni);
+        await vi.advanceTimersByTimeAsync(1500);
+        const risposta = await inArrivo;
+
+        return { stato: risposta.status, corpo: await risposta.json() };
+    }
+
+    const leQuattro: [string, string, RequestInit | undefined][] = [
+        ['GET /cornice/notifiche', '/cornice/notifiche', undefined],
+        ['PATCH /cornice/notifiche/<id>/lettura', '/cornice/notifiche/uat-c1/lettura', { method: 'PATCH', body: JSON.stringify({ letta: true }) }],
+        ['POST /cornice/notifiche/letture', '/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: '2026-10-10T00:00:00.000Z', workspace: 'uat-marketing' }) }],
+        ['POST /cornice/ricerca', '/cornice/ricerca', { method: 'POST', body: JSON.stringify({ q: 'marketing' }) }],
+    ];
+
+    it.each(leQuattro)('%s risponde 403 col solo codice (sprint 24 · T2.5)', async (_rotta, indirizzo, opzioni) => {
+        expect(await rispostaDi(indirizzo, opzioni, '?accettazione=dopo&crm=1&da_leggere=1')).toStrictEqual({ stato: 403, corpo: { errore: 'accettazione_richiesta' } });
+    });
+
+    it.each(leQuattro)('%s senza il parametro, e con `?accettazione=1`, risponde come sempre: lì lo dicono i dati della pagina, non le rotte (sprint 24 · T2.5)', async (_rotta, indirizzo, opzioni) => {
+        expect((await rispostaDi(indirizzo, opzioni, '?crm=1&da_leggere=1')).stato).toBe(200);
+        vi.resetModules();
+        expect((await rispostaDi(indirizzo, opzioni, '?accettazione=1&crm=1&da_leggere=1')).stato).toBe(200);
+    });
+});
