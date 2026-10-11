@@ -659,7 +659,7 @@ it('la ricerca non porta un istante, e un errore del backoffice sull\'elenco o s
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
         ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))
-        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']]]);
+        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']], 'workspace' => 'uat-marketing']);
 
     foreach ([
         $this->getJson('cornice/notifiche'),
