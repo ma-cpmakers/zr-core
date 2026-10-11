@@ -202,17 +202,18 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         // Sprint 21 · T5: le due di un'azienda aprono la sua pagina nel CRM.
         expect(notifiche.slice(14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-1`]);
-        // Le prime quattro, quelle di ogni pagina di prova, non hanno una destinazione: aprono la pagina delle notifiche.
-        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual([null, null, null, null]);
+        // Delle prime quattro, quelle di ogni pagina di prova, dallo sprint 24 (T3) «Nuova scheda» apre la sua scheda; le altre tre
+        // non hanno una destinazione: aprono la pagina delle notifiche.
+        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null]);
         // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.
         const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
-    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
-    // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
+    // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -231,6 +232,26 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [notifica.id, diUnPercorsoSolo(notifica)])).toEqual(notifiche.map(({ id }) => [id, true]));
         // E quelle i cui percorsi chiedono tutti un id portano il loro, tranne la nota senza legami.
         expect(notifiche.filter((notifica) => chiesteDaOgniPercorso(notifica).every((chieste) => chieste.length > 0) && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
+    });
+
+    // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata apre la sua pagina in zr-board. «Nuova scheda»,
+    // nell'elenco di sempre, porta l'id della sua scheda come dalla parte server; la scheda assegnata e una eliminata stanno
+    // dietro `?schede=1`.
+    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, e in fondo una scheda eliminata, letta; zr-core conosce i due tipi, la prima apre la scheda e la seconda no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4)', async () => {
+        await rotte(false, '?schede=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; creata_il: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const apre = (notifica: (typeof notifiche)[number]) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null;
+        const [assegnata, eliminata] = [notifiche[0], notifiche[5]];
+
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
+        expect(assegnata).toEqual({ id: 'uat-s1', creata_il: assegnata?.creata_il, letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } });
+        expect([eliminata?.app, eliminata?.tipo, eliminata?.letta, eliminata?.ids]).toEqual(['pm', 'com.zeiras.board.scheda.eliminata', true, {}]);
+        expect([assegnata, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true]);
+        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le

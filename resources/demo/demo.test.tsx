@@ -95,10 +95,10 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
             await clic(uno('.zr-notif .zr-pop-head button'));
             await risponde();
             expect(numero()).toBeNull();
-            // Una notifica senza destinazione: il clic apre la pagina delle notifiche, cioè la pagina di prova scrive
-            // l'indirizzo e si ridisegna.
+            // Un clic che naviga: la prima notifica, «Nuova scheda», dallo sprint 24 (T3) apre la sua scheda, cioè la pagina di
+            // prova scrive l'indirizzo e si ridisegna. È già letta, e il clic non chiede altro.
             await clic(uno('.zr-notif-list .zr-notif-item'));
-            expect(scritti()).toStrictEqual([['https://app.zeiras.com/notifiche']]);
+            expect(scritti()).toStrictEqual([['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1']]);
             expect(numero()).toBeNull();
         } finally {
             vi.useRealTimers();

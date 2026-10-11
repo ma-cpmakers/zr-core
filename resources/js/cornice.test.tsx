@@ -1577,8 +1577,9 @@ describe('il pannello delle notifiche', () => {
     /**
      * Notifiche con gli id che la parte server dà di `dati`, dalla più recente. Le prime tre hanno la loro destinazione nel
      * registro: un contatto, una pipeline, una nota (che apre il contatto a cui è attaccata, anche da eliminata). Le altre no:
-     * una nota senza il contatto, una col contatto malfatto, una di Project Management, una del workspace, una del CRM di un
-     * tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
+     * una nota senza il contatto, una col contatto malfatto, una di Project Management che non ha una pagina (una scheda
+     * eliminata: dallo sprint 24 una scheda nuova, modificata o assegnata si apre, più sotto), una del workspace, una del CRM
+     * di un tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
      */
     const conGliId = [
         { id: 'uat-n59', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } },
@@ -1586,7 +1587,7 @@ describe('il pannello delle notifiche', () => {
         { id: 'uat-n57', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } },
         { id: 'uat-n56', creata_il: '2026-10-06T11:40:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-2' } },
         { id: 'uat-n55', creata_il: '2026-10-06T11:35:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-3', persona_id: '../x' } },
-        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
+        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
         { id: 'uat-n53', creata_il: '2026-10-06T11:25:00Z', letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ids: {} },
         { id: 'uat-n52', creata_il: '2026-10-06T11:20:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.assegnata', ids: { id: 'uat-persona-1' } },
         { id: 'uat-n51', creata_il: '2026-10-06T11:15:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.creata' },
@@ -1787,8 +1788,8 @@ describe('il pannello delle notifiche', () => {
     const dellaPipeline = { id: 'uat-n68', creata_il: '2026-10-06T11:50:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.pipeline.modificata', ids: { id: 'uat-pipeline-1' } };
     /** Una già letta, con la sua destinazione: il contatto a cui la nota era attaccata. */
     const dellaNota = { id: 'uat-n67', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } };
-    /** Una non letta di Project Management, che nel registro non ha dove andare: il suo clic apre la pagina delle notifiche. */
-    const dellaScheda = { id: 'uat-n66', creata_il: '2026-10-06T11:40:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: {} };
+    /** Una non letta di Project Management che nel registro non ha dove andare, una scheda eliminata: il suo clic apre la pagina delle notifiche. */
+    const dellaScheda = { id: 'uat-n66', creata_il: '2026-10-06T11:40:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ids: {} };
     /** Le quattro, dalla più recente: tre non lette. */
     const daAprire = [delContatto, dellaPipeline, dellaNota, dellaScheda];
     const laLettura = (id: string) => `PATCH /cornice/notifiche/${id}/lettura`;
@@ -1863,6 +1864,94 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls).toStrictEqual([[aperto]]);
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    // Sprint 24 · T3 (voce #1748). Una scheda di Project Management — nuova, modificata, o assegnata a chi riceve la notifica —
+    // si apre con un clic: la pagina della scheda in zr-board, `/c/<id>` (zr-board, nota 10451 del #95), nel workspace
+    // dell'elenco, e il clic la segna letta come ogni notifica che ha una risorsa. Una scheda eliminata e gli altri tipi della
+    // board restano alla pagina delle notifiche; il titolo della scheda assegnata è nella tabella dei titoli, più sotto.
+    const nellaBoard = 'https://board.zeiras.com/w/acme-marketing';
+    const tipiDiUnaScheda = ['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'];
+    /** Tre non lette, una per tipo, come le dà la parte server: con chi ha fatto, il nome della scheda e il solo `id` fra gli `ids`. */
+    const delleSchede = tipiDiUnaScheda.map((tipo, indice) => ({
+        id: `uat-n${99 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo, autore_nome: 'Marta Rossi', risorsa_nome: `UAT Scheda ${indice + 1}`, per_me: indice === 0 ? true : null, ids: { id: `uat-scheda-${indice + 1}` },
+    }));
+
+    it.each<[string, string | undefined, { workspace?: string }, string]>([
+        ['il workspace dei dati, dalla Dashboard', undefined, {}, nellaBoard],
+        ['il workspace dei dati, dal CRM', 'crm', {}, nellaBoard],
+        ['un altro workspace', 'pm', { workspace: 'acme-vendite' }, 'https://board.zeiras.com/w/acme-vendite'],
+    ])('un clic su una notifica di una scheda nuova, modificata o assegnata apre la scheda in Project Management, `/c/<id>` nel workspace dell\'elenco — %s —, e la segna letta (sprint 24 · T3.2, T3.4)', async (_quale, prodotto, dellElenco, nelWorkspace) => {
+        const fetchFinto = rotteDelClic([{ data: delleSchede, ...dellElenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < delleSchede.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual([[`${nelWorkspace}/c/uat-scheda-1`], [`${nelWorkspace}/c/uat-scheda-2`], [`${nelWorkspace}/c/uat-scheda-3`]]);
+        // Una scheda ha una risorsa: ogni clic chiede la lettura della sua notifica, mai di un'altra.
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n99'), laLettura('uat-n98'), laLettura('uat-n97')]);
+        expect(naviga.mock.calls.flat().some((indirizzo) => String(indirizzo).startsWith(paginaDelleNotifiche))).toBe(false);
+    });
+
+    it.each([['it', 'Ti è stata assegnata una scheda'], ['en', 'A card was assigned to you'], ['es', 'Se te ha asignado una tarjeta']])('con la lingua "%s", nel pannello una notifica di una scheda assegnata si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 24 · T3.1)', async (lingua, titolo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: delleSchede.slice(0, 1) }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([titolo]);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual(['UAT Scheda 1']);
+    });
+
+    it.each<[string, unknown]>([
+        ['senza `ids`', undefined],
+        ['con `ids` vuoto', {}],
+        ['con la board e la lista ma non il suo id', { board_id: 'uat-board-1', lista_id: 'uat-lista-1' }],
+        ['con l\'id `..`', { id: '..' }],
+        ['con una barra nell\'id', { id: 'uat-scheda-1/x' }],
+        ['con un id di 65 caratteri', { id: 'a'.repeat(65) }],
+    ])('un clic su una notifica di una scheda %s apre la pagina delle notifiche e non la segna letta: mai un indirizzo con un id fuori forma (sprint 24 · T3.3)', async (_quale, ids) => {
+        const elenco = delleSchede.map((notifica) => ({ ...notifica, ids }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche], [paginaDelleNotifiche], [paginaDelleNotifiche]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+        expect(campanella()).toBe('3');
+    });
+
+    it('un clic su una scheda eliminata, su un altro tipo della board o su un tipo scritto quasi come quelli di una scheda apre la pagina delle notifiche e non la segna letta, anche con l\'id (sprint 24 · T3.4)', async () => {
+        const altri = ['com.zeiras.board.scheda.eliminata', 'com.zeiras.board.lista.creata', 'com.zeiras.board.board.modificata', 'com.zeiras.board.cartella.creata', 'com.zeiras.board.etichetta.creata', 'com.zeiras.board.vista.creata', 'com.zeiras.board.scheda.assegnata', 'board.scheda.creata'];
+        const elenco = altri.map((tipo, indice) => ({ id: `uat-n${89 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo, ids: { id: `uat-x-${indice + 1}`, board_id: 'uat-board-1' } }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 8 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual(altri.map(() => [paginaDelleNotifiche]));
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
+    it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
+        const fetchFinto = rotteDelClic([{ data: delleSchede }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, prodotti: { pm: 'in_arrivo', crm: 'attivo' }, non_lette: 3 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
     it.each([
@@ -2198,11 +2287,12 @@ describe('il pannello delle notifiche', () => {
     });
 
     /**
-     * I titoli dei 40 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * I titoli dei 41 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
      * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`); dallo sprint 22
      * i nove in fondo (voce #1720: le opportunità, che nel contratto sono `trattativa`, le attività, e i quattro «assegnata», che
-     * non sono eventi e arrivano senza `com.zeiras.` davanti). Scritta qui e non letta dai file delle lingue.
+     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 l'ultimo (voce #1748: la scheda assegnata, di
+     * Project Management, che non è un evento nemmeno lei). Scritta qui e non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
         ['com.zeiras.app.modificata', 'Un modulo è stato attivato o disattivato', 'A module was turned on or off', 'Se activó o desactivó un módulo'],
@@ -2245,14 +2335,15 @@ describe('il pannello delle notifiche', () => {
         ['crm.organizzazione.assegnata', 'Ti è stata assegnata un\'azienda', 'A company was assigned to you', 'Se te ha asignado una empresa'],
         ['crm.trattativa.assegnata', 'Ti è stata assegnata un\'opportunità', 'An opportunity was assigned to you', 'Se te ha asignado una oportunidad'],
         ['crm.attivita.assegnata', 'Ti è stata assegnata un\'attività', 'An activity was assigned to you', 'Se te ha asignado una actividad'],
+        ['board.scheda.assegnata', 'Ti è stata assegnata una scheda', 'A card was assigned to you', 'Se te ha asignado una tarjeta'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 40 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(40);
-        expect(titoliPerTipo).toHaveLength(40);
+    it('la tabella dei titoli ha 41 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(41);
+        expect(titoliPerTipo).toHaveLength(41);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -2316,7 +2407,8 @@ describe('il pannello delle notifiche', () => {
     // i quattro «assegnata» no: il loro `tipo` è com'è nel backoffice, e lo stesso nome col prefisso resta un tipo che zr-core non
     // conosce.
     it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
-        const nuove = titoliPerTipo.slice(31);
+        // Le nove del CRM: dopo, dallo sprint 24, la tabella ha la scheda assegnata di Project Management.
+        const nuove = titoliPerTipo.slice(31, 40);
         const elenco = [
             ...nuove.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'crm' })),
             { ...nata('uat-n70', '2026-10-06T11:55:00Z'), tipo: 'com.zeiras.crm.persona.assegnata', app: 'crm' },
@@ -2353,9 +2445,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 40 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 41 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./index');
-        // I 40 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 41 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -2365,11 +2457,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 40 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 41 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 40)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(40)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 41)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(41)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([

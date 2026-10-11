@@ -33,9 +33,9 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * Di che app è un tipo di notifica, dal suo inizio: il backoffice dice `app` dall'evento, e la cornice cerca la destinazione
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
- * è del CRM (sprint 23 · T3).
+ * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3).
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array

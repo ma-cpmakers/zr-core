@@ -339,11 +339,16 @@ cornice === null ? pagina : (
   `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`,
   `crm.attivita.assegnata`), e la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non
   `notificationTitle.com.zeiras.crm.persona.assegnata`. Nel contratto un'opportunità è una `trattativa`: il titolo usa la
-  parola del CRM, come per i contatti e le aziende. Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i
+  parola del CRM, come per i contatti e le aziende. Con quelli i titoli erano 40: i 36 tipi di evento del contratto e i
   quattro «assegnata». Per il contratto nemmeno i cinque eventi di opportunità e attività generano ancora notifiche per i
   colleghi: delle nove arrivano le quattro «assegnata», e titoli e destinazioni dei cinque sono pronti per quando il
   backoffice le manderà. Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche
-  (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM (più sotto). Di che prodotto è
+  (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM (più sotto). Dalla `v1.14.0` ha un titolo anche
+  la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda». Come le
+  quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la
+  chiave del titolo è `notificationTitle.board.scheda.assegnata`. Con lei i titoli sono 41: i 36 tipi di evento del
+  contratto e i cinque «assegnata». Il contratto pubblicato l'11/10/2026 non la elenca ancora: titolo e destinazione sono
+  pronti per quando il backoffice la manderà. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -436,7 +441,9 @@ cornice === null ? pagina : (
   assegnata — apre `https://crm.zeiras.com/w/<slug>/opportunita/<id>`, un contatto o un'azienda assegnati la loro pagina,
   e una di un'attività — nuova, modificata, eliminata o assegnata — la pagina «Da fare»
   (`https://crm.zeiras.com/w/<slug>/da-fare`), senza un id: un'attività non ha una pagina sua. Di opportunità e attività
-  oggi arrivano solo le «assegnata» (più sopra). Una nota apre la cosa più
+  oggi arrivano solo le «assegnata» (più sopra). Dalla `v1.14.0` una di una scheda di Project Management — nuova,
+  modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`; una di una scheda eliminata no:
+  la sua pagina non c'è più. Una nota apre la cosa più
   specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
   `v1.12.0` apriva solo il contatto, e senza quello la pagina delle notifiche). Dove si apre ogni tipo lo dice il registro (`notifiche`
   della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
@@ -453,7 +460,8 @@ cornice === null ? pagina : (
   non ha dove andare apre
   `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (dalla `v1.13.0` ci sono diciotto
   tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
-  le viste di una board e le schede non hanno una destinazione), le mancano gli id di ogni percorso del suo tipo, o il
+  dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
+  tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
@@ -613,7 +621,9 @@ allora non chiede un id. Dalla `v1.13.0` una riga può avere anche `altrimenti`,
 `percorso`, in ordine, quando la risorsa può stare in più pagine: si apre il primo che ha tutti i suoi id — per una nota
 `/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`. Un tipo
 che non è un evento, come ciò che il CRM manda a chi diventa responsabile (`crm.persona.assegnata`), è scritto com'è nel
-backoffice, senza `com.zeiras.` davanti. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+backoffice, senza `com.zeiras.` davanti. Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una
+scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata
+(`board.scheda.assegnata`), tutte e tre con `/c/{id}`. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:

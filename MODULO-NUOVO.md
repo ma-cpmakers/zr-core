@@ -45,7 +45,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   che il tuo modulo genera gli dai il titolo in ogni lingua di Zeiras, con le tue parole, e la pagina che si apre con
   un clic (il percorso dopo `/w/<slug>`, con l'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare
   in più pagine, i percorsi in ordine, dal più specifico). Senza, la campanella dice «Novità nel workspace» e un clic
-  apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche».
+  apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche». Vale anche per una notifica che non è
+  un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il
+  titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
