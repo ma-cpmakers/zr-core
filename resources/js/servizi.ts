@@ -18,6 +18,12 @@ export interface NotificaDellaCornice {
     risorsa_nome?: string | null;
     /** `true` se è rivolta alla persona, `false` se è per tutto il workspace, `null` se il backoffice non lo sa: `null` non è `false`. */
     per_me?: boolean | null;
+    /**
+     * Gli id che la notifica porta, per chiave (`id`, `persona_id`…): dei `dati` dell'evento la parte server dà solo questi, e solo
+     * con la forma di un id. Servono ad aprire la sua risorsa (`destinazioneDellaNotifica`). Una parte server di prima della
+     * `v1.11.0` non li dà, e allora la notifica apre la pagina delle notifiche.
+     */
+    ids?: Record<string, string>;
 }
 
 /** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */

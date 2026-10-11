@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice } from './cornice';
-import { tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
+import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
@@ -1480,7 +1480,7 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('12');
     });
 
-    it('il clic su una notifica e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6)', async () => {
+    it('il clic su una notifica che non ha una destinazione nel registro e «Vedi tutte» aprono la pagina delle notifiche su app.zeiras.com, anche da un prodotto (sprint 5 · T3.6; sprint 21 · T3.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: notificheDelServer })));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
@@ -1491,6 +1491,83 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-notif .zr-pop-foot button'));
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
+    });
+
+    // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
+    // prodotto, col tipo intero), e gli id li porta la notifica (`ids`, dalla parte server): senza una destinazione, o senza
+    // l'id che il percorso chiede, o in un workspace dove il modulo non si può aprire, resta la pagina delle notifiche.
+    const paginaDelleNotifiche = 'https://app.zeiras.com/notifiche';
+    const nelCrm = 'https://crm.zeiras.com/w/acme-marketing';
+    /**
+     * Notifiche con gli id che la parte server dà di `dati`, dalla più recente. Le prime tre hanno la loro destinazione nel
+     * registro: un contatto, una pipeline, una nota (che apre il contatto a cui è attaccata, anche da eliminata). Le altre no:
+     * una nota senza il contatto, una col contatto malfatto, una di Project Management, una del workspace, una del CRM di un
+     * tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
+     */
+    const conGliId = [
+        { id: 'uat-n59', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } },
+        { id: 'uat-n58', creata_il: '2026-10-06T11:50:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.pipeline.modificata', ids: { id: 'uat-pipeline-1' } },
+        { id: 'uat-n57', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } },
+        { id: 'uat-n56', creata_il: '2026-10-06T11:40:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-2' } },
+        { id: 'uat-n55', creata_il: '2026-10-06T11:35:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-3', persona_id: '../x' } },
+        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
+        { id: 'uat-n53', creata_il: '2026-10-06T11:25:00Z', letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ids: {} },
+        { id: 'uat-n52', creata_il: '2026-10-06T11:20:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.assegnata', ids: { id: 'uat-persona-1' } },
+        { id: 'uat-n51', creata_il: '2026-10-06T11:15:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.creata' },
+    ];
+
+    /** Gli indirizzi che la cornice apre con un clic su ognuna di quelle notifiche, una alla volta: a ogni clic il pannello si chiude. */
+    async function apertiDalPannello(datiDellaPagina: DatiDellaCornice, prodotto?: string): Promise<unknown[]> {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: conGliId })));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={datiDellaPagina} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        for (let indice = 0; indice < conGliId.length; indice++) {
+            await clic(uno('.zr-bell'));
+            expect(voci()).toHaveLength(conGliId.length);
+            await clic(voci()[indice] ?? null);
+            expect(uno('.zr-notif')).toBeNull();
+        }
+
+        expect(naviga.mock.calls.every((chiamata) => chiamata.length === 1)).toBe(true);
+
+        return naviga.mock.calls.map(([indirizzo]) => indirizzo);
+    }
+
+    it.each([[undefined], ['pm'], ['crm']])('un clic su una notifica del CRM apre la sua risorsa nel CRM, nel workspace dei dati: il contatto, le impostazioni della pipeline, e per una nota il contatto a cui è attaccata; ogni altra apre la pagina delle notifiche — dal prodotto «%s» (sprint 21 · T3.1, T3.2, T3.3)', async (prodotto) => {
+        expect(await apertiDalPannello(dati, prodotto)).toStrictEqual([
+            `${nelCrm}/contatti/uat-persona-1`,
+            `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`,
+            // Il contatto della nota, non la nota.
+            `${nelCrm}/contatti/uat-persona-2`,
+            // Senza l'id che il percorso chiede, o con un id malfatto: mai un indirizzo composto a metà.
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            // Senza una destinazione nel registro: di Project Management, del workspace, di un tipo che zr-core non conosce.
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            paginaDelleNotifiche,
+            // Senza `ids`.
+            paginaDelleNotifiche,
+        ]);
+    });
+
+    it.each([
+        ['il backoffice lo dà in arrivo', { pm: 'attivo', crm: 'in_arrivo' }],
+        ['i dati non lo elencano', { pm: 'attivo' }],
+        ['il suo stato è scritto `undefined`', { pm: 'attivo', crm: undefined }],
+    ] satisfies [string, DatiDellaCornice['prodotti']][])('in un workspace dove il CRM non si può aprire — %s — un clic su una sua notifica apre la pagina delle notifiche, mai il CRM (sprint 21 · T3.4)', async (_quale, prodotti) => {
+        expect(await apertiDalPannello({ ...dati, prodotti })).toStrictEqual(conGliId.map(() => paginaDelleNotifiche));
+    });
+
+    it('la funzione che il pacchetto esporta dà, per ogni notifica, l\'indirizzo che apre il pannello, e niente quando il pannello apre la pagina delle notifiche (sprint 21 · T3.6)', async () => {
+        const dellaFunzione = (prodotti: DatiDellaCornice['prodotti']) => conGliId.map((notifica) => destinazioneDellaNotifica(notifica, dati.workspace.slug, prodotti));
+
+        // Non è un confronto fra due vuoti: tre hanno una destinazione, le altre no.
+        expect(dellaFunzione(dati.prodotti).map((indirizzo) => indirizzo !== undefined)).toStrictEqual([true, true, true, false, false, false, false, false, false]);
+        expect(await apertiDalPannello(dati)).toStrictEqual(dellaFunzione(dati.prodotti).map((indirizzo) => indirizzo ?? paginaDelleNotifiche));
+        // Anche dove il CRM non si può aprire: tutte e due dicono di no.
+        const senzaCrm: DatiDellaCornice['prodotti'] = { pm: 'attivo' };
+        expect(dellaFunzione(senzaCrm)).toStrictEqual(conGliId.map(() => undefined));
     });
 
     /**

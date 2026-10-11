@@ -19,7 +19,8 @@ import { rotteFinte } from './rotte-finte';
 // per chi (una rivolta alla persona, una solo in «Tutte», una su un'app, col nome del prodotto al posto del codice, le altre com'erano). Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
 // (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
 // indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
-// scrivono in console. Non entra nel pacchetto.
+// scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts) l'ultimo si legge anche in pagina, sotto le scelte.
+// Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -65,18 +66,24 @@ function Prova() {
     const [prodotto, setProdotto] = useState(scelti.get('prodotto') ?? '');
     const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
     const nonLette = Number(scelti.get('non_lette') ?? 7);
+    const prodotti: DatiDellaCornice['prodotti'] = scelti.has('senza_crm') ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, così le altre pagine restano com'erano.
+    const [aperto, setAperto] = useState<string>();
 
     return (
         <Cornice
             {...propsScritteUndefined}
-            dati={{ ...datiScrittiUndefined, ...datiDiProva, lingua, aziende, non_lette: nonLette }}
+            dati={{ ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette }}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
             active={scelti.get('attiva') === 'nessuna' ? null : prodotto ? 'oggi' : undefined}
             crumbs={[{ label: 'UAT Marketing', href: '#' }, { label: 'UAT Q4' }]}
             create={[{ label: 'UAT Board', icon: 'board' }]}
             onLogout={() => console.info('UAT esci')}
-            naviga={(indirizzo) => console.info('UAT naviga', indirizzo)}
+            naviga={(indirizzo) => {
+                console.info('UAT naviga', indirizzo);
+                setAperto(indirizzo);
+            }}
         >
             <form id="uat-scelte">
                 <label>
@@ -93,6 +100,7 @@ function Prova() {
                     </select>
                 </label>
             </form>
+            {scelti.has('crm') && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
         </Cornice>
     );
 }

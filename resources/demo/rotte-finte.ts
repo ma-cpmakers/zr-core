@@ -9,7 +9,9 @@
 // com'erano, e ce n'è una in più, letta tre giorni fa, su un'app: ha in `risorsa_nome` il codice dell'app, com'è nel backoffice, e
 // il pannello ne mostra il nome. Con `?crm=1` in fondo all'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette
 // tipi che zr-core conosce (contatti, pipeline, note) e una di un tipo che non conosce ancora (`com.zeiras.crm.persona.assegnata`),
-// col titolo di ripiego; senza `?crm`, l'elenco è quello di prima. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// col titolo di ripiego, e due note che non hanno dove andare (la riga sotto il titolo dice quale: «UAT nota senza contatto»,
+// «UAT nota con un id malfatto»); senza `?crm`, l'elenco è quello di prima. Ogni notifica porta gli id che la parte server dà di
+// `dati` (`ids`), e mai `dati` né `soggetto`: da una del CRM la cornice apre la sua risorsa. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
 // `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
@@ -33,22 +35,31 @@ const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_m
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
 const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },
-    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false) },
-    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti },
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: { id: 'uat-scheda-4', lista_id: 'uat-lista-1', board_id: 'uat-board-1' } },
+    { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false), ids: { id: 'uat-contatto-3' } },
+    { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti, ids: {} },
     // Solo con `?chi=1`, una notifica su un'app: lì il backoffice dà il codice dell'app (`pm`), e il pannello ne mostra il nome.
-    ...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),
-    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti },
-    // Solo con `?crm=1`, le notifiche del CRM: più vecchie di tutte le altre, una al giorno. L'ultima è di un tipo che zr-core non conosce.
+    ...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null, ids: {} }] : []),
+    { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti, ids: { id: 'uat-membro-1' } },
+    // Solo con `?crm=1`, le notifiche del CRM: più vecchie di tutte le altre, una al giorno. L'ottava è di un tipo che zr-core non
+    // conosce. Gli id sono quelli che la parte server dà di `dati`: una nota porta il suo e quello del contatto a cui è attaccata.
+    // Le ultime due sono note che non hanno dove andare, e la riga sotto il titolo dice quale: una senza il contatto, e una con
+    // un contatto che non ha la forma di un id — la parte server vera non lo darebbe, qui c'è per vedere che la cornice non lo
+    // mette in un indirizzo.
     ...(crm
-        ? ['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
-              id: `uat-c${indice + 1}`,
-              creata_il: fa((10 + indice) * 24 * 60),
-              letta: true,
-              app: 'crm',
-              tipo: `com.zeiras.crm.${tipo}`,
-              ...nonDetti,
-          }))
+        ? [
+              ...['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
+                  id: `uat-c${indice + 1}`,
+                  creata_il: fa((10 + indice) * 24 * 60),
+                  letta: true,
+                  app: 'crm',
+                  tipo: `com.zeiras.crm.${tipo}`,
+                  ...nonDetti,
+                  ids: (tipo.startsWith('nota.') ? { id: `uat-nota-${indice + 1}`, persona_id: 'uat-persona-2' } : { id: tipo.startsWith('pipeline.') ? 'uat-pipeline-1' : 'uat-persona-1' }) as Record<string, string>,
+              })),
+              { id: 'uat-c9', creata_il: fa(18 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota senza contatto', per_me: null, ids: { id: 'uat-nota-9' } },
+              { id: 'uat-c10', creata_il: fa(19 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota con un id malfatto', per_me: null, ids: { id: 'uat-nota-10', persona_id: '../x' } },
+          ]
         : []),
 ];
 let letture = 0;
@@ -141,7 +152,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'uat_errore' }, 502);
             }
             if (arriva && caricamenti === 2) {
-                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti });
+                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti, ids: { id: 'uat-scheda-5', lista_id: 'uat-lista-1', board_id: 'uat-board-1' } });
             }
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è.

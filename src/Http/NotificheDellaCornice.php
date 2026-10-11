@@ -22,7 +22,8 @@ use Zeiras\Core\Segno;
  * notifica è rivolta alla persona (`per_me`).
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
- * confronta con un elenco. `soggetto` e `dati` restano qui. Segnarle lette tutte insieme è una richiesta sola del browser,
+ * confronta con un elenco. `soggetto` resta qui, e di `dati` passano i soli id (`ids`), che alla cornice servono per aprire la
+ * risorsa di una notifica. Segnarle lette tutte insieme è una richiesta sola del browser,
  * fino a un istante, non una per notifica: il backoffice ne segna 5000 per chiamata, e la parte server lo richiama finché ne
  * restano, entro due tetti. Senza un workspace nella sessione risponde ConWorkspace; un backoffice che non risponde è
  * BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
@@ -249,7 +250,10 @@ final class NotificheDellaCornice
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
+     * Di `dati` passano i soli id, in `ids` (`idDi()`): alla cornice servono per aprire la risorsa della notifica. `dati` non
+     * è fra le chiavi che fanno una notifica: se manca, o non è un oggetto, `ids` è vuoto, e non è un guasto.
+     *
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: object}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -268,6 +272,30 @@ final class NotificheDellaCornice
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
+            // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
+            'ids' => (object) self::idDi($notifica['dati'] ?? null),
         ];
+    }
+
+    /**
+     * Gli id dei `dati` di una notifica, per chiave: le coppie con la chiave `id`, o una che finisce in `_id` (minuscole e `_`:
+     * `persona_id`, `board_id`), e con un valore che ha la forma di un id del backoffice — un testo di lettere, cifre, `-` e
+     * `_`, da 1 a 64, la stessa che la rotta della lettura chiede all'id di una notifica. Solo le coppie di `dati`, non quelle
+     * di un oggetto più dentro. Tutto il resto resta qui: `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani.
+     * Il browser mette questi id nell'indirizzo che una notifica apre: per questo passa solo ciò che ha la forma di un id.
+     *
+     * @return array<string, string>
+     */
+    private static function idDi(mixed $dati): array
+    {
+        $ids = [];
+        foreach (is_array($dati) ? $dati : [] as $chiave => $valore) {
+            if (is_string($chiave) && preg_match('/\A(?:id|[a-z][a-z_]*_id)\z/', $chiave) === 1
+                && is_string($valore) && preg_match('/\A[A-Za-z0-9_-]{1,64}\z/', $valore) === 1) {
+                $ids[$chiave] = $valore;
+            }
+        }
+
+        return $ids;
     }
 }

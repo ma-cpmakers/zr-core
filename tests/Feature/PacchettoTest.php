@@ -964,7 +964,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1031,7 +1031,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me}], aggiornati_il}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -2691,16 +2691,17 @@ it('il README dice, nella riga di GET /cornice/notifiche, i tre dati nuovi: da q
 });
 
 it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifica su un\'app col codice dell\'app, e senza resta com\'era: lo dicono il file delle rotte finte e la testa della pagina (sprint 20 · T1.7, T1.8)', function () {
-    $conChiECosa = "...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },";
-    $perTutti = "...detti('Bruno Neri', null, false) },";
+    // Dallo sprint 21 ogni notifica d'esempio porta anche gli id che la parte server dà di `dati` (`ids`), in fondo.
+    $conChiECosa = "...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: {";
+    $perTutti = "...detti('Bruno Neri', null, false), ids: {";
     // La notifica su un'app c'è solo con `?chi=1`: senza, le notifiche d'esempio sono le quattro di prima.
-    $suUnApp = "...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),";
+    $suUnApp = "...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null, ids: {} }] : []),";
 
     expect(scritteNellaPaginaDiProva('rotte-finte.ts', [$suUnApp, "tipo: 'com.zeiras.app."]))->toBe([$suUnApp => 1, "tipo: 'com.zeiras.app." => 1])
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['una su un\'app, col nome del prodotto al posto del codice']))->toBe(['una su un\'app, col nome del prodotto al posto del codice' => 1]);
 
-    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti }', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
-        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti }' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti, ids: ', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });
 
@@ -3077,3 +3078,36 @@ it('README e guida chiamano il menu «menu Moduli», e il README dice da quale v
         ->and(puntoDellaCornice($readme, 'Il menu Moduli'))->toContain('`v1.10.2`', '«Prodotti»')
         ->and(array_values(array_intersect(['MODULO-NUOVO.md', 'README.md'], fileDelloZipDiHead())))->toBe(['MODULO-NUOVO.md', 'README.md']);
 });
+
+// Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Il README lo dice dove parla delle notifiche, con la
+// versione e con la funzione che chi mostra le notifiche in una pagina sua importa; nel paragrafo delle funzioni dice come si
+// chiama e che cosa legge; e nella riga della rotta, che cosa sono gli `ids`.
+
+it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa: al punto «Le notifiche» dove, quando no e con quale funzione; nel paragrafo delle funzioni come si chiama e che cosa legge; nella riga della rotta che cosa sono gli `ids` (sprint 21 · T3.6)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = [
+        'punto' => suUnaRiga($punto[0] ?? ''),
+        'paragrafo' => paragrafoFuoriDallaCornice($readme),
+        'rotta' => rigaDellaRotta($readme, 'GET /cornice/notifiche'),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati'],
+    'i tre casi del CRM' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di una nota il contatto a cui è attaccata'],
+    'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
+    'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa dall\'ingresso'],
+    'quando no' => ['punto', 'Una notifica che non ha dove andare apre `https://app.zeiras.com/notifiche`, come «Vedi tutte»'],
+    'nome, argomenti e versione' => ['paragrafo', 'Dalla `v1.11.0` si importa anche `destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua'],
+    'che cosa dà' => ['paragrafo', 'dà l\'indirizzo che il pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello'],
+    'che cosa legge' => ['paragrafo', 'la funzione ne legge `app`, `tipo` e `ids`'],
+    'quando non dà niente' => ['paragrafo', 'Non dà niente (`undefined`) quando la notifica non ha dove andare'],
+    'mai a metà' => ['paragrafo', 'mai un indirizzo composto a metà'],
+    'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
+    'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che la notifica porta, per chiave'],
+    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano le sole coppie con la chiave `id`, o una che finisce in `_id`, e con un valore che ha la forma di un id'],
+    'che cosa non passa' => ['rotta', 'il resto di `dati` e `soggetto` non arrivano al browser'],
+    'senza dati' => ['rotta', 'ha `ids` vuoto (`{}`) e non è un errore'],
+]);

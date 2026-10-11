@@ -123,25 +123,25 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-1', null, 'com.zeiras.workspace.membro.creato'],
         ]);
         // Senza tipo: la chiave non c'è, come in una risposta di prima della v1.3.0. Dallo sprint 20 ognuna ha anche chi, su che
-        // cosa e per chi, come la parte server.
+        // cosa e per chi, come la parte server; dallo sprint 21 anche gli id che la parte server dà di `dati` (`ids`).
         const treDati = ['autore_nome', 'risorsa_nome', 'per_me'];
         expect(notifiche.map((notifica) => Object.keys(notifica))).toEqual([
-            ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati], ['id', 'creata_il', 'letta', 'app', ...treDati], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati],
+            ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', ...treDati, 'ids'], ['id', 'creata_il', 'letta', 'app', 'tipo', ...treDati, 'ids'],
         ]);
         expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
     });
 
     // Sprint 21 · T2 (voce #1641): le notifiche del CRM stanno nella pagina di prova solo con `?crm=1`. Senza, l'elenco è quello
     // del tag di prima (il caso qui sopra), e le schermate della smoke non cambiano.
-    it('con `?crm=1` in fondo all\'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette tipi che zr-core conosce, e una di un tipo che non conosce ancora (sprint 21 · T2.1, T2.2)', async () => {
+    it('con `?crm=1` in fondo all\'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette tipi che zr-core conosce, e una di un tipo che non conosce ancora; poi due note che non hanno dove andare. Ognuna porta i suoi id, e mai `dati` né `soggetto` (sprint 21 · T2.1, T2.2, T3.1, T3.3, T3.5)', async () => {
         await rotte(false, '?crm=1');
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
-        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string }[];
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string; risorsa_nome: string | null; ids: Record<string, string> }[];
         const conosciuto = (tipo: string | undefined) => tipo !== undefined && Object.keys(inglese).includes(`notificationTitle.${tipo}`);
 
         expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
-        expect(notifiche.slice(4).map(({ id, app, tipo, letta }) => [id, app, tipo, letta])).toEqual([
+        expect(notifiche.slice(4, 12).map(({ id, app, tipo, letta }) => [id, app, tipo, letta])).toEqual([
             ['uat-c1', 'crm', 'com.zeiras.crm.persona.creata', true],
             ['uat-c2', 'crm', 'com.zeiras.crm.persona.modificata', true],
             ['uat-c3', 'crm', 'com.zeiras.crm.pipeline.creata', true],
@@ -151,7 +151,32 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-c7', 'crm', 'com.zeiras.crm.nota.eliminata', true],
             ['uat-c8', 'crm', 'com.zeiras.crm.persona.assegnata', true],
         ]);
-        expect(notifiche.slice(4).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
+        expect(notifiche.slice(4, 12).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
+        // Sprint 21 · T3: gli id che la parte server dà di `dati`. Una nota porta il suo e quello del contatto a cui è attaccata.
+        expect(notifiche.slice(4, 12).map(({ ids }) => ids)).toEqual([
+            { id: 'uat-persona-1' }, { id: 'uat-persona-1' }, { id: 'uat-pipeline-1' }, { id: 'uat-pipeline-1' },
+            { id: 'uat-nota-5', persona_id: 'uat-persona-2' }, { id: 'uat-nota-6', persona_id: 'uat-persona-2' }, { id: 'uat-nota-7', persona_id: 'uat-persona-2' },
+            { id: 'uat-persona-1' },
+        ]);
+        // Le ultime due non hanno dove andare, e la riga sotto il titolo dice quale: una senza il contatto, una col contatto malfatto.
+        expect(notifiche.slice(12).map(({ id, tipo, risorsa_nome, ids }) => [id, tipo, risorsa_nome, ids])).toEqual([
+            ['uat-c9', 'com.zeiras.crm.nota.creata', 'UAT nota senza contatto', { id: 'uat-nota-9' }],
+            ['uat-c10', 'com.zeiras.crm.nota.creata', 'UAT nota con un id malfatto', { id: 'uat-nota-10', persona_id: '../x' }],
+        ]);
+        // Ogni notifica ha `ids`, e nessuna `dati` né `soggetto`, come dalla parte server.
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+        // Ciò che la UAT vede aprirsi nel workspace di prova: il contatto, le impostazioni della pipeline, il contatto della nota; e
+        // niente per il tipo che zr-core non conosce e per le due note senza un contatto buono.
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([
+            `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/contatti/uat-persona-1`,
+            `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`, `${nelCrm}/pipeline/uat-pipeline-1/impostazioni`,
+            `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`, `${nelCrm}/contatti/uat-persona-2`,
+            null, null, null,
+        ]);
+        // Le prime quattro, quelle di ogni pagina di prova, non hanno una destinazione: aprono la pagina delle notifiche.
+        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual([null, null, null, null]);
         // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.
         const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
@@ -226,14 +251,14 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         // Quella su un'app non è di un prodotto (`app` è `null`): che cosa è cambiato lo dice il tipo, quale app `risorsa_nome`.
         expect((corpo.data as Record<string, unknown>[]).filter(({ id }) => id === 'uat-0').map(({ app, tipo, letta }) => ({ app, tipo, letta }))).toStrictEqual([{ app: null, tipo: 'com.zeiras.app.modificata', letta: true }]);
-        // Le otto chiavi della parte server, e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
+        // Le nove chiavi della parte server (dallo sprint 21 anche `ids`), e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
         expect((corpo.data as Record<string, unknown>[]).map((notifica) => Object.keys(notifica).sort().join(' '))).toStrictEqual([
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
-            'app autore_nome creata_il id letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
+            'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
         ]);
     });
 });

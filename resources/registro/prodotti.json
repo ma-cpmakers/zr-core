@@ -8,7 +8,18 @@
                 { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
             ]
         },
-        { "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true },
+        {
+            "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true,
+            "notifiche": [
+                { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },
+                { "tipo": "com.zeiras.crm.persona.modificata", "percorso": "/contatti/{id}" },
+                { "tipo": "com.zeiras.crm.pipeline.creata", "percorso": "/pipeline/{id}/impostazioni" },
+                { "tipo": "com.zeiras.crm.pipeline.modificata", "percorso": "/pipeline/{id}/impostazioni" },
+                { "tipo": "com.zeiras.crm.nota.creata", "percorso": "/contatti/{persona_id}" },
+                { "tipo": "com.zeiras.crm.nota.modificata", "percorso": "/contatti/{persona_id}" },
+                { "tipo": "com.zeiras.crm.nota.eliminata", "percorso": "/contatti/{persona_id}" }
+            ]
+        },
         { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true },
         { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true, "in_arrivo": true },
         { "id": "automations", "icona": "bolt", "tono": "plum", "indirizzo": "https://auto.zeiras.com", "presto": true, "in_arrivo": true },
