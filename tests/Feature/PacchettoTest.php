@@ -2845,3 +2845,81 @@ it('i tre controlli sul testo della guida vedono ciò che cercano (sprint 20 · 
         ->and(str_contains($readme, "\n".$lunga."\n"))->toBe(true)
         ->and(righeRicopiateDalReadme("una riga corta\n  ".$lunga."\nuna riga lunga che il README non ha, scritta apposta per superare gli ottanta caratteri di misura", $readme))->toBe([$lunga]);
 });
+
+// Sprint 20 · review della PR #26, R10. La guida cita il README anche per le prime parole di un capoverso o di un punto, e
+// il README di zr-auth per titolo: senza un controllo, una riscrittura di quei capoversi lascia rimandi a vuoto.
+
+/** Il README di zr-auth installato: è lì che la guida manda per l'ingresso, la sessione e la guardia. */
+function readmeDiZrAuth(): string
+{
+    return (string) file_get_contents(dirname(__DIR__, 2).'/vendor/zeiras/zr-auth/README.md');
+}
+
+/** Un capoverso o un punto d'elenco del testo comincia con queste parole (il grassetto del punto non conta). */
+function cominciaCosiUnCapoverso(string $inizio, string $testo): bool
+{
+    return preg_match('/(?:(?:\A|\n\n)(?:- )?|\n- )(?:\*\*)?'.preg_quote($inizio, '/').'/u', $testo) === 1;
+}
+
+/**
+ * Ciò che un testo cita del README di zr-core per le prime parole — «README, «Titolo», da «…»», «README, «Titolo», al punto
+ * «…»», «il capoverso che comincia con «…»» —, un a capo dentro la citazione compreso.
+ *
+ * @return list<string>
+ */
+function capoversiCitatiDelReadme(string $testo): array
+{
+    preg_match_all('/(?:README, «[^»]+», (?:da|al punto)|capoverso che comincia con) «([^»]+)»/u', (string) preg_replace('/\s+/u', ' ', $testo), $citati);
+
+    return array_values(array_unique($citati[1]));
+}
+
+/**
+ * Ciò che un testo scrive fra «» in una frase che nomina il «README di zr-auth»: in quelle frasi le virgolette portano solo
+ * titoli e punti di quel README.
+ *
+ * @return list<string>
+ */
+function citatiDelReadmeDiZrAuth(string $testo): array
+{
+    preg_match_all('/README di zr-auth(?![A-Za-z]).*?(?:\.(?= |$)|$)/us', (string) preg_replace('/\s+/u', ' ', $testo), $frasi);
+    preg_match_all('/«([^»]+)»/u', implode("\n", $frasi[0]), $citati);
+
+    return array_values(array_unique($citati[1]));
+}
+
+/**
+ * Fra le citazioni date, quelle che il testo non ha né come titolo (`##`, `###`) né come inizio di un capoverso o di un punto.
+ *
+ * @param  list<string>  $citati
+ * @return list<string>
+ */
+function citatiCheNonCiSono(array $citati, string $testo, bool $ancheTitoli): array
+{
+    preg_match_all('/^#{2,3} (.+)$/m', $testo, $titoli);
+
+    return array_values(array_filter($citati, fn (string $citato): bool => ! ($ancheTitoli && in_array($citato, $titoli[1], true)) && ! cominciaCosiUnCapoverso($citato, $testo)));
+}
+
+it('ciò che la guida cita per le prime parole c\'è: i capoversi e i punti del README, i titoli e i punti del README di zr-auth installato (sprint 20 · review della PR #26, R10)', function () {
+    $guida = guidaDelModuloNuovo();
+    $delReadme = capoversiCitatiDelReadme($guida);
+    $diZrAuth = citatiDelReadmeDiZrAuth($guida);
+
+    expect(count($delReadme) >= 3)->toBe(true)
+        ->and(count($diZrAuth) >= 7)->toBe(true)
+        ->and(citatiCheNonCiSono($delReadme, (string) file_get_contents(__DIR__.'/../../README.md'), false))->toBe([])
+        ->and(citatiCheNonCiSono($diZrAuth, readmeDiZrAuth(), true))->toBe([]);
+});
+
+it('il controllo delle citazioni per le prime parole vede ciò che non c\'è: una riga a metà capoverso, un titolo che manca, e una citazione andata a capo (sprint 20 · review della PR #26, R10)', function () {
+    $readme = "## Titolo\n\nPrimo capoverso che va\na capo qui dentro.\n\n- **Un punto** dell'elenco\n- un altro punto\n\n### Un titolo sotto\n";
+    $guida = "Vedi README, «Titolo», da «Primo capoverso» e README, «Titolo», al punto «Un punto»; il capoverso che comincia con «a capo\nqui» e README, «Titolo», al punto «un altro»; poi README, «Titolo», da «Un capoverso che manca».\n"
+        ."Scrivi ciò che dice il README di zr-auth (un percorso), nell'ordine «Titolo» (col suo punto «Un\npunto»), «Un titolo sotto», «Un titolo che manca». Dopo, «Esci» sta in un'altra frase e non si guarda.";
+
+    expect(capoversiCitatiDelReadme($guida))->toBe(['Primo capoverso', 'Un punto', 'a capo qui', 'un altro', 'Un capoverso che manca'])
+        ->and(citatiCheNonCiSono(capoversiCitatiDelReadme($guida), $readme, false))->toBe(['a capo qui', 'Un capoverso che manca'])
+        ->and(citatiDelReadmeDiZrAuth($guida))->toBe(['Titolo', 'Un punto', 'Un titolo sotto', 'Un titolo che manca'])
+        ->and(citatiCheNonCiSono(citatiDelReadmeDiZrAuth($guida), $readme, true))->toBe(['Un titolo che manca'])
+        ->and(citatiCheNonCiSono(['Titolo'], $readme, false))->toBe(['Titolo']);
+});
