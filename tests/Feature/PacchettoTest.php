@@ -1817,6 +1817,15 @@ function alberoFintoCon(array $file): string
     }
 }
 
+it('il README dice che cosa dà Cornice::lingua() per una lingua del profilo che non è di Zeiras, con zr-auth fino alla 0.12.11 e dalla 0.12.12 (sprint 20 · T4.3)', function () {
+    $server = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+
+    expect(str_contains($server, 'Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`)'))->toBe(true)
+        ->and(str_contains($server, 'la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`'))->toBe(true)
+        ->and(str_contains($server, 'Fino alla 0.12.11 la sessione prende il testo del profilo com\'è'))->toBe(true)
+        ->and(str_contains($server, 'un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'))->toBe(true);
+});
+
 /** @return array{0: int|null, 1: string} il codice d'uscita della guardia dello zip su quell'albero, e ciò che dice */
 function guardiaDelloZipSu(string $albero): array
 {
