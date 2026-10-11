@@ -160,7 +160,7 @@ se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `
 Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`): con un'altra, anche ben
 fatta, la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`. Fino alla 0.12.11 la sessione prende
 il testo del profilo com'è, e vale ciò che è scritto qui sopra: una lingua ben fatta passa, una malfatta dà `null`. zr-core le
-accetta tutte e due (`^0.12.4`): un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata.
+accetta tutte e due: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
 rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione, e la riga costerebbe una
