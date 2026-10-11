@@ -3409,3 +3409,23 @@ it('ciò che il README dice della forma di `ids` è vero: il metodo dà un array
         // L'elenco: un oggetto anche quando è vuoto.
         ->and(substr_count($sorgente, "'ids' => (object) self::idsDellaNotifica("))->toBe(1);
 });
+
+// Sprint 23 · T1 (voce #1732): con l'elenco di un altro workspace il pannello non ha «Segna tutte come lette». Il README lo dice
+// al punto «Le notifiche», accanto a quando il pulsante c'è: l'eccezione, da quale versione, perché, e che cosa vale se la
+// parte server non dice di quale workspace è l'elenco.
+
+it('il README dice, al punto «Le notifiche», che dalla v1.13.0 «Segna tutte come lette» non c\'è quando l\'elenco è di un altro workspace, e che c\'è come prima se la parte server non dice di quale workspace è (sprint 23 · T1.4)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = suUnaRiga($punto[0] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true)
+        // Senza l'eccezione la frase finiva qui: il pulsante c'era ogni volta.
+        ->and(str_contains($testo, 'anche se quelle caricate sono già lette.'))->toBe(false);
+})->with([
+    'quando c\'è' => ['Il pulsante c\'è quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette;'],
+    'l\'eccezione, e da quando' => ['dalla `v1.13.0` non c\'è quando la parte server dice che l\'elenco è di un altro workspace rispetto ai dati della pagina'],
+    'perché' => ['con due schede su due workspace, da lì la rotta risponde 409 `workspace_diverso` e non segna niente'],
+    'non detto' => ['Se la risposta dell\'elenco non dice di quale workspace è, il pulsante c\'è come prima'],
+]);

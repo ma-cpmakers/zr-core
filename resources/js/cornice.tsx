@@ -529,8 +529,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     }
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
-    // le non lette stanno oltre la prima pagina.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) ? undefined : async () => {
+    // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
+    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Se non lo dice, il pulsante c'è.
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && caricate.workspace !== dati.workspace.slug) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }

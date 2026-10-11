@@ -1265,6 +1265,71 @@ describe('il pannello delle notifiche', () => {
         expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
     });
 
+    // Sprint 23 · T1. Con due schede su due workspace l'elenco in pagina può essere di un altro workspace rispetto ai dati: lì
+    // «Segna tutte come lette» non può funzionare (la parte server risponde 409 `workspace_diverso`), e il pulsante non c'è. Lo
+    // dice la parte server, con `workspace` nella risposta dell'elenco: se non lo dice, il pulsante c'è come nella v1.12.0.
+
+    /** Come `rotte`, con ciò che la parte server dice dell'elenco a ogni caricamento (finiti, l'ultimo): di quale workspace è. */
+    const rotteCheDicono = (...aOgniCaricamento: { workspace?: string }[]) => {
+        let caricamenti = 0;
+
+        return vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, ...aOgniCaricamento[Math.min(caricamenti++, aOgniCaricamento.length - 1)] }) : segnateFinoA(opzioni)));
+    };
+
+    it.each([
+        ['col numero dei dati', { ...dati, non_lette: 2 }, '2'],
+        ['con un numero più alto delle non lette caricate', { ...dati, non_lette: 9 }, '9'],
+        ['senza il numero nei dati', dati, '2'],
+    ] satisfies [string, DatiDellaCornice, string][])('con un elenco che la parte server dice di un altro workspace il pannello non ha «Segna tutte come lette», %s, e nessuna lettura parte (sprint 23 · T1.1)', async (_come, dellaPagina, sullaCampanella) => {
+        const fetchFinto = rotteCheDicono({ workspace: 'acme-vendite' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dellaPagina} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // L'elenco è arrivato e la campanella ha un numero: il pulsante manca per il workspace, non perché non c'è niente da segnare.
+        expect([voci().length, campanella()]).toStrictEqual([3, sullaCampanella]);
+        expect(segnaTutte()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each([
+        ['dice il workspace dei dati', { workspace: 'acme-marketing' }],
+        ['non dice di quale workspace è l\'elenco', {}],
+    ] satisfies [string, { workspace?: string }][])('con una parte server che %s il pulsante c\'è come nella v1.12.0, e manda lo slug dei dati con cui l\'elenco è stato chiesto (sprint 23 · T1.2)', async (_quale, dellElenco) => {
+        const fetchFinto = rotteCheDicono(dellElenco);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+    });
+
+    it('se i dati passano a un altro workspace a pannello aperto e la parte server dice di quale workspace è l\'elenco, il pulsante non c\'è finché in pagina c\'è l\'elenco del workspace di prima, e torna con l\'elenco del workspace dei dati (sprint 23 · T1.3)', async () => {
+        const fetchFinto = rotteCheDicono({ workspace: 'acme-marketing' }, { workspace: 'acme-vendite' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+
+        // La cornice resta montata e i dati sono di un altro workspace: l'elenco in pagina è ancora quello di prima, e lo dice.
+        const altrove = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 };
+        await mostra(<Cornice dati={altrove} onLogout={esciSenzaEffetto} />);
+        expect([voci().length, campanella()]).toStrictEqual([3, '5']);
+        expect(segnaTutte()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+
+        // Chiuso e riaperto, il pannello chiede l'elenco coi dati di adesso: è del loro workspace, e il pulsante torna.
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
+    });
+
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
         const lettura = inAttesa();
         // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.
@@ -2626,6 +2691,19 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
         expect(campanella()).toBe('1');
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+    });
+
+    it('dopo una lettura con altre: true, se l\'elenco ricaricato è di un altro workspace il pulsante non c\'è nemmeno come «Segna le altre»: è lo stesso pulsante (sprint 23 · T1.1)', async () => {
+        const fetchFinto = rotteConLetture([notificheDelServer, Promise.resolve(risposta({ data: dopoUnaParte, workspace: 'acme-vendite' }))], [letturaFatta(true)]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(segnaTutte());
+
+        // L'elenco ricaricato è in pagina e la campanella ha il numero dei dati: ne restano, ma da qui non si segnano.
+        expect([voci().length, campanella()]).toStrictEqual([dopoUnaParte.length, '60']);
+        expect(segnaTutte()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
     });
 
     // Review della PR #20, R3. Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, a pannello aperto: i
