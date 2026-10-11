@@ -19,7 +19,8 @@ use Zeiras\Auth\Sessione;
  *
  * La lingua e il nome della sessione sono quelli dell'ingresso: un cambio fatto dopo nel profilo non ci arriva da solo. Per
  * questo a ogni lettura la risposta di io.mostra, che la cornice legge già per le non lette, va a `Sessione::aggiorna` di
- * zr-auth (dalla 0.12): la sessione prende la lingua e il nome del profilo, e i dati li portano da quella stessa lettura.
+ * zr-auth (dalla 0.12), che mette nella sessione la lingua e il nome del profilo che prende (la lingua, dalla 0.12.12, solo se
+ * è una di Zeiras), e i dati li portano da quella stessa lettura.
  * Un modulo che mette la lingua della pagina prima del controller la prende da `lingua()`, che fa quella stessa lettura: in una
  * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`).
  *
@@ -103,12 +104,14 @@ final class Cornice
      *
      * null senza una sessione, o se la lingua della sessione non ha la forma di una lingua (FORMA_DI_UNA_LINGUA, 35 caratteri
      * al più): ciò che esce da qui va a `App::setLocale`, che su una barra, due punti di fila o un byte nullo lancia dopo aver
-     * già scritto `app.locale`, e la sessione prende la lingua da io.mostra senza guardarne la forma. `dati()` porta invece la
-     * lingua della sessione com'è. Senza un workspace è la lingua della sessione, e il backoffice non si chiama. Costa una
-     * lettura, io.mostra, e in una richiesta in cui c'è anche `dati()` nessuna in più: è la stessa (vedi `lettura()`). Se il
-     * backoffice non risponde non lancia, perché la lingua di una pagina non diventi un 500: dà la lingua che la sessione ha,
-     * lascia un avviso nel log, e l'errore lo lancia `dati()`, se in quella richiesta c'è. GettoneRifiutato passa: la
-     * sessione è finita, e lo tratta il frontend come da ogni altra chiamata.
+     * già scritto `app.locale`, e nella sessione una lingua malfatta può esserci: all'ingresso zr-auth ci mette la persona
+     * com'è, e fino alla 0.12.11 `Sessione::aggiorna` prende da io.mostra ogni testo non vuoto (dalla 0.12.12 solo una
+     * lingua di Zeiras). `dati()` porta invece la lingua della sessione com'è. Senza un workspace è la lingua della
+     * sessione, e il backoffice non si chiama. Costa una lettura, io.mostra, e in una richiesta in cui c'è anche `dati()`
+     * nessuna in più: è la stessa (vedi `lettura()`). Se il backoffice non risponde non lancia, perché la lingua di una
+     * pagina non diventi un 500: dà la lingua che la sessione ha, lascia un avviso nel log, e l'errore lo lancia `dati()`,
+     * se in quella richiesta c'è. GettoneRifiutato passa: la sessione è finita, e lo tratta il frontend come da ogni altra
+     * chiamata.
      */
     public static function lingua(): ?string
     {

@@ -1030,16 +1030,59 @@ it('la riga dà la lingua della sessione solo se ha la forma di una lingua, se n
     '36 caratteri' => ['it-'.str_repeat('abcdefgh-', 3).'abcdef', null],
 ]);
 
-it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è — con zr-auth fino alla 0.12.11 la sessione la prende e la riga dà null, dalla 0.12.12 la sessione tiene la lingua che aveva e la riga dà quella (sprint 18 · T2.9, sprint 20 · T4.1, T4.2)', function () {
-    sessioneAMano(marketing());
-    backoffice(['/v1/io' => ioMostraCon(['lingua' => '../it']), ...aziendeEWorkspace()]);
-    // Dalla 0.12.12 `Sessione::aggiorna` prende dal profilo solo una lingua di Zeiras (`it`, `en`, `es`). La versione installata
-    // dice quale dei due comportamenti aspettarsi: uno solo per giro della CI, mai tutti e due.
-    $soloLingueDiZeiras = version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.12', '>=');
+/**
+ * Dalla 0.12.12 `Sessione::aggiorna` di zr-auth prende dal profilo solo una lingua di Zeiras (`Sessione::LINGUE`: `it`, `en`,
+ * `es`), col confronto esatto; fino alla 0.12.11 ogni testo non vuoto, com'è. La versione installata dice quale dei due
+ * comportamenti aspettarsi: uno solo per giro della CI, mai tutti e due.
+ */
+function soloLingueDiZeiras(): bool
+{
+    return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.12', '>=');
+}
 
-    expect(Sessione::utente()['lingua'])->toBe('en')
-        ->and(Cornice::lingua())->toBe($soloLingueDiZeiras ? 'en' : null)
-        ->and(Sessione::utente()['lingua'])->toBe($soloLingueDiZeiras ? 'en' : '../it')
-        ->and(Cornice::dati()['lingua'])->toBe($soloLingueDiZeiras ? 'en' : '../it')
+it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è — con zr-auth fino alla 0.12.11 la sessione la prende e la riga dà null, dalla 0.12.12 la sessione tiene la lingua che aveva e la riga dà quella (sprint 18 · T2.9, sprint 20 · T4.1, T4.2)', function () {
+    // La lingua di partenza non è la predefinita dell'app di prova (`en`): «quella che la sessione aveva» non si confonde con un ripiego.
+    sessioneAMano(marketing(), 'es');
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => '../it']), ...aziendeEWorkspace()]);
+
+    expect(Sessione::utente()['lingua'])->toBe('es')
+        ->and(Cornice::lingua())->toBe(soloLingueDiZeiras() ? 'es' : null)
+        ->and(Sessione::utente()['lingua'])->toBe(soloLingueDiZeiras() ? 'es' : '../it')
+        ->and(Cornice::dati()['lingua'])->toBe(soloLingueDiZeiras() ? 'es' : '../it')
         ->and(richiesteA('/v1/io'))->toHaveCount(1);
 });
+
+// Review della PR #27, R3: dalla 0.12.12 una lingua malfatta non arriva più alla sessione da io.mostra, e il caso qui sopra in
+// quel giro non prova più il controllo della forma. Ma nella sessione può esserci già: all'ingresso zr-auth copia la persona
+// com'è. Qui la forma si guarda dopo la lettura con tutte e due le versioni, e dopo, non prima: una buona del profilo passa.
+
+it('una lingua malfatta presa all\'ingresso non esce dalla riga nemmeno con un workspace: se il profilo porta ancora quella la riga dà null, se ne porta una buona dà la buona, con zr-auth fino alla 0.12.11 e dalla 0.12.12 (sprint 20 · T4.1; review della PR #27, R3)', function (string $delProfilo, ?string $attesa) {
+    sessioneAMano(marketing(), '../it');
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => $delProfilo])]);
+
+    expect(Sessione::utente()['lingua'])->toBe('../it')
+        ->and(Cornice::lingua())->toBe($attesa)
+        ->and(Sessione::utente()['lingua'])->toBe($attesa ?? '../it')
+        ->and(richiesteA('/v1/io'))->toHaveCount(1);
+})->with([
+    'il profilo porta ancora la malfatta' => ['../it', null],
+    'il profilo ne porta una buona' => ['es', 'es'],
+]);
+
+// Review della PR #27, R5: il README dice quali lingue del profilo `Sessione::aggiorna` prende, e che il confronto è esatto. Se
+// una 0.12 nuova cambia l'elenco o il confronto, nel giro «ultima» questo caso diventa rosso, e il README si riscrive.
+
+it('una lingua del profilo ben fatta che non è una di Zeiras: con zr-auth fino alla 0.12.11 la sessione la prende com\'è e la riga dà quella, dalla 0.12.12 la sessione tiene la lingua che aveva e la riga dà quella — e il confronto è esatto (sprint 20 · T4.2, T4.3; review della PR #27, R5)', function (string $delProfilo) {
+    sessioneAMano(marketing(), 'es');
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => $delProfilo]), ...aziendeEWorkspace()]);
+    $attesa = soloLingueDiZeiras() ? 'es' : $delProfilo;
+
+    expect(Cornice::lingua())->toBe($attesa)
+        ->and(Sessione::utente()['lingua'])->toBe($attesa)
+        ->and(Cornice::dati()['lingua'])->toBe($attesa);
+})->with([
+    'con la regione' => ['pt-BR'],
+    'una lingua che Zeiras non ha' => ['fr'],
+    'una di Zeiras in maiuscole' => ['IT'],
+    'una di Zeiras con la regione' => ['it-IT'],
+]);

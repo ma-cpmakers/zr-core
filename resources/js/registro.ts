@@ -50,3 +50,8 @@ export interface VoceDelRegistro {
 }
 
 export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegistro[];
+
+/** Il prodotto del registro con quel codice; la Dashboard non è un prodotto. */
+export function prodottoDelRegistro(codice: string | null | undefined): VoceDelRegistro | undefined {
+    return registro.find((voce) => voce.id === codice && voce.id !== 'home');
+}
