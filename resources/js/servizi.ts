@@ -2,6 +2,8 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
+import { FORMA_DI_UN_ID } from './notifiche';
+
 /** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
     id: string;
@@ -95,11 +97,16 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
  * Segna letta una notifica della persona: PATCH /cornice/notifiche/<id>/lettura con `{"letta": true}`. La cornice la chiama col
  * clic che apre la risorsa di una notifica non letta, e subito dopo apre un'altra pagina: la richiesta parte nello stesso giro
  * di chi la chiama, e con `keepalive` il browser la porta in fondo anche se la pagina se ne va. L'id sta nel suo pezzo
- * dell'indirizzo, codificato. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un errore, come una
- * che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se manca, o ha un'altra
- * forma, non è un errore, è senza segno.
+ * dell'indirizzo, e prima di chiedere deve avere la forma che la rotta vuole: `encodeURIComponent` non tocca i punti, e con
+ * `.` o `..` il browser porterebbe la richiesta, col gettone CSRF, a un'altra rotta. Senza quella forma la richiesta non
+ * parte, ed è una lettura non riuscita. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un
+ * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
+ * manca, o ha un'altra forma, non è un errore, è senza segno.
  */
 export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
+    if (!FORMA_DI_UN_ID.test(id)) {
+        throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
+    }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
     const corpo = (await chiama(indirizzo, {
         method: 'PATCH',

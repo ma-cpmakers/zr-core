@@ -315,6 +315,19 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
 }
 
 /**
+ * I dati non sono più recenti di quelli con cui la cornice ha chiesto una rotta: sono quelli, o sono dello stesso workspace e,
+ * col segno da tutte e due le parti, il loro è lo stesso o più indietro. È più stretta di `nonPiuRecentiDi`, che guarda
+ * l'istante della risposta: fra la richiesta e la risposta c'è una finestra, e dei dati letti lì non si sa se vedono già ciò
+ * che la rotta ha fatto — il loro segno è preso prima della lettura dal backoffice, l'istante della risposta dopo. Questi
+ * invece sono stati letti prima che la rotta fosse chiesta, e non lo vedono di certo.
+ */
+function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean {
+    const [deiDati, diAllora] = [segno(dati.aggiornati_il), segno(saputo.con.aggiornati_il)];
+
+    return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && deiDati !== undefined && diAllora !== undefined && deiDati <= diAllora);
+}
+
+/**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
  * niente di lì. Ogni modulo del registro si apre come uno `disponibile`, e se in quel workspace non è attivo lo dice il modulo,
  * come quando lo si apre dal menu. Un modulo «Presto» resta senza destinazione: quello lo dice il registro, non i dati.
@@ -446,13 +459,18 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Una notifica è letta nell'elenco arrivato per ultimo se quell'elenco non è più recente della sua lettura: letto dalla
     // parte server prima, la dà ancora da leggere; letto dopo, vale ciò che dice (può essere tornata da leggere, da un'altra
     // scheda). Senza un istante da una parte vale solo per l'elenco che era in pagina al clic. E dal numero dei dati se ne
-    // toglie una per ogni lettura di cui i dati non sono più recenti: letti dopo, la contano già letta. Solo se l'elenco del
-    // clic era del workspace dei dati: con due schede su due workspace quella notifica non è fra le loro.
+    // toglie una per ogni lettura partita con quei dati, o con dati più recenti di loro: letti prima del clic, la contano
+    // ancora. Dai dati letti dopo il clic non si toglie niente: dopo `segnata_il` la contano già letta, e fra il clic e
+    // `segnata_il` — la visita che parte col clic, mentre la lettura è in volo — non si può sapere, perché il loro segno è
+    // preso prima della lettura dal backoffice e `segnata_il` dopo la sua risposta. Lì vale il loro numero: al più una in più
+    // fino alla visita dopo, mai una in meno. Per un elenco non serve la stessa cautela: dare per letta una notifica due
+    // volte non cambia niente, togliere due volte dal numero sì. Solo se l'elenco del clic era del workspace dei dati: con
+    // due schede su due workspace quella notifica non è fra le loro.
     const [letteConUnClic, setLetteConUnClic] = useState<LettaConUnClic[]>([]);
     const conLeLetture = (letture: LettaConUnClic[]) => {
         const lettaNellElenco = (id: string) => caricate !== undefined && letture.some((una) => una.id === id && (caricate.il !== undefined && una.il !== undefined ? caricate.il <= una.il : caricate.richiesta === una.elenco));
         const elenco = notifiche.elenco.map((notifica) => (!notifica.letta && lettaNellElenco(notifica.id) ? { ...notifica, letta: true } : notifica));
-        const tolteDaiDati = letture.filter((una) => una.workspace === dati.workspace.slug && nonPiuRecentiDi(dati, una)).length;
+        const tolteDaiDati = letture.filter((una) => una.workspace === dati.workspace.slug && nonPiuRecentiDeiDatiDi(dati, una)).length;
         // Il numero sulla campanella viene dai dati, e non è mai meno delle non lette di un elenco più recente: una può essere
         // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra
         // visita, con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio.

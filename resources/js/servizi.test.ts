@@ -49,15 +49,36 @@ describe('segnaLetta', () => {
     it.each([
         ['uat-n69', '/cornice/notifiche/uat-n69/lettura'],
         ['Uat_n-3', '/cornice/notifiche/Uat_n-3/lettura'],
-        ['a/b', '/cornice/notifiche/a%2Fb/lettura'],
-        ['../letture', '/cornice/notifiche/..%2Fletture/lettura'],
-        ['a?b#c', '/cornice/notifiche/a%3Fb%23c/lettura'],
-    ])('l\'id «%s» sta nel suo pezzo dell\'indirizzo e non ne esce (sprint 22 · T2.1)', async (id, indirizzo) => {
+        ['a'.repeat(64), `/cornice/notifiche/${'a'.repeat(64)}/lettura`],
+    ])('l\'id «%s» ha la forma che la rotta vuole, e sta nel suo pezzo dell\'indirizzo (sprint 22 · T2.1)', async (id, indirizzo) => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
         await segnaLetta(id);
         expect(fetchFinto.mock.calls.map(([chiesto]) => chiesto)).toStrictEqual([indirizzo]);
+    });
+
+    // Review della PR #44, R6: `encodeURIComponent` non tocca i punti, e con `.` o `..` il browser normalizza l'indirizzo: la
+    // `PATCH`, col gettone CSRF, arriverebbe a un'altra rotta. Prima di chiedere l'id ha la forma che la rotta vuole —
+    // lettere, cifre, `-` e `_`, da 1 a 64 —, o la richiesta non parte.
+    it.each([
+        ['.'],
+        ['..'],
+        [''],
+        ['a.b'],
+        ['a/b'],
+        ['../letture'],
+        ['a?b#c'],
+        ['a b'],
+        ['à'],
+        ['uat-n69\n'],
+        ['a'.repeat(65)],
+    ])('un id che non ha la forma che la rotta vuole («%s») non fa partire la richiesta, ed è una lettura non riuscita (review della PR #44, R6)', async (id) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(segnaLetta(id)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        expect(fetchFinto).not.toHaveBeenCalled();
     });
 
     it.each([

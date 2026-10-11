@@ -28,10 +28,12 @@ use Zeiras\Core\Segno;
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
  * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
  *
- * L'elenco e «segna tutte» dicono anche quando, col segno della parte server (`Segno::adesso()`, lo stesso orologio e la stessa
- * forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`; la lettura quando il backoffice ha
- * risposto per l'ultima volta, `segnate_il`. La cornice li confronta col segno dei dati per non tornare a ciò che è più
- * vecchio. Le risposte d'errore non portano un istante.
+ * L'elenco, «segna tutte» e la lettura di una notifica dicono anche quando, col segno della parte server (`Segno::adesso()`,
+ * lo stesso orologio e la stessa forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`;
+ * «segna tutte» quando il backoffice ha risposto per l'ultima volta, `segnate_il`; la lettura di una notifica dopo la
+ * risposta del backoffice, `segnata_il`. La cornice li confronta fra loro e col segno dei dati per non tornare a ciò che è
+ * più vecchio. L'elenco dice anche di quale workspace è, `workspace`: lo slug di quello della sessione. Le risposte d'errore
+ * non portano un istante.
  */
 final class NotificheDellaCornice
 {
@@ -82,25 +84,13 @@ final class NotificheDellaCornice
     private const MARGINE = 5;
 
     /**
-     * Il file del registro dei moduli che la parte server legge: `null` è quello del pacchetto
-     * (resources/registro/prodotti.json), sempre. Un altro lo dà solo un test, con leggiIlRegistroDa().
-     */
-    private static ?string $fileDelRegistro = null;
-
-    /** @var list<array<string, mixed>>|null le voci del registro, lette una volta per processo */
-    private static ?array $registro = null;
-
-    /**
-     * Fa leggere il registro dei moduli da un altro file, o di nuovo da quello del pacchetto (`null`). Serve ai test della
-     * parte server, per darle un registro di prova: un frontend non la chiama, e nessuna configurazione sceglie il file.
+     * Le voci del registro dei moduli, lette una volta per processo da quello del pacchetto
+     * (resources/registro/prodotti.json), sempre: nessun metodo e nessuna configurazione sceglie un altro file. Un test
+     * che vuole un registro di prova scrive questa proprietà con la reflection.
      *
-     * @internal
+     * @var list<array<string, mixed>>|null
      */
-    public static function leggiIlRegistroDa(?string $file): void
-    {
-        self::$fileDelRegistro = $file;
-        self::$registro = null;
-    }
+    private static ?array $registro = null;
 
     /**
      * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
@@ -165,8 +155,11 @@ final class NotificheDellaCornice
     /**
      * PATCH /cornice/notifiche/{notifica}/lettura: segna letta o non letta una notifica della persona nel workspace
      * (io.notifiche.lettura.modifica). `letta` della risposta è ciò che il backoffice ha segnato, non ciò che si è chiesto.
-     * `segnata_il` è l'istante preso dopo la risposta del backoffice: da lì la notifica è com'è stata segnata, e dei dati letti
-     * fin lì possono contarla ancora com'era. Preso prima, dei dati letti nel frattempo la conterebbero due volte.
+     * `segnata_il` è l'istante preso dopo la risposta del backoffice: da lì la notifica è com'è stata segnata. Un elenco letto
+     * fin lì può darla ancora com'era, e la cornice la mostra com'è stata segnata. Per il numero delle non lette non basta:
+     * dei dati letti fra la richiesta e quell'istante possono contarla già com'è stata segnata, o ancora com'era — il loro
+     * segno è preso prima della lettura dal backoffice (Cornice) —, e la cornice toglie dal numero solo per i dati che aveva
+     * quando ha chiesto.
      */
     public function lettura(Request $richiesta, string $notifica): JsonResponse
     {
@@ -352,7 +345,7 @@ final class NotificheDellaCornice
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
-        self::$registro ??= json_decode((string) file_get_contents(self::$fileDelRegistro ?? __DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+        self::$registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
 
         foreach (self::$registro as $voce) {
             foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {

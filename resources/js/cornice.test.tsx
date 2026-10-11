@@ -1822,8 +1822,9 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('2');
         expect(naviga).toHaveBeenCalledTimes(1);
 
-        // Dati letti prima della lettura e arrivati dopo la contano ancora: il numero resta sceso.
-        await mostra(pagina(letti(alSecondo(6), 3)));
+        // I dati del clic ridati in un altro oggetto, con lo stesso segno: è la stessa lettura, di prima del clic, e la contano
+        // ancora. Il numero resta sceso.
+        await mostra(pagina(letti(alSecondo(3), 3)));
         expect(campanella()).toBe('2');
 
         // Un elenco letto prima che la lettura fosse segnata la dà ancora da leggere: nel pannello è letta lo stesso.
@@ -1841,6 +1842,55 @@ describe('il pannello delle notifiche', () => {
         await mostra(pagina(letti(alSecondo(10), 2)));
         expect(campanella()).toBe('2');
         expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n69')]);
+    });
+
+    // Review della PR #44, R1. Il segno dei dati è preso prima della loro lettura dal backoffice, `segnata_il` dopo la risposta
+    // alla lettura: dei dati chiesti mentre la lettura era in volo — la visita che parte col clic — hanno il segno fra quello
+    // dei dati del clic e `segnata_il`, e possono contare la notifica già letta come ancora da leggere. Non si può sapere, e
+    // non si toglie niente: vale il loro numero, al più uno in più fino alla visita dopo, mai uno in meno.
+    it.each([
+        ['la contano già letta: la campanella non scende una seconda volta, e l\'avviso dice ancora il vero', 2, '2', 'Notifiche, 2 non lette'],
+        ['la contano ancora: una in più fino alla visita dopo, e l\'avviso non resta a dire il numero di prima', 3, '3', ''],
+    ])('dei dati letti dopo il clic e prima di `segnata_il` %s (review della PR #44, R1)', async (_come, contate, sullaCampanella, dalLettore) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(8))));
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        await mostra(pagina(letti(alSecondo(3), 3)));
+
+        await apre(0);
+        expect([campanella(), detto()]).toStrictEqual(['2', 'Notifiche, 2 non lette']);
+
+        await mostra(pagina(letti(alSecondo(6), contate)));
+        expect([campanella(), detto()]).toStrictEqual([sullaCampanella, dalLettore]);
+    });
+
+    it('i dati della visita arrivano prima della risposta della lettura e la contano già letta: alla risposta il numero non scende un\'altra volta, e l\'avviso tace (review della PR #44, R1)', async () => {
+        const lettura = inAttesa();
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], () => lettura.promessa));
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        await mostra(pagina(letti(alSecondo(3), 3)));
+
+        await apre(0);
+        expect(campanella()).toBe('3');
+        await mostra(pagina(letti(alSecondo(6), 2)));
+        expect(campanella()).toBe('2');
+
+        await lettura.arriva(segnata('uat-n69', alSecondo(8)));
+        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+    });
+
+    // Review della PR #44, R6. L'id di una notifica arriva dal backoffice, e la parte server controlla solo che sia un testo:
+    // con `.` o `..` il browser manderebbe la `PATCH`, col gettone CSRF, a un'altra rotta. La lettura non parte, e il resto
+    // del clic non cambia.
+    it.each(['.', '..'])('un clic su una notifica non letta il cui id è «%s» apre la sua risorsa, e la lettura non parte: il numero resta com\'è (review della PR #44, R6)', async (id) => {
+        const fetchFinto = rotteDelClic([{ data: [{ ...delContatto, id }, dellaPipeline, dellaNota, dellaScheda], lettoIl: alSecondo(5) }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={letti(alSecondo(3), 3)} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
     });
 
     it('senza gli istanti della parte server — una di prima della v1.12.0, dati senza segno — il numero scende per i dati con cui la lettura è partita, e con dati nuovi vale il loro numero (sprint 22 · T2.4)', async () => {
