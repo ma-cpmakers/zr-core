@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
+use Zeiras\Core\Http\NotificheDellaCornice;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -3358,3 +3359,53 @@ it('il README dice che dalla v1.12.0 il segnaposto e l\'aiuto della ricerca dico
     'quando tornano larghi' => ['ricerca', 'Tornano larghi, una fonte alla volta, quando la ricerca del backoffice trova altro'],
     'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
 ]);
+
+// Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
+// che cambiano nei test di un frontend, e dove stanno quelle della ricerca (S2); per chi le notifiche le legge da sé, la forma di
+// `ids` nel browser, quale `slug` dare a `destinazioneDellaNotifica`, e che un id non è un permesso (S3); che cosa conta la
+// campanella coi dati senza `non_lette` (S5).
+
+it('il README dice ciò che la seconda lettura della PR #44 ha chiesto: le cinque cose che cambiano nei test di un frontend e dove stanno le due della ricerca, la forma di `ids` e lo `slug` per chi le notifiche le legge da sé, che un id non è un permesso, e che cosa conta la campanella senza `non_lette` (sprint 22 · T4; review della PR #44, seconda lettura: S2, S3, S5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = [
+        'punto' => suUnaRiga($punto[0] ?? ''),
+        'paragrafo' => paragrafoFuoriDallaCornice($readme),
+        'campanella' => suUnaRiga(puntoDellaCampanella($readme)),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'S2: quante sono, e di chi' => ['punto', 'Per i test di un frontend che passa alla `v1.12.0` cambiano cinque cose: tre sono delle notifiche, e sono quelle che seguono; due sono della ricerca, e stanno nel punto «La ricerca», qui sotto'],
+    'S2: le due della ricerca' => ['punto', 'senza `workspace` in una risposta finta di `POST /cornice/ricerca` la ricerca mostra il suo errore, e il segnaposto e l\'aiuto del campo hanno testi nuovi'],
+    'S2: dove cercare le due della ricerca' => ['punto', 'le due della ricerca cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca'],
+    'S3: un array di PHP, e la forma di `ids` nell\'elenco' => ['paragrafo', 'da dare al browser come `ids` della notifica. È un array di PHP, e vuoto in JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto)'],
+    'S3: chi lo dà al browser lo converte' => ['paragrafo', 'chi lo dà al browser lo converte in un oggetto (`(object)`), e nel browser `ids` ha una forma sola'],
+    'S3: un id non è un permesso' => ['paragrafo', 'Un id non è un permesso nemmeno qui: il metodo non controlla che chi riceve la notifica possa vedere quella risorsa, e lo decide il modulo che apre la pagina'],
+    'S3: quale slug' => ['paragrafo', 'Lo `slug` da dare a `destinazioneDellaNotifica`, per notifiche lette così, è quello del workspace della sessione nella richiesta che le ha lette (lo `slug` di `Sessione::workspace()` di zr-auth), e la parte server del frontend lo manda insieme a loro, come `GET /cornice/notifiche` manda `workspace`'],
+    'S3: non lo slug dei dati di una pagina rimasta indietro' => ['paragrafo', 'Non è `dati.workspace.slug`: con due schede su due workspace, una pagina rimasta indietro che ricarica le sole notifiche riceve quelle dell\'altro workspace, e coi suoi dati le aprirebbe nel proprio'],
+    'S5: vale coi dati che portano `non_lette`' => ['campanella', 'Vale coi dati che portano `non_lette`, come li dà `Cornice::dati()`'],
+    'S5: senza, le non lette del pannello di qualunque workspace' => ['campanella', 'con dati scritti a mano senza `non_lette`, che il tipo ammette, la pagina non ha un numero suo, e la campanella conta le non lette che il pannello ha caricato, di qualunque workspace sia l\'elenco'],
+]);
+
+it('il README non dice più che nei test di un frontend cambiano tre cose in tutto, e il punto «La ricerca» a cui rimanda sta sotto «Le notifiche» (review della PR #44, seconda lettura: S2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $notifiche = strpos($readme, "\n- **Le notifiche** ");
+    $ricerca = strpos($readme, "\n- **La ricerca** ");
+
+    expect(str_contains(suUnaRiga($readme), 'cambiano tre cose'))->toBe(false)
+        ->and($notifiche)->toBeInt()
+        ->and($ricerca)->toBeInt()
+        ->and($notifiche)->toBeLessThan((int) $ricerca);
+});
+
+it('ciò che il README dice della forma di `ids` è vero: il metodo dà un array di PHP, che vuoto in JSON è `[]` e con un id un oggetto, e l\'elenco lo manda sempre come oggetto (review della PR #44, seconda lettura: S3)', function () {
+    $sorgente = (string) file_get_contents(__DIR__.'/../../src/Http/NotificheDellaCornice.php');
+
+    expect(json_encode(NotificheDellaCornice::idsDellaNotifica(null, 'com.zeiras.crm.nota.creata', null)))->toBe('[]')
+        ->and(json_encode((object) NotificheDellaCornice::idsDellaNotifica(null, 'com.zeiras.crm.nota.creata', null)))->toBe('{}')
+        ->and(json_encode(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', ['persona_id' => 'p-1'])))->toBe('{"persona_id":"p-1"}')
+        // L'elenco: un oggetto anche quando è vuoto.
+        ->and(substr_count($sorgente, "'ids' => (object) self::idsDellaNotifica("))->toBe(1);
+});
