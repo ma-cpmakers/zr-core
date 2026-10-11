@@ -2439,7 +2439,9 @@ it('la CI lancia il tsc stretto nel passo dei tipi, a ogni giro: una volta, dopo
         // Nessuna condizione sul passo, e un suo errore ferma il giro: vale in ogni giro della matrice. Senza `shell:` il passo
         // gira con `bash -e`, come lo lancia il caso qui sotto.
         ->and(preg_match('/^\s+(if|continue-on-error|shell):/m', $passo[0] ?? ''))->toBe(0)
-        ->and(substr_count($ci, 'continue-on-error'))->toBe(0);
+        ->and(substr_count($ci, 'continue-on-error'))->toBe(0)
+        // Né una shell di partenza per tutto il workflow o per il job, che potrebbe non avere `-e` (review, N2).
+        ->and(substr_count($ci, 'defaults:'))->toBe(0);
 });
 
 /**

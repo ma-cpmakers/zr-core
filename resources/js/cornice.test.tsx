@@ -2369,8 +2369,8 @@ describe('la voce attiva della barra', () => {
     });
 });
 
-// Sprint 19 · review della PR #23, R3: ciò che la cornice decide da sé — il selettore, il numero sulla campanella, «Segna
-// tutte come lette», le voci del menu del profilo — non lo cambia una prop con lo stesso nome arrivata fuori dal tipo, con uno
+// Sprint 19 · review della PR #23, R3 e N1: ciò che la cornice decide da sé — il selettore, «Nuovo workspace», il numero sulla
+// campanella, «Segna tutte come lette», le voci del menu del profilo — non lo cambia una prop con lo stesso nome arrivata fuori dal tipo, con uno
 // spread, nemmeno quando la cornice non ha niente da dare: come nella `v1.8.0`, dove la sua prop valeva `undefined` e copriva
 // quella del frontend.
 describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decide la cornice', () => {
@@ -2381,10 +2381,12 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
             unreadCount: 99,
             onMarkAllRead: () => {},
             accountItems: [{ label: 'Voce del frontend' }],
+            onNewWorkspace: () => {},
         };
-        // Senza aziende, senza non lette, senza notifiche caricate, con `piano`: la cornice non dà nessuna delle quattro.
+        // Senza aziende, senza non lette, senza notifiche caricate, con `piano`: la cornice non dà nessuna delle cinque.
         await mostra(<Cornice {...(fuoriDalTipo as object)} dati={dati} onLogout={esciSenzaEffetto} piano />);
 
+        expect(appShell).toHaveBeenCalled();
         const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
         expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
     });
