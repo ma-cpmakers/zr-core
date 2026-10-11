@@ -77,7 +77,7 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
@@ -92,6 +92,11 @@ una riga senza `id` fa fallire `Cornice::dati()`, se è di un'azienda dell'elenc
 workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso
 `slug` in `aziende`, se c'è. Il workspace dei dati può non stare in nessuna azienda — per esempio se il suo slug è cambiato
 dopo l'ingresso —, e allora nei dati il suo `id` non c'è.
+`nuovo_workspace` dice se la persona può creare un workspace in quell'azienda, e c'è dalla `v1.9.0`. È `true` se in almeno
+una riga di `io.workspace.elenca` di quell'azienda il `ruolo` della persona è `proprietario` o `amministratore`; in ogni
+altro caso è `false`: solo `membro`, un ruolo che zr-core non conosce, una riga senza `ruolo`, un'azienda senza workspace.
+Il `ruolo` in un'azienda non vale per un'altra. Sta nella riga dei workspace che `Cornice::dati()` legge già, quindi per
+saperlo non parte nessuna lettura in più, e al browser arriva solo il booleano, mai il `ruolo`.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -218,7 +223,11 @@ cornice === null ? pagina : (
 - **Il selettore «Azienda › workspace»** in cima alla sidebar elenca le aziende dei dati coi loro workspace, nell'ordine
   in cui arrivano; scegliere un workspace porta allo stesso prodotto nel workspace scelto (`<indirizzo>/w/<slug>`), o alla
   Dashboard da una pagina di app.zeiras.com. Senza aziende, o se il workspace dei dati non sta in nessuna, il workspace
-  resta testo. «Nuovo workspace» non c'è finché zr-home non ha la sua pagina. Ogni workspace ha il pallino del suo colore:
+  resta testo. In fondo al selettore c'è «Nuovo workspace» quando `nuovo_workspace` è `true` nell'azienda del workspace
+  dei dati (dalla `v1.9.0`): apre `https://app.zeiras.com/w/<slug>/nuovo-workspace`, con lo slug del workspace dei dati, ed
+  è una pagina di app.zeiras.com da ogni prodotto. Il dialogo è di zr-home, e se la persona può davvero lo decide il
+  backoffice (`io.workspace.crea`): la cornice mostra solo la strada. Un frontend non deve fare niente per averlo. Senza
+  `nuovo_workspace` nei dati, o con `false`, il pulsante non c'è. Ogni workspace ha il pallino del suo colore:
   lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
   in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. I colori
   sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
