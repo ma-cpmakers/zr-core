@@ -3337,3 +3337,24 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'i dati interi restano sul server' => ['Al browser vanno questi `ids` e non `dati`: i `dati` interi di una notifica restano sul server del frontend'],
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
+
+// Sprint 22 · T8 (voce #1728): il segnaposto e l'aiuto della ricerca dicono board e cartelle. Il README lo dice nel punto «La
+// ricerca» — i testi nuovi nelle tre lingue, quelli di prima, e come un frontend li trova nei suoi test —, e nel punto «Il menu
+// Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+
+it('il README dice che dalla v1.12.0 il segnaposto e l\'aiuto della ricerca dicono board e cartelle: nel punto «La ricerca» i testi nuovi nelle tre lingue, quelli di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.12.0` il segnaposto del campo e l\'aiuto che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle'],
+    'i due testi in italiano' => ['ricerca', '«Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search boards and folders…» e «Search boards and folders: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas: escribe al menos 2 caracteres.»'],
+    'i testi di prima' => ['ricerca', 'Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
+    'come trovarli nei test di un frontend' => ['ricerca', 'un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
+    'quando tornano larghi' => ['ricerca', 'Tornano larghi, una fonte alla volta, quando la ricerca del backoffice trova altro'],
+    'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
+]);

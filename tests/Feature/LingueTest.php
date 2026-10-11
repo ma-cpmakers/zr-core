@@ -199,6 +199,9 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * il nome unico di Project Management, CRM e gli altri (regola di Luciano dell'11/10/2026; sprint 21 · T1), e il design system
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
  * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
+ * Il segnaposto e l'invito della ricerca dicono ciò che la ricerca trova oggi, board e cartelle (zr-pm, note 10255 e 10288 del
+ * progetto; sprint 22 · T8): il design system dice ancora progetti, schede e contatti, che la ricerca non trova. Tornano larghi,
+ * una fonte alla volta, quando il backoffice le dà.
  *
  * @return array<string, string>
  */
@@ -206,7 +209,8 @@ function italianoDecisoPrimaDelDesignSystem(): array
 {
     return [
         'products' => 'Moduli',
-        'searchHint' => 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
+        'searchHint' => 'Cerca board e cartelle: scrivi almeno 2 caratteri.',
+        'searchPlaceholder' => 'Cerca board e cartelle…',
     ];
 }
 
@@ -576,22 +580,49 @@ function testiCheNonDiconoModuli(array $lingue): array
     return $trovati;
 }
 
-it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima (sprint 21 · T1.1, T1.3, T1.4)', function (string $chiave, array $attesi) {
+it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima; l\'aiuto della ricerca, che la aveva, dalla v1.12.0 dice board e cartelle (sprint 21 · T1.1, T1.4; sprint 22 · T8.2)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
 })->with([
     'T1.1: il nome del menu' => ['products', ['Moduli', 'Modules', 'Módulos']],
-    'T1.3: l\'aiuto della ricerca' => ['searchHint', [
-        'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
-        'Search across all modules: type at least 2 characters.',
-        'Busca en todos los módulos: escribe al menos 2 caracteres.',
-    ]],
     'T1.4: la notifica di un modulo attivato o disattivato' => ['notificationTitle.com.zeiras.app.modificata', [
         'Un modulo è stato attivato o disattivato',
         'A module was turned on or off',
         'Se activó o desactivó un módulo',
     ]],
+]);
+
+// Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto). Il segnaposto del campo di ricerca e l'invito sotto il
+// campo dicono ciò che la ricerca trova oggi, board e cartelle, con le parole che zr-core usa già per i due tipi
+// (`pm.board.board`, `pm.board.cartelle`). Gli altri testi della ricerca restano com'erano.
+
+it('nelle tre lingue il segnaposto e l\'invito della ricerca dicono board e cartelle (sprint 22 · T8.1, T8.2)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
+})->with([
+    'T8.1: il segnaposto' => ['searchPlaceholder', ['Cerca board e cartelle…', 'Search boards and folders…', 'Busca tableros y carpetas…']],
+    'T8.2: l\'invito' => ['searchHint', [
+        'Cerca board e cartelle: scrivi almeno 2 caratteri.',
+        'Search boards and folders: type at least 2 characters.',
+        'Busca tableros y carpetas: escribe al menos 2 caracteres.',
+    ]],
+]);
+
+it('in ogni lingua il segnaposto e l\'invito della ricerca usano le parole dei due tipi e non nominano ciò che la ricerca non trova: progetti, schede, contatti, «tutti i moduli»; i puntini del segnaposto sono il carattere «…» (sprint 22 · T8.1, T8.2)', function (string $codice, array $nonTrova) {
+    $testi = lingueDellaCornice()[$codice];
+    $iDue = mb_strtolower($testi['searchPlaceholder'].' '.$testi['searchHint']);
+
+    expect(array_values(array_filter($nonTrova, fn (string $parola): bool => str_contains($iDue, $parola))))->toBe([])
+        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.board'])))->toBe(2)
+        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.cartelle'])))->toBe(2)
+        ->and(mb_substr($testi['searchPlaceholder'], -1))->toBe('…')
+        ->and(substr_count($testi['searchPlaceholder'], '.'))->toBe(0);
+})->with([
+    'italiano' => ['it', ['progett', 'sched', 'contatt', 'tutti i moduli']],
+    'inglese' => ['en', ['project', 'card', 'contact', 'all modules']],
+    'spagnolo' => ['es', ['proyecto', 'tarjeta', 'contacto', 'todos los módulos']],
 ]);
 
 it('nessun testo delle lingue di zr-core chiama «prodotti» o «app» i moduli, e ogni lingua ha le sue parole da cercare (sprint 21 · T1.4)', function () {
@@ -626,15 +657,20 @@ it('il controllo dice che per una lingua che non conosce non ha parole da cercar
         ->toBe(['fr: nessuna parola da cercare per questa lingua']);
 });
 
-it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta (sprint 21 · T1)', function () {
+it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta: il nome del menu, e il segnaposto e l\'invito della ricerca (sprint 21 · T1; sprint 22 · T8)', function () {
     $delDesignSystem = testiItalianiDelDesignSystem();
     $conIlTestoDiPrima = lingueDellaCornice();
     $conIlTestoDiPrima['it']['products'] = 'Prodotti';
+    $colSegnapostoDelDesignSystem = lingueDellaCornice();
+    $colSegnapostoDelDesignSystem['it']['searchPlaceholder'] = $delDesignSystem['searchPlaceholder'];
 
-    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint'])
+    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint', 'searchPlaceholder'])
         // Il design system dice ancora il testo di prima: quando dirà «Moduli», questa riga è rossa e lo scostamento si toglie.
         ->and($delDesignSystem['products'])->toBe('Prodotti')
         ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i prodotti: scrivi almeno 2 caratteri.')
+        // Il segnaposto del design system promette ciò che la ricerca non trova ancora: nella cornice è un problema.
+        ->and($delDesignSystem['searchPlaceholder'])->toBe('Cerca progetti, schede, contatti…')
+        ->and(problemiDelleLingue($colSegnapostoDelDesignSystem))->toBe(['it: «searchPlaceholder» non è il testo deciso prima del design system'])
         // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
         ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
 });
