@@ -3137,7 +3137,10 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],
-    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id che il percorso del registro chiede per il tipo della notifica, nella voce della sua app'],
+    // Review della PR #51, R2: dalla `v1.13.0` un tipo può avere più percorsi, e gli id sono quelli di uno solo, quello che si apre.
+    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, nella voce della sua app'],
+    'più percorsi, nella riga della rotta (review della PR #51, R2)' => ['rotta', 'dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un\'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`'],
+    'vuoto anche con una destinazione (review della PR #51, R2)' => ['rotta', 'e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un\'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`'],
     'la forma del valore' => ['rotta', 'e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64)'],
     'che cosa non passa' => ['rotta', 'gli altri id, il resto di `dati` e `soggetto` non arrivano al browser'],
     'senza destinazione, o senza dati' => ['rotta', 'una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore'],
@@ -3203,6 +3206,9 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
     // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
     'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
+    // Review della PR #51, R1: dalla `v1.13.0` non scende nemmeno per i dati del clic, se l'elenco del clic era più vecchio di loro.
+    'solo con un elenco non più vecchio dei dati (review della PR #51, R1)' => ['punto', 'Dalla `v1.13.0` scende solo se l\'elenco in pagina al clic non era più vecchio dei dati del clic'],
+    'quando un elenco non è più vecchio (review della PR #51, R1)' => ['punto', 'L\'elenco non è più vecchio dei dati quando il suo `aggiornati_il` non viene prima del loro; senza i due segni, solo quando è stato chiesto con quello stesso oggetto `dati`'],
     'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
     'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
@@ -3289,11 +3295,14 @@ it('il README dice quali notifiche del CRM aprono una risorsa e dove — diciott
 })->with([
     'un\'opportunità' => ['punto', 'Dalla `v1.13.0` una di un\'opportunità — nuova, modificata o assegnata — apre `https://crm.zeiras.com/w/<slug>/opportunita/<id>`, un contatto o un\'azienda assegnati la loro pagina'],
     'un\'attività, senza un id' => ['punto', 'e una di un\'attività — nuova, modificata, eliminata o assegnata — la pagina «Da fare» (`https://crm.zeiras.com/w/<slug>/da-fare`), senza un id: un\'attività non ha una pagina sua'],
-    'una nota, la cosa più specifica' => ['punto', 'Una nota apre la cosa più specifica a cui è attaccata: l\'opportunità se ne ha una, altrimenti il contatto, altrimenti l\'azienda (fino alla `v1.12.0` apriva sempre il contatto)'],
+    'una nota, la cosa più specifica' => ['punto', 'Una nota apre la cosa più specifica a cui è attaccata: l\'opportunità se ne ha una, altrimenti il contatto, altrimenti l\'azienda (fino alla `v1.12.0` apriva solo il contatto, e senza quello la pagina delle notifiche)'],
     'diciotto tipi' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM'],
     'quando non ha dove andare' => ['punto', 'le mancano gli id di ogni percorso del suo tipo'],
     'il metodo, con più percorsi' => ['readme', 'Dalla `v1.13.0` un tipo può avere più percorsi, e il metodo dà gli id del primo che `dati` soddisfa per intero, e solo quelli: per una nota legata a un\'opportunità e a un contatto la sola `[\'trattativa_id\' => \'<id>\']`'],
     'un `ids` vuoto non è «nessuna destinazione»' => ['readme', 'Per un tipo il cui percorso non chiede un id — un\'attività, che apre «Da fare» — dà `[]`: un `ids` vuoto non vuol dire che la notifica non ha una destinazione, e se ce l\'ha lo dice `destinazioneDellaNotifica`'],
+    // Review della PR #51, R7 e R11: che cosa dà il metodo quando nessun percorso è intero, e quali dei nove tipi oggi arrivano.
+    'se nessun percorso è intero (review della PR #51, R7)' => ['readme', 'Se `dati` non ne soddisfa nessuno per intero dà gli id in forma del primo percorso, che da soli non aprono niente'],
+    'i cinque eventi che oggi non arrivano (review della PR #51, R11)' => ['punto', 'Per il contratto nemmeno i cinque eventi di opportunità e attività generano ancora notifiche per i colleghi: delle nove arrivano le quattro «assegnata»'],
     'un percorso senza segnaposto, nel registro' => ['readme', 'Un percorso può non avere un segnaposto (`/da-fare`, per un\'attività): allora non chiede un id'],
     '`altrimenti`, e l\'ordine' => ['readme', 'Dalla `v1.13.0` una riga può avere anche `altrimenti`, la lista dei percorsi che si provano dopo `percorso`, in ordine, quando la risorsa può stare in più pagine: si apre il primo che ha tutti i suoi id — per una nota `/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`'],
     'un tipo che non è un evento' => ['readme', 'Un tipo che non è un evento, come ciò che il CRM manda a chi diventa responsabile (`crm.persona.assegnata`), è scritto com\'è nel backoffice, senza `com.zeiras.` davanti'],
@@ -3309,6 +3318,14 @@ it('il README non dice più che i tipi con una destinazione sono nove, né che o
         ->and(substr_count($readme, 'una di una nota il contatto a cui è attaccata'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'la pagina che si apre con un clic (il percorso dopo `/w/<slug>`, con l\'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare in più pagine, i percorsi in ordine, dal più specifico)'))->toBe(1);
+});
+
+it('il README non dice più ciò che la review della PR #51 ha trovato falso: che una nota apriva sempre il contatto, e che gli `ids` sono gli id che il percorso del registro chiede per il tipo (review della PR #51, R2 e R10)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(substr_count($readme, 'apriva sempre il contatto'))->toBe(0)
+        ->and(substr_count($readme, 'i soli id che il percorso del registro chiede per il tipo della notifica'))->toBe(0)
+        ->and(substr_count($readme, '`{"persona_id": "…"}` per una nota)'))->toBe(0);
 });
 
 // Sprint 22 · T6 (voce #1726): con due schede su due workspace la ricerca è di quello della sessione, e la risposta lo dice
