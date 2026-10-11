@@ -1217,6 +1217,9 @@ function notificheColChiECosaSbagliato(): array
         'il nome di autore è una lista' => [['autore' => ['nome' => ['UAT Bruno']]] + $notifica],
         'risorsa_nome è un numero' => [['risorsa_nome' => 7] + $notifica],
         'risorsa_nome è true' => [['risorsa_nome' => true] + $notifica],
+        // Due valori «falsi» che non sono un testo: un controllo fatto con `empty()` li prenderebbe per «non c'è».
+        'risorsa_nome è 0' => [['risorsa_nome' => 0] + $notifica],
+        'risorsa_nome è false' => [['risorsa_nome' => false] + $notifica],
         'risorsa_nome è una lista' => [['risorsa_nome' => ['UAT Clienti']] + $notifica],
         'risorsa_nome è un oggetto' => [['risorsa_nome' => ['nome' => 'UAT Clienti']] + $notifica],
         'per_me è un testo' => [['per_me' => 'true'] + $notifica],

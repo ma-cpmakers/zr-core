@@ -2161,6 +2161,27 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
 ]);
 
+// Sprint 20 · T1.8 (review della PR #24, R1): per una notifica su un'app il backoffice dà in `risorsa_nome` il codice dell'app. Il
+// nome da mostrare lo dà `risorsaDellaNotifica`, che è la funzione del pannello, e il README lo dice nello stesso paragrafo.
+
+it('il README dice, nel paragrafo di titoloDellaNotifica, la funzione che dà la riga sotto il titolo, una frase per cosa: nome e argomenti, da quale versione, che cosa dà, che cosa legge della notifica, che cosa fa per una notifica su un\'app, e quando non dà niente (sprint 20 · T1.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $altrove = str_replace("\nFuori dalla cornice ", "\nDentro la cornice ", $readme);
+
+    expect(str_contains(paragrafoFuoriDallaCornice($readme), $frase))->toBe(true)
+        ->and(str_contains(paragrafoFuoriDallaCornice($readme), '`titoloDellaNotifica(tipo, lingua)`'))->toBe(true)
+        ->and(str_contains(suUnaRiga($altrove), $frase))->toBe(true)
+        ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
+})->with([
+    'nome, argomenti e versione' => ['Dalla `v1.10.0` si importa anche `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo'],
+    'che cosa dà' => ['dà il nome della cosa a cui la notifica si riferisce, ed è la funzione che usa il pannello'],
+    'che cosa legge' => ['`notifica` è la notifica com\'è, del backoffice o di `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`'],
+    'il nome com\'è' => ['Di norma dà `risorsa_nome` senza gli spazi intorno'],
+    'una notifica su un\'app' => ['per una notifica su un\'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell\'app (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`'],
+    'quando non dà niente' => ['Non dà niente (`undefined`) quando il nome non c\'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del registro'],
+    'mai il codice' => ['lì la riga non si mostra, e il codice mai'],
+]);
+
 // Sprint 16 · T7 (voce #1621): il registro dice per ogni voce se il prodotto è in arrivo per chi non ha una sessione
 // (`in_arrivo`), e non è «Presto»: il README dice la differenza subito dopo il paragrafo di `registro` e `nomeDellaVoce`.
 
@@ -2583,6 +2604,8 @@ it('il README dice, nel punto «Le notifiche», le tre regole dei dati nuovi, da
     'le due schede' => ['`per_me` dice la scheda: `true` in «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due'],
     'null non è false' => ['`null` vuol dire che il backoffice non lo sa, non che la notifica è per altri'],
     'un nome vuoto' => ['Un nome vuoto o di soli spazi non si mostra'],
+    'una notifica su un\'app (T1.8)' => ['Per una notifica su un\'app (un tipo che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell\'app (`pm`), e la seconda riga porta il nome del prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice'],
+    'un codice che il registro non ha (T1.8)' => ['con un codice che il registro non ha la seconda riga non c\'è'],
     'finché il backoffice non li manda' => ['Finché il backoffice non manda i tre dati il pannello resta com\'era'],
     'per_me resta null' => ['anche dopo `per_me` è `null` finché il backoffice non conosce il destinatario diretto di una notifica'],
 ]);
@@ -2597,22 +2620,28 @@ it('il README dice, nella riga di GET /cornice/notifiche, i tre dati nuovi: da q
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     $cosaDice = fn (string $testo): array => array_map(fn (string $frase) => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), $frase), [
         'la versione e che cosa sono' => 'dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce',
+        'il codice di un\'app (T1.8)' => 'per una notifica su un\'app è il codice dell\'app, com\'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`',
         'per_me, e null che non è false' => '`per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`)',
         'quando sono null' => 'ognuna è `null` quando il backoffice dà `null` o non manda la chiave',
         'di autore solo il nome' => 'di `autore` passa solo il nome',
         'un\'altra forma è un errore' => 'una delle tre con una forma che il contratto non ammette',
         'mai tolta in silenzio' => 'mai una chiave tolta in silenzio',
     ]);
-    $tutto = fn (bool $detto): array => array_fill_keys(['la versione e che cosa sono', 'per_me, e null che non è false', 'quando sono null', 'di autore solo il nome', 'un\'altra forma è un errore', 'mai tolta in silenzio'], $detto);
+    $tutto = fn (bool $detto): array => array_fill_keys(['la versione e che cosa sono', 'il codice di un\'app (T1.8)', 'per_me, e null che non è false', 'quando sono null', 'di autore solo il nome', 'un\'altra forma è un errore', 'mai tolta in silenzio'], $detto);
 
     // Il README con la riga dell'elenco e quella della ricerca scambiate di rotta: ogni frase c'è, ma nella riga di un'altra rotta.
     expect($cosaDice($readme))->toBe($tutto(true))
         ->and($cosaDice(strtr($readme, [$elenco => $ricerca, $ricerca => $elenco])))->toBe($tutto(false));
 });
 
-it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, e senza resta com\'era: lo dicono il file delle rotte finte e la testa della pagina (sprint 20 · T1.7)', function () {
+it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifica su un\'app col codice dell\'app, e senza resta com\'era: lo dicono il file delle rotte finte e la testa della pagina (sprint 20 · T1.7, T1.8)', function () {
     $conChiECosa = "...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true) },";
     $perTutti = "...detti('Bruno Neri', null, false) },";
+    // La notifica su un'app c'è solo con `?chi=1`: senza, le notifiche d'esempio sono le quattro di prima.
+    $suUnApp = "...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),";
+
+    expect(scritteNellaPaginaDiProva('rotte-finte.ts', [$suUnApp, "tipo: 'com.zeiras.app."]))->toBe([$suUnApp => 1, "tipo: 'com.zeiras.app." => 1])
+        ->and(scritteNellaPaginaDiProva('demo.tsx', ['una su un\'app, col nome del prodotto al posto del codice']))->toBe(['una su un\'app, col nome del prodotto al posto del codice' => 1]);
 
     expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti }', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
         ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti }' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
