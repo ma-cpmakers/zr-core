@@ -47,13 +47,14 @@ function senzaCommenti(string $codice): string
 
 /**
  * Una sessione fatta a mano, senza il finto: l'accesso e, se c'è, il workspace, coi dati di accessi.crea e gettoni.crea.
+ * La lingua è quella del profilo all'ingresso: zr-auth la mette nella sessione com'è.
  *
  * @param  array{id: string, nome: string, slug: string}|null  $workspace
  * @return array{accesso: string, workspace: string} i due gettoni
  */
-function sessioneAMano(?array $workspace): array
+function sessioneAMano(?array $workspace, string $lingua = 'en'): array
 {
-    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'en', 'fuso_orario' => 'Europe/Rome'];
+    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => $lingua, 'fuso_orario' => 'Europe/Rome'];
     $gettoni = ['accesso' => 'zr_'.Str::random(48), 'workspace' => 'zr_'.Str::random(48)];
     $scade = now()->addHour()->toIso8601String();
     Sessione::apri(['id' => 'uat-accesso', 'gettone' => ['gettone' => $gettoni['accesso'], 'scade_il' => $scade, 'utente' => $utente]]);
