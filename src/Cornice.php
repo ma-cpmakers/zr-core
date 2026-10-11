@@ -2,6 +2,8 @@
 
 namespace Zeiras\Core;
 
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
@@ -32,6 +34,9 @@ final class Cornice
 {
     /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra che `lingua()` e `dati()` hanno in comune. */
     private const LETTURA = 'zr-core.io-mostra';
+
+    /** La forma di una lingua: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_` (`it`, `pt-BR`, `zh-Hans-CN`). */
+    private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
 
     /**
      * null senza una sessione entrata in un workspace: la pagina non ha un workspace, e il backoffice non si chiama. Il
@@ -96,11 +101,14 @@ final class Cornice
      * vale lo decide zr-auth. Senza la riga la lingua letta dalla sessione prima di `dati()` è ancora quella dell'ingresso, e
      * dopo un cambio nel profilo la prima pagina esce con la cornice nella lingua nuova e il contenuto nella vecchia.
      *
-     * null senza una sessione, o se la lingua della sessione non è un testo; senza un workspace è la lingua della sessione, e
-     * il backoffice non si chiama. Costa una lettura, io.mostra, e in una richiesta in cui c'è anche `dati()` nessuna in più:
-     * è la stessa (vedi `lettura()`). Se il backoffice non risponde non lancia, perché la lingua di una pagina non diventi un
-     * 500: dà la lingua che la sessione ha, e l'errore lo lancia `dati()`, se in quella richiesta c'è. GettoneRifiutato passa:
-     * la sessione è finita, e lo tratta il frontend come da ogni altra chiamata.
+     * null senza una sessione, o se la lingua della sessione non ha la forma di una lingua (FORMA_DI_UNA_LINGUA, 35 caratteri
+     * al più): ciò che esce da qui va a `App::setLocale`, che su una barra, due punti di fila o un byte nullo lancia dopo aver
+     * già scritto `app.locale`, e la sessione prende la lingua da io.mostra senza guardarne la forma. `dati()` porta invece la
+     * lingua della sessione com'è. Senza un workspace è la lingua della sessione, e il backoffice non si chiama. Costa una
+     * lettura, io.mostra, e in una richiesta in cui c'è anche `dati()` nessuna in più: è la stessa (vedi `lettura()`). Se il
+     * backoffice non risponde non lancia, perché la lingua di una pagina non diventi un 500: dà la lingua che la sessione ha,
+     * lascia un avviso nel log, e l'errore lo lancia `dati()`, se in quella richiesta c'è. GettoneRifiutato passa: la
+     * sessione è finita, e lo tratta il frontend come da ogni altra chiamata.
      */
     public static function lingua(): ?string
     {
@@ -120,7 +128,7 @@ final class Cornice
 
         $lingua = $utente['lingua'] ?? null;
 
-        return is_string($lingua) ? $lingua : null;
+        return is_string($lingua) && strlen($lingua) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) === 1 ? $lingua : null;
     }
 
     /**
@@ -129,11 +137,13 @@ final class Cornice
      * sessione), il segno, l'esito (le non lette, o l'errore al loro posto) e se una `dati()` l'ha già usata. Della risposta
      * di io.mostra non tiene altro. Sta sulla richiesta e non in una proprietà statica, che passerebbe alla richiesta dopo
      * dove il processo resta vivo; e porta di chi è, perché le non lette di un workspace non escano nei dati di un altro se
-     * la sessione cambia a metà richiesta.
+     * la sessione cambia a metà richiesta. Senza l'id della persona non si sa di chi è: la lettura tenuta non si usa.
      *
      * `lingua()` usa la lettura che c'è, sempre. `dati()` la usa una volta sola: la seconda `dati()` rilegge, com'era prima
      * che la lettura si tenesse, e i suoi dati hanno un altro segno. Si tengono anche BackofficeNonRisponde ed ErroreApi,
      * perché una lettura fallita non riparta nella stessa richiesta; GettoneRifiutato non si prende, e non si tiene niente.
+     * L'errore preso per `lingua()`, che non lo lancia, va nel log come avviso: in una richiesta senza `dati()` non ne
+     * resterebbe traccia.
      *
      * @param  array<string, mixed>  $utente  la persona della sessione
      * @param  array<string, mixed>  $workspace  il workspace della sessione
@@ -144,7 +154,7 @@ final class Cornice
         $di = [$utente['id'] ?? null, $workspace];
         $tenuta = request()->attributes->get(self::LETTURA);
 
-        if (is_array($tenuta) && $tenuta['di'] === $di && ! ($perIDati && $tenuta['nei_dati'])) {
+        if (is_array($tenuta) && $di[0] !== null && $tenuta['di'] === $di && ! ($perIDati && $tenuta['nei_dati'])) {
             if ($perIDati) {
                 $tenuta['nei_dati'] = true;
                 request()->attributes->set(self::LETTURA, $tenuta);
@@ -162,12 +172,28 @@ final class Cornice
             $esito = $io['notifiche_non_lette'];
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
+            if (! $perIDati) {
+                self::avvisa($errore);
+            }
         }
 
         $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati];
         request()->attributes->set(self::LETTURA, $lettura);
 
         return $lettura;
+    }
+
+    /**
+     * L'avviso per l'errore che `lingua()` prende e non lancia. Dell'errore dice solo il tipo: il suo messaggio può portare
+     * l'indirizzo del backoffice. Un log che non scrive non ferma la lingua della pagina.
+     */
+    private static function avvisa(BackofficeNonRisponde|ErroreApi $errore): void
+    {
+        try {
+            Log::warning('zr-core, lingua della pagina: la lettura di io.mostra è fallita ('.get_debug_type($errore).'): resta la lingua della sessione');
+        } catch (Throwable) {
+            // La riga non lancia.
+        }
     }
 
     /**

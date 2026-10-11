@@ -1849,6 +1849,9 @@ const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-sr
 /** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. */
 const CSP_MINIMA_NEL_README = "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com";
 
+/** La politica più stretta, che dalla v1.8.0 esce al posto di una CSP della risposta che non si può mandare, com'è nel README. */
+const CSP_PIU_STRETTA_NEL_README = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox";
+
 /**
  * Ciò che «Le intestazioni di sicurezza» del README dice sotto quel titolo di terzo livello, fino al titolo dopo, su una riga
  * sola; con `null`, ciò che dice prima del primo titolo di terzo livello. Vuoto se la sezione o il titolo non ci sono.
@@ -2035,7 +2038,7 @@ it('il commento di config/zr-core.php e quello della classe dicono che frame-src
     'la classe' => ['src/Http/IntestazioniSicurezza.php', '`frame-src` nella CSP di tutti non c\'è', 'chi incornicia anche la propria origine scrive anche `\'self\'`'],
 ]);
 
-it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CSP», coi suoi cinque titoli; e ogni CSP che scrive per intero è quella di tutti, la stessa della classe (sprint 16 · T3.1)', function () {
+it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CSP», coi suoi cinque titoli; e ogni CSP che scrive per intero è quella di tutti o la politica più stretta, le stesse della classe (sprint 16 · T3.1; sprint 18 · T3.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match_all('/^## (.+)$/m', $readme, $titoli);
     preg_match('/^## Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', $readme, $sezione);
@@ -2044,9 +2047,10 @@ it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CS
 
     expect(array_slice($titoli[1], -3))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP'])
         ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
-        // Due volte: da sola, e nel test che un modulo ricopia.
-        ->and($scritte[0])->toBe([CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
-        ->and(IntestazioniSicurezza::CSP)->toBe(CSP_DI_TUTTI_NEL_README);
+        // La più stretta una volta, dove il README dice lo scarto; quella di tutti due: da sola, e nel test che un modulo ricopia.
+        ->and($scritte[0])->toBe([CSP_PIU_STRETTA_NEL_README, CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
+        ->and(IntestazioniSicurezza::CSP)->toBe(CSP_DI_TUTTI_NEL_README)
+        ->and((new ReflectionClassConstant(IntestazioniSicurezza::class, 'PIU_STRETTA'))->getValue())->toBe(CSP_PIU_STRETTA_NEL_README);
 });
 
 it('il README dice, in «La CSP», che la CSP intera la dà la classe, e tiene il minimo per la cornice per chi non la registra: solo a lui dice di mettere da sé frame-ancestors, base-uri e form-action (sprint 16 · T3.2)', function () {

@@ -19,7 +19,9 @@ final class RicercaDellaCornice
     /**
      * POST /cornice/ricerca con `{q}`: `q` da 2 a 100 caratteri, come vuole ricerca.elenca, senza gli spazi ai bordi (anche in
      * un frontend senza TrimStrings); altrimenti 422 e il backoffice non si chiama. La parola si legge solo dal corpo JSON: ciò
-     * che una persona cerca non deve stare in un indirizzo, e un `q` dell'indirizzo non conta.
+     * che una persona cerca non deve stare nell'indirizzo della richiesta del browser, e un `q` dell'indirizzo non conta. Al
+     * backoffice va ancora nell'indirizzo: ricerca.elenca è una GET, finché il contratto non dà un metodo col termine nel
+     * corpo.
      */
     public function cerca(Request $richiesta): JsonResponse
     {

@@ -122,15 +122,28 @@ App::setLocale(Cornice::lingua() ?? config('app.locale'));
 
 Dà la lingua della persona già aggiornata dal profilo: legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la
 lingua della sessione. Senza una sessione dà `null`; con la sessione ma senza un workspace dà la lingua della sessione,
-senza chiamare il backoffice. È la lingua del profilo com'è: se il modulo non ce l'ha, quale mettere al suo posto lo decide
-il modulo. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c'è; dove c'è non ne costa una
-in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()` invece di rifarla, e
-`Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non lette e il segno dei
-dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una notifica segnata come
-letta in quella richiesta — arriva alla campanella con la lettura dopo. Se il backoffice non risponde `Cornice::lingua()`
-non lancia: dà la lingua della sessione, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia `Cornice::dati()`, se
-in quella richiesta la chiami, senza chiamare `io.mostra` un'altra volta. `GettoneRifiutato` invece passa anche da
+senza chiamare il backoffice. È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di
+lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`, e a `App::setLocale` non arriva mai un valore che
+Laravel rifiuta. Una lingua ben fatta che il modulo non ha passa com'è: Laravel prende i testi dal suo `fallback_locale`,
+e se il modulo vuole altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice
+non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
+invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
+lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una
+notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per la lingua e
+il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo
+se il controller dà la risposta del backoffice a `Sessione::aggiorna`. Se il backoffice non risponde `Cornice::lingua()`
+non lancia: dà la lingua della sessione, lascia nel log una riga d'avviso col tipo dell'errore, mai il suo messaggio, e
+l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami,
+senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
+
+La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
+rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione, e la riga costerebbe una
+lettura del backoffice in più a ogni richiesta (una ricerca ne farebbe due), prima del controller e fino al tempo d'attesa
+di zr-auth; su una rotta che tiene il blocco della sessione quel tempo passerebbe a blocco preso. Un middleware del gruppo
+`web` passa anche dalle rotte della cornice: quali richieste mostrano una pagina lo sa il modulo. E la lettura della riga
+parte prima che la lingua della pagina sia messa: il `dettaglio` di un errore del backoffice che `Cornice::dati()` poi
+rilancia è nella lingua che l'app aveva in quel momento, di solito la predefinita.
 
 Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere
 `Sessione::utente()` dopo, funziona come prima. Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza
@@ -154,7 +167,7 @@ esce.
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo}], aggiornati_il}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
-| `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST |
+| `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo}]}`: le board (`tipo` `board.board`) e le cartelle (`board.cartelle`) del workspace col nome che contiene `q`, nell'ordine del backoffice (per titolo), la prima pagina; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dal server del modulo al backoffice la parola viaggia ancora nell'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
@@ -307,7 +320,9 @@ cornice === null ? pagina : (
   Una notifica e «Vedi tutte» aprono `https://app.zeiras.com/notifiche`.
 - **La ricerca** (Ctrl/Cmd+K) chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola
   nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell'header `X-XSRF-TOKEN`, come «Segna tutte come lette»: dalla
-  `v1.8.0` ciò che la persona cerca non sta più nell'indirizzo di una richiesta, e il frontend non cambia niente. Una
+  `v1.8.0` ciò che la persona cerca non sta più nell'indirizzo della richiesta del browser. Il tratto dal server del modulo
+  al backoffice resta una GET con la parola nell'indirizzo, finché il backoffice non dà un metodo col termine nel corpo. Nel
+  codice del frontend non cambia niente; un suo test che chiama la GET passa alla POST. Una
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
   risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
   Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
@@ -530,12 +545,15 @@ sola. Vale anche per una classe del frontend rimasta accanto a questa: se scrive
 porta tutte e due.
 
 Una sola non resta: quella che non si può mandare — una lista, un oggetto che non si legge come testo, un testo con un a
-capo in mezzo o con un byte nullo. È un errore nel codice che ha scritto la risposta, e all'invio PHP si fermerebbe lì,
-fuori dai middleware: un 500 senza intestazioni. Dalla `v1.8.0` la classe la scarta, e la risposta esce col suo stato, il
-suo corpo, le altre sue CSP e quella del modulo. Lo scarto lascia nel log un avviso, nella riga degli altri scarti della
-CSP: dice il tipo del valore, mai il valore. La pagina esce quindi senza quella CSP: se doveva stringere quella del modulo,
-l'avviso è il solo segno che manca, e l'errore si corregge nel codice del modulo. Ciò che PHP sa scrivere resta com'è:
-anche un testo con un a capo in fondo, che PHP all'invio taglia.
+capo in mezzo o con un byte nullo. È un errore nel codice che ha scritto la risposta; all'invio PHP su quel valore avvisa
+o si ferma, e Laravel di ogni avviso fa un'eccezione: l'invio si interrompe fuori dai middleware, ed è un 500 senza
+intestazioni. Dalla `v1.8.0` la classe la scarta e al suo posto mette la politica più stretta, una volta sola per risposta:
+`default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox`. La risposta esce col suo stato,
+il suo corpo, le altre sue CSP e quella del modulo; ma con quella politica il browser non carica e non esegue niente di
+quella pagina, finché l'errore non è corretto nel codice del modulo: una pagina non esce mai con una CSP più larga di
+quella che il suo codice aveva chiesto. Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP e per
+primo: dice il tipo del valore, mai il valore. Ciò che PHP sa scrivere resta com'è: anche un testo con un a capo in fondo,
+che PHP all'invio taglia.
 
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 

@@ -78,8 +78,9 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
 
 /**
  * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
- * sta nel corpo, mai nell'indirizzo: ciò che una persona cerca non deve restare dove restano gli indirizzi. `segnale` annulla
- * la richiesta.
+ * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
+ * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
+ * corpo). `segnale` annulla la richiesta.
  */
 export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
     const indirizzo = '/cornice/ricerca';
