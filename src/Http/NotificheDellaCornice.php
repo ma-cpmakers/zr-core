@@ -256,7 +256,10 @@ final class NotificheDellaCornice
         if (! is_array($notifica) || ! is_string($notifica['id'] ?? null) || ! is_string($notifica['creata_il'] ?? null)
             || ! array_key_exists('letta_il', $notifica) || ! ($notifica['letta_il'] === null || is_string($notifica['letta_il']))
             || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))
-            || ! is_string($notifica['tipo'] ?? null)) {
+            || ! is_string($notifica['tipo'] ?? null)
+            || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
+            || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
+            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
@@ -264,7 +267,7 @@ final class NotificheDellaCornice
             'id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
-            'per_me' => $notifica['per_me'] ?? null,
+            'per_me' => $notifica['per_me'] ?? false,
         ];
     }
 }
