@@ -117,11 +117,11 @@ function datiAttesi(string $aggiornatiIl, array $cambi = []): array
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
         'aziende' => [
-            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
+            ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']], 'nuovo_workspace' => false],
             ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [
                 ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
                 ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
-            ]],
+            ], 'nuovo_workspace' => false],
         ],
         'non_lette' => 3,
         'aggiornati_il' => $aggiornatiIl,
@@ -227,11 +227,11 @@ it('le aziende sono quelle della persona nell\'ordine del backoffice, ognuna coi
     backoffice(aziendeEWorkspace());
 
     expect(Cornice::dati()['aziende'])->toBe([
-        ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]],
+        ['id' => 'az-b', 'nome' => 'UAT agenzia', 'workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']], 'nuovo_workspace' => false],
         ['id' => 'az-a', 'nome' => 'UAT Studio', 'workspace' => [
             ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
             ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
-        ]],
+        ], 'nuovo_workspace' => false],
     ]);
     expect(richiesteA('/v1/io/aziende'))->toHaveCount(1)
         ->and(richiesteA('/v1/io/workspace'))->toHaveCount(2);
@@ -257,6 +257,81 @@ it('ogni workspace delle aziende porta il suo id, quello di io.workspace.elenca,
     // Una richiesta per metodo, due per i workspace (le due pagine dell'elenco), e nessun'altra.
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
         ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']);
+});
+
+// Sprint 19 · T1 (voce #1669). Ogni azienda dice se la persona può crearvi un workspace (`nuovo_workspace`): la cornice lo
+// ricava dal `ruolo` che io.workspace.elenca dà riga per riga, dentro la stessa azienda. Aprono solo `proprietario` e
+// `amministratore`, i ruoli a cui il backoffice lascia creare un workspace (io.workspace.crea): ogni altro valore, anche uno
+// nuovo, vale «no». Al browser arriva il booleano, dopo `workspace`: di un workspace escono ancora solo id, nome e slug, e per
+// saperlo non parte nessuna lettura in più, perché il ruolo sta nella riga che la cornice legge già.
+
+/**
+ * Il backoffice con quelle aziende e quei workspace, per backoffice(): di ogni workspace l'azienda e il `ruolo` della persona,
+ * e la riga com'è nel contratto. Il workspace al posto 0 è `uat-ws-0`, e così via; una riga senza il secondo valore non ha `ruolo`.
+ *
+ * @param  list<string>  $aziende  gli id, nell'ordine di io.aziende.elenca
+ * @param  list<array{0: string, 1?: mixed}>  $workspace  per ogni riga di io.workspace.elenca: l'azienda, e il ruolo se c'è
+ * @return array<string, mixed>
+ */
+function aziendeCoiRuoli(array $aziende, array $workspace): array
+{
+    return [
+        '/v1/io/aziende' => ['data' => array_map(fn (string $id) => ['id' => $id, 'nome' => "UAT {$id}"], $aziende), 'successivo' => null],
+        '/v1/io/workspace' => ['data' => array_map(
+            fn (array $riga, int $posto) => [...workspaceAlPosto($posto), ...(array_key_exists(1, $riga) ? ['ruolo' => $riga[1]] : []), 'azienda_id' => $riga[0]],
+            $workspace,
+            array_keys($workspace),
+        ), 'successivo' => null],
+    ];
+}
+
+/**
+ * Ciò che di un workspace di aziendeCoiRuoli() esce nei dati: id, nome e slug, e nient'altro.
+ *
+ * @return array{id: string, nome: string, slug: string}
+ */
+function workspaceAlPosto(int $posto): array
+{
+    return ['id' => "uat-ws-{$posto}", 'nome' => "UAT workspace {$posto}", 'slug' => "uat-ws-{$posto}"];
+}
+
+it('un\'azienda dice che la persona può creare un workspace solo se in una sua riga di io.workspace.elenca il ruolo è proprietario o amministratore; il booleano sta dopo i workspace, che restano id, nome e slug (sprint 19 · T1.1)', function (array $ruoli, bool $puo) {
+    sessioneAMano(marketing());
+    backoffice(aziendeCoiRuoli(['az-a'], array_map(fn (array $ruolo) => ['az-a', ...$ruolo], $ruoli)));
+
+    expect(Cornice::dati()['aziende'])->toBe([
+        ['id' => 'az-a', 'nome' => 'UAT az-a', 'workspace' => array_map(workspaceAlPosto(...), array_keys($ruoli)), 'nuovo_workspace' => $puo],
+    ]);
+})->with([
+    'proprietario' => [[['proprietario']], true],
+    'amministratore' => [[['amministratore']], true],
+    'membro' => [[['membro']], false],
+    'un ruolo che zr-core non conosce' => [[['ospite']], false],
+    'un ruolo scritto in un altro modo' => [[['Proprietario']], false],
+    'una riga senza ruolo' => [[[]], false],
+    'un ruolo null' => [[[null]], false],
+    // Con un confronto largo `true` sarebbe uguale a ogni testo non vuoto.
+    'un ruolo che è true' => [[[true]], false],
+    'un ruolo che è una lista' => [[[['proprietario']]], false],
+    'nessun workspace' => [[], false],
+    'membro e poi amministratore' => [[['membro'], ['amministratore']], true],
+    'proprietario e poi membro' => [[['proprietario'], ['membro']], true],
+    'membro, membro e un ruolo che zr-core non conosce' => [[['membro'], ['membro'], ['ospite']], false],
+]);
+
+it('il ruolo vale dentro la sua azienda: non passa a un\'altra, e quello di un workspace di un\'azienda che l\'elenco non ha non apre niente; le letture del backoffice restano quattro (sprint 19 · T1.1)', function () {
+    sessioneAMano(marketing());
+    // «az-z» non è fra le aziende della persona: il suo workspace resta fuori, col suo ruolo.
+    backoffice(['/v1/io' => ioMostra(3), ...aziendeCoiRuoli(['az-b', 'az-a', 'az-c'], [['az-a', 'proprietario'], ['az-b', 'membro'], ['az-z', 'amministratore'], ['az-b', 'ospite']])]);
+
+    expect(Cornice::dati()['aziende'])->toBe([
+        ['id' => 'az-b', 'nome' => 'UAT az-b', 'workspace' => [workspaceAlPosto(1), workspaceAlPosto(3)], 'nuovo_workspace' => false],
+        ['id' => 'az-a', 'nome' => 'UAT az-a', 'workspace' => [workspaceAlPosto(0)], 'nuovo_workspace' => true],
+        ['id' => 'az-c', 'nome' => 'UAT az-c', 'workspace' => [], 'nuovo_workspace' => false],
+    ]);
+    // Una richiesta per metodo, e nessun'altra: sono le letture della v1.8.0.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
+        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
 });
 
 it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del workspace con una richiesta sola, senza tagli (sprint 5 · T1.1)', function (int $nonLette) {

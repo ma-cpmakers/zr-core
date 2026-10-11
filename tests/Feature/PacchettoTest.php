@@ -2210,7 +2210,7 @@ it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni 
         ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
         ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
 })->with([
-    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}]}], non_lette, aggiornati_il}`'],
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}`'],
     'l\'id è quello di io.workspace.elenca' => ['Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`'],
     'nessuna lettura in più' => ['sta nella riga che `Cornice::dati()` legge già, e non costa una lettura in più'],
     'dall\'id viene il colore' => ['È dall\'`id` che la cornice ricava il colore del workspace nel selettore'],
@@ -2329,3 +2329,59 @@ it('il tsc di zr-core si ferma su una dichiarazione o su un parametro mai usati,
     'una dichiarazione mai usata' => ['noUnusedLocals'],
     'un parametro mai usato' => ['noUnusedParameters'],
 ]);
+
+// Sprint 19 · T1 (voce #1669): «Nuovo workspace» in fondo al selettore, per chi può crearne uno. Il README lo dice dove chi
+// legge lo cerca: in «La parte server» la forma dei dati con `nuovo_workspace` e la regola che lo dà; nel punto del selettore
+// di «La cornice» quando il pulsante c'è, che cosa apre, di chi è il dialogo, chi decide, e che un frontend non deve fare niente.
+
+it('il README dice, in «La parte server», la forma dei dati con nuovo_workspace e la regola che lo dà: chi, da quale lettura, che cosa vale false, da quale versione (sprint 19 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Con «La parte server» e «La cornice» scambiate la frase c'è ancora, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'la forma dei dati' => ['aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}]'],
+    'che cosa dice' => ['`nuovo_workspace` dice se la persona può creare un workspace in quell\'azienda'],
+    'da quale versione' => ['in quell\'azienda, e c\'è dalla `v1.9.0`'],
+    'da quale lettura' => ['in almeno una riga di `io.workspace.elenca` di quell\'azienda'],
+    'chi' => ['il `ruolo` della persona è `proprietario` o `amministratore`'],
+    'che cosa vale false' => ['in ogni altro caso è `false`: solo `membro`, un ruolo che zr-core non conosce, una riga senza `ruolo`, un\'azienda senza workspace'],
+    'il ruolo non passa a un\'altra azienda' => ['Il `ruolo` in un\'azienda non vale per un\'altra'],
+    'nessuna lettura in più' => ['per saperlo non parte nessuna lettura in più'],
+    'al browser solo il booleano' => ['al browser arriva solo il booleano, mai il `ruolo`'],
+]);
+
+it('il README dice, nel punto del selettore di «La cornice», quando c\'è «Nuovo workspace», che cosa apre, di chi è il dialogo, chi decide, e che un frontend non deve fare niente (sprint 19 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $selettore = 'Il selettore «Azienda › workspace»';
+    // Il README col punto del selettore e quello della campanella scambiati di nome: la frase c'è, ma dove si legge della campanella.
+    $scambiati = strtr($readme, ["- **{$selettore}**" => '- **La campanella**', '- **La campanella**' => "- **{$selettore}**"]);
+
+    expect(str_contains(puntoDellaCornice($readme, $selettore), $frase))->toBe(true)
+        ->and(substr_count($readme, "- **{$selettore}**"))->toBe(1)
+        ->and(substr_count($readme, '- **La campanella**'))->toBe(1)
+        ->and(str_contains(suUnaRiga($scambiati), $frase))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($scambiati, $selettore), $frase))->toBe(false);
+})->with([
+    'quando c\'è' => ['In fondo al selettore c\'è «Nuovo workspace» quando `nuovo_workspace` è `true` nell\'azienda del workspace dei dati'],
+    'da quale versione' => ['nell\'azienda del workspace dei dati (dalla `v1.9.0`)'],
+    'che cosa apre' => ['apre `https://app.zeiras.com/w/<slug>/nuovo-workspace`'],
+    'con quale slug' => ['con lo slug del workspace dei dati'],
+    'da ogni prodotto' => ['è una pagina di app.zeiras.com da ogni prodotto'],
+    'il dialogo è di zr-home' => ['Il dialogo è di zr-home'],
+    'chi decide è il backoffice' => ['se la persona può davvero lo decide il backoffice (`io.workspace.crea`)'],
+    'un frontend non deve fare niente' => ['Un frontend non deve fare niente per averlo'],
+]);
+
+it('il README non dice più che «Nuovo workspace» non c\'è finché zr-home non ha la sua pagina (sprint 19 · T1.5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'non c\'è finché zr-home non ha la sua pagina'))->toBe(false);
+});
+
+it('sulla pagina di prova del layout la persona può creare un workspace nell\'azienda dei dati, prima e dopo il cambio di nome del workspace (sprint 19 · T1.6)', function () {
+    $puo = "slug: 'uat-marketing' }], nuovo_workspace: true }],";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$puo, 'nuovo_workspace']))->toBe([$puo => 2, 'nuovo_workspace' => 2]);
+});

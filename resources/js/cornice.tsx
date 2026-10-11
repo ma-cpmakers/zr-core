@@ -25,8 +25,10 @@ export interface DatiDellaCornice {
      * Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace
      * dei dati non sta in nessuna, il workspace resta testo. Dall'`id` di un workspace viene il tono del suo pallino
      * (`tonoDelWorkspace`): è facoltativo, perché i dati scritti a mano nei test di un frontend restino validi, e senza non c'è tono.
+     * `nuovo_workspace` dice se la persona può creare un workspace in quell'azienda: lo ricava la parte server dal suo ruolo, che
+     * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
-    aziende?: { id: string; nome: string; workspace: { id?: string; nome: string; slug: string }[] }[];
+    aziende?: { id: string; nome: string; workspace: { id?: string; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[];
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number;
     /**
@@ -109,6 +111,9 @@ const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string
     company: '/azienda',
     notifiche: '/notifiche',
 };
+
+/** La pagina di zr-home da cui si crea un workspace: sta dentro un workspace, dopo il suo slug. */
+const paginaNuovoWorkspace = '/nuovo-workspace';
 
 /**
  * Il menu del profilo senza «Piano»: la lista che l'`AppShell` mette da sé, tolta quella voce. L'`AppShell` non ha un modo per
@@ -324,11 +329,15 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
 
     // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
     // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
-    // grafica); nessun «Nuovo workspace» finché zr-home non ha la sua pagina.
-    const conIlWorkspace = dati.aziende?.some((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug));
-    const companies = conIlWorkspace
+    // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
+    const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
+    const companies = delWorkspace
         ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => nelSelettore(ws)) }))
         : undefined;
+    // «Nuovo workspace» in fondo al selettore solo se la parte server dice che la persona può crearne uno in quell'azienda: proprio
+    // `true`, perché i dati di una parte server di prima non lo dicono. Apre la pagina di zr-home nel workspace dei dati, che è
+    // una pagina di app.zeiras.com anche da un prodotto: il dialogo è suo, e se la persona può davvero lo decide il backoffice.
+    const nuovoWorkspace = delWorkspace?.nuovo_workspace === true ? () => naviga(nelWorkspace(dashboard.indirizzo, dati.workspace.slug) + paginaNuovoWorkspace) : undefined;
 
     // Le notifiche si caricano a ogni apertura del pannello, non con la pagina. Conta l'ultima richiesta partita: una più vecchia
     // che risponde dopo non sovrascrive la lista. Dell'ultimo elenco arrivato restano le non lette, coi dati che la cornice aveva
@@ -510,6 +519,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
+            // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
+            {...(nuovoWorkspace ? { onNewWorkspace: nuovoWorkspace } : {})}
             // Il numero dei dati, e mai meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo
             // aprendo la campanella.
             unreadCount={nonLette}
