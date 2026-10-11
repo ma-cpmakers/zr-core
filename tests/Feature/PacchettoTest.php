@@ -2385,3 +2385,106 @@ it('sulla pagina di prova del layout la persona può creare un workspace nell\'a
 
     expect(scritteNellaPaginaDiProva('layout.tsx', [$puo, 'nuovo_workspace']))->toBe([$puo => 2, 'nuovo_workspace' => 2]);
 });
+
+// Sprint 19 · T2 (voce #1652): un frontend compila i sorgenti di zr-core col proprio tsconfig, e lì non li può correggere. Se
+// accende un'opzione di `tsc` più stretta di `strict` non deve fermarsi sui file del pacchetto: `tsconfig.stretto.json` accende
+// le nove opzioni sui sorgenti che si installano e sulle pagine di prova, che usano la cornice come un frontend; la CI lo lancia
+// a ogni giro, nel passo dei tipi; il README dice quali sono, e che cosa accetta `undefined`.
+
+/**
+ * Le nove opzioni di `tsc` più strette di `strict` che i sorgenti del pacchetto reggono, nell'ordine del file stretto.
+ *
+ * @return list<string>
+ */
+function opzioniStretteDiTsc(): array
+{
+    return [
+        'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'noImplicitReturns', 'noFallthroughCasesInSwitch', 'noImplicitOverride',
+        'noPropertyAccessFromIndexSignature', 'verbatimModuleSyntax', 'erasableSyntaxOnly', 'noUncheckedSideEffectImports',
+    ];
+}
+
+/** Il punto «I tipi» di «Come si installa in un frontend», su una riga sola: fino alla riga vuota. Vuoto se non c'è, o se sta sotto un altro titolo. */
+function puntoDeiTipi(string $readme): string
+{
+    preg_match('/^## Come si installa in un frontend$(.*?)(?=^## |\z)/ms', $readme, $sezione);
+    preg_match('/^\*\*I tipi\*\*.*?(?=^$|\z)/ms', $sezione[1] ?? '', $punto);
+
+    return suUnaRiga($punto[0] ?? '');
+}
+
+it('il file stretto di tsc accende le nove opzioni e nient\'altro, su ciò che guarda il tsc di base tolti i file di test, e non entra nello zip (sprint 19 · T2.1, T2.2)', function () {
+    $stretto = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.stretto.json'), true, flags: JSON_THROW_ON_ERROR);
+    $base = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    // Né `include` né `files`: guarda ciò che guarda il file di base, cioè i sorgenti che si installano e le pagine di prova. I
+    // file di test no: un loro errore fermerebbe il giro per file che non si installano.
+    expect($stretto)->toBe([
+        'extends' => './tsconfig.json',
+        'compilerOptions' => array_fill_keys(opzioniStretteDiTsc(), true),
+        'exclude' => ['resources/**/*.test.ts', 'resources/**/*.test.tsx'],
+    ])
+        ->and($base['include'])->toBe(['resources/js/**/*.ts', 'resources/js/**/*.tsx', 'resources/demo/**/*.ts', 'resources/demo/**/*.tsx'])
+        ->and(array_values(array_intersect(opzioniStretteDiTsc(), array_keys($base['compilerOptions']))))->toBe([])
+        ->and(preg_match('/^\/tsconfig\.stretto\.json\s+export-ignore$/m', (string) file_get_contents(__DIR__.'/../../.gitattributes')))->toBe(1);
+});
+
+it('la CI lancia il tsc stretto nel passo dei tipi, a ogni giro: una volta, dopo il tsc di base e prima di vitest (sprint 19 · T2.2)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    // Il passo: dal suo nome a quello del passo dopo.
+    preg_match('/^      - name: Dipendenze JS, tipi.*?(?=^      - name: |\z)/ms', $ci, $passo);
+
+    expect(substr_count($ci, 'npx tsc --noEmit -p tsconfig.stretto.json'))->toBe(1)
+        ->and(str_contains($passo[0] ?? '', "          npx tsc --noEmit\n          npx tsc --noEmit -p tsconfig.stretto.json\n          npx vitest run\n"))->toBe(true)
+        // Nessuna condizione sul passo, e un suo errore ferma il giro: vale in ogni giro della matrice.
+        ->and(preg_match('/^\s+(if|continue-on-error):/m', $passo[0] ?? ''))->toBe(0);
+});
+
+it('le opzioni di tsc che il README elenca in «I tipi» sono quelle che il file stretto accende, nello stesso ordine: tutte, e nessun\'altra (sprint 19 · T2.5)', function () {
+    $stretto = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.stretto.json'), true, flags: JSON_THROW_ON_ERROR);
+    // L'elenco: dai due punti dopo «le nove opzioni» al primo punto fermo.
+    preg_match('/le nove opzioni[^:]*: (.*?)\.(?= |$)/', puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), $elenco);
+    preg_match_all('/`([^`]+)`/', $elenco[1] ?? '', $nomi);
+
+    expect($nomi[1])->toBe(array_keys($stretto['compilerOptions']))
+        ->and($nomi[1])->toHaveCount(9);
+});
+
+it('il README dice, in «I tipi», una frase per cosa: con quali opzioni reggono i sorgenti, che un frontend le può accendere, che cosa accetta undefined e che cosa no (sprint 19 · T2.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDeiTipi($readme), $frase))->toBe(true)
+        ->and(substr_count($readme, "\n**I tipi**"))->toBe(1);
+})->with([
+    'chi li compila' => ['il frontend li compila col proprio `tsconfig`'],
+    'le opzioni di base' => ['Reggono `strict`, `noUnusedLocals` e `noUnusedParameters`'],
+    'da quale versione le nove' => ['dalla `v1.9.0`, le nove opzioni più strette'],
+    'chi le guarda' => ['che la CI di zr-core accende a ogni giro (il suo `tsconfig.stretto.json`, che nello zip non arriva)'],
+    'un frontend le può accendere' => ['Un frontend le può accendere senza fermarsi sui file di zr-core'],
+    'che cosa accetta undefined' => ['Con `exactOptionalPropertyTypes` ciò che il frontend dà alla cornice ed è facoltativo accetta `undefined`'],
+    'le props facoltative' => ['le props facoltative di `Cornice` e di `LayoutDellaCornice` (`product={undefined}`)'],
+    'le chiavi facoltative dei dati' => ['le chiavi facoltative dei dati della cornice (`aziende: undefined`)'],
+    'i tipi del design system no' => ['I tipi del design system (`index.d.ts`) no: lì una chiave che non si dà si omette'],
+    'che cosa è del design system' => ['le voci di `nav`, di `crumbs` e di `create` sono sue'],
+    'con skipLibCheck' => ['La misura è con `skipLibCheck`, come nei `tsconfig` dei frontend'],
+]);
+
+// T2.3: le pagine di prova stanno nel file stretto e scrivono `undefined` in ogni prop facoltativa di `Cornice` e di
+// `LayoutDellaCornice` e in ogni chiave facoltativa dei dati: se una non lo accetta, o se ne nasce una che lì manca, `tsc` si
+// ferma sulla pagina di prova. Qui, che quelle righe ci sono e che la pagina le dà davvero alla cornice.
+it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice e del layout e in ogni chiave facoltativa dei dati, e li danno alla cornice (sprint 19 · T2.3)', function (string $file, array $scritte) {
+    expect(scritteNellaPaginaDiProva($file, $scritte))->toBe(array_fill_keys($scritte, 1));
+})->with([
+    'la pagina della cornice' => ['demo.tsx', [
+        'type OgniFacoltativa<T> = { [K in keyof T as {} extends Pick<T, K> ? K : never]-?: undefined };',
+        '} satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;',
+        '} satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;',
+        '            {...propsScritteUndefined}',
+        'dati={{ ...datiScrittiUndefined, ...datiDiProva, ',
+    ]],
+    'la pagina del layout' => ['layout.tsx', [
+        'type OgniFacoltativa<T> = { [K in keyof T as {} extends Pick<T, K> ? K : never]-?: undefined };',
+        '} satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;',
+        '            {...propsScritteUndefined}',
+    ]],
+]);
