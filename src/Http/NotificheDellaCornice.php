@@ -134,7 +134,9 @@ final class NotificheDellaCornice
     /**
      * GET /cornice/notifiche: le notifiche del workspace dalla più recente, la prima pagina di io.notifiche.elenca.
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
-     * quanto il suo segno. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
+     * quanto il suo segno. Di `dati` di ogni notifica passano, in `ids`, i soli id che alla cornice servono per aprire la sua
+     * risorsa (`idDi()`): una notifica di un tipo che nel registro non ha una destinazione non ne ha, e se `dati` manca, o non è
+     * un oggetto, `ids` è vuoto e non è un guasto. Il registro dei moduli lo legge solo questa rotta. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
      * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
      * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
      */
@@ -149,7 +151,12 @@ final class NotificheDellaCornice
         }
 
         return new JsonResponse([
-            'data' => array_map(fn (mixed $notifica) => self::perLaCornice($notifica, 'GET /v1/io/notifiche'), $notifiche),
+            'data' => array_map(function (mixed $notifica): array {
+                $perLaCornice = self::perLaCornice($notifica, 'GET /v1/io/notifiche');
+
+                // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
+                return [...$perLaCornice, 'ids' => (object) self::idDi($perLaCornice['app'], $perLaCornice['tipo'], $notifica['dati'] ?? null)];
+            }, $notifiche),
             'aggiornati_il' => $aggiornatiIl,
             'workspace' => $workspace,
         ]);
@@ -286,11 +293,10 @@ final class NotificheDellaCornice
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
-     * Di `dati` passano, in `ids`, i soli id che alla cornice servono per aprire la risorsa della notifica (`idDi()`): una
-     * notifica di un tipo che nel registro non ha una destinazione non ne ha. `dati` non è fra le chiavi che fanno una notifica:
-     * se manca, o non è un oggetto, `ids` è vuoto, e non è un guasto.
+     * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
+     * l'elenco (`ids`), che è il solo a leggere il registro dei moduli. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: object}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -309,8 +315,6 @@ final class NotificheDellaCornice
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
-            // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
-            'ids' => (object) self::idDi($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null),
         ];
     }
 
@@ -320,7 +324,7 @@ final class NotificheDellaCornice
      * testo di lettere, cifre, `-` e `_`, da 1 a 64, la stessa che la rotta della lettura chiede all'id di una notifica. Solo le
      * coppie di `dati`, non quelle di un oggetto più dentro. Tutto il resto resta qui: gli altri id (quello di una nota, di una
      * lista, di una persona entrata nel workspace), `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani — una
-     * chiave nuova non arriva in pagina perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
+     * chiave nuova non arriva in pagina solo perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
      *
      * @return array<string, string>
      */
@@ -341,7 +345,8 @@ final class NotificheDellaCornice
      * Le chiavi degli id che il percorso di una notifica chiede, dal registro dei moduli del pacchetto
      * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
      * che il browser usa. La voce è quella dell'app della notifica, e il tipo si cerca intero. Nessuna chiave per un tipo che lì
-     * non ha una destinazione, per un'app che il registro non ha, o senza app.
+     * non ha una destinazione, per un'app che il registro non ha, o senza app; e nessuna per una voce «Presto», che il browser
+     * non apre: i suoi id non servono ad aprire niente.
      *
      * @return list<string>
      */
@@ -350,7 +355,7 @@ final class NotificheDellaCornice
         self::$registro ??= json_decode((string) file_get_contents(self::$fileDelRegistro ?? __DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
 
         foreach (self::$registro as $voce) {
-            foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
+            foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
 

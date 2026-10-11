@@ -466,8 +466,10 @@ pannello della cornice apre con un clic su quella notifica, ed è la funzione ch
 notifica di `GET /cornice/notifiche`: la funzione ne legge `app`, `tipo` e `ids`; `slug` è il workspace della sessione e
 `prodotti` lo stato dei moduli nel workspace, quelli dei dati della cornice (`dati.workspace.slug`, `dati.prodotti`). Non
 dà niente (`undefined`) quando la notifica non ha dove andare — vedi «Le notifiche», più sopra —, e allora si apre la
-pagina delle notifiche: mai un indirizzo composto a metà, nemmeno con uno `slug` che non ha la forma di uno slug
-(vuoto, `..`, con una barra): anche allora non dà niente. Le destinazioni stanno nel registro, non nel codice: la voce
+pagina delle notifiche: mai un indirizzo composto a metà, nemmeno con uno `slug` che non ha la forma di uno slug:
+minuscole e cifre, a pezzi uniti da un trattino (`acme`, `acme-marketing`), com'è lo slug di un workspace nel contratto
+del backoffice. Uno vuoto, `..`, uno con una barra, `Acme`, `acme_marketing` non la hanno: anche allora non dà niente.
+Le destinazioni stanno nel registro, non nel codice: la voce
 di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell'evento (`com.zeiras.crm.nota.creata`) e il
 percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id}` e prende l'id che la notifica ha con
 quella chiave (`/contatti/{persona_id}` per una nota). Un modulo che vuole i titoli e le destinazioni delle sue notifiche

@@ -55,7 +55,7 @@ describe('la destinazione di una notifica', () => {
 
     // Review della PR #31, R7: lo slug entra nell'indirizzo solo con la forma che il contratto del backoffice gli dà
     // (`^[a-z0-9]+(-[a-z0-9]+)*$`). `encodeURIComponent` non tocca i punti: con `..` il browser aprirebbe un'altra pagina.
-    it.each([['acme'], ['acme-marketing'], ['a'], ['9'], ['uat-marketing-2'], ['a-b-c']])('lo slug del workspace entra nell\'indirizzo com\'è: %s (review della PR #31, R7)', (slug) => {
+    it.each([['acme'], ['acme-marketing'], ['a'], ['9'], ['uat-marketing-2'], ['a-b-c']])('lo slug del workspace entra nell\'indirizzo com\'è: %s (sprint 21 · review della PR #31, R7)', (slug) => {
         expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug, prodotti)).toBe(`https://crm.zeiras.com/w/${slug}/contatti/uat-persona-1`);
     });
 
@@ -81,7 +81,7 @@ describe('la destinazione di una notifica', () => {
         ['che non è un testo: manca', undefined],
         ['che non è un testo: null', null],
         ['che non è un testo: un numero', 42],
-    ])('senza uno slug con la forma di uno slug non c\'è un indirizzo, nemmeno a metà: %s (review della PR #31, R7)', (_caso, slug) => {
+    ])('senza uno slug con la forma di uno slug non c\'è un indirizzo, nemmeno a metà: %s (sprint 21 · review della PR #31, R7)', (_caso, slug) => {
         expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug as string, prodotti)).toBeUndefined();
     });
 

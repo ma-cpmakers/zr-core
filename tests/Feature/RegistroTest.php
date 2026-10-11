@@ -427,7 +427,7 @@ it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scri
     ]);
 });
 
-it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte server, nel browser e nel controllo del registro: un id che la parte server dà, il browser non lo scarta (review della PR #31, R8)', function () {
+it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte server, nel browser e nel controllo del registro: un id che la parte server dà, il browser non lo scarta (sprint 21 · review della PR #31, R8)', function () {
     $browser = (string) file_get_contents(__DIR__.'/../../resources/js/notifiche.ts');
     preg_match('~^const FORMA_DI_UN_ID = /\^(.+)\$/;$~m', $browser, $forma);
     preg_match('~^const SEGNAPOSTO = /(.+)/g;$~m', $browser, $segnaposto);

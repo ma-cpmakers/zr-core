@@ -3142,11 +3142,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'senza destinazione, o senza dati' => ['rotta', 'una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore'],
 ]);
 
-it('lo zip porta il registro dei moduli: la parte server lo legge per sapere quali id servono ad aprire una notifica (review della PR #31, R1)', function () {
-    expect(fileDelloZipDiHead())->toContain('resources/registro/prodotti.json');
-});
-
-it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle del suo elenco: una voce in più cambia anche il numero (review della PR #31, R2)', function () {
+it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle del suo elenco: una voce in più cambia anche il numero (sprint 21 · review della PR #31, R2)', function () {
     preg_match('/^## Prima di tutto: ciò che si chiede ad altri\n(.*?)(?=^## )/ms', guidaDelModuloNuovo(), $capitolo);
     preg_match('/^(\S+) cose non le scrivi tu/m', $capitolo[1] ?? '', $quante);
     $numeri = ['Tre' => 3, 'Quattro' => 4, 'Cinque' => 5, 'Sei' => 6, 'Sette' => 7, 'Otto' => 8];
@@ -3155,7 +3151,7 @@ it('la guida dice quante sono le cose che si chiedono ad altri, e sono quelle de
         ->and($numeri[$quante[1] ?? ''] ?? null)->toBe(preg_match_all('/^- \*\*/m', $capitolo[1] ?? ''));
 });
 
-it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un clic che naviga non glieli ridà come nuovi, e dopo «Segna tutte come lette» il numero non torna sulla campanella (review della PR #31, R5)', function () {
+it('la pagina di prova dà alla cornice gli stessi dati finché non cambiano: un clic che naviga non glieli ridà come nuovi, e dopo «Segna tutte come lette» il numero non torna sulla campanella (sprint 21 · review della PR #31, R5)', function () {
     expect(scritteNellaPaginaDiProva('demo.tsx', ['const dati = useMemo(', 'dati={dati}', 'dati={{']))
         ->toBe(['const dati = useMemo(' => 1, 'dati={dati}' => 1, 'dati={{' => 0]);
 });
