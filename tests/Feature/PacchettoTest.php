@@ -1177,7 +1177,8 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     'se il backoffice non risponde non lancia' => ['Se il backoffice non risponde `Cornice::lingua()` non lancia: dà la lingua della sessione'],
     // Review, A4: vale per la prima `Cornice::dati()`; e ciò che il controller cambia dopo comprende lingua e nome.
     'l\'errore lo lancia la prima Cornice::dati(), senza un\'altra lettura' => ['lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami, senza chiamare `io.mostra` un\'altra volta'],
-    'anche la lingua e il nome cambiati dal controller' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
+    // Seconda lettura della PR #24, S1: come comincia la frase — per il nome, e per la lingua che `Sessione::aggiorna` prende — lo guarda il caso di T4.3.
+    'anche la lingua e il nome cambiati dal controller' => ['se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
     // Seconda lettura, N3: quale forma `Sessione::aggiorna` prende, e che con un'altra non cambia niente.
     'subito solo con Sessione::aggiorna' => ['subito solo se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l\'`utente` col suo `id`, la `lingua` e il `nome`): con un\'altra forma `Sessione::aggiorna` non cambia niente'],
     // Review, R6: l'errore che la riga prende lascia un avviso.
@@ -1238,6 +1239,9 @@ it('il README dice, in «La parte server», quale lingua c\'è nella sessione �
     'il test del modulo' => ['zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'],
     'la forma la guarda solo la riga' => ['E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()[\'lingua\']` e `Cornice::dati()[\'lingua\']` sono la lingua della sessione com\'è, anche malfatta'],
     'chi resta col suo codice guarda la forma' => ['Chi resta col suo codice e la dà a `App::setLocale`, all\'attributo `lang` della pagina o al nome di un file ne guarda prima la forma'],
+    // Seconda lettura della PR #24, S1: anche la frase su ciò che il controller cambia nel profilo vale con le due versioni.
+    'ciò che il controller cambia: la lingua solo se Sessione::aggiorna la prende' => ['Vale anche per il nome, e per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c\'è nella sessione», più sotto): se il controller li cambia nel profilo in quella richiesta'],
+    'una lingua che Sessione::aggiorna non prende, né subito né dopo' => ['Una lingua che `Sessione::aggiorna` non prende i dati non la portano né subito né dopo: tengono quella che la sessione aveva'],
 ]);
 
 // Review della PR #27, R1 e R2: le frasi che il README non dice più, perché erano vere con una sola delle due versioni di zr-auth,
@@ -1259,6 +1263,8 @@ it('il README non dice più che la sessione prende la lingua del profilo com\'è
     'dalla 0.12.12 la sessione prende solo una lingua di Zeiras, anche all\'ingresso (R1)' => ['Dalla 0.12.12 di zr-auth la sessione prende dal profilo solo una lingua di Zeiras', 'Quale lingua c\'è nella sessione lo decide zr-auth, in due momenti'],
     'dà quella, non null (R1)' => ['la sessione tiene la lingua che aveva e `Cornice::lingua()` dà quella, non `null`', 'la sessione tiene la lingua che aveva'],
     'fino alla 0.12.11 il testo com\'è, anche vuoto (R2)' => ['Fino alla 0.12.11 la sessione prende il testo del profilo com\'è', 'fino alla 0.12.11 ogni testo che non sia vuoto o di soli spazi, com\'è'],
+    // Seconda lettura della PR #24, S1: vera solo fino alla 0.12.11, dalla 0.12.12 una lingua che non è di Zeiras i dati non la portano mai.
+    'la lingua cambiata dal controller arriva dalla richiesta dopo, qualunque sia (S1)' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo', 'Vale anche per il nome, e per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c\'è nella sessione», più sotto): se il controller li cambia nel profilo'],
 ]);
 
 // Sprint 12 · T3 (voce #1463): nel pannello ogni notifica ha il titolo del suo tipo, e il README lo dice nel punto «Le notifiche».
