@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
+import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
@@ -251,16 +252,18 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
  * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
  * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
  * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
- * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
+ * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato. E non si mostra un risultato il cui id non
+ * ha la forma di un id: arriva dal backoffice, e in un indirizzo non entra com'è (`encodeURIComponent` non tocca i punti, e
+ * `..` ne farebbe un altro).
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
-    if (trovata === undefined) {
+    const { id } = risultato;
+    if (trovata === undefined || !FORMA_DI_UN_ID.test(id)) {
         return undefined;
     }
     const { delProdotto, risorsa } = trovata;
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
-    const { id } = risultato;
 
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
@@ -576,8 +579,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
-    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Se non lo dice, il pulsante c'è.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && caricate.workspace !== dati.workspace.slug) ? undefined : async () => {
+    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Un altro rispetto ai dati di adesso, o
+    // rispetto a quelli con cui l'elenco è stato chiesto, di cui il clic manda lo slug: se i dati passano al workspace
+    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è.
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }

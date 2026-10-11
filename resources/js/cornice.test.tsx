@@ -1330,6 +1330,34 @@ describe('il pannello delle notifiche', () => {
         expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
     });
 
+    // Sprint 24 · T4 (voce #1754; lettura della PR #51, R3). L'elenco chiesto coi dati di un workspace può essere, per la parte
+    // server, di un altro: la sessione è passata lì da un'altra scheda. Il pulsante manderebbe lo slug dei dati con cui
+    // l'elenco è stato chiesto, e la rotta risponderebbe 409: non c'è nemmeno quando i dati della pagina passano a quel
+    // workspace con la cornice montata, perché l'elenco in pagina è ancora quello chiesto coi dati di prima.
+    it('se l\'elenco è stato chiesto coi dati di un workspace, la parte server lo dice di un altro e poi i dati passano a quell\'altro con la cornice montata, «Segna tutte come lette» non c\'è: manderebbe lo slug dei dati di prima; torna con l\'elenco chiesto coi dati di adesso (sprint 24 · T4.1)', async () => {
+        const fetchFinto = rotteCheDicono({ workspace: 'acme-vendite' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()).toBeNull();
+
+        // La cornice resta montata e i dati sono del workspace che la parte server ha detto: l'elenco in pagina è suo, ma è
+        // stato chiesto coi dati dell'altro.
+        const altrove = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 };
+        await mostra(<Cornice dati={altrove} onLogout={esciSenzaEffetto} />);
+        expect([voci().length, campanella()]).toStrictEqual([3, '5']);
+        expect(segnaTutte()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+
+        // Chiuso e riaperto, il pannello chiede l'elenco coi dati di adesso: il pulsante torna, e manda il loro slug.
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
+    });
+
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
         const lettura = inAttesa();
         // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.
@@ -2057,31 +2085,29 @@ describe('il pannello delle notifiche', () => {
     // Sprint 23 · T2 (voce #1742, S1). L'elenco del clic può essere più vecchio dei dati del clic: il pannello è rimasto aperto
     // mentre i dati cambiavano. Se nel mezzo la notifica è stata letta altrove, quei dati la contano già letta, e la lettura
     // non toglie niente dal loro numero: vale il numero dei dati, al più una in più fino alla visita dopo, mai una in meno.
-    it('se l\'elenco del clic è più vecchio dei dati del clic — la notifica letta altrove nel mezzo, e i dati la contano già letta — il clic apre la risorsa e il numero non scende: coi dati del clic, con quelli letti fra il clic e la risposta, con quelli letti dopo; e l\'avviso tace (sprint 23 · T2.1)', async () => {
+    it('se l\'elenco del clic è più vecchio dei dati del clic — la notifica letta altrove nel mezzo, e i dati la contano già letta — il clic apre la risorsa e il numero non scende: resta quello dei dati del clic; e l\'avviso tace (sprint 23 · T2.1; sprint 24 · T4.5)', async () => {
         const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(9)));
         vi.stubGlobal('fetch', fetchFinto);
         const naviga = vi.fn();
         const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={naviga} onLogout={esciSenzaEffetto} />;
         await mostra(pagina(letti(alSecondo(3), 3)));
         await clic(uno('.zr-bell'));
-        expect(campanella()).toBe('3');
 
         // A pannello aperto arrivano dati letti al secondo 7: la prima notifica è stata letta da un'altra scheda al 6, e ne
         // contano 2. Nell'elenco in pagina, letto al 5, è ancora da leggere.
         await mostra(pagina(letti(alSecondo(7), 2)));
-        expect([campanella(), nonLette()[0]]).toStrictEqual(['2', true]);
+        const prima = [campanella(), nonLette()[0]];
 
         await clic(voci()[0] ?? null);
-        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
-        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
-        // Coi dati del clic: la contavano già letta.
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
-
-        // Con dati letti fra il clic e la risposta (al secondo 8) e con dati letti dopo (al 10) vale il loro numero.
-        await mostra(pagina(letti(alSecondo(8), 2)));
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
-        await mostra(pagina(letti(alSecondo(10), 2)));
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+        // Un'asserzione sola, con ciò che c'era prima del clic: sul codice della `v1.12.0` è rossa, perché lì il numero scende
+        // a 1. Coi dati letti dopo il clic vale il loro numero anche lì: lo provano i casi più sopra, non questo.
+        expect({ prima, aperta: naviga.mock.calls, partite: richieste(fetchFinto), dopo: [campanella(), detto()] }).toStrictEqual({
+            prima: ['2', true],
+            aperta: [[`${nelCrm}/contatti/uat-persona-1`]],
+            partite: ['GET /cornice/notifiche', laLettura('uat-n69')],
+            // Coi dati del clic: la contavano già letta.
+            dopo: ['2', ''],
+        });
     });
 
     // Review della PR #44, R6. L'id di una notifica arriva dal backoffice, e la parte server controlla solo che sia un testo:
@@ -3088,7 +3114,7 @@ describe('la ricerca', () => {
         { tipo: 'board.board', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Lancio Q4' },
         { tipo: 'board.cartelle', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Marketing' },
         { tipo: 'uat-ignoto', id: '9', titolo: 'Piano di un tipo ignoto' },
-        { app: 'crm', tipo: 'board.board', id: 'uat/13', titolo: 'Report marketing' },
+        { app: 'crm', tipo: 'board.board', id: 'uat-13', titolo: 'Report marketing' },
         { tipo: 'board.schede', id: '12', titolo: 'Scrivere il brief' },
     ];
 
@@ -3207,8 +3233,8 @@ describe('la ricerca', () => {
         // Una cartella non ha una pagina sua in zr-board: si apre sulla pagina del workspace, dove stanno le cartelle, senza
         // altro dopo lo slug.
         ['Marketing', 'https://board.zeiras.com/w/acme-marketing'],
-        // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
-        ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
+        // Con `app: 'crm'` l'indirizzo resta quello di Project Management.
+        ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat-13'],
     ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace della risposta — qui quello dei dati —, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3; sprint 6 · T5.1; sprint 22 · T6.5)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         const naviga = vi.fn();
@@ -3285,7 +3311,7 @@ describe('la ricerca', () => {
     it.each([
         ['Lancio Q4', 'https://board.zeiras.com/w/acme-vendite/b/01k6w2d5f7h9k1n3q5s7v9x1z3'],
         ['Marketing', 'https://board.zeiras.com/w/acme-vendite'],
-        ['Report marketing', 'https://board.zeiras.com/w/acme-vendite/b/uat%2F13'],
+        ['Report marketing', 'https://board.zeiras.com/w/acme-vendite/b/uat-13'],
     ])('con la risposta di un altro workspace, scegliere «%s» apre il suo indirizzo nel workspace che la risposta dice, mai in quello dei dati della pagina (sprint 22 · T6.5)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer, 'acme-vendite')));
         const naviga = vi.fn();
@@ -3345,6 +3371,38 @@ describe('la ricerca', () => {
         expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
         expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
         expect(righe()).toHaveLength(0);
+    });
+
+    // Sprint 24 · T4 (voce #1754; lettura della PR #51, R5). L'id di un risultato arriva dal backoffice, e la parte server guarda
+    // solo che sia un testo: entra nell'indirizzo solo con la forma di un id, come quello di una notifica. `encodeURIComponent`
+    // non tocca i punti, e con `..` l'indirizzo sarebbe quello della pagina del workspace. Un risultato con l'id fuori forma non
+    // compare, nemmeno se il suo tipo non mette l'id nell'indirizzo (una cartella); gli altri della stessa risposta sì.
+    it.each([
+        ['`..`', '..'],
+        ['vuoto', ''],
+        ['con una barra', 'uat/13'],
+        ['più lungo di 64', 'a'.repeat(65)],
+    ])('un risultato della ricerca con l\'id %s non compare fra i risultati, e gli altri della stessa risposta sì: la ricerca non va in errore (sprint 24 · T4.2)', async (_quale, id) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.board', id: 'uat-12', titolo: 'Lancio Q4' },
+            { tipo: 'board.board', id, titolo: 'Lancio fuori forma' },
+            { tipo: 'board.cartelle', id, titolo: 'Marketing fuori forma' },
+            // Il più lungo che la forma ammette.
+            { tipo: 'board.board', id: 'a'.repeat(64), titolo: 'Report marketing' },
+        ])));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Report marketing']);
+
+        // Quelli rimasti si aprono come sempre.
+        await act(async () => {
+            righe()[1]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[`https://board.zeiras.com/w/acme-marketing/b/${'a'.repeat(64)}`]]);
     });
 
     // Sprint 23 · T2 (voce #1742, S7): lo stato della ricerca è un'unione, e dei risultati stanno sempre col loro workspace.

@@ -367,6 +367,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, false]);
     });
 
+    // Sprint 24 · T4 (voce #1754). Con `?sessione=` vuoto la pagina di prova non dice il workspace della «sessione», e la parte
+    // server finta non dice di chi è l'elenco, come una di prima della `v1.12.0`: la cornice mostra «Segna tutte come lette», e
+    // la POST deve riuscire, perché non c'è un workspace con cui lo slug della pagina possa non tornare. Con la «sessione» in un
+    // altro workspace resta il 409 della parte server.
+    it.each<[string, string | undefined, [number, unknown], boolean[]]>([
+        ['che la pagina di prova non dice: riesce, e le segna tutte', undefined, [200, false], [true, true, true, true]],
+        ['in un altro workspace: 409, e non ne segna nessuna', 'uat-vendite', [409, undefined], [false, false, true, true]],
+    ])('«Segna tutte come lette» dalla pagina dei dati di prova, con la «sessione» %s (sprint 24 · T4.4)', async (_quale, dellaSessione, risposta, poi) => {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => dellaSessione);
+
+        expect(await segnate()).toEqual(risposta);
+        expect(await lette()).toEqual(poi);
+    });
+
     // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa.
     const leggi = (letta: unknown = true): RequestInit => ({ method: 'PATCH', body: JSON.stringify({ letta }) });
     const letteDelCrm = async () => ((await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean }[]).filter(({ id }) => id.startsWith('uat-c')).map(({ letta }) => letta);
@@ -499,6 +515,20 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect(await rispostaDi('/cornice/ricerca?workspace=uat-dell-indirizzo', richiesta, '', () => slug)).toStrictEqual({ stato: 200, corpo: { data: [
             { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
         ], ...atteso } });
+    });
+
+    // Sprint 24 · T4 (voce #1754): con `?id_malfatto=1` fra i risultati d'esempio c'è una board in più, con l'id `..`. La
+    // cornice non la mostra: gli altri risultati della stessa parola sì.
+    it.each<[string, string, Record<string, unknown>[]]>([
+        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }]],
+        ['senza `?id_malfatto` i risultati d\'esempio sono quelli di prima', '', []],
+    ])('%s (sprint 24 · T4.2)', async (_caso, query, inPiu) => {
+        expect((await rispostaDi('/cornice/ricerca', cerca('lancio'), query)).corpo.data).toStrictEqual([
+            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
+            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+            ...inPiu,
+            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+        ]);
     });
 
     it('una GET non cerca, nemmeno con la parola nell\'indirizzo: 405 coi metodi ammessi, come la rotta vera, e senza un corpo che la rotta vera non ha (sprint 18 · T1.7)', async () => {

@@ -26,9 +26,10 @@
 // `?errore=lettura` fallisce sempre, e la notifica resta da leggere. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
 // risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
 // di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
-// (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di
-// seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una
-// richiesta annullata e la risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
+// (`board.schede`, `uat-ignoto`), e con `?id_malfatto=1` una board in più con l'id `..`, che la cornice non mostra; «ua»
+// risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
+// Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
+// lo stesso; il cookie del gettone CSRF è finto.
 // `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
@@ -129,6 +130,8 @@ let caricamenti = 0;
 const risultatiDiProva = [
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    // Solo con `?id_malfatto=1`: una board il cui id non ha la forma di un id. La cornice non la mostra.
+    ...(new URLSearchParams(window.location.search).has('id_malfatto') ? [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }] : []),
     { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
     { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
     { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
@@ -242,8 +245,10 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
             }
-            // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione.
-            if (workspace !== slugDellaSessione()) {
+            // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione. Se la pagina di prova
+            // non lo dà, non c'è un workspace con cui lo slug possa non tornare: la lettura riesce.
+            const dellaSessione = slugDellaSessione();
+            if (dellaSessione !== undefined && workspace !== dellaSessione) {
                 return json({ errore: 'workspace_diverso' }, 409);
             }
             // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.

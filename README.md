@@ -433,6 +433,10 @@ cornice === null ? pagina : (
   (`workspace`, nella risposta di `GET /cornice/notifiche`): con due schede su due workspace, da lì la rotta risponde 409
   `workspace_diverso` e non segna niente. Se la risposta dell'elenco non dice di quale workspace è, il pulsante c'è come
   prima: il controllo resta della parte server.
+  Dalla `v1.14.0` non c'è nemmeno quando l'elenco è stato chiesto coi dati di un workspace, la parte server lo dice di un
+  altro e poi i dati della pagina passano a quell'altro senza che la cornice si rifaccia: il clic manderebbe lo slug dei dati
+  di prima. Succede solo con `Cornice` usata da sola (`LayoutDellaCornice` la rifà a ogni cambio di workspace), e il pulsante
+  torna con l'elenco chiesto coi dati di adesso, alla prossima apertura del pannello.
   Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace
   dell'elenco: una
   notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
@@ -512,8 +516,9 @@ cornice === null ? pagina : (
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
   risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
   Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
-  l'icona del tipo; un tipo che il registro non ha non si mostra. Scegliere un risultato apre l'indirizzo del suo prodotto,
-  nel workspace dei risultati, seguito dal percorso del tipo: una board si apre su
+  l'icona del tipo; un tipo che il registro non ha non si mostra. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui
+  id non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
+  risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre su
   `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace dove
   stanno le cartelle, `https://board.zeiras.com/w/<slug>`. Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice
   (`workspace`), che non è sempre quello dei dati della pagina: la sessione ha un workspace solo, e con due schede su due
