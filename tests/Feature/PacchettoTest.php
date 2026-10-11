@@ -3272,3 +3272,44 @@ it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi lo
     'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
     'nessuno dei nove apre una risorsa' => ['Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche'],
 ]);
+
+// Sprint 22 · T6 (voce #1726): con due schede su due workspace la ricerca è di quello della sessione, e la risposta lo dice
+// (`workspace`): un risultato si apre lì, e senza `workspace` la ricerca è un errore. Le non lette di un elenco di un altro
+// workspace non contano sulla campanella della pagina. Il README lo dice nella riga della rotta, nel punto «La ricerca» (dove
+// si apre un risultato, l'errore, che cosa cambia nei test di un frontend) e nel punto «La campanella».
+
+it('il README dice che dalla v1.12.0 la ricerca porta il suo workspace e che un risultato si apre lì, che senza `workspace` è un errore, che cosa cambia nei test di un frontend, e che le non lette di un elenco di un altro workspace non contano sulla campanella (sprint 22 · T6.7)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'campanella' => suUnaRiga(puntoDellaCampanella($readme)),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo}], workspace}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser'],
+    'la cornice apre lì' => ['rotta', 'è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca'],
+    'dove si apre un risultato' => ['ricerca', 'Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non è sempre quello dei dati della pagina'],
+    'perché' => ['ricerca', 'con due schede su due workspace la scheda rimasta indietro cerca in quello in cui la persona è entrata per ultimo'],
+    'senza workspace è un errore' => ['ricerca', 'Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
+    'nessun ripiego' => ['ricerca', 'la cornice non ripiega sul workspace della pagina'],
+    'la risposta finta di un frontend' => ['ricerca', 'Così risponde anche una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
+    'dove cercare' => ['ricerca', 'si trovano cercando `cornice/ricerca` nei test del frontend'],
+    'le non lette di un altro workspace' => ['campanella', 'Dalla `v1.12.0` le non lette di un elenco contano solo se l\'elenco è del workspace dei dati della pagina, o se la parte server non dice di quale workspace è'],
+    'che cosa mostra allora la campanella' => ['campanella', 'le sue non lette non sono quelle della pagina, e la campanella mostra il numero dei dati'],
+]);
+
+it('il README non dice più che un risultato della ricerca si apre nel workspace senza dire quale, né che la risposta porta solo i risultati (sprint 22 · T6.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDellaCornice($readme, 'La ricerca');
+    $rotta = rigaDellaRotta($readme, 'POST /cornice/ricerca');
+
+    expect($punto)->not->toBe('')
+        ->and($rotta)->not->toBe('')
+        // Di prima: «nel workspace», che era quello dei dati della pagina.
+        ->and(str_contains($punto, 'apre l\'indirizzo del suo prodotto nel workspace seguito dal percorso del tipo'))->toBe(false)
+        ->and(str_contains($rotta, '| `{data: [{tipo, id, titolo}]}`:'))->toBe(false);
+});
