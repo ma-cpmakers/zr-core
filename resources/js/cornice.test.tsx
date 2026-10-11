@@ -1639,18 +1639,40 @@ describe('il pannello delle notifiche', () => {
         expect(await apertiDalPannello({ ...dati, prodotti })).toStrictEqual(conGliId.map(() => paginaDelleNotifiche));
     });
 
-    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM hanno un titolo ma nel registro nessuna destinazione. La pagina di
-    // un'opportunità in produzione è spenta e un'attività non ne ha una: il clic apre la pagina delle notifiche, anche se la
-    // notifica portasse l'id della risorsa.
-    it('un clic su una notifica di uno dei nove tipi nuovi del CRM apre la pagina delle notifiche, mai una pagina del CRM, anche con l\'id della risorsa (sprint 22 · T5.3)', async () => {
+    // Sprint 23 · T3 (voce #1743): i nove tipi che dallo sprint 22 (T5, voce #1720) avevano un titolo e nessuna destinazione ora
+    // aprono la loro risorsa nel CRM, coi nomi delle pagine di zr-crm: l'opportunità, il contatto o l'azienda assegnati, e per
+    // un'attività «Da fare», senza il suo id — dalla parte server i suoi `ids` arrivano vuoti. Nel workspace dell'elenco, come
+    // le altre: anche quando non è quello dei dati della pagina.
+    it.each<[string, string | undefined, Record<string, unknown> | undefined, string]>([
+        ['il workspace dei dati', 'crm', undefined, 'https://crm.zeiras.com/w/acme-marketing'],
+        ['un altro workspace', 'pm', { workspace: 'acme-vendite' }, 'https://crm.zeiras.com/w/acme-vendite'],
+    ])('un clic su una notifica di un\'opportunità, di un\'attività o di ciò che viene assegnato apre la sua pagina nel CRM, nel workspace dell\'elenco — %s —: l\'opportunità, il contatto e l\'azienda col loro id, «Da fare» senza (sprint 23 · T3.1, T3.2, T3.3)', async (_quale, prodotto, dellElenco, nelWorkspace) => {
         const tipi = [
-            'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
-            'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
-            'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
-        ];
-        const elenco = tipi.map((tipo, indice) => ({ id: `uat-n${80 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo, ids: { id: `uat-x-${indice + 1}` } }));
+            ['com.zeiras.crm.trattativa.creata', '/opportunita/uat-x-1'], ['com.zeiras.crm.trattativa.modificata', '/opportunita/uat-x-2'],
+            ['com.zeiras.crm.attivita.creata', '/da-fare'], ['com.zeiras.crm.attivita.modificata', '/da-fare'], ['com.zeiras.crm.attivita.eliminata', '/da-fare'],
+            ['crm.persona.assegnata', '/contatti/uat-x-6'], ['crm.organizzazione.assegnata', '/aziende/uat-x-7'], ['crm.trattativa.assegnata', '/opportunita/uat-x-8'], ['crm.attivita.assegnata', '/da-fare'],
+        ] satisfies [string, string][];
+        const elenco = tipi.map(([tipo, percorso], indice) => ({ id: `uat-n${80 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo, ids: percorso === '/da-fare' ? {} : { id: `uat-x-${indice + 1}` } }));
 
-        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(tipi.map(() => paginaDelleNotifiche));
+        expect(await apertiDalPannello(dati, prodotto, elenco, dellElenco)).toStrictEqual(tipi.map(([, percorso]) => nelWorkspace + percorso));
+    });
+
+    it('un clic su una nota apre la cosa più specifica a cui è legata — l\'opportunità, poi il contatto, poi l\'azienda —, e senza un legame in forma la pagina delle notifiche (sprint 23 · T3.4)', async () => {
+        const note = [
+            // Come la dà la parte server: i soli id del percorso che si apre.
+            [{ trattativa_id: 'uat-opp-1' }, `${nelCrm}/opportunita/uat-opp-1`],
+            [{ persona_id: 'uat-persona-2' }, `${nelCrm}/contatti/uat-persona-2`],
+            [{ organizzazione_id: 'uat-azienda-3' }, `${nelCrm}/aziende/uat-azienda-3`],
+            // Con tutti e tre i legami vince l'opportunità; con un'opportunità fuori forma si prova il percorso dopo.
+            [{ trattativa_id: 'uat-opp-1', persona_id: 'uat-persona-2', organizzazione_id: 'uat-azienda-3' }, `${nelCrm}/opportunita/uat-opp-1`],
+            [{ trattativa_id: '../x', organizzazione_id: 'uat-azienda-3' }, `${nelCrm}/aziende/uat-azienda-3`],
+            [{ id: 'uat-nota-9' }, paginaDelleNotifiche],
+            [{ trattativa_id: '../x', persona_id: 'uat/persona' }, paginaDelleNotifiche],
+        ] satisfies [Record<string, string>, string][];
+        const quando = ['creata', 'modificata', 'eliminata'];
+        const elenco = note.map(([ids], indice) => ({ id: `uat-n${70 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: `com.zeiras.crm.nota.${quando[indice % 3]}`, ids }));
+
+        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(note.map(([, indirizzo]) => indirizzo));
     });
 
     it('la funzione che il pacchetto esporta dà, per ogni notifica, l\'indirizzo che apre il pannello, e niente quando il pannello apre la pagina delle notifiche (sprint 21 · T3.6)', async () => {

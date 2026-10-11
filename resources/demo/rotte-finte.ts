@@ -15,8 +15,9 @@
 // eliminata), di Project Management, lette: nel registro non hanno una destinazione. Con `?opportunita=1` in fondo all'elenco ci
 // sono le nove notifiche dei tipi nuovi del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro che il CRM manda a
 // chi diventa responsabile, col tipo com'è nel backoffice, senza `com.zeiras.` davanti (`crm.persona.assegnata`); zr-core conosce
-// tutti e nove i tipi, e nel registro nessuno ha una destinazione. Ogni notifica porta gli id che la parte server dà di
-// `dati` (`ids`): i soli che il percorso del registro chiede per il suo tipo, e nessuno se il tipo non ha una destinazione; mai `dati`
+// tutti e nove i tipi, e ognuno apre la sua pagina nel CRM: l'opportunità, il contatto, l'azienda, e «Da fare» per un'attività.
+// Ogni notifica porta gli id che la parte server dà di `dati` (`ids`): i soli del percorso del registro che si apre per il suo
+// tipo, e nessuno se il tipo non ha una destinazione o se il percorso non chiede un id; mai `dati`
 // né `soggetto`. Da una del CRM la cornice apre la sua risorsa, nel workspace che l'elenco dice (`workspace`: quello della «sessione»). «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
@@ -42,6 +43,25 @@ const crm = new URLSearchParams(window.location.search).has('crm');
 const daLeggere = new URLSearchParams(window.location.search).has('da_leggere');
 const viste = new URLSearchParams(window.location.search).has('viste');
 const opportunita = new URLSearchParams(window.location.search).has('opportunita');
+
+/**
+ * Gli `ids` delle tre note di `?crm=1`, come li dà la parte server: i soli del percorso che si apre. La prima è legata a
+ * un'opportunità e a un contatto, e porta la sola opportunità; la seconda al solo contatto; la terza alla sola azienda.
+ */
+const DI_UNA_NOTA: Record<string, Record<string, string>> = {
+    'nota.creata': { trattativa_id: 'uat-opp-1' },
+    'nota.modificata': { persona_id: 'uat-persona-2' },
+    'nota.eliminata': { organizzazione_id: 'uat-azienda-1' },
+};
+
+/** Gli `ids` delle nove di `?opportunita=1`: l'id della risorsa per chi ha una pagina sua, nessuno per un'attività. */
+const DI_UN_TIPO_NUOVO: Record<string, Record<string, string>> = {
+    'com.zeiras.crm.trattativa.creata': { id: 'uat-opp-1' },
+    'com.zeiras.crm.trattativa.modificata': { id: 'uat-opp-1' },
+    'crm.trattativa.assegnata': { id: 'uat-opp-1' },
+    'crm.persona.assegnata': { id: 'uat-persona-1' },
+    'crm.organizzazione.assegnata': { id: 'uat-azienda-1' },
+};
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -55,9 +75,9 @@ const notificheDiProva = [
     { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti, ids: {} },
     // Solo con `?crm=1`, le notifiche del CRM: più vecchie di tutte le altre, una al giorno. L'ottava è di un tipo che zr-core non
     // conosce, e non ha id. Gli id sono quelli che la parte server dà di `dati`, i soli che servono ad aprire la risorsa: una nota
-    // porta quello del contatto a cui è attaccata, non il suo. Le ultime due sono note che non hanno dove andare, e la riga sotto
-    // il titolo dice quale: una senza il contatto, e una con un contatto che non ha la forma di un id — la parte server vera non
-    // lo darebbe, qui c'è per vedere che la cornice non lo mette in un indirizzo.
+    // porta quello della cosa più specifica a cui è attaccata, non il suo (`DI_UNA_NOTA`). Le ultime due sono note che non hanno
+    // dove andare, e la riga sotto il titolo dice quale: una senza legami, e una con un contatto che non ha la forma di un id — la
+    // parte server vera non lo darebbe, qui c'è per vedere che la cornice non lo mette in un indirizzo.
     ...(crm
         ? [
               ...['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
@@ -67,7 +87,7 @@ const notificheDiProva = [
                   app: 'crm',
                   tipo: `com.zeiras.crm.${tipo}`,
                   ...nonDetti,
-                  ids: (tipo === 'persona.assegnata' ? {} : tipo.startsWith('nota.') ? { persona_id: 'uat-persona-2' } : { id: tipo.startsWith('pipeline.') ? 'uat-pipeline-1' : 'uat-persona-1' }) as Record<string, string>,
+                  ids: (tipo === 'persona.assegnata' ? {} : (DI_UNA_NOTA[tipo] ?? { id: tipo.startsWith('pipeline.') ? 'uat-pipeline-1' : 'uat-persona-1' })) as Record<string, string>,
               })),
               { id: 'uat-c9', creata_il: fa(18 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota senza contatto', per_me: null, ids: {} },
               { id: 'uat-c10', creata_il: fa(19 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota con un id malfatto', per_me: null, ids: { persona_id: '../x' } },
@@ -82,14 +102,14 @@ const notificheDiProva = [
         : []),
     // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
     // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
-    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`). Non portano id: nel registro nessuno dei nove ha una
-    // destinazione, e la parte server non ne dà.
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`). Portano l'id che il loro percorso chiede
+    // (`DI_UN_TIPO_NUOVO`): quello dell'opportunità, del contatto o dell'azienda; un'attività nessuno, perché apre «Da fare».
     ...(opportunita
         ? [
               'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
               'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
-          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: {} as Record<string, string> }))
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
 ];
 let letture = 0;
