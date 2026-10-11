@@ -24,7 +24,8 @@ const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
-    prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
+    // `automations` scritto `undefined`, come può fare un frontend: vale come un prodotto che manca, «Presto».
+    prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo', automations: undefined },
 };
 
 // `due`: il workspace dei dati è il secondo della prima azienda, e un nome lungo va a capo; in quell'azienda la persona può
