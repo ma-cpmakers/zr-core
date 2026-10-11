@@ -311,7 +311,7 @@ it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<pro
 // di zr-crm (11/10/2026). Un contatto ha la sua pagina; una pipeline apre le sue impostazioni; una nota non ha una pagina sua, e
 // si vede nella pagina del contatto a cui è attaccata (`persona_id`), anche quando è stata eliminata.
 
-it('nel registro le notifiche del CRM che aprono la loro risorsa sono sette, col tipo intero dell\'evento: un contatto apre la sua pagina, una pipeline le sue impostazioni, una nota il contatto a cui è attaccata; nessun altro prodotto ne ha (sprint 21 · T3.1)', function () {
+it('nel registro le notifiche del CRM che aprono la loro risorsa sono nove, col tipo intero dell\'evento: un contatto apre la sua pagina, una pipeline le sue impostazioni, una nota il contatto a cui è attaccata, un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2)', function () {
     $voci = registroDeiProdotti();
 
     expect(problemiDelRegistro($voci))->toBe([])
@@ -324,6 +324,9 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono sette, col
             ['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/contatti/{persona_id}'],
             ['tipo' => 'com.zeiras.crm.nota.modificata', 'percorso' => '/contatti/{persona_id}'],
             ['tipo' => 'com.zeiras.crm.nota.eliminata', 'percorso' => '/contatti/{persona_id}'],
+            // Nel contratto un'azienda è una `organizzazione`; la pagina del CRM è `/aziende` (zr-crm, 11/10/2026).
+            ['tipo' => 'com.zeiras.crm.organizzazione.creata', 'percorso' => '/aziende/{id}'],
+            ['tipo' => 'com.zeiras.crm.organizzazione.modificata', 'percorso' => '/aziende/{id}'],
         ])
         ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['crm']);
 });

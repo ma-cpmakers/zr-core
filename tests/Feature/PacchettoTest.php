@@ -2701,7 +2701,8 @@ it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifi
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['una su un\'app, col nome del prodotto al posto del codice']))->toBe(['una su un\'app, col nome del prodotto al posto del codice' => 1]);
 
     expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti, ids: ', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
-        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 3, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+        // Cinque dallo sprint 21 · T5: alle tre di prima si aggiungono le due righe delle aziende del CRM e delle viste di una board.
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 5, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });
 
@@ -3097,6 +3098,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
 })->with([
     'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e nel workspace dei dati'],
     'i tre casi del CRM' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di una nota il contatto a cui è attaccata'],
+    'il caso delle aziende (sprint 21 · T5.2)' => ['punto', 'una di un\'azienda l\'elenco delle aziende col suo pannello aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`)'],
     'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
     'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa dall\'ingresso'],
     'quando no' => ['punto', 'Una notifica che non ha dove andare apre `https://app.zeiras.com/notifiche`, come «Vedi tutte»'],
