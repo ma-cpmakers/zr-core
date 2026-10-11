@@ -401,7 +401,11 @@ cornice === null ? pagina : (
   mentre un'altra richiesta della stessa sessione girava: basta che sia cominciata prima e finita dopo, anche non lenta (le
   notifiche, la ricerca, una chiamata del modulo). I dati della cornice restano giusti; alla visita dopo ciò che il frontend
   legge dalla sessione prima di `Cornice::dati()` è ancora quello di prima, e quella lettura li rimette. Il pulsante c'è
-  quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette.
+  quando la campanella ha un numero e il pannello ha caricato almeno una notifica, anche se quelle caricate sono già lette;
+  dalla `v1.13.0` non c'è quando la parte server dice che l'elenco è di un altro workspace rispetto ai dati della pagina
+  (`workspace`, nella risposta di `GET /cornice/notifiche`): con due schede su due workspace, da lì la rotta risponde 409
+  `workspace_diverso` e non segna niente. Se la risposta dell'elenco non dice di quale workspace è, il pulsante c'è come
+  prima: il controllo resta della parte server.
   Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace
   dell'elenco: una
   notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
