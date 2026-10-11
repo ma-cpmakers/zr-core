@@ -131,7 +131,7 @@ final class Cornice
 
         $lingua = $utente['lingua'] ?? null;
 
-        return is_string($lingua) && ($workspace !== null || (strlen($lingua) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) === 1)) ? $lingua : null;
+        return is_string($lingua) && strlen($lingua) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) === 1 ? $lingua : null;
     }
 
     /**
