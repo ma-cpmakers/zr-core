@@ -2621,7 +2621,8 @@ it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice
         '} satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;',
         '} satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;',
         '            {...propsScritteUndefined}',
-        'dati={{ ...datiScrittiUndefined, ...datiDiProva, ',
+        // Dalla review della PR #31 (R5) i dati si compongono una volta, in `useMemo`, e non a ogni disegno.
+        'return { ...datiScrittiUndefined, ...datiDiProva, ',
         // Review della PR #23, R1 e R8: le chiavi facoltative dentro i dati — uno stato di `prodotti`, l'`id` di un workspace,
         // `nuovo_workspace` — le prova un valore scritto a mano, che qui non può sparire in silenzio.
         "prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo', automations: undefined },",
@@ -3129,6 +3130,7 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'che cosa legge' => ['paragrafo', 'la funzione ne legge `app`, `tipo` e `ids`'],
     'quando non dà niente' => ['paragrafo', 'Non dà niente (`undefined`) quando la notifica non ha dove andare'],
     'mai a metà' => ['paragrafo', 'mai un indirizzo composto a metà'],
+    'nemmeno con uno slug malfatto (review della PR #31, R7)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug (vuoto, `..`, con una barra): anche allora non dà niente'],
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],

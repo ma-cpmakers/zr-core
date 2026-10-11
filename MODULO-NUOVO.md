@@ -29,7 +29,7 @@ Come si legge:
 
 ## Prima di tutto: ciò che si chiede ad altri
 
-Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
+Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
 
 - **Il prodotto nel registro** — all'agente di zr-core (come gli si scrive lo dice la skill `zr-core-uso`). Guarda prima
   `vendor/zeiras/zr-core/resources/registro/prodotti.json`: porta anche i prodotti non ancora usciti, con due sì o no.

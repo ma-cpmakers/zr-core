@@ -152,16 +152,17 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-c8', 'crm', 'com.zeiras.crm.persona.assegnata', true],
         ]);
         expect(notifiche.slice(4, 12).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
-        // Sprint 21 · T3: gli id che la parte server dà di `dati`. Una nota porta il suo e quello del contatto a cui è attaccata.
+        // Sprint 21 · T3: gli id che la parte server dà di `dati`, i soli che servono ad aprire la risorsa (review della PR #31, R1).
+        // Una nota porta quello del contatto a cui è attaccata, non il suo; un tipo che il registro non ha, nessuno.
         expect(notifiche.slice(4, 12).map(({ ids }) => ids)).toEqual([
             { id: 'uat-persona-1' }, { id: 'uat-persona-1' }, { id: 'uat-pipeline-1' }, { id: 'uat-pipeline-1' },
-            { id: 'uat-nota-5', persona_id: 'uat-persona-2' }, { id: 'uat-nota-6', persona_id: 'uat-persona-2' }, { id: 'uat-nota-7', persona_id: 'uat-persona-2' },
-            { id: 'uat-persona-1' },
+            { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' }, { persona_id: 'uat-persona-2' },
+            {},
         ]);
         // Le ultime due non hanno dove andare, e la riga sotto il titolo dice quale: una senza il contatto, una col contatto malfatto.
         expect(notifiche.slice(12, 14).map(({ id, tipo, risorsa_nome, ids }) => [id, tipo, risorsa_nome, ids])).toEqual([
-            ['uat-c9', 'com.zeiras.crm.nota.creata', 'UAT nota senza contatto', { id: 'uat-nota-9' }],
-            ['uat-c10', 'com.zeiras.crm.nota.creata', 'UAT nota con un id malfatto', { id: 'uat-nota-10', persona_id: '../x' }],
+            ['uat-c9', 'com.zeiras.crm.nota.creata', 'UAT nota senza contatto', {}],
+            ['uat-c10', 'com.zeiras.crm.nota.creata', 'UAT nota con un id malfatto', { persona_id: '../x' }],
         ]);
         // Sprint 21 · T5: in fondo, le due di un'azienda, di tipi che zr-core conosce, con l'id dell'azienda.
         expect(notifiche.slice(14).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
@@ -190,6 +191,28 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
+    // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
+    // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
+    // quello di una nota, né quello di una persona entrata nel workspace.
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?chi=1&crm=1&viste=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (review della PR #31, R1)', async (query) => {
+        await rotte(false, query);
+        const { registro } = await import('../js/registro');
+
+        await rispostaDi('/cornice/notifiche');
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; ids: Record<string, string> }[];
+        const chieste = ({ app, tipo }: { app: string | null; tipo?: string }) => {
+            const percorso = registro.find((voce) => voce.id === app)?.notifiche?.find((notifica) => notifica.tipo === tipo)?.percorso ?? '';
+
+            return [...percorso.matchAll(/\{([^{}]*)\}/g)].map(([, chiave]) => chiave);
+        };
+
+        expect(notifiche.length).toBeGreaterThanOrEqual(4);
+        expect(notifiche.map((notifica) => [notifica.id, Object.keys(notifica.ids).filter((chiave) => !chieste(notifica).includes(chiave))])).toEqual(notifiche.map(({ id }) => [id, []]));
+        // E quelle che nel registro hanno una destinazione portano il loro id, tranne la nota senza contatto.
+        expect(notifiche.filter((notifica) => chieste(notifica).length > 0 && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
+    });
+
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
     // pagine di prova di prima restano com'erano.
     it('con `?viste=1` in fondo all\'elenco ci sono tre notifiche delle viste di una board, di Project Management, lette: una creata, una modificata, una eliminata, di tipi che zr-core conosce; nessuna ha una destinazione (sprint 21 · T5.1, T5.2)', async () => {
@@ -200,9 +223,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
         expect(notifiche.slice(4).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
-            ['uat-v1', 'pm', 'com.zeiras.board.vista.creata', true, { id: 'uat-vista-1', board_id: 'uat-board-1' }],
-            ['uat-v2', 'pm', 'com.zeiras.board.vista.modificata', true, { id: 'uat-vista-1', board_id: 'uat-board-1' }],
-            ['uat-v3', 'pm', 'com.zeiras.board.vista.eliminata', true, { id: 'uat-vista-1', board_id: 'uat-board-1' }],
+            ['uat-v1', 'pm', 'com.zeiras.board.vista.creata', true, {}],
+            ['uat-v2', 'pm', 'com.zeiras.board.vista.modificata', true, {}],
+            ['uat-v3', 'pm', 'com.zeiras.board.vista.eliminata', true, {}],
         ]);
         expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual([true, true, true]);
         // Una vista non ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche con Project Management attivo.

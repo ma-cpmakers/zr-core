@@ -1,7 +1,7 @@
 // Il CSS nell'ordine del README: prima il design system (il suo @import dei font è la prima regola), poi i token.
 import '../zeiras/bundle.css';
 import '../css/zeiras-token.css';
-import { StrictMode, useState } from 'react';
+import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type GruppoDiVoci } from '../js/cornice';
 import { lingue } from '../js/lingue';
@@ -67,14 +67,21 @@ function Prova() {
     const [prodotto, setProdotto] = useState(scelti.get('prodotto') ?? '');
     const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
     const nonLette = Number(scelti.get('non_lette') ?? 7);
-    const prodotti: DatiDellaCornice['prodotti'] = scelti.has('senza_crm') ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
+    const senzaCrm = scelti.has('senza_crm');
+    // Gli stessi dati finché non cambiano, come da una parte server: ridati a ogni disegno, la cornice li prenderebbe per dati
+    // nuovi, e dopo «Segna tutte come lette» un clic che naviga rimetterebbe il numero sulla campanella.
+    const dati = useMemo(() => {
+        const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
+
+        return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
+    }, [senzaCrm, lingua, aziende, nonLette]);
     // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1` o `?viste=1`, così le altre pagine restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
     return (
         <Cornice
             {...propsScritteUndefined}
-            dati={{ ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette }}
+            dati={dati}
             product={prodotto || undefined}
             nav={prodotto ? vociDelProdotto : []}
             active={scelti.get('attiva') === 'nessuna' ? null : prodotto ? 'oggi' : undefined}

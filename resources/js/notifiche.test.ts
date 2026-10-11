@@ -44,14 +44,45 @@ describe('la destinazione di una notifica', () => {
         ]);
     });
 
-    it('lo slug del workspace entra nell\'indirizzo codificato; un id di 64 caratteri fra lettere, cifre, - e _ passa com\'è, e gli id in più non contano (sprint 21 · T3.1)', () => {
+    it('un id di 64 caratteri fra lettere, cifre, - e _ passa com\'è, e gli id in più non contano (sprint 21 · T3.1)', () => {
         const lungo = `${'a'.repeat(31)}-B_9${'z'.repeat(29)}`;
 
         expect(lungo).toHaveLength(64);
-        expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: lungo, lista_id: 'uat-lista-1' }), 'uat marketing/è', prodotti))
-            .toBe(`https://crm.zeiras.com/w/uat%20marketing%2F%C3%A8/contatti/${lungo}`);
+        expect(apre(delCrm('persona.creata', { id: lungo, lista_id: 'uat-lista-1' }))).toBe(`${CRM}/contatti/${lungo}`);
         // Disponibile ma non ancora attivo: il modulo si può aprire, come dal menu.
         expect(apre(delCrm('persona.creata', { id: '42' }), { crm: 'disponibile' })).toBe(`${CRM}/contatti/42`);
+    });
+
+    // Review della PR #31, R7: lo slug entra nell'indirizzo solo con la forma che il contratto del backoffice gli dà
+    // (`^[a-z0-9]+(-[a-z0-9]+)*$`). `encodeURIComponent` non tocca i punti: con `..` il browser aprirebbe un'altra pagina.
+    it.each([['acme'], ['acme-marketing'], ['a'], ['9'], ['uat-marketing-2'], ['a-b-c']])('lo slug del workspace entra nell\'indirizzo com\'è: %s (review della PR #31, R7)', (slug) => {
+        expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug, prodotti)).toBe(`https://crm.zeiras.com/w/${slug}/contatti/uat-persona-1`);
+    });
+
+    it.each<[string, unknown]>([
+        ['vuoto', ''],
+        ['uno spazio', ' '],
+        ['un punto', '.'],
+        ['due punti', '..'],
+        ['../ davanti', '../acme'],
+        ['con una barra', 'acme/marketing'],
+        ['con un punto', 'acme.marketing'],
+        ['con uno spazio', 'uat marketing'],
+        ['con una maiuscola', 'Acme'],
+        ['con un trattino basso', 'acme_marketing'],
+        ['con un trattino davanti', '-acme'],
+        ['con un trattino in fondo', 'acme-'],
+        ['con due trattini di fila', 'acme--marketing'],
+        ['con una lettera accentata', 'acmè'],
+        ['con un a capo in fondo', 'acme\n'],
+        ['con un punto di domanda', 'acme?x=1'],
+        ['con un cancelletto', 'acme#x'],
+        ['già codificato', 'acme%2Fmarketing'],
+        ['che non è un testo: manca', undefined],
+        ['che non è un testo: null', null],
+        ['che non è un testo: un numero', 42],
+    ])('senza uno slug con la forma di uno slug non c\'è un indirizzo, nemmeno a metà: %s (review della PR #31, R7)', (_caso, slug) => {
+        expect(destinazioneDellaNotifica(delCrm('persona.creata', { id: 'uat-persona-1' }), slug as string, prodotti)).toBeUndefined();
     });
 
     it.each([

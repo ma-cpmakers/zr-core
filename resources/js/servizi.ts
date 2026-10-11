@@ -19,9 +19,10 @@ export interface NotificaDellaCornice {
     /** `true` se è rivolta alla persona, `false` se è per tutto il workspace, `null` se il backoffice non lo sa: `null` non è `false`. */
     per_me?: boolean | null;
     /**
-     * Gli id che la notifica porta, per chiave (`id`, `persona_id`…): dei `dati` dell'evento la parte server dà solo questi, e solo
-     * con la forma di un id. Servono ad aprire la sua risorsa (`destinazioneDellaNotifica`). Una parte server di prima della
-     * `v1.11.0` non li dà, e allora la notifica apre la pagina delle notifiche.
+     * Gli id che servono ad aprire la risorsa della notifica (`destinazioneDellaNotifica`), per chiave (`id`, `persona_id`…): dei
+     * `dati` dell'evento la parte server dà solo quelli che il registro chiede per il suo tipo, e solo con la forma di un id.
+     * Vuoto per un tipo che nel registro non ha una destinazione. Una parte server di prima della `v1.11.0` non li dà, e allora
+     * la notifica apre la pagina delle notifiche.
      */
     ids?: Record<string, string>;
 }

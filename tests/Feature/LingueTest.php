@@ -454,7 +454,9 @@ function paroleCheNonSonoModuli(): array
  * I testi delle lingue che chiamano «prodotti» o «app» i moduli: il nome è uno solo, «Moduli» (sprint 21 · T1.4). In ogni
  * lingua si cercano le parole di tutte: «products» in un testo italiano è lo stesso errore. Il controllo legge parole, non
  * significati: un testo giusto che usa una di queste parole per un'altra cosa (una risorsa di un modulo che si chiama
- * «Prodotti») lo fa rosso, e l'eccezione si decide allora, con la sua chiave.
+ * «Prodotti») lo fa rosso, e l'eccezione si decide allora, con la sua chiave. Nell'altro verso, ciò che non è una di queste
+ * parole non lo vede: una forma fuori tabella («aplicacions»), un sinonimo («strumenti»), e i testi fissi dei componenti del
+ * design system, che non stanno in `resources/lingue`.
  *
  * @param  array<string, array<string, string>>  $lingue
  * @return list<string>
