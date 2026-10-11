@@ -282,7 +282,9 @@ cornice === null ? pagina : (
   arrivata dopo che la parte server le ha contate). Dalla `v1.12.0` le non lette di un elenco contano solo se l'elenco è
   del workspace dei dati della pagina, o se la parte server non dice di quale workspace è: con due schede su due workspace
   la scheda rimasta indietro riceve l'elenco di quello in cui la persona è entrata per ultimo, le sue non lette non sono
-  quelle della pagina, e la campanella mostra il numero dei dati. Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
+  quelle della pagina, e la campanella mostra il numero dei dati. Vale coi dati che portano `non_lette`, come li dà
+  `Cornice::dati()`: con dati scritti a mano senza `non_lette`, che il tipo ammette, la pagina non ha un numero suo, e la
+  campanella conta le non lette che il pannello ha caricato, di qualunque workspace sia l'elenco. Coi dati letti dopo — una visita dopo, se il frontend tiene montata la
   cornice — vale il loro numero, anche quando è lo stesso di prima: dopo «Segna tutte come lette» la campanella non ha un
   numero, e alla visita dopo mostra quello dei dati. La cornice confronta i segni e non torna a dati più vecchi: ogni
   lettura dei dati ha il suo (`aggiornati_il`), e le due rotte delle notifiche dicono quando l'elenco è stato letto e
@@ -445,12 +447,15 @@ cornice === null ? pagina : (
   scrive «99+». L'avviso parla solo per il numero che scende con un clic: quando il numero cambia per un altro motivo
   (dati nuovi, un elenco arrivato, «Segna tutte come lette») non lo dice, e ciò che aveva detto si toglie. La `Cornice`
   rende quindi due elementi, l'`AppShell` e dopo di lui l'avviso, che è fuori dal flusso della pagina.
-  Per i test di un frontend che passa alla `v1.12.0` cambiano tre cose. Una risposta finta di `GET /cornice/notifiche`
-  senza `workspace` manda ogni clic alla pagina delle notifiche: le si aggiunge `workspace`, con lo slug dei dati della
-  pagina. Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della
-  lettura: una parte server finta che non la aspetta la vede arrivare. E chi conta i figli del contenitore della
-  `Cornice`, o ne prende l'unico, ne trova due: vale anche per una regola CSS sui figli del contenitore. Si trovano
-  cercando `cornice/notifiche` e `<Cornice` nei test del frontend.
+  Per i test di un frontend che passa alla `v1.12.0` cambiano cinque cose: tre sono delle notifiche, e sono quelle che
+  seguono; due sono della ricerca, e stanno nel punto «La ricerca», qui sotto (senza `workspace` in una risposta finta di
+  `POST /cornice/ricerca` la ricerca mostra il suo errore, e il segnaposto e l'aiuto del campo hanno testi nuovi). Una
+  risposta finta di `GET /cornice/notifiche` senza `workspace` manda ogni clic alla pagina delle notifiche: le si
+  aggiunge `workspace`, con lo slug dei dati della pagina. Un clic su una notifica non letta che apre la sua risorsa fa
+  partire una richiesta in più, la `PATCH` della lettura: una parte server finta che non la aspetta la vede arrivare. E
+  chi conta i figli del contenitore della `Cornice`, o ne prende l'unico, ne trova due: vale anche per una regola CSS sui
+  figli del contenitore. Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend; le due della ricerca
+  cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca.
 - **La ricerca** (Ctrl/Cmd+K) chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola
   nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell'header `X-XSRF-TOKEN`, come «Segna tutte come lette»: dalla
   `v1.8.0` ciò che la persona cerca non sta più nell'indirizzo della richiesta del browser. Il tratto dal server del modulo
@@ -519,13 +524,20 @@ dalla `v1.12.0` li dà un metodo PHP pubblico e statico,
 `Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`, ed è la
 regola con cui li dà `GET /cornice/notifiche`, non una copia. `app`, `tipo` e `dati` sono quelli della notifica, com'è
 nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi; il metodo dà gli id per chiave
-(`['persona_id' => '<id>']` per una nota), da dare al browser come `ids` della notifica. Dà `[]`, senza eccezioni,
+(`['persona_id' => '<id>']` per una nota), da dare al browser come `ids` della notifica. È un array di PHP, e vuoto in
+JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto): chi lo dà al browser
+lo converte in un oggetto (`(object)`), e nel browser `ids` ha una forma sola. Dà `[]`, senza eccezioni,
 quando la notifica non ha una destinazione — un tipo o un'app che il registro non ha, nessuna app, una voce «Presto» —
 e quando `dati` manca o non è un array con le chiavi; un id che manca, o che non ha la forma di un id (lettere, cifre,
 `-` e `_`, da 1 a 64), nell'array non c'è. Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà
 niente, e si apre la pagina delle notifiche. Al browser vanno questi `ids` e non `dati`: i `dati` interi di una
-notifica restano sul server del frontend. Nome e firma del metodo sono un contratto, e cambiano solo con una versione
-maggiore.
+notifica restano sul server del frontend. Un id non è un permesso nemmeno qui: il metodo non controlla che chi riceve la
+notifica possa vedere quella risorsa, e lo decide il modulo che apre la pagina. Lo `slug` da dare a
+`destinazioneDellaNotifica`, per notifiche lette così, è quello del workspace della sessione nella richiesta che le ha
+lette (lo `slug` di `Sessione::workspace()` di zr-auth), e la parte server del frontend lo manda insieme a loro, come
+`GET /cornice/notifiche` manda `workspace`. Non è `dati.workspace.slug`: con due schede su due workspace, una pagina
+rimasta indietro che ricarica le sole notifiche riceve quelle dell'altro workspace, e coi suoi dati le aprirebbe nel
+proprio. Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore.
 Le destinazioni stanno nel registro, non nel codice: la voce
 di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell'evento (`com.zeiras.crm.nota.creata`) e il
 percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id}` e prende l'id che la notifica ha con
