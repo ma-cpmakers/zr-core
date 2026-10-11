@@ -506,6 +506,18 @@ dà niente (`undefined`) quando la notifica non ha dove andare — vedi «Le not
 pagina delle notifiche: mai un indirizzo composto a metà, nemmeno con uno `slug` che non ha la forma di uno slug:
 minuscole e cifre, a pezzi uniti da un trattino (`acme`, `acme-marketing`), com'è lo slug di un workspace nel contratto
 del backoffice. Uno vuoto, `..`, uno con una barra, `Acme`, `acme_marketing` non la hanno: anche allora non dà niente.
+Chi le notifiche le legge da sé dal backoffice, sul suo server — una pagina delle notifiche sua —, gli `ids` non li ha:
+dalla `v1.12.0` li dà un metodo PHP pubblico e statico,
+`Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`, ed è la
+regola con cui li dà `GET /cornice/notifiche`, non una copia. `app`, `tipo` e `dati` sono quelli della notifica, com'è
+nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi; il metodo dà gli id per chiave
+(`['persona_id' => '<id>']` per una nota), da dare al browser come `ids` della notifica. Dà `[]`, senza eccezioni,
+quando la notifica non ha una destinazione — un tipo o un'app che il registro non ha, nessuna app, una voce «Presto» —
+e quando `dati` manca o non è un array con le chiavi; un id che manca, o che non ha la forma di un id (lettere, cifre,
+`-` e `_`, da 1 a 64), nell'array non c'è. Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà
+niente, e si apre la pagina delle notifiche. Al browser vanno questi `ids` e non `dati`: i `dati` interi di una
+notifica restano sul server del frontend. Nome e firma del metodo sono un contratto, e cambiano solo con una versione
+maggiore.
 Le destinazioni stanno nel registro, non nel codice: la voce
 di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell'evento (`com.zeiras.crm.nota.creata`) e il
 percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id}` e prende l'id che la notifica ha con
