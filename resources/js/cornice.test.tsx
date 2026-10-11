@@ -8,7 +8,7 @@ import { testi } from './lingue';
 import { Zeiras } from './zeiras';
 
 // Sprint 1 · T6 (voce #1255), riscritto nello sprint 2 · T4 (voce #1256). La `Cornice` resa in un DOM finto coi dati della parte
-// server (`Cornice::dati()`): il menu Prodotti dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
+// server (`Cornice::dati()`): il menu Moduli dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
 // prodotto aperto, i testi della lingua dei dati, persona e workspace dove li mette il design system, e dove portano account e
 // notifiche (linea guida 15, passi 8 e 10).
 
@@ -213,6 +213,17 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
+    it.each([
+        ['it', 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.'],
+        ['en', 'Search across all modules: type at least 2 characters.'],
+        ['es', 'Busca en todos los módulos: escribe al menos 2 caracteres.'],
+    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice «moduli»: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «prodotti» (sprint 21 · T1.3)', async (lingua, aiuto) => {
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await act(async () => uno('.zr-search input')?.focus());
+
+        expect(uno('.zr-search-note')?.textContent).toBe(aiuto);
+    });
+
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
         const ingresso = await import('./index');
 
@@ -326,7 +337,7 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
-    it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Prodotti resta esteso', async (prodotto) => {
+    it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Moduli resta esteso', async (prodotto) => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product={prodotto} />);
 
         expect(uno('.zr-product-switch')).toBeNull();
@@ -2596,10 +2607,10 @@ describe('la voce attiva della barra', () => {
         return conLaClasse;
     };
 
-    it('con active={null} nessuna voce della barra è segnata, in una pagina di app.zeiras.com: né la Dashboard né un prodotto del menu Prodotti (sprint 12 · T5.1)', async () => {
+    it('con active={null} nessuna voce della barra è segnata, in una pagina di app.zeiras.com: né la Dashboard né un prodotto del menu Moduli (sprint 12 · T5.1)', async () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} active={null} />);
 
-        // Le voci del menu Prodotti e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
+        // Le voci del menu Moduli e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
         expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'Impostazioni']);
         expect(segnate()).toStrictEqual([]);
     });

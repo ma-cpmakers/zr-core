@@ -3068,17 +3068,37 @@ it('il controllo delle citazioni per le prime parole vede ciò che non c\'è: un
         ->and(citatiCheNonCiSono(['Titolo'], $readme, false))->toBe(['Titolo']);
 });
 
-it('README e guida chiamano il menu «menu Moduli», e il README dice da quale versione ha questo nome (sprint 21 · T1.5)', function () {
-    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
-    $ilMenu = fn (string $nome, string $testo): int => (int) preg_match_all('/\bmenu\s+'.$nome.'\b/u', $testo);
+/** Quante volte un testo nomina il menu dei moduli con quel nome, anche spezzato su due righe («menu Moduli», «Menu Prodotti»). */
+function volteCheNominaIlMenu(string $nome, string $testo): int
+{
+    return (int) preg_match_all('/\bmenu\s+'.$nome.'\b/iu', $testo);
+}
 
-    expect([$ilMenu('Prodotti', $readme), $ilMenu('Prodotti', $guida)])->toBe([0, 0])
-        ->and($ilMenu('Moduli', $readme))->toBeGreaterThan(0)
-        ->and($ilMenu('Moduli', $guida))->toBeGreaterThan(0)
-        ->and(puntoDellaCornice($readme, 'Il menu Moduli'))->toContain('`v1.10.2`', '«Prodotti»')
-        ->and(array_values(array_intersect(['MODULO-NUOVO.md', 'README.md'], fileDelloZipDiHead())))->toBe(['MODULO-NUOVO.md', 'README.md']);
+it('il documento chiama il menu «menu Moduli» (sprint 21 · T1.5)', function (string $file) {
+    expect(volteCheNominaIlMenu('Moduli', (string) file_get_contents(dirname(__DIR__, 2).'/'.$file)))->toBeGreaterThan(0);
+})->with(['README.md', 'MODULO-NUOVO.md']);
+
+it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i documenti né la descrizione del pacchetto né i commenti del codice; le copie del design system restano le sue (sprint 21 · T1.5)', function () {
+    $radice = dirname(__DIR__, 2);
+    $conIlNomeDiPrima = array_values(array_filter(
+        fileDelloZipDiHead(),
+        fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
+            && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
+    ));
+
+    expect($conIlNomeDiPrima)->toBe([]);
 });
+
+it('il README dice, nel punto «Il menu Moduli», da quale versione il menu ha questo nome e quali testi cambiano con lui (sprint 21 · T1.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Il menu Moduli'), $frase))->toBe(true);
+})->with([
+    'la versione e il nome nuovo' => ['Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»)'],
+    'il nome di prima' => ['prima era «Prodotti»'],
+    'l\'aiuto della ricerca' => ['«Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
+    'il titolo della notifica di un modulo' => ['`titoloDellaNotifica` dà a `com.zeiras.app.modificata`, «Un modulo è stato attivato o disattivato»'],
+]);
 
 // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Il README lo dice dove parla delle notifiche, con la
 // versione e con la funzione che chi mostra le notifiche in una pagina sua importa; nel paragrafo delle funzioni dice come si

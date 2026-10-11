@@ -6,8 +6,8 @@ import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, testi } from './li
 import { registro } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
-// italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system e che nessuna lingua sia elencata
-// nel codice lo prova tests/Feature/LingueTest.php.
+// italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system (o, dove c'è una decisione, quello
+// deciso prima che il design system lo porti) e che nessuna lingua sia elencata nel codice lo prova tests/Feature/LingueTest.php.
 
 describe('le lingue della cornice', () => {
     it("dove una lingua non ha un testo, o l'ha vuoto, quel testo è in inglese (T5.2)", () => {
