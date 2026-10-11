@@ -12,7 +12,10 @@
 // col titolo di ripiego, e due note che non hanno dove andare (la riga sotto il titolo dice quale: «UAT nota senza contatto»,
 // «UAT nota con un id malfatto»), e in fondo due di un'azienda, una creata e una modificata; senza `?crm`, l'elenco è quello di
 // prima. Con `?viste=1` in fondo all'elenco ci sono tre notifiche delle viste salvate di una board (creata, modificata,
-// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Ogni notifica porta gli id che la parte server dà di
+// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Con `?opportunita=1` in fondo all'elenco ci
+// sono le nove notifiche dei tipi nuovi del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro che il CRM manda a
+// chi diventa responsabile, col tipo com'è nel backoffice, senza `com.zeiras.` davanti (`crm.persona.assegnata`); zr-core conosce
+// tutti e nove i tipi, e nel registro nessuno ha una destinazione. Ogni notifica porta gli id che la parte server dà di
 // `dati` (`ids`): i soli che il percorso del registro chiede per il suo tipo, e nessuno se il tipo non ha una destinazione; mai `dati`
 // né `soggetto`. Da una del CRM la cornice apre la sua risorsa, nel workspace che l'elenco dice (`workspace`: quello della «sessione»). «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
@@ -38,6 +41,7 @@ const crm = new URLSearchParams(window.location.search).has('crm');
 // Con `?da_leggere=1` le prime otto notifiche del CRM sono da leggere: per provare il clic che apre la risorsa e le segna lette.
 const daLeggere = new URLSearchParams(window.location.search).has('da_leggere');
 const viste = new URLSearchParams(window.location.search).has('viste');
+const opportunita = new URLSearchParams(window.location.search).has('opportunita');
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -75,6 +79,17 @@ const notificheDiProva = [
     // Non portano id: nel registro una vista non ha una destinazione, e la parte server non ne dà.
     ...(viste
         ? ['creata', 'modificata', 'eliminata'].map((cosa, indice) => ({ id: `uat-v${indice + 1}`, creata_il: fa((22 + indice) * 24 * 60), letta: true, app: 'pm', tipo: `com.zeiras.board.vista.${cosa}`, ...nonDetti, ids: {} as Record<string, string> }))
+        : []),
+    // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
+    // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`). Non portano id: nel registro nessuno dei nove ha una
+    // destinazione, e la parte server non ne dà.
+    ...(opportunita
+        ? [
+              'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
+              'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
+              'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: {} as Record<string, string> }))
         : []),
 ];
 let letture = 0;

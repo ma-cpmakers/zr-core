@@ -303,9 +303,19 @@ cornice === null ? pagina : (
   nuovo vuole una versione nuova di zr-core per avere il suo titolo: fino ad allora si legge il ripiego. Dalla
   `v1.11.0` hanno un titolo anche le nove notifiche del CRM (contatti, pipeline, note, aziende): «Nuovo contatto»,
   «Pipeline modificata», «Nota eliminata», «Nuova azienda»; e le tre delle viste salvate di una board, di Project
-  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli sono 31, uno per ogni tipo di
+  Management: «Nuova vista», «Vista modificata», «Vista eliminata». Con quelle i titoli erano 31, uno per ogni tipo di
   evento del contratto pubblicato l'11/10/2026. Per quel contratto i dodici tipi nuovi non generano ancora notifiche per i
-  colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà. Di che prodotto è
+  colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà. Dalla `v1.12.0` hanno un titolo altri
+  nove tipi del CRM: i cinque eventi di opportunità e attività («Nuova opportunità», «Opportunità modificata», «Nuova
+  attività», «Attività modificata», «Attività eliminata») e le quattro notifiche che il CRM manda a chi diventa
+  responsabile («Ti è stato assegnato un contatto», «Ti è stata assegnata un'azienda», «Ti è stata assegnata
+  un'opportunità», «Ti è stata assegnata un'attività»). Queste quattro non sono eventi: il loro `tipo` arriva senza
+  `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`,
+  `crm.attivita.assegnata`), e la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non
+  `notificationTitle.com.zeiras.crm.persona.assegnata`. Nel contratto un'opportunità è una `trattativa`: il titolo usa la
+  parola del CRM, come per i contatti e le aziende. Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i
+  quattro «assegnata». Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche
+  (`https://app.zeiras.com/notifiche`). Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun

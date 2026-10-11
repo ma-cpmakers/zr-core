@@ -20,8 +20,9 @@ import { rotteFinte } from './rotte-finte';
 // per chi (una rivolta alla persona, una solo in «Tutte», una su un'app, col nome del prodotto al posto del codice, le altre com'erano). Con `?attiva=nessuna` la pagina dice che nessuna voce della barra è attiva
 // (`active={null}`), senza prodotto e dentro un prodotto; senza, è attiva la Dashboard, e dentro un prodotto «UAT Oggi». Gli
 // indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
-// scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts) o `?viste=1` (quelle delle viste di una board)
-// l'ultimo si legge anche in pagina, sotto le scelte.
+// scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts), `?viste=1` (quelle delle viste di una board) o
+// `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) l'ultimo si legge anche in
+// pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire. Non entra nel pacchetto.
 
 const datiDiProva: DatiDellaCornice = {
@@ -76,7 +77,8 @@ function Prova() {
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette };
     }, [senzaCrm, lingua, aziende, nonLette]);
-    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1` o `?viste=1`, così le altre pagine restano com'erano.
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1` o `?opportunita=1`, così le altre pagine
+    // restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
     return (
@@ -109,7 +111,7 @@ function Prova() {
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
         </Cornice>
     );
 }

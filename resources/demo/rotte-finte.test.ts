@@ -211,7 +211,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id che il percorso del registro chiede per il tipo della
     // notifica, nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
     // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?chi=1&crm=1&viste=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli che il percorso del registro chiede per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -251,11 +251,40 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
+    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM stanno dietro `?opportunita=1`, così le pagine di prova di prima
+    // restano com'erano. Non portano id: nel registro nessuno dei nove ha una destinazione, e la parte server non ne dà.
+    it('con `?opportunita=1` in fondo all\'elenco ci sono le nove notifiche nuove del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro «assegnata» col tipo senza `com.zeiras.` davanti; zr-core conosce tutti e nove i tipi, e nessuna ha una destinazione (sprint 22 · T5.1, T5.2, T5.3)', async () => {
+        await rotte(false, '?opportunita=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string; ids: Record<string, string> }[];
+
+        expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(notifiche.slice(4).map(({ id, app, tipo, letta, ids }) => [id, app, tipo, letta, ids])).toEqual([
+            ['uat-o1', 'crm', 'com.zeiras.crm.trattativa.creata', true, {}],
+            ['uat-o2', 'crm', 'com.zeiras.crm.trattativa.modificata', true, {}],
+            ['uat-o3', 'crm', 'com.zeiras.crm.attivita.creata', true, {}],
+            ['uat-o4', 'crm', 'com.zeiras.crm.attivita.modificata', true, {}],
+            ['uat-o5', 'crm', 'com.zeiras.crm.attivita.eliminata', true, {}],
+            ['uat-o6', 'crm', 'crm.persona.assegnata', true, {}],
+            ['uat-o7', 'crm', 'crm.organizzazione.assegnata', true, {}],
+            ['uat-o8', 'crm', 'crm.trattativa.assegnata', true, {}],
+            ['uat-o9', 'crm', 'crm.attivita.assegnata', true, {}],
+        ]);
+        expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual(Array(9).fill(true));
+        // Nessuna ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche col CRM attivo.
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual(Array(9).fill(null));
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+    });
+
     it.each([
         ['', ['uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`)]],
         ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
-    ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm` (sprint 21 · T5.1)', async (query, attese) => {
+        ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
+        ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
+    ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
         await rotte(false, query);
 
         const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; creata_il: string }[];

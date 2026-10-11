@@ -109,6 +109,19 @@ describe('la destinazione di una notifica', () => {
         expect(apre(notifica)).toBeUndefined();
     });
 
+    // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM hanno un titolo e nessuna destinazione. La pagina di un'opportunità in
+    // produzione è spenta e un'attività non ne ha una; per un contatto o un'azienda assegnati è una scelta di prodotto ancora da fare.
+    // I quattro «assegnata» arrivano senza `com.zeiras.` davanti.
+    it.each([
+        ['com.zeiras.crm.trattativa.creata'], ['com.zeiras.crm.trattativa.modificata'],
+        ['com.zeiras.crm.attivita.creata'], ['com.zeiras.crm.attivita.modificata'], ['com.zeiras.crm.attivita.eliminata'],
+        ['crm.persona.assegnata'], ['crm.organizzazione.assegnata'], ['crm.trattativa.assegnata'], ['crm.attivita.assegnata'],
+    ])('una notifica del CRM di tipo «%s» non apre una risorsa, nemmeno con tutti gli id: il pannello apre la pagina delle notifiche (sprint 22 · T5.3)', (tipo) => {
+        const ids = { id: 'uat-x-1', persona_id: 'uat-x-2', organizzazione_id: 'uat-x-3', trattativa_id: 'uat-x-4' };
+
+        expect(apre({ app: 'crm', tipo, ids })).toBeUndefined();
+    });
+
     it.each([
         ['una nota senza `persona_id`', delCrm('nota.creata', { id: 'uat-nota-1' })],
         ['una nota col `persona_id` malfatto e l\'id buono', delCrm('nota.creata', { id: 'uat-nota-1', persona_id: '../x' })],
