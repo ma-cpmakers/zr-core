@@ -35,7 +35,7 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // Sprint 20 · T1 (voce #1674): l'elenco porta anche chi ha fatto, su che cosa e per chi (`autore_nome`, `risorsa_nome`,
 // `per_me`), quando il backoffice li manda; i casi sono in fondo.
 // Sprint 21 · T3 (voce #1641): l'elenco porta anche `ids`, gli id che alla cornice servono per aprire la risorsa di una
-// notifica: di `dati`, i soli che il percorso del registro chiede per il suo tipo, col valore di un id (review della PR #31, R1:
+// notifica: di `dati`, i soli del percorso che si apre per il suo tipo, col valore di un id (review della PR #31, R1:
 // prima erano ogni `id` e ogni `*_id`). Gli altri id, il resto di `dati` e `soggetto` restano nella parte server; i casi sono in
 // fondo.
 
@@ -1412,8 +1412,8 @@ it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando
 });
 
 // Sprint 21 · T3 (voce #1641): da una notifica la cornice apre la sua risorsa, e le servono gli id. Di `dati` la rotta dà, in
-// `ids`, i soli id che servono ad aprirla: quelli che il percorso del registro di zr-core chiede per quel tipo (`{id}`,
-// `{persona_id}`), cercato col tipo intero nella voce dell'app della notifica, e solo con un valore che ha la forma di un id
+// `ids`, i soli id che servono ad aprirla: quelli del percorso che il registro di zr-core dà a quel tipo (`{id}`,
+// `{persona_id}`; dalla `v1.13.0` il primo dei suoi percorsi che `dati` soddisfa per intero), cercato col tipo intero nella voce dell'app della notifica, e solo con un valore che ha la forma di un id
 // (lettere, cifre, `-` e `_`, da 1 a 64). Una notifica di un tipo che nel registro non ha una destinazione — una scheda di una
 // board, una persona entrata nel workspace, un tipo di domani — ha `ids` vuoto: un id non va al browser solo perché la sua chiave
 // è `id` o finisce in `_id` (review della PR #31, R1: prima passavano tutti). Il resto di `dati` resta qui, come `soggetto`.
@@ -1421,7 +1421,8 @@ it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando
 
 /**
  * Una notifica di /v1 non letta coi `dati` che si vogliono; il soggetto resta quello di `notificaDelBackoffice()`, una cartella.
- * Senza altro è una nota del CRM, che nel registro si apre nel contatto a cui è attaccata (`/contatti/{persona_id}`).
+ * Senza altro è una nota del CRM, che nel registro si apre nella cosa più specifica a cui è attaccata: l'opportunità, poi il
+ * contatto (`/contatti/{persona_id}`), poi l'azienda (fino alla `v1.12.0` solo il contatto).
  *
  * @return array<string, mixed>
  */
@@ -1431,7 +1432,7 @@ function notificaConDati(string $id, mixed $dati, string $tipo = 'com.zeiras.crm
 }
 
 /**
- * Coppie di `dati` con una chiave che somiglia a `persona_id`, quella che il percorso di una nota chiede, e non lo è; il valore
+ * Coppie di `dati` con una chiave che somiglia a `persona_id`, quella che un percorso di una nota chiede, e non lo è; il valore
  * da solo passerebbe. Ognuna si aggiunge ai `dati` di una nota che ha il suo id e non quello del contatto.
  *
  * @return array<string, array{array<array-key, mixed>}>
@@ -1491,12 +1492,12 @@ function valoriCheNonSonoUnId(): array
     ];
 }
 
-it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la risorsa della notifica, nel campo `ids`: quelli che il percorso del registro chiede per il suo tipo — l\'id di un contatto, di una pipeline o di un\'azienda, e per una nota quello del contatto, non il suo —; gli altri id, `aggiornata_il`, `campi` e `soggetto` restano nella parte server (sprint 21 · T3.5; review della PR #31, R1)', function () {
+it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la risorsa della notifica, nel campo `ids`: quelli del percorso che si apre per il suo tipo — l\'id di un contatto, di una pipeline o di un\'azienda, e per una nota col solo contatto quello del contatto, non il suo —; gli altri id, `aggiornata_il`, `campi` e `soggetto` restano nella parte server (sprint 21 · T3.5; review della PR #31, R1)', function () {
     // Un altro giorno da quello degli `aggiornata_il` di qui sotto: nella risposta la data di oggi è solo in `aggiornati_il`.
     Carbon::setTestNow(Carbon::parse('2026-10-09 08:00:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [
-        // Una nota: il percorso chiede il contatto a cui è attaccata, e l'id della nota resta qui.
+        // Una nota col solo contatto: il percorso che si apre chiede il contatto a cui è attaccata, e l'id della nota resta qui.
         notificaConDati('uat-n5', ['id' => 'uat-nota-1', 'persona_id' => 'uat-persona-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z']),
         // Una pipeline modificata: il suo id; `campi` dice che cosa è cambiato, e resta qui.
         notificaConDati('uat-n4', ['id' => 'uat-pipeline-1', 'aggiornata_il' => '2026-10-11T12:28:00.123Z', 'campi' => ['uat-campo-nome', 'uat-campo-fasi']], 'com.zeiras.crm.pipeline.modificata'),
