@@ -324,7 +324,7 @@ final class NotificheDellaCornice
         $registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
 
         foreach ($registro as $voce) {
-            foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
+            foreach ($voce['notifiche'] ?? [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
 
