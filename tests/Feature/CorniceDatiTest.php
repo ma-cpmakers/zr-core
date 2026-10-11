@@ -4,8 +4,12 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
+use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
@@ -522,4 +526,286 @@ it('se la sessione scade mentre la cornice legge io.mostra arriva GettoneRifiuta
 
     expect(fn () => Cornice::dati())->toThrow(GettoneRifiutato::class)
         ->and(Http::recorded())->toHaveCount(1);
+});
+
+// Sprint 18 · T2 (voce #1624): la lingua della pagina in una riga. `Cornice::lingua()` dà al modulo la lingua della persona già
+// aggiornata dal profilo, prima del controller: legge io.mostra, lo dà a Sessione::aggiorna e risponde con la lingua della
+// sessione. La lettura è una per richiesta: una `Cornice::dati()` nella stessa richiesta la usa, col suo segno, invece di
+// rifarla, e la riga usa quella di una `Cornice::dati()` venuta prima; due `Cornice::dati()` rileggono tutto, come prima. La
+// lettura tenuta è di quella richiesta, di quella persona e di quel workspace. Dove un caso chiama la cornice più volte senza
+// una richiesta HTTP, la richiesta è quella del container, la stessa per tutto il test: come un middleware e poi la pagina.
+
+/**
+ * La pagina di un modulo che mette la lingua con la riga in un middleware, prima del controller, e poi dà i dati della
+ * cornice: nel gruppo `web`, come `w/{slug}/cornice` di TestCase. Risponde con la lingua che il controller ha trovato
+ * nell'applicazione e coi dati della cornice.
+ */
+function paginaConLaRiga(): void
+{
+    Route::middleware(['web', function ($richiesta, Closure $next) {
+        App::setLocale(Cornice::lingua() ?? 'nessuna');
+
+        return $next($richiesta);
+    }])->get('w/{slug}/pagina', fn () => ['lingua_della_pagina' => App::getLocale(), 'cornice' => Cornice::dati()]);
+}
+
+/**
+ * La riga e poi i dati della cornice, nella stessa richiesta: la lingua che la riga dà, e l'errore che `Cornice::dati()`
+ * lancia dopo (null se non lancia).
+ *
+ * @return array{lingua: ?string, errore: ?Throwable}
+ */
+function laRigaEPoiIDati(): array
+{
+    $lingua = Cornice::lingua();
+
+    try {
+        Cornice::dati();
+    } catch (Throwable $errore) {
+        return ['lingua' => $lingua, 'errore' => $errore];
+    }
+
+    return ['lingua' => $lingua, 'errore' => null];
+}
+
+it('dopo un cambio di lingua nel profilo la riga dà già la lingua nuova al middleware, prima del controller; i dati della cornice di quella richiesta e la sessione hanno la stessa (sprint 18 · T2.1)', function () {
+    sessioneAMano(marketing());
+    // La sessione è entrata in italiano, e poi nel profilo la persona ha scelto l'inglese: io.mostra dà `en`.
+    Sessione::aggiorna(['utente' => ['id' => 'uat-ada', 'lingua' => 'it']]);
+    backoffice(['/v1/io' => ioMostra(3), ...aziendeEWorkspace()]);
+    paginaConLaRiga();
+
+    expect(Sessione::utente()['lingua'])->toBe('it');
+
+    $risposta = $this->get('w/uat-marketing/pagina')->assertOk();
+
+    // La lingua che il controller trova è quella messa dal middleware con la riga: se la riga desse quella di prima, la
+    // pagina uscirebbe in italiano dentro una cornice in inglese.
+    expect($risposta->json('lingua_della_pagina'))->toBe('en')
+        ->and($risposta->json('cornice.lingua'))->toBe('en')
+        ->and($risposta->json('cornice.non_lette'))->toBe(3)
+        ->and(Sessione::utente()['lingua'])->toBe('en');
+    Gettone::assenteDa($risposta);
+});
+
+it('la riga non aggiunge letture: in una richiesta con la riga e i dati della cornice il backoffice riceve le quattro letture di sempre e io.mostra una volta sola, in qualunque ordine; la riga da sola, quante volte si vuole, è una lettura (sprint 18 · T2.2)', function (array $chiamate, array $letture) {
+    $gettoni = sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
+
+    $lingue = [];
+    foreach ($chiamate as $chiamata) {
+        $esito = Cornice::{$chiamata}();
+        $lingue[] = is_array($esito) ? $esito['lingua'] : $esito;
+    }
+
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())->toBe($letture)
+        ->and(richiesteA('/v1/io'))->toHaveCount(1)
+        ->and(richiesteA('/v1/io')->first()->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue()
+        // Ogni chiamata, la prima come l'ultima, dà la lingua del profilo.
+        ->and($lingue)->toBe(array_fill(0, count($chiamate), 'es'));
+})->with([
+    'la riga e poi i dati' => [['lingua', 'dati'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'i dati e poi la riga' => [['dati', 'lingua'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'la riga, i dati, la riga' => [['lingua', 'dati', 'lingua'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'la riga tre volte' => [['lingua', 'lingua', 'lingua'], ['/v1/io']],
+]);
+
+it('chi non chiama la riga non vede cambiare niente: le quattro letture di prima nello stesso ordine, e due Cornice::dati() nella stessa richiesta rileggono tutto, con due segni e le non lette ognuna della sua lettura (sprint 18 · T2.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:00.000001', 'UTC'));
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(5))]);
+
+    $laPrima = Cornice::dati();
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:02.000001', 'UTC'));
+    $laSeconda = Cornice::dati();
+
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all())
+        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
+        ->and([$laPrima['aggiornati_il'], $laSeconda['aggiornati_il']])->toBe(['2026-10-11T08:00:00.000001Z', '2026-10-11T08:00:02.000001Z'])
+        ->and([$laPrima['non_lette'], $laSeconda['non_lette']])->toBe([3, 5]);
+});
+
+it('la lettura della riga serve a una Cornice::dati() sola: la seconda, nella stessa richiesta, rilegge tutto, col suo segno e le sue non lette (sprint 18 · T2.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:00.000001', 'UTC'));
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(5))]);
+
+    Cornice::lingua();
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:01.000001', 'UTC'));
+    $laPrima = Cornice::dati();
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:02.000001', 'UTC'));
+    $laSeconda = Cornice::dati();
+
+    // Una lettura della riga, tre della prima `dati()`, quattro della seconda: non è una cache dei dati della cornice.
+    expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all())
+        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
+        ->and([$laPrima['aggiornati_il'], $laSeconda['aggiornati_il']])->toBe(['2026-10-11T08:00:00.000001Z', '2026-10-11T08:00:02.000001Z'])
+        ->and([$laPrima['non_lette'], $laSeconda['non_lette']])->toBe([3, 5]);
+});
+
+it('senza una sessione la riga dà null, e con la sessione aperta ma senza un workspace dà la lingua della sessione: il backoffice non è chiamato e la sessione resta com\'è (sprint 18 · T2.4)', function () {
+    // Se la riga leggesse io.mostra ci troverebbe un'altra lingua, e la metterebbe nella sessione.
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
+
+    expect(Cornice::lingua())->toBeNull();
+
+    sessioneAMano(null);
+    $prima = session(Sessione::CHIAVE);
+
+    expect(Sessione::aperta())->toBeTrue()
+        ->and(Cornice::lingua())->toBe('en')
+        ->and(session(Sessione::CHIAVE))->toBe($prima);
+    Http::assertNothingSent();
+});
+
+it('una lingua della sessione che non è un testo non esce dalla riga: dà null, senza un workspace e con un workspace il cui io.mostra non ne porta una buona, e il modulo mette la sua (sprint 18 · T2.4)', function (mixed $lingua) {
+    backoffice(['/v1/io' => ioMostraCon(['lingua' => null])]);
+
+    sessioneAMano(null);
+    session()->put(Sessione::CHIAVE.'.utente.lingua', $lingua);
+
+    expect(Cornice::lingua())->toBeNull();
+    Http::assertNothingSent();
+
+    sessioneAMano(marketing());
+    session()->put(Sessione::CHIAVE.'.utente.lingua', $lingua);
+
+    expect(Cornice::lingua())->toBeNull()
+        ->and(richiesteA('/v1/io'))->toHaveCount(1);
+})->with([
+    'un numero' => [7],
+    'null' => [null],
+    'una lista' => [['en']],
+]);
+
+it('se io.mostra non risponde, o risponde guasto, la riga non lancia: dà la lingua della sessione, che resta com\'è; e Cornice::dati(), nella stessa richiesta, lancia quello stesso BackofficeNonRisponde senza richiamare io.mostra (sprint 18 · T2.5)', function (int $stato, mixed $corpo) {
+    sessioneAMano(marketing());
+    $prima = session(Sessione::CHIAVE);
+    // Lo stato 0 è la connessione che cade: nessuna risposta.
+    backoffice(['/v1/io' => $stato === 0 ? Http::failedConnection() : Http::response($corpo, $stato), ...aziendeEWorkspace()]);
+
+    $esito = laRigaEPoiIDati();
+
+    expect($esito['lingua'])->toBe('en')
+        ->and($esito['errore'])->toBeInstanceOf(BackofficeNonRisponde::class)
+        // È l'errore nato nella lettura della riga, non uno nuovo di una seconda lettura.
+        ->and(in_array('lingua', array_column($esito['errore']->getTrace(), 'function'), true))->toBeTrue()
+        ->and(session(Sessione::CHIAVE))->toBe($prima)
+        // Una richiesta in tutto: la lettura fallita non riparte, e la cornice dopo non ne fa altre.
+        ->and(Http::recorded())->toHaveCount(1);
+})->with([
+    ...ioMostraGuaste(adaCambiata()),
+    '502' => [502, ''],
+    'senza JSON' => [200, 'uat: non è JSON'],
+    'la connessione cade' => [0, null],
+]);
+
+it('con un errore di /v1 da io.mostra è lo stesso: la riga dà la lingua della sessione, e Cornice::dati() lancia quello stesso ErroreApi senza richiamare io.mostra (sprint 18 · T2.5)', function (int $stato, string $codice) {
+    sessioneAMano(marketing());
+    $prima = session(Sessione::CHIAVE);
+    $problema = ['type' => 'about:blank', 'title' => 'uat', 'status' => $stato, 'detail' => 'uat', 'codice' => $codice];
+    backoffice(['/v1/io' => Http::response((string) json_encode($problema), $stato, ['Content-Type' => 'application/problem+json']), ...aziendeEWorkspace()]);
+
+    $esito = laRigaEPoiIDati();
+
+    expect($esito['lingua'])->toBe('en')
+        ->and($esito['errore'])->toBeInstanceOf(ErroreApi::class)
+        ->and([$esito['errore']->stato, $esito['errore']->codice])->toBe([$stato, $codice])
+        ->and(in_array('lingua', array_column($esito['errore']->getTrace(), 'function'), true))->toBeTrue()
+        ->and(session(Sessione::CHIAVE))->toBe($prima)
+        ->and(Http::recorded())->toHaveCount(1);
+})->with([
+    '403' => [403, 'gettone_senza_workspace'],
+    '404' => [404, 'non_trovato'],
+    '429' => [429, 'troppe_richieste'],
+]);
+
+it('anche nell\'altro ordine la lettura fallita non riparte: Cornice::dati() lancia, e la riga chiamata dopo, come dalla pagina d\'errore del modulo, dà la lingua della sessione senza richiamare io.mostra (sprint 18 · T2.5)', function () {
+    sessioneAMano(marketing());
+    $prima = session(Sessione::CHIAVE);
+    backoffice(['/v1/io' => Http::response('', 502)]);
+
+    expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class)
+        ->and(Cornice::lingua())->toBe('en')
+        ->and(session(Sessione::CHIAVE))->toBe($prima)
+        ->and(Http::recorded())->toHaveCount(1);
+});
+
+it('un 401 da io.mostra passa dalla riga com\'è: GettoneRifiutato di zr-auth, che il frontend tratta come da ogni altra chiamata, e non una lingua (sprint 18 · T2.5)', function () {
+    sessioneAMano(marketing());
+    $problema = ['type' => 'about:blank', 'title' => 'uat', 'status' => 401, 'detail' => 'uat', 'codice' => 'gettone_non_valido'];
+    backoffice(['/v1/io' => Http::response((string) json_encode($problema), 401, ['Content-Type' => 'application/problem+json'])]);
+
+    expect(fn () => Cornice::lingua())->toThrow(GettoneRifiutato::class)
+        ->and(Http::recorded())->toHaveCount(1);
+});
+
+it('quando Cornice::dati() usa la lettura fatta dalla riga, aggiornati_il è l\'istante preso prima di quella lettura, non quello in cui parte Cornice::dati(): le non lette non sono più vecchie del loro segno (sprint 18 · T2.6)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-11 08:00:00.000001', 'UTC'));
+    sessioneAMano(marketing());
+    // La risposta di io.mostra porta l'orologio avanti di un secondo: un segno preso dopo la lettura sarebbe più tardi.
+    backoffice(['/v1/io' => function () {
+        Carbon::setTestNow(Carbon::now()->addSecond());
+
+        return Http::response(ioMostra(3));
+    }]);
+
+    Cornice::lingua();
+    // Fra la riga, nel middleware, e i dati della cornice, a fine pagina, c'è il controller: tre secondi.
+    Carbon::setTestNow(Carbon::now()->addSeconds(3));
+    $dati = Cornice::dati();
+
+    expect($dati['aggiornati_il'])->toBe('2026-10-11T08:00:00.000001Z')
+        ->and($dati['non_lette'])->toBe(3)
+        ->and(Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z'))->toBe('2026-10-11T08:00:04.000001Z');
+});
+
+it('la lettura tenuta vale per quella richiesta: la richiesta dopo rilegge io.mostra, e i suoi dati sono quelli della sua lettura (sprint 18 · T2.7)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(5))]);
+    paginaConLaRiga();
+
+    $laPrima = $this->get('w/uat-marketing/pagina')->assertOk();
+    $laSeconda = $this->get('w/uat-marketing/pagina')->assertOk();
+
+    // Quattro letture per richiesta, io.mostra una volta in ognuna: la seconda non usa la lettura della prima.
+    expect([$laPrima->json('cornice.non_lette'), $laSeconda->json('cornice.non_lette')])->toBe([3, 5])
+        ->and(richiesteA('/v1/io'))->toHaveCount(2)
+        ->and(Http::recorded())->toHaveCount(8);
+});
+
+it('la lettura tenuta vale per quel workspace: se fra la riga e i dati la sessione entra in un altro workspace, Cornice::dati() rilegge io.mostra col gettone nuovo e dà le non lette di quello (sprint 18 · T2.7)', function () {
+    $gettoni = sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push(ioMostra(9))]);
+
+    Cornice::lingua();
+    // La persona entra in «UAT Vendite»: lo scambio dà un gettone nuovo, e la sessione ha un altro workspace.
+    $nuovo = 'zr_'.Str::random(48);
+    Sessione::entra(['gettone' => $nuovo, 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => Sessione::utente(), 'workspace' => ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'], 'ruolo' => 'membro']);
+    $dati = Cornice::dati();
+
+    expect($dati['workspace'])->toBe(['nome' => 'UAT Vendite', 'slug' => 'uat-vendite'])
+        ->and($dati['non_lette'])->toBe(9)
+        ->and(richiesteA('/v1/io'))->toHaveCount(2)
+        ->and(richiesteA('/v1/io')->first()->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue()
+        ->and(richiesteA('/v1/io')->last()->hasHeader('Authorization', 'Bearer '.$nuovo))->toBeTrue();
+});
+
+it('la lettura tenuta vale per quella persona: se fra la riga e i dati nella sessione entra un\'altra persona, nello stesso workspace, Cornice::dati() rilegge io.mostra col suo gettone e dà le sue non lette (sprint 18 · T2.7)', function () {
+    sessioneAMano(marketing());
+    $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    $ioDiGrace = ioMostra(9);
+    $ioDiGrace['data']['utente'] = $grace;
+    backoffice(['/v1/io' => Http::sequence()->push(ioMostra(3))->push($ioDiGrace)]);
+
+    Cornice::lingua();
+    // Dallo stesso browser entra un'altra persona, nello stesso workspace: lo scambio dà lei e il suo gettone.
+    $suo = 'zr_'.Str::random(48);
+    Sessione::entra(['gettone' => $suo, 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
+    $dati = Cornice::dati();
+
+    expect($dati['persona'])->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'])
+        ->and($dati['non_lette'])->toBe(9)
+        ->and(richiesteA('/v1/io'))->toHaveCount(2)
+        ->and(richiesteA('/v1/io')->last()->hasHeader('Authorization', 'Bearer '.$suo))->toBeTrue();
 });

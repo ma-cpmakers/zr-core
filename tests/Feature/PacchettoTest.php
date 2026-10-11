@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
+use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\ZrCoreServiceProvider;
 
@@ -1084,7 +1085,8 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'),
         'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome nuovi da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
-        'il rimedio' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'chiama `Cornice::dati()` prima di leggere la lingua, o rilegge `Sessione::utente()` dopo'),
+        // Dalla v1.8.0 il rimedio di prima è la strada di chi resta col suo codice: la riga è `Cornice::lingua()` (sprint 18 · T2.8).
+        'il rimedio' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere `Sessione::utente()` dopo, funziona come prima'),
         // Il rimedio da solo, accanto all'esempio che la lascia nella funzione di `share()`, porta a chiamarla due volte.
         'chi la chiama prima ne tiene il risultato' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Chi la chiama prima ne tiene il risultato e dà quello a `share()`, senza chiamarla un\'altra volta'),
         'perché: rilegge tutto a ogni chiamata' => str_contains(sezioneDelReadme($testo, 'La parte server'), '`Cornice::dati()` rilegge tutto a ogni chiamata — due chiamate nella stessa richiesta sono otto letture invece di quattro, con due segni'),
@@ -1141,6 +1143,55 @@ it('la parte server chiama Sessione::aggiorna, come dice il README: nel codice d
     expect($chiamateIn("<?php\n// Sessione::aggiorna(\$io);\n/** Sessione::aggiorna(\$io) */\n"))->toBe(0)
         ->and($chiamateIn("<?php\nSessione::aggiorna(\$io);\n"))->toBe(1)
         ->and($chiamate > 0)->toBe(true);
+});
+
+// Sprint 18 · T2 (voce #1624): dalla v1.8.0 la lingua della pagina si prende in una riga, `Cornice::lingua()`, e il README lo
+// dice dove dava la regola d'ordine (chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere la sessione dopo):
+// quella resta una strada per chi ha già il suo codice, non l'unica.
+
+it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove va, che cosa dà, quanto costa dove la cornice non c\'è e dove c\'è, che cosa fa se il backoffice non risponde, e che chi resta col suo codice non cambia niente (sprint 18 · T2.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    // Con «La parte server» e «La cornice» scambiate la frase c'è ancora, ma non dove si legge di Cornice::dati().
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(suUnaRiga($scambiate), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'la riga' => ['App::setLocale(Cornice::lingua() ?? config(\'app.locale\'));'],
+    'dove va' => ['una riga nel middleware che mette la lingua, prima del controller'],
+    'da quale versione' => ['c\'è `Cornice::lingua()` (dalla `v1.8.0`)'],
+    'che cosa dà' => ['Dà la lingua della persona già aggiornata dal profilo'],
+    'come la prende' => ['legge `io.mostra`, lo dà a `Sessione::aggiorna` e risponde con la lingua della sessione'],
+    'senza una sessione' => ['Senza una sessione dà `null`'],
+    'senza un workspace' => ['con la sessione ma senza un workspace dà la lingua della sessione, senza chiamare il backoffice'],
+    'una lingua che il modulo non ha' => ['È la lingua del profilo com\'è: se il modulo non ce l\'ha, quale mettere al suo posto lo decide il modulo'],
+    'quanto costa dove la cornice non c\'è' => ['Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c\'è'],
+    'nessuna in più dove c\'è' => ['dove c\'è non ne costa una in più'],
+    'le letture restano quattro' => ['e le letture restano quattro'],
+    'di quale lettura sono le non lette e il segno' => ['Le non lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`'],
+    'se il backoffice non risponde non lancia' => ['Se il backoffice non risponde `Cornice::lingua()` non lancia: dà la lingua della sessione'],
+    'l\'errore lo lancia Cornice::dati(), senza un\'altra lettura' => ['lo lancia `Cornice::dati()`, se in quella richiesta la chiami, senza chiamare `io.mostra` un\'altra volta'],
+    'GettoneRifiutato passa' => ['`GettoneRifiutato` invece passa anche da `Cornice::lingua()`'],
+    'chi resta col suo codice' => ['Chi resta col suo codice non cambia niente: chiamare `Cornice::dati()` prima di leggere la lingua, o rileggere `Sessione::utente()` dopo, funziona come prima'],
+]);
+
+it('il README non dà più la regola d\'ordine come unica strada per avere la pagina nella lingua nuova: al suo posto c\'è la riga (sprint 18 · T2.8)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $diPrima = 'Un frontend che vuole la pagina nella lingua nuova già da quella richiesta chiama `Cornice::dati()` prima di leggere la lingua, o rilegge `Sessione::utente()` dopo';
+    $nuova = 'Per avere la pagina nella lingua nuova già da quella richiesta c\'è `Cornice::lingua()`';
+    // Il README con la frase della v1.7.0 al posto di quella nuova: il controllo la vede.
+    $conQuellaDiPrima = str_replace($nuova, $diPrima, $readme);
+
+    expect(substr_count($readme, $diPrima))->toBe(0)
+        ->and(substr_count($readme, $nuova))->toBe(1)
+        ->and(substr_count($conQuellaDiPrima, $diPrima))->toBe(1);
+});
+
+it('la parte server ha la riga che il README dice: Cornice::lingua() è un metodo pubblico e statico di src/Cornice.php, senza argomenti, che dà una stringa o null (sprint 18 · T2.8)', function () {
+    $riga = new ReflectionMethod(Cornice::class, 'lingua');
+
+    expect([$riga->isPublic(), $riga->isStatic(), $riga->getNumberOfParameters(), (string) $riga->getReturnType()])->toBe([true, true, 0, '?string']);
 });
 
 // Sprint 12 · T3 (voce #1463): nel pannello ogni notifica ha il titolo del suo tipo, e il README lo dice nel punto «Le notifiche».
