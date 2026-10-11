@@ -25,11 +25,14 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     });
 
     afterEach(() => {
-        expect(console.error).not.toHaveBeenCalled();
+        // Prima si rimette tutto com'era, poi si guarda: se un caso ha scritto un errore, quelli dopo non devono partire col
+        // `fetch` finto e con le spie di questo (sprint 19 · review, R10).
+        const errori = vi.mocked(console.error).mock.calls.slice();
         vi.restoreAllMocks();
         // Le rotte finte della pagina prendono il posto di `fetch`.
         window.fetch = fetchDiPrima;
         document.body.innerHTML = '';
+        expect(errori).toStrictEqual([]);
     });
 
     /** La pagina di prova caricata con quella query. */

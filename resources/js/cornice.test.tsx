@@ -2368,3 +2368,24 @@ describe('la voce attiva della barra', () => {
         expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(['Project Management']);
     });
 });
+
+// Sprint 19 · review della PR #23, R3: ciò che la cornice decide da sé — il selettore, il numero sulla campanella, «Segna
+// tutte come lette», le voci del menu del profilo — non lo cambia una prop con lo stesso nome arrivata fuori dal tipo, con uno
+// spread, nemmeno quando la cornice non ha niente da dare: come nella `v1.8.0`, dove la sua prop valeva `undefined` e copriva
+// quella del frontend.
+describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decide la cornice', () => {
+    it('con uno spread di props che `Cornice` non ha, quando la cornice non dà niente al loro posto all\'`AppShell` non arrivano (sprint 19 · review, R3)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const fuoriDalTipo = {
+            companies: [{ id: 'x', name: 'X', workspaces: [{ slug: 'x', name: 'X' }] }],
+            unreadCount: 99,
+            onMarkAllRead: () => {},
+            accountItems: [{ label: 'Voce del frontend' }],
+        };
+        // Senza aziende, senza non lette, senza notifiche caricate, con `piano`: la cornice non dà nessuna delle quattro.
+        await mostra(<Cornice {...(fuoriDalTipo as object)} dati={dati} onLogout={esciSenzaEffetto} piano />);
+
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
+    });
+});

@@ -2436,9 +2436,66 @@ it('la CI lancia il tsc stretto nel passo dei tipi, a ogni giro: una volta, dopo
 
     expect(substr_count($ci, 'npx tsc --noEmit -p tsconfig.stretto.json'))->toBe(1)
         ->and(str_contains($passo[0] ?? '', "          npx tsc --noEmit\n          npx tsc --noEmit -p tsconfig.stretto.json\n          npx vitest run\n"))->toBe(true)
-        // Nessuna condizione sul passo, e un suo errore ferma il giro: vale in ogni giro della matrice.
-        ->and(preg_match('/^\s+(if|continue-on-error):/m', $passo[0] ?? ''))->toBe(0);
+        // Nessuna condizione sul passo, e un suo errore ferma il giro: vale in ogni giro della matrice. Senza `shell:` il passo
+        // gira con `bash -e`, come lo lancia il caso qui sotto.
+        ->and(preg_match('/^\s+(if|continue-on-error|shell):/m', $passo[0] ?? ''))->toBe(0)
+        ->and(substr_count($ci, 'continue-on-error'))->toBe(0);
 });
+
+/**
+ * Lo script del passo dei tipi di ci.yml, cioè il suo blocco `run: |` senza il rientro: vuoto se il passo o il blocco non ci sono.
+ */
+function passoDeiTipi(string $ci): string
+{
+    if (preg_match('/^ {6}- name: Dipendenze JS, tipi.*\n(?: {8}.*\n)*? {8}run: \|\n((?:(?: {10}.*)?\n)+)/m', $ci, $passo) !== 1) {
+        return '';
+    }
+
+    return trim((string) preg_replace('/^ {10}/m', '', $passo[1]))."\n";
+}
+
+/**
+ * Il passo dei tipi lanciato come lo lancia la CI (un passo senza `shell:` gira con `bash -e`), in una cartella vuota con un
+ * `npm` e un `npx` finti: scrivono ciò che gli si chiede e, se è il comando che deve fallire, escono con 1.
+ *
+ * @return array{0: int|null, 1: list<string>} il codice d'uscita e i comandi lanciati, nell'ordine
+ */
+function passoDeiTipiCon(?string $cheFallisce): array
+{
+    $prova = sys_get_temp_dir().'/zr-core-passo-'.bin2hex(random_bytes(8));
+    mkdir($prova.'/bin', 0700, true);
+
+    try {
+        file_put_contents($prova.'/passo.sh', passoDeiTipi((string) file_get_contents(dirname(__DIR__, 2).'/.github/workflows/ci.yml')));
+        foreach (['npm', 'npx'] as $comando) {
+            file_put_contents($prova.'/bin/'.$comando, <<<BASH
+                #!/usr/bin/env bash
+                printf '%s\n' "{$comando} \$*" >>chiesto
+                if [ "{$comando} \$*" = "\$FALLISCE" ]; then exit 1; fi
+
+                BASH);
+            chmod($prova.'/bin/'.$comando, 0700);
+        }
+
+        $passo = new Process(['bash', '--noprofile', '--norc', '-e', 'passo.sh'], $prova, ['PATH' => $prova.'/bin:'.getenv('PATH'), 'FALLISCE' => $cheFallisce ?? '']);
+        $passo->run();
+
+        return [$passo->getExitCode(), is_file($prova.'/chiesto') ? explode("\n", trim((string) file_get_contents($prova.'/chiesto'))) : []];
+    } finally {
+        (new Filesystem)->deleteDirectory($prova);
+    }
+}
+
+// Review della PR #23, R6: che il passo fermi il giro non si legge in ci.yml, si prova lanciando il suo `run:`. Con un comando
+// che fallisce il passo esce con 1 e quelli dopo non partono: un `tsc` stretto rosso non arriva a vitest, e meno ancora a Pest.
+it('il passo dei tipi, lanciato: lancia i suoi comandi in quest\'ordine, e si ferma al primo che fallisce (sprint 19 · review, R6)', function (?string $cheFallisce, int $uscita, array $lanciati) {
+    expect(passoDeiTipiCon($cheFallisce))->toBe([$uscita, $lanciati]);
+})->with([
+    'tutto riesce' => [null, 0, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json', 'npx vitest run', 'npm run build', 'npm run demo']],
+    'il tsc stretto fallisce' => ['npx tsc --noEmit -p tsconfig.stretto.json', 1, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json']],
+    'il tsc di base fallisce' => ['npx tsc --noEmit', 1, ['npm ci', 'npx tsc --noEmit']],
+    'vitest fallisce' => ['npx vitest run', 1, ['npm ci', 'npx tsc --noEmit', 'npx tsc --noEmit -p tsconfig.stretto.json', 'npx vitest run']],
+]);
 
 it('le opzioni di tsc che il README elenca in «I tipi» sono quelle che il file stretto accende, nello stesso ordine: tutte, e nessun\'altra (sprint 19 · T2.5)', function () {
     $stretto = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.stretto.json'), true, flags: JSON_THROW_ON_ERROR);
@@ -2465,7 +2522,12 @@ it('il README dice, in «I tipi», una frase per cosa: con quali opzioni reggono
     'le props facoltative' => ['le props facoltative di `Cornice` e di `LayoutDellaCornice` (`product={undefined}`)'],
     'le chiavi facoltative dei dati' => ['le chiavi facoltative dei dati della cornice (`aziende: undefined`)'],
     'i tipi del design system no' => ['I tipi del design system (`index.d.ts`) no: lì una chiave che non si dà si omette'],
-    'che cosa è del design system' => ['le voci di `nav`, di `crumbs` e di `create` sono sue'],
+    // Review della PR #23, R9: `tone` delle voci di `nav` lo dichiara zr-core, con la forma che vuole l'`AppShell`: non è «suo».
+    'le voci hanno la forma del design system' => ['le voci di `nav`, di `crumbs` e di `create` hanno la sua forma'],
+    // R1: anche le chiavi di `prodotti`, e quelle dentro un'azienda.
+    'anche le chiavi dentro i dati' => ['anche quelle di `prodotti` e quelle dentro un\'azienda'],
+    // R2: i sorgenti usano la libreria di ES2022 (`Array.prototype.at`).
+    'con quale target' => ['Vogliono `target` ES2022 o più recente'],
     'con skipLibCheck' => ['La misura è con `skipLibCheck`, come nei `tsconfig` dei frontend'],
 ]);
 
@@ -2481,6 +2543,10 @@ it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice
         '} satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;',
         '            {...propsScritteUndefined}',
         'dati={{ ...datiScrittiUndefined, ...datiDiProva, ',
+        // Review della PR #23, R1 e R8: le chiavi facoltative dentro i dati — uno stato di `prodotti`, l'`id` di un workspace,
+        // `nuovo_workspace` — le prova un valore scritto a mano, che qui non può sparire in silenzio.
+        "prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo', automations: undefined },",
+        "workspace: [{ id: undefined, nome: 'UAT Ricerca', slug: 'uat-ricerca' }], nuovo_workspace: undefined }],",
     ]],
     'la pagina del layout' => ['layout.tsx', [
         'type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;',
@@ -2488,3 +2554,12 @@ it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice
         '            {...propsScritteUndefined}',
     ]],
 ]);
+
+// Review della PR #23, R2: i sorgenti che si installano usano la libreria di ES2022, e il `tsc` di zr-core li guarda con quel
+// `target`: un frontend con un `target` più basso si fermerebbe su un file che non può correggere. Il README lo dice.
+it('il target che il README dice per i sorgenti è quello con cui li guarda il tsc di zr-core (sprint 19 · review, R2)', function () {
+    $base = json_decode((string) file_get_contents(__DIR__.'/../../tsconfig.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($base['compilerOptions']['target'] ?? null)->toBe('ES2022')
+        ->and(str_contains(puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), 'Vogliono `target` '.$base['compilerOptions']['target'].' o più recente'))->toBe(true);
+});
