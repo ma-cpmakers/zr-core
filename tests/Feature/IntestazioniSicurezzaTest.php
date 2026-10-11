@@ -952,17 +952,22 @@ it('ciò che PHP sa scrivere resta com\'è e non lascia avvisi: un testo, anche 
         "script-src 'none'\n",
         "style-src 'none'\r\n",
         "img-src 'none' \t",
+        // Seconda lettura della PR #22, N4: anche dopo l'a capo PHP taglia spazi, `\v` e `\f`. Una regola che in fondo
+        // togliesse meno caratteri di PHP scarterebbe una CSP valida, e una risposta che oggi esce cambierebbe.
+        "connect-src 'none'\n  ",
+        "font-src 'none'\n\v",
+        "media-src 'none'\n\f",
         new CspComeOggetto('sandbox'),
         new CspComeOggetto("frame-ancestors 'none'\n"),
     ];
     Route::get('/prova/csp', function () use ($sue) {
-        $risposta = response('con sei CSP sue');
+        $risposta = response('con nove CSP sue');
         $risposta->headers->set('Content-Security-Policy', $sue);
 
         return $risposta;
     });
 
-    $risposta = $this->get('/prova/csp')->assertOk()->assertSee('con sei CSP sue');
+    $risposta = $this->get('/prova/csp')->assertOk()->assertSee('con nove CSP sue');
 
     // `toBe` confronta con `===`: i due oggetti sono gli stessi, non due uguali.
     expect(intestazioniDiSicurezzaDi($risposta))->toBe([...LE_CINQUE_INTESTAZIONI, 'Content-Security-Policy' => [...$sue, CSP_DI_TUTTI]])

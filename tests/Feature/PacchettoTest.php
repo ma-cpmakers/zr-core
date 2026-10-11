@@ -1168,7 +1168,8 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     // Review della PR #22, R9: la forma della lingua la guarda la riga, e il README lo dice.
     'la forma di una lingua' => ['È la lingua del profilo, se ha la forma di una lingua (due o tre lettere, poi parti di lettere e cifre unite da `-` o `_`: `it`, `pt-BR`); se no dà `null`'],
     'mai un valore che Laravel rifiuta' => ['a `App::setLocale` non arriva mai un valore che Laravel rifiuta'],
-    'una lingua che il modulo non ha' => ['Una lingua ben fatta che il modulo non ha passa com\'è: Laravel prende i testi dal suo `fallback_locale`'],
+    // Seconda lettura della PR #22, N2: il ripiego di Laravel vale per i file a gruppi, non per i testi JSON.
+    'una lingua che il modulo non ha' => ['Una lingua ben fatta che il modulo non ha passa com\'è: per i testi dei file a gruppi (`lang/<lingua>/…`) Laravel ripiega sul suo `fallback_locale`, per quelli JSON (`lang/<lingua>.json`) dà la chiave com\'è'],
     'quanto costa dove la cornice non c\'è' => ['Costa una lettura, `io.mostra`, nelle richieste in cui la chiami e la cornice non c\'è'],
     'nessuna in più dove c\'è' => ['dove c\'è non ne costa una in più'],
     'le letture restano quattro' => ['e le letture restano quattro'],
@@ -1177,7 +1178,8 @@ it('il README dice, in «La parte server», la riga con Cornice::lingua(): dove 
     // Review, A4: vale per la prima `Cornice::dati()`; e ciò che il controller cambia dopo comprende lingua e nome.
     'l\'errore lo lancia la prima Cornice::dati(), senza un\'altra lettura' => ['lo lancia la prima `Cornice::dati()` di quella richiesta, se la chiami, senza chiamare `io.mostra` un\'altra volta'],
     'anche la lingua e il nome cambiati dal controller' => ['Vale anche per la lingua e il nome: se il controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo'],
-    'subito solo con Sessione::aggiorna' => ['subito solo se il controller dà la risposta del backoffice a `Sessione::aggiorna`'],
+    // Seconda lettura, N3: quale forma `Sessione::aggiorna` prende, e che con un'altra non cambia niente.
+    'subito solo con Sessione::aggiorna' => ['subito solo se il controller dà a `Sessione::aggiorna` i dati della persona nella forma di `io.mostra` (l\'`utente` col suo `id`, la `lingua` e il `nome`): con un\'altra forma `Sessione::aggiorna` non cambia niente'],
     // Review, R6: l'errore che la riga prende lascia un avviso.
     'l\'avviso nel log' => ['lascia nel log una riga d\'avviso col tipo dell\'errore, mai il suo messaggio'],
     // Review, R5: dove la riga non va, e quanto costerebbe.
@@ -1994,10 +1996,16 @@ it('il README dice, in «Le intestazioni di sicurezza» e subito dopo «la tiene
     'da quale versione, e che cosa esce al suo posto' => ['Dalla `v1.8.0` la classe la scarta e al suo posto mette la politica più stretta, una volta sola per risposta'],
     'la politica più stretta, per intero' => ["`default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox`"],
     'come esce la risposta' => ['La risposta esce col suo stato, il suo corpo, le altre sue CSP e quella del modulo'],
-    'che cosa fa il browser' => ['con quella politica il browser non carica e non esegue niente di quella pagina, finché l\'errore non è corretto nel codice del modulo'],
+    // Seconda lettura della PR #22, N1: la politica più stretta ferma una pagina solo dove il browser applica una CSP.
+    'che cosa fa il browser' => ['con quella politica, quando il browser la carica come documento, non carica e non esegue niente di quella pagina, finché l\'errore non è corretto nel codice del modulo'],
     'mai una CSP più larga di quella chiesta' => ['una pagina non esce mai con una CSP più larga di quella che il suo codice aveva chiesto'],
+    'dove il browser non applica nessuna CSP' => ['Dove il browser non applica nessuna CSP — una visita di Inertia, una risposta JSON, un rimando, un file scaricato — non si ferma niente, come niente avrebbe stretto la CSP scartata: lì il solo segno è l\'avviso'],
     'l\'avviso' => ['Lo scarto lascia nel log un avviso, nella riga degli altri scarti della CSP e per primo: dice il tipo del valore, mai il valore'],
     'ciò che PHP sa scrivere resta' => ['Ciò che PHP sa scrivere resta com\'è: anche un testo con un a capo in fondo, che PHP all\'invio taglia'],
+    // Seconda lettura, R8: l'oggetto resta lo stesso, e all'invio è letto di nuovo.
+    'un oggetto è letto di nuovo all\'invio' => ['Di un oggetto che si legge come testo la classe guarda il testo e tiene l\'oggetto, che all\'invio è letto di nuovo: se a ogni lettura dà un testo diverso, ciò che l\'invio trova può non essere ciò che la classe ha guardato'],
+    // Seconda lettura, S3: il 500 di prima c'era col gestore degli errori di Laravel; dove è cambiato, la versione stringe.
+    'un frontend che cambia il gestore degli errori' => ['in un frontend che lo cambia, o che abbassa `error_reporting`, una lista o un testo con un a capo non fermavano l\'invio (PHP avvisa e va avanti: della lista scrive `Array`, il testo con l\'a capo non lo scrive) — lì, dalla `v1.8.0`, al loro posto esce la più stretta'],
 ]);
 
 // Review della PR #22, R1: lo scarto semplice faceva uscire la pagina con una CSP più larga di quella chiesta, e il README lo
