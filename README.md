@@ -477,7 +477,10 @@ cornice === null ? pagina : (
   quei risultati nel proprio, dove non ci sono. Una risposta senza `workspace`, o con un `workspace` che non è un testo o è
   vuoto, è un errore della ricerca: senza non c'è un indirizzo sicuro, e la cornice non ripiega sul workspace della
   pagina. Così risponde anche una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si
-  aggiunge `workspace`, con lo slug dei dati della pagina (si trovano cercando `cornice/ricerca` nei test del frontend). Se
+  aggiunge `workspace`, con lo slug dei dati della pagina (si trovano cercando `cornice/ricerca` nei test del frontend).
+  Dalla `v1.13.0` è un errore della ricerca anche un `workspace` che non ha la forma di uno slug — minuscole e cifre, a
+  pezzi uniti da un trattino, la stessa che vale per una notifica —: con `..` l'indirizzo di un risultato sarebbe un
+  altro. Una parte server finta che risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta. Se
   la rotta fallisce, l'errore della ricerca, mai «Nessun risultato». Dalla `v1.12.0` il segnaposto del campo e l'aiuto
   che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle: «Cerca board e cartelle…»
   e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e «Search boards and
