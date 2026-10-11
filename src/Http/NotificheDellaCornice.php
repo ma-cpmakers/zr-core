@@ -163,6 +163,11 @@ final class NotificheDellaCornice
      * lista, di una persona entrata nel workspace), `aggiornata_il`, `campi`, e ciò che il backoffice ci metterà domani — una
      * chiave nuova non arriva in pagina solo perché finisce in `_id`. Il browser mette questi id nell'indirizzo che la notifica apre.
      *
+     * Un tipo può avere più percorsi, dal più specifico (`percorso`, poi `altrimenti`: una nota apre l'opportunità, altrimenti
+     * il contatto, altrimenti l'azienda): gli id sono quelli del primo che `dati` soddisfa per intero, e solo quelli — mai gli
+     * id di due percorsi insieme. Un percorso senza segnaposto (`/da-fare`, per un'attività) è intero senza id: dà `[]`. Se
+     * nessun percorso è intero restano gli id in forma del primo, com'era con un percorso solo, e il browser non apre niente.
+     *
      * È pubblico, ed è un'API del pacchetto (dalla v1.12.0): l'elenco lo chiama per ogni notifica, e un frontend che le
      * notifiche le legge da sé dal backoffice, per una pagina sua, lo chiama con `app`, `tipo` e `dati` di una notifica, com'è
      * nella risposta di /v1, e dà al browser gli stessi `ids`. Una regola sola, non due copie. Nome e firma sono un contratto
@@ -174,15 +179,22 @@ final class NotificheDellaCornice
      */
     public static function idsDellaNotifica(?string $app, string $tipo, mixed $dati): array
     {
-        $ids = [];
-        foreach (self::chiaviDelPercorso($app, $tipo) as $chiave) {
-            $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
-            if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
-                $ids[$chiave] = $valore;
+        $delPrimo = null;
+        foreach (self::chiaviDelPercorso($app, $tipo) as $chiavi) {
+            $ids = [];
+            foreach ($chiavi as $chiave) {
+                $valore = is_array($dati) ? ($dati[$chiave] ?? null) : null;
+                if (is_string($valore) && preg_match(self::FORMA_DI_UN_ID, $valore) === 1) {
+                    $ids[$chiave] = $valore;
+                }
             }
+            if (count($ids) === count($chiavi)) {
+                return $ids;
+            }
+            $delPrimo ??= $ids;
         }
 
-        return $ids;
+        return $delPrimo ?? [];
     }
 
     /**
@@ -345,13 +357,14 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Le chiavi degli id che il percorso di una notifica chiede, dal registro dei moduli del pacchetto
+     * Le chiavi degli id che ogni percorso di una notifica chiede, dal registro dei moduli del pacchetto
      * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
-     * che il browser usa. La voce è quella dell'app della notifica, e il tipo si cerca intero. Nessuna chiave per un tipo che lì
-     * non ha una destinazione, per un'app che il registro non ha, o senza app; e nessuna per una voce «Presto», che il browser
-     * non apre: i suoi id non servono ad aprire niente.
+     * che il browser usa. Un elenco di chiavi per percorso, nell'ordine in cui si provano: `percorso`, poi quelli di
+     * `altrimenti`; un percorso senza segnaposto ha un elenco vuoto. La voce è quella dell'app della notifica, e il tipo si
+     * cerca intero. Nessun percorso per un tipo che lì non ha una destinazione, per un'app che il registro non ha, o senza
+     * app; e nessuno per una voce «Presto», che il browser non apre: i suoi id non servono ad aprire niente.
      *
-     * @return list<string>
+     * @return list<list<string>>
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
@@ -360,9 +373,11 @@ final class NotificheDellaCornice
         foreach (self::$registro as $voce) {
             foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
-                    preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
+                    return array_map(function (string $percorso): array {
+                        preg_match_all(self::SEGNAPOSTO, $percorso, $segnaposto);
 
-                    return $segnaposto[1];
+                        return array_values(array_unique($segnaposto[1]));
+                    }, [$notifica['percorso'], ...($notifica['altrimenti'] ?? [])]);
                 }
             }
         }

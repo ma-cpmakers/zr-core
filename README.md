@@ -320,8 +320,8 @@ cornice === null ? pagina : (
   `crm.attivita.assegnata`), e la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non
   `notificationTitle.com.zeiras.crm.persona.assegnata`. Nel contratto un'opportunità è una `trattativa`: il titolo usa la
   parola del CRM, come per i contatti e le aziende. Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i
-  quattro «assegnata». Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche
-  (`https://app.zeiras.com/notifiche`). Di che prodotto è
+  quattro «assegnata». Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche
+  (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM (più sotto). Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -409,8 +409,13 @@ cornice === null ? pagina : (
   Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace
   dell'elenco: una
   notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
-  impostazioni, una di una nota il contatto a cui è attaccata, una di un'azienda l'elenco delle aziende col suo pannello
-  aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`). Dove si apre ogni tipo lo dice il registro (`notifiche`
+  impostazioni, una di un'azienda l'elenco delle aziende col suo pannello
+  aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`). Dalla `v1.13.0` una di un'opportunità — nuova, modificata o
+  assegnata — apre `https://crm.zeiras.com/w/<slug>/opportunita/<id>`, un contatto o un'azienda assegnati la loro pagina,
+  e una di un'attività — nuova, modificata, eliminata o assegnata — la pagina «Da fare»
+  (`https://crm.zeiras.com/w/<slug>/da-fare`), senza un id: un'attività non ha una pagina sua. Una nota apre la cosa più
+  specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
+  `v1.12.0` apriva sempre il contatto). Dove si apre ogni tipo lo dice il registro (`notifiche`
   della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
   mostra le notifiche in una pagina sua importa dall'ingresso. Un id non è un permesso: chi riceve la notifica può non
   poter vedere quella risorsa, la cornice non lo controlla, e lo decide il modulo che apre la pagina. Il workspace
@@ -423,9 +428,10 @@ cornice === null ? pagina : (
   destinazione); se la risposta non dice il workspace, o lo dice senza la forma di uno slug, il clic apre la pagina delle
   notifiche: così fa anche una parte server finta, nei test di un frontend, che risponde senza `workspace`. Una notifica che
   non ha dove andare apre
-  `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (oggi ci sono nove tipi del CRM,
-  quelli di contatti, pipeline, note e aziende; opportunità, attività, i quattro «assegnata» e le viste di una board
-  non hanno una destinazione), le manca un id che il percorso chiede, o il modulo in quel
+  `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (dalla `v1.13.0` ci sono diciotto
+  tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
+  le viste di una board e le schede non hanno una destinazione), le mancano gli id di ogni percorso del suo tipo, o il
+  modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
   Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta: la cornice chiede
@@ -531,12 +537,16 @@ dalla `v1.12.0` li dà un metodo PHP pubblico e statico,
 `Zeiras\Core\Http\NotificheDellaCornice::idsDellaNotifica(?string $app, string $tipo, mixed $dati): array`, ed è la
 regola con cui li dà `GET /cornice/notifiche`, non una copia. `app`, `tipo` e `dati` sono quelli della notifica, com'è
 nella risposta del backoffice, e `dati` è un array di PHP con le sue chiavi; il metodo dà gli id per chiave
-(`['persona_id' => '<id>']` per una nota), da dare al browser come `ids` della notifica. È un array di PHP, e vuoto in
+(`['persona_id' => '<id>']` per una nota legata al solo contatto), da dare al browser come `ids` della notifica. Dalla
+`v1.13.0` un tipo può avere più percorsi, e il metodo dà gli id del primo che `dati` soddisfa per intero, e solo quelli:
+per una nota legata a un'opportunità e a un contatto la sola `['trattativa_id' => '<id>']`. Per un tipo il cui percorso
+non chiede un id — un'attività, che apre «Da fare» — dà `[]`: un `ids` vuoto non vuol dire che la notifica non ha una
+destinazione, e se ce l'ha lo dice `destinazioneDellaNotifica`. È un array di PHP, e vuoto in
 JSON è `[]`, mentre `GET /cornice/notifiche` manda `ids` sempre come oggetto (`{}` quando è vuoto): chi lo dà al browser
 lo converte in un oggetto (`(object)`), e nel browser `ids` ha una forma sola. Dà `[]`, senza eccezioni,
 quando la notifica non ha una destinazione — un tipo o un'app che il registro non ha, nessuna app, una voce «Presto» —
 e quando `dati` manca o non è un array con le chiavi; un id che manca, o che non ha la forma di un id (lettere, cifre,
-`-` e `_`, da 1 a 64), nell'array non c'è. Senza un id che il percorso chiede `destinazioneDellaNotifica` non dà
+`-` e `_`, da 1 a 64), nell'array non c'è. Senza gli id di nessuno dei percorsi del tipo `destinazioneDellaNotifica` non dà
 niente, e si apre la pagina delle notifiche. Al browser vanno questi `ids` e non `dati`: i `dati` interi di una
 notifica restano sul server del frontend. Un id non è un permesso nemmeno qui: il metodo non controlla che chi riceve la
 notifica possa vedere quella risorsa, e lo decide il modulo che apre la pagina. Lo `slug` da dare a
@@ -548,7 +558,12 @@ proprio. Nome e firma del metodo sono un contratto, e cambiano solo con una vers
 Le destinazioni stanno nel registro, non nel codice: la voce
 di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell'evento (`com.zeiras.crm.nota.creata`) e il
 percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id}` e prende l'id che la notifica ha con
-quella chiave (`/contatti/{persona_id}` per una nota). Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+quella chiave (`/contatti/{id}` per un contatto). Un percorso può non avere un segnaposto (`/da-fare`, per un'attività):
+allora non chiede un id. Dalla `v1.13.0` una riga può avere anche `altrimenti`, la lista dei percorsi che si provano dopo
+`percorso`, in ordine, quando la risorsa può stare in più pagine: si apre il primo che ha tutti i suoi id — per una nota
+`/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`. Un tipo
+che non è un evento, come ciò che il CRM manda a chi diventa responsabile (`crm.persona.assegnata`), è scritto com'è nel
+backoffice, senza `com.zeiras.` davanti. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:

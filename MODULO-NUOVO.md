@@ -43,7 +43,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   mostrare (passo 9). Entra con una versione di zr-core: fino a quella vale «Durante lo sviluppo», al passo 8.
 - **Le notifiche del tuo modulo nella campanella** — all'agente di zr-core, allo stesso modo: per ogni tipo di evento
   che il tuo modulo genera gli dai il titolo in ogni lingua di Zeiras, con le tue parole, e la pagina che si apre con
-  un clic (il percorso dopo `/w/<slug>`, con l'id che serve). Senza, la campanella dice «Novità nel workspace» e un clic
+  un clic (il percorso dopo `/w/<slug>`, con l'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare
+  in più pagine, i percorsi in ordine, dal più specifico). Senza, la campanella dice «Novità nel workspace» e un clic
   apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche».
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
