@@ -97,11 +97,15 @@ jobs:
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
       # vitest dopo i tipi e prima del build: le lingue e i componenti si provano in Node, con un DOM finto. Poi le pagine di
-      # prova (`npm run demo`), con Inertia vera: non entrano nel pacchetto, ma la UAT gira lì, e devono costruirsi.
+      # prova (`npm run demo`), con Inertia vera: non entrano nel pacchetto, ma la UAT gira lì, e devono costruirsi. I tipi due
+      # volte: col tsconfig di base, che guarda anche i test, e con quello stretto, che accende le opzioni più strette di `strict`
+      # sui sorgenti che si installano e sulle pagine di prova. Un frontend compila quei sorgenti col proprio tsconfig e lì non li
+      # può correggere: se accende una di quelle opzioni non deve fermarsi sui file di zr-core (README, «I tipi»).
       - name: Dipendenze JS, tipi, test (vitest), build dei componenti e delle pagine di prova
         run: |
           npm ci
           npx tsc --noEmit
+          npx tsc --noEmit -p tsconfig.stretto.json
           npx vitest run
           npm run build
           npm run demo
