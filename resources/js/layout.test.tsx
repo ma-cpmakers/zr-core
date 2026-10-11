@@ -106,8 +106,8 @@ beforeEach(() => {
     vi.spyOn(console, 'error');
     // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    // Le rotte della cornice: le notifiche qui sopra, e nessun risultato della ricerca.
-    vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : [] })));
+    // Le rotte della cornice: le notifiche qui sopra, e nessun risultato della ricerca, che dice il suo workspace.
+    vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: [], workspace: dati.workspace.slug })));
 });
 
 afterEach(async () => {
@@ -264,7 +264,7 @@ describe('LayoutDellaCornice', () => {
     });
 
     it('quando una visita porta un altro workspace la cornice si rifà: il campo della ricerca è vuoto e senza i risultati di prima, il pannello delle notifiche è chiuso, e riaprire la campanella fa partire un\'altra GET /cornice/notifiche; la pagina nuova si monta una volta sola (sprint 9 · T1.6)', async () => {
-        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta({ data: indirizzo === '/cornice/notifiche' ? notificheDelServer : risultatiDelServer })));
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         await visita(dati, <PaginaA key="1" />);
         await scrivi('uat');
         expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);

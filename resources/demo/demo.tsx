@@ -117,9 +117,10 @@ function Prova() {
 }
 
 // Le rotte della cornice sono finte (rotte-finte.ts): la «sessione» è nel workspace dei dati di prova. Con `?sessione=<slug>` è
-// in un altro, come quando la persona entra in un altro workspace da un'altra scheda: l'elenco delle notifiche dice quello, e
-// lì la cornice apre la risorsa di una notifica. Con `?sessione=` (vuoto) la parte server finta non dice di quale workspace è
-// l'elenco, come una di prima della `v1.12.0`: un clic su una notifica apre la pagina delle notifiche.
+// in un altro, come quando la persona entra in un altro workspace da un'altra scheda: l'elenco delle notifiche e la ricerca
+// dicono quello, e lì la cornice apre la risorsa di una notifica e un risultato; le non lette di quell'elenco non contano sulla
+// campanella. Con `?sessione=` (vuoto) la parte server finta non dice di quale workspace sono, come una di prima della
+// `v1.12.0`: un clic su una notifica apre la pagina delle notifiche, e la ricerca mostra il suo errore.
 const sessione = new URLSearchParams(window.location.search).get('sessione');
 rotteFinte(() => (sessione === null ? datiDiProva.workspace.slug : sessione === '' ? undefined : sessione));
 

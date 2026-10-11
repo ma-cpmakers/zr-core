@@ -125,21 +125,26 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
  * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
  * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
  * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
- * corpo). `segnale` annulla la richiesta.
+ * corpo). `segnale` annulla la richiesta. Coi risultati, il workspace di cui sono, come lo dice la parte server (dalla
+ * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
+ * non lo dice, o non lo dice con un testo, è un errore come una senza la lista: senza, un risultato non ha un indirizzo.
  */
-export async function cerca(parola: string, segnale: AbortSignal): Promise<RisultatoDellaRicerca[]> {
+export async function cerca(parola: string, segnale: AbortSignal): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ q: parola }),
         signal: segnale,
-    })) as { data?: unknown } | null;
+    })) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
+    if (typeof corpo.workspace !== 'string' || corpo.workspace === '') {
+        throw new Error(`POST ${indirizzo}: workspace`);
+    }
 
-    return corpo.data as RisultatoDellaRicerca[];
+    return { risultati: corpo.data as RisultatoDellaRicerca[], workspace: corpo.workspace };
 }
 
 /** Il gettone CSRF di Laravel: il cookie `XSRF-TOKEN` della pagina, rimandato nell'header `X-XSRF-TOKEN` (senza, 419). */

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { segnaLetta } from './servizi';
+import { cerca, segnaLetta } from './servizi';
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -106,5 +106,36 @@ describe('segnaLetta', () => {
         vi.stubGlobal('fetch', vi.fn(async () => dellaRotta));
 
         await expect(segnaLetta('uat-n69')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
+    });
+});
+
+// Sprint 22 · T6 (voce #1726): la ricerca dice di quale workspace sono i risultati (`workspace`, lo slug della sessione), e la
+// cornice li apre lì. Senza, i risultati non hanno un indirizzo sicuro: è un errore, come una risposta senza la lista.
+
+describe('cerca', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('chiede POST /cornice/ricerca con la sola parola nel corpo, e dà i risultati col workspace di cui sono, come lo dice la parte server (sprint 22 · T6.5)', async () => {
+        const risultati = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }];
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultati, workspace: 'uat-vendite' }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(cerca('uat', new AbortController().signal)).resolves.toStrictEqual({ risultati, workspace: 'uat-vendite' });
+        expect(fetchFinto.mock.calls.map(([indirizzo, opzioni]) => [indirizzo, opzioni?.method, opzioni?.body])).toStrictEqual([['/cornice/ricerca', 'POST', '{"q":"uat"}']]);
+    });
+
+    it.each<[string, unknown, string]>([
+        ['senza `workspace`', { data: [] }, 'POST /cornice/ricerca: workspace'],
+        ['con `workspace` null', { data: [], workspace: null }, 'POST /cornice/ricerca: workspace'],
+        ['con un `workspace` che è un numero', { data: [], workspace: 12 }, 'POST /cornice/ricerca: workspace'],
+        ['con un `workspace` che è un oggetto', { data: [], workspace: { slug: 'uat-vendite' } }, 'POST /cornice/ricerca: workspace'],
+        ['con un `workspace` vuoto', { data: [], workspace: '' }, 'POST /cornice/ricerca: workspace'],
+        ['senza la lista, col suo `workspace`', { data: null, workspace: 'uat-vendite' }, 'POST /cornice/ricerca: data'],
+    ])('una risposta %s è un errore: mai dei risultati senza il loro workspace, mai un elenco vuoto (sprint 22 · T6.6)', async (_caso, corpo, errore) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta(corpo)));
+
+        await expect(cerca('uat', new AbortController().signal)).rejects.toThrow(errore);
     });
 });

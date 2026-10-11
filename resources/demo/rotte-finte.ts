@@ -167,10 +167,13 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'uat_errore' }, 502);
             }
 
+            // `workspace` è quello della «sessione», come lo dice la parte server dalla `v1.12.0`, mai uno della richiesta: se la
+            // pagina di prova non lo dà manca, e per la cornice la ricerca è un errore.
             return json({
                 data: parola === 'ua'
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+                workspace: slugDellaSessione(),
             });
         }
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.

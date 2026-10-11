@@ -237,7 +237,8 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
  * Un risultato della ricerca nella cornice. Il contratto dà solo tipo, id e titolo: il prodotto è quello che nel registro ha
  * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
  * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
- * dati seguito dal percorso del tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
+ * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
+ * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
@@ -399,9 +400,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // dell'ultima partita. Sta nello stato insieme all'elenco, non in un ref: un clic la prende dallo stesso disegno della
     // pagina da cui prende l'istante mandato, anche se cade fra l'arrivo di un elenco nuovo e il ridisegno.
     // E il workspace di cui è (`workspace`), come lo dice la parte server: quello della sessione, che non è sempre quello dei
-    // dati della pagina (due schede su due workspace). `undefined` finché non si sa.
+    // dati della pagina (due schede su due workspace). `undefined` finché non si sa. Lo tiene anche `caricate`, con le non
+    // lette dell'elenco: contano sulla campanella solo se l'elenco è del workspace dei dati (sotto).
     const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0, workspace: undefined });
-    const [caricate, setCaricate] = useState<Saputo & { nonLette: string[]; richiesta: number }>();
+    const [caricate, setCaricate] = useState<Saputo & { nonLette: string[]; richiesta: number; workspace: string | undefined }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
     // elenco chiesto da capo, o altrove (sotto, dove dei dati letti dopo non contano più non lette). «Ne restano» è ciò che la
@@ -420,7 +422,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             ({ elenco, il, workspace }) => {
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'ready', elenco, richiesta: questa, workspace });
-                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa });
+                    setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa, workspace });
                 }
             },
             () => {
@@ -475,7 +477,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         // arrivata dopo che la parte server le ha contate, o dopo «Segna tutte come lette». Coi dati letti dopo (un'altra
         // visita, con la cornice montata) vale il loro numero, anche se è lo stesso di prima: l'elenco di prima è più vecchio.
         // Non scende sotto zero: le non lette dell'elenco, o zero, lo tengono. Senza il numero nei dati le conta il design system.
-        const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette - tolteDaiDati, caricate !== undefined && elencoDiQuestiDati ? caricate.nonLette.filter((id) => !lettaNellElenco(id)).length : 0);
+        // Le non lette di un elenco di un altro workspace non sono quelle della pagina, e non contano: con due schede su due
+        // workspace la campanella resta al numero dei dati. Se la parte server non dice di chi è l'elenco (una di prima della
+        // `v1.12.0`) contano come prima.
+        const elencoDiQuestoWorkspace = caricate !== undefined && (caricate.workspace === undefined || caricate.workspace === dati.workspace.slug);
+        const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette - tolteDaiDati, caricate !== undefined && elencoDiQuestiDati && elencoDiQuestoWorkspace ? caricate.nonLette.filter((id) => !lettaNellElenco(id)).length : 0);
 
         // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
         return { elenco, nonLette, sullaCampanella: nonLette ?? elenco.filter((notifica) => !notifica.letta).length };
@@ -559,7 +565,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         if (ultimaRichiesta.current === elencoDelClic && elencoDiQuestiDati) {
             // Le caricate sono lette dall'istante della lettura: per i dati letti fin lì non ce ne sono di non lette.
             setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
-            setCaricate({ con: questi, nonLette: [], il, richiesta: elencoDelClic });
+            setCaricate({ con: questi, nonLette: [], il, richiesta: elencoDelClic, workspace: caricate.workspace });
         } else {
             // Un elenco è stato chiesto dopo quello del clic — il pannello ricaricato fra il clic e la risposta, o che si
             // stava già ricaricando al clic, dopo un `altre` — e quell'elenco è di prima della lettura; oppure l'elenco del
@@ -577,27 +583,31 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
     // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Alla
     // parte server vanno i primi 100 caratteri (code point, come `mb_strlen`): oltre risponderebbe 422, e sarebbe un errore.
-    const [ricerca, setRicerca] = useState<{ stato: 'ready' | 'loading' | 'error'; risultati: RisultatoDellaRicerca[] }>({ stato: 'ready', risultati: [] });
+    // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
+    // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
+    // un errore della ricerca, perché non c'è una pagina di ripiego: mai i risultati aperti nel workspace della pagina a tentoni.
+    const [ricerca, setRicerca] = useState<{ stato: 'ready' | 'loading' | 'error'; risultati: RisultatoDellaRicerca[]; workspace: string | undefined }>({ stato: 'ready', risultati: [], workspace: undefined });
     const ricercaInVolo = useRef<AbortController>(undefined);
     const cercaParola = (parola: string) => {
         ricercaInVolo.current?.abort();
         const questa = new AbortController();
         ricercaInVolo.current = questa;
-        setRicerca({ stato: 'loading', risultati: [] });
+        setRicerca({ stato: 'loading', risultati: [], workspace: undefined });
         cerca(Array.from(parola).slice(0, 100).join(''), questa.signal).then(
-            (risultati) => {
+            ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
-                    setRicerca({ stato: 'ready', risultati });
+                    setRicerca({ stato: 'ready', risultati, workspace });
                 }
             },
             () => {
                 if (ricercaInVolo.current === questa) {
-                    setRicerca({ stato: 'error', risultati: [] });
+                    setRicerca({ stato: 'error', risultati: [], workspace: undefined });
                 }
             },
         );
     };
-    const risultati = perGruppo(ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, dati.workspace.slug) ?? []));
+    const { workspace: workspaceDeiRisultati } = ricerca;
+    const risultati = perGruppo(workspaceDeiRisultati === undefined ? [] : ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, workspaceDeiRisultati) ?? []));
     const voci = [prodotti, ...nav];
 
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.

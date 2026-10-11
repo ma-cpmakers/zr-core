@@ -430,11 +430,11 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         window.fetch = fetchDiPrima;
     });
 
-    /** La risposta della rotta finta, che ci mette al più 1500 ms, sulla pagina di prova con quella query. */
-    async function rispostaGrezzaDi(indirizzo: string, opzioni?: RequestInit, query = ''): Promise<Response> {
+    /** La risposta della rotta finta, che ci mette al più 1500 ms, sulla pagina di prova con quella query e con la «sessione» in quel workspace. */
+    async function rispostaGrezzaDi(indirizzo: string, opzioni?: RequestInit, query = '', sessione: () => string | undefined = () => 'uat-marketing'): Promise<Response> {
         (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
         const { rotteFinte } = await import('./rotte-finte');
-        rotteFinte(() => 'uat-marketing');
+        rotteFinte(sessione);
         const inArrivo = fetch(indirizzo, opzioni);
         await vi.advanceTimersByTimeAsync(1500);
 
@@ -442,8 +442,8 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     }
 
     /** Lo stato e il corpo JSON di quella risposta. */
-    async function rispostaDi(indirizzo: string, opzioni?: RequestInit, query = ''): Promise<{ stato: number; corpo: Record<string, unknown> }> {
-        const risposta = await rispostaGrezzaDi(indirizzo, opzioni, query);
+    async function rispostaDi(indirizzo: string, opzioni?: RequestInit, query = '', sessione?: () => string | undefined): Promise<{ stato: number; corpo: Record<string, unknown> }> {
+        const risposta = await rispostaGrezzaDi(indirizzo, opzioni, query, sessione);
 
         return { stato: risposta.status, corpo: (await risposta.json()) as Record<string, unknown> };
     }
@@ -451,11 +451,23 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     /** La richiesta della cornice per quella parola. */
     const cerca = (parola: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify({ q: parola }) });
 
-    it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo (sprint 18 · T1.7)', async () => {
+    it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo, e il workspace della «sessione» (sprint 18 · T1.7; sprint 22 · T6.5)', async () => {
         expect(await rispostaDi('/cornice/ricerca', cerca('marketing'))).toStrictEqual({ stato: 200, corpo: { data: [
             { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
             { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
-        ] } });
+        ], workspace: 'uat-marketing' } });
+    });
+
+    it.each<[string, string | undefined, Record<string, unknown>]>([
+        ['in un altro workspace', 'uat-vendite', { workspace: 'uat-vendite' }],
+        // Come una parte server di prima della `v1.12.0`: nel JSON la chiave non c'è, e per la cornice la ricerca è un errore.
+        ['che la pagina di prova non dice', undefined, {}],
+    ])('con la «sessione» %s la ricerca finta dice quello, come la rotta vera lo prende dalla sessione: mai un workspace mandato dalla richiesta (sprint 22 · T6.5, T6.6)', async (_caso, slug, atteso) => {
+        const richiesta = { method: 'POST', body: JSON.stringify({ q: 'report', workspace: 'uat-della-richiesta' }) };
+
+        expect(await rispostaDi('/cornice/ricerca?workspace=uat-dell-indirizzo', richiesta, '', () => slug)).toStrictEqual({ stato: 200, corpo: { data: [
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+        ], ...atteso } });
     });
 
     it('una GET non cerca, nemmeno con la parola nell\'indirizzo: 405 coi metodi ammessi, come la rotta vera, e senza un corpo che la rotta vera non ha (sprint 18 · T1.7)', async () => {

@@ -1971,6 +1971,51 @@ describe('il pannello delle notifiche', () => {
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
     });
 
+    // Sprint 22 · T6 (voce #1726; review della PR #44, R4): le non lette di un elenco contano sulla campanella solo se l'elenco è
+    // del workspace dei dati della pagina, o se la parte server non dice di quale workspace è. Con due schede su due workspace
+    // la scheda rimasta indietro riceve l'elenco dell'altro: sulla sua campanella resta il numero dei suoi dati. Il caso qui
+    // sopra non lo vede: lì il numero dei dati è uguale alle non lette dell'elenco.
+
+    it('con l\'elenco di un altro workspace che ha più non lette del numero dei dati la campanella resta al numero dei dati: quando l\'elenco arriva, e dopo un clic che apre la risorsa lì e fa partire la lettura; nel pannello la notifica è letta, e l\'avviso tace (sprint 22 · T6.1, T6.2)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5), workspace: 'acme-vendite' }], (id) => segnata(id, alSecondo(8)));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={letti(alSecondo(3), 1)} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        // L'elenco è più recente dei dati e ha tre non lette: sono dell'altro workspace, non della pagina.
+        await clic(uno('.zr-bell'));
+        expect([campanella(), nonLette()]).toStrictEqual(['1', [true, true, false, true]]);
+
+        await clic(voci()[0] ?? null);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrmDellAltro}/contatti/uat-persona-1`]]);
+        expect([campanella(), detto()]).toStrictEqual(['1', '']);
+
+        // Il pannello riaperto ricarica lo stesso elenco, letto prima della lettura: la notifica del clic è letta, e il numero
+        // resta quello dei dati.
+        await clic(uno('.zr-bell'));
+        expect([campanella(), nonLette(), detto()]).toStrictEqual(['1', [false, true, false, true], '']);
+    });
+
+    it.each<[string, string | undefined, string[], string[]]>([
+        ['del workspace dei dati', 'acme-marketing', ['GET /cornice/notifiche', 'PATCH /cornice/notifiche/uat-n69/lettura'], ['2', 'Notifiche, 2 non lette']],
+        // Una parte server di prima della `v1.12.0`, o una finta nei test di un frontend: il clic apre la pagina delle notifiche.
+        ['di una parte server che non dice il workspace', undefined, ['GET /cornice/notifiche'], ['3', '']],
+    ])('con l\'elenco %s le sue non lette contano come prima: la campanella non dice meno delle non lette dell\'ultimo elenco, e scende col clic che segna letta una notifica (sprint 22 · T6.3)', async (_caso, workspace, partite, dopoIlClic) => {
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: daAprire, aggiornati_il: alSecondo(5), ...(workspace === undefined ? {} : { workspace }) })
+            : segnata('uat-n69', alSecondo(8))));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={letti(alSecondo(3), 1)} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('3');
+
+        await clic(voci()[0] ?? null);
+        expect(richieste(fetchFinto)).toStrictEqual(partite);
+        expect([campanella(), detto()]).toStrictEqual(dopoIlClic);
+    });
+
     it.each([
         ['it', [delContatto, dellaPipeline, dellaScheda], 'Notifiche, 2 non lette', 'Notifiche, 2 non lette'],
         ['it', [delContatto, dellaPipeline], 'Notifiche, 1 non letta', 'Notifiche, 1 non letta'],
@@ -2862,26 +2907,28 @@ describe('la ricerca', () => {
     const righe = () => tutti('.zr-search-panel [role="option"]');
     const titoli = () => righe().map((riga) => riga.querySelector('.zr-search-title')?.textContent);
     const inCaricamento = () => uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent;
+    /** La risposta della ricerca coi suoi risultati e il workspace di cui sono: quello dei dati, se non se ne dice un altro. */
+    const trovati = (risultati: unknown[], workspace: string = dati.workspace.slug) => risposta({ data: risultati, workspace });
     const vecchi = [{ tipo: 'board.board', id: '1', titolo: 'Risultato di «ua»' }];
     const nuovi = [{ tipo: 'board.board', id: '2', titolo: 'Risultato di «uat»' }];
 
     it.each<[string, (ua: ReturnType<typeof inAttesaDellaRicerca>, uat: ReturnType<typeof inAttesaDellaRicerca>) => Promise<void>]>([
         ['arriva prima della nuova', async (ua, uat) => {
-            await ua.arriva(risposta({ data: vecchi }));
+            await ua.arriva(trovati(vecchi));
             // La parola è «uat»: la ricerca resta in caricamento, senza i risultati di «ua».
             expect(inCaricamento()).toBe('Sto cercando…');
             expect(righe()).toHaveLength(0);
-            await uat.arriva(risposta({ data: nuovi }));
+            await uat.arriva(trovati(nuovi));
         }],
         ['arriva dopo la nuova', async (ua, uat) => {
-            await uat.arriva(risposta({ data: nuovi }));
-            await ua.arriva(risposta({ data: vecchi }));
+            await uat.arriva(trovati(nuovi));
+            await ua.arriva(trovati(vecchi));
         }],
         ['annullata, finisce con un errore', async (ua, uat) => {
             await ua.fallisce(new DOMException('The operation was aborted.', 'AbortError'));
             expect(inCaricamento()).toBe('Sto cercando…');
             expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
-            await uat.arriva(risposta({ data: nuovi }));
+            await uat.arriva(trovati(nuovi));
         }],
     ])('mentre si scrive c\'è al più una ricerca in volo: la parola nuova annulla la richiesta di prima, e restano i risultati dell\'ultima anche se la vecchia %s (T5.2)', async (_caso, rispondono) => {
         const ua = inAttesaDellaRicerca();
@@ -2906,7 +2953,7 @@ describe('la ricerca', () => {
         ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas']],
         ['en', 'Project Management', ['Boards', 'Folders']],
     ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (sprint 5 · T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
-        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
 
         await scrivi('lancio');
@@ -2928,8 +2975,8 @@ describe('la ricerca', () => {
         ['Marketing', 'https://board.zeiras.com/w/acme-marketing'],
         // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
         ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
-    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace dei dati, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3; sprint 6 · T5.1)', async (titolo, indirizzo) => {
-        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer })));
+    ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace della risposta — qui quello dei dati —, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3; sprint 6 · T5.1; sprint 22 · T6.5)', async (titolo, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
 
@@ -2949,7 +2996,7 @@ describe('la ricerca', () => {
             { tipo: 'board.cartelle', id: 'uat-c1', titolo: 'Clienti' },
             { tipo: 'board.cartelle', id: 'uat-c2', titolo: 'Marketing' },
         ];
-        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: cartelle })));
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(cartelle)));
         const naviga = vi.fn();
         await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
 
@@ -2976,7 +3023,7 @@ describe('la ricerca', () => {
         expect(inCaricamento()).toBe('Sto cercando…');
         expect(righe()).toHaveLength(0);
 
-        await elenco.arriva(risposta({ data: risultati }));
+        await elenco.arriva(trovati(risultati));
         expect(inCaricamento()).toBeUndefined();
         expect(uno('.zr-search-panel [role="status"] strong')?.textContent).toBe('Nessun risultato per «caffè latte»');
         expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
@@ -2986,9 +3033,66 @@ describe('la ricerca', () => {
         ['una risposta 502', async () => risposta({ errore: 'backoffice_non_risponde' }, 502)],
         ['una risposta 422', async () => risposta({ errore: 'dati_non_validi' }, 422)],
         ['la rete giù', async () => { throw new TypeError('Failed to fetch'); }],
-        ['un 200 senza lista', async () => risposta({ data: null })],
+        ['un 200 senza lista', async () => risposta({ data: null, workspace: 'acme-marketing' })],
     ])('con %s la ricerca mostra il suo errore, non «Nessun risultato» (T5.4)', async (_caso, fallisce) => {
         vi.stubGlobal('fetch', vi.fn(fallisce));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
+        expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
+        expect(righe()).toHaveLength(0);
+    });
+
+    // Sprint 22 · T6 (voce #1726): la sessione ha un workspace solo. Con due schede su due workspace la scheda rimasta indietro
+    // cerca in quello in cui la persona è entrata per ultimo: la risposta dice di quale workspace sono i risultati, e si aprono
+    // lì. Senza `workspace` non c'è un indirizzo sicuro, e nemmeno una pagina di ripiego: è un errore della ricerca.
+
+    it.each([
+        ['Lancio Q4', 'https://board.zeiras.com/w/acme-vendite/b/01k6w2d5f7h9k1n3q5s7v9x1z3'],
+        ['Marketing', 'https://board.zeiras.com/w/acme-vendite'],
+        ['Report marketing', 'https://board.zeiras.com/w/acme-vendite/b/uat%2F13'],
+    ])('con la risposta di un altro workspace, scegliere «%s» apre il suo indirizzo nel workspace che la risposta dice, mai in quello dei dati della pagina (sprint 22 · T6.5)', async (titolo, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer, 'acme-vendite')));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        const scelto = righe().find((riga) => riga.querySelector('.zr-search-title')?.textContent === titolo);
+        expect(scelto).toBeDefined();
+        await act(async () => {
+            scelto?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it('i risultati di una parola restano del loro workspace: la parola dopo, cercata in un altro, apre i suoi nel suo (sprint 22 · T6.5)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? trovati(vecchi, 'acme-vendite') : trovati(nuovi)));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('ua');
+        await act(async () => {
+            righe()[0]?.click();
+            await giro();
+        });
+        await scrivi('uat');
+        await act(async () => {
+            righe()[0]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([['https://board.zeiras.com/w/acme-vendite/b/1'], ['https://board.zeiras.com/w/acme-marketing/b/2']]);
+    });
+
+    it.each<[string, unknown]>([
+        ['senza `workspace`', { data: risultatiDelServer }],
+        ['con `workspace` null', { data: risultatiDelServer, workspace: null }],
+        ['con un `workspace` che non è un testo', { data: risultatiDelServer, workspace: { slug: 'acme-marketing' } }],
+        ['con un `workspace` vuoto', { data: risultatiDelServer, workspace: '' }],
+    ])('una risposta %s è un errore della ricerca: il pannello mostra il suo errore e nessun risultato, mai i risultati aperti nel workspace della pagina (sprint 22 · T6.6)', async (_caso, corpo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta(corpo)));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
         await scrivi('lancio');
@@ -3003,7 +3107,7 @@ describe('la ricerca', () => {
         ['60 emoji', '😀'.repeat(60), '😀'.repeat(60)],
         ['150 lettere accentate', 'à'.repeat(150), 'à'.repeat(100)],
     ])('una parola di %s arriva alla parte server coi primi 100 caratteri, e la ricerca risponde invece di dare errore (T5.4)', async (_caso, parola, mandata) => {
-        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [risultatiDelServer[0]] }));
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati([risultatiDelServer[0]]));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
@@ -3017,7 +3121,7 @@ describe('la ricerca', () => {
         ['senza il cookie parte senza X-XSRF-TOKEN', undefined, null],
     ])('cercare manda una sola POST /cornice/ricerca, con la parola nel corpo JSON e mai nell\'indirizzo, qualunque parola sia; %s (sprint 18 · T1.1)', async (_caso, cookie, gettone) => {
         cookieCsrf(cookie);
-        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [risultatiDelServer[0]] }));
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati([risultatiDelServer[0]]));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
 
