@@ -290,8 +290,8 @@ final class NotificheDellaCornice
     {
         $ids = [];
         foreach (is_array($dati) ? $dati : [] as $chiave => $valore) {
-            if (is_string($chiave) && preg_match('/\A(?:id|[a-z][a-z_]*_id)\z/', $chiave) === 1
-                && is_string($valore) && preg_match('/\A[A-Za-z0-9_-]{1,64}\z/', $valore) === 1) {
+            if (is_string($chiave) && preg_match('/\A.*\z/s', $chiave) === 1
+                && is_string($valore) && preg_match('/\A.*\z/s', $valore) === 1) {
                 $ids[$chiave] = $valore;
             }
         }
