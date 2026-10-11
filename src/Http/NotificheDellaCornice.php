@@ -253,7 +253,7 @@ final class NotificheDellaCornice
      * Di `dati` passano i soli id, in `ids` (`idDi()`): alla cornice servono per aprire la risorsa della notifica. `dati` non
      * è fra le chiavi che fanno una notifica: se manca, o non è un oggetto, `ids` è vuoto, e non è un guasto.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: object}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, ids: array<string, string>}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -273,7 +273,7 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
-            'ids' => (object) self::idDi($notifica['dati'] ?? null),
+            'ids' => self::idDi($notifica['dati'] ?? null),
         ];
     }
 
