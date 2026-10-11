@@ -82,6 +82,27 @@ final class NotificheDellaCornice
     private const MARGINE = 5;
 
     /**
+     * Il file del registro dei moduli che la parte server legge: `null` è quello del pacchetto
+     * (resources/registro/prodotti.json), sempre. Un altro lo dà solo un test, con leggiIlRegistroDa().
+     */
+    private static ?string $fileDelRegistro = null;
+
+    /** @var list<array<string, mixed>>|null le voci del registro, lette una volta per processo */
+    private static ?array $registro = null;
+
+    /**
+     * Fa leggere il registro dei moduli da un altro file, o di nuovo da quello del pacchetto (`null`). Serve ai test della
+     * parte server, per darle un registro di prova: un frontend non la chiama, e nessuna configurazione sceglie il file.
+     *
+     * @internal
+     */
+    public static function leggiIlRegistroDa(?string $file): void
+    {
+        self::$fileDelRegistro = $file;
+        self::$registro = null;
+    }
+
+    /**
      * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
      * durare, cioè SECONDI di richiami, più il tempo che zr-auth aspetta l'ultima risposta (`zr-auth.timeout`), più un margine.
      * Non i 10 secondi di `->bloccaSessione()` di zr-auth: col lock scaduto a metà corsa un'uscita da un'altra scheda lo
@@ -326,10 +347,9 @@ final class NotificheDellaCornice
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
-        static $registro = null;
-        $registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+        self::$registro ??= json_decode((string) file_get_contents(self::$fileDelRegistro ?? __DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
 
-        foreach ($registro as $voce) {
+        foreach (self::$registro as $voce) {
             foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);

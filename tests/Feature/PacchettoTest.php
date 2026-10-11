@@ -3130,7 +3130,9 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'che cosa legge' => ['paragrafo', 'la funzione ne legge `app`, `tipo` e `ids`'],
     'quando non dà niente' => ['paragrafo', 'Non dà niente (`undefined`) quando la notifica non ha dove andare'],
     'mai a metà' => ['paragrafo', 'mai un indirizzo composto a metà'],
-    'nemmeno con uno slug malfatto (review della PR #31, R7)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug (vuoto, `..`, con una barra): anche allora non dà niente'],
+    // Sprint 22 · T3.4 (seconda lettura della PR #31, S5): la forma, non solo gli esempi di ciò che non la ha.
+    'nemmeno con uno slug malfatto, e la forma di uno slug (review della PR #31, R7; sprint 22 · T3.4)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug: minuscole e cifre, a pezzi uniti da un trattino (`acme`, `acme-marketing`)'],
+    'gli slug che la forma non la hanno (sprint 22 · T3.4)' => ['paragrafo', 'Uno vuoto, `..`, uno con una barra, `Acme`, `acme_marketing` non la hanno: anche allora non dà niente'],
     'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],

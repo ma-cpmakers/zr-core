@@ -76,6 +76,35 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         expect(scritti()).toStrictEqual([['https://app.zeiras.com/w/uat-marketing/nuovo-workspace']]);
     });
 
+    // Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S1). La pagina dà alla cornice gli stessi dati finché non
+    // cambiano: qui lo dice il numero sulla campanella, letto dal DOM dopo che la pagina si è ridisegnata. Contare le scritte
+    // di demo.tsx non basta: con `useMemo` e una dipendenza che cambia a ogni disegno le scritte sono le stesse, e il numero torna.
+    it('dopo «Segna tutte come lette» un clic che naviga ridisegna la pagina e non rimette il numero sulla campanella (sprint 22 · T3.2)', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            const numero = () => uno('.zr-bell-count')?.textContent ?? null;
+            // Le rotte finte rispondono dopo 800 ms.
+            const risponde = () => act(async () => {
+                await vi.advanceTimersByTimeAsync(800);
+            });
+            await apri('');
+
+            expect(numero()).toBe('7');
+            await clic(uno('.zr-bell'));
+            await risponde();
+            await clic(uno('.zr-notif .zr-pop-head button'));
+            await risponde();
+            expect(numero()).toBeNull();
+            // Una notifica senza destinazione: il clic apre la pagina delle notifiche, cioè la pagina di prova scrive
+            // l'indirizzo e si ridisegna.
+            await clic(uno('.zr-notif-list .zr-notif-item'));
+            expect(scritti()).toStrictEqual([['https://app.zeiras.com/notifiche']]);
+            expect(numero()).toBeNull();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('con «?aziende=membro» le aziende sono quelle di default e la persona è solo membro: «Nuovo workspace» non c\'è (sprint 19 · T1.6)', async () => {
         await apri('?aziende=membro');
 

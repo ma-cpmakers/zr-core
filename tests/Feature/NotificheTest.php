@@ -1699,3 +1699,52 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
     'un altro slug in un\'intestazione' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['X-Workspace' => 'uat-vendite', 'X-Zeiras-Workspace' => 'uat-vendite']],
     'la pagina da cui si chiede è di un altro workspace' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['Referer' => 'https://app.zeiras.com/w/uat-vendite/notifiche']],
 ]);
+
+// Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Il registro dei moduli lo legge solo l'elenco, che ne
+// prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova
+// (`leggiIlRegistroDa()`), e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto.
+
+afterEach(fn () => NotificheDellaCornice::leggiIlRegistroDa(null));
+
+it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei moduli: con un registro che non si legge segna la notifica e risponde, mentre l\'elenco, che dal registro prende gli id, non risponde (sprint 22 · T3.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // Una nota del CRM: nel registro il suo tipo ha una destinazione, e l'elenco ne cerca gli id.
+    $nota = notificaConDati('uat-n3', ['id' => 'uat-nota-1', 'persona_id' => 'uat-persona-1']);
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/uat-n3/lettura' => Http::response(['data' => ['letta_il' => '2026-10-10T01:15:06.123Z'] + $nota]),
+        '/v1/io/notifiche' => Http::response(['data' => [$nota], 'successivo' => null]),
+    });
+    // Un file che c'è e non è un registro: questo. Leggerlo come registro è un errore, senza un avviso di PHP per un file che manca.
+    NotificheDellaCornice::leggiIlRegistroDa(__FILE__);
+
+    senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
+    // Il registro che non si legge è davvero quello che la parte server ha in mano: l'elenco, che ne ha bisogno, si ferma.
+    $this->getJson('cornice/notifiche')->assertStatus(500);
+});
+
+it('la parte server prende dal registro l\'id di ogni segnaposto del percorso, e nessuno per una voce «Presto»: con un registro di prova, un percorso con due segnaposto dà i due id, e una voce «Presto» con le sue notifiche non ne dà (sprint 22 · T3.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $file = (string) tempnam(sys_get_temp_dir(), 'zr-core-registro-');
+    file_put_contents($file, json_encode(['prodotti' => [
+        ['id' => 'crm', 'presto' => false, 'notifiche' => [['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/aziende/{organizzazione_id}/note/{id}']]],
+        ['id' => 'reports', 'presto' => true, 'notifiche' => [['tipo' => 'com.zeiras.reports.report.creato', 'percorso' => '/report/{id}']]],
+    ]], JSON_THROW_ON_ERROR));
+    NotificheDellaCornice::leggiIlRegistroDa($file);
+    Http::fake(['*' => Http::response(['data' => [
+        // Una nota con tre id: il percorso di prova ne chiede due, e quello del contatto resta nella parte server.
+        notificaConDati('uat-n2', ['id' => 'uat-nota-1', 'organizzazione_id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1']),
+        notificaConDati('uat-n1', ['id' => 'uat-report-1'], 'com.zeiras.reports.report.creato', 'reports'),
+    ], 'successivo' => null])]);
+
+    try {
+        $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    } finally {
+        unlink($file);
+    }
+
+    expect($risposta->json('data.0.ids'))->toEqual(['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1'])
+        // «Presto»: il browser non la apre, e i suoi id non servono ad aprire niente.
+        ->and($risposta->json('data.1.ids'))->toBe([]);
+});
