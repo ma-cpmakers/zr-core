@@ -2859,6 +2859,9 @@ function nomiDiAltriNellaGuida(): array
         'getBoundingClientRect' => 'il browser',
         'RiallineamentoDesignTest' => 'il test del frontend, col nome che gli dà zr-crm',
         'IntestazioniTest' => 'il test del frontend, col nome che gli dà zr-crm',
+        'NelWorkspace' => 'il middleware del frontend sulle rotte del workspace, col nome che gli danno zr-board e zr-crm',
+        'prependToPriorityList' => 'Laravel',
+        'postJson' => 'Laravel, nei test',
     ];
 }
 
@@ -2951,6 +2954,10 @@ it('il controllo dei nomi della guida vede ciò che non c\'è: un caso per forma
     'un\'etichetta con cui zr-core non pubblica' => ['`php artisan vendor:publish --tag=zr-core`', ['--tag=zr-core: zr-core non pubblica niente con questa etichetta']],
 ]);
 
+// Che cosa questo caso non prova (review della PR #26, R11): «la guida non ripete il README». Ferma una riga ricopiata
+// com'è, da 80 caratteri in su; una frase ripresa con gli a capo in altri punti passa. È ammessa quando ha il rimando
+// accanto: le ha chieste il corridoio (T2.4), per chi non apre il README. Il `>= 8` conta i rimandi, non le ripetizioni:
+// se una frase ripresa ha il suo rimando lo vede chi rilegge, non un caso.
 it('la guida non porta indirizzi interni, cita solo titoli che il README ha e non ne ricopia le righe (sprint 20 · T2.5)', function () {
     $guida = guidaDelModuloNuovo();
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');

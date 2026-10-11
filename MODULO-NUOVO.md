@@ -29,11 +29,14 @@ Come si legge:
 
 ## Prima di tutto: ciò che si chiede ad altri
 
-Tre cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
+Quattro cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto fai i passi da 1 a 7.
 
 - **Il prodotto nel registro** — all'agente di zr-core (come gli si scrive lo dice la skill `zr-core-uso`). Guarda prima
-  `vendor/zeiras/zr-core/resources/registro/prodotti.json`: porta anche i prodotti non ancora usciti, segnati «Presto»
-  (`presto`). Se il tuo c'è, il codice è quello, e chiedi di togliere «Presto»; se non c'è, chiedi il prodotto nuovo.
+  `vendor/zeiras/zr-core/resources/registro/prodotti.json`: porta anche i prodotti non ancora usciti, con due sì o no.
+  Con `presto` la voce del menu Prodotti è «Presto» e non porta da nessuna parte, in nessun workspace; con `in_arrivo`
+  il prodotto non è ancora per tutti, e le pagine senza sessione lo mostrano «In arrivo» — README, «La cornice». Se il
+  tuo c'è, il codice è quello: se ha `presto`, chiedi di toglierlo; `in_arrivo` si spegne quando il prodotto esce per
+  tutti: lo decide zr-pm, e lo chiedi allo stesso modo. Se non c'è, chiedi il prodotto nuovo.
   Gli dai: il codice (lettere minuscole, corto, come `pm` o `crm`: è lo stesso che il backoffice usa per l'app, e non lo
   scegli tu — un codice nuovo lo decide zr-pm, a cui lo porta zr-core), il nome in ogni lingua di Zeiras (`it`, `en`,
   `es`), l'icona (un nome del set di Zeiras), il tono, l'indirizzo senza workspace, e le risorse che la ricerca deve
@@ -41,6 +44,10 @@ Tre cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e intanto
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Prodotti la tua voce resta «Presto» anche col
   registro a posto. È la stessa strada per ogni dato o metodo di `/v1` che ti manca.
+- **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
+  `zr-start-flow`): il backoffice deve conoscere `https://<modulo>/ingresso/ritorno`, l'indirizzo a cui la persona torna
+  dopo l'ingresso (README di zr-auth, «L'ingresso da zr-home: la partenza e il ricevitore»). Finché manca, dal sito vero
+  nessuno entra nel modulo, e la Prova del passo 2 si fa solo nei test.
 - **L'infrastruttura** — il sito, il server web e le sue intestazioni (passo 3), lo store che tiene i blocchi della
   sessione (passo 2): a chi si chiedono, e come, lo dice il prompt di partenza del tuo modulo.
 
@@ -62,7 +69,8 @@ README, «Come si installa in un frontend». La favicon di Zeiras arriva dal pac
 file statici: README, «La favicon». Il design system nella build è quello di zr-core: non ne tieni una copia tua.
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
-la build passano; in pagina `window.Zeiras` c'è una volta sola.
+la build passano; nella build il design system c'è una volta sola:
+`grep -rhoE 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 1.
 
 **Errore già pagato**: Composer non eredita i repository di un pacchetto, e senza quello di zr-auth nel tuo `composer.json`
 zr-core non si installa. Una seconda copia del design system accanto a quella del pacchetto si sovrascrive con la prima.
@@ -76,21 +84,35 @@ col gettone», «Il blocco della sessione: una richiesta lenta non rimette la se
 dietro un ingresso»), «L'ingresso da zr-home: la partenza e il ricevitore», «La guardia, e il suo test». zr-crm ha
 ricopiato da zr-board ed è andata liscia. Tre cose sono tue:
 
-- **la pagina di casa**: la cornice manda al tuo prodotto con `<indirizzo>/w/<slug>`, dal menu Prodotti e dal selettore
-  dei workspace, quindi il modulo serve `/w/{slug}`. Chi ci arriva senza una sessione lo tratta la guardia di zr-auth, che
-  lo rimanda all'accesso: non scrivi un controllo tuo;
+- **la pagina di casa, che è anche la partenza**: la cornice manda al tuo prodotto con `<indirizzo>/w/<slug>`, dal menu
+  Prodotti e dal selettore dei workspace, quindi il modulo serve `/w/{slug}` — e chi ci arriva può non avere una
+  sessione, o averla in un altro workspace. La guardia da sola non basta: chi non ha una sessione lo manda alla pagina
+  d'accesso, non dentro il workspace dell'indirizzo, e chi ha la sessione in un altro workspace lo lascia passare: la
+  pagina mostrerebbe i dati dell'altro, perché il workspace è quello della sessione. Scrivi un middleware tuo sul gruppo
+  delle rotte `w/{workspace}` (zr-board e zr-crm lo chiamano `NelWorkspace`, in `app/Http/Middleware/`): se
+  `Sessione::workspace()` non c'è, o il suo `slug` non è quello dell'indirizzo, risponde con la partenza,
+  `Ingresso::verso($slug)`. Prima ricorda la pagina chiesta, come fa la guardia — solo da un GET, in `url.intended`: al
+  ritorno la persona arriva lì —; a una visita di Inertia risponde 409 con l'indirizzo della partenza in
+  `X-Inertia-Location`, a una richiesta JSON 401: le stesse forme della guardia (`ConGettone::versoLIngresso`). Deve
+  girare **prima** della guardia, che entra da sé nel gruppo `web`: in `bootstrap/app.php` lo metti nella lista delle
+  priorità prima di `ConGettone` (`prependToPriorityList`); se no risponde la guardia, e manda alla pagina d'accesso;
 - **l'uscita**: una rotta POST del modulo che chiude l'accesso nel backoffice e chiama `Sessione::chiudi()` (il codice è
-  nel README di zr-auth, «La sessione col gettone»). Nel browser, la funzione che chiama quella rotta — nei due README si
-  chiama `esci` — è quella che dai alla cornice in `onLogout`, al passo 7: «Esci» chiude la sessione, ed è il frontend a
-  farlo. Dopo, la persona non ha una sessione: dove rimandarla lo decidi tu, e ogni pagina del modulo la manda comunque
-  all'accesso;
+  nel README di zr-auth, «La sessione col gettone»). Nel browser, la funzione che chiama quella rotta la scrivi tu: una
+  visita POST di Inertia alla rotta dell'uscita (negli esempi del README di zr-core si chiama `esci`). È quella che dai
+  alla cornice in `onLogout`, al passo 7: «Esci» chiude la sessione, ed è il frontend a farlo. La rotta sta fuori dal
+  middleware della pagina di casa: con un gettone scaduto farebbe ripartire l'ingresso invece di chiudere la sessione
+  (zr-crm). Dopo, la persona non ha una sessione: dove rimandarla lo decidi tu, e da ogni pagina del modulo si ritrova
+  comunque all'accesso;
 - **il blocco della sessione**: `->bloccaSessione()` di zr-auth sulle tue rotte che aprono, cambiano o chiudono la
   sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o `Sessione::chiudi()`, l'uscita compresa — e
   sulle tue rotte lente, non su tutte. Quali, e perché: README, «La cornice», al punto «Le notifiche».
 
-**Prova**: entri da app.zeiras.com in un workspace e arrivi a `/w/<slug>` del modulo con la sessione aperta; con «Esci»
-la sessione è chiusa, e tornando a una pagina del modulo la guardia ti rimanda all'accesso; il test della guardia di
-zr-auth (`Rotte::senzaGuardia()`) non elenca nessuna tua rotta che deve averla.
+**Prova**: entrato in un workspace su app.zeiras.com, apri `/w/<slug>` del modulo (dal menu Prodotti, quando il registro
+ha il tuo prodotto: passo 8): sei dentro, con la sessione in quel workspace, senza passare dalla pagina d'accesso. Con lo
+slug di un altro tuo workspace nell'indirizzo, il modulo mostra quello, non il primo. Il test della guardia di zr-auth
+(`Rotte::senzaGuardia()`) non elenca nessuna tua rotta che deve averla. Sul sito vero si prova quando l'indirizzo di
+ritorno c'è («Prima di tutto»): fino ad allora nei test, col backoffice finto di zr-auth. «Esci» si prova dal passo 7,
+quando la cornice è montata: la sessione è chiusa, e tornando a una pagina del modulo ti ritrovi all'accesso.
 
 **Errore già pagato**: il blocco messo da una parte sola non ferma niente, e vuole uno store che sappia fare i lock
 (Redis, database, file; `array` nei test): con uno che non li fa la rotta risponde 500 a ogni clic. Lo store è
@@ -103,8 +125,10 @@ globali — README, «Le intestazioni di sicurezza». Se il frontend ha già una
 Poi scrivi il tuo test, coi cinque valori per intero — README, «Il test nel modulo» (zr-crm lo chiama `IntestazioniTest`,
 in `tests/Feature/`).
 
-**Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP:
-`curl -sI <una tua pagina> | grep -ci '^content-security-policy:'` risponde 1.
+**Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP. Guarda la risposta della pagina,
+non quella di chi non è entrato: senza il cookie della sessione risponde il rimando della guardia, e una classe del
+modulo rimasta più all'interno non si vede. Dalla scheda Rete del browser, o con
+`curl -sI -b '<il cookie della sessione>' <una tua pagina> | grep -ci '^content-security-policy:'`, che risponde 1.
 
 **Errore già pagato**: con la classe del modulo rimasta, la risposta porta due CSP e il browser le applica tutte e due
 (zr-crm). Un test che guarda solo la prima CSP, o che rilegge una costante del pacchetto, resta verde lo stesso. E la
@@ -118,11 +142,14 @@ La CSP di tutti la dà la classe del passo 3: non ne scrivi una. **Scrivi** solo
 `php artisan vendor:publish --tag=zr-core-config` porta `config/zr-core.php` nel frontend, e le origini stanno lì e solo
 lì. Un'origine che serve a ogni pagina (un font tuo) va in `csp` — README, «Le sorgenti di un modulo». Una che serve a una
 pagina sola (il widget di un altro sito) va in un insieme di `csp_pagine`, che il controller chiama per nome —
-README, «Per una pagina sola». Una `fetch` verso un'altra origine vuole `connect-src`; verso il tuo stesso sito, niente.
+README, «Per una pagina sola» —, e quella pagina si apre e si lascia con un caricamento intero (un link normale, non una
+visita di Inertia): lasciata con una visita, la sua CSP più larga resta sulle pagine dopo, e nessuna violazione lo dice.
+Una `fetch` verso un'altra origine vuole `connect-src`; verso il tuo stesso sito, niente.
 
 **Prova**: la console del browser non segna violazioni della CSP in nessuna tua pagina. La CSP nuova la leggi una volta
-dalla risposta (`curl -sI`, come al passo 3) e la incolli per intero nel test del passo 3, con un caso per ogni pagina
-che ne chiede di sue.
+dalla risposta della pagina (col cookie della sessione o dalla scheda Rete, come al passo 3: il rimando della guardia non
+porta le sorgenti di `csp_pagine`) e la incolli per intero nel test del passo 3, con un caso per ogni pagina che ne
+chiede di sue.
 
 **Errore già pagato**: la barra d'avanzamento di Inertia aggiunge un `<style>` che la CSP ferma —
 README, «La barra d'avanzamento di Inertia». Una sorgente scritta male è scartata, non corretta: lo dice il log, non la
@@ -160,7 +187,9 @@ scrivere — README, «La parte server», da «Per avere la pagina nella lingua 
 
 - `Cornice::lingua()` dà la lingua **della sessione**, com'è, se ha la forma di una lingua; se no dà `null`, e la riga
   ripiega sulla lingua dell'app. Non la riduce: `it-IT` resta `it-IT`, e se le tue cartelle `lang/` hanno solo `it` la
-  riduzione la fai tu (la cornice, per i suoi testi, la fa da sé);
+  riduzione la fai tu (la cornice, per i suoi testi, la fa da sé). La forma la guarda solo lei: `cornice.lingua` nei
+  dati della pagina (passo 6) e `Sessione::utente()['lingua']` sono la lingua della sessione com'è, anche malfatta, e
+  chi ne fa un `lang`, il nome di un file o la lingua di una libreria del browser ne guarda prima la forma;
 - le lingue di Zeiras sono `it`, `en`, `es`. Quale lingua c'è nella sessione lo decide zr-auth, all'ingresso e a ogni
   lettura, e cambia fra le sue versioni: il capoverso che comincia con «Quale lingua c'è nella sessione» dice che cosa
   aspettarsi con ognuna, e un tuo test su una lingua che non è di Zeiras guarda quale zr-auth è installata;
@@ -210,8 +239,9 @@ e che cosa dai tu è in README, «La cornice». Le forme:
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
 
-**Prova**: scrivi nella ricerca, apri la campanella, poi vai a un'altra pagina del modulo da una tua voce: il testo e il
-pannello restano.
+**Prova**: scrivi due lettere nella ricerca, poi vai a un'altra pagina del modulo da una tua voce: il testo che hai
+scritto è ancora nella ricerca. Il pannello aperto non è una prova: al clic su una voce l'`AppShell` chiude ogni
+pannello, anche in un modulo montato bene.
 
 **Errore già pagato**: a zr-board montare la cornice è costato uno sprint, e poi la cornice si rifaceva a ogni visita:
 `Cornice` in ogni pagina, o un layout creato dentro un render, è nuovo ogni volta. Le props al layout si danno per nome,
@@ -224,9 +254,11 @@ Non scrivi niente: nome, icona, tono, indirizzo e «Presto» del prodotto sono d
 (`vendor/zeiras/zr-core/resources/registro/prodotti.json`, i nomi in `vendor/zeiras/zr-core/resources/lingue/`), e si
 chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso del registro e del backoffice.
 
-**Durante lo sviluppo**, finché il registro installato non ha il tuo prodotto, la cornice non si rompe: con un `product`
-che il registro non ha tratta la pagina come una di app.zeiras.com — menu Prodotti esteso, nessun prodotto aperto —, le
-tue voci di `nav` ci sono lo stesso, e nel menu Prodotti la tua voce manca. Tutti gli altri passi si fanno lo stesso.
+**Durante lo sviluppo** la cornice non si rompe, in nessuno dei due casi. Finché il registro installato non ha il tuo
+prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Prodotti esteso, nessun
+prodotto aperto —, le tue voci di `nav` ci sono lo stesso, e nel menu Prodotti la tua voce manca. Se il registro lo ha ma
+con `presto`, la cornice lo mostra aperto, con le tue voci, e nel menu Prodotti la tua voce c'è ma è «Presto»: non porta
+da nessuna parte finché una versione di zr-core non toglie `presto`. Tutti gli altri passi si fanno lo stesso.
 
 **Prova**: con la versione di zr-core che porta il prodotto, nel menu Prodotti la tua voce ha il suo nome nella lingua
 della persona e porta a `<indirizzo>/w/<slug>`; dentro il modulo il menu mostra aperto il tuo prodotto, con le tue voci.
@@ -249,7 +281,8 @@ tipo.
 
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo
 che la ricerca funziona. Che trovi le tue cose lo prova il titolo di una tua risorsa: compare sotto il nome del suo tipo,
-e sceglierla apre la sua pagina nel tuo prodotto. Un tuo test che chiama la rotta usa la POST con `q` nel corpo.
+e sceglierla apre la sua pagina nel tuo prodotto. Un tuo test che chiama la rotta usa `postJson`, con `q` nel corpo
+JSON: la rotta lo legge solo da lì, e a una POST di modulo risponde 422.
 
 **Errore già pagato**: nessuno dai due moduli. Da sapere: fino alla `v1.7.0` era una GET; un test rimasto alla GET oggi
 non trova la rotta.
@@ -312,13 +345,14 @@ le pagine del modulo le misuri tu. È il lavoro più caro per zr-board, e ritorn
 `disabled`, l'elemento di ritorno sparito) e l'area a 44 px che copre il vicino (zr-board). Un difetto dato alla cornice
 che era di un componente (zr-crm: «Cerca» non tradotto era della `FilterBar`): prima di segnalarlo guardi chi rende quel
 testo. Ciò che axe trova **dentro la cornice** (la barra, la topbar, i suoi pannelli) non si corregge nel modulo: si
-segnala all'agente di zr-core. E le mancanze del design system si trovano solo misurando, e si chiedono.
+segnala all'agente di zr-core. E le mancanze del design system si trovano solo misurando, e si chiedono anche quelle
+all'agente di zr-core, che le porta a chi cura il design system.
 
 ## Quando è finito
 
 Un modulo sta nella cornice quando ogni **Prova** qui sopra passa sul sito vero, non solo in CI — la lingua alla prima
 pagina e il fuoco dopo una chiusura li ha trovati la UAT, a CI verde —, e quando ciò che hai chiesto ad altri («Prima di
-tutto») è arrivato: il prodotto nel registro, il suo stato nel workspace, lo store dei blocchi.
+tutto») è arrivato: il prodotto nel registro, il suo stato nel workspace, l'indirizzo di ritorno, lo store dei blocchi.
 
 ## Da sapere, alla data di questa guida
 
