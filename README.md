@@ -1,6 +1,6 @@
 # zr-core
 
-La cornice comune dei frontend di Zeiras: `AppShell` con il menu Prodotti, il selettore «Azienda › workspace», la
+La cornice comune dei frontend di Zeiras: `AppShell` con il menu Moduli, il selettore «Azienda › workspace», la
 ricerca, le notifiche e il menu del profilo; il registro dei prodotti (icona, tono, indirizzo, stato, le risorse che la
 ricerca mostra) e i loro nomi in ogni lingua; il design system di Zeiras nella build, una copia sola per app. È ciò che `zr-auth` è per l'ingresso, ma per ciò
 che si vede: i frontend `zr-*` lo installano e non ricostruiscono la cornice nel proprio codice.
@@ -221,7 +221,7 @@ guardia.
 ## La cornice
 
 Ogni pagina di un workspace sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`)
-e, in un prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Prodotti con gli indirizzi del
+e, in un prodotto, il proprio id del registro con le proprie voci; zr-core mette il menu Moduli con gli indirizzi del
 workspace, i testi nella lingua della persona e le pagine di account e notifiche su app.zeiras.com. Con `cornice` a `null`
 (nessun workspace) la pagina si mostra senza `Cornice`: `dati` è obbligatorio, e la prop condivisa tipizzata
 `DatiDellaCornice | null` fa fermare `tsc` a chi se ne dimentica.
@@ -248,11 +248,13 @@ cornice === null ? pagina : (
 - **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese. Le non lette hanno due
   testi, uno per una sola e uno per ogni altro numero: una lingua con più forme di plurale (il polacco, l'arabo) oggi non
   entra con un file solo.
-- **Il menu Prodotti** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
+- **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.
+  Dalla `v1.10.2` il menu si chiama «Moduli» («Modules», «Módulos»); prima era «Prodotti». I nomi nel codice — la prop
+  `product`, il file `prodotti.json`, la chiave `prodotti` dei dati — non cambiano.
 - **La voce attiva** della barra è quella che ha l'id dato in `active`; senza `active` è la Dashboard. Una pagina che non
   sta sotto nessuna voce lo dice con `active={null}`: nessuna voce è segnata, né la Dashboard né una voce del prodotto,
   e non serve inventare un id che la barra non ha. Il prodotto aperto lo dice `product`, non `active`: con `null` il suo
