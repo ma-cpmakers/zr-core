@@ -258,7 +258,7 @@ final class NotificheDellaCornice
             || ! array_key_exists('app', $notifica) || ! ($notifica['app'] === null || is_string($notifica['app']))
             || ! is_string($notifica['tipo'] ?? null)
             || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
-            || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
+            || ! (empty($notifica['risorsa_nome']) || is_string($notifica['risorsa_nome']))
             || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
