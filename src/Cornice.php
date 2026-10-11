@@ -64,7 +64,7 @@ final class Cornice
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
      * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta: bool}|null
      */
     public static function dati(): ?array
     {
@@ -97,7 +97,7 @@ final class Cornice
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             'aggiornati_il' => $lettura['segno'],
-            ...($letti === null ? ['accettazione_richiesta' => true] : []),
+            'accettazione_richiesta' => $letti === null,
         ];
     }
 
