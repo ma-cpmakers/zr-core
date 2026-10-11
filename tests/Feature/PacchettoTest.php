@@ -3205,3 +3205,25 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
     'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
 ]);
+
+// Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM, opportunità, attività e ciò che viene assegnato a una persona, hanno un
+// titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che
+// nessuno dei nove apre una risorsa.
+
+it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apre una risorsa (sprint 22 · T5.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = suUnaRiga($punto[0] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true)
+        // I titoli non sono più 31: il numero di prima resta solo al passato.
+        ->and(str_contains(suUnaRiga($readme), 'i titoli sono 31'))->toBe(false);
+})->with([
+    'la versione e i cinque eventi' => ['Dalla `v1.12.0` hanno un titolo altri nove tipi del CRM: i cinque eventi di opportunità e attività («Nuova opportunità», «Opportunità modificata», «Nuova attività», «Attività modificata», «Attività eliminata»)'],
+    'le quattro notifiche a chi diventa responsabile' => ['e le quattro notifiche che il CRM manda a chi diventa responsabile («Ti è stato assegnato un contatto», «Ti è stata assegnata un\'azienda», «Ti è stata assegnata un\'opportunità», «Ti è stata assegnata un\'attività»)'],
+    'il tipo senza `com.zeiras.` davanti' => ['Queste quattro non sono eventi: il loro `tipo` arriva senza `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`, `crm.attivita.assegnata`)'],
+    'la chiave del titolo' => ['la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non `notificationTitle.com.zeiras.crm.persona.assegnata`'],
+    'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
+    'nessuno dei nove apre una risorsa' => ['Nessuno dei nove apre una risorsa: un clic apre la pagina delle notifiche'],
+]);

@@ -1536,7 +1536,7 @@ it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la ri
         ->and(substr_count($corpo, 'uat-campo'))->toBe(0);
 });
 
-it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vuoto, anche se i suoi `dati` hanno degli id: nessun id va al browser solo perché la sua chiave è `id` o finisce in `_id`; il tipo si cerca intero, nella voce dell\'app della notifica (sprint 21 · T3.5; review della PR #31, R1)', function (?string $app, string $tipo) {
+it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vuoto, anche se i suoi `dati` hanno degli id: nessun id va al browser solo perché la sua chiave è `id` o finisce in `_id`; il tipo si cerca intero, nella voce dell\'app della notifica (sprint 21 · T3.5; review della PR #31, R1; sprint 22 · T5.3)', function (?string $app, string $tipo) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     $dati = ['id' => 'uat-x-1', 'persona_id' => 'uat-x-2', 'board_id' => 'uat-x-3', 'lista_id' => 'uat-x-4', 'invito_id' => 'uat-x-5', 'aggiornata_il' => '2026-10-11T12:29:00.123Z'];
     Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, $app)], 'successivo' => null])]);
@@ -1555,6 +1555,17 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
     'un tipo del CRM che nel registro non c\'è' => ['crm', 'com.zeiras.crm.persona.eliminata'],
+    // Sprint 22 · T5.3: i nove tipi nuovi del CRM hanno un titolo e nessuna destinazione. I quattro «assegnata» arrivano senza
+    // `com.zeiras.` davanti, e i loro `dati` hanno il solo `id` della risorsa assegnata.
+    'un\'opportunità nuova' => ['crm', 'com.zeiras.crm.trattativa.creata'],
+    'un\'opportunità modificata' => ['crm', 'com.zeiras.crm.trattativa.modificata'],
+    'un\'attività nuova' => ['crm', 'com.zeiras.crm.attivita.creata'],
+    'un\'attività modificata' => ['crm', 'com.zeiras.crm.attivita.modificata'],
+    'un\'attività eliminata' => ['crm', 'com.zeiras.crm.attivita.eliminata'],
+    'un contatto assegnato' => ['crm', 'crm.persona.assegnata'],
+    'un\'azienda assegnata' => ['crm', 'crm.organizzazione.assegnata'],
+    'un\'opportunità assegnata' => ['crm', 'crm.trattativa.assegnata'],
+    'un\'attività assegnata' => ['crm', 'crm.attivita.assegnata'],
     'un tipo di domani' => ['crm', 'com.zeiras.crm.uat.domani'],
     'un tipo del registro con un pezzo in più in fondo' => ['crm', 'com.zeiras.crm.persona.creata.v2'],
     'un tipo del registro con un pezzo in più davanti' => ['crm', 'x.com.zeiras.crm.persona.creata'],

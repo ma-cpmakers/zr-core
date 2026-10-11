@@ -97,7 +97,19 @@ function tipiDiNotificaDelContratto(): array
         'com.zeiras.board.etichetta.eliminata',
         ...array_keys(titoliDelleNotificheDelCrm()),
         ...array_keys(titoliDelleNotificheDiVisteEAziende()),
+        ...array_keys(titoliDelleNotificheDiOpportunitaEAttivita()),
     ];
+}
+
+/**
+ * I tipi che hanno un titolo: i tipi di evento del contratto più le quattro notifiche «assegnata» del CRM, che non sono eventi e
+ * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4).
+ *
+ * @return list<string>
+ */
+function tipiDiNotificaConUnTitolo(): array
+{
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato())];
 }
 
 /**
@@ -140,10 +152,46 @@ function titoliDelleNotificheDiVisteEAziende(): array
     ];
 }
 
-/** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo del contratto */
+/**
+ * I titoli dei cinque tipi di evento che il contratto porta dallo sprint 25g di zr-backoffice (11/10/2026, sera): le opportunità e
+ * le attività del CRM, con le parole di zr-crm. Nel contratto un'opportunità è una `trattativa`: nel CRM si chiama «opportunità»,
+ * «opportunity», «oportunidad», e il titolo non si ricava dal tipo. La tabella è scritta qui, non letta dai file delle lingue
+ * (sprint 22 · T5.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDiOpportunitaEAttivita(): array
+{
+    return [
+        'com.zeiras.crm.trattativa.creata' => ['it' => 'Nuova opportunità', 'en' => 'New opportunity', 'es' => 'Nueva oportunidad'],
+        'com.zeiras.crm.trattativa.modificata' => ['it' => 'Opportunità modificata', 'en' => 'Opportunity changed', 'es' => 'Oportunidad modificada'],
+        'com.zeiras.crm.attivita.creata' => ['it' => 'Nuova attività', 'en' => 'New activity', 'es' => 'Nueva actividad'],
+        'com.zeiras.crm.attivita.modificata' => ['it' => 'Attività modificata', 'en' => 'Activity changed', 'es' => 'Actividad modificada'],
+        'com.zeiras.crm.attivita.eliminata' => ['it' => 'Attività eliminata', 'en' => 'Activity deleted', 'es' => 'Actividad eliminada'],
+    ];
+}
+
+/**
+ * I titoli delle quattro notifiche che il CRM manda a chi diventa responsabile di un contatto, di un'azienda, di un'opportunità o
+ * di un'attività. Non sono eventi: il `tipo` arriva com'è nel backoffice, senza `com.zeiras.` davanti, e la chiave del titolo è
+ * `notificationTitle.crm.persona.assegnata`. La tabella è scritta qui, non letta dai file delle lingue (sprint 22 · T5.1, T5.2).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDiCioCheVieneAssegnato(): array
+{
+    return [
+        'crm.persona.assegnata' => ['it' => 'Ti è stato assegnato un contatto', 'en' => 'A contact was assigned to you', 'es' => 'Se te ha asignado un contacto'],
+        'crm.organizzazione.assegnata' => ['it' => "Ti è stata assegnata un'azienda", 'en' => 'A company was assigned to you', 'es' => 'Se te ha asignado una empresa'],
+        'crm.trattativa.assegnata' => ['it' => "Ti è stata assegnata un'opportunità", 'en' => 'An opportunity was assigned to you', 'es' => 'Se te ha asignado una oportunidad'],
+        'crm.attivita.assegnata' => ['it' => "Ti è stata assegnata un'attività", 'en' => 'An activity was assigned to you', 'es' => 'Se te ha asignado una actividad'],
+    ];
+}
+
+/** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
-    return array_map(fn (string $tipo) => "notificationTitle.$tipo", tipiDiNotificaDelContratto());
+    return array_map(fn (string $tipo) => "notificationTitle.$tipo", tipiDiNotificaConUnTitolo());
 }
 
 /**
@@ -330,13 +378,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 31 tipi di evento del contratto, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 40 tipi di notifica, i 36 tipi di evento del contratto più i quattro «assegnata» che non sono eventi, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
-    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(31)
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(36)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(40)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -349,7 +398,8 @@ it('le sette notifiche del CRM hanno il titolo della tabella nella lingua, e un 
 
     // Tutti e sette insieme: un rosso li mostra tutti, non solo il primo che manca.
     expect($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], titoliDelleNotificheDelCrm()))
-        // `…persona.assegnata` non è ancora nel contratto: finché non ha un titolo suo, ha quello di ripiego.
+        // Il tipo vero è `crm.persona.assegnata`, senza `com.zeiras.` davanti (sprint 22 · T5.2): col prefisso resta un tipo che
+        // zr-core non conosce, col titolo di ripiego.
         ->and(array_keys($testi))->not->toContain('notificationTitle.com.zeiras.crm.persona.assegnata')
         ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli));
 })->with(['it', 'en', 'es']);
@@ -367,6 +417,39 @@ it('le cinque notifiche nuove del contratto, viste di una board e aziende del CR
         ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli))
         // La parola è quella del CRM, non quella del contratto: «organizzazione», «organization», «organización».
         ->and(implode(' · ', array_map(fn (?string $titolo) => (string) $titolo, $titoli)))->not->toMatch('/organi[zs]/iu');
+})->with(['it', 'en', 'es']);
+
+it('le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato a una persona, hanno il titolo della tabella nella lingua, e un\'opportunità non è chiamata con la parola del contratto (sprint 22 · T5.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = [...titoliDelleNotificheDiOpportunitaEAttivita(), ...titoliDelleNotificheDiCioCheVieneAssegnato()];
+    $titoli = [];
+    foreach (array_keys($tabella) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+    }
+
+    // Tutti e nove insieme: un rosso li mostra tutti, non solo il primo che manca.
+    expect($tabella)->toHaveCount(9)
+        ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
+        // Nessuno dei nove è il titolo di ripiego.
+        ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli))
+        // La parola è quella del CRM, non quella del contratto: «trattativa», «deal», «negociación».
+        ->and(implode(' · ', array_map(fn (?string $titolo) => (string) $titolo, $titoli)))->not->toMatch('/trattativ|\bdeals?\b|negociaci/iu');
+})->with(['it', 'en', 'es']);
+
+it('i quattro «assegnata» hanno il titolo sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: lo stesso nome col prefisso resta senza titolo, e nessuno dei quattro è un tipo di evento del contratto (sprint 22 · T5.2, T5.4)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelleNotificheDiCioCheVieneAssegnato();
+    $titoli = [];
+    $colPrefisso = [];
+    foreach (array_keys($tabella) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+        $colPrefisso[$tipo] = array_key_exists("notificationTitle.com.zeiras.$tipo", $testi);
+    }
+
+    expect(array_keys($tabella))->toBe(['crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata'])
+        ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
+        ->and(array_filter($colPrefisso))->toBe([])
+        ->and(array_intersect(array_keys($tabella), tipiDiNotificaDelContratto()))->toBe([]);
 })->with(['it', 'en', 'es']);
 
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
