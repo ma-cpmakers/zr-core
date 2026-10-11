@@ -3179,3 +3179,31 @@ it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo work
     'un altro workspace' => ['punto', 'se è di un altro, quello stato non decide — è di un altro workspace — e la risorsa si apre: se lì il modulo non è attivo lo dice il modulo'],
     'non detto' => ['punto', 'se la risposta non dice il workspace, o lo dice senza la forma di uno slug, il clic apre la pagina delle notifiche'],
 ]);
+
+// Sprint 22 · T2 (voce #1712): il clic che apre la risorsa di una notifica non letta la segna letta. Il README lo dice al punto
+// «Le notifiche» — quando sì e quando no, che l'apertura non aspetta, che cosa succede se la lettura fallisce, quando scende il
+// numero, l'avviso per il lettore di schermo — e nella riga della rotta, che ora porta il suo istante.
+
+it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la notifica: nella riga della rotta l\'istante e che cos\'è, al punto «Le notifiche» quando sì e quando no, il caso in cui la lettura fallisce, il numero e l\'avviso (sprint 22 · T2.7)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = ['punto' => suUnaRiga($punto[0] ?? ''), 'rotta' => rigaDellaRotta($readme, 'PATCH /cornice/notifiche/{id}/lettura')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // La cornice la chiama di nuovo: il README non dice più che la rotta resta solo per i frontend.
+        ->and(str_contains(suUnaRiga($readme), 'che dalla v1.1.0 la cornice non chiama più'))->toBe(false);
+})->with([
+    'l\'istante nella riga della rotta' => ['rotta', '| `{data: {id, letta}, segnata_il}`:'],
+    'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `segnata_il` è l\'istante preso dopo la risposta del backoffice, nella forma di `aggiornati_il`'],
+    'il clic segna letta, e da quando' => ['punto', 'Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta'],
+    'la richiesta e la funzione' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}` (la funzione `segnaLetta`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando)'],
+    'l\'apertura non aspetta' => ['punto', 'la risorsa si apre senza aspettare la risposta'],
+    'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
+    'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
+    'una volta sola' => ['punto', 'dei dati letti dopo la contano già letta, e vale il loro numero'],
+    'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
+    'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
+    'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
+    'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
+]);

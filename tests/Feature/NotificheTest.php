@@ -230,7 +230,8 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
         && $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']));
 });
 
-it('PATCH /cornice/notifiche/{id}/lettura gira letta al backoffice col gettone del workspace e risponde con ciò che il backoffice ha segnato (sprint 5 · T2.2)', function (bool $letta, ?string $lettaIl, bool $attesa) {
+it('PATCH /cornice/notifiche/{id}/lettura gira letta al backoffice col gettone del workspace e risponde con ciò che il backoffice ha segnato, e con l\'istante della risposta (sprint 5 · T2.2; sprint 22 · T2.5)', function (bool $letta, ?string $lettaIl, bool $attesa) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     // Al gettone dell'accesso io.notifiche.lettura.modifica risponde 403 gettone_senza_workspace.
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
@@ -240,7 +241,7 @@ it('PATCH /cornice/notifiche/{id}/lettura gira letta al backoffice col gettone d
     });
 
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => $letta]))
-        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => $attesa]]);
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => $attesa], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $richiesta) => $richiesta->method() === 'PATCH' && percorsoDi($richiesta) === '/v1/io/notifiche/uat-n3/lettura'
         && $richiesta->data() === ['letta' => $letta]
@@ -291,12 +292,13 @@ it('un id che non è fatto solo di lettere, cifre, - e _, o più lungo di 64 car
 ]);
 
 it('un id di 64 caratteri fra lettere, cifre, - e _ arriva al backoffice così com\'è (sprint 5 · T2.4)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     $id = 'Uat_n-3'.str_repeat('z', 57);
     Http::fake(['*' => Http::response(['data' => notificaDelBackoffice($id, '2026-10-07T09:03:00.123Z', '2026-10-07T09:05:00.456Z')])]);
 
     senzaGettone($this->patchJson("cornice/notifiche/{$id}/lettura", ['letta' => true]))
-        ->assertOk()->assertExactJson(['data' => ['id' => $id, 'letta' => true]]);
+        ->assertOk()->assertExactJson(['data' => ['id' => $id, 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $richiesta) => percorsoDi($richiesta) === "/v1/io/notifiche/{$id}/lettura");
 });
@@ -600,7 +602,50 @@ it('segnate_il di POST /cornice/notifiche/letture è l\'istante preso dopo che i
     expect(strlen((string) $risposta->json('segnate_il')))->toBe(27);
 });
 
-it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ricerca restano com\'erano, e un errore del backoffice sull\'elenco o sulle letture non ne porta (sprint 11 · T1.3)', function () {
+// Sprint 22 · T2 (voce #1712): la cornice segna letta la notifica di cui apre la risorsa, e abbassa il numero sulla campanella
+// solo per i dati letti fino a quell'istante. Per questo la lettura di una notifica dice quando è stata segnata, come le letture.
+it('segnata_il di PATCH /cornice/notifiche/{id}/lettura è l\'istante preso dopo che il backoffice ha risposto, in UTC coi microsecondi anche con l\'applicazione in un altro fuso, qualunque cosa il backoffice abbia segnato (sprint 22 · T2.5)', function (bool $letta, ?string $lettaIl) {
+    config(['app.timezone' => 'Europe/Rome']);
+    date_default_timezone_set('Europe/Rome');
+    Carbon::setTestNow(Carbon::parse('2026-10-10 03:15:07.000321', 'Europe/Rome'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La risposta del backoffice porta l'orologio avanti: un istante preso prima di chiamarlo sarebbe di tre secondi prima, e
+    // dei dati letti in quei tre secondi conterebbero la notifica due volte.
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/uat-n3/lettura' => treSecondiDopo(['data' => notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', $lettaIl)]),
+    });
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => $letta]))->assertOk()->assertExactJson([
+        'data' => ['id' => 'uat-n3', 'letta' => $letta],
+        'segnata_il' => '2026-10-10T01:15:10.000321Z',
+    ]);
+
+    expect(strlen((string) $risposta->json('segnata_il')))->toBe(27);
+    Http::assertSentCount(1);
+})->with([
+    'segnata letta' => [true, '2026-10-07T09:05:00.456Z'],
+    'tornata non letta' => [false, null],
+]);
+
+it('una lettura che non riesce non porta un istante: né il 404 di una notifica che non c\'è, né il 422 di un corpo sbagliato, né un guasto del backoffice (sprint 22 · T2.5)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
+        '/v1/io/notifiche/uat-n3/lettura' => problemaDelBackoffice(404, 'non_trovato'),
+        default => Http::response('', 503),
+    });
+
+    foreach ([
+        [$this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]), 404, 404],
+        [$this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => 'true']), 422, 422],
+        [$this->patchJson('cornice/notifiche/uat-n4/lettura', ['letta' => true]), 500, 599],
+    ] as [$errore, $daStato, $aStato]) {
+        expect(senzaGettone($errore)->status())->toBeGreaterThanOrEqual($daStato)->toBeLessThanOrEqual($aStato)
+            ->and(substr_count((string) $errore->getContent(), 'segnata_il'))->toBe(0);
+    }
+});
+
+it('la ricerca non porta un istante, e un errore del backoffice sull\'elenco o sulle letture nemmeno; la lettura di una notifica porta il suo dalla v1.12.0 (sprint 11 · T1.3; sprint 22 · T2.5)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(fn (Request $richiesta) => match (percorsoDi($richiesta)) {
@@ -611,7 +656,7 @@ it('nessun\'altra risposta porta un istante: la lettura di una notifica e la ric
     });
 
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
-        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))
         ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']]]);
 
@@ -685,7 +730,7 @@ it('le altre risposte non cambiano: la lettura di una notifica risponde ancora c
     });
 
     $lettura = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
-        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T05:20:07.000321Z']);
     $elenco = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
 
     expect(substr_count((string) $lettura->getContent(), 'tipo'))->toBe(0)
@@ -1355,11 +1400,12 @@ it('il guasto di una delle tre chiavi è quello di una notifica senza id: la ste
 });
 
 it('la lettura di una notifica risponde ancora coi soli id e letta, anche quando il backoffice dà i tre dati (sprint 20 · T1.5)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => ['letta_il' => '2026-10-07T09:05:00.456Z'] + notificaConChiECosa('uat-n3', ['nome' => 'UAT Bruno'], 'UAT Clienti', true)])]);
 
     $lettura = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
-        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true]]);
+        ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
 
     expect(substr_count((string) $lettura->getContent(), 'UAT'))->toBe(0);
 });
