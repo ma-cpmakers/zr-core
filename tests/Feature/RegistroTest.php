@@ -292,6 +292,8 @@ it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un n
         'presto' => 'boolean',
         'in_arrivo' => 'boolean',
         'risorse?' => 'RisorsaDelProdotto[]',
+        // Sprint 21 · T3: le notifiche che aprono la loro risorsa.
+        'notifiche?' => 'NotificaDelProdotto[]',
     ]);
 });
 
