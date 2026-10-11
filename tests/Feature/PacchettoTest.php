@@ -3,6 +3,7 @@
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
 use Zeiras\Core\Cornice;
@@ -2564,4 +2565,274 @@ it('il target che il README dice per i sorgenti è quello con cui li guarda il t
 
     expect($base['compilerOptions']['target'] ?? null)->toBe('ES2022')
         ->and(str_contains(puntoDeiTipi((string) file_get_contents(__DIR__.'/../../README.md')), 'Vogliono `target` '.$base['compilerOptions']['target'].' o più recente'))->toBe(true);
+});
+
+// Sprint 20 · T2 (voce #1675). «Come nasce un modulo nuovo»: una guida nel pacchetto, per l'agente di un modulo che nasce.
+// Sta nello zip del tag, perché chi installa legge quello; nomina solo ciò che nel pacchetto c'è; non porta indirizzi
+// interni, e dove il README dice già una cosa rimanda al suo titolo.
+
+/** La guida, com'è nel repo; un testo vuoto se non c'è. */
+function guidaDelModuloNuovo(): string
+{
+    $file = dirname(__DIR__, 2).'/MODULO-NUOVO.md';
+
+    return is_file($file) ? (string) file_get_contents($file) : '';
+}
+
+/** @return list<string> i file dello zip di HEAD: ciò che Composer dà a un frontend */
+function fileDelloZipDiHead(): array
+{
+    $elenco = (new Process(['bash', '-c', 'set -o pipefail; git archive HEAD | tar -tf -'], dirname(__DIR__, 2)))->mustRun()->getOutput();
+
+    return array_values(array_filter(explode("\n", $elenco), fn (string $riga): bool => $riga !== '' && ! str_ends_with($riga, '/')));
+}
+
+/** Il codice che si installa, in un testo solo: è lì che si cerca un nome. Il README e la guida no: un nome sta nel codice. */
+function codiceCheSiInstalla(): string
+{
+    $radice = dirname(__DIR__, 2);
+    $codice = '';
+    foreach (fileDelloZipDiHead() as $file) {
+        if (preg_match('/\.(php|ts|tsx|json|css)$/', $file) === 1) {
+            $codice .= "\n".file_get_contents($radice.'/'.$file);
+        }
+    }
+
+    return $codice;
+}
+
+/** Il codice di zr-auth installato: un nome che la guida dice suo si cerca lì. */
+function codiceDiZrAuth(): string
+{
+    $codice = '';
+    foreach (File::allFiles(dirname(__DIR__, 2).'/vendor/zeiras/zr-auth/src') as $file) {
+        $codice .= "\n".$file->getContents();
+    }
+
+    return $codice;
+}
+
+/** @return list<string> «METODO /uri» di ogni rotta registrata, coi parametri ridotti a `{}` */
+function rotteRegistrate(): array
+{
+    $rotte = [];
+    foreach (Route::getRoutes()->getRoutes() as $rotta) {
+        foreach ($rotta->methods() as $metodo) {
+            $rotte[] = $metodo.' /'.preg_replace('/\{[^}]*\}/', '{}', ltrim($rotta->uri(), '/'));
+        }
+    }
+
+    return $rotte;
+}
+
+/** @return list<string> ciò che un testo scrive fra accenti gravi su una riga, una volta l'uno; i blocchi di codice restano fuori */
+function fraAccentiGravi(string $testo): array
+{
+    preg_match_all('/`([^`\n]+)`/', (string) preg_replace('/^```.*?^```$/ms', '', $testo), $trovati);
+
+    return array_values(array_unique($trovati[1]));
+}
+
+/**
+ * Ciò che una guida nomina e che non c'è dove dice. Un percorso sotto `vendor/zeiras/zr-core/` è un file del pacchetto, e
+ * dev'essere nello zip (una cartella, col `/` in fondo, deve avere almeno un file); `METODO /cornice/…` è una rotta
+ * registrata; una classe di `Zeiras\Core`, col suo metodo se lo nomina, esiste; `Cornice::metodo(` è un metodo della classe;
+ * `--tag=…` è un'etichetta con cui zr-core pubblica qualcosa. Un nome da solo (`LayoutDellaCornice`, `in_arrivo`: con una
+ * maiuscola o un trattino basso) e un `Classe::metodo` si cercano come parola intera nel codice che si installa, poi in
+ * quello di zr-auth; se non sono lì devono essere fra quelli detti di altri (Laravel, Inertia, il browser, il frontend).
+ *
+ * @param  list<string>  $nelloZip
+ * @param  list<string>  $rotte
+ * @param  array<string, string>  $diAltri  il nome, e di chi è
+ * @return list<string>
+ */
+function nominatiENonTrovati(string $guida, array $nelloZip, array $rotte, string $delPacchetto, string $diZrAuth, array $diAltri): array
+{
+    $mancano = [];
+    $parola = fn (string $nome, string $dove): bool => preg_match('/(?<![A-Za-z0-9_])'.preg_quote($nome, '/').'(?![A-Za-z0-9_])/', $dove) === 1;
+    $qualcunoLoHa = fn (string $nome): bool => $parola($nome, $delPacchetto) || $parola($nome, $diZrAuth);
+
+    foreach (fraAccentiGravi($guida) as $scritto) {
+        if (str_starts_with($scritto, 'vendor/zeiras/zr-core/')) {
+            $percorso = substr($scritto, strlen('vendor/zeiras/zr-core/'));
+            $presente = str_ends_with($percorso, '/')
+                ? array_filter($nelloZip, fn (string $file): bool => str_starts_with($file, $percorso)) !== []
+                : in_array($percorso, $nelloZip, true);
+            if (! $presente) {
+                $mancano[] = $scritto.': non è nello zip';
+            }
+        } elseif (preg_match('/^(GET|POST|PATCH|PUT|DELETE) (\/cornice\/\S*)$/', $scritto, $rotta) === 1) {
+            if (! in_array($rotta[1].' '.preg_replace('/\{[^}]*\}/', '{}', $rotta[2]), $rotte, true)) {
+                $mancano[] = $scritto.': non è una rotta';
+            }
+        } elseif (preg_match('/^([A-Z][A-Za-z0-9]*)::([A-Za-z_][A-Za-z0-9_]*)(\(\))?$/', $scritto, $statico) === 1) {
+            $suo = array_key_exists($statico[1].'::'.$statico[2], $diAltri)
+                || ($parola($statico[1], $delPacchetto) && $parola('function '.$statico[2], $delPacchetto))
+                || ($parola($statico[1], $diZrAuth) && $parola('function '.$statico[2], $diZrAuth));
+            if (! $suo) {
+                $mancano[] = $scritto.': nessuno ha questo metodo';
+            }
+        } elseif (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $scritto) === 1 && preg_match('/[A-Z_]/', $scritto) === 1) {
+            if (! $qualcunoLoHa($scritto) && ! array_key_exists($scritto, $diAltri)) {
+                $mancano[] = $scritto.': nessuno ha questo nome';
+            }
+        }
+    }
+
+    preg_match_all('/Zeiras\\\\Core(?:\\\\[A-Za-z]+)+(?:::[A-Za-z]+)?/', $guida, $classi);
+    foreach (array_unique($classi[0]) as $nome) {
+        [$classe, $metodo] = array_pad(explode('::', $nome), 2, null);
+        if (! class_exists($classe) && ! interface_exists($classe)) {
+            $mancano[] = $nome.': la classe non c\'è';
+        } elseif ($metodo !== null && ! method_exists($classe, $metodo)) {
+            $mancano[] = $nome.': il metodo non c\'è';
+        }
+    }
+
+    preg_match_all('/(?<![A-Za-z0-9_\\\\])Cornice::([A-Za-z_]+)\(/', $guida, $metodi);
+    foreach (array_unique($metodi[1]) as $metodo) {
+        if (! method_exists(Cornice::class, $metodo)) {
+            $mancano[] = 'Cornice::'.$metodo.'(): il metodo non c\'è';
+        }
+    }
+
+    preg_match_all('/--tag=([a-z0-9-]+)/', $guida, $etichette);
+    foreach (array_unique($etichette[1]) as $etichetta) {
+        if (ServiceProvider::pathsToPublish(ZrCoreServiceProvider::class, $etichetta) === []) {
+            $mancano[] = '--tag='.$etichetta.': zr-core non pubblica niente con questa etichetta';
+        }
+    }
+
+    return $mancano;
+}
+
+/**
+ * I nomi che la guida scrive e che non sono né di zr-core né di zr-auth: il nome, e di chi è. Un nome nuovo entra qui solo
+ * se la guida dice di chi è.
+ *
+ * @return array<string, string>
+ */
+function nomiDiAltriNellaGuida(): array
+{
+    return [
+        'App::setLocale' => 'Laravel',
+        'HandleInertiaRequests' => 'il middleware di Inertia nel frontend',
+        'createInertiaApp' => 'Inertia',
+        'activeElement' => 'il browser',
+        'getBoundingClientRect' => 'il browser',
+        'RiallineamentoDesignTest' => 'il test del frontend, col nome che gli dà zr-crm',
+        'IntestazioniTest' => 'il test del frontend, col nome che gli dà zr-crm',
+    ];
+}
+
+/**
+ * Gli indirizzi che un file pubblico non deve portare: un indirizzo IP, un «utente@host», un percorso di una macchina
+ * (`/home/…`, `~/…`, `/etc/…`), e ogni nome di dominio che non è di zeiras.com, dei font o di GitHub. Chi è ammesso sta
+ * scritto qui: un nome interno non si scrive nemmeno per vietarlo.
+ *
+ * @return list<string>
+ */
+function indirizziNonAmmessiIn(string $testo): array
+{
+    $ammessi = ['zeiras.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'github.com'];
+    $trovati = [];
+    preg_match_all('/\b\d{1,3}(?:\.\d{1,3}){3}\b/', $testo, $ip);
+    preg_match_all('/[A-Za-z0-9._-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/', $testo, $utenti);
+    preg_match_all('/(?<![A-Za-z0-9._\/-])(?:\/home\/|~\/|\/etc\/|\/var\/|\/srv\/|\/root\/)\S*/', $testo, $percorsi);
+    preg_match_all('/(?<![A-Za-z0-9_.@-])(?:[a-z0-9-]+\.)+(?:com|net|org|it|io|dev|app|cloud|internal|local|lan)(?![A-Za-z0-9_-])/', $testo, $domini);
+    foreach ([...$ip[0], ...$utenti[0], ...$percorsi[0]] as $uno) {
+        $trovati[] = $uno;
+    }
+    foreach ($domini[0] as $dominio) {
+        if (! in_array($dominio, $ammessi, true) && ! str_ends_with($dominio, '.zeiras.com')) {
+            $trovati[] = $dominio;
+        }
+    }
+
+    return array_values(array_unique($trovati));
+}
+
+/** @return list<string> i titoli del README che un testo cita come «README, «Titolo»» e che il README non ha */
+function titoliDelReadmeCheNonCiSono(string $testo, string $readme): array
+{
+    preg_match_all('/README, «([^»]+)»/', $testo, $citati);
+    preg_match_all('/^#{2,3} (.+)$/m', $readme, $titoli);
+
+    return array_values(array_diff(array_unique($citati[1]), $titoli[1]));
+}
+
+/** @return list<string> le righe di un testo, da 80 caratteri in su, che il README ha già uguali */
+function righeRicopiateDalReadme(string $testo, string $readme): array
+{
+    $delReadme = array_map('trim', explode("\n", $readme));
+
+    return array_values(array_filter(array_map('trim', explode("\n", $testo)), fn (string $riga): bool => mb_strlen($riga) >= 80 && in_array($riga, $delReadme, true)));
+}
+
+it('la guida è un file del pacchetto: la guardia dello zip la vuole nello zip del tag, e non ammette un file dal nome simile (sprint 20 · T2.1)', function (array $file, int $uscita, array $dice) {
+    [$codice, $testo] = guardiaDelloZipSu(alberoFintoCon($file));
+
+    expect($codice)->toBe($uscita)
+        ->and($testo)->toContain(...$dice);
+})->with([
+    'con la guida alla radice' => [['MODULO-NUOVO.md' => "# Come nasce un modulo nuovo\n"], 0, ['tutti del pacchetto e nessuno che manca']],
+    'con la guida, che .gitattributes toglie dallo zip' => [
+        ['MODULO-NUOVO.md' => "# Come nasce un modulo nuovo\n", '.gitattributes' => file_get_contents(__DIR__.'/../../.gitattributes')."/MODULO-NUOVO.md export-ignore\n"],
+        1, ['manca ciò che serve a chi installa', 'MODULO-NUOVO.md'],
+    ],
+    'con un file dal nome simile alla radice' => [['MODULO-NUOVO-2.md' => "# Un altro file\n"], 1, ['ciò che non serve a chi installa', 'MODULO-NUOVO-2.md']],
+    'con la guida in una cartella' => [['guide/MODULO-NUOVO.md' => "# Come nasce un modulo nuovo\n"], 1, ['ciò che non serve a chi installa', 'guide/MODULO-NUOVO.md']],
+]);
+
+it('la guida c\'è, è nello zip di HEAD, e il README la indica nel primo capoverso di «Come si installa in un frontend» (sprint 20 · T2.1)', function () {
+    preg_match('/^## Come si installa in un frontend\n\n(.+?)\n\n/ms', (string) file_get_contents(__DIR__.'/../../README.md'), $primo);
+
+    expect(str_starts_with(guidaDelModuloNuovo(), "# Come nasce un modulo nuovo\n"))->toBe(true)
+        ->and(in_array('MODULO-NUOVO.md', fileDelloZipDiHead(), true))->toBe(true)
+        ->and(str_contains($primo[1] ?? '', '`MODULO-NUOVO.md`'))->toBe(true);
+});
+
+it('ogni cosa che la guida nomina c\'è dove dice: i file del pacchetto nello zip, le classi, le rotte, i nomi nel codice di zr-core o di zr-auth, o fra quelli detti di altri (sprint 20 · T2.3)', function () {
+    $guida = guidaDelModuloNuovo();
+
+    expect($guida)->not->toBe('')
+        ->and(nominatiENonTrovati($guida, fileDelloZipDiHead(), rotteRegistrate(), codiceCheSiInstalla(), codiceDiZrAuth(), nomiDiAltriNellaGuida()))->toBe([]);
+});
+
+it('il controllo dei nomi della guida vede ciò che non c\'è: un caso per forma (sprint 20 · T2.3)', function (string $guida, array $mancano) {
+    expect(nominatiENonTrovati($guida, fileDelloZipDiHead(), rotteRegistrate(), codiceCheSiInstalla(), codiceDiZrAuth(), nomiDiAltriNellaGuida()))->toBe($mancano);
+})->with([
+    'ciò che c\'è' => ['Leggi `vendor/zeiras/zr-core/README.md` e `vendor/zeiras/zr-core/resources/lingue/`, registra `Zeiras\Core\Http\IntestazioniSicurezza`, chiama `Cornice::dati()` e `Sessione::aggiorna`, usa `LayoutDellaCornice`, `in_arrivo` e `App::setLocale`; la ricerca è `POST /cornice/ricerca`, la lettura `PATCH /cornice/notifiche/{id}/lettura`; `php artisan vendor:publish --tag=zr-core-config`.', []],
+    'un file che lo zip non porta' => ['Vedi `vendor/zeiras/zr-core/tests/zeiras.sha256`.', ['vendor/zeiras/zr-core/tests/zeiras.sha256: non è nello zip']],
+    'una cartella che lo zip non porta' => ['Vedi `vendor/zeiras/zr-core/resources/demo/`.', ['vendor/zeiras/zr-core/resources/demo/: non è nello zip']],
+    'una classe che non c\'è' => ['Registra `Zeiras\Core\Http\IntestazioniDiSicurezza`.', ['Zeiras\Core\Http\IntestazioniDiSicurezza: la classe non c\'è']],
+    'un metodo che la classe non ha' => ['Chiama `Zeiras\Core\Cornice::lingue()`.', ['Zeiras\Core\Cornice::lingue: il metodo non c\'è']],
+    'un metodo di Cornice che non c\'è, nel codice di un blocco' => ["```php\nApp::setLocale(Cornice::linguaggio());\n```", ['Cornice::linguaggio(): il metodo non c\'è']],
+    'una rotta che non c\'è' => ['La ricerca è `GET /cornice/ricerca`.', ['GET /cornice/ricerca: non è una rotta']],
+    'un nome che nessuno ha' => ['Usa `LayoutCornice` e `in_arrivi`.', ['LayoutCornice: nessuno ha questo nome', 'in_arrivi: nessuno ha questo nome']],
+    'un metodo che nessuno ha' => ['Chiama `Sessione::rinfresca()`.', ['Sessione::rinfresca(): nessuno ha questo metodo']],
+    'un\'etichetta con cui zr-core non pubblica' => ['`php artisan vendor:publish --tag=zr-core`', ['--tag=zr-core: zr-core non pubblica niente con questa etichetta']],
+]);
+
+it('la guida non porta indirizzi interni, cita solo titoli che il README ha e non ne ricopia le righe (sprint 20 · T2.5)', function () {
+    $guida = guidaDelModuloNuovo();
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect($guida)->not->toBe('')
+        ->and(indirizziNonAmmessiIn($guida))->toBe([])
+        ->and(titoliDelReadmeCheNonCiSono($guida, $readme))->toBe([])
+        ->and(preg_match_all('/README, «[^»]+»/', $guida) >= 8)->toBe(true)
+        ->and(righeRicopiateDalReadme($guida, $readme))->toBe([]);
+});
+
+it('i tre controlli sul testo della guida vedono ciò che cercano (sprint 20 · T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $lunga = 'Prima dei globali, e non nel gruppo `web`: così le intestazioni le hanno anche le risposte fuori dal gruppo (`/up`), le';
+
+    expect(indirizziNonAmmessiIn('entra con ssh deploy@macchina.esempio.net, poi 10.20.30.40 e /home/deploy/.chiave; il pannello è su https://pannello.esempio.net/entra, il sito è app.zeiras.com, i font fonts.gstatic.com, il lock non ha `"url": "git@`'))
+        ->toBe(['10.20.30.40', 'deploy@macchina.esempio.net', '/home/deploy/.chiave;', 'pannello.esempio.net'])
+        ->and(indirizziNonAmmessiIn('`vendor/zeiras/zr-core/resources/lingue/it.json`, `composer.lock`, `bootstrap/app.php`, la v1.10.1 e https://app.zeiras.com/w/<slug>'))->toBe([])
+        ->and(titoliDelReadmeCheNonCiSono('Vedi il README, «La parte server» e il README, «Le intestazioni»; di zr-auth, «Installazione».', $readme))->toBe(['Le intestazioni'])
+        ->and(str_contains($readme, "\n".$lunga."\n"))->toBe(true)
+        ->and(righeRicopiateDalReadme("una riga corta\n  ".$lunga."\nuna riga lunga che il README non ha, scritta apposta per superare gli ottanta caratteri di misura", $readme))->toBe([$lunga]);
 });
