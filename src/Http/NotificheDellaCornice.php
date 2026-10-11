@@ -325,7 +325,7 @@ final class NotificheDellaCornice
 
         foreach ($registro as $voce) {
             foreach ($voce['id'] === $app ? $voce['notifiche'] ?? [] : [] as $notifica) {
-                if ($notifica['tipo'] === $tipo) {
+                if (str_starts_with($tipo, $notifica['tipo'])) {
                     preg_match_all(self::SEGNAPOSTO, $notifica['percorso'], $segnaposto);
 
                     return $segnaposto[1];
