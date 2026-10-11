@@ -266,7 +266,7 @@ final class NotificheDellaCornice
         return [
             'id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
-            'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
+            'autore_nome' => $notifica['autore'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
         ];
     }
