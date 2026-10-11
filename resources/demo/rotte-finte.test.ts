@@ -131,6 +131,32 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map(({ tipo }) => conosciuto(tipo))).toEqual([true, false, false, true]);
     });
 
+    // Sprint 21 · T2 (voce #1641): le notifiche del CRM stanno nella pagina di prova solo con `?crm=1`. Senza, l'elenco è quello
+    // del tag di prima (il caso qui sopra), e le schermate della smoke non cambiano.
+    it('con `?crm=1` in fondo all\'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette tipi che zr-core conosce, e una di un tipo che non conosce ancora (sprint 21 · T2.1, T2.2)', async () => {
+        await rotte(false, '?crm=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; creata_il: string }[];
+        const conosciuto = (tipo: string | undefined) => tipo !== undefined && Object.keys(inglese).includes(`notificationTitle.${tipo}`);
+
+        expect(notifiche.slice(0, 4).map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(notifiche.slice(4).map(({ id, app, tipo, letta }) => [id, app, tipo, letta])).toEqual([
+            ['uat-c1', 'crm', 'com.zeiras.crm.persona.creata', true],
+            ['uat-c2', 'crm', 'com.zeiras.crm.persona.modificata', true],
+            ['uat-c3', 'crm', 'com.zeiras.crm.pipeline.creata', true],
+            ['uat-c4', 'crm', 'com.zeiras.crm.pipeline.modificata', true],
+            ['uat-c5', 'crm', 'com.zeiras.crm.nota.creata', true],
+            ['uat-c6', 'crm', 'com.zeiras.crm.nota.modificata', true],
+            ['uat-c7', 'crm', 'com.zeiras.crm.nota.eliminata', true],
+            ['uat-c8', 'crm', 'com.zeiras.crm.persona.assegnata', true],
+        ]);
+        expect(notifiche.slice(4).map(({ tipo }) => conosciuto(tipo))).toEqual([true, true, true, true, true, true, true, false]);
+        // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.
+        const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
+        expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
+    });
+
     // Sprint 12 · T4 (voce #1461): fermata da un tetto, la parte server dice che ne restano (`altre: true`). Sulla pagina di prova lo
     // si vede con `?altre=1`: la prima «Segna tutte come lette» riuscita ne lascia una, la seconda le segna tutte.
 

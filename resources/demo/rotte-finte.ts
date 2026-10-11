@@ -7,7 +7,9 @@
 // `per_me`) sono `null`, come li dà la parte server quando il backoffice non li manda; con `?chi=1` la più recente dice chi e
 // su che cosa ed è rivolta alla persona, la seconda dice chi ed è per tutto il workspace (solo in «Tutte»), le altre restano
 // com'erano, e ce n'è una in più, letta tre giorni fa, su un'app: ha in `risorsa_nome` il codice dell'app, com'è nel backoffice, e
-// il pannello ne mostra il nome. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
+// il pannello ne mostra il nome. Con `?crm=1` in fondo all'elenco ci sono le notifiche del CRM, lette: una per ognuno dei sette
+// tipi che zr-core conosce (contatti, pipeline, note) e una di un tipo che non conosce ancora (`com.zeiras.crm.persona.assegnata`),
+// col titolo di ripiego; senza `?crm`, l'elenco è quello di prima. «Segna tutte come lette» (POST /cornice/notifiche/letture) segna lette quelle nate fino a
 // `fino_a` e risponde con l'istante in UTC e con `altre`, se ne restano: `false`, salvo con `?altre=1`, dove la prima che riesce
 // si ferma come la parte server a un tetto (lascia non letta la più recente e dice `true`) e la seconda le segna tutte; con
 // `?errore=letture` la prima fallisce e la seconda riesce. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
@@ -25,6 +27,7 @@ const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);
 const chi = new URLSearchParams(window.location.search).has('chi');
+const crm = new URLSearchParams(window.location.search).has('crm');
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -36,6 +39,17 @@ const notificheDiProva = [
     // Solo con `?chi=1`, una notifica su un'app: lì il backoffice dà il codice dell'app (`pm`), e il pannello ne mostra il nome.
     ...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null }] : []),
     { id: 'uat-1', creata_il: fa(9 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ...nonDetti },
+    // Solo con `?crm=1`, le notifiche del CRM: più vecchie di tutte le altre, una al giorno. L'ultima è di un tipo che zr-core non conosce.
+    ...(crm
+        ? ['persona.creata', 'persona.modificata', 'pipeline.creata', 'pipeline.modificata', 'nota.creata', 'nota.modificata', 'nota.eliminata', 'persona.assegnata'].map((tipo, indice) => ({
+              id: `uat-c${indice + 1}`,
+              creata_il: fa((10 + indice) * 24 * 60),
+              letta: true,
+              app: 'crm',
+              tipo: `com.zeiras.crm.${tipo}`,
+              ...nonDetti,
+          }))
+        : []),
 ];
 let letture = 0;
 let riuscite = 0;
