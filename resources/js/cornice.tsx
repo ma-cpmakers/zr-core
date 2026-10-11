@@ -11,6 +11,10 @@ import { Zeiras } from './zeiras';
 // registro, incrociato con lo stato dei prodotti nel workspace, gli indirizzi del workspace, i testi della lingua, e dove
 // portano account, notifiche e risultati della ricerca (linea guida 15).
 
+// Le chiavi e le props facoltative dei tipi pubblici della cornice accettano `undefined` (`?: T | undefined`): un frontend con
+// `exactOptionalPropertyTypes` le può scrivere così. Verso l'`AppShell` no: per i tipi del design system una chiave facoltativa
+// manca, e la cornice gliela dà solo quando ha un valore (`senzaUndefined`, più sotto).
+
 /** I dati della cornice, come li dà `Cornice::dati()` della parte server: la persona, la sua lingua, il workspace in cui è entrata. */
 export interface DatiDellaCornice {
     /** La lingua della persona (`it`, `es`, `en`…): in una lingua che zr-core non ha, la cornice è in inglese. */
@@ -28,15 +32,15 @@ export interface DatiDellaCornice {
      * `nuovo_workspace` dice se la persona può creare un workspace in quell'azienda: lo ricava la parte server dal suo ruolo, che
      * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
-    aziende?: { id: string; nome: string; workspace: { id?: string; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[];
+    aziende?: { id: string; nome: string; workspace: { id?: string | undefined; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[] | undefined;
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
-    non_lette?: number;
+    non_lette?: number | undefined;
     /**
      * Il segno della lettura: l'istante in cui la parte server ha cominciato a leggere questi dati (UTC, coi microsecondi). I
      * dati di due letture non sono mai uguali, e la cornice sa quali sono stati letti dopo: tiene i più recenti che ha visto
      * (vedi «i dati più recenti», più sotto).
      */
-    aggiornati_il?: string;
+    aggiornati_il?: string | undefined;
 }
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
@@ -49,30 +53,30 @@ export interface CorniceProps {
     /** I dati della parte server: `Cornice::dati()`. */
     dati: DatiDellaCornice;
     /** Il prodotto aperto, un id del registro (`pm`, `crm`, `bookings`…). Senza, la pagina è di app.zeiras.com e il menu Prodotti è esteso. */
-    product?: string;
+    product?: string | undefined;
     /** Le voci del prodotto aperto. */
-    nav?: GruppoDiVoci[];
+    nav?: GruppoDiVoci[] | undefined;
     /** L'id della voce attiva; senza, la Dashboard. Con `null` nessuna voce della barra è attiva. */
-    active?: string | null;
-    onNavigate?: (id: string) => void;
+    active?: string | null | undefined;
+    onNavigate?: ((id: string) => void) | undefined;
     /** Il percorso Workspace › Cartella › Oggetto: l'ultima voce è la pagina. */
-    crumbs?: ShellCrumb[];
-    onCrumb?: (voce: ShellCrumb, indice: number) => void;
+    crumbs?: ShellCrumb[] | undefined;
+    onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
     /** Le voci del menu «+»: i tipi che il prodotto crea. */
-    create?: MenuItem[];
+    create?: MenuItem[] | undefined;
     /** Altro in topbar. */
     actions?: ReactNode;
     /** L'area della pagina senza margine (la board). */
-    flush?: boolean;
+    flush?: boolean | undefined;
     /** «Esci»: la sessione la chiude il frontend, ovunque. Obbligatorio: senza, «Esci» non farebbe niente. */
     onLogout: () => void;
     /** Come si apre un indirizzo: di norma il browser ci va. */
-    naviga?: (indirizzo: string) => void;
+    naviga?: ((indirizzo: string) => void) | undefined;
     /**
      * La voce «Piano» nel menu del profilo. Spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina
      * che non c'è. Il frontend la accende quando la pagina del piano esiste su app.zeiras.com.
      */
-    piano?: boolean;
+    piano?: boolean | undefined;
     children?: ReactNode;
 }
 
@@ -134,7 +138,19 @@ function menuDelProfiloSenzaPiano(t: TestiDellaCornice, suAccount: (azione: Acco
  * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col tono del suo id (tono.ts), mai del nome, dello slug o del
  * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
  */
-function nelSelettore(workspace: { id?: string; nome: string; slug: string }): ShellWorkspace {
+/** Il tipo di un oggetto senza le chiavi che valgono `undefined`: quelle che possono valerlo diventano facoltative, e `undefined` esce dal loro tipo. */
+type SenzaUndefined<T> = { [K in keyof T as undefined extends T[K] ? never : K]: T[K] } & { [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<T[K], undefined> };
+
+/**
+ * Un oggetto senza le chiavi che valgono `undefined`, nello stesso ordine: ciò che la cornice dà all'`AppShell`. Per i tipi del
+ * design system una chiave facoltativa manca, non vale `undefined` (`exactOptionalPropertyTypes`), e l'`AppShell` legge allo
+ * stesso modo una chiave che manca e una che vale `undefined`: nessun valore cambia, e non arriva una chiave in più.
+ */
+function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
+    return Object.fromEntries(Object.entries(oggetto).filter(([, valore]) => valore !== undefined)) as SenzaUndefined<T>;
+}
+
+function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
     const tone = tonoDelWorkspace(workspace.id);
 
     return tone === undefined ? { slug: workspace.slug, name: workspace.nome } : { slug: workspace.slug, name: workspace.nome, tone };
@@ -189,7 +205,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
 
-    return {
+    return senzaUndefined({
         id: notifica.id,
         title: titoloDellaNotifica(notifica.tipo, lingua),
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
@@ -197,7 +213,7 @@ function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Dat
         icon: delProdotto?.icona,
         tone: delProdotto?.tono,
         unread: !notifica.letta,
-    };
+    });
 }
 
 /**
@@ -234,7 +250,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
     const { id } = risultato;
 
-    return {
+    return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title: risultato.titolo,
@@ -244,7 +260,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
         tone: delProdotto.tono,
         container: risorsa.contenitore,
         href: nelWorkspace(delProdotto.indirizzo, slug) + risorsa.percorso.replace('{id}', () => encodeURIComponent(id)),
-    };
+    });
 }
 
 /**
@@ -314,7 +330,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // registro qui non si legge: è per le pagine senza sessione, e un prodotto in anteprima si apre dove il backoffice lo dà.
             const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
-            return {
+            return senzaUndefined({
                 id: voce.id,
                 label: nomeDellaVoce(voce, dati.lingua),
                 icon: voce.icona,
@@ -323,7 +339,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 soon: presto,
                 // Un prodotto «Presto» non porta da nessuna parte; quello aperto, al clic, chiude solo la lista.
                 href: presto || voce === aperto ? undefined : nelWorkspace(voce.indirizzo, dati.workspace.slug),
-            };
+            });
         }),
     };
 
@@ -507,15 +523,15 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
 
     return (
         <Zeiras.AppShell
-            {...pagina}
+            // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`.
+            {...senzaUndefined(pagina)}
             nav={voci}
             // Solo `null` vuol dire «nessuna voce attiva»: senza `active` resta la Dashboard, come decide l'`AppShell`.
-            active={active === null ? idDiNessunaVoce(voci) : active}
-            product={aperto?.id}
+            {...senzaUndefined({ active: active === null ? idDiNessunaVoce(voci) : active, product: aperto?.id })}
             user={dati.persona.nome}
             email={dati.persona.email}
             workspace={dati.workspace.nome}
-            companies={companies}
+            {...senzaUndefined({ companies })}
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
@@ -523,12 +539,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             {...(nuovoWorkspace ? { onNewWorkspace: nuovoWorkspace } : {})}
             // Il numero dei dati, e mai meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo
             // aprendo la campanella.
-            unreadCount={nonLette}
+            {...senzaUndefined({ unreadCount: nonLette })}
             notifications={notifiche.elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
             notificationsState={notifiche.stato}
             onNotificationsOpen={carica}
             onRetryNotifications={carica}
-            onMarkAllRead={segnaTutteLette}
+            {...senzaUndefined({ onMarkAllRead: segnaTutteLette })}
             onSearch={cercaParola}
             searchResults={risultati}
             searchState={ricerca.stato}
@@ -548,7 +564,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
             // Con `piano` nessuna lista: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
-            accountItems={piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount)}
+            {...(piano ? {} : { accountItems: menuDelProfiloSenzaPiano(t, suAccount) })}
             // Una notifica e «Vedi tutte» portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto.
             onOpenNotification={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
             onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}

@@ -2476,14 +2476,14 @@ it('le pagine di prova scrivono undefined in ogni prop facoltativa della cornice
     expect(scritteNellaPaginaDiProva($file, $scritte))->toBe(array_fill_keys($scritte, 1));
 })->with([
     'la pagina della cornice' => ['demo.tsx', [
-        'type OgniFacoltativa<T> = { [K in keyof T as {} extends Pick<T, K> ? K : never]-?: undefined };',
+        'type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;',
         '} satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;',
         '} satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;',
         '            {...propsScritteUndefined}',
         'dati={{ ...datiScrittiUndefined, ...datiDiProva, ',
     ]],
     'la pagina del layout' => ['layout.tsx', [
-        'type OgniFacoltativa<T> = { [K in keyof T as {} extends Pick<T, K> ? K : never]-?: undefined };',
+        'type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;',
         '} satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;',
         '            {...propsScritteUndefined}',
     ]],

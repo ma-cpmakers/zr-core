@@ -57,7 +57,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
     const fileDi = (lingua: string): string | undefined => {
         const codice = codiceDi(lingua);
 
-        return [codice, codice.split('-')[0]].find((scelto) => perCodice.has(scelto));
+        return [codice, ...codice.split('-', 1)].find((scelto) => perCodice.has(scelto));
     };
     // I testi già composti, per file: il pannello delle notifiche li chiede per ogni notifica, a ogni render. Le lingue che
     // zr-core non ha stanno tutte sotto la stessa chiave, la vuota: ciò che arriva come lingua non fa crescere l'elenco.

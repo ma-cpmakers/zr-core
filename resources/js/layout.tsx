@@ -10,7 +10,7 @@ import { Cornice, type CorniceProps, type DatiDellaCornice } from './cornice';
 /** Le props di `Cornice`, coi dati che possono mancare. */
 export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     /** I dati della parte server (`Cornice::dati()`), come arrivano fra le props della pagina. Senza (`null`, o la prop che manca) la pagina si vede da sola. */
-    cornice?: DatiDellaCornice | null;
+    cornice?: DatiDellaCornice | null | undefined;
 }
 
 const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'actions', 'flush'] as const;

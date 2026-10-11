@@ -40,6 +40,17 @@ system. React lo porta il frontend: il pacchetto non ne ha una copia.
 import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
 ```
 
+**I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
+pacchetto. Reggono `strict`, `noUnusedLocals` e `noUnusedParameters` e, dalla `v1.9.0`, le nove opzioni più strette che la CI
+di zr-core accende a ogni giro (il suo `tsconfig.stretto.json`, che nello zip non arriva): `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noImplicitOverride`,
+`noPropertyAccessFromIndexSignature`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `noUncheckedSideEffectImports`. Un frontend
+le può accendere senza fermarsi sui file di zr-core. Con `exactOptionalPropertyTypes` ciò che il frontend dà alla cornice ed è
+facoltativo accetta `undefined`: le props facoltative di `Cornice` e di `LayoutDellaCornice` (`product={undefined}`) e le chiavi
+facoltative dei dati della cornice (`aziende: undefined`). I tipi del design system (`index.d.ts`) no: lì una chiave che non si
+dà si omette, e le voci di `nav`, di `crumbs` e di `create` sono sue. La misura è con `skipLibCheck`, come nei `tsconfig` dei
+frontend: `index.d.ts` è una copia del design system, e zr-core non la corregge.
+
 **Le intestazioni di sicurezza**: una riga nel `bootstrap/app.php` del frontend registra la classe che le scrive su ogni
 risposta di Laravel — più sotto, «Le intestazioni di sicurezza».
 
