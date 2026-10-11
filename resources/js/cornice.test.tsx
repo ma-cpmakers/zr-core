@@ -2,7 +2,7 @@ import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
-import { Cornice } from './cornice';
+import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
@@ -1943,6 +1943,36 @@ describe('il pannello delle notifiche', () => {
         expect([campanella(), detto()]).toStrictEqual(['2', '']);
     });
 
+    // Sprint 23 · T2 (voce #1742, S1). L'elenco del clic può essere più vecchio dei dati del clic: il pannello è rimasto aperto
+    // mentre i dati cambiavano. Se nel mezzo la notifica è stata letta altrove, quei dati la contano già letta, e la lettura
+    // non toglie niente dal loro numero: vale il numero dei dati, al più una in più fino alla visita dopo, mai una in meno.
+    it('se l\'elenco del clic è più vecchio dei dati del clic — la notifica letta altrove nel mezzo, e i dati la contano già letta — il clic apre la risorsa e il numero non scende: coi dati del clic, con quelli letti fra il clic e la risposta, con quelli letti dopo; e l\'avviso tace (sprint 23 · T2.1)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(9)));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        await mostra(pagina(letti(alSecondo(3), 3)));
+        await clic(uno('.zr-bell'));
+        expect(campanella()).toBe('3');
+
+        // A pannello aperto arrivano dati letti al secondo 7: la prima notifica è stata letta da un'altra scheda al 6, e ne
+        // contano 2. Nell'elenco in pagina, letto al 5, è ancora da leggere.
+        await mostra(pagina(letti(alSecondo(7), 2)));
+        expect([campanella(), nonLette()[0]]).toStrictEqual(['2', true]);
+
+        await clic(voci()[0] ?? null);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        // Coi dati del clic: la contavano già letta.
+        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+
+        // Con dati letti fra il clic e la risposta (al secondo 8) e con dati letti dopo (al 10) vale il loro numero.
+        await mostra(pagina(letti(alSecondo(8), 2)));
+        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+        await mostra(pagina(letti(alSecondo(10), 2)));
+        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+    });
+
     // Review della PR #44, R6. L'id di una notifica arriva dal backoffice, e la parte server controlla solo che sia un testo:
     // con `.` o `..` il browser manderebbe la `PATCH`, col gettone CSRF, a un'altra rotta. La lettura non parte, e il resto
     // del clic non cambia.
@@ -2041,6 +2071,16 @@ describe('il pannello delle notifiche', () => {
     // la scheda rimasta indietro riceve l'elenco dell'altro: sulla sua campanella resta il numero dei suoi dati. Il caso qui
     // sopra non lo vede: lì il numero dei dati è uguale alle non lette dell'elenco.
 
+    // Sprint 23 · T2 (voce #1742, S5): il README della `v1.12.0` lo dice, e nessun caso lo fissava con l'elenco di un altro workspace.
+    it('senza il numero nei dati, con l\'elenco di un altro workspace la campanella conta le non lette che il pannello ha caricato: non c\'è un numero della pagina da tenere (sprint 23 · T2.5)', async () => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, workspace: 'acme-vendite' }]));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(campanella()).toBeNull();
+
+        await clic(uno('.zr-bell'));
+        expect([voci().length, campanella()]).toStrictEqual([4, '3']);
+    });
+
     it('con l\'elenco di un altro workspace che ha più non lette del numero dei dati la campanella resta al numero dei dati: quando l\'elenco arriva, e dopo un clic che apre la risorsa lì e fa partire la lettura; nel pannello la notifica è letta, e l\'avviso tace (sprint 22 · T6.1, T6.2)', async () => {
         const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5), workspace: 'acme-vendite' }], (id) => segnata(id, alSecondo(8)));
         vi.stubGlobal('fetch', fetchFinto);
@@ -2117,10 +2157,12 @@ describe('il pannello delle notifiche', () => {
         const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
         await mostra(pagina(letti(alSecondo(3), 1)));
 
-        // Il numero sale con l'elenco, più recente dei dati; poi cambia coi dati nuovi. L'avviso tace.
+        // Il numero sale con l'elenco, più recente dei dati; poi cambia coi dati nuovi. L'avviso tace. I dati nuovi sono letti
+        // prima dell'elenco (al secondo 4, l'elenco al 5): dallo sprint 23, con dati più recenti dell'elenco il clic non toglie
+        // niente dal numero (T2.1), e qui il numero deve scendere.
         await clic(uno('.zr-bell'));
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
-        await mostra(pagina(letti(alSecondo(6), 5)));
+        await mostra(pagina(letti(alSecondo(4), 5)));
         expect([campanella(), detto()]).toStrictEqual(['5', '']);
 
         await clic(voci()[0] ?? null);
@@ -3177,6 +3219,30 @@ describe('la ricerca', () => {
         expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
         expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
         expect(righe()).toHaveLength(0);
+    });
+
+    // Sprint 23 · T2 (voce #1742, S4): lo `workspace` della risposta entra nell'indirizzo di ogni risultato solo con la forma di
+    // uno slug, come per una notifica. Fuori forma è l'errore della ricerca: nessun risultato, e quindi nessun indirizzo.
+    it.each(['..', '.', 'Acme', 'a/b', 'acme_marketing'])('una risposta con un `workspace` fuori dalla forma di uno slug — «%s» — è un errore della ricerca: il pannello mostra il suo errore e nessun risultato da aprire (sprint 23 · T2.3)', async (workspace) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultatiDelServer, workspace })));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
+        expect(uno('.zr-search-panel')?.textContent).not.toContain('Nessun risultato per');
+        expect(righe()).toHaveLength(0);
+    });
+
+    // Sprint 23 · T2 (voce #1742, S7): lo stato della ricerca è un'unione, e dei risultati stanno sempre col loro workspace.
+    it('uno stato della ricerca coi risultati porta il loro workspace: senza non compila, e prima di cercare la ricerca è pronta e senza risultati (sprint 23 · T2.7)', async () => {
+        // @ts-expect-error `ready` vuole `workspace`: dei risultati senza il loro workspace non hanno un indirizzo.
+        const senzaWorkspace: StatoDellaRicerca = { stato: 'ready', risultati: [] };
+        expect(senzaWorkspace.stato).toBe('ready');
+
+        // Prima della prima parola all'`AppShell` arriva ciò che arrivava: né un errore, né un caricamento, né un risultato.
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect([appShell.mock.lastCall?.[0].searchState, appShell.mock.lastCall?.[0].searchResults]).toStrictEqual(['ready', []]);
     });
 
     it.each([

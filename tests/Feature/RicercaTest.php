@@ -5,6 +5,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 
@@ -272,4 +273,27 @@ it('la ricerca è una rotta sola, POST cornice/ricerca: nel gruppo `web` come le
         ->and(in_array('web', $dellaRicerca()[0]->gatherMiddleware(), true))->toBe(true)
         ->and($dellaRicerca()[0]->locksFor())->toBeNull()
         ->and($senzaGuardia())->toBe([]);
+});
+
+// Sprint 23 · T2 (voce #1742, S6): lo slug della risposta è preso prima di chiamare il backoffice. Con lo zr-auth di oggi
+// l'ordine non si vede: legge il gettone dalla sessione e non la riscrive. Qui la risposta finta del backoffice porta la sessione
+// in un altro workspace, come farebbe uno zr-auth che la cambia durante la chiamata: i risultati sono del workspace col cui
+// gettone la ricerca è partita, e la risposta dice quello.
+
+it('lo `workspace` della risposta della ricerca è quello della sessione prima della chiamata al backoffice: una risposta che nel frattempo porta la sessione in un altro workspace non lo cambia (sprint 23 · T2.6)', function () {
+    $gettoni = sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(function (Request $richiesta) use ($gettoni) {
+        $colGettoneDiPrima = $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']);
+        sessioneAMano(['id' => 'uat-ws-2', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite']);
+
+        return Http::response($colGettoneDiPrima ? esempioDelContratto() : ['data' => [], 'successivo' => null]);
+    });
+
+    $risposta = cerca('UAT')->assertOk();
+
+    expect($risposta->json('workspace'))->toBe('uat-marketing')
+        ->and($risposta->json('data.*.id'))->toBe(['01k6w2c4e6g8j0m2p4r6t8v0x2', '01k6w2d5f7h9k1n3q5s7v9x1z3'])
+        // La sessione è passata davvero all'altro workspace: senza, il caso non proverebbe l'ordine.
+        ->and(Sessione::workspace()['slug'] ?? null)->toBe('uat-vendite');
+    Http::assertSentCount(1);
 });

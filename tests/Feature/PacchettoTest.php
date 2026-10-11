@@ -3429,3 +3429,20 @@ it('il README dice, al punto «Le notifiche», che dalla v1.13.0 «Segna tutte c
     'perché' => ['con due schede su due workspace, da lì la rotta risponde 409 `workspace_diverso` e non segna niente'],
     'non detto' => ['Se la risposta dell\'elenco non dice di quale workspace è, il pulsante c\'è come prima'],
 ]);
+
+// Sprint 23 · T2 (voce #1742, S4): lo `workspace` della risposta della ricerca entra nell'indirizzo di ogni risultato solo con la
+// forma di uno slug. Il README lo dice al punto «La ricerca», dopo l'errore di una risposta senza `workspace`.
+
+it('il README dice, al punto «La ricerca», che dalla v1.13.0 anche un `workspace` fuori dalla forma di uno slug è un errore della ricerca: quale forma, perché, e che cosa fa chi ha una parte server finta (sprint 23 · T2.4)', function (string $frase) {
+    $ricerca = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca');
+
+    expect($ricerca)->not->toBe('')
+        ->and(str_contains($ricerca, $frase))->toBe(true);
+})->with([
+    'l\'errore, e da quando' => ['Dalla `v1.13.0` è un errore della ricerca anche un `workspace` che non ha la forma di uno slug'],
+    'quale forma' => ['minuscole e cifre, a pezzi uniti da un trattino, la stessa che vale per una notifica'],
+    'perché' => ['con `..` l\'indirizzo di un risultato sarebbe un altro'],
+    'la parte server finta di un frontend' => ['Una parte server finta che risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta'],
+    // L'errore di prima resta detto com'era.
+    'senza `workspace`, come prima' => ['Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
+]);

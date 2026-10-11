@@ -36,8 +36,8 @@ final class RicercaDellaCornice
             return new JsonResponse(['errore' => 'dati_non_validi'], 422);
         }
 
-        $workspace = Sessione::workspace()['slug'] ?? null;
         $risultati = Api::workspace()->get('/v1/ricerca', ['q' => $q])['data'] ?? null;
+        $workspace = Sessione::workspace()['slug'] ?? null;
 
         if (! is_array($risultati) || ! array_is_list($risultati)) {
             throw new BackofficeNonRisponde('La risposta di GET /v1/ricerca non è una lista di /v1.');

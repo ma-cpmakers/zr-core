@@ -428,16 +428,23 @@ it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scri
 });
 
 it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte server, nel browser e nel controllo del registro: un id che la parte server dà, il browser non lo scarta (sprint 21 · review della PR #31, R8)', function () {
-    $browser = (string) file_get_contents(__DIR__.'/../../resources/js/notifiche.ts');
-    preg_match('~^(?:export )?const FORMA_DI_UN_ID = /\^(.+)\$/;$~m', $browser, $forma);
-    preg_match('~^const SEGNAPOSTO = /(.+)/g;$~m', $browser, $segnaposto);
+    // Dallo sprint 23 (T2, S8) le forme di un id e di uno slug stanno in un modulo loro, `forme.ts`: le usano la destinazione di
+    // una notifica e le chiamate della cornice, e `servizi.ts` non passa più da `notifiche.ts` per averle.
+    $sorgente = fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file);
+    preg_match('~^export const FORMA_DI_UN_ID = /\^(.+)\$/;$~m', $sorgente('forme.ts'), $forma);
+    preg_match('~^const SEGNAPOSTO = /(.+)/g;$~m', $sorgente('notifiche.ts'), $segnaposto);
     $delServer = fn (string $costante): mixed => (new ReflectionClassConstant(NotificheDellaCornice::class, $costante))->getValue();
 
     expect($forma[1] ?? null)->toBe(NotificheDellaCornice::ID)
         ->and($segnaposto[1] ?? null)->toBe('\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}')
         ->and($delServer('SEGNAPOSTO'))->toBe('/\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}/')
         // La parte server confronta un id con la forma intera, senza un a capo in fondo: `\z`, non `$`.
-        ->and($delServer('FORMA_DI_UN_ID'))->toBe('/\A'.NotificheDellaCornice::ID.'\z/');
+        ->and($delServer('FORMA_DI_UN_ID'))->toBe('/\A'.NotificheDellaCornice::ID.'\z/')
+        // La forma di uno slug è scritta una volta sola, in `forme.ts`, e chi la usa la importa da lì.
+        ->and(substr_count($sorgente('forme.ts'), 'export const FORMA_DI_UNO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;'))->toBe(1)
+        ->and(substr_count($sorgente('notifiche.ts').$sorgente('servizi.ts'), "import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';"))->toBe(2)
+        ->and(substr_count($sorgente('notifiche.ts').$sorgente('servizi.ts').$sorgente('cornice.tsx'), '[a-z0-9]+(-[a-z0-9]+)*'))->toBe(0)
+        ->and(str_contains($sorgente('servizi.ts'), "from './notifiche'"))->toBe(false);
 });
 
 it('ogni tipo di notifica del registro ha il suo titolo in ogni lingua, e il controllo trova un tipo che in una lingua non ce l\'ha, o ce l\'ha vuoto (sprint 21 · T3, guardia)', function () {

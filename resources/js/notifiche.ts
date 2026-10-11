@@ -1,25 +1,15 @@
 import type { DatiDellaCornice } from './cornice';
+import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 import { nelWorkspace, prodottoDelRegistro, raggiungibile } from './registro';
 
 // Dove si apre una notifica. Lo dice il registro dei prodotti, non il codice: la voce dell'app da cui la notifica viene ha, fra
 // le sue `notifiche`, il tipo intero dell'evento e il percorso nel prodotto, coi segnaposto degli id. Gli id li porta la notifica
 // (`ids`): dei `dati` dell'evento la parte server dà i soli che questo percorso chiede, già controllati. Qui si controllano di
-// nuovo, e con loro lo slug, perché ciò che arriva dal browser non entra in un indirizzo com'è.
-
-/**
- * La forma di un id del backoffice: lettere, cifre, `-` e `_`, da 1 a 64. La stessa che la parte server chiede a ogni id di `ids`,
- * e all'id di una notifica nella rotta della sua lettura: la usa anche `segnaLetta`, prima di chiedere.
- */
-export const FORMA_DI_UN_ID = /^[A-Za-z0-9_-]{1,64}$/;
+// nuovo, e con loro lo slug, perché ciò che arriva dal browser non entra in un indirizzo com'è. Le due forme, di un id e di
+// uno slug, stanno in `forme.ts`.
 
 /** Un segnaposto di un percorso del registro: `{id}`, o `{<nome>_id}`. Lo stesso che la parte server cerca per scegliere gli id di `ids`. */
 const SEGNAPOSTO = /\{(id|[a-z][a-z_]*_id)\}/g;
-
-/**
- * La forma dello slug di un workspace nel contratto del backoffice: minuscole e cifre, a pezzi uniti da un trattino. Uno slug
- * vuoto, o `..`, in un indirizzo ne farebbe un altro: `encodeURIComponent` non tocca i punti.
- */
-const FORMA_DI_UNO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /**
  * L'indirizzo che una notifica apre: la sua risorsa nel prodotto da cui viene, nel workspace dello slug — per una notifica di

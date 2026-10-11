@@ -2,7 +2,7 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-import { FORMA_DI_UN_ID } from './notifiche';
+import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 
 /** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
@@ -127,7 +127,8 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
  * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
  * corpo). `segnale` annulla la richiesta. Coi risultati, il workspace di cui sono, come lo dice la parte server (dalla
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
- * non lo dice, o non lo dice con un testo, è un errore come una senza la lista: senza, un risultato non ha un indirizzo.
+ * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
+ * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro.
  */
 export async function cerca(parola: string, segnale: AbortSignal): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
@@ -140,7 +141,7 @@ export async function cerca(parola: string, segnale: AbortSignal): Promise<{ ris
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
-    if (typeof corpo.workspace !== 'string' || corpo.workspace === '') {
+    if (typeof corpo.workspace !== 'string' || !FORMA_DI_UNO_SLUG.test(corpo.workspace)) {
         throw new Error(`POST ${indirizzo}: workspace`);
     }
 
