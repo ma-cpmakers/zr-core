@@ -102,6 +102,22 @@ function chiaviDeiTitoliDelleNotifiche(): array
 }
 
 /**
+ * I testi italiani che una decisione ha cambiato prima che lo faccia il design system: la chiave e il testo di zr-core. «Moduli» è
+ * il nome unico di Project Management, CRM e gli altri (regola di Luciano dell'11/10/2026; sprint 21 · T1), e il design system
+ * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
+ * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
+ *
+ * @return array<string, string>
+ */
+function italianoDecisoPrimaDelDesignSystem(): array
+{
+    return [
+        'products' => 'Moduli',
+        'searchHint' => 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
+    ];
+}
+
+/**
  * Cosa non torna nelle tre lingue di partenza: un testo che manca, una chiave che non è della cornice, un testo vuoto, un testo
  * italiano diverso da quello del design system, un prodotto che ha per id una chiave dei testi dell'`AppShell` (il suo nome
  * finirebbe anche lì).
@@ -136,8 +152,16 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
             }
         }
     }
+    $decisi = italianoDecisoPrimaDelDesignSystem();
     foreach (testiItalianiDelDesignSystem() as $chiave => $testo) {
-        if (array_key_exists($chiave, $lingue['it'] ?? []) && $lingue['it'][$chiave] !== $testo) {
+        if (! array_key_exists($chiave, $lingue['it'] ?? [])) {
+            continue;
+        }
+        if (array_key_exists($chiave, $decisi)) {
+            if ($lingue['it'][$chiave] !== $decisi[$chiave]) {
+                $problemi[] = "it: «{$chiave}» non è il testo deciso prima del design system";
+            }
+        } elseif ($lingue['it'][$chiave] !== $testo) {
             $problemi[] = "it: «{$chiave}» non è il testo del design system";
         }
     }
@@ -214,7 +238,7 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
 
     expect(array_keys($lingue))->toContain('it', 'es', 'en')
         ->and(problemiDelleLingue($lingue))->toBe([])
-        ->and($lingue['it'])->toMatchArray(testiItalianiDelDesignSystem())
+        ->and($lingue['it'])->toMatchArray([...testiItalianiDelDesignSystem(), ...italianoDecisoPrimaDelDesignSystem()])
         ->and(array_intersect_key($lingue['it'], array_flip(idDeiProdotti())))->toBe([
             'pm' => 'Project Management', 'crm' => 'CRM', 'bookings' => 'Bookings', 'reports' => 'Report',
             'automations' => 'Automazioni', 'content' => 'Contenuti',
@@ -239,7 +263,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
     expect(chiaviDiAppShellLabels())->toContain('soon', 'logout', 'crumbs')
         ->and(array_keys($italiano))->toEqualCanonicalizing([...chiaviDiAppShellLabels(), 'products', 'dashboard', ...idDeiProdotti()])
         ->and($italiano['searchEmptyText'])->toStartWith("Prova con un'altra parola")
-        ->and($italiano['products'])->toBe('Moduli')
+        ->and($italiano['products'])->toBe('Prodotti')
         ->and($italiano['dashboard'])->toBe('Dashboard')
         ->and($italiano['automations'])->toBe('Automazioni')
         ->and(problemiDelleLingue($lingue))->toEqualCanonicalizing([
@@ -380,4 +404,17 @@ it('il controllo vede un testo che chiama «prodotti» o «app» i moduli in qua
     ];
 
     expect(testiCheNonDiconoModuli($lingue))->toBe(['it: soon', 'en: retry', 'es: logout']);
+});
+
+it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta (sprint 21 · T1)', function () {
+    $delDesignSystem = testiItalianiDelDesignSystem();
+    $conIlTestoDiPrima = lingueDellaCornice();
+    $conIlTestoDiPrima['it']['products'] = 'Prodotti';
+
+    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint'])
+        // Il design system dice ancora il testo di prima: quando dirà «Moduli», questa riga è rossa e lo scostamento si toglie.
+        ->and($delDesignSystem['products'])->toBe('Prodotti')
+        ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i prodotti: scrivi almeno 2 caratteri.')
+        // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
+        ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
 });
