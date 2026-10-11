@@ -542,11 +542,13 @@ it('se la sessione scade mentre la cornice legge io.mostra arriva GettoneRifiuta
  */
 function paginaConLaRiga(): void
 {
-    Route::middleware(['web', function ($richiesta, Closure $next) {
+    // Un middleware scritto qui si dà alla rotta per nome: una closure fra i middleware di una rotta non è ammessa.
+    Route::aliasMiddleware('la-riga', function ($richiesta, Closure $next) {
         App::setLocale(Cornice::lingua() ?? 'nessuna');
 
         return $next($richiesta);
-    }])->get('w/{slug}/pagina', fn () => ['lingua_della_pagina' => App::getLocale(), 'cornice' => Cornice::dati()]);
+    });
+    Route::middleware(['web', 'la-riga'])->get('w/{slug}/pagina', fn () => ['lingua_della_pagina' => App::getLocale(), 'cornice' => Cornice::dati()]);
 }
 
 /**
