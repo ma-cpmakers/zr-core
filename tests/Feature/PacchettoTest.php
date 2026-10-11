@@ -3195,16 +3195,61 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'l\'istante nella riga della rotta' => ['rotta', '| `{data: {id, letta}, segnata_il}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `segnata_il` è l\'istante preso dopo la risposta del backoffice, nella forma di `aggiornati_il`'],
     'il clic segna letta, e da quando' => ['punto', 'Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta'],
-    'la richiesta e la funzione' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}` (la funzione `segnaLetta`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando)'],
+    // Review della PR #44, R3: `segnaLetta` non è più fra parentesi come se si importasse (sotto, il caso della review).
+    'la richiesta' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando'],
     'l\'apertura non aspetta' => ['punto', 'la risorsa si apre senza aspettare la risposta'],
     'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
-    'una volta sola' => ['punto', 'dei dati letti dopo la contano già letta, e vale il loro numero'],
+    // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
+    'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
     'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
     'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
     'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
 ]);
+
+// Sprint 22 · T4, la review della PR #44: ciò che il README diceva e non era vero (R1, R2, R3, R9), ciò che era ambiguo (R8) e
+// ciò che non diceva a chi installa (R6, R7).
+
+it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende solo per i dati del clic, lo slug e i moduli da dare a `destinazioneDellaNotifica`, `segnaLetta` che l\'ingresso non esporta, la forma dell\'id, che cosa cambia nei test di un frontend, i nove tipi che hanno una destinazione (sprint 22 · T4; review della PR #44)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testi = [
+        'punto' => suUnaRiga($punto[0] ?? ''),
+        'paragrafo' => paragrafoFuoriDallaCornice($readme),
+        'rotta' => rigaDellaRotta($readme, 'PATCH /cornice/notifiche/{id}/lettura'),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'R1: mai una in meno' => ['punto', 'e vale il loro numero: al più una in più fino alla visita dopo, mai una in meno'],
+    'R1: perché non si può sapere' => ['punto', 'il loro segno è preso prima della lettura dal backoffice, `segnata_il` dopo la sua risposta'],
+    'R1: con che cosa si confronta segnata_il' => ['rotta', 'la cornice lo confronta con l\'istante dell\'elenco'],
+    'R2: lo slug è quello dell\'elenco' => ['paragrafo', '`slug` è il workspace dell\'elenco, cioè `workspace` nella risposta di `GET /cornice/notifiche` (dalla `v1.12.0`), che non è sempre quello dei dati della pagina'],
+    'R2: i moduli dei dati valgono solo per il loro workspace' => ['paragrafo', '`dati.prodotti` vale solo se quello slug è `dati.workspace.slug`'],
+    'R2: per un altro workspace' => ['paragrafo', 'il pannello dà ogni voce del `registro`, tranne `home`, come `disponibile`'],
+    'R3: segnaLetta è della cornice' => ['punto', 'La funzione che lo fa, `segnaLetta`, è della cornice e l\'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta'],
+    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e la risorsa si apre lo stesso'],
+    'R7: la risposta finta senza workspace' => ['punto', 'Una risposta finta di `GET /cornice/notifiche` senza `workspace` manda ogni clic alla pagina delle notifiche: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
+    'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
+    'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
+    'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
+    'R8: i nove che hanno una destinazione' => ['punto', 'oggi ci sono nove tipi del CRM, quelli di contatti, pipeline, note e aziende; opportunità, attività, i quattro «assegnata» e le viste di una board non hanno una destinazione'],
+    'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
+]);
+
+it('il README non dice più ciò che la review della PR #44 ha trovato falso, e l\'ingresso non esporta `segnaLetta`, come il README dice (review della PR #44, R1, R2, R3, R9)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $ingresso = (string) file_get_contents(__DIR__.'/../../resources/js/index.ts');
+
+    expect(str_contains($readme, 'solo per i dati letti fino a `segnata_il`'))->toBe(false)
+        ->and(str_contains($readme, '`slug` è il workspace della sessione'))->toBe(false)
+        ->and(str_contains($readme, '(la funzione `segnaLetta`'))->toBe(false)
+        ->and(str_contains($readme, 'il numero nuovo lo portano i dati della pagina dopo'))->toBe(false)
+        ->and(str_contains($readme, 'la cornice lo confronta col segno dei dati'))->toBe(false)
+        ->and(str_contains($ingresso, 'segnaLetta'))->toBe(false);
+});
 
 // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM, opportunità, attività e ciò che viene assegnato a una persona, hanno un
 // titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che

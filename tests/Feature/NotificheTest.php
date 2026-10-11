@@ -602,8 +602,9 @@ it('segnate_il di POST /cornice/notifiche/letture è l\'istante preso dopo che i
     expect(strlen((string) $risposta->json('segnate_il')))->toBe(27);
 });
 
-// Sprint 22 · T2 (voce #1712): la cornice segna letta la notifica di cui apre la risorsa, e abbassa il numero sulla campanella
-// solo per i dati letti fino a quell'istante. Per questo la lettura di una notifica dice quando è stata segnata, come le letture.
+// Sprint 22 · T2 (voce #1712): la cornice segna letta la notifica di cui apre la risorsa, e la mostra letta anche in un elenco
+// letto fino a quell'istante. Per questo la lettura di una notifica dice quando è stata segnata, come le letture. Il numero
+// sulla campanella lo abbassa solo per i dati che aveva al clic (review della PR #44, R1).
 it('segnata_il di PATCH /cornice/notifiche/{id}/lettura è l\'istante preso dopo che il backoffice ha risposto, in UTC coi microsecondi anche con l\'applicazione in un altro fuso, qualunque cosa il backoffice abbia segnato (sprint 22 · T2.5)', function (bool $letta, ?string $lettaIl) {
     config(['app.timezone' => 'Europe/Rome']);
     date_default_timezone_set('Europe/Rome');
@@ -1712,10 +1713,36 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
 ]);
 
 // Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Il registro dei moduli lo legge solo l'elenco, che ne
-// prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova
-// (`leggiIlRegistroDa()`), e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto.
+// prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova, già
+// letto, e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto. Il registro di prova entra
+// dalla proprietà privata, con la reflection: nel codice che va in produzione non c'è un aggancio per i test (review della
+// PR #44, R5).
 
-afterEach(fn () => NotificheDellaCornice::leggiIlRegistroDa(null));
+/**
+ * Dà alla parte server un registro dei moduli come se lo avesse già letto; con `null` lo rilegge, da quello del pacchetto.
+ *
+ * @param  list<mixed>|null  $voci
+ */
+function registroGiaLetto(?array $voci): void
+{
+    (new ReflectionProperty(NotificheDellaCornice::class, 'registro'))->setValue(null, $voci);
+}
+
+afterEach(fn () => registroGiaLetto(null));
+
+it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte e la tenuta del blocco, e il file del registro non si sceglie (review della PR #44, R5)', function () {
+    $classe = new ReflectionClass(NotificheDellaCornice::class);
+    $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
+    sort($pubblici);
+    $sorgente = (string) file_get_contents((string) $classe->getFileName());
+
+    expect($pubblici)->toBe(['elenco', 'lettura', 'letture', 'tenutaDelBlocco'])
+        ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
+        ->and(str_contains($sorgente, '@internal'))->toBe(false)
+        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
+        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+});
 
 it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei moduli: con un registro che non si legge segna la notifica e risponde, mentre l\'elenco, che dal registro prende gli id, non risponde (sprint 22 · T3.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
@@ -1726,8 +1753,8 @@ it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei
         '/v1/io/notifiche/uat-n3/lettura' => Http::response(['data' => ['letta_il' => '2026-10-10T01:15:06.123Z'] + $nota]),
         '/v1/io/notifiche' => Http::response(['data' => [$nota], 'successivo' => null]),
     });
-    // Un file che c'è e non è un registro: questo. Leggerlo come registro è un errore, senza un avviso di PHP per un file che manca.
-    NotificheDellaCornice::leggiIlRegistroDa(__FILE__);
+    // Un registro su cui chi lo legge cade: una voce che non è una lista. Non dipende da come PHP tratta un avviso.
+    registroGiaLetto([new stdClass]);
 
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
         ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
@@ -1737,23 +1764,17 @@ it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei
 
 it('la parte server prende dal registro l\'id di ogni segnaposto del percorso, e nessuno per una voce «Presto»: con un registro di prova, un percorso con due segnaposto dà i due id, e una voce «Presto» con le sue notifiche non ne dà (sprint 22 · T3.3)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
-    $file = (string) tempnam(sys_get_temp_dir(), 'zr-core-registro-');
-    file_put_contents($file, json_encode(['prodotti' => [
+    registroGiaLetto([
         ['id' => 'crm', 'presto' => false, 'notifiche' => [['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/aziende/{organizzazione_id}/note/{id}']]],
         ['id' => 'reports', 'presto' => true, 'notifiche' => [['tipo' => 'com.zeiras.reports.report.creato', 'percorso' => '/report/{id}']]],
-    ]], JSON_THROW_ON_ERROR));
-    NotificheDellaCornice::leggiIlRegistroDa($file);
+    ]);
     Http::fake(['*' => Http::response(['data' => [
         // Una nota con tre id: il percorso di prova ne chiede due, e quello del contatto resta nella parte server.
         notificaConDati('uat-n2', ['id' => 'uat-nota-1', 'organizzazione_id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1']),
         notificaConDati('uat-n1', ['id' => 'uat-report-1'], 'com.zeiras.reports.report.creato', 'reports'),
     ], 'successivo' => null])]);
 
-    try {
-        $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
-    } finally {
-        unlink($file);
-    }
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
 
     expect($risposta->json('data.0.ids'))->toEqual(['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1'])
         // «Presto»: il browser non la apre, e i suoi id non servono ad aprire niente.
