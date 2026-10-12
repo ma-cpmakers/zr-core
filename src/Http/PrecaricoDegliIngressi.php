@@ -41,12 +41,12 @@ final class PrecaricoDegliIngressi
             if (in_array('as="style"', $attributi, true)) {
                 $voci[] = '<'.$url.'>; rel=preload; as=style';
             } elseif (in_array('as="script"', $attributi, true)) {
-                $voci[] = '<'.$url.'>; rel=modulepreload; as=script; crossorigin';
+                $voci[] = '<'.$url.'>; rel=preload; as=script; crossorigin';
             }
         }
         // Un `Link` che la risposta porta già resta: questo gli si aggiunge accanto.
         if ($voci !== []) {
-            $risposta->headers->set('Link', implode(', ', $voci));
+            $risposta->headers->set('Link', implode(', ', $voci), false);
         }
 
         return $risposta;
@@ -59,7 +59,7 @@ final class PrecaricoDegliIngressi
      */
     private function eUnaPaginaIntera(Request $richiesta, Response $risposta): bool
     {
-        if (! $risposta instanceof RispostaDiLaravel || $richiesta->headers->has('X-Inertia')) {
+        if (! $risposta instanceof RispostaDiLaravel || $risposta->getStatusCode() !== 200 || $richiesta->headers->has('X-Inertia')) {
             return false;
         }
         // Senza un tipo dichiarato la risposta è HTML: è ciò che Symfony scrive quando la prepara.
