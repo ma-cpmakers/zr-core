@@ -36,6 +36,9 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   prima dei middleware globali. Le sorgenti che un modulo aggiunge alla CSP stanno nel suo `config/zr-core.php`, e solo lì.
   Ogni modifica della classe o di `config/zr-core.php` passa da una revisione di sicurezza prima del tag; un cambio alle
   intestazioni comuni non esce in una versione di correzione: minore con l'annuncio se allarga, maggiore se stringe.
+- **Gli host fidati**: `Zeiras\Core\Http\HostFidati` (dalla `v1.19.0`) — a una richiesta per un host che non è quello di
+  `APP_URL` risponde `400`. Come le intestazioni non si registra da sé: la registra il frontend, in coda ai middleware
+  globali (`append`), e quindi dopo i globali di Laravel (CORS, manutenzione), che rispondono prima di lui.
 
 ## Cosa NON fa
 - **Niente dati salvati**: il pacchetto non ha tabelle. Un dato o un'operazione che manca si chiede a `zr-backoffice`,

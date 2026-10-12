@@ -23,7 +23,7 @@ use Throwable;
  *
  * Il confronto è un'uguaglianza fra due nomi interi, in minuscolo e senza porta. Non c'è niente da configurare e nessun
  * ambiente in cui tace: vale anche in locale e nei test, dove `APP_URL` dev'essere il nome con cui si chiama l'app.
- * `TrustHosts` di Laravel fa meno: ammette i sottodomini, in locale e nei test non fa niente, e da solo non rifiuta.
+ * `TrustHosts` di Laravel non è lo stesso: di suo ammette anche i sottodomini, e in locale e nei test non fa niente.
  *
  * Del rifiuto la richiesta non rivede niente di suo: il corpo è fisso, e il log dice l'host atteso, mai quello ricevuto.
  */

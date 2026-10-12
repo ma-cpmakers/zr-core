@@ -771,14 +771,15 @@ apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`. Dallo stesso ingresso si importa
 `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua: dà il titolo di una notifica di quel
-tipo nella lingua, ed è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso. `tipo`
-è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
+tipo nella lingua: è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto.
+`tipo` è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
 della lingua della persona, e vale come per la cornice: `it-IT` è `it`, e con una lingua che zr-core non ha il titolo è in
 inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/en.json`):
 un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
 lingua («Novità nel workspace»), mai il codice del tipo. Dalla `v1.10.0` si importa anche
 `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo: dà il nome della cosa a cui la notifica si
-riferisce, ed è la funzione che usa il pannello. `notifica` è la notifica com'è, del backoffice o di
+riferisce: è la riga che il pannello scrive sotto il titolo quando il nome non è già nella frase. `notifica` è la notifica
+com'è, del backoffice o di
 `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`. Di norma dà `risorsa_nome` senza gli spazi
 intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
 (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
@@ -1245,14 +1246,25 @@ rifiutata non apre una sessione e non lascia un cookie.
 
 - **A che cosa serve**: Laravel scrive i suoi indirizzi — un rimando, un collegamento in una mail — con l'host della
   richiesta. Chi chiama il server con un altro nome se li farebbe scrivere col suo. È la seconda difesa: la prima è il
-  server web, che per un nome che non è il suo non dovrebbe rispondere. Il middleware di Laravel per gli host non basta:
-  ammette i sottodomini, in locale e nei test non fa niente, e da solo non rifiuta nessuna richiesta.
+  server web, che per un nome che non è il suo non dovrebbe rispondere. Il middleware di Laravel per gli host,
+  `TrustHosts`, non è lo stesso: di suo ammette anche i sottodomini di `APP_URL`, e in locale e nei test non fa niente.
 - **Che cosa risponde**: `400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell'host
-  ricevuto non ripete niente, né nella risposta né nel log: nel log lascia un avviso con l'host atteso. Un host con
-  caratteri che un nome non ha prende `400` lo stesso.
+  ricevuto non ripete niente, né nella risposta né nel log: nel log lascia un avviso con l'host atteso.
+- **Che cosa risponde Laravel prima di lui**: non tutto arriva al middleware. In coda ai globali il middleware viene dopo
+  quelli di Laravel per il CORS, la manutenzione e la dimensione del corpo, che rispondono a qualunque host: a una
+  richiesta di preflight del CORS, a un corpo troppo grande (`413`), e con l'app in manutenzione (`503`). In manutenzione
+  con `php artisan down --redirect` un host falso prende un `302` scritto con quell'host, e con `--secret` chi chiama
+  l'indirizzo segreto riceve anche il cookie `laravel_maintenance`: finché l'app è in manutenzione la difesa è il server
+  web. Un host con caratteri che un nome non ha lo rifiuta Laravel prima: `400` col corpo di Laravel, e nel log nessun
+  avviso.
+- **La porta non entra nel confronto**: `Host: board.zeiras.com:8443` passa, e Laravel scrive i suoi indirizzi con quella
+  porta. La porta la tiene ferma il server web.
 - **Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev'essere il nome pubblico del modulo, scritto per
   intero e con lo schema (`https://board.zeiras.com`). Se `APP_URL` non ha un host — è vuoto, o è senza lo schema — il
-  middleware non rifiuta niente e lo scrive nel log a ogni richiesta, finché non lo correggi.
+  middleware non rifiuta niente e lo scrive nel log a ogni richiesta, finché non lo correggi. Se `APP_URL` manca del
+  tutto vale quello del `config/app.php` del modulo, di norma `http://localhost`, e il middleware rifiuta ogni richiesta
+  fatta col nome pubblico. Lo stesso se il nome ha lettere non ASCII — va scritto in Punycode, come lo manda il browser —
+  o finisce con un punto.
 - **Vale per ogni rotta, anche `/up`**: una sonda che chiama il server con l'indirizzo della macchina, e non col nome
   del modulo, da quel momento prende `400`. Prima di registrarlo chiedi a chi tiene le sonde con quale nome chiamano.
 - **Riguarda le richieste in ingresso**: le chiamate del modulo ad `api.zeiras.com` non passano di qui.

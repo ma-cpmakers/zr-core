@@ -4860,7 +4860,7 @@ it('il README ha il punto «Gli host fidati», che dice come si registra, che co
     'in manutenzione (R1)' => ['con `php artisan down --redirect` un host falso prende un `302` scritto con quell\'host, e con `--secret` chi chiama l\'indirizzo segreto riceve anche il cookie `laravel_maintenance`'],
     'in manutenzione difende il server web (R1)' => ['finché l\'app è in manutenzione la difesa è il server web'],
     'un host con caratteri non validi (R2)' => ['Un host con caratteri che un nome non ha lo rifiuta Laravel prima: `400` col corpo di Laravel, e nel log nessun avviso'],
-    'la porta (R3)' => ['La porta non entra nel confronto: `Host: board.zeiras.com:8443` passa, e Laravel scrive i suoi indirizzi con quella porta. La porta la tiene ferma il server web'],
+    'la porta (R3)' => ['**La porta non entra nel confronto**: `Host: board.zeiras.com:8443` passa, e Laravel scrive i suoi indirizzi con quella porta. La porta la tiene ferma il server web'],
     'il middleware di Laravel (R6)' => ['Il middleware di Laravel per gli host, `TrustHosts`, non è lo stesso: di suo ammette anche i sottodomini di `APP_URL`, e in locale e nei test non fa niente'],
     'APP_URL che manca (R9)' => ['Se `APP_URL` manca del tutto vale quello del `config/app.php` del modulo, di norma `http://localhost`, e il middleware rifiuta ogni richiesta fatta col nome pubblico'],
     'APP_URL in Unicode o col punto (R9)' => ['Lo stesso se il nome ha lettere non ASCII — va scritto in Punycode, come lo manda il browser — o finisce con un punto'],
