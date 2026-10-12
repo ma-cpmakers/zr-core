@@ -3694,11 +3694,13 @@ it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dic
 })->with([
     'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
     'quante ne nominano' => ['ricerca', 'Il segnaposto ne nomina al più tre, l\'invito tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
-    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, and folders: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»'],
+    // Sprint 27 · T3: dalla `v1.17.0` i membri del workspace sono una fonte, nominata per ultima: l'invito finisce con loro, e i
+    // due testi senza fonti non sono più quelli di un workspace senza moduli attivi.
+    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, folders, and members: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»'],
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
-    'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
+    'senza fonti' => ['ricerca', 'I due testi senza fonti sono «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»)'],
     // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
     // Lettura della PR #59, R1: vale per un browser che ha il resto di ciò che i sorgenti usano; dove manca anche quello, no.
     'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
@@ -3745,6 +3747,112 @@ it('né il README né la guida dicono più che la ricerca trova solo board e car
     'README: le fonti di oggi' => ['README.md', 'oggi board e cartelle, di Project Management'],
     'README: i due testi di oggi' => ['README.md', 'dicono ciò che la ricerca trova oggi, board e cartelle'],
     'la guida' => ['MODULO-NUOVO.md', 'trova solo board e cartelle'],
+]);
+
+// Sprint 27 · T3 (voce #1787): dalla `v1.17.0` la ricerca trova anche i membri del workspace. Il README lo dice nel punto «La
+// ricerca» — che cosa sono, il gruppo, il ruolo nella lingua e mai l'email, dove si apre, la fonte nominata per ultima, i due
+// testi senza moduli attivi e l'invito di prima —, nella riga della rotta e nel capoverso delle risorse del registro (`home`
+// ha una risorsa, `codici`, i testi nuovi delle lingue). La guida dice `codici` nel passo del registro, e non altrove.
+
+/** Il capoverso del README sulle risorse del registro, su una riga sola. Vuoto se non c'è. */
+function capoversoDelleRisorse(string $readme): string
+{
+    preg_match('/^Nel registro stanno anche le risorse .*?(?=^$|\z)/ms', $readme, $capoverso);
+
+    return suUnaRiga($capoverso[0] ?? '');
+}
+
+it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspace: nel punto «La ricerca» che cosa sono, il gruppo, il ruolo nella lingua e mai l\'email, dove si apre un membro, la fonte nominata per ultima, i testi senza moduli attivi e l\'invito di prima; nella riga della rotta il tipo e il solo ruolo; nel capoverso delle risorse la voce `home`, `codici` e i testi nuovi delle lingue (sprint 27 · T3.1)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'registro' => capoversoDelleRisorse($readme),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'che cosa sono, e da quando' => ['ricerca', 'Dalla `v1.17.0` la ricerca trova anche i membri del workspace (`workspace.membro`): non sono di un modulo, il backoffice li cerca in ogni workspace, anche senza moduli attivi, e nel registro stanno nella voce `home`'],
+    'il gruppo' => ['ricerca', 'Il gruppo dei membri è «Membri» (in inglese «Members», in spagnolo «Miembros»), con l\'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il nome di un prodotto, né un tono'],
+    'il ruolo, nella lingua' => ['ricerca', 'Sotto il nome di un membro sta il suo ruolo, nella lingua della persona'],
+    'mai il codice' => ['ricerca', 'e la cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha solo il nome'],
+    'mai l\'email' => ['ricerca', 'L\'email di un membro non esce mai: il backoffice non la dà, e di `contesto` la parte server lascia passare il solo `ruolo`'],
+    'dove si apre' => ['ricerca', 'Dalla `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri'],
+    'la fonte, per ultima' => ['ricerca', 'Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`: «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi'],
+    'col CRM attivo' => ['ricerca', 'col CRM attivo l\'invito nomina anche contatti, aziende e opportunità, prima dei membri, e il segnaposto resta alle prime tre'],
+    'senza moduli attivi' => ['ricerca', 'Senza moduli attivi restano i membri: «Cerca membri…» e «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members…» e «Search members: type at least 2 characters.», in spagnolo «Busca miembros…» e «Busca miembros: escribe al menos 2 caracteres.»)'],
+    'l\'invito di prima' => ['ricerca', 'Dalla `v1.15.0` alla `v1.16.0` i membri non erano una fonte: con Project Management attivo e il CRM no l\'invito era «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, and folders: type at least 2 characters.», in spagnolo «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»), e senza moduli attivi il campo aveva i due testi senza fonti'],
+    'come trovarlo nei test di un frontend' => ['ricerca', 'un frontend che ha l\'invito nei suoi test lo trova cercando `e cartelle:` (in inglese `and folders:`, in spagnolo `y carpetas:`)'],
+    'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
+    'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
+    'la riga: il solo ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice'],
+    'la riga: mai l\'email' => ['rotta', 'l\'email di un membro non esce mai'],
+    'il registro: le risorse' => ['registro', 'Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com\'è nel backoffice (`board.scheda`), l\'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno la seconda riga del risultato'],
+    'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
+    'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
+    'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che si mostra com\'è arrivato (il ruolo di un contatto del CRM)'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`'],
+    'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
+]);
+
+it('i codici e i ruoli che il README dice per un membro sono quelli del registro coi testi delle lingue, nell\'ordine del registro: nel punto «La ricerca», nella riga della rotta e nel capoverso delle risorse (sprint 27 · T3.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $davanti = 'home.workspace.membro.ruolo.';
+    $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
+    $fraAccenti = implode(', ', array_map(fn (string $codice): string => '`'.$codice.'`', $codici));
+    $nella = function (string $lingua) use ($codici, $davanti): string {
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        return implode(', ', array_map(fn (string $codice): string => '«'.$testi['searchContext.'.$davanti.$codice].'»', $codici));
+    };
+
+    expect($codici)->toHaveCount(3)
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'nella lingua della persona: '.$nella('it').' (in inglese '.$nella('en').', in spagnolo '.$nella('es').')'))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'Il backoffice dà un codice ('.$fraAccenti.')'))->toBe(true)
+        ->and(str_contains(rigaDellaRotta($readme, 'POST /cornice/ricerca'), 'che è un codice ('.$fraAccenti.')'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), 'per il `ruolo` di un membro '.$fraAccenti))->toBe(true);
+});
+
+// Sprint 27 · T3 (voce #1787): dal 12/10/2026 il contratto ha un tipo di evento in più, `com.zeiras.crm.persona.anonimizzata`,
+// che non genera notifiche: non ha un titolo, e i titoli restano 42. Il README lo dice nel punto «Le notifiche», e nessuna
+// lingua ha quel titolo.
+
+it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il trentasettesimo non genera notifiche e non ha un titolo, e che i titoli restano 42; ogni lingua ha 42 titoli, e nessuno per quel tipo (sprint 27 · T3.2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDelleNotifiche($readme);
+    $titoli = [];
+    foreach (glob(__DIR__.'/../../resources/lingue/*.json') ?: [] as $file) {
+        $testi = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+        $titoli[basename($file, '.json')] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
+    }
+
+    expect(str_contains($punto, 'uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal 12/10/2026 e che non genera notifiche (più sotto)'))->toBe(true)
+        ->and(str_contains($punto, 'Dal 12/10/2026 il contratto ha 37 tipi di evento: il trentasettesimo, `com.zeiras.crm.persona.anonimizzata` (un contatto reso anonimo), non genera notifiche e non ha un titolo'))->toBe(true)
+        ->and(str_contains($punto, 'I titoli restano 42: 36 tipi di evento, i cinque «assegnata» e la menzione'))->toBe(true)
+        // Il conto non cambia: nessuna frase lo porta a 43, né dà un titolo a tutti e 37.
+        ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(1)
+        ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
+        ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
+        ->and(array_map('count', $titoli))->toBe(['en' => 42, 'es' => 42, 'it' => 42])
+        ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
+});
+
+it('la guida dice nel passo del registro, e non altrove, come si dà a una risorsa una chiave di `contesto` che è un codice: `codici` nel registro e un testo per codice in ogni lingua; nel passo della ricerca nomina i membri e rimanda al passo del registro (sprint 27 · T3.3)', function (string $passo, string $frase) {
+    $guida = guidaDelModuloNuovo();
+    preg_match('/^## '.preg_quote($passo, '/').'$(.*?)(?=^## |\z)/ms', $guida, $delPasso);
+
+    expect(suUnaRiga($delPasso[1] ?? ''))->not->toBe('')
+        ->and(str_contains(suUnaRiga($delPasso[1] ?? ''), $frase))->toBe(true)
+        // Una volta sola in tutta la guida: sta in quel passo, e non anche in un altro.
+        ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
+})->with([
+    'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`)'],
+    'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
+    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi ha `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`)'],
+    'la ricerca trova anche i membri' => ['9. La ricerca', 'opportunità del CRM (dalla `v1.17.0` anche i membri del workspace, che non sono di un modulo)'],
+    'il rimando dal passo della ricerca' => ['9. La ricerca', 'Una chiave di `contesto` che porta un codice vuole anche `codici` (passo 8)'],
 ]);
 
 // Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
