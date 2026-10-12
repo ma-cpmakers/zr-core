@@ -36,6 +36,11 @@ prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
+Il CSS del design system sta fuori dai layer della cascata, e per questo vince su ogni classe di utilità di Tailwind, che sta
+in un layer: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un pulsante, il
+bordo di un campo), perché la classe non avrebbe effetto. Se serve un aspetto che il componente non ha, lo si chiede
+all'agente di zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
+
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia.
 
