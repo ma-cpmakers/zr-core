@@ -10,6 +10,7 @@ use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Accettazione;
+use Zeiras\Core\Registro;
 
 /**
  * La ricerca della cornice (Ctrl/Cmd+K), per il browser: la parte server la gira a ricerca.crea (POST /v1/ricerca) col gettone
@@ -27,15 +28,6 @@ final class RicercaDellaCornice
 {
     /** Il codice del freno di ricerca.crea: nel problema di /v1 e nella risposta della rotta. */
     private const TROPPE_RICHIESTE = 'troppe_richieste';
-
-    /**
-     * Le voci del registro dei moduli, lette una volta per processo da quello del pacchetto
-     * (resources/registro/prodotti.json), sempre: nessun metodo e nessuna configurazione sceglie un altro file. Un test
-     * che vuole un registro di prova scrive questa proprietà con la reflection.
-     *
-     * @var list<array<string, mixed>>|null
-     */
-    private static ?array $registro = null;
 
     /**
      * POST /cornice/ricerca con `{q}`: `q` da 2 a 100 caratteri, come vuole ricerca.crea, senza gli spazi ai bordi (anche in
@@ -133,15 +125,14 @@ final class RicercaDellaCornice
      * Le chiavi di `contesto` che il registro dei moduli del pacchetto (resources/registro/prodotti.json) dà a un tipo di
      * risultato, in `risorse[].contesto`: lo stesso file da cui il browser compone la seconda riga del risultato, così ciò che
      * esce da qui è ciò che il browser mostra. Il tipo si cerca intero, fra le risorse di ogni voce. Nessuna chiave per un tipo
-     * che lì non ne ha, o che il registro non ha.
+     * che lì non ne ha, o che il registro non ha. Le voci le dà `Registro`, che il file lo legge una volta per processo: qui
+     * non c'è una lettura, né una copia.
      *
      * @return list<string>
      */
     private static function chiaviDelContesto(string $tipo): array
     {
-        self::$registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
-
-        foreach (self::$registro as $voce) {
+        foreach (Registro::voci() as $voce) {
             foreach ($voce['risorse'] ?? [] as $risorsa) {
                 if ($risorsa['tipo'] === $tipo) {
                     return $risorsa['contesto'] ?? [];

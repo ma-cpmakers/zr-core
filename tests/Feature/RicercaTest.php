@@ -9,6 +9,7 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\RicercaDellaCornice;
+use Zeiras\Core\Registro;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -233,9 +234,9 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
         risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
         risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
     ], 'successivo' => null])]);
-    // Il registro di prova entra dalla proprietà privata, con la reflection, come per le notifiche: nel codice che va in
-    // produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
-    $registro = new ReflectionProperty(RicercaDellaCornice::class, 'registro');
+    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche: nel codice
+    // che va in produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
+    $registro = new ReflectionProperty(Registro::class, 'voci');
     $registro->setValue(null, [
         ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
         ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
@@ -538,4 +539,21 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
     'un 429 senza codice' => [429, null],
     'quel codice con un 403' => [403, 'troppe_richieste'],
     'quel codice con un 503' => [503, 'troppe_richieste'],
+]);
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
+// tutte le rotte: un registro di prova lasciato da un caso arriverebbe a ogni caso dopo, di questo file e degli altri. Lo
+// dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto.
+
+it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo la ricerca dà a un contatto le chiavi del registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $contesto) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
+    if ($diProva !== null) {
+        (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $diProva);
+    }
+
+    expect(cerca('UAT')->assertOk()->json('data.0.contesto'))->toBe($contesto);
+})->with([
+    'il primo: un registro di prova che al contatto dà `reparto`' => [[['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]]], ['reparto' => 'UAT Acquisti']],
+    'il secondo: nessuno lo scrive, ed è quello del pacchetto' => [null, ['ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti']],
 ]);
