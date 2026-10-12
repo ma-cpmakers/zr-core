@@ -22,8 +22,9 @@ const favicon = (): Plugin => ({
 });
 
 // Le pagine di prova della UAT (resources/demo): `npm run demo` le costruisce in dist/demo, `npx vite preview --config
-// vite.demo.config.ts` le serve. Due ingressi: index.html (la `Cornice` montata dalla pagina) e layout.html (il layout della
-// cornice sotto Inertia). Non entrano nel pacchetto.
+// vite.demo.config.ts` le serve. Tre ingressi: index.html (la `Cornice` montata dalla pagina, presa dall'ingresso di sempre),
+// app.html (la stessa pagina, con la `Cornice` dell'ingresso per le app) e layout.html (il layout della cornice sotto Inertia).
+// Non entrano nel pacchetto.
 export default defineConfig({
     plugins: [react(), favicon()],
     root: 'resources/demo',
@@ -32,7 +33,7 @@ export default defineConfig({
         outDir: '../../dist/demo',
         emptyOutDir: true,
         rolldownOptions: {
-            input: ['index.html', 'layout.html'].map((pagina) => delRepo(`resources/demo/${pagina}`)),
+            input: ['index.html', 'app.html', 'layout.html'].map((pagina) => delRepo(`resources/demo/${pagina}`)),
         },
     },
 });

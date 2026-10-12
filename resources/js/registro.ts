@@ -8,13 +8,17 @@ import type { IconName, Tone } from '../zeiras/index';
 /** Gli id dei prodotti, Dashboard esclusa: ognuno ha il suo nome in ogni lingua, con l'id per chiave. Un prodotto nuovo entra anche qui. */
 export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations' | 'content';
 
-/** Le risorse dei prodotti che la ricerca mostra, `<prodotto>.<tipo>`: ognuna ha il nome del suo gruppo in ogni lingua, con questa chiave. Una risorsa nuova entra anche qui. */
-export type TipoDiRisorsa = 'pm.board.cartelle' | 'pm.board.board';
+/**
+ * Le risorse dei prodotti che la ricerca mostra, `<prodotto>.<tipo>`: ognuna ha in ogni lingua il nome del suo gruppo, con questa
+ * chiave, e il suo nome da elenco, minuscolo, con `searchSource.` davanti (quello che segnaposto e invito della ricerca
+ * nominano). Una risorsa nuova entra anche qui.
+ */
+export type TipoDiRisorsa = 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
 
 /** Un tipo di risorsa di un prodotto, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
 export interface RisorsaDelProdotto {
     /**
-     * Il tipo nel backoffice: il `tipo` di un risultato della ricerca (`board.board`, `board.cartelle`). Sta in un prodotto
+     * Il tipo nel backoffice: il `tipo` di un risultato della ricerca (`board.scheda`, `crm.persona`). Sta in un prodotto
      * solo: un risultato non dice di che prodotto è, e la cornice lo trova da qui.
      */
     tipo: string;
@@ -26,6 +30,11 @@ export interface RisorsaDelProdotto {
     percorso: string;
     /** Un contenitore (cartella, board) si apre a pagina intera, un elemento nel pannello del prodotto. */
     contenitore: boolean;
+    /**
+     * Le chiavi di `contesto` — i testi che il backoffice dà con un risultato per riconoscerlo — che fanno la sua seconda riga,
+     * nell'ordine in cui si leggono: `board` e `lista` di una scheda. Senza, il tipo non ha una seconda riga.
+     */
+    contesto?: string[];
 }
 
 /** Una notifica di un prodotto che dal pannello della cornice apre la sua risorsa: il tipo dell'evento, e dove si apre. */
@@ -86,6 +95,15 @@ export function prodottoDelRegistro(codice: string | null | undefined): VoceDelR
 /** L'indirizzo di un prodotto in un workspace: è così che workspace e permessi passano da un prodotto all'altro. */
 export function nelWorkspace(indirizzo: string, slug: string): string {
     return `${indirizzo}/w/${encodeURIComponent(slug)}`;
+}
+
+/**
+ * Le fonti della ricerca in un workspace: i tipi di risorsa dei prodotti che lì sono `attivo`, nell'ordine del registro. Il
+ * backoffice cerca solo nelle app attive nel workspace: un prodotto `disponibile` o in arrivo non dà fonti.
+ * `prodotti` è lo stato di ogni prodotto nel workspace, come nei dati della cornice.
+ */
+export function fontiDellaRicerca(prodotti: Partial<Record<IdDiProdotto, string | undefined>>): TipoDiRisorsa[] {
+    return registro.flatMap((voce) => (voce.id !== 'home' && prodotti[voce.id] === 'attivo' ? (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}` as TipoDiRisorsa) : []));
 }
 
 /** Porta al prodotto solo uno stato che zr-core conosce: `attivo` o `disponibile`. Ogni altro, anche nuovo, è «Presto». */

@@ -1,11 +1,13 @@
 <?php
 
+use Composer\InstalledVersions;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
+use Zeiras\Auth\Testing\BackofficeFinto;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\Http\NotificheDellaCornice;
@@ -1618,18 +1620,14 @@ it('il README dice, nella riga di POST /cornice/ricerca, una frase per cosa (spr
     'il test di un frontend' => ['un test del frontend che la chiama passa alla POST'],
     // Review della PR #22, R4 e R2: ciò che la versione non fa.
     'una scheda aperta prima dell\'aggiornamento' => ['una scheda aperta prima dell\'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l\'errore della ricerca'],
-    'il tratto dal server del modulo al backoffice' => ['dal server del modulo al backoffice la parola viaggia ancora nell\'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo'],
 ]);
 
-it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, che la parola non sta più nell\'indirizzo della richiesta del browser ma resta in quello della richiesta al backoffice, e che nel codice del frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6)', function () {
+it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, che la parola non sta più nell\'indirizzo della richiesta del browser, e che nel codice del frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6; il tratto al backoffice: sprint 25 · T3.5, qui sotto)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDellaCornice($readme, 'La ricerca');
 
     expect(str_contains($punto, 'chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l\'ultimo tasto, con la parola nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell\'header `X-XSRF-TOKEN`'))->toBe(true)
         ->and(str_contains($punto, 'dalla `v1.8.0` ciò che la persona cerca non sta più nell\'indirizzo della richiesta del browser'))->toBe(true)
-        // Review della PR #22, R2: la promessa vale per il tratto del browser, e il README dice l'altro.
-        ->and(str_contains($punto, 'Il tratto dal server del modulo al backoffice resta una GET con la parola nell\'indirizzo, finché il backoffice non dà un metodo col termine nel corpo'))->toBe(true)
-        ->and(str_contains(suUnaRiga($readme), 'non sta più nell\'indirizzo di una richiesta'))->toBe(false)
         // Review, R4: una frase sola, la stessa della riga della rotta.
         ->and(str_contains($punto, 'Nel codice del frontend non cambia niente; un suo test che chiama la GET passa alla POST'))->toBe(true)
         ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
@@ -1637,6 +1635,75 @@ it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST,
         ->and(rigaDellaRotta($readme, 'GET /cornice/ricerca?q='))->toBe('')
         ->and(str_contains($readme, 'GET /cornice/ricerca'))->toBe(false);
 });
+
+// Sprint 25 · T3 (voce #1639): anche dal server del modulo al backoffice la parola sta nel corpo (ricerca.crea), ogni risultato
+// porta `contesto`, e il freno del backoffice ha la sua risposta. Il README lo dice nella riga della rotta e nel punto «La
+// ricerca», con ciò che cambia nei test di un frontend; nessuna frase dice più che al backoffice la parola va nell'indirizzo, né
+// nel README né nei file che si installano.
+
+/** Un sorgente su una riga sola, senza i segni di commento a capo riga: una frase di un commento si trova anche dove va a capo. */
+function commentiSuUnaRiga(string $sorgente): string
+{
+    return suUnaRiga((string) preg_replace('~^\s*(?:\*|//)\s?~m', '', $sorgente));
+}
+
+it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice, che ogni risultato porta `contesto`, che cosa risponde la rotta al freno del backoffice e che cosa cambia nei test di un frontend (sprint 25 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = ['rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'), 'ricerca' => puntoDellaCornice($readme, 'La ricerca')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la riga: che cosa trova' => ['rotta', 'ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell\'ordine del backoffice, la prima pagina'],
+    // Lettura della PR #56, R1: una lista chiusa, quella del registro.
+    'la riga: il contesto di un risultato' => ['rotta', 'dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un\'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server'],
+    'la riga: il tratto al backoffice' => ['rotta', 'dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l\'indirizzo di quella richiesta non porta query'],
+    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
+    'il punto: il tratto al backoffice' => ['ricerca', 'Dalla `v1.15.0` anche il tratto dal server del modulo al backoffice porta la parola nel corpo: la parte server chiama `ricerca.crea`, una POST, e l\'indirizzo di quella richiesta non porta query'],
+    'il punto: il backoffice finto di un frontend' => ['ricerca', 'Per i test di un frontend che passa alla `v1.15.0` cambiano due cose: un backoffice finto che risponde alla ricerca la riceve come `POST /v1/ricerca` con la parola nel corpo (`{q}`), non più come GET con `q` nell\'indirizzo'],
+    'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
+    'il punto: il contesto in una risposta confrontata intera' => ['ricerca', 'ogni risultato di `POST /cornice/ricerca` ha `contesto`, che un caso che confronta la risposta intera aggiunge'],
+    'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
+]);
+
+// Lettura della PR #56, R12: la frase del README sul finto di zr-auth si guarda nel giro che lo installa. Il finto dichiara le
+// rotte che conosce in una tabella (metodo, percorso, nome): quella di ricerca.crea c'è dalla `v0.12.18`. Un giro della CI
+// installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il confronto è con la versione installata.
+it('il `BackofficeFinto` di zr-auth conosce ricerca.crea (`POST /v1/ricerca`) dalla `v0.12.18`, come dice il README, e prima no: guardato nella zr-auth installata (sprint 25 · T6, R12)', function () {
+    $finto = (string) file_get_contents((string) (new ReflectionClass(BackofficeFinto::class))->getFileName());
+    $installata = ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v');
+    $dallaV01218 = fn (string $versione): bool => version_compare($versione, '0.12.18', '>=');
+
+    expect($installata)->toMatch('/^\d+\.\d+\.\d+$/')
+        ->and(str_contains($finto, "['POST', '#^/v1/ricerca$#', 'ricerca.crea']"))->toBe($dallaV01218($installata))
+        // Il confronto nei due versi.
+        ->and([$dallaV01218('0.12.4'), $dallaV01218('0.12.17'), $dallaV01218('0.12.18'), $dallaV01218('0.12.20'), $dallaV01218('0.13.0')])->toBe([false, false, true, true, true]);
+});
+
+it('né il README né i file che si installano dicono più che al backoffice la parola va nell\'indirizzo, e la parte server nomina ricerca.crea (sprint 25 · T3.5)', function (string $file, string $frase, bool $ceLHa) {
+    expect(str_contains(commentiSuUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file)), $frase))->toBe($ceLHa);
+})->with([
+    'README: la parola non viaggia più nell\'indirizzo' => ['README.md', 'viaggia ancora nell\'indirizzo', false],
+    'README: il tratto non resta una GET' => ['README.md', 'resta una GET con la parola nell\'indirizzo', false],
+    'README: nessuna GET al backoffice' => ['README.md', 'GET /v1/ricerca', false],
+    'README: nessun «finché»' => ['README.md', 'finché il backoffice non dà un metodo col termine nel corpo', false],
+    'README: ricerca.elenca non è ciò che zr-core chiama' => ['README.md', 'ricerca.elenca', false],
+    'README: ricerca.crea' => ['README.md', 'ricerca.crea', true],
+    // Lettura della PR #56, R1: di `contesto` non passa più ogni chiave del backoffice.
+    'README: il contesto non ha ogni chiave del backoffice' => ['README.md', 'con le chiavi del backoffice (', false],
+    'la classe: il contesto non ha ogni chiave del backoffice' => ['src/Http/RicercaDellaCornice.php', 'con le loro chiavi e nel suo ordine', false],
+    'la classe: le chiavi sono quelle del registro' => ['src/Http/RicercaDellaCornice.php', 'le sole chiavi che il registro dei moduli dà al tipo del risultato', true],
+    'la classe: ricerca.elenca non c\'è più' => ['src/Http/RicercaDellaCornice.php', 'ricerca.elenca', false],
+    'la classe: nessuna GET al backoffice' => ['src/Http/RicercaDellaCornice.php', 'GET /v1/ricerca', false],
+    'la classe: la parola non va più nell\'indirizzo' => ['src/Http/RicercaDellaCornice.php', 'va ancora nell\'indirizzo', false],
+    'la classe: ricerca.crea' => ['src/Http/RicercaDellaCornice.php', 'ricerca.crea', true],
+    'la classe: la POST al backoffice' => ['src/Http/RicercaDellaCornice.php', 'POST /v1/ricerca', true],
+    'le rotte: ricerca.elenca non c\'è più' => ['routes/cornice.php', 'ricerca.elenca', false],
+    'le rotte: la parola non resta nell\'indirizzo' => ['routes/cornice.php', 'resta nell\'indirizzo', false],
+    'le rotte: ricerca.crea' => ['routes/cornice.php', 'ricerca.crea', true],
+    'il servizio del browser: la parola non ci sta più' => ['resources/js/servizi.ts', 'ci sta ancora', false],
+    'il servizio del browser: nessun «finché»' => ['resources/js/servizi.ts', 'finché il backoffice non dà un metodo col termine nel corpo', false],
+]);
 
 it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -1798,6 +1865,15 @@ it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di quest
         ->and($package['devDependencies']['@resvg/resvg-js'] ?? null)->toBe('2.6.2')
         ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
         ->and($package)->not->toHaveKey('dependencies');
+});
+
+it('la CI rigenera in memoria il modulo dei componenti del design system e lo confronta col file, dopo npm ci; lo script è di questo repo (sprint 25 · T1.1)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(substr_count($ci, 'npm run componenti -- --controlla'))->toBe(1)
+        ->and(strpos($ci, 'npm run componenti -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+        ->and($package['scripts']['componenti'] ?? null)->toBe('node scripts/componenti.mjs');
 });
 
 // Sprint 16 · T2 (voce #1472). Il pacchetto porta la sua configurazione, `config/zr-core.php`: è lì che un modulo scrive le
@@ -3083,9 +3159,12 @@ it('il documento chiama il menu «menu Moduli» (sprint 21 · T1.5)', function (
 
 it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i documenti né la descrizione del pacchetto né i commenti del codice; le copie del design system restano le sue (sprint 21 · T1.5)', function () {
     $radice = dirname(__DIR__, 2);
+    // Sprint 25 · T1: del design system è anche resources/js/zeiras/componenti.js, il corpo di bundle.js riga per riga coi suoi
+    // commenti (la CI lo confronta con ciò che il bundle genera: una riga scritta a mano lì dentro la ferma).
     $conIlNomeDiPrima = array_values(array_filter(
         fileDelloZipDiHead(),
         fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
+            && $file !== 'resources/js/zeiras/componenti.js'
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 
@@ -3389,7 +3468,7 @@ it('il README dice che dalla v1.12.0 la ricerca porta il suo workspace e che un 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo}], workspace}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo, contesto}], workspace}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'la cornice apre lì' => ['rotta', 'è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca'],
     'dove si apre un risultato' => ['ricerca', 'Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non è sempre quello dei dati della pagina'],
@@ -3438,25 +3517,66 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
 
-// Sprint 22 · T8 (voce #1728): il segnaposto e l'aiuto della ricerca dicono board e cartelle. Il README lo dice nel punto «La
-// ricerca» — i testi nuovi nelle tre lingue, quelli di prima, e come un frontend li trova nei suoi test —, e nel punto «Il menu
-// Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639): il segnaposto e l'invito della ricerca dicono le
+// fonti del workspace. Il README lo dice nel punto «La ricerca» — come si compongono, i testi nelle tre lingue con Project
+// Management attivo, quelli senza fonti, quelli fissi di prima e come un frontend li trova nei suoi test —, e nel punto «Il
+// menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
 
-it('il README dice che dalla v1.12.0 il segnaposto e l\'aiuto della ricerca dicono board e cartelle: nel punto «La ricerca» i testi nuovi nelle tre lingue, quelli di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2)', function (string $dove, string $frase) {
+it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dicono le fonti del workspace: nel punto «La ricerca» come si compongono, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.12.0` il segnaposto del campo e l\'aiuto che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle'],
-    'i due testi in italiano' => ['ricerca', '«Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search boards and folders…» e «Search boards and folders: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas: escribe al menos 2 caracteres.»'],
-    'i testi di prima' => ['ricerca', 'Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
-    'come trovarli nei test di un frontend' => ['ricerca', 'un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
-    'quando tornano larghi' => ['ricerca', 'Tornano larghi, una fonte alla volta, quando la ricerca del backoffice trova altro'],
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
+    'quante ne nominano' => ['ricerca', 'Il segnaposto ne nomina al più tre, l\'invito tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
+    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, and folders: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»'],
+    'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
+    'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
+    'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
+    'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
+    'e quelli di prima ancora' => ['ricerca', 'prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
+    'come trovarli nei test di un frontend' => ['ricerca', 'Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
     'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
+]);
+
+// Sprint 25 · T4 (voce #1639): la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga. Il README
+// dice i tipi, i gruppi, la seconda riga e dove si apre ognuno; la guida dice che cosa chiedere perché la ricerca trovi le
+// risorse di un modulo nuovo. Nessuno dei due dice più che la ricerca trova solo board e cartelle.
+
+it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la seconda riga e dove si apre ognuno; la guida dice come un modulo aggiunge un suo tipo (sprint 25 · T4.6)', function (string $dove, string $frase) {
+    $testi = [
+        'ricerca' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'i sei tipi' => ['ricerca', 'Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`)'],
+    'i gruppi e il loro ordine' => ['ricerca', 'col nome del tipo nella lingua (Schede, Board, Cartelle, Contatti, Aziende, Opportunità), il nome e il tono del prodotto e l\'icona del tipo; i gruppi escono nell\'ordine del backoffice, quello del primo risultato di ognuno'],
+    'la seconda riga' => ['ricerca', 'Sotto il titolo sta la seconda riga: i testi di `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un contatto, pipeline e fase di un\'opportunità —, solo quelli che ci sono'],
+    'chi non ha la seconda riga' => ['ricerca', 'un\'azienda, una board e una cartella non hanno una seconda riga'],
+    'dove si aprono' => ['ricerca', 'una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un\'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`, un\'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`'],
+    'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
+    'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
+    'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
+    'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
+    'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
+]);
+
+it('né il README né la guida dicono più che la ricerca trova solo board e cartelle (sprint 25 · T4.6)', function (string $file, string $frase) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(false);
+})->with([
+    'README: le fonti di oggi' => ['README.md', 'oggi board e cartelle, di Project Management'],
+    'README: i due testi di oggi' => ['README.md', 'dicono ciò che la ricerca trova oggi, board e cartelle'],
+    'la guida' => ['MODULO-NUOVO.md', 'trova solo board e cartelle'],
 ]);
 
 // Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
@@ -3574,9 +3694,13 @@ it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La
     // Lettura della PR #52: R1, R6, R2, R10, e di chi è il ritorno.
     'finché i dati non sono più recenti (R1)' => ['finché i dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non più avanti, anche se il frontend li ricrea a ogni disegno o li ritocca nel browser'],
     'i dati senza segno (R1)' => ['dati senza segno valgono solo finché sono lo stesso oggetto'],
-    'la voce attiva (R6)' => ['Su una pagina di un modulo che non dà `active` nessuna voce della barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com'],
-    'il contenitore (R2)' => ['Avviso e pagina stanno in un contenitore (`div.zr-stack`), e la pagina in un `div` suo: lì non è figlia diretta di `main.zr-main`'],
-    'la pagina si rimonta (R2)' => ['quando lo stato arriva dal 403 di una rotta, o se ne va, la pagina si rimonta — stato locale, fuoco e scorrimento ripartono, e i suoi effetti si rilanciano'],
+    'la voce attiva (R6, S5)' => ['Su una pagina di un modulo che non dà `active`, o lo dà vuoto, nessuna voce della barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com'],
+    // Seconda lettura della PR #52 (sprint 25 · T5): S1 e ciò che restava di R2, S4.
+    // Lettura della PR #56, R5: col percorso la pagina sta in `div.zr-main-body`, misurato in un browser sulla pagina di prova.
+    'il contenitore (R2, S1)' => ['l\'avviso sta nel margine della pagina, in un contenitore suo (`div.zr-stack`) prima della pagina. La pagina resta dov\'è fuori da quello stato — dentro `main.zr-main`, o dentro `div.zr-main-body` se la pagina ha il percorso (`crumbs`) —, subito dopo l\'avviso'],
+    'la pagina non si rimonta (S1)' => ['quando lo stato arriva o se ne va non si rimonta (dalla `v1.15.0`): ciò che è scritto in un campo, il fuoco e lo scorrimento restano, e i suoi effetti non ripartono'],
+    'comunque lo stato arrivi (S1)' => ['Vale comunque lo stato arrivi: dal 403 di una rotta, o coi dati di una visita che tiene la pagina montata'],
+    'il segnale non resta (S4)' => ['e così coi dati di un altro workspace: da lì quel segnale non vale più, nemmeno per i dati di prima'],
     'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
     'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
 ]);
@@ -3597,28 +3721,39 @@ it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi
     'stato e codice' => ['un 403 con un altro codice resta l\'`ErroreApi` che era'],
     'i documenti mancanti' => ['Quali documenti mancano la parte server non lo dà al browser'],
     // Lettura della PR #52, R3: la classe di zr-auth, le sue tre forme, e le patch che non la hanno.
-    'le chiamate del frontend: la classe' => ['Da zr-auth `v0.12.17` quel 403 è l\'eccezione `Zeiras\\Auth\\Errori\\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in tre forme'],
+    'le chiamate del frontend: la classe' => ['Da zr-auth `v0.12.17` quel 403 è l\'eccezione `Zeiras\\Auth\\Errori\\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in quattro forme (lette fino alla `v0.12.20`)'],
     'le chiamate del frontend: le tre forme' => ['a una visita un rimando alla pagina dell\'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un 403 con `codice` e `mancanti`, senza rimando'],
     'le chiamate del frontend: chi decide' => ['lì la persona resta dov\'è, e che cosa mostrarle lo decide il frontend. Per le visite il frontend non scrive un rimando suo'],
+    // Seconda lettura della PR #52, S10 (sprint 25 · T5.6).
+    'le chiamate del frontend: la quarta forma (S10)' => ['La quarta forma è della pagina dell\'accettazione stessa (l\'host e il percorso di `zr-auth.accettazione`, con o senza la lingua davanti): lì risponde quel 403 anche a una visita e a una visita di Inertia, perché un rimando la manderebbe a sé stessa'],
     'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
     // Lettura della PR #52, R10.
-    'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth, coi `mancanti`'],
-    'la cornice riconosce anche quella' => ['La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto'],
+    'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth'],
+    // Seconda lettura della PR #52, S2 (sprint 25 · T5.2): da quale versione di zr-auth.
+    'la cornice riconosce anche quella, e da quale zr-auth (S2)' => ['Da zr-auth `v0.12.17` è un 403 con `codice` e `mancanti`: la cornice lo riconosce lo stesso, dal `codice`, e passa allo stato ridotto'],
+    // Seconda lettura della PR #52, S7 (sprint 25 · T5.5).
+    'il tipo ammette la lista (S7)' => ['Il tipo `DatiDellaCornice` la ammette dalla `v1.15.0`, senza conversioni'],
 ]);
 
-it('il README dice che con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un ErroreApi e nessuno rimanda, finché il vincolo di composer.json ne ammette una: quando il vincolo parte da lì, la frase si toglie (sprint 24 · T5; lettura della PR #52, R3)', function () {
+// Seconda lettura della PR #52, S2 e S8 (sprint 25 · T5.2, T5.6). Le frasi sulle patch di zr-auth più vecchie della `v0.12.17` sono
+// tre — due nel README, una nella guida — e valgono finché il vincolo di composer.json ne ammette una: tutte e tre con la stessa
+// condizione. Il giorno in cui il vincolo parte dalla 0.12.17 si tolgono insieme, e questo caso lo chiede a tutte.
+it('README e guida dicono che cosa succede con una patch di zr-auth più vecchia della `v0.12.17` — quel 403 resta un ErroreApi e nessuno rimanda; su una rotta della cornice al browser arriva un 500 — finché il vincolo di composer.json ne ammette una: quando il vincolo parte da lì, le tre frasi si tolgono (sprint 24 · T5; lettura della PR #52, R3; sprint 25 · T5.2 e T5.6)', function (string $dove, string $frase) {
     $vincolo = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true)['require']['zeiras/zr-auth'];
-    $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
-    $frase = 'Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su';
+    $testo = $dove === 'guida' ? suUnaRiga(guidaDelModuloNuovo()) : sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
     $ammetteUnaPiuVecchia = fn (string $vincolo): bool => version_compare(ltrim($vincolo, '^'), '0.12.17', '<');
 
     // Il vincolo è una versione sola col suo `^`: così la sua patch più bassa si legge togliendo il segno.
     expect($vincolo)->toMatch('/^\^0\.\d+\.\d+$/')
-        ->and($parteServer)->not->toBe('')
-        ->and(str_contains($parteServer, $frase))->toBe($ammetteUnaPiuVecchia($vincolo))
+        ->and($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe($ammetteUnaPiuVecchia($vincolo))
         // Il confronto nei due versi.
         ->and([$ammetteUnaPiuVecchia('^0.12.4'), $ammetteUnaPiuVecchia('^0.12.16'), $ammetteUnaPiuVecchia('^0.12.17'), $ammetteUnaPiuVecchia('^0.13.0')])->toBe([true, true, false, false]);
-});
+})->with([
+    'README: le chiamate del frontend (R3)' => ['readme', 'Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su'],
+    'README: un middleware del frontend su una rotta della cornice (S2)' => ['readme', 'Con una patch più vecchia, che il vincolo di zr-core ammette, quell\'errore non ha una risposta sua: al browser arriva un 500, e la cornice mostra l\'errore di sempre: nel pannello delle notifiche resta «Riprova»'],
+    'guida (S8)' => ['guida', 'Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su'],
+]);
 
 it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti` ridotto è `{}`, né che lo stato ridotto vale finché la cornice ha quei dati (sprint 24 · T5; lettura della PR #52, R1, R3, R5)', function (string $frase) {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
@@ -3629,7 +3764,40 @@ it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti`
     'il rimando dalle chiamate, al punto di «La cornice» (R3)' => ['lascia a zr-auth il rimando dalle proprie chiamate a `/v1`;'],
     '`prodotti` come oggetto (R5)' => ['ridotti: `prodotti` `{}`'],
     'finché ha quei dati (R1)' => ['finché la cornice ha quei dati'],
+    // Seconda lettura della PR #52 (sprint 25 · T5): S1, S2, S10.
+    'la pagina si rimonta (S1)' => ['la pagina si rimonta'],
+    'la pagina in un `div` suo (S1)' => ['lì non è figlia diretta di `main.zr-main`'],
+    // Lettura della PR #56, R5: col percorso la pagina è figlia di `div.zr-main-body`.
+    'la pagina sempre figlia diretta di `main.zr-main` (PR #56, R5)' => ['resta figlia diretta di `main.zr-main`'],
+    'la risposta di zr-auth senza dire da quale versione (S2)' => ['arriva quella di zr-auth, coi `mancanti`'],
+    'le tre forme (S10)' => ['in tre forme'],
 ]);
+
+it('la guida del modulo nuovo non dice più che nello stato ridotto la pagina si rimonta (sprint 25 · T5.1)', function () {
+    $frase = 'e si rimonta quando lo stato arriva';
+
+    expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBe(false)
+        // Il controllo vede ciò che cerca: la frase, a capo, su una riga è quella.
+        ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
+});
+
+// Seconda lettura della PR #52, S6 (sprint 25 · T5.4). Il punto «La voce attiva» diceva «senza `active` è la Dashboard», e l'eccezione
+// dello stato ridotto stava solo più sotto: chi legge quel punto la trova lì.
+it('il README dice, al punto «La voce attiva» di «La cornice», l\'eccezione dello stato ridotto (sprint 25 · T5.4)', function () {
+    $punto = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La voce attiva');
+
+    expect($punto)->not->toBe('')
+        ->and(str_contains($punto, 'senza `active`, o con `active` vuoto, è la Dashboard — tranne nello stato ridotto su una pagina di un modulo, dove nessuna voce è segnata'))->toBe(true);
+});
+
+// Seconda lettura della PR #52, S6 (sprint 25 · T5.4). Chi legge il tipo nell'editor vede il commento di `active`, non il README:
+// l'eccezione dello stato ridotto sta anche lì.
+it('il commento di `active` in `CorniceProps` dice l\'eccezione dello stato ridotto: su una pagina di un modulo, senza `active` o con `active` vuoto, nessuna voce è segnata (sprint 25 · T5.4)', function () {
+    // Il commento sta su più righe: si legge senza gli asterischi di mezzo.
+    $cornice = suUnaRiga((string) preg_replace('/\n\s*\* /', ' ', (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx')));
+
+    expect(str_contains($cornice, '/** L\'id della voce attiva; senza, o vuoto, la Dashboard — tranne nello stato ridotto su una pagina di un modulo, dove nessuna voce è segnata. Con `null` nessuna voce della barra è attiva. */'))->toBe(true);
+});
 
 it('ciò che il README e la guida dicono di chi non ha accettato non nomina un documento, e non dice che la cornice fa accettare (sprint 24 · T2.7)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -3659,8 +3827,109 @@ it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti leg
     'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le visite non scrivi un rimando tuo'],
     'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l\'eccezione `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia'],
     'a una richiesta JSON decide il modulo' => ['A una tua richiesta JSON zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare'],
-    'le patch più vecchie' => ['Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su'],
     'nessun middleware sulle rotte della cornice' => ['Sulle rotte `/cornice/*` non mettere un middleware che chiama `/v1` senza prendere quel 403'],
-    'la pagina si rimonta' => ['Nello stato ridotto la tua pagina sta in un contenitore sotto l\'avviso, e si rimonta quando lo stato arriva dal 403 di una rotta o se ne va'],
+    // Seconda lettura della PR #52, S1 (sprint 25 · T5.1).
+    'la pagina non si rimonta' => ['Nello stato ridotto l\'avviso sta sopra la tua pagina, che resta dov\'è e non si rimonta quando lo stato arriva o se ne va: ciò che è scritto in un campo resta'],
     'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],
 ]);
+
+// Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, e i componenti del
+// design system per nome dal loro modulo, così nella build di un frontend entra solo ciò che l'app usa. Lo zip del tag porta i
+// tre file; il README dice i due ingressi, il passaggio, che cosa da lì non si scrive, che i due non si mescolano, i pesi e
+// come misurarli nel frontend; la guida dice a un modulo che nasce da dove parte. I pesi li misura vitest (peso.test.ts), che
+// li confronta coi numeri del README.
+
+/** Il testo di un ingresso di resources/js; vuoto se il file non c'è. */
+function ingressoJs(string $file): string
+{
+    $percorso = dirname(__DIR__, 2).'/resources/js/'.$file;
+
+    return is_file($percorso) ? (string) file_get_contents($percorso) : '';
+}
+
+it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
+    $zip = fileDelloZipDiHead();
+    $delPacchetto = ['resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts'];
+    $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
+
+    expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
+        ->and(array_values(array_filter($zip, $degliStrumenti)))->toBe([]);
+});
+
+it('l\'ingresso per le app esporta i nomi dell\'ingresso di sempre tranne Zeiras, e non importa il modulo che scrive window.Zeiras (sprint 25 · T2.4)', function () {
+    $esportati = fn (string $testo): array => nomiFraLeGraffe('/^export \{([^}]*)\} from \'[^\']+\';$/m', $testo);
+    $diSempre = $esportati(ingressoJs('index.ts'));
+    $perLeApp = $esportati(ingressoJs('app.ts'));
+
+    expect($diSempre)->toContain('Zeiras')
+        ->and($perLeApp)->not->toBe([])
+        ->and($perLeApp)->toBe(array_values(array_diff($diSempre, ['Zeiras'])))
+        ->and(preg_match('/from \'\.\/zeiras\'|from \'\.\/zeiras\/index\'|import \'\.\/zeiras/', ingressoJs('app.ts')))->toBe(0)
+        ->and(preg_match('/from \'\.\/zeiras\'/', ingressoJs('index.ts')))->toBe(1);
+});
+
+it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso esporta (sprint 25 · T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $importati = fn (string $testo): array => nomiFraLeGraffe('/^\s*import \{([^}]*)\} from \'[^\']*\/zr-core\/resources\/js\/app\';$/m', $testo);
+    $esportati = nomiFraLeGraffe('/^export \{([^}]*)\} from \'[^\']+\';$/m', ingressoJs('app.ts'));
+
+    // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
+    $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
+
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice'])
+        ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
+        ->and($conZeiras)->not->toBe($readme)
+        ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
+});
+
+it('il README dice, in «Come si installa in un frontend», i due ingressi, il passaggio, che cosa dall\'ingresso per le app non si scrive, che i due non si mescolano, i pesi e come misurarli (sprint 25 · T2.5)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Come si installa in un frontend');
+
+    expect(str_contains($sezione, $frase))->toBeTrue();
+})->with([
+    'l\'ingresso per le app' => ['**L\'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi dell\'ingresso di sempre tranne `Zeiras`'],
+    'i componenti per nome' => ['I componenti del design system si prendono per nome dal loro modulo, `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l\'app usa'],
+    'l\'import dei componenti' => ['import * as Zeiras from \'../../vendor/zeiras/zr-core/resources/js/zeiras/componenti\';'],
+    'che cosa non si scrive' => ['Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.'],
+    'l\'ingresso di sempre' => ['**L\'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in `window.Zeiras`, con `window.React`. Resta com\'è, coi nomi di prima'],
+    'il passaggio, i componenti' => ['`import * as Zeiras from \'…/resources/js/zeiras/componenti\'` al posto di `import { Zeiras } from \'…/resources/js\'`'],
+    'il passaggio, il resto' => ['gli altri nomi da `…/resources/js/app` al posto di `…/resources/js`'],
+    'non si mescolano' => ['I due ingressi non si mescolano nella stessa app: basta un file che importa ancora dall\'ingresso di sempre perché nella build torni il design system intero'],
+    'niente si rompe' => ['Non si rompe niente (i componenti sono gli stessi oggetti, in una copia sola), ma il peso torna quello di prima'],
+    'chi spia un componente' => ['dalla `v1.15.0` spia il modulo dei componenti (`import * as componenti from \'…/resources/js/zeiras/componenti\'`, poi `vi.spyOn(componenti, \'AppShell\')`), da qualunque ingresso'],
+    // Lettura della PR #56, R6.
+    'chi confronta `children` con la pagina' => ['E ciò che la cornice dà all\'`AppShell` come `children` dalla `v1.15.0` è sempre un frammento, anche fuori dallo stato ridotto: la pagina è il suo secondo figlio, e un caso che confrontava `children` con la pagina la cerca lì'],
+    'la tabella dei pesi' => ['| App di prova | JS | con gzip |'],
+    'il peso della sola cornice' => ['| solo la cornice, dall\'ingresso per le app |'],
+    'il peso con due componenti' => ['| la cornice e due componenti per nome |'],
+    'il peso dall\'ingresso di sempre' => ['| la stessa cornice, dall\'ingresso di sempre |'],
+    'quali componenti' => ['I due componenti sono `Button` e `DataTable`.'],
+    'come si misura' => ['`find public/build/assets -name \'*.js\' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip'],
+    'quando il passaggio è completo' => ['`grep -rhoE --include=\'*.js\' \'window\.Zeiras ?= ?Object\.assign\' public/build | wc -l`: risponde 0 dall\'ingresso per le app, 1 finché un file importa dall\'ingresso di sempre'],
+]);
+
+it('il README non dice più che l\'ingresso scrive window.React prima di caricare il design system: dalla v1.15.0 il bundle non si carica (sprint 25 · T2.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'prima di caricare il design system'))->toBeFalse()
+        ->and(str_contains($readme, 'da uno dei due ingressi del pacchetto (due dalla `v1.15.0`)'))->toBeTrue();
+});
+
+it('la guida dice a un modulo che nasce di partire dall\'ingresso per le app, coi due file, che cosa risponde la prova e che i due ingressi non si mescolano (sprint 25 · T2.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBeTrue();
+})->with([
+    'da dove parte' => ['Un modulo che nasce parte dall\'ingresso per le app (dalla `v1.15.0`): la cornice da `vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da `vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi'],
+    'la prova' => ['risponde 0 (dall\'ingresso di sempre, dove `Zeiras` è il design system intero, risponde 1)'],
+    'non si mescolano' => ['I due ingressi non si mescolano: un file che importa ancora dall\'ingresso di sempre riporta nella build il design system intero'],
+    'il test di allineamento' => ['lo sha256 di `bundle.js` resta il segno che il design system è cambiato'],
+]);
+
+it('le pagine di prova sono tre, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3)', function () {
+    $costruzione = (string) file_get_contents(__DIR__.'/../../vite.demo.config.ts');
+
+    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html']"))->toBe(1)
+        ->and(scritteNellaPaginaDiProva('app.html', ['<script type="module" src="./app.tsx"></script>']))->toBe(['<script type="module" src="./app.tsx"></script>' => 1])
+        ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
+        ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
+        ->and(scritteNellaPaginaDiProva('index.tsx', ["import { Cornice } from '../js';"]))->toBe(["import { Cornice } from '../js';" => 1]);
+});

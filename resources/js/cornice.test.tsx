@@ -1,11 +1,12 @@
-import { act, type ReactElement } from 'react';
+import { act, Fragment, useEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
-import { testi } from './lingue';
+import { testi, testiDellaRicerca } from './lingue';
 import { Zeiras } from './zeiras';
+import * as componenti from './zeiras/componenti';
 
 // Sprint 1 · T6 (voce #1255), riscritto nello sprint 2 · T4 (voce #1256). La `Cornice` resa in un DOM finto coi dati della parte
 // server (`Cornice::dati()`): il menu Moduli dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
@@ -20,6 +21,8 @@ const dati: DatiDellaCornice = {
     workspace: { nome: 'Marketing', slug: 'acme-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'attivo', reports: 'attivo' },
 };
+/** Le fonti della ricerca coi dati qui sopra: dei moduli attivi, solo Project Management ha risorse nel registro. */
+const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle'] as const;
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /**
@@ -199,9 +202,9 @@ describe('la Cornice', () => {
     ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2; sprint 21 · T1.1: il nome del menu, esteso e chiuso)', async (lingua, nomi, bookings, menu) => {
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
-        expect(appShell.mock.lastCall?.[0].labels).toStrictEqual(testi(lingua));
+        expect(appShell.mock.lastCall?.[0].labels).toStrictEqual({ ...testi(lingua), ...testiDellaRicerca(lingua, fontiDeiDati) });
         expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
         expect(uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent).toBe(menu);
 
@@ -213,15 +216,29 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
-    it.each([
-        ['it', 'Cerca board e cartelle: scrivi almeno 2 caratteri.'],
-        ['en', 'Search boards and folders: type at least 2 characters.'],
-        ['es', 'Busca tableros y carpetas: escribe al menos 2 caracteres.'],
-    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice board e cartelle, ciò che la ricerca trova oggi: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «in tutti i prodotti» (sprint 21 · T1.3; sprint 22 · T8.2)', async (lingua, aiuto) => {
-        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+    // Sprint 25 · T4 (voce #1639): il segnaposto del campo e l'invito che si legge prima di due caratteri dicono le fonti della
+    // ricerca nel workspace, cioè i tipi di risorsa dei moduli attivi lì: il segnaposto ne nomina al più tre, l'invito tutte.
+    // Un modulo solo disponibile, in arrivo o senza risorse nel registro non dà fonti, e senza fonti restano i due testi corti.
+    it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board e cartelle: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca contatti, aziende, opportunità…', 'Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['it', {}, 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
+        ['es', {}, 'Busca…', 'Escribe al menos 2 caracteres.'],
+        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, and opportunities: type at least 2 characters.'],
+        ['en', {}, 'Search…', 'Type at least 2 characters.'],
+        // Una lingua che zr-core non ha: in inglese.
+        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
+    ])('con la lingua "%s" e i moduli %j, il segnaposto del campo di ricerca e l\'invito prima di due caratteri nominano le fonti dei moduli attivi nel workspace, e solo quelle: mai il testo fisso di prima, né quello dell\'`AppShell` (sprint 25 · T4.3)', async (lingua, prodotti, segnaposto, invito) => {
+        await mostra(<Cornice dati={{ ...dati, lingua, prodotti }} onLogout={esciSenzaEffetto} />);
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
         await act(async () => uno('.zr-search input')?.focus());
 
-        expect(uno('.zr-search-note')?.textContent).toBe(aiuto);
+        expect(uno('.zr-search-note')?.textContent).toBe(invito);
     });
 
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
@@ -263,8 +280,9 @@ describe('la Cornice', () => {
     });
 
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
-        const attesi = testi(lingua);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        // I due testi della ricerca sono quelli delle fonti del workspace (sprint 25 · T4.3): gli altri, quelli della lingua.
+        const attesi = { ...testi(lingua), ...testiDellaRicerca(lingua, fontiDeiDati) };
+        const appShell = vi.spyOn(componenti, 'AppShell');
         // Con `piano`: la voce «Piano» è spenta di default (sprint 15 · T1), e il suo testo si legge solo col menu intero.
         await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} piano />);
 
@@ -319,7 +337,7 @@ describe('la Cornice', () => {
     });
 
     it('nome ed email della persona in cima al menu del profilo; il workspace dei dati come testo in cima alla sidebar, senza azienda né selettore (T4.3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={percorso} />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
@@ -376,7 +394,7 @@ describe('la Cornice', () => {
     it('con la prop `piano` il menu del profilo è quello del design system, con «Piano» fra Impostazioni e Azienda: ogni voce porta alla sua pagina su app.zeiras.com, «Piano» a quella del piano, ed «Esci» chiama il frontend (sprint 15 · T1.2)', async () => {
         const naviga = vi.fn();
         const esci = vi.fn();
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esci} piano />);
 
         // La lista è quella che l'`AppShell` mette da sé: la cornice non gliene dà una, e la prop resta alla cornice.
@@ -434,7 +452,7 @@ describe('la Cornice', () => {
 // dei dati (linea guida 15, passo 8).
 describe('il selettore «Azienda › workspace» e la campanella', () => {
     it('in cima alla sidebar azienda e workspace attivo; aperto, ogni azienda coi suoi workspace nell\'ordine dei dati, la ✓ sull\'attivo; senza `nuovo_workspace` nei dati, nessun «Nuovo workspace» (T2.1)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
 
         const pulsante = uno('.zr-ws-switch');
@@ -483,7 +501,7 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
         // Senza il controllo l'`AppShell` segnerebbe attivo il primo workspace della prima azienda: un workspace sbagliato.
         ['col workspace dei dati in nessuna azienda', [aziende[0], { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }] }]],
     ])('%s il workspace resta testo, senza selettore (T2.3)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
@@ -521,7 +539,7 @@ describe('il colore di ogni workspace nel selettore', () => {
     }
 
     it('ogni workspace ha il pallino del suo tono, quello che la regola esportata dà per il suo id (sprint 17 · T4.1, T4.6)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
 
         expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'plum']]);
@@ -538,7 +556,7 @@ describe('il colore di ogni workspace nel selettore', () => {
         ['con un workspace in più prima di lui, e la sua azienda per prima', [{ ...acme, workspace: [{ id: 'ws-9', nome: 'Assistenza', slug: 'acme-assistenza' }, vendite, marketing] }, zeta], 'acme-marketing'],
         ['da solo nella sua azienda', [{ ...acme, workspace: [marketing] }], 'acme-marketing'],
     ])('%s il workspace «ws-4» ha lo stesso tono (sprint 17 · T4.1)', async (_caso, aziendeDeiDati, slug) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Marketing', slug }, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         const workspace = appShell.mock.lastCall?.[0].companies?.flatMap((azienda) => azienda.workspaces).filter((ws) => ws.slug === slug);
@@ -546,7 +564,7 @@ describe('il colore di ogni workspace nel selettore', () => {
     });
 
     it('lo stesso nome, lo stesso slug e lo stesso posto con un altro id: un altro tono (sprint 17 · T4.1)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: [zeta, { ...acme, workspace: [vendite, { ...marketing, id: 'ws-5' }] }] }} onLogout={esciSenzaEffetto} />);
 
         expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'sky']]);
@@ -558,7 +576,7 @@ describe('il colore di ogni workspace nel selettore', () => {
         ['con un id che non è un testo', 5],
         ['con un id null', null],
     ])('un workspace %s non ha tono, e il suo pallino è quello che il design system mette da sé; gli altri hanno il loro (sprint 17 · T4.4)', async (_caso, id) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         // Nome e slug sono testi che come id avrebbero un tono (sky e coral): senza id non se ne ricava uno da lì, né dal posto.
         const senzaId = { nome: 'ws-5', slug: 'ws-2', ...(id === undefined ? {} : { id: id as string }) };
         await mostra(<Cornice dati={{ ...dati, aziende: [{ ...acme, workspace: [marketing, senzaId] }] }} onLogout={esciSenzaEffetto} />);
@@ -617,7 +635,7 @@ describe('«Nuovo workspace» in fondo al selettore', () => {
         // Lo stesso workspace in due aziende: l'`AppShell` mostra in cima l'ultima, e conta quella.
         ['vero nella prima delle due aziende che hanno quel workspace e falso nell\'ultima', [{ ...holding, nuovo_workspace: true }, { ...acme, nuovo_workspace: false }]],
     ])('con `nuovo_workspace` %s, nell\'azienda del workspace dei dati il pulsante non c\'è (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe('Acme');
@@ -638,7 +656,7 @@ describe('«Nuovo workspace» in fondo al selettore', () => {
         ['con un elenco vuoto', []],
         ['col workspace dei dati in nessuna azienda', [{ ...zeta, nuovo_workspace: true }, { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }], nuovo_workspace: true }]],
     ])('%s il workspace resta testo e la cornice non dà «Nuovo workspace» all\'`AppShell`, nemmeno se ogni azienda lo permette (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
@@ -919,7 +937,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     it('all\'`AppShell` `forMe` arriva solo quando `per_me` è un booleano, ed è quel booleano: con `null`, senza la chiave o con un valore che non è un booleano la chiave non c\'è, nemmeno con `undefined` o col valore com\'è (sprint 20 · T1.3; review, R3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await apriSu([
             conInPiu('uat-n51', { per_me: true }),
             conInPiu('uat-n52', { per_me: false }),
@@ -1037,7 +1055,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5; sprint 6 · T4.2)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const fetchFinto = rotte(notificheDelServer);
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
@@ -1056,7 +1074,7 @@ describe('il pannello delle notifiche', () => {
         ['con le notifiche tutte lette e zero non lette nei dati', 0, async () => risposta({ data: tutteLette })],
         ['con le notifiche tutte lette e nessun numero nei dati', undefined, async () => risposta({ data: tutteLette })],
     ])('col pannello %s «Segna tutte come lette» non c\'è (sprint 5 · T3.5; sprint 6 · T4.2)', async (_caso, nonLetteNeiDati, elenco) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         vi.stubGlobal('fetch', vi.fn(elenco));
         await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
 
@@ -3103,12 +3121,13 @@ describe('il pannello delle notifiche', () => {
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso POST /cornice/ricerca: una richiesta sola in volo, i risultati
 // raggruppati per tipo dal registro, gli stati. Sprint 5 · T4 (voce #1257): un risultato è `{tipo, id, titolo}`, come in
 // ricerca.elenca; di che prodotto è lo dice il registro, dal tipo. Sprint 18 · T1 (voce #1638): la parola cercata sta nel corpo
-// della richiesta, mai nel suo indirizzo.
+// della richiesta, mai nel suo indirizzo. Sprint 25 · T4 (voce #1639): un risultato porta anche `contesto`, come in ricerca.crea,
+// e la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga.
 describe('la ricerca', () => {
     /**
      * I risultati come li dà POST /cornice/ricerca, nell'ordine del backoffice (per titolo): i tipi mescolati (l'`AppShell` apre
-     * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e le schede,
-     * che la ricerca del backoffice ancora non cerca) e un risultato con un `app` che non è il suo prodotto: non conta.
+     * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e uno che
+     * somiglia a quello delle schede, `board.scheda`, senza esserlo) e un risultato con un `app` che non è il suo prodotto: non conta.
      */
     const risultatiDelServer = [
         { tipo: 'board.board', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Lancio Q4' },
@@ -3249,6 +3268,106 @@ describe('la ricerca', () => {
         });
         expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
         expect(uno('.zr-search-panel')).toBeNull();
+    });
+
+    /**
+     * Una risposta coi sei tipi di `ricerca.crea` (dalla `v1.15.0`), mescolati perché l'ordine dei gruppi non sia quello del
+     * registro: ogni risultato col suo `contesto`, i testi che il backoffice dà per riconoscerlo — `null`, o un oggetto coi
+     * due testi, con uno solo o con nessuno. In mezzo, un contatto con l'id fuori forma e un tipo che il registro non ha: non
+     * si mostrano.
+     */
+    const diOgniTipo = [
+        { tipo: 'crm.persona', id: '01k7b1p1', titolo: 'Grace Hopper', contesto: { organizzazione: 'Acme Srl', ruolo: 'CTO' } },
+        { tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', contesto: { board: 'Lancio Q4', lista: 'Da fare' } },
+        { tipo: 'crm.persona', id: '..', titolo: 'Contatto fuori forma', contesto: { organizzazione: 'Acme Srl', ruolo: null } },
+        { tipo: 'crm.organizzazione', id: '01k7b1o1', titolo: 'Acme Srl', contesto: null },
+        { tipo: 'crm.trattativa', id: '01k7b1t1', titolo: 'Rinnovo 2027', contesto: { pipeline: 'Vendite', fase: 'Proposta' } },
+        { tipo: 'crm.attivita', id: '01k7b1a1', titolo: 'Richiamare Grace', contesto: null },
+        { tipo: 'board.board', id: '01k7b1b1', titolo: 'Lancio Q4', contesto: null },
+        { tipo: 'crm.persona', id: '01k7b1p2', titolo: 'Alan Turing', contesto: { organizzazione: null, ruolo: 'Consulente' } },
+        { tipo: 'board.cartelle', id: '01k7b1c1', titolo: 'Marketing', contesto: null },
+        { tipo: 'board.scheda', id: '01k7b1s2', titolo: 'Brief del lancio', contesto: { board: 'Lancio Q4', lista: null } },
+        { tipo: 'crm.persona', id: '01k7b1p3', titolo: 'Ada Byron', contesto: { organizzazione: null, ruolo: null } },
+    ];
+
+    it.each<[lingua: string, gruppi: string[], pm: string, crm: string]>([
+        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Cartelle'], 'Project Management', 'CRM'],
+        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Carpetas'], 'Gestión de proyectos', 'CRM'],
+        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Folders'], 'Project Management', 'CRM'],
+    ])('con la lingua "%s", schede, contatti, aziende e opportunità stanno ognuno nel suo gruppo, con la seconda riga fatta dei testi di `contesto` che ci sono, il nome e il tono del loro modulo e l\'icona del tipo; i gruppi nell\'ordine del primo risultato di ognuno e dentro un gruppo l\'ordine del backoffice; un tipo che il registro non ha e un id fuori forma non compaiono (sprint 25 · T4.1, T4.2)', async (lingua, gruppi, pm, crm) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo)));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(tutti('.zr-search-panel .zr-search-group').map((gruppo) => gruppo.textContent)).toStrictEqual(gruppi);
+        expect(righe().map((riga) => [riga.querySelector('.zr-search-title')?.textContent, riga.querySelector('.zr-search-sub')?.textContent ?? null, riga.querySelector('.zr-search-product')?.textContent])).toStrictEqual([
+            ['Grace Hopper', 'Acme Srl · CTO', crm],
+            ['Alan Turing', 'Consulente', crm],
+            ['Ada Byron', null, crm],
+            ['Scrivere il brief', 'Lancio Q4 · Da fare', pm],
+            ['Brief del lancio', 'Lancio Q4', pm],
+            ['Acme Srl', null, crm],
+            ['Rinnovo 2027', 'Vendite · Proposta', crm],
+            ['Lancio Q4', null, pm],
+            ['Marketing', null, pm],
+        ]);
+        expect(righe().map((riga) => [...(riga.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'))))
+            .toStrictEqual(['zr-label-sky', 'zr-label-sky', 'zr-label-sky', 'zr-label-pine', 'zr-label-pine', 'zr-label-sky', 'zr-label-sky', 'zr-label-pine', 'zr-label-pine']);
+        expect(righe().map((riga) => riga.querySelector('.zr-iconbox path')?.getAttribute('d')))
+            .toStrictEqual((['users', 'users', 'users', 'file', 'file', 'building', 'target', 'board', 'folder'] as const).map((icona) => tracciatoDi(icona)));
+    });
+
+    it.each([
+        ['Scrivere il brief', 'https://board.zeiras.com/w/zeta-ricerca/c/01k7b1s1'],
+        ['Grace Hopper', 'https://crm.zeiras.com/w/zeta-ricerca/contatti/01k7b1p1'],
+        ['Acme Srl', 'https://crm.zeiras.com/w/zeta-ricerca/aziende/01k7b1o1'],
+        ['Rinnovo 2027', 'https://crm.zeiras.com/w/zeta-ricerca/opportunita/01k7b1t1'],
+    ])('scegliere «%s» apre la sua pagina nel modulo che ha quel tipo nel registro, nel workspace che la risposta dice e non in quello della pagina (sprint 25 · T4.1)', async (titolo, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo, 'zeta-ricerca')));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        const scelto = righe().find((riga) => riga.querySelector('.zr-search-title')?.textContent === titolo);
+        expect(scelto).toBeDefined();
+        await act(async () => {
+            scelto?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it.each<[caso: string, contesto: unknown, secondaRiga: string | null]>([
+        ['che manca, come in una risposta finta di prima della `v1.15.0`', undefined, null],
+        ['`null`', null, null],
+        ['senza le chiavi del tipo', {}, null],
+        ['coi due testi', { board: 'Lancio Q4', lista: 'Da fare' }, 'Lancio Q4 · Da fare'],
+        ['col solo secondo testo', { board: null, lista: 'Da fare' }, 'Da fare'],
+        ['con un testo vuoto e uno di soli spazi', { board: '', lista: '  ' }, null],
+        ['coi testi con gli spazi intorno', { board: ' Lancio Q4 ', lista: 'Da fare\n' }, 'Lancio Q4 · Da fare'],
+        ['con valori che non sono testi', { board: 12, lista: { nome: 'Da fare' } }, null],
+        ['con le chiavi di un altro tipo', { organizzazione: 'Acme Srl', ruolo: 'CTO', pipeline: 'Vendite' }, null],
+        ['che è un testo', 'Lancio Q4', null],
+        ['che è un elenco', ['Lancio Q4', 'Da fare'], null],
+    ])('la seconda riga di una scheda con un `contesto` %s: solo i testi che ci sono, nell\'ordine del registro, mai `null`, `undefined` o un « · » appeso (sprint 25 · T4.1)', async (_caso, contesto, secondaRiga) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', ...(contesto === undefined ? {} : { contesto }) }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('brief');
+        expect(titoli()).toStrictEqual(['Scrivere il brief']);
+        expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent ?? null).toBe(secondaRiga);
+    });
+
+    it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.board', id: '01k7b1b1', titolo: 'Lancio Q4', contesto: { board: 'Lancio Q4', lista: 'Da fare' } },
+            { tipo: 'board.cartelle', id: '01k7b1c1', titolo: 'Marketing', contesto: { organizzazione: 'Acme Srl' } },
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Marketing']);
+        expect(tutti('.zr-search-panel .zr-search-sub')).toHaveLength(0);
     });
 
     it('due cartelle si aprono sulla stessa pagina del workspace e restano due risultati (sprint 6 · T5.1)', async () => {
@@ -3417,7 +3536,7 @@ describe('la ricerca', () => {
         expect(senzaWorkspace.stato).toBe('ready');
 
         // Prima della prima parola all'`AppShell` arriva ciò che arrivava: né un errore, né un caricamento, né un risultato.
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         expect([appShell.mock.lastCall?.[0].searchState, appShell.mock.lastCall?.[0].searchResults]).toStrictEqual(['ready', []]);
     });
@@ -3561,7 +3680,7 @@ describe('la voce attiva della barra', () => {
         ['con l\'id di una voce del prodotto', { active: 'elenco' }, { product: 'pm', nav: vociDiPm }, ['Elenco']],
         ['con un id che nessuna voce ha, dentro un prodotto', { active: 'uat-nessuna' }, { product: 'pm', nav: vociDiPm }, []],
     ])('senza null la voce segnata è quella della v1.2.2: %s (sprint 12 · T5.2)', async (_caso, attiva, pagina, attese) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} {...pagina} {...attiva} />);
 
         expect(segnate()).toStrictEqual(attese);
@@ -3570,7 +3689,7 @@ describe('la voce attiva della barra', () => {
     });
 
     it('nessuna voce può avere l\'id con cui la cornice dice «nessuna»: data una voce proprio con quell\'id, non è segnata, e l\'id è un altro (sprint 12 · T5.4)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const idDato = () => appShell.mock.lastCall?.[0].active;
         const voci = [...vociDiPm[0].items];
         const dati_: string[] = [];
@@ -3631,7 +3750,7 @@ describe('la voce attiva della barra', () => {
 // quella del frontend.
 describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decide la cornice', () => {
     it('con uno spread di props che `Cornice` non ha, quando la cornice non dà niente al loro posto all\'`AppShell` non arrivano (sprint 19 · review, R3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const fuoriDalTipo = {
             companies: [{ id: 'x', name: 'X', workspaces: [{ slug: 'x', name: 'X' }] }],
             unreadCount: 99,
@@ -3655,7 +3774,7 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
 // «la ricerca», più sopra.
 describe('chi non ha accettato i documenti legali', () => {
     /** I dati ridotti, come li dà `Cornice::dati()` davanti al 403 del backoffice. */
-    const ridotti: DatiDellaCornice = { ...dati, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
     /** I dati di chi ha accettato: moduli, aziende, sette non lette. */
     const diSempre: DatiDellaCornice = { ...dati, aziende, non_lette: 7, aggiornati_il: '2026-10-11T22:00:00.000001Z' };
     const spenta = 'Non disponibile finché non accetti i documenti.';
@@ -3688,7 +3807,7 @@ describe('chi non ha accettato i documenti legali', () => {
         ['una pagina di app.zeiras.com', undefined],
         ['una pagina di un modulo', 'pm'],
     ])('coi dati `accettazione_richiesta: true` %s esce con la cornice ridotta: nel menu Moduli solo la Dashboard, nessun numero sulla campanella, e sopra il contenuto, che resta, l\'avviso con titolo, frase e pulsante (sprint 24 · T2.1)', async (_quale, product) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
         const crea = [{ label: 'Nuova board' }];
         await mostra(<Cornice dati={ridotti} product={product} nav={delModulo} active="board" create={crea} flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
@@ -3719,7 +3838,7 @@ describe('chi non ha accettato i documenti legali', () => {
     it('la campanella è spenta: il pannello ha la frase e nessuna notifica, senza «Segna tutte come lette», «Riprova» e «Vedi tutte», e la cornice non chiama nessuna delle sue rotte (sprint 24 · T2.2)', async () => {
         const fetchFinto = vi.fn(async () => risposta({ data: [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' }], workspace: 'acme-marketing' }));
         vi.stubGlobal('fetch', fetchFinto);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={ridotti} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
@@ -3733,6 +3852,17 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(['onNotificationsOpen', 'onRetryNotifications', 'onMarkAllRead', 'onAllNotifications', 'onOpenNotification', 'onSearch'].filter((nome) => nome in props)).toStrictEqual([]);
         expect([props.notifications, props.unreadCount, props.notificationsState, props.searchResults, props.searchState]).toStrictEqual([[], 0, 'error', [], 'error']);
         expect([props.labels?.notificationsError, props.labels?.searchHint, props.labels?.searchError]).toStrictEqual([spenta, spenta, spenta]);
+    });
+
+    // Sprint 25 · T4 (voce #1639): nello stato ridotto i due testi della ricerca non nominano nessuna fonte, nemmeno coi dati che
+    // dicono ancora un modulo attivo (lo stato ridotto lo ha detto una rotta, o i dati li ha ritoccati un frontend): il
+    // segnaposto è quello senza fonti, e l'invito resta la frase dell'accettazione.
+    it('a chi non ha accettato i documenti legali il segnaposto della ricerca non nomina nessuna fonte, nemmeno coi dati che dicono un modulo attivo, e l\'invito resta la frase dell\'accettazione (sprint 25 · T4.3)', async () => {
+        await mostra(<Cornice dati={{ ...dati, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca…');
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(uno('.zr-search-note')?.textContent).toBe('Non disponibile finché non accetti i documenti.');
     });
 
     it.each([
@@ -3826,10 +3956,14 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
-    // Lettura della PR #52, R5. `Cornice::dati()` dà `prodotti` come lista vuota, e al browser arriva `[]`, non `{}`: è la forma
-    // vera dei dati ridotti.
-    it('coi `prodotti` dei dati ridotti come arrivano dal server, una lista vuota (`[]`), la cornice esce ridotta come con `{}` (sprint 24 · T5, R5)', async () => {
-        await mostra(<Cornice dati={{ ...ridotti, prodotti: [] as unknown as DatiDellaCornice['prodotti'] }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+    // Lettura della PR #52, R5, e seconda lettura, S7 (sprint 25 · T5.5). `Cornice::dati()` dà `prodotti` come lista vuota, e al
+    // browser arriva `[]`, non `{}`: è la forma vera dei dati ridotti, quella di `ridotti` qui sopra, e il tipo esportato la
+    // ammette senza una conversione. Letta per id non dà niente, come l'oggetto vuoto di dati scritti a mano.
+    it('coi `prodotti` dei dati ridotti scritti a mano come un oggetto vuoto (`{}`) la cornice esce ridotta come con la lista vuota (`[]`) che arriva dal server, e il tipo ammette tutte e due le forme (sprint 24 · T5, R5; sprint 25 · T5.5)', async () => {
+        const comeDalServer: DatiDellaCornice['prodotti'] = [];
+        expect(ridotti.prodotti).toStrictEqual(comeDalServer);
+        expectTypeOf(ridotti.prodotti.pm).toEqualTypeOf<'attivo' | 'disponibile' | 'in_arrivo' | undefined>();
+        await mostra(<Cornice dati={{ ...ridotti, prodotti: {} }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         expect(cornice()).toStrictEqual(ridotta);
         expect(uno('.zr-nav-soon')).toBeNull();
@@ -3841,6 +3975,8 @@ describe('chi non ha accettato i documenti legali', () => {
     // voce è segnata; se la dice vale quella, e su una pagina di app.zeiras.com resta la Dashboard.
     it.each<[string, { product?: string; active?: string }, string[]]>([
         ['una pagina di un modulo che non dice la voce attiva', { product: 'pm' }, []],
+        // Seconda lettura della PR #52, S5 (sprint 25 · T5.4): una voce attiva vuota per l'`AppShell` è come assente.
+        ['una pagina di un modulo che dà una voce attiva vuota', { product: 'pm', active: '' }, []],
         ['una pagina di un modulo che la dice', { product: 'pm', active: 'board' }, ['Le board']],
         ['una pagina di app.zeiras.com', {}, ['Dashboard']],
     ])('nello stato ridotto, su %s le voci segnate nella barra sono quelle giuste: mai la Dashboard per chi è in un modulo (sprint 24 · T5, R6)', async (_quale, dellaPagina, attese) => {
@@ -3897,7 +4033,7 @@ describe('chi non ha accettato i documenti legali', () => {
     });
 
     it('`accettazione_richiesta: false` vale come assente, e senza la chiave e senza il segnale l\'`AppShell` riceve le prop di prima: né una in più né una in meno (sprint 24 · T2.6)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const date = async (deiDati: DatiDellaCornice) => {
             await mostra(<Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
@@ -3919,5 +4055,241 @@ describe('chi non ha accettato i documenti legali', () => {
         const conFalse = await date({ ...diSempre, accettazione_richiesta: false });
         expect(senzaLaPagina(conFalse)).toStrictEqual(senzaLaPagina(senza));
         expect([avviso(), uno('main')?.textContent, uno('.zr-bell-count')?.textContent]).toStrictEqual([null, 'La pagina', '7']);
+    });
+
+    // Sprint 25 · T5 (voce #1762): i minori della seconda lettura della PR #52.
+
+    /** Una pagina con uno stato suo: un campo, un riquadro che scorre, e un effetto che parte a ogni montaggio. */
+    function PaginaConUnCampo({ montata }: { montata: () => void }) {
+        useEffect(montata, [montata]);
+
+        return <form><input name="bozza" /><div className="uat-scorre" /></form>;
+    }
+    /** Dati di sempre letti dopo: il loro segno è più avanti di quello di `diSempre` e di `ridotti`. */
+    const lettiDopo: DatiDellaCornice = { ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' };
+
+    // T5.1 (S1, e ciò che restava di R2). L'avviso entra sopra la pagina e la pagina resta dov'è — qui, senza percorso, figlia
+    // diretta di `main.zr-main` — com'è fuori dallo stato ridotto: quando lo stato arriva o se ne va non si rimonta. Ciò che la persona ha scritto in un
+    // campo resta, col fuoco e con lo scorrimento, e gli effetti della pagina non ripartono. Lo stato arriva in due modi: coi
+    // dati di una visita che tiene la pagina montata, o dal 403 di una rotta.
+    it.each<[string, boolean]>([
+        ['arriva coi dati di una visita che tiene la pagina montata', false],
+        ['arriva dal 403 di una rotta', true],
+    ])('quando lo stato ridotto %s, e quando se ne va, la pagina non si rimonta: il campo è lo stesso nodo, con ciò che c\'era scritto, col fuoco e con lo scorrimento, e il suo effetto non riparte (sprint 25 · T5.1)', async (_come, daUnaRotta) => {
+        const elenco = inAttesa();
+        vi.stubGlobal('fetch', vi.fn(() => elenco.promessa));
+        const montata = vi.fn();
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><PaginaConUnCampo montata={montata} /></Cornice>;
+        await mostra(laPagina(diSempre));
+        const campo = uno('main input') as HTMLInputElement;
+        const riquadro = uno('main .uat-scorre') as HTMLElement;
+        campo.value = 'una bozza';
+        riquadro.scrollTop = 40;
+        /** Ciò che una pagina rimontata perderebbe, e dove sta la pagina: senza percorso, figlia diretta di `main.zr-main`. */
+        const dellaPagina = () => ({
+            campo: uno('main input') === campo,
+            scritto: (uno('main input') as HTMLInputElement | null)?.value,
+            colFuoco: document.activeElement === campo,
+            scorrimento: uno('main .uat-scorre')?.scrollTop,
+            montaggi: montata.mock.calls.length,
+            figliaDiMain: uno('main form')?.parentElement === uno('main'),
+        });
+        const comEra = { campo: true, scritto: 'una bozza', colFuoco: true, scorrimento: 40, montaggi: 1, figliaDiMain: true };
+
+        if (daUnaRotta) {
+            await clic(uno('.zr-bell'));
+        }
+        campo.focus();
+        expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
+
+        // Lo stato ridotto arriva.
+        await (daUnaRotta ? elenco.arriva(daAccettare()) : mostra(laPagina(ridotti)));
+        expect([cornice(), dellaPagina()]).toStrictEqual([ridotta, comEra]);
+        // L'avviso sta prima della pagina, in un contenitore suo.
+        expect([...(uno('main')?.children ?? [])].map((figlio) => [figlio.tagName, figlio.querySelector('.zr-alert') !== null])).toStrictEqual([['DIV', true], ['FORM', false]]);
+        // Lo spazio fra avviso e pagina è quello di `zr-stack`, fra l'avviso e un secondo figlio vuoto.
+        const delAvviso = uno('main > div');
+        expect([delAvviso?.className, delAvviso?.children.length, delAvviso?.firstElementChild === avviso(), delAvviso?.lastElementChild?.childNodes.length]).toStrictEqual(['zr-stack', 2, true, 0]);
+
+        // E se ne va, coi dati letti dopo che non lo dicono.
+        await mostra(laPagina(lettiDopo));
+        expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
+    });
+
+    // Lettura della PR #56, R5 e R6. Dove sta la pagina: dentro `main.zr-main`, o dentro `div.zr-main-body` se ha il percorso (è
+    // lì che l'`AppShell` mette `children`). In tutti e due i posti l'avviso le sta subito prima, e la pagina non si rimonta. E
+    // ciò che la cornice dà all'`AppShell` come `children` è sempre un frammento, anche fuori dallo stato ridotto: il primo
+    // figlio è l'avviso, o niente; il secondo è la pagina, com'è.
+    it.each<[string, { label: string }[] | undefined, string]>([
+        ['senza percorso', undefined, 'main.zr-main'],
+        ['col percorso', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }], 'main.zr-main > div.zr-main-body'],
+    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, crumbs, dove) => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        const montata = vi.fn();
+        const pagina = <PaginaConUnCampo montata={montata} />;
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" crumbs={crumbs} onLogout={esciSenzaEffetto}>{pagina}</Cornice>;
+        /** Dove sta la pagina, che cosa ha accanto, e ciò che l'`AppShell` ha ricevuto come `children`. */
+        const dellaPagina = () => {
+            const dato = appShell.mock.lastCall?.[0].children as ReactElement<{ children: unknown[] }>;
+
+            return {
+                padre: uno('main form')?.parentElement === uno(dove),
+                accanto: [...(uno(dove)?.children ?? [])].map((figlio) => [figlio.tagName, figlio.querySelector('.zr-alert') !== null]),
+                frammento: dato.type === Fragment,
+                figli: dato.props.children.length,
+                senzaAvviso: dato.props.children[0] === null,
+                laPagina: dato.props.children[1] === pagina,
+                montaggi: montata.mock.calls.length,
+            };
+        };
+
+        await mostra(laPagina(diSempre));
+        const campo = uno('main input');
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['FORM', false]], frammento: true, figli: 2, senzaAvviso: true, laPagina: true, montaggi: 1 });
+
+        // Lo stato ridotto arriva: l'avviso entra subito prima della pagina, nello stesso posto.
+        await mostra(laPagina(ridotti));
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['DIV', true], ['FORM', false]], frammento: true, figli: 2, senzaAvviso: false, laPagina: true, montaggi: 1 });
+        expect(uno('main input')).toBe(campo);
+
+        // E se ne va.
+        await mostra(laPagina(lettiDopo));
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['FORM', false]], frammento: true, figli: 2, senzaAvviso: true, laPagina: true, montaggi: 1 });
+        expect(uno('main input')).toBe(campo);
+    });
+
+    // T5.3 (S3). Il segnale di una rotta vale per i dati dello stesso workspace che non sono più recenti: non per quelli di un
+    // altro workspace, nemmeno con lo stesso segno, e senza segno solo per lo stesso oggetto.
+    it.each<[string, DatiDellaCornice, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['dati di un altro workspace con lo stesso segno', diSempre, (deiDati) => ({ ...deiDati, workspace: { nome: 'Vendite', slug: 'acme-vendite' } })],
+        ['un altro oggetto senza segno', { ...dati, aziende, non_lette: 7 }, (deiDati) => ({ ...deiDati })],
+    ])('dopo il 403 `accettazione_richiesta` di una rotta, con %s la cornice torna quella di sempre (sprint 25 · T5.3)', async (_caso, primi, altri) => {
+        vi.stubGlobal('fetch', vi.fn(async () => daAccettare()));
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(primi));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Con lo stesso oggetto resta ridotta.
+        await mostra(laPagina(primi));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        await mostra(laPagina(altri(primi)));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    // T5.3 (S4). Un frontend può tenere la `Cornice` montata fra due workspace, senza la `key` del layout. Il segnale di A non
+    // vale in B, e non torna a valere in A: la prima volta che non vale per i dati della cornice si toglie. Altrimenti, tornati
+    // in A coi dati di prima (Indietro del browser), la cornice uscirebbe ridotta per un segnale vecchio a chi nel frattempo ha
+    // accettato. Se in A serve ancora, lo ridice la prima rotta che risponde.
+    it.each<[string, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['lo stesso oggetto', (deiDati) => deiDati],
+        ['una copia con lo stesso segno', (deiDati) => ({ ...deiDati })],
+    ])('con la cornice tenuta montata fra due workspace il segnale di una rotta non resta: A col 403, poi B, poi di nuovo A coi dati di prima (%s), e la cornice non esce ridotta per un segnale vecchio (sprint 25 · T5.3)', async (_quali, diPrima) => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        // In B il segnale di A non vale.
+        await mostra(laPagina({ ...diSempre, workspace: { nome: 'Vendite', slug: 'acme-vendite' } }));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+        // Di nuovo in A, coi dati di prima.
+        await mostra(laPagina(diPrima(diSempre)));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // T5.8 (A8), l'avviso per il lettore di schermo. Ciò che la cornice ha detto nel suo `role="status"` nascosto — il numero
+    // sceso dopo una lettura con un clic — nello stato ridotto non resta: la campanella non ha più un numero, e la zona non
+    // continua a dirne uno. Il numero può non cambiare: col 403 di una rotta i dati sono gli stessi, e i dati ridotti contano
+    // zero come chi ha appena letto l'ultima.
+    it.each<[string, number, string, boolean]>([
+        ['dal 403 di una rotta, coi dati di prima', 7, 'Notifiche, 6 non lette', true],
+        ['coi dati ridotti, che contano zero come l\'avviso', 1, 'Nessuna notifica non letta', false],
+    ])('un avviso già detto al lettore di schermo non resta nel `role="status"` nascosto quando lo stato ridotto arriva %s (sprint 25 · T5.8)', async (_come, nonLette, dettoPrima, daUnaRotta) => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        let caricamenti = 0;
+        const fetchFinto = vi.fn(async (indirizzo: string) => {
+            if (indirizzo === '/cornice/notifiche') {
+                return ++caricamenti === 1 ? risposta({ data: [delContatto], workspace: 'acme-marketing' }) : daAccettare();
+            }
+
+            return risposta({ data: { id: 'uat-n69', letta: true } });
+        });
+        vi.stubGlobal('fetch', fetchFinto);
+        const detto = () => [...contenitore.children].find((figlio) => figlio.getAttribute('role') === 'status')?.textContent;
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        const conQuelNumero = { ...diSempre, non_lette: nonLette };
+        await mostra(laPagina(conQuelNumero));
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(detto()).toBe(dettoPrima);
+
+        await (daUnaRotta ? clic(uno('.zr-bell')) : mostra(laPagina(ridotti)));
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(detto()).toBe('');
+    });
+
+    // T5.8 (A8), la ricerca. L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva al tasto: se nel
+    // mezzo la cornice è passata allo stato ridotto, quella chiamata non fa partire una `POST /cornice/ricerca`.
+    describe('i 300 ms che l\'`AppShell` aspetta dopo l\'ultimo tasto', () => {
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        /** Scrive nel campo della ricerca, come una persona, e lascia passare quei millisecondi. */
+        const batte = async (parola: string, poi: number) => {
+            const campo = uno('.zr-search input') as HTMLInputElement;
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(poi);
+            });
+        };
+        const passano = async (millisecondi: number) => act(async () => {
+            await vi.advanceTimersByTimeAsync(millisecondi);
+        });
+
+        it.each<[string, DatiDellaCornice, string[]]>([
+            ['arrivano i dati ridotti: la ricerca non parte', ridotti, []],
+            // Il controllo vede ciò che cerca: con altri dati di sempre, dopo gli stessi tasti, la ricerca parte.
+            ['arrivano altri dati di sempre: la ricerca parte', lettiDopo, ['/cornice/ricerca']],
+        ])('fra l\'ultimo tasto e i 300 ms %s (sprint 25 · T5.8)', async (_caso, arrivati, partite) => {
+            const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ data: [], workspace: 'acme-marketing' }));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            await batte('uat', 100);
+            await mostra(laPagina(arrivati));
+            await passano(300);
+
+            expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(partite);
+        });
+
+        it('se lo stato ridotto lo dice il 403 di una ricerca in volo, il tasto battuto nel frattempo non ne fa partire un\'altra (sprint 25 · T5.8)', async () => {
+            let arriva!: (valore: Response) => void;
+            const fetchFinto = vi.fn((_indirizzo: string) => new Promise<Response>((risolvi) => (arriva = risolvi)));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            // La prima ricerca parte, e resta in volo.
+            await batte('ua', 300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            // Un altro tasto: l'`AppShell` aspetta i suoi 300 ms. Dopo 100 arriva il 403.
+            await batte('uat', 100);
+            await act(async () => {
+                arriva(daAccettare());
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(cornice()).toStrictEqual(ridotta);
+
+            await passano(300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
     });
 });

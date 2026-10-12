@@ -32,10 +32,17 @@ export interface NotificaDellaCornice {
 
 /** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */
 export interface RisultatoDellaRicerca {
-    /** Il tipo della risorsa nel backoffice (`board.board`, `board.cartelle`): di che prodotto è, e come si mostra, lo dice il registro. */
+    /** Il tipo della risorsa nel backoffice (`board.scheda`, `crm.persona`): di che prodotto è, e come si mostra, lo dice il registro. */
     tipo: string;
     id: string;
     titolo: string;
+    /**
+     * I testi che il backoffice dà per riconoscerla, con le sue chiavi (dalla `v1.15.0`): `board` e `lista` di una scheda,
+     * `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità, ognuno un testo o `null`; `null` per
+     * un'azienda, una board e una cartella. Quali fanno la seconda riga del risultato lo dice il registro. Facoltativo: una parte
+     * server finta di prima della `v1.15.0` non lo dà, e vale come `null`.
+     */
+    contesto?: Record<string, string | null> | null | undefined;
 }
 
 /**
@@ -135,7 +142,9 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
  * manca, o ha un'altra forma, non è un errore, è senza segno.
  */
 export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
-    if (!FORMA_DI_UN_ID.test(id)) {
+    // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
+    // un'espressione regolare lo converte da sé, e `null` o un numero hanno la forma di un id.
+    if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
     }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
@@ -153,10 +162,10 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
 }
 
 /**
- * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
- * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
- * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
- * corpo). `segnale` annulla la richiesta. Coi risultati, il workspace di cui sono, come lo dice la parte server (dalla
+ * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice: POST /cornice/ricerca. La parola sta nel
+ * corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi del
+ * browser (dalla `v1.15.0` sta nel corpo anche dal server del modulo al backoffice). `segnale` annulla la richiesta. Coi
+ * risultati, il workspace di cui sono, come lo dice la parte server (dalla
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
  * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
  * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro.

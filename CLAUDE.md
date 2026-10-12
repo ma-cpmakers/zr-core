@@ -16,9 +16,11 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 - **I componenti React della cornice**: `AppShell` (sidebar, menu Moduli esteso o chiuso, topbar, percorso), il
   selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
   «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano.
-- **Il design system intero nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua).
-  Il `bundle.js` del design system legge `window.React` e scrive `window.Zeiras` intero: due copie nella stessa app si
-  sovrascrivono, e `window.React` va scritto da un modulo importato **prima** del bundle. I font arrivano da Google
+- **Il design system nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua). I
+  componenti sono un modulo ES generato dal `bundle.js` del design system (`resources/js/zeiras/componenti.js`, vedi «Stack
+  e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
+  system intero, e lo scrive in `window.Zeiras`, con `window.React`; quello per le app (`resources/js/app`, dalla `v1.15.0`)
+  dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. I font arrivano da Google
   Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
   `font-src https://fonts.gstatic.com`.
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
@@ -64,7 +66,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8, vitest 5.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
-  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
+  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
 - `zeiras/zr-auth` `^0.12.4`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:
@@ -74,6 +76,14 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
+- `resources/js/zeiras/componenti.js` esce da `npm run componenti`, dal bundle del design system (`resources/zeiras/bundle.js`): gli
+  stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`. Non si ritocca a mano, e a un
+  riallineamento che cambia il bundle si rigenera nello stesso commit; se il bundle ha un'altra forma lo script si ferma e si
+  riallinea lo script.
+- I pesi che il README dice (la tabella delle tre app di prova) sono quelli che misura `resources/js/peso.test.ts`, entro mezzo
+  KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
+  numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
+  build fatte nel caso, mai con un numero scritto a mano.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 
@@ -91,5 +101,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 24 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 25 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

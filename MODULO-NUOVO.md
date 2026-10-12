@@ -72,16 +72,21 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
 
 Poi `composer require "zeiras/zr-core:^1.10.1"`, o con l'ultima versione con tag al posto di quella (questa guida c'è
 dalla `v1.10.1`). zr-auth lo richiede zr-core, e Composer lo installa con lui. Poi i due `@import` del CSS nell'ordine
-dato, l'import dei componenti dall'ingresso del pacchetto e, nel tuo `tsconfig`, `target` ES2022 o più recente:
-README, «Come si installa in un frontend». La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
+dato, gli import del JS e, nel tuo `tsconfig`, `target` ES2022 o più recente: README, «Come si installa in un frontend».
+Un modulo che nasce parte dall'ingresso per le app (dalla `v1.15.0`): la cornice da
+`vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da
+`vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi. La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
 file statici: README, «La favicon». Il design system nella build è quello di zr-core: non ne tieni una copia tua.
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
-la build passano; nella build il design system c'è una volta sola:
-`grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 1.
+la build passano; nella build il design system non entra intero:
+`grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 0 (dall'ingresso di
+sempre, dove `Zeiras` è il design system intero, risponde 1).
 
 **Errore già pagato**: Composer non eredita i repository di un pacchetto, e senza quello di zr-auth nel tuo `composer.json`
 zr-core non si installa. Una seconda copia del design system accanto a quella del pacchetto si sovrascrive con la prima.
+I due ingressi non si mescolano: un file che importa ancora dall'ingresso di sempre riporta nella build il design system
+intero.
 Con un `target` più vecchio di ES2022 `tsc --noEmit` si ferma sui sorgenti del pacchetto, non sui tuoi.
 
 ## 2. L'ingresso, la sessione, l'uscita
@@ -245,9 +250,9 @@ visite non scrivi un rimando tuo: dalle tue chiamate a `/v1` lo fa zr-auth, dall
 `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia. A una tua richiesta JSON
 zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Con una patch più vecchia
 quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su. Sulle rotte `/cornice/*` non mettere un middleware che chiama
-`/v1` senza prendere quel 403. Nello stato ridotto la tua pagina sta in un contenitore sotto l'avviso, e si rimonta quando
-lo stato arriva dal 403 di una rotta o se ne va — README, «La cornice», al punto «Chi non ha accettato i documenti
-legali».
+`/v1` senza prendere quel 403. Nello stato ridotto l'avviso sta sopra la tua pagina, che resta dov'è e non si rimonta
+quando lo stato arriva o se ne va: ciò che è scritto in un campo resta — README, «La cornice», al punto «Chi non ha
+accettato i documenti legali».
 
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
@@ -303,12 +308,14 @@ legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il b
 ## 9. La ricerca
 
 Per la ricerca che c'è non scrivi niente: è della cornice, che chiede `POST /cornice/ricerca` —
-README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Ma oggi la ricerca
-trova solo board e cartelle di Project Management: perché trovi **le tue** risorse servono due cose, tutte e due da
-chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel registro (`risorse`: il tipo come lo dà il
-backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore) e il nome del suo gruppo in ogni lingua: un
-risultato di un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua ricerca (`/v1/ricerca`) dia quel
-tipo.
+README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Dalla `v1.15.0` la
+ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM: perché trovi
+**le tue** risorse servono due cose, tutte e due da chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel
+registro (`risorse`: il tipo come lo dà il backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e, se
+il backoffice dà dei testi per riconoscerla, le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi
+in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che il segnaposto e l'invito della ricerca nominano
+dove il tuo modulo è attivo. Un risultato di un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
+ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
 
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo
 che la ricerca funziona. Che trovi le tue cose lo prova il titolo di una tua risorsa: compare sotto il nome del suo tipo,
@@ -323,7 +330,10 @@ non trova la rotta.
 **Scrivi** `docs/zr-design-system.md`, il registro del tuo allineamento — la forma (il tag, e una riga per file con lo
 sha256 e dove lo usi) la dà la skill `zr-design-system` —, e un test che confronta gli sha256 dei file del design system
 che la tua build usa (`vendor/zeiras/zr-core/resources/zeiras/`: `bundle.js`, `bundle.css`, `index.d.ts`, `tokens.json`)
-con quelli scritti lì. Un modello (zr-crm lo chiama `RiallineamentoDesignTest`, in `tests/Feature/`):
+con quelli scritti lì. Dalla `v1.15.0` i componenti nella build vengono da
+`vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, che zr-core genera da `bundle.js` e confronta nella sua CI a
+ogni giro: lo sha256 di `bundle.js` resta il segno che il design system è cambiato. Un modello (zr-crm lo chiama
+`RiallineamentoDesignTest`, in `tests/Feature/`):
 
 ```php
 it('il documento dell\'allineamento ha gli sha256 dei file del design system installati', function () {

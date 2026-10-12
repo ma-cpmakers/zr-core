@@ -8,6 +8,7 @@ use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
+use Zeiras\Core\Http\RicercaDellaCornice;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -16,34 +17,79 @@ use Zeiras\Auth\Testing\Rotte;
 // che prodotto è lo dice il registro, nel browser. Una risposta che non ha quella forma è un guasto, mai un elenco più corto.
 // Sprint 18 · T1 (voce #1638): la rotta è POST /cornice/ricerca, e la parola cercata sta nel corpo JSON (`{q}`), mai
 // nell'indirizzo; una GET, quella delle versioni fino alla `v1.7.0`, non ha più una rotta. Dalla parte server al backoffice
-// resta la GET di ricerca.elenca: è un altro tratto (#1639).
+// restava la GET di ricerca.elenca: era un altro tratto (#1639).
 // Sprint 22 · T6 (voce #1726): la risposta dice anche di quale workspace sono i risultati (`workspace`), ed è lì che la cornice li
 // apre: lo slug è quello della sessione, col cui gettone la ricerca è fatta, mai uno che arriva dal browser.
+// Sprint 25 · T3 (voce #1639): anche dalla parte server al backoffice la parola sta nel corpo. La parte server chiama
+// ricerca.crea (POST /v1/ricerca, corpo `{q}` e nient'altro, indirizzo senza query); di ogni risultato dà anche `contesto`
+// (null, o i soli testi non vuoti che il backoffice ha dato) e mai `indirizzo`; davanti al 429 `troppe_richieste` risponde
+// 429 col solo codice e i secondi di `Retry-After`.
+// Sprint 25 · T6 (lettura della PR #56, R1): di `contesto` passano le sole chiavi che il registro dei moduli dà al tipo del
+// risultato (`risorse[].contesto`), una lista chiusa: una chiave che il backoffice aggiungesse domani non arriva al browser da
+// sola, entra dal registro. Il registro è quello del pacchetto, letto una volta per processo come fa l'elenco delle notifiche.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLA_RICERCA = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
+/** Gli id dell'esempio del contratto, nell'ordine del backoffice. */
+const ID_DELL_ESEMPIO_DI_RICERCA = ['01k6w4c7e9g1j3m5p7r9t1v3x5', '01k6wd5b3d5f7h9k1n3q5s7u9w', '01k6w2c4e6g8j0m2p4r6t8v0x2'];
+
 /**
- * La risposta di ricerca.elenca nell'esempio del contratto di /v1: una cartella e una board, in ordine di titolo, ultima pagina.
+ * La risposta di ricerca.crea nell'esempio del contratto di /v1: una scheda, un contatto e una cartella, nell'ordine del
+ * backoffice (prima le fonti nuove, poi board e cartelle), ultima pagina. Ogni voce porta `contesto` (i testi per
+ * riconoscerla, o null) e `indirizzo`.
  *
- * @return array{data: list<array{tipo: string, id: string, titolo: string}>, successivo: null}
+ * @return array{data: list<array{tipo: string, id: string, titolo: string, contesto: array<string, string>|null, indirizzo: string}>, successivo: null}
  */
 function esempioDelContratto(): array
 {
     return ['data' => [
-        ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing'],
-        ['tipo' => 'board.board', 'id' => '01k6w2d5f7h9k1n3q5s7v9x1z3', 'titolo' => 'Report marketing'],
+        ['tipo' => 'board.scheda', 'id' => '01k6w4c7e9g1j3m5p7r9t1v3x5', 'titolo' => 'Piano editoriale ottobre', 'contesto' => ['board' => 'Marketing', 'lista' => 'In corso'], 'indirizzo' => '/v1/board/schede/01k6w4c7e9g1j3m5p7r9t1v3x5'],
+        ['tipo' => 'crm.persona', 'id' => '01k6wd5b3d5f7h9k1n3q5s7u9w', 'titolo' => 'Paolo Verdi', 'contesto' => ['organizzazione' => 'Verdi Impianti', 'ruolo' => 'Direttore'], 'indirizzo' => '/v1/crm/persone/01k6wd5b3d5f7h9k1n3q5s7u9w'],
+        ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing', 'contesto' => null, 'indirizzo' => '/v1/board/cartelle/01k6w2c4e6g8j0m2p4r6t8v0x2'],
     ], 'successivo' => null];
 }
 
 /**
- * Un risultato come lo dà ricerca.elenca: il tipo della risorsa, il suo id e il suo nome.
+ * Un risultato come lo dà ricerca.crea: il tipo della risorsa, il suo id, il suo nome, il contesto (i testi per riconoscerla, o
+ * null) e l'indirizzo, che qui è un segno: dalla parte server della cornice non deve uscire.
  *
- * @return array{tipo: string, id: string, titolo: string}
+ * @param  array<string, mixed>|null  $contesto
+ * @return array{tipo: string, id: string, titolo: string, contesto: array<string, mixed>|null, indirizzo: string}
  */
-function risultatoDelBackoffice(string $tipo, string $id, string $titolo): array
+function risultatoDelBackoffice(string $tipo, string $id, string $titolo, ?array $contesto = null): array
 {
-    return ['tipo' => $tipo, 'id' => $id, 'titolo' => $titolo];
+    return ['tipo' => $tipo, 'id' => $id, 'titolo' => $titolo, 'contesto' => $contesto, 'indirizzo' => '/v1/segno-dell-indirizzo/'.$id];
+}
+
+/**
+ * Le richieste partite verso il backoffice, una riga l'una: metodo, percorso, query (null: l'indirizzo non ne ha) e corpo
+ * JSON. `Http::assertSent` dice solo sì o no: così un rosso mostra che cosa è partito.
+ *
+ * @return list<array{string, mixed, mixed, mixed}>
+ */
+function richiesteAlBackoffice(): array
+{
+    return Http::recorded()->map(fn (array $coppia) => [
+        $coppia[0]->method(),
+        parse_url($coppia[0]->url(), PHP_URL_PATH),
+        parse_url($coppia[0]->url(), PHP_URL_QUERY),
+        json_decode($coppia[0]->body(), true),
+    ])->values()->all();
+}
+
+/**
+ * Il 429 `troppe_richieste` di ricerca.crea (il freno per persona), coi secondi di `Retry-After` se `$riprovaFra` non è null. Un
+ * problem details (RFC 9457): titolo, dettaglio e l'intestazione in più sono segni, testi che dalla parte server della cornice
+ * non devono uscire. Con un altro stato, o con un altro codice (null: senza codice), è una risposta che gli somiglia e non lo è.
+ */
+function troppeRichieste(?string $riprovaFra, int $stato = 429, ?string $codice = 'troppe_richieste'): mixed
+{
+    $problema = ['type' => 'about:blank', 'title' => 'segno-del-titolo', 'status' => $stato, 'detail' => 'segno-del-dettaglio']
+        + ($codice === null ? [] : ['codice' => $codice]);
+
+    return Http::response((string) json_encode($problema), $stato, ['Content-Type' => 'application/problem+json', 'X-Segno' => 'segno-dell-intestazione']
+        + ($riprovaFra === null ? [] : ['Retry-After' => $riprovaFra]));
 }
 
 /** La ricerca della cornice, con `q` nel corpo JSON; ogni sua risposta è senza gettone. */
@@ -55,7 +101,7 @@ function cerca(string $q): TestResponse
     return $risposta;
 }
 
-it('POST /cornice/ricerca cerca nel workspace del gettone e dà tipo, id e titolo dei risultati di ricerca.elenca, nell\'ordine del backoffice (sprint 5 · T4.1)', function () {
+it('POST /cornice/ricerca cerca nel workspace del gettone con una sola richiesta, ricerca.crea: una POST a /v1/ricerca col termine nel corpo JSON e nient\'altro, e l\'indirizzo senza query; dà tipo, id, titolo e contesto dei risultati, nell\'ordine del backoffice (sprint 5 · T4.1; sprint 25 · T3.1, T3.2)', function () {
     $gettoni = sessioneAMano(WORKSPACE_DELLA_RICERCA);
     // Col gettone dell'accesso il backoffice risponderebbe 403 gettone_senza_workspace: qui dà altri risultati, per vederlo.
     Http::fake(fn (Request $richiesta) => match (parse_url($richiesta->url(), PHP_URL_PATH)) {
@@ -64,31 +110,159 @@ it('POST /cornice/ricerca cerca nel workspace del gettone e dà tipo, id e titol
             : ['data' => [risultatoDelBackoffice('board.board', 'uat-di-un-altro-workspace', 'UAT Altro')], 'successivo' => null]),
     });
 
-    // L'esempio del contratto così com'è, nel suo ordine (per titolo): senza `app`, e `successivo` resta nella parte server.
+    // L'esempio del contratto nel suo ordine, col contesto di ogni voce: senza `indirizzo`, e `successivo` resta nella parte server.
     cerca('UAT là')->assertOk()->assertExactJson(['data' => [
-        ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing'],
-        ['tipo' => 'board.board', 'id' => '01k6w2d5f7h9k1n3q5s7v9x1z3', 'titolo' => 'Report marketing'],
+        ['tipo' => 'board.scheda', 'id' => '01k6w4c7e9g1j3m5p7r9t1v3x5', 'titolo' => 'Piano editoriale ottobre', 'contesto' => ['board' => 'Marketing', 'lista' => 'In corso']],
+        ['tipo' => 'crm.persona', 'id' => '01k6wd5b3d5f7h9k1n3q5s7u9w', 'titolo' => 'Paolo Verdi', 'contesto' => ['organizzazione' => 'Verdi Impianti', 'ruolo' => 'Direttore']],
+        ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing', 'contesto' => null],
     ], 'workspace' => 'uat-marketing']);
-    Http::assertSentCount(1);
-    Http::assertSent(function (Request $richiesta) use ($gettoni) {
-        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
-
-        return $richiesta->method() === 'GET' && parse_url($richiesta->url(), PHP_URL_PATH) === '/v1/ricerca'
-            && $query === ['q' => 'UAT là'] && $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']);
-    });
+    expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'UAT là']]]);
 });
 
-it('ciò che la risposta del backoffice ha in più non arriva al browser: un `app`, altri campi di un risultato, il cursore della pagina dopo; un tipo che zr-core non conosce passa, e lo scarta la cornice (sprint 5 · T4.1)', function () {
+it('il termine va al backoffice solo nel corpo, com\'è: qualunque cosa contenga, l\'indirizzo della richiesta è /v1/ricerca e non porta query (sprint 25 · T3.1)', function (string $q) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+
+    cerca($q)->assertOk();
+
+    expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => $q]]])
+        ->and(Http::recorded()->first()[0]->url())->toEndWith('/v1/ricerca');
+})->with([
+    'una parola' => ['uat'],
+    'coi segni di una query' => ['a&b=c?d#e'],
+    'come una query intera' => ['?q=uat&limite=100'],
+    'con le barre e i punti di un percorso' => ['../v1/io'],
+    'con un percento' => ['100% uat'],
+]);
+
+it('ciò che la risposta del backoffice ha in più non arriva al browser: l\'`indirizzo` di un risultato, un `app`, altri campi, il cursore della pagina dopo; un tipo che zr-core non conosce passa, e lo scarta la cornice; un risultato senza `contesto` lo ha null (sprint 5 · T4.1; sprint 25 · T3.2)', function () {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [
         [...risultatoDelBackoffice('board.board', 'uat-b1', 'UAT Lancio'), 'app' => 'crm', 'soggetto' => '/v1/board/board/uat-b1', 'dentro' => null],
         risultatoDelBackoffice('uat-ignoto', 'uat-x1', 'UAT Tipo nuovo'),
-    ], 'successivo' => 'uat-cursore', 'totale' => 2])]);
+        // Com'era un risultato di ricerca.elenca: senza `contesto` e senza `indirizzo`.
+        ['tipo' => 'board.cartelle', 'id' => 'uat-c1', 'titolo' => 'UAT Clienti'],
+    ], 'successivo' => 'uat-cursore', 'totale' => 3])]);
+
+    $risposta = cerca('UAT')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio', 'contesto' => null],
+        ['tipo' => 'uat-ignoto', 'id' => 'uat-x1', 'titolo' => 'UAT Tipo nuovo', 'contesto' => null],
+        ['tipo' => 'board.cartelle', 'id' => 'uat-c1', 'titolo' => 'UAT Clienti', 'contesto' => null],
+    ], 'workspace' => 'uat-marketing']);
+
+    expect($risposta->getContent())->not->toContain('indirizzo');
+});
+
+it('di ogni risultato la rotta dà `contesto`: i testi che il backoffice ha dato, con le loro chiavi e nel suo ordine, oppure null (sprint 25 · T3.2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [
+        risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', ['lista' => 'Da fare', 'board' => 'UAT Sito']),
+        risultatoDelBackoffice('crm.trattativa', 'uat-t1', 'UAT Opportunità', ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta']),
+        risultatoDelBackoffice('crm.organizzazione', 'uat-o1', 'UAT Azienda'),
+    ], 'successivo' => null])]);
+
+    $risposta = cerca('UAT')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => ['lista' => 'Da fare', 'board' => 'UAT Sito']],
+        ['tipo' => 'crm.trattativa', 'id' => 'uat-t1', 'titolo' => 'UAT Opportunità', 'contesto' => ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta']],
+        ['tipo' => 'crm.organizzazione', 'id' => 'uat-o1', 'titolo' => 'UAT Azienda', 'contesto' => null],
+    ], 'workspace' => 'uat-marketing']);
+
+    // Un oggetto, con le chiavi nell'ordine del backoffice (qui `lista` prima di `board`): l'ordine in cui mostrarle è della cornice.
+    expect($risposta->getContent())->toContain('"contesto":{"lista":"Da fare","board":"UAT Sito"}')
+        ->toContain('"contesto":{"pipeline":"UAT Vendite","fase":"Proposta"}');
+});
+
+it('di `contesto` passano solo le chiavi che il registro dà al tipo del risultato, e solo coi valori di testo non vuoti: un null, un testo vuoto, un numero, un vero, un oggetto e una lista non passano, una chiave che il registro non dà a quel tipo nemmeno, e un contesto che così resta senza valori, o che non è un oggetto, è null (sprint 25 · T3.2; T6, R1)', function (mixed $delBackoffice, ?array $perLaCornice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [
+        ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => $delBackoffice, 'indirizzo' => '/v1/crm/persone/uat-p1'],
+    ], 'successivo' => null])]);
 
     cerca('UAT')->assertOk()->assertExactJson(['data' => [
-        ['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio'],
-        ['tipo' => 'uat-ignoto', 'id' => 'uat-x1', 'titolo' => 'UAT Tipo nuovo'],
+        ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => $perLaCornice],
     ], 'workspace' => 'uat-marketing']);
+})->with([
+    'un null accanto a un testo' => [['organizzazione' => null, 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    'un testo vuoto accanto a un testo' => [['organizzazione' => 'UAT Impianti', 'ruolo' => ''], ['organizzazione' => 'UAT Impianti']],
+    'un numero accanto a un testo' => [['organizzazione' => 'UAT Impianti', 'ruolo' => 12], ['organizzazione' => 'UAT Impianti']],
+    'un vero accanto a un testo' => [['organizzazione' => true, 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    'un oggetto accanto a un testo' => [['organizzazione' => ['nome' => 'UAT Impianti'], 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    'una lista accanto a un testo' => [['organizzazione' => ['UAT Impianti'], 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    // In PHP la chiave numerica di un oggetto JSON è un numero: da sola farebbe della risposta una lista, e non passa.
+    'una chiave numerica accanto a una di testo' => [[7 => 'UAT Impianti', 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    // Lettura della PR #56, R1: una lista chiusa. Il registro dà a un contatto `organizzazione` e `ruolo`, e nient'altro.
+    'una chiave che il registro non dà al tipo, accanto a una che dà' => [['reparto' => 'UAT Acquisti', 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    'una chiave che il registro non dà al tipo, prima e dopo le sue' => [['reparto' => 'UAT Acquisti', 'organizzazione' => 'UAT Impianti', 'sede' => 'UAT Milano', 'ruolo' => 'Direttore', 'indirizzo' => '/v1/crm/persone/uat-p1'], ['organizzazione' => 'UAT Impianti', 'ruolo' => 'Direttore']],
+    'solo chiavi che il registro non dà al tipo' => [['reparto' => 'UAT Acquisti', 'sede' => 'UAT Milano'], null],
+    'le chiavi di un altro tipo, quelle di una scheda' => [['board' => 'UAT Sito', 'lista' => 'Da fare'], null],
+    'una chiave del tipo scritta con la maiuscola' => [['Ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti'], ['organizzazione' => 'UAT Impianti']],
+    'tutti null' => [['organizzazione' => null, 'ruolo' => null], null],
+    'tutti vuoti' => [['organizzazione' => '', 'ruolo' => ''], null],
+    'solo chiavi numeriche' => [[3 => 'UAT Impianti', 7 => 'Direttore'], null],
+    'un oggetto vuoto' => [new stdClass, null],
+    'un testo' => ['UAT Impianti', null],
+    'un numero' => [12, null],
+    'un vero' => [true, null],
+    'una lista di testi' => [['UAT Impianti', 'Direttore'], null],
+]);
+
+/** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
+const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite'];
+
+it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di un contesto che le porta tutte restano le sue, nell\'ordine del backoffice (sprint 25 · T6, R1)', function (string $tipo, string $resta) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
+
+    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing"}');
+})->with([
+    'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
+    'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
+    'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite"}'],
+    // Il registro non dà chiavi a un'azienda, a una board, a una cartella: qualunque cosa il backoffice dia, null.
+    'un\'azienda' => ['crm.organizzazione', 'null'],
+    'una board' => ['board.board', 'null'],
+    'una cartella' => ['board.cartelle', 'null'],
+    // Un tipo che il registro non ha passa, e lo scarta la cornice: del suo contesto non passa niente.
+    'un tipo che il registro non ha' => ['uat-ignoto', 'null'],
+    'un tipo che somiglia a uno del registro' => ['board.schede', 'null'],
+]);
+
+it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco scritto nella rotta: con un registro di prova che al contatto dà `reparto`, passa `reparto` e non `ruolo`, e una scheda, che lì non ha chiavi, ha null (sprint 25 · T6, R1)', function () {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [
+        risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
+        risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
+    ], 'successivo' => null])]);
+    // Il registro di prova entra dalla proprietà privata, con la reflection, come per le notifiche: nel codice che va in
+    // produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
+    $registro = new ReflectionProperty(RicercaDellaCornice::class, 'registro');
+    $registro->setValue(null, [
+        ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
+        ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
+        ['id' => 'uat-senza-risorse'],
+    ]);
+
+    try {
+        cerca('UAT')->assertOk()->assertExactJson(['data' => [
+            ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
+            ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
+        ], 'workspace' => 'uat-marketing']);
+    } finally {
+        $registro->setValue(null, null);
+    }
+});
+
+it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie (sprint 25 · T6, R1)', function () {
+    $classe = new ReflectionClass(RicercaDellaCornice::class);
+    $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
+    $sorgente = (string) file_get_contents((string) $classe->getFileName());
+
+    expect($pubblici)->toBe(['cerca'])
+        ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
+        ->and(str_contains($sorgente, '@internal'))->toBe(false)
+        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
+        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
 });
 
 it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', function (string $q) {
@@ -129,12 +303,7 @@ it('gli spazi ai bordi di q si tolgono prima del controllo, anche in un frontend
     Http::assertNothingSent();
 
     cerca('  ab  ')->assertOk();
-    Http::assertSentCount(1);
-    Http::assertSent(function (Request $richiesta) {
-        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
-
-        return $query === ['q' => 'ab'];
-    });
+    expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'ab']]]);
 });
 
 it('senza sessione 401, con la sessione ma senza workspace 403, e il backoffice non si chiama (T5.1)', function () {
@@ -172,6 +341,9 @@ it('se il backoffice non risponde, o dà risultati che non sono di /v1, la ricer
     'un risultato buono e poi uno senza titolo' => [200, ['data' => [
         risultatoDelBackoffice('board.cartelle', 'uat-c1', 'UAT Clienti'), ['tipo' => 'board.board', 'id' => 'uat-b1'],
     ], 'successivo' => null]],
+    'un risultato col contesto e l\'indirizzo, e senza titolo' => [200, ['data' => [
+        ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'contesto' => ['board' => 'UAT Sito', 'lista' => 'Da fare'], 'indirizzo' => '/v1/board/schede/uat-s1'],
+    ], 'successivo' => null]],
 ]);
 
 it('la parola si legge solo dal corpo JSON: una POST che la porta altrove, o che in `q` non porta un testo, risponde 422 e non chiama il backoffice (sprint 18 · T1.2)', function (Closure $manda) {
@@ -202,12 +374,7 @@ it('con una parola nel corpo e un\'altra nell\'indirizzo si cerca quella del cor
 
     $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing']);
     Gettone::assenteDa($risposta);
-    Http::assertSentCount(1);
-    Http::assertSent(function (Request $richiesta) {
-        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
-
-        return $query === ['q' => 'uat-corpo'];
-    });
+    expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'uat-corpo']]]);
 });
 
 // Sprint 22 · T6 (voce #1726): la sessione ha un workspace solo. Con due schede su due workspace, la scheda rimasta indietro
@@ -229,13 +396,9 @@ it('POST /cornice/ricerca dice di quale workspace sono i risultati: lo slug del 
 
     expect($risposta->json('workspace'))->toBe($workspace['slug'])
         ->and(array_keys($risposta->json()))->toBe(['data', 'workspace'])
-        ->and($risposta->json('data.*.id'))->toBe(['01k6w2c4e6g8j0m2p4r6t8v0x2', '01k6w2d5f7h9k1n3q5s7v9x1z3']);
-    Http::assertSentCount(1);
-    Http::assertSent(function (Request $richiesta) {
-        parse_str((string) parse_url($richiesta->url(), PHP_URL_QUERY), $query);
-
-        return $query === ['q' => 'UAT'];
-    });
+        ->and($risposta->json('data.*.id'))->toBe(ID_DELL_ESEMPIO_DI_RICERCA)
+        // Al backoffice va la parola e basta: ciò che il browser manda accanto a `q` resta qui.
+        ->and(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'UAT']]]);
 })->with([
     'il workspace della sessione' => [WORKSPACE_DELLA_RICERCA, 'cornice/ricerca', [], []],
     'un altro workspace nella sessione' => [['id' => 'uat-ws-2', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'], 'cornice/ricerca', [], []],
@@ -292,7 +455,7 @@ it('lo `workspace` della risposta della ricerca è quello della sessione prima d
     $risposta = cerca('UAT')->assertOk();
 
     expect($risposta->json('workspace'))->toBe('uat-marketing')
-        ->and($risposta->json('data.*.id'))->toBe(['01k6w2c4e6g8j0m2p4r6t8v0x2', '01k6w2d5f7h9k1n3q5s7v9x1z3'])
+        ->and($risposta->json('data.*.id'))->toBe(ID_DELL_ESEMPIO_DI_RICERCA)
         // La sessione è passata davvero all'altro workspace: senza, il caso non proverebbe l'ordine.
         ->and(Sessione::workspace()['slug'] ?? null)->toBe('uat-vendite');
     Http::assertSentCount(1);
@@ -322,3 +485,55 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un al
         ->and($risposta->json('errore'))->toBeNull();
     Http::assertSentCount(1);
 })->with(quasiAccettazioneRichiesta());
+
+// Sprint 25 · T3 (voce #1639): ricerca.crea ha un freno per persona (120 ricerche al minuto, 2.000 al giorno). Davanti al suo 429
+// `troppe_richieste` la ricerca risponde 429 col solo codice e coi secondi di `Retry-After`, se il backoffice li dice: il titolo,
+// il dettaglio e ogni altra intestazione del backoffice restano nella parte server. Il 429 è troppeRichieste(), qui sopra.
+
+it('davanti al 429 troppe_richieste del backoffice la ricerca risponde 429 col solo codice e `Retry-After` coi secondi del backoffice: né il titolo, né il dettaglio, né un\'altra intestazione (sprint 25 · T3.3)', function (string $riprovaFra) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => troppeRichieste($riprovaFra)]);
+
+    $risposta = cerca('UAT')->assertStatus(429)->assertHeader('Retry-After', $riprovaFra);
+
+    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste"}')
+        ->and((string) $risposta->baseResponse)->not->toContain('segno-');
+    Http::assertSentCount(1);
+})->with([
+    'fra 37 secondi' => ['37'],
+    'subito' => ['0'],
+]);
+
+it('senza i secondi di `Retry-After`, o con un valore che non è un numero intero di secondi, la ricerca risponde lo stesso 429 col solo codice, e l\'intestazione non c\'è (sprint 25 · T3.3)', function (?string $riprovaFra) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => troppeRichieste($riprovaFra)]);
+
+    $risposta = cerca('UAT')->assertStatus(429)->assertHeaderMissing('Retry-After');
+
+    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste"}')
+        ->and((string) $risposta->baseResponse)->not->toContain('segno-');
+    Http::assertSentCount(1);
+})->with([
+    'senza l\'intestazione' => [null],
+    'una data' => ['Wed, 21 Oct 2026 07:28:00 GMT'],
+    'un numero con la virgola' => ['1.5'],
+    'un numero negativo' => ['-3'],
+    'un testo' => ['segno-di-un-testo'],
+]);
+
+it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere troppe_richieste alla ricerca (sprint 25 · T3.3)', function (int $stato, ?string $codice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => troppeRichieste('37', $stato, $codice)]);
+
+    $risposta = cerca('UAT');
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull()
+        ->and($risposta->headers->has('Retry-After'))->toBe(false);
+    Http::assertSentCount(1);
+})->with([
+    'un 429 con un altro codice' => [429, 'limite_raggiunto'],
+    'un 429 senza codice' => [429, null],
+    'quel codice con un 403' => [403, 'troppe_richieste'],
+    'quel codice con un 503' => [503, 'troppe_richieste'],
+]);

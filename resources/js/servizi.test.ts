@@ -81,6 +81,23 @@ describe('segnaLetta', () => {
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
+    // Seconda lettura della PR #52, S9 (sprint 25 · T5.7). L'elenco delle notifiche arriva dalla parte server con una conversione
+    // di tipo, non con un controllo: un id può non essere un testo. Un'espressione regolare lo converte da sé, e `69`, `null` e
+    // `undefined` hanno la forma di un id: la `PATCH`, col gettone CSRF, partirebbe per `/cornice/notifiche/null/lettura`.
+    it.each<[string, unknown]>([
+        ['un numero', 69],
+        ['`null`', null],
+        ['`undefined`', undefined],
+        ['`true`', true],
+        ['una lista con un id', ['uat-n69']],
+    ])('un id che non è un testo (%s) non fa partire la richiesta, ed è una lettura non riuscita (sprint 25 · T5.7)', async (_quale, id) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(segnaLetta(id as string)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        expect(fetchFinto).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['manca', {}],
         ['è senza i microsecondi', { segnata_il: '2026-10-06T12:00:08Z' }],

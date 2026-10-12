@@ -13,7 +13,8 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // Sprint 5 · T4 (voce #1257): il tipo è quello di ricerca.elenca (`board.cartelle`, `board.board`), e sta in un prodotto solo,
 // perché un risultato della ricerca non dice di che prodotto è: la cornice lo trova dal tipo.
 // Sprint 6 · T5 (voce #1377): una risorsa che nel prodotto non ha una pagina sua (la cartella) ha il percorso vuoto, e si apre
-// sulla pagina del prodotto nel workspace.
+// sulla pagina del prodotto nel workspace. Sprint 25 · T4 (voce #1639): i tipi sono quelli di ricerca.crea — anche schede,
+// contatti, aziende e opportunità —, e un tipo può dire le chiavi di `contesto` che fanno la seconda riga del risultato.
 // Sprint 16 · T7 (voce #1621): ogni voce dice anche se il prodotto è «in arrivo» per chi non ha una sessione (`in_arrivo`): lo
 // leggono le pagine senza un workspace a cui chiedere lo stato. Non è «Presto», che è della cornice e vale in ogni workspace:
 // un prodotto in anteprima (il CRM) è in arrivo, e nel workspace dell'anteprima la cornice lo apre.
@@ -65,7 +66,8 @@ function mappaDegliIndirizzi(): array
  * mappa, un nome (i nomi stanno nelle lingue), «Presto» o «in arrivo» che non sono un sì o un no, una voce «Presto» che non è
  * in arrivo, la Dashboard in arrivo; in una risorsa, un tipo vuoto, ripetuto o già
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
- * «contenitore» che non è un sì o un no, un nome; in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
+ * «contenitore» che non è un sì o un no, un nome, un «contesto» che non è un elenco di chiavi minuscole e diverse, una chiave
+ * che una risorsa non ha (sprint 25 · T4); in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
  * un'altra app, o di un'app che il controllo non conosce, un percorso che non comincia con / o che ha un carattere o un
  * segnaposto non ammesso, una chiave che non è `tipo`, `percorso` né `altrimenti`, e in `altrimenti` un percorso scritto due
  * volte o che non si aprirebbe mai.
@@ -136,6 +138,18 @@ function problemiDelRegistro(array $voci): array
             }
             if (array_key_exists('nome', $risorsa)) {
                 $problemi[] = "$nome: ha un nome, ma i nomi stanno nelle lingue";
+            }
+            // Sprint 25 · T4: le chiavi di `contesto` che fanno la seconda riga di un risultato, per i tipi che ne hanno una: un
+            // elenco non vuoto di chiavi minuscole (`board`, `lista`), ognuna una volta. E nessuna chiave che una risorsa non ha.
+            $chiavi = $risorsa['contesto'] ?? null;
+            if (array_key_exists('contesto', $risorsa) && (
+                ! is_array($chiavi) || ! array_is_list($chiavi) || $chiavi === [] || count(array_unique($chiavi, SORT_REGULAR)) !== count($chiavi)
+                || array_filter($chiavi, fn (mixed $chiave): bool => ! is_string($chiave) || preg_match('/^[a-z_]+$/D', $chiave) !== 1) !== []
+            )) {
+                $problemi[] = "$nome: «contesto» non è un elenco di chiavi, minuscole e diverse";
+            }
+            if (array_diff(array_keys($risorsa), ['tipo', 'icona', 'percorso', 'contenitore', 'contesto', 'nome']) !== []) {
+                $problemi[] = "$nome: ha una chiave che non è tipo, icona, percorso, contenitore né contesto";
             }
         }
         // Sprint 21 · T3: le notifiche che dal pannello aprono la loro risorsa. Il tipo è quello intero dell'evento, una volta sola
@@ -244,8 +258,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto'],
             // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto).
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
+            // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
@@ -257,16 +271,44 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ])
         // «Presto» come nell'anteprima dell'AppShell: provvisorio, finché non si sa quali prodotti sono disponibili.
         ->and(array_keys(array_filter(array_column($voci, 'presto', 'id'))))->toBe(['reports', 'automations', 'content'])
-        // Le risorse di Project Management che la ricerca mostra: le sole che ricerca.elenca cerca, col tipo del contratto, e con
-        // le rotte di zr-board, a pagina intera: la board ha la sua pagina; la cartella no, sta con le altre sulla pagina del
-        // workspace, e il suo percorso è vuoto. Icone: `folder` per la cartella (come `ProjectFolder`), `board` per la board.
-        // Le schede entrano quando il contratto ha il loro tipo.
+        // Le risorse di Project Management che la ricerca mostra, col tipo del contratto (ricerca.crea) e con le rotte di
+        // zr-board: la scheda si apre nel pannello della sua board, e la sua seconda riga sono board e lista; la board ha la sua
+        // pagina; la cartella no, sta con le altre sulla pagina del workspace, e il suo percorso è vuoto. Icone: `file` per la
+        // scheda, `board` per la board, `folder` per la cartella (come `ProjectFolder`). L'ordine è quello in cui segnaposto e
+        // invito della ricerca le nominano (sprint 25 · T4).
         ->and($voci[1]['risorse'])->toBe([
-            ['tipo' => 'board.cartelle', 'icona' => 'folder', 'percorso' => '', 'contenitore' => true],
+            ['tipo' => 'board.scheda', 'icona' => 'file', 'percorso' => '/c/{id}', 'contenitore' => false, 'contesto' => ['board', 'lista']],
             ['tipo' => 'board.board', 'icona' => 'board', 'percorso' => '/b/{id}', 'contenitore' => true],
+            ['tipo' => 'board.cartelle', 'icona' => 'folder', 'percorso' => '', 'contenitore' => true],
+        ])
+        // Quelle del CRM, con le rotte e le icone di zr-crm (nota 10716 del progetto): i percorsi sono quelli che le notifiche
+        // aprono già. Un'azienda non ha una seconda riga: il backoffice non dà testi per riconoscerla.
+        ->and($voci[2]['risorse'])->toBe([
+            ['tipo' => 'crm.persona', 'icona' => 'users', 'percorso' => '/contatti/{id}', 'contenitore' => false, 'contesto' => ['organizzazione', 'ruolo']],
+            ['tipo' => 'crm.organizzazione', 'icona' => 'building', 'percorso' => '/aziende/{id}', 'contenitore' => false],
+            ['tipo' => 'crm.trattativa', 'icona' => 'target', 'percorso' => '/opportunita/{id}', 'contenitore' => false, 'contesto' => ['pipeline', 'fase']],
         ])
         // Nessun altro prodotto ha risorse: un tipo in due prodotti sarebbe un problema (sopra), e qui non ce n'è nessuno.
-        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['pm']);
+        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['pm', 'crm']);
+});
+
+it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole e diverse, e una chiave che una risorsa non ha (sprint 25 · T4.5)', function () {
+    $voci = registroDeiProdotti();
+    $voci[1]['risorse'][0]['contesto'] = ['board', 'board'];
+    $voci[1]['risorse'][1]['contesto'] = [];
+    $voci[1]['risorse'][2]['contesto'] = 'board';
+    $voci[2]['risorse'][0]['contesto'] = ['Organizzazione', 'ruolo'];
+    $voci[2]['risorse'][1]['gruppo'] = 'Aziende';
+    $voci[2]['risorse'][2]['contesto'] = ['fase' => 'pipeline'];
+
+    expect(problemiDelRegistro($voci))->toBe([
+        'pm.board.scheda: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        'pm.board.board: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        'pm.board.cartelle: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        'crm.crm.persona: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        'crm.crm.organizzazione: ha una chiave che non è tipo, icona, percorso, contenitore né contesto',
+        'crm.crm.trattativa: «contesto» non è un elenco di chiavi, minuscole e diverse',
+    ]);
 });
 
 it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indirizzo fuori dalla mappa, un nome e un percorso che non è vuoto né `/…{id}…` (T4.1, T7.3; sprint 6 · T5.2)', function () {
@@ -368,7 +410,7 @@ it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc ch
 });
 
 it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<prodotto>.<tipo>`: tsc chiede all\'inglese il nome di ognuna (T5.3; sprint 5 · T4.5)', function () {
-    expect(tipiDiRisorsa())->toBe(['pm.board.cartelle', 'pm.board.board'])
+    expect(tipiDiRisorsa())->toBe(['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'])
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
 

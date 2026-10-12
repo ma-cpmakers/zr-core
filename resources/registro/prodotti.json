@@ -4,8 +4,9 @@
         {
             "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false, "in_arrivo": false,
             "risorse": [
-                { "tipo": "board.cartelle", "icona": "folder", "percorso": "", "contenitore": true },
-                { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
+                { "tipo": "board.scheda", "icona": "file", "percorso": "/c/{id}", "contenitore": false, "contesto": ["board", "lista"] },
+                { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true },
+                { "tipo": "board.cartelle", "icona": "folder", "percorso": "", "contenitore": true }
             ],
             "notifiche": [
                 { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
@@ -15,6 +16,11 @@
         },
         {
             "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true,
+            "risorse": [
+                { "tipo": "crm.persona", "icona": "users", "percorso": "/contatti/{id}", "contenitore": false, "contesto": ["organizzazione", "ruolo"] },
+                { "tipo": "crm.organizzazione", "icona": "building", "percorso": "/aziende/{id}", "contenitore": false },
+                { "tipo": "crm.trattativa", "icona": "target", "percorso": "/opportunita/{id}", "contenitore": false, "contesto": ["pipeline", "fase"] }
+            ],
             "notifiche": [
                 { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },
                 { "tipo": "com.zeiras.crm.persona.modificata", "percorso": "/contatti/{id}" },

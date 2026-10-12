@@ -12,7 +12,7 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 // server le gira al backoffice col gettone del workspace, che resta nella sessione. Un valore che dall'indirizzo finisce nel
 // percorso chiamato sul backoffice ha il suo vincolo qui: fuori dai caratteri ammessi la rotta non c'è (404).
 // La ricerca è una POST dalla v1.8.0: la parola cercata sta nel corpo, mai nell'indirizzo della richiesta del browser, e una
-// GET non ha una rotta. Dal server del modulo al backoffice resta nell'indirizzo, finché ricerca.elenca è una GET.
+// GET non ha una rotta. Dalla v1.15.0 sta nel corpo anche dal server del modulo al backoffice (ricerca.crea, una POST).
 // Le letture tengono il blocco della sessione (`Route::block`) per tutta la loro durata, con l'attesa di zr-auth: possono
 // durare una quindicina di secondi, e finendo rimetterebbero la sessione di prima a chi intanto è uscito o è entrato in un
 // altro workspace. Il blocco dura tenutaDelBlocco() secondi da quando è preso: una richiesta che i middleware del frontend

@@ -25,8 +25,11 @@
 // che la cornice chiede col clic che apre la risorsa di una non letta) la segna e risponde con `letta` e con l'istante; con
 // `?errore=lettura` fallisce sempre, e la notifica resta da leggere. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
 // risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
-// di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
-// (`board.schede`, `uat-ignoto`), e con `?id_malfatto=1` una board in più con l'id `..`, che la cornice non mostra; «ua»
+// di ricerca.crea senza `indirizzo` (tipo, id, titolo e `contesto`): board e cartelle in ordine di titolo, e in fondo due tipi
+// che il registro non ha (`board.schede`, `uat-ignoto`), com'era sul tag `v1.14.0`; le fonti nuove di ricerca.crea vengono per
+// prime e stanno dietro un parametro, come ogni dato nuovo della pagina di prova: con `?schede=1` una scheda, con
+// `?crm_attivo=1` — lo stesso che nei dati di prova accende il CRM — contatti, aziende e opportunità; con
+// `?id_malfatto=1` c'è una board in più con l'id `..`, che la cornice non mostra; «ua»
 // risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
 // Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
 // lo stesso; il cookie del gettone CSRF è finto.
@@ -127,15 +130,32 @@ const notificheDiProva = [
 let letture = 0;
 let riuscite = 0;
 let caricamenti = 0;
+// Come nei dati di prova (demo.tsx): con `?crm_attivo=1` il CRM è attivo nel workspace, a meno di `?senza_crm=1`.
+const crmAttivo = new URLSearchParams(window.location.search).has('crm_attivo') && !new URLSearchParams(window.location.search).has('senza_crm');
 const risultatiDiProva = [
-    { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
-    { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che il
+    // backoffice dà per riconoscerla. Un contatto può non avere né azienda né ruolo; un'azienda ha `null`. Stanno dietro un
+    // parametro: la scheda solo con `?schede=1`; contatti, aziende e opportunità solo col CRM attivo (`?crm_attivo=1`), come il
+    // backoffice, che una fonte la dà solo se il suo prodotto è attivo nel workspace.
+    ...(schede ? [{ tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } }] : []),
+    ...(crmAttivo
+        ? [
+            { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
+            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+            { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
+            { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
+        ]
+        : []),
+    // Poi board e cartelle, in ordine di titolo, senza `contesto`.
+    { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
+    { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
     // Solo con `?id_malfatto=1`: una board il cui id non ha la forma di un id. La cornice non la mostra.
-    ...(new URLSearchParams(window.location.search).has('id_malfatto') ? [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }] : []),
-    { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
-    { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
-    { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
-    { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto' },
+    ...(new URLSearchParams(window.location.search).has('id_malfatto') ? [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto', contesto: null }] : []),
+    { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing', contesto: null },
+    { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
+    // Due tipi che il registro non ha: la cornice non li mostra.
+    { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio', contesto: null },
+    { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto', contesto: null },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
 const arriva = new URLSearchParams(window.location.search).has('arriva');
@@ -211,7 +231,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // pagina di prova non lo dà manca, e per la cornice la ricerca è un errore.
             return json({
                 data: parola === 'ua'
-                    ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»' }]
+                    ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
                 workspace: slugDellaSessione(),
             });

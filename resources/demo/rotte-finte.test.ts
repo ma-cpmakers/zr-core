@@ -500,9 +500,43 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
 
     it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo, e il workspace della «sessione» (sprint 18 · T1.7; sprint 22 · T6.5)', async () => {
         expect(await rispostaDi('/cornice/ricerca', cerca('marketing'))).toStrictEqual({ stato: 200, corpo: { data: [
-            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
-            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing', contesto: null },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
         ], workspace: 'uat-marketing' } });
+    });
+
+    // Sprint 25 · T4 (voce #1639): i risultati d'esempio sono quelli di ricerca.crea. Per prime le fonti nuove — schede,
+    // contatti, aziende, opportunità —, poi board e cartelle in ordine di titolo; ogni risultato porta `contesto`, i testi per
+    // riconoscerlo o `null`, e un contatto può non avere né azienda né ruolo.
+    // Sprint 25 · T6 (lettura della PR #56, R13): le fonti nuove entrano dietro un parametro, come ogni dato nuovo della pagina
+    // di prova. Senza parametri la ricerca dà ciò che dava sul tag di prima; con `?schede=1` anche una scheda; con
+    // `?crm_attivo=1`, lo stesso che nei dati di prova accende il CRM, anche contatti, aziende e opportunità: come il
+    // backoffice, che una fonte la dà solo se il suo prodotto è attivo nel workspace.
+    const scheda = { tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } };
+    const delCrm = [
+        { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
+        { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+        { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
+        { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
+    ];
+    /** Ciò che la ricerca di «uat» dava sul tag `v1.14.0`: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha. */
+    const diPrima = [
+        { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
+        { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
+        { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing', contesto: null },
+        { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
+        { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio', contesto: null },
+        { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto', contesto: null },
+    ];
+
+    it.each<[string, string, Record<string, unknown>[]]>([
+        ['senza parametri dà ciò che dava sul tag di prima: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha', '', diPrima],
+        ['con `?schede=1` per prima c\'è una scheda, col suo `contesto`', '?schede=1', [scheda, ...diPrima]],
+        ['con `?crm_attivo=1` per primi ci sono contatti, aziende e opportunità, ognuno col suo `contesto`', '?crm_attivo=1', [...delCrm, ...diPrima]],
+        ['con tutti e due, nell\'ordine di ricerca.crea: schede, contatti, aziende e opportunità, poi board e cartelle', '?schede=1&crm_attivo=1', [scheda, ...delCrm, ...diPrima]],
+        ['con `?senza_crm=1` i risultati del CRM non ci sono', '?schede=1&senza_crm=1', [scheda, ...diPrima]],
+    ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13)', async (_caso, query, attesi) => {
+        expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([
@@ -513,21 +547,21 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         const richiesta = { method: 'POST', body: JSON.stringify({ q: 'report', workspace: 'uat-della-richiesta' }) };
 
         expect(await rispostaDi('/cornice/ricerca?workspace=uat-dell-indirizzo', richiesta, '', () => slug)).toStrictEqual({ stato: 200, corpo: { data: [
-            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
         ], ...atteso } });
     });
 
     // Sprint 24 · T4 (voce #1754): con `?id_malfatto=1` fra i risultati d'esempio c'è una board in più, con l'id `..`. La
     // cornice non la mostra: gli altri risultati della stessa parola sì.
     it.each<[string, string, Record<string, unknown>[]]>([
-        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }]],
+        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto', contesto: null }]],
         ['senza `?id_malfatto` i risultati d\'esempio sono quelli di prima', '', []],
     ])('%s (sprint 24 · T4.2)', async (_caso, query, inPiu) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('lancio'), query)).corpo.data).toStrictEqual([
-            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
-            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
+            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
             ...inPiu,
-            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio', contesto: null },
         ]);
     });
 

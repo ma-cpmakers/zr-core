@@ -659,7 +659,7 @@ it('la ricerca non porta un istante, e un errore del backoffice sull\'elenco o s
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
         ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))
-        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio']], 'workspace' => 'uat-marketing']);
+        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio', 'contesto' => null]], 'workspace' => 'uat-marketing']);
 
     foreach ([
         $this->getJson('cornice/notifiche'),
@@ -1721,7 +1721,7 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
     'la pagina da cui si chiede è di un altro workspace' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['Referer' => 'https://app.zeiras.com/w/uat-vendite/notifiche']],
 ]);
 
-// Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Il registro dei moduli lo legge solo l'elenco, che ne
+// Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Delle rotte delle notifiche, il registro dei moduli lo legge solo l'elenco, che ne
 // prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova, già
 // letto, e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto. Il registro di prova entra
 // dalla proprietà privata, con la reflection: nel codice che va in produzione non c'è un aggancio per i test (review della

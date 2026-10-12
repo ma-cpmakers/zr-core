@@ -1,8 +1,11 @@
 <?php
 
-// Sprint 1 · T2 (voce #1254). L'ingresso JS di zr-core: il bundle del design system legge `window.React` quando si valuta, quindi
-// nel build del pacchetto l'assegnazione viene prima del codice del bundle; il bundle c'è una volta sola, e React resta fuori dal
-// build (lo porta il frontend: due copie di React rompono gli hook). Legge dist/zr-core.js, che la CI costruisce prima di Pest.
+// Sprint 1 · T2 (voce #1254). L'ingresso JS di zr-core: React resta fuori dal build (lo porta il frontend: due copie di React
+// rompono gli hook). Legge dist/zr-core.js, che la CI costruisce prima di Pest. Sprint 25 · T1 (voce #1759): i componenti del
+// design system entrano nel build dal modulo generato (resources/js/zeiras/componenti.js), che importa React da sé. Il bundle
+// (resources/zeiras/bundle.js), che leggeva `window.React` quando si valutava e scriveva `window.Zeiras`, nel build non c'è più:
+// se ci fosse accanto al modulo, un'app avrebbe due copie del design system. `window.React` e `window.Zeiras` li scrive ancora
+// l'ingresso, una volta sola: un frontend può leggerli.
 
 /** Il build del pacchetto. */
 function buildDelPacchetto(): string
@@ -16,7 +19,8 @@ function buildDelPacchetto(): string
 }
 
 /**
- * Dove il codice scrive `window.React` e dove il bundle del design system lo legge e scrive `window.Zeiras`, in byte dall'inizio.
+ * Dove il codice scrive `window.React`, dove il bundle del design system lo leggerebbe, e dove si scrive `window.Zeiras`, in byte
+ * dall'inizio.
  *
  * @return array{scritture: list<int>, letture: list<int>, zeiras: list<int>}
  */
@@ -35,25 +39,26 @@ function usiDiWindowReact(string $codice): array
     ];
 }
 
-it('nel build l\'assegnazione di window.React viene prima del codice del bundle, che c\'è una volta sola (T2.1)', function () {
+it('nel build window.React e window.Zeiras sono scritti una volta sola, e il bundle del design system non c\'è: nessun codice legge window.React (sprint 25 · T1.4)', function () {
     $usi = usiDiWindowReact(buildDelPacchetto());
 
     expect($usi['scritture'])->toHaveCount(1)
-        ->and($usi['letture'])->toHaveCount(1)
-        ->and($usi['zeiras'])->toHaveCount(1)
-        ->and($usi['scritture'][0])->toBeLessThan($usi['letture'][0]);
+        ->and($usi['letture'])->toBe([])
+        ->and($usi['zeiras'])->toHaveCount(1);
 });
 
-it('il controllo trova window.React scritto dopo il bundle, e il bundle incluso due volte (T2.1)', function () {
+it('il controllo trova il bundle rimasto nel build accanto al modulo: una lettura di window.React, e window.Zeiras scritto due volte (sprint 25 · T1.4)', function () {
     $bundle = "(function () {\n  var React = window.React;\n  window.Zeiras = Object.assign(window.Zeiras || {}, {});\n})();\n";
-    $scrittura = "import * as e from \"react\";\nwindow.React = e;\n";
+    $ingresso = "import * as e from \"react\";\nwindow.React = e;\nwindow.Zeiras = Object.assign(window.Zeiras || {}, t);\n";
 
-    $dopo = usiDiWindowReact($bundle.$scrittura);
-    $doppio = usiDiWindowReact($scrittura.$bundle.$bundle);
+    $solo = usiDiWindowReact($ingresso);
+    $colBundle = usiDiWindowReact($ingresso.$bundle);
 
-    expect($dopo['scritture'][0])->toBeGreaterThan($dopo['letture'][0])
-        ->and($doppio['letture'])->toHaveCount(2)
-        ->and($doppio['zeiras'])->toHaveCount(2)
+    expect($solo['scritture'])->toHaveCount(1)
+        ->and($solo['letture'])->toBe([])
+        ->and($solo['zeiras'])->toHaveCount(1)
+        ->and($colBundle['letture'])->toHaveCount(1)
+        ->and($colBundle['zeiras'])->toHaveCount(2)
         ->and(usiDiWindowReact('if (window.React == null) {}')['scritture'])->toBe([]);
 });
 

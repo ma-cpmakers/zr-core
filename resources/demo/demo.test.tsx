@@ -39,7 +39,7 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     async function apri(query: string): Promise<void> {
         (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
         await act(async () => {
-            await import('./demo');
+            await import('./index');
         });
     }
 

@@ -115,5 +115,11 @@ jobs:
       - name: La favicon (i due file generati sono la resa di quella del design system)
         run: npm run favicon -- --controlla
 
+      # resources/js/zeiras/componenti.js esce da scripts/componenti.mjs: i componenti di resources/zeiras/bundle.js come modulo ES,
+      # esportati per nome. Qui si rigenera in memoria e si confronta col file: un bundle riallineato senza rigenerare, o il file
+      # ritoccato a mano, ferma la CI.
+      - name: I componenti del design system come modulo ES (il file generato è quello che il bundle genera)
+        run: npm run componenti -- --controlla
+
       - name: Test (Pest, Testbench)
         run: ./vendor/bin/pest

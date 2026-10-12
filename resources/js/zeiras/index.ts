@@ -1,9 +1,10 @@
-// Il design system di Zeiras così com'è: resources/zeiras/bundle.js, copia derivata, scrive i componenti in `window.Zeiras`, e
-// resources/zeiras/index.d.ts ne dà nomi e props (anche di `window.Zeiras`). L'ordine degli import è la regola: prima
-// `window.React`, poi il bundle.
+// Il design system di Zeiras per chi installa dall'ingresso di sempre: i componenti sono quelli di `./componenti` (il modulo
+// generato da resources/zeiras/bundle.js, copia derivata, con scripts/componenti.mjs), e qui si scrivono anche in
+// `window.Zeiras`, dopo `window.React`: un frontend può leggerli da lì. resources/zeiras/index.d.ts ne dà nomi e props (anche di
+// `window.Zeiras`). Il bundle non si importa più: accanto al modulo sarebbe una seconda copia del design system nella stessa app.
 import './react-globale';
-import '../../zeiras/bundle.js';
+import * as componenti from './componenti';
 
-import type {} from '../../zeiras/index';
+window.Zeiras = Object.assign(window.Zeiras || {}, componenti);
 
 export const Zeiras = window.Zeiras;
