@@ -366,6 +366,9 @@ it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole 
         'crm.crm.persona: «contesto» non è un elenco di chiavi, minuscole e diverse',
         'crm.crm.organizzazione: ha una chiave che non è tipo, icona, percorso, contenitore, contesto né codici',
         'crm.crm.trattativa: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        // Dallo sprint 28 l'opportunità ha dei codici per `esito`: col «contesto» storpiato qui sopra la chiave non c'è più, e
+        // il controllo lo dice.
+        'crm.crm.trattativa: «codici» nomina «esito», che non è una chiave di «contesto»',
     ]);
 });
 
