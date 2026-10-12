@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import inglese from '../lingue/en.json';
+import inglese from '../lingue/notifiche/en.json';
 
 // Sprint 11 · T3 (voce #1458). Le rotte finte delle pagine di prova rispondono nella forma della parte server, e la parte server
 // dice quando: l'elenco delle notifiche quando ha cominciato a leggerlo (`aggiornati_il`), «segna tutte come lette» quando le ha

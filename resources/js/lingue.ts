@@ -11,8 +11,8 @@ import { prodottoDelRegistro, type CodiceDelContesto, type IdDiProdotto, type Ti
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
  * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
  * minuscolo, per `searchSource.<voce>.<tipo>`, il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
- * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>` e il titolo di ogni tipo di notifica per
- * `notificationTitle.<tipo>`.
+ * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Le frasi delle notifiche non sono qui: stanno in
+ * un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  */
 export type TestiDellaCornice = Required<AppShellLabels> &
     Record<IdDiProdotto, string> &
@@ -77,6 +77,14 @@ export type TestiDellaCornice = Required<AppShellLabels> &
     searchHintSources: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
+};
+
+/**
+ * Le frasi delle notifiche di una lingua (resources/lingue/notifiche, un file per lingua con lo stesso nome del file dei testi).
+ * Non stanno coi testi della cornice perché servono solo a pannello aperto: la cornice le carica allora (`caricaFrasi`), e chi
+ * mostra le notifiche in una pagina sua le ha da `./frasi`.
+ */
+export type FrasiDelleNotifiche = {
     /**
      * Il titolo di una notifica di quel tipo, col tipo dell'evento com'è nel backoffice (`notificationTitle.com.zeiras.board.scheda.creata`).
      * Quali tipi zr-core conosce lo dicono le chiavi dell'inglese: un tipo che l'inglese non ha non ha un titolo, in nessuna lingua.
@@ -84,7 +92,7 @@ export type TestiDellaCornice = Required<AppShellLabels> &
     [delTipo: `notificationTitle.${string}`]: string | undefined;
     /**
      * Il titolo di una notifica di quel tipo quando il backoffice dice chi ha fatto e su che cosa: una frase, con `{who}` al posto
-     * del nome di chi e `{what}` al posto del nome della cosa (`rigaDellaNotifica`). La ha chi ha anche il titolo.
+     * del nome di chi e `{what}` al posto del nome della cosa (`rigaConLeFrasi`). La ha chi ha anche il titolo.
      */
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
     /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per una cosa eliminata. */
@@ -99,18 +107,28 @@ function codiceDi(lingua: string): string {
     return lingua.trim().toLowerCase().replace(/_/g, '-');
 }
 
+/**
+ * I file di una cartella di lingue come li dà `import.meta.glob` (`{ '../lingue/it.json': … }`), per codice, e il codice del
+ * file che serve una lingua: il suo, o quello della lingua base. Nessuno, se zr-core non ce l'ha.
+ */
+function fileDelleLingue<Uno>(file: Record<string, Uno>) {
+    const perCodice = new Map(Object.entries(file).map(([percorso, uno]) => [codiceDi(percorso.replace(/^.*\/|\.json$/g, '')), uno]));
+
+    return {
+        perCodice,
+        fileDi(lingua: string): string | undefined {
+            const codice = codiceDi(lingua);
+
+            return [codice, ...codice.split('-', 1)].find((scelto) => perCodice.has(scelto));
+        },
+    };
+}
+
 /** Le lingue di un elenco di file come lo dà `import.meta.glob`: `{ '../lingue/it.json': { … } }`. */
 export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
-    const perCodice = new Map(Object.entries(file).map(([percorso, testi]) => [codiceDi(percorso.replace(/^.*\/|\.json$/g, '')), testi]));
+    const { perCodice, fileDi } = fileDelleLingue(file);
     // Il codice dell'inglese: il file che `import.meta.glob` dà con lo stesso oggetto del ripiego.
     const codiceDelRipiego = [...perCodice].find(([, testi]) => testi === ripiego)?.[0];
-
-    /** Il codice del file che dà i testi a una lingua: il suo, o quello della lingua base. Nessuno, se zr-core non ce l'ha. */
-    const fileDi = (lingua: string): string | undefined => {
-        const codice = codiceDi(lingua);
-
-        return [codice, ...codice.split('-', 1)].find((scelto) => perCodice.has(scelto));
-    };
     // I testi già composti, per file: il pannello delle notifiche li chiede per ogni notifica, a ogni render. Le lingue che
     // zr-core non ha stanno tutte sotto la stessa chiave, la vuota: ciò che arriva come lingua non fa crescere l'elenco.
     const composti = new Map<string, Readonly<TestiDellaCornice>>();
@@ -194,19 +212,6 @@ export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[
     };
 }
 
-/**
- * Il titolo di una notifica in una lingua: quello del suo tipo, fra i testi della lingua (`notificationTitle.<tipo>`). Quali tipi
- * zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante, o che non è
- * un testo — ha il titolo di ripiego, e il codice del tipo non si mostra mai. È la funzione del pannello delle notifiche della
- * cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
- */
-export function titoloDellaNotifica(tipo: unknown, lingua: string): string {
-    const t = testi(lingua);
-    const delTipo = typeof tipo === 'string' ? t[`notificationTitle.${tipo}`] : undefined;
-
-    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : t.notificationTitle;
-}
-
 /** Così comincia il tipo di una notifica su un'app (`com.zeiras.app.modificata`): la cosa a cui si riferisce è un prodotto. */
 const TIPO_SU_UN_APP = 'com.zeiras.app.';
 
@@ -249,29 +254,126 @@ export function fraseConINomi(frase: unknown, chi: string, cosa?: string): strin
 }
 
 /**
- * Il titolo e la riga di sotto di una notifica, in una lingua. Quando il backoffice dice chi ha fatto (`autore_nome`) e le
- * lingue hanno una frase per quel tipo — oggi le notifiche di Project Management — il titolo è la frase: con chi e che cosa
- * (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è niente; o con solo chi
- * (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (una cosa eliminata). In ogni
- * altro caso — senza chi, o per un tipo senza frasi — è la riga di prima: `titoloDellaNotifica`, e sotto
- * `risorsaDellaNotifica`. È la funzione del pannello delle notifiche della cornice: chi mostra le notifiche in una pagina sua ha
- * gli stessi testi.
+ * Le frasi di una lingua, sempre tutte quelle che l'inglese ha: quelle che la lingua non ha, o ha vuote, sono in inglese, come
+ * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese.
  */
-export function rigaDellaNotifica(notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
+function componiFrasi(scelte: FrasiDelleNotifiche | undefined, inglesi: FrasiDelleNotifiche): Readonly<FrasiDelleNotifiche> {
+    const frasi = { ...inglesi };
+    for (const chiave of Object.keys(inglesi) as (keyof FrasiDelleNotifiche)[]) {
+        const frase = scelte?.[chiave];
+        if (typeof frase === 'string' && frase.trim() !== '') {
+            frasi[chiave] = frase;
+        }
+    }
+
+    return Object.freeze(frasi);
+}
+
+/**
+ * Le frasi di ogni lingua da file già tutti in memoria, come li dà `import.meta.glob` con `eager`: per chi mostra le notifiche
+ * in una pagina sua (`./frasi`). Si compongono una volta per file, alla prima richiesta.
+ */
+export function frasiDiOgniLingua(file: Record<string, FrasiDelleNotifiche>, inglesi: FrasiDelleNotifiche): (lingua: string) => Readonly<FrasiDelleNotifiche> {
+    const { perCodice, fileDi } = fileDelleLingue(file);
+    const composte = new Map<string, Readonly<FrasiDelleNotifiche>>();
+
+    return (lingua) => {
+        const codice = fileDi(lingua) ?? '';
+        const pronte = composte.get(codice) ?? componiFrasi(perCodice.get(codice), inglesi);
+        composte.set(codice, pronte);
+
+        return pronte;
+    };
+}
+
+/**
+ * Le frasi di una lingua da file che si caricano quando servono, come li dà `import.meta.glob` senza `eager`: per la cornice,
+ * che le chiede all'apertura della campanella. Parte il file della lingua, o della lingua base, e quello dell'inglese, il
+ * ripiego; mai gli altri. Una volta arrivate restano in memoria (`pronte`), e non si richiedono; due richieste insieme sono
+ * una sola. Se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte da capo.
+ */
+export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNotifiche>>, inglesi: () => Promise<FrasiDelleNotifiche>) {
+    const { perCodice, fileDi } = fileDelleLingue(file);
+    const composte = new Map<string, Readonly<FrasiDelleNotifiche>>();
+    const inVolo = new Map<string, Promise<Readonly<FrasiDelleNotifiche>>>();
+
+    return {
+        /** Le frasi di una lingua se sono già in memoria: niente (`undefined`) finché `carica` non le ha portate. */
+        pronte(lingua: string): Readonly<FrasiDelleNotifiche> | undefined {
+            return composte.get(fileDi(lingua) ?? '');
+        },
+        carica(lingua: string): Promise<Readonly<FrasiDelleNotifiche>> {
+            const codice = fileDi(lingua) ?? '';
+            const pronte = composte.get(codice);
+            if (pronte !== undefined) {
+                return Promise.resolve(pronte);
+            }
+            const chiesta = inVolo.get(codice) ?? Promise.all([perCodice.get(codice)?.(), inglesi()]).then(
+                ([scelte, ripiego]) => {
+                    const frasi = componiFrasi(scelte, ripiego);
+                    composte.set(codice, frasi);
+                    inVolo.delete(codice);
+
+                    return frasi;
+                },
+                (errore: unknown) => {
+                    inVolo.delete(codice);
+                    throw errore;
+                },
+            );
+            inVolo.set(codice, chiesta);
+
+            return chiesta;
+        },
+    };
+}
+
+// I file delle frasi, a richiesta. Si importano come testo (`?raw`) e non come JSON: `./frasi` importa gli stessi file per
+// intero, e un ingresso del pacchetto lo riesporta; se la cornice chiedesse lo stesso modulo la build lo metterebbe nel JS
+// d'ingresso, dove sta chi lo importa in modo statico, anche in un'app che quelle funzioni non le usa. Come testo è un altro
+// modulo, e resta un pezzo a sé.
+const testoDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?raw', import: 'default' });
+const lette = (percorso: string) => async (): Promise<FrasiDelleNotifiche> => JSON.parse((await testoDelleFrasi[percorso]?.()) ?? '{}') as FrasiDelleNotifiche;
+
+export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
+    Object.fromEntries(Object.keys(testoDelleFrasi).map((percorso) => [percorso, lette(percorso)])),
+    lette('../lingue/notifiche/en.json'),
+);
+
+/**
+ * Il titolo di una notifica in una lingua, con le frasi di quella lingua: quello del suo tipo (`notificationTitle.<tipo>`).
+ * Quali tipi zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante,
+ * o che non è un testo — ha il titolo di ripiego, che è un testo della cornice, e il codice del tipo non si mostra mai.
+ */
+export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, lingua: string): string {
+    const delTipo = typeof tipo === 'string' ? frasi[`notificationTitle.${tipo}`] : undefined;
+
+    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : testi(lingua).notificationTitle;
+}
+
+/**
+ * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
+ * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — oggi le notifiche di Project Management — il titolo è la
+ * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
+ * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (una
+ * cosa eliminata). In ogni altro caso — senza chi, o per un tipo senza frasi — è la riga di prima: `titoloConLeFrasi`, e sotto
+ * `risorsaDellaNotifica`. È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
+ * stessi testi a chi mostra le notifiche in una pagina sua.
+ */
+export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     const cosa = risorsaDellaNotifica(notifica, lingua);
     const chi = typeof notifica.autore_nome === 'string' ? notifica.autore_nome.trim() : '';
     if (chi !== '' && typeof notifica.tipo === 'string') {
-        const t = testi(lingua);
-        const conCosa = cosa === undefined ? undefined : fraseConINomi(t[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
+        const conCosa = cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
         if (conCosa !== undefined) {
             return { titolo: conCosa };
         }
-        const conChi = fraseConINomi(t[`notificationTitleWho.${notifica.tipo}`], chi);
+        const conChi = fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi);
         if (conChi !== undefined) {
             return cosa === undefined ? { titolo: conChi } : { titolo: conChi, sotto: cosa };
         }
     }
-    const titolo = titoloDellaNotifica(notifica.tipo, lingua);
+    const titolo = titoloConLeFrasi(frasi, notifica.tipo, lingua);
 
     return cosa === undefined ? { titolo } : { titolo, sotto: cosa };
 }

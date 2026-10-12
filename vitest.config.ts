@@ -12,6 +12,7 @@ export default mergeConfig(
         test: {
             include: ['resources/js/**/*.test.{ts,tsx}', 'resources/demo/**/*.test.{ts,tsx}'],
             environment: 'happy-dom',
+            setupFiles: ['tests/js/frasi-in-memoria.ts'],
             server: { deps: { inline: [/@inertiajs\//] } },
         },
     }),

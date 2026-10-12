@@ -30,8 +30,21 @@ const DAL_BUNDLE = ['resources/js/zeiras/react-globale.ts', 'resources/zeiras/bu
 const DAL_MODULO = ['resources/js/zeiras/index.ts'];
 const MEZZO_KB = 512;
 
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno più nel JS d'ingresso: la cornice le carica quando si apre
+// la campanella, un pezzo per lingua. Una frase per lingua, com'è scritta nel suo file: la stessa notifica, la cartella creata.
+const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha creado la carpeta' };
+/**
+ * Il tetto sul JS d'ingresso dell'app che prende solo la cornice, con gzip: prima dello sprint 30 pesava 18,8 KB. Il refining
+ * diceva 17,5: la misura è 17,9, perché con il primo `import()` di un'app Vite mette nel JS d'ingresso il suo aiuto per i pezzi
+ * a richiesta (circa 0,7 KB con gzip, da solo), che un'app con le pagine a richiesta ha già. Il tetto è la misura, a 18.
+ */
+const TETTO_DELL_INGRESSO = 18 * 1024;
+
 interface Costruito {
+    /** Il JS d'ingresso: ciò che la pagina scarica subito, coi pezzi che l'ingresso importa in modo statico. */
     js: string;
+    /** I pezzi che si scaricano a richiesta, uno per `import()`. */
+    aRichiesta: string[];
     esporta: string[];
 }
 
@@ -44,7 +57,11 @@ const scritture = (js: string, globale: string) => [...js.matchAll(new RegExp(`w
 function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const pezzi = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : [])).filter((pezzo) => pezzo.type === 'chunk');
 
-    return { js: pezzi.map((pezzo) => pezzo.code).join('\n'), esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort() };
+    return {
+        js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
+        aRichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
+        esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
+    };
 }
 
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
@@ -78,7 +95,10 @@ function nomiNelTesto(file: string): string[] {
         .sort();
 }
 
-/** La riga della tabella dei pesi del README che comincia con quel nome: i due numeri, in KB, senza e con gzip. */
+/**
+ * La riga della tabella dei pesi del README che comincia con quel nome: i quattro numeri, in KB, senza e con gzip, del JS
+ * d'ingresso e poi dei pezzi a richiesta.
+ */
 function pesiNelReadme(nome: string): number[] {
     const riga = readFileSync(delRepo('README.md'), 'utf8').split('\n').find((questa) => questa.startsWith(`| ${nome} |`)) ?? '';
 
@@ -139,6 +159,37 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     });
 });
 
+describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono pezzi a richiesta, uno per lingua (sprint 30 · T1.1, T1.2, T1.8)', () => {
+    const app = [
+        ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
+        ['la cornice e due componenti per nome', () => perNome],
+        ['la stessa cornice, dall\'ingresso di sempre', () => diSempre],
+    ] as const;
+
+    it.each(app)('«%s»: nel JS d\'ingresso nessuna frase, di nessuna lingua', (_nome, costruita) => {
+        expect(Object.values(FRASI).filter((frase) => costruita().js.includes(frase))).toStrictEqual([]);
+    });
+
+    it.each(app)('«%s»: tre pezzi a richiesta, ognuno con le frasi di una lingua sola', (_nome, costruita) => {
+        const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
+
+        expect(lingueDeiPezzi.sort()).toStrictEqual([['en'], ['es'], ['it']]);
+    });
+
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB', () => {
+        expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
+    });
+
+    // Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente: il pezzo che importa
+    // `rigaDellaNotifica` porta le frasi di ogni lingua. I due ingressi del pacchetto la esportano, e costruiti da soli le hanno.
+    it.each([
+        ['per le app', () => ingressoPerLeApp],
+        ['di sempre', () => ingressoDiSempre],
+    ])('l\'ingresso %s, che esporta le funzioni per chi mostra le notifiche in una pagina sua, porta le frasi di ogni lingua', (_nome, costruito) => {
+        expect(Object.values(FRASI).filter((frase) => !costruito().js.includes(frase))).toStrictEqual([]);
+    });
+});
+
 describe('l\'ingresso per le app esporta gli stessi nomi dell\'ingresso di sempre, tranne Zeiras (T2.4)', () => {
     it('nel build: né un nome di meno né uno di più', () => {
         expect(ingressoDiSempre.esporta).toContain('Zeiras');
@@ -186,10 +237,14 @@ describe('i pesi che il README dice sono quelli misurati qui, e la sua ricetta d
         ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
         ['la cornice e due componenti per nome', () => perNome],
         ['la stessa cornice, dall\'ingresso di sempre', () => diSempre],
-    ])('«%s»: i due numeri della sua riga, in KB, senza e con gzip', (nome, misurato) => {
-        const [intero, compresso] = pesiNelReadme(nome);
+    ])('«%s»: i quattro numeri della sua riga, in KB, senza e con gzip: il JS d\'ingresso e i pezzi a richiesta (sprint 30 · T1.10)', (nome, misurato) => {
+        const [intero, compresso, aRichiesta, aRichiestaCompressi, ...altri] = pesiNelReadme(nome);
+        const pezzi = misurato().aRichiesta;
 
         expect(intero).toBeCloseTo(inKb(Buffer.byteLength(misurato().js)), 0);
         expect(compresso).toBeCloseTo(inKb(gzip(misurato().js)), 0);
+        expect(aRichiesta).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + Buffer.byteLength(pezzo), 0)), 0);
+        expect(aRichiestaCompressi).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + gzip(pezzo), 0)), 0);
+        expect(altri).toStrictEqual([]);
     });
 });

@@ -2459,7 +2459,7 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'che cos\'è tipo' => ['`tipo` è il `tipo` della notifica, com\'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`)'],
     'che cos\'è lingua' => ['`lingua` è il codice della lingua della persona, e vale come per la cornice: `it-IT` è `it`'],
     'una lingua che zr-core non ha' => ['con una lingua che zr-core non ha il titolo è in inglese'],
-    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
+    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/notifiche/en.json`)'],
     'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
     'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
 ]);

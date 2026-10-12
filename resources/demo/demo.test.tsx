@@ -41,6 +41,10 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         await act(async () => {
             await import('./index');
         });
+        // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: qui sono già arrivate, come a una seconda apertura
+        // (in un browser sono un pezzo a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
+        const { caricaFrasi } = await import('../js/lingue');
+        await Promise.all(['it', 'es', 'en', ''].map((lingua) => caricaFrasi(lingua)));
     }
 
     function uno(selettore: string): HTMLElement | null {

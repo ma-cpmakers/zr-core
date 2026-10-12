@@ -80,11 +80,17 @@ caso che confrontava `children` con la pagina la cerca lì.
 **Quanto pesa**, su tre app di prova che montano la cornice, costruite da Vite minificate e con React fuori (la CI di
 zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione):
 
-| App di prova | JS | con gzip |
-|---|---|---|
-| solo la cornice, dall'ingresso per le app | 69,3 KB | 18,8 KB |
-| la cornice e due componenti per nome | 72,5 KB | 20,0 KB |
-| la stessa cornice, dall'ingresso di sempre | 131,4 KB | 38,2 KB |
+| App di prova | JS | con gzip | a richiesta | con gzip |
+|---|---|---|---|---|
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 17,9 KB | 19,1 KB | 2,5 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 19,1 KB | 2,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,1 KB | 19,1 KB | 2,5 KB |
+
+Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
+notifiche, dalla `v1.20.0`: tre pezzi, uno per lingua (circa 0,85 KB l'uno con gzip), che la cornice chiede quando si apre
+la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello dell'inglese. Prima stavano nel
+JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Nel JS d'ingresso di queste app c'è anche l'aiuto
+con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -354,7 +360,9 @@ cornice === null ? pagina : (
 
 - **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese. Le non lette hanno due
   testi, uno per una sola e uno per ogni altro numero: una lingua con più forme di plurale (il polacco, l'arabo) oggi non
-  entra con un file solo.
+  entra con un file solo. Dalla `v1.20.0` ogni lingua ha due file con lo stesso nome: i testi della cornice
+  (`resources/lingue/<codice>.json`) e le frasi delle notifiche (`resources/lingue/notifiche/<codice>.json`), che la
+  cornice carica quando si apre la campanella (più sotto, «Le notifiche»).
 - **«Salta al contenuto»** è il primo elemento della cornice da tastiera, dalla `v1.18.0`: un pulsante davanti alla barra
   laterale e alla barra in alto, che non si vede finché non ha il fuoco. Col primo Tab compare in alto a sinistra, sopra
   la cornice; Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell'`AppShell`, e il Tab dopo
@@ -469,6 +477,13 @@ cornice === null ? pagina : (
   che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
   prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
   registro non ha la seconda riga non c'è.
+  Dalla `v1.20.0` le frasi delle notifiche — il titolo di ogni tipo e le due famiglie qui sotto — non stanno più nel JS
+  d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
+  carica quando si apre la campanella, insieme all'elenco: il pezzo della lingua della persona e quello dell'inglese, una
+  volta sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco). Finché non arrivano il pannello
+  aspetta; se non arrivano mostra l'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di
+  titoli di ripiego. Il titolo di ripiego (`notificationTitle`) resta nel file dei testi. Se la lingua della persona
+  cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate.
   Dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa, in una frase al posto del titolo
   («Marta Rossi ha modificato la scheda «Lancio Q4»»). Per questo le lingue hanno due famiglie di chiavi in più:
   `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo
@@ -774,7 +789,7 @@ persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, li
 tipo nella lingua: è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto.
 `tipo` è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
 della lingua della persona, e vale come per la cornice: `it-IT` è `it`, e con una lingua che zr-core non ha il titolo è in
-inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/en.json`):
+inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/notifiche/en.json`):
 un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
 lingua («Novità nel workspace»), mai il codice del tipo. Dalla `v1.10.0` si importa anche
 `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo: dà il nome della cosa a cui la notifica si
@@ -860,6 +875,11 @@ anche l'opportunità del CRM (`crm.trattativa`), che a `pipeline` e `fase` aggiu
 e `persa`, coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa` («Vinta» e «Persa»). `aperta`, che il
 backoffice dà per un'opportunità aperta, non è fra i codici e non ha un testo: così un'opportunità aperta non mostra
 l'esito.
+
+Dalla `v1.20.0` `titoloDellaNotifica` e `rigaDellaNotifica` portano con sé le frasi delle notifiche di ogni lingua: restano
+sincrone, con gli stessi nomi dai due ingressi, e danno gli stessi testi del pannello. Un'app che le usa in una pagina sua
+ha le frasi nel pezzo di quella pagina; un'app che non le usa non le porta, e ha solo quelle che la cornice carica a
+richiesta.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il

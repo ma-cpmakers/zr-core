@@ -2,7 +2,8 @@
 // componenti del design system che usa; quelli che servono alle pagine si prendono per nome da `./zeiras/componenti`, e nella
 // build entra ciò che l'app usa. Da qui non si scrivono `window.Zeiras` né `window.React`. Un'app che importa anche da `./index`
 // si riporta nella build il design system intero.
-export { nomeDellaVoce, rigaDellaNotifica, risorsaDellaNotifica, titoloDellaNotifica } from './lingue';
+export { rigaDellaNotifica, titoloDellaNotifica } from './frasi';
+export { nomeDellaVoce, risorsaDellaNotifica } from './lingue';
 export { destinazioneDellaNotifica } from './notifiche';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { tonoDelWorkspace } from './tono';

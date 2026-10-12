@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
-import { testi, testiDellaRicerca } from './lingue';
+import frasiInglesi from '../lingue/notifiche/en.json';
+import frasiSpagnole from '../lingue/notifiche/es.json';
+import frasiItaliane from '../lingue/notifiche/it.json';
+import * as delleLingue from './lingue';
+import { frasiARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
@@ -986,7 +990,7 @@ describe('il pannello delle notifiche', () => {
             'Giulia Bianchi ha modificato la scheda «Lancio corso»', 'Giulia Bianchi ha modificato una scheda', 'Giulia Bianchi ha modificato una scheda',
             'Giulia Bianchi ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            t['notificationTitle.crm.trattativa.assegnata'], t['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
+            frasiItaliane['notificationTitle.crm.trattativa.assegnata'], frasiItaliane['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
         ]);
         expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', 'Project Management', 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
@@ -5121,5 +5125,176 @@ describe('«Salta al contenuto»', () => {
         await mostra(laPagina());
 
         expect([contenitore.lastElementChild?.getAttribute('role'), contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['status', 'zr-visually-hidden', 3]);
+    });
+});
+
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno nel JS d'ingresso: la cornice le chiede con l'elenco, quando
+// si apre la campanella, per la lingua dei dati e per l'inglese di ripiego. Negli altri casi di questo file sono già in memoria
+// (tests/js/frasi-in-memoria.ts); qui la cornice ha un caricatore del caso, vuoto all'inizio, che dice che cosa gli è stato
+// chiesto e che il caso può fermare o rompere, file per file.
+describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint 30 · T1)', () => {
+    const elenco = [{ id: 'uat-n81', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }];
+    const inItaliano = 'Giulia Bianchi ha creato la cartella «Lancio corso»';
+    const inSpagnolo = 'Giulia Bianchi ha creado la carpeta «Lancio corso»';
+    const titoli = () => tutti('.zr-notif-list .zr-notif-title').map((titolo) => titolo.textContent);
+    const errore = () => uno('.zr-notif [role="alert"]');
+    const inAttesa = () => uno('.zr-notif [role="status"]') !== null;
+    const inSpagnoloNeiDati = { ...dati, lingua: 'es' };
+
+    /** Il caricatore del caso al posto di quello della cornice: i file chiesti, quelli che non arrivano e quelli fermi. */
+    function caricatore() {
+        const chiesti: string[] = [];
+        const rotti = new Set<string>();
+        const fermi = new Map<string, () => void>();
+        const file = (codice: string, frasi: FrasiDelleNotifiche) => async (): Promise<FrasiDelleNotifiche> => {
+            chiesti.push(codice);
+            if (fermi.has(codice)) {
+                await new Promise<void>((via) => fermi.set(codice, via));
+            }
+            if (rotti.has(codice)) {
+                throw new TypeError('Failed to fetch dynamically imported module');
+            }
+
+            return frasi;
+        };
+        const delCaso = frasiARichiesta({
+            '../lingue/notifiche/en.json': file('en', frasiInglesi),
+            '../lingue/notifiche/es.json': file('es', frasiSpagnole),
+            '../lingue/notifiche/it.json': file('it', frasiItaliane),
+        }, file('en', frasiInglesi));
+        vi.spyOn(delleLingue, 'caricaFrasi').mockImplementation(delCaso.carica);
+        vi.spyOn(delleLingue, 'frasiPronte').mockImplementation(delCaso.pronte);
+
+        return {
+            chiesti,
+            rotti,
+            ferma: (codice: string) => fermi.set(codice, () => {}),
+            lascia: async (codice: string) => {
+                const via = fermi.get(codice);
+                fermi.delete(codice);
+                await act(async () => {
+                    via?.();
+                    await prossimoGiro();
+                });
+            },
+        };
+    }
+    const conLElenco = () => {
+        const fetchFinto = vi.fn(async () => risposta({ data: elenco }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        return fetchFinto;
+    };
+
+    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura partono quello della lingua dei dati e quello dell\'inglese, non lo spagnolo, e il titolo è la frase di sempre (T1.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(frasi.chiesti).toStrictEqual([]);
+
+        await clic(uno('.zr-bell'));
+
+        expect([...new Set(frasi.chiesti)].sort()).toStrictEqual(['en', 'it']);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('finché le frasi non arrivano il pannello aspetta, anche con l\'elenco già arrivato: nessun titolo di ripiego; poi mostra l\'elenco (T1.5)', async () => {
+        const frasi = caricatore();
+        frasi.ferma('it');
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(inAttesa()).toBe(true);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        await frasi.lascia('it');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it.each(['it', 'en'])('se il file «%s» non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5)', async (rotto) => {
+        const frasi = caricatore();
+        frasi.rotti.add(rotto);
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(errore()?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+        // Non è un `403 accettazione_richiesta`: niente avviso sopra la pagina, e la campanella ha ancora il suo numero.
+        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        expect(fetchFinto).toHaveBeenCalledOnce();
+
+        frasi.rotti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain(rotto);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('alla seconda apertura l\'elenco si richiede e le frasi no: restano in memoria (T1.6)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const allaPrima = [...frasi.chiesti];
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif-list')).toBeNull();
+        await clic(uno('.zr-bell'));
+
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti).toStrictEqual(allaPrima);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('cambiando la lingua dei dati con l\'elenco in pagina i titoli passano alla lingua nuova senza riaprire il pannello, e finché le frasi nuove non arrivano non resta un titolo nella lingua di prima (T1.7)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(titoli()).toStrictEqual([inItaliano]);
+
+        frasi.ferma('es');
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        expect(frasi.chiesti).toContain('es');
+        expect(titoli()).toStrictEqual([]);
+        expect(inAttesa()).toBe(true);
+
+        await frasi.lascia('es');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+        // L'elenco è quello di prima: nessun'altra richiesta alla parte server.
+        expect(fetchFinto).toHaveBeenCalledOnce();
+
+        // Tornando alla lingua di prima le sue frasi ci sono già: il titolo cambia nello stesso disegno.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se al cambio di lingua le frasi nuove non arrivano il pannello mostra l\'errore, e «Riprova» lo ricarica nella lingua nuova (T1.5, T1.7)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        frasi.rotti.add('es');
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(errore()?.querySelector('p')?.textContent).toBe(testi('es').notificationsError);
+        expect(titoli()).toStrictEqual([]);
+
+        frasi.rotti.clear();
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inSpagnolo]);
     });
 });

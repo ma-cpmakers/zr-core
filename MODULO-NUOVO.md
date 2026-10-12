@@ -56,7 +56,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   le chiede all'agente di zr-core coi suoi testi nelle tre lingue, due per tipo: una con chi e che cosa (chiave
   `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca — README, «La cornice», al punto «Le
-  notifiche».
+  notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
+  (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li carica quando si apre la campanella: nel tuo
+  modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con «Riprova».
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o

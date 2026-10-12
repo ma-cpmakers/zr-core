@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
-import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, testi, testiDellaRicerca } from './lingue';
+import frasiInglesi from '../lingue/notifiche/en.json';
+import frasiSpagnole from '../lingue/notifiche/es.json';
+import frasiItaliane from '../lingue/notifiche/it.json';
+import { caricaLingue, frasiARichiesta, frasiDiOgniLingua, linguaDeiTesti, lingue, nomeDellaVoce, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -127,37 +130,41 @@ describe('le lingue della cornice', () => {
 
     // Sprint 12 · T3 (voce #1463): il titolo di una notifica è quello del suo tipo, con `notificationTitle.<tipo>` per chiave.
     it('il titolo di un tipo di notifica che una lingua non ha è in inglese, e un tipo che l\'inglese non ha non esiste (sprint 12 · T3.3)', () => {
-        const { 'notificationTitle.com.zeiras.board.scheda.creata': tolto, ...senzaUnTitolo } = spagnolo;
-        const conLoSpagnoloCambiato = caricaLingue({
-            '../lingue/en.json': inglese,
-            '../lingue/es.json': { ...senzaUnTitolo, 'notificationTitle.com.zeiras.crm.contatto.creato': 'Nuevo contacto' },
-        });
-        const t = conLoSpagnoloCambiato.testi('es');
-        const tipiCheHa = (testi: object) => Object.keys(testi).filter((chiave) => chiave.startsWith('notificationTitle.')).sort();
+        const { 'notificationTitle.com.zeiras.board.scheda.creata': tolto, ...senzaUnTitolo } = frasiSpagnole;
+        const conLoSpagnoloCambiato = frasiDiOgniLingua({
+            '../lingue/notifiche/en.json': frasiInglesi,
+            '../lingue/notifiche/es.json': { ...senzaUnTitolo, 'notificationTitle.com.zeiras.crm.contatto.creato': 'Nuevo contacto' },
+        }, frasiInglesi);
+        const f = conLoSpagnoloCambiato('es');
+        const tipiCheHa = (frasi: object) => Object.keys(frasi).filter((chiave) => chiave.startsWith('notificationTitle.')).sort();
 
         expect(tolto).toBe('Nueva tarjeta');
-        expect(t['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
-        // Gli altri titoli restano in spagnolo, e il ripiego pure.
-        expect(t['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
-        expect(t.notificationTitle).toBe('Novedades en el workspace');
+        expect(f['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
+        // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
+        expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
+        expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
         // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 42, in ogni lingua, anche con un file che ne ha uno in più.
-        expect(tipiCheHa(inglese)).toHaveLength(42);
-        expect(tipiCheHa(t)).toStrictEqual(tipiCheHa(inglese));
-        expect(tipiCheHa(testi('it'))).toStrictEqual(tipiCheHa(inglese));
-        expect(tipiCheHa(testi('zz'))).toStrictEqual(tipiCheHa(inglese));
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(42);
+        expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
+        expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
+        expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
+        // Composte una volta per file, e congelate: sono di tutti quelli che le chiedono.
+        expect(conLoSpagnoloCambiato('es-ES')).toBe(f);
+        expect(Object.isFrozen(f)).toBe(true);
+        expect(Object.isFrozen(frasiInglesi)).toBe(false);
     });
 
     // Sprint 16 · T5 (voce #1479): il titolo di un tipo di notifica per chi lo mostra fuori dalla cornice, dall'ingresso del
     // pacchetto. Che sia lo stesso testo del pannello delle notifiche lo prova cornice.test.tsx.
     /** I tipi che zr-core conosce: le chiavi dell'inglese, senza `notificationTitle.` davanti. */
-    const tipiConosciuti = Object.keys(inglese).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
+    const tipiConosciuti = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
     /** Il titolo di ripiego, per lingua. */
     const diRipiego = { it: 'Novità nel workspace', es: 'Novedades en el workspace', en: 'News in the workspace' };
 
     it.each<[lingua: 'it' | 'es' | 'en', file: Record<string, string>, dellaSchedaCreata: string]>([
-        ['it', italiano, 'Nuova scheda'],
-        ['es', spagnolo, 'Nueva tarjeta'],
-        ['en', inglese, 'New card'],
+        ['it', frasiItaliane, 'Nuova scheda'],
+        ['es', frasiSpagnole, 'Nueva tarjeta'],
+        ['en', frasiInglesi, 'New card'],
     ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 42 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./index');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
@@ -629,7 +636,8 @@ describe('rigaDellaNotifica', () => {
         ['board.scheda.assegnata', { it: ['Giulia Bianchi ti ha assegnato la scheda «Lancio corso»', 'Giulia Bianchi ti ha assegnato una scheda'], en: ['Giulia Bianchi assigned you the card “Lancio corso”', 'Giulia Bianchi assigned you a card'], es: ['Giulia Bianchi te ha asignado la tarjeta «Lancio corso»', 'Giulia Bianchi te ha asignado una tarjeta'] }],
         ['board.commento.menzione', { it: ['Giulia Bianchi ti ha menzionato in «Lancio corso»', 'Giulia Bianchi ti ha menzionato in un commento'], en: ['Giulia Bianchi mentioned you in “Lancio corso”', 'Giulia Bianchi mentioned you in a comment'], es: ['Giulia Bianchi te ha mencionado en «Lancio corso»', 'Giulia Bianchi te ha mencionado en un comentario'] }],
     ];
-    const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', italiano], ['en', inglese], ['es', spagnolo]];
+    /** I testi e le frasi delle notifiche di ogni lingua, insieme: i due file che ha in resources/lingue. */
+    const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', { ...italiano, ...frasiItaliane }], ['en', { ...inglese, ...frasiInglesi }], ['es', { ...spagnolo, ...frasiSpagnole }]];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
 
     it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management e dei due «per me» ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi (sprint 29 · T2.1, T2.2, T2.4)', async (lingua) => {
@@ -688,7 +696,7 @@ describe('rigaDellaNotifica', () => {
     it('un tipo senza frasi resta com\'è anche con chi: del CRM, del workspace, di un\'app (sotto il nome del prodotto), uno che zr-core non conosce, uno che non è un testo (sprint 29 · T2.5)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./index');
         const conLeFrasi = new Set(frasi.map(([tipo]) => tipo));
-        const senzaFrasi = Object.keys(inglese).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : [])).filter((tipo) => !conLeFrasi.has(tipo));
+        const senzaFrasi = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : [])).filter((tipo) => !conLeFrasi.has(tipo));
 
         expect(senzaFrasi).toHaveLength(42 - 18);
         for (const [lingua, file] of lingueDiPartenza) {
@@ -731,12 +739,12 @@ describe('rigaDellaNotifica', () => {
 
     it('una frase che una lingua non ha è quella dell\'inglese; e una frase si usa solo se è un testo e se ha i nomi che chiede (sprint 29 · T2.3, T2.7)', async () => {
         const { fraseConINomi } = await import('./lingue');
-        const { 'notificationTitleWhoWhat.com.zeiras.board.scheda.modificata': tolta, ...senzaUnaFrase } = spagnolo;
-        const conUnaInMeno = caricaLingue({ '../lingue/en.json': inglese, '../lingue/es.json': senzaUnaFrase });
+        const { 'notificationTitleWhoWhat.com.zeiras.board.scheda.modificata': tolta, ...senzaUnaFrase } = frasiSpagnole;
+        const conUnaInMeno = frasiDiOgniLingua({ '../lingue/notifiche/en.json': frasiInglesi, '../lingue/notifiche/es.json': senzaUnaFrase }, frasiInglesi);
 
         expect(tolta).toBe('{who} ha modificado la tarjeta «{what}»');
-        expect(conUnaInMeno.testi('es')['notificationTitleWhoWhat.com.zeiras.board.scheda.modificata']).toBe('{who} changed the card “{what}”');
-        expect(conUnaInMeno.testi('es')['notificationTitleWho.com.zeiras.board.scheda.modificata']).toBe('{who} ha modificado una tarjeta');
+        expect(conUnaInMeno('es')['notificationTitleWhoWhat.com.zeiras.board.scheda.modificata']).toBe('{who} changed the card “{what}”');
+        expect(conUnaInMeno('es')['notificationTitleWho.com.zeiras.board.scheda.modificata']).toBe('{who} ha modificado una tarjeta');
         // Un file scritto male: una frase che chiede il nome della cosa non si usa quando il nome non c'è, e una senza testo mai.
         expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi', 'Lancio corso')).toBe('Giulia Bianchi + Lancio corso');
         expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi')).toBeUndefined();
@@ -745,12 +753,126 @@ describe('rigaDellaNotifica', () => {
     });
 
     it('è esportata dai due ingressi, la stessa funzione; `titoloDellaNotifica` e `risorsaDellaNotifica` restano com\'erano (sprint 29 · T2.8)', async () => {
-        const [diSempre, perLeApp, delleLingue] = await Promise.all([import('./index'), import('./app'), import('./lingue')]);
+        const [diSempre, perLeApp, delleFrasi] = await Promise.all([import('./index'), import('./app'), import('./frasi')]);
 
         expect(typeof diSempre.rigaDellaNotifica).toBe('function');
         expect(perLeApp.rigaDellaNotifica).toBe(diSempre.rigaDellaNotifica);
-        expect(delleLingue.rigaDellaNotifica).toBe(diSempre.rigaDellaNotifica);
+        expect(delleFrasi.rigaDellaNotifica).toBe(diSempre.rigaDellaNotifica);
+        expect(perLeApp.titoloDellaNotifica).toBe(diSempre.titoloDellaNotifica);
+        expect(delleFrasi.titoloDellaNotifica).toBe(diSempre.titoloDellaNotifica);
+        expect(perLeApp.risorsaDellaNotifica).toBe(diSempre.risorsaDellaNotifica);
+        // Sincrone, come prima dello sprint 30: un testo, non una promessa (sprint 30 · T1.8).
+        expect(diSempre.rigaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', 'Lancio corso'), 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato la scheda «Lancio corso»' });
         expect(diSempre.titoloDellaNotifica('com.zeiras.board.scheda.modificata', 'it')).toBe('Scheda modificata');
         expect(diSempre.risorsaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', ' Lancio corso '), 'it')).toBe('Lancio corso');
+    });
+});
+
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche stanno in un file loro per lingua (resources/lingue/notifiche) e la
+// cornice le carica quando servono: il file della lingua e quello dell'inglese, una volta sola. Chi mostra le notifiche in
+// una pagina sua le ha subito, da `./frasi`, e gli stessi testi.
+describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
+    /** Tre file che dicono quando sono chiesti; `rotti` non arrivano. */
+    function fileFinti(rotti = new Set<string>()) {
+        const chiesti: string[] = [];
+        const file = (codice: string, frasi: FrasiDelleNotifiche) => async (): Promise<FrasiDelleNotifiche> => {
+            chiesti.push(codice);
+            if (rotti.has(codice)) {
+                throw new TypeError('Failed to fetch dynamically imported module');
+            }
+
+            return frasi;
+        };
+        const { 'notificationTitle.com.zeiras.board.scheda.creata': _tolto, ...spagnoleConUnaInMeno } = frasiSpagnole;
+        const aRichiesta = frasiARichiesta({
+            '../lingue/notifiche/en.json': file('en', frasiInglesi),
+            '../lingue/notifiche/es.json': file('es', { ...spagnoleConUnaInMeno, 'notificationTitle.com.zeiras.crm.contatto.creato': 'Nuevo contacto', 'notificationTitle.com.zeiras.board.scheda.modificata': '  ' }),
+            '../lingue/notifiche/it.json': file('it', frasiItaliane),
+        }, file('en', frasiInglesi));
+
+        return { chiesti, rotti, ...aRichiesta };
+    }
+
+    it('per una lingua partono il suo file e quello dell\'inglese, mai gli altri; prima non c\'è niente in memoria, dopo le frasi restano e non si richiedono, e due richieste insieme sono una (T1.3, T1.6)', async () => {
+        const frasi = fileFinti();
+        expect(frasi.chiesti).toStrictEqual([]);
+        expect(frasi.pronte('it')).toBeUndefined();
+
+        const [prime, insieme] = await Promise.all([frasi.carica('it-IT'), frasi.carica('it')]);
+        expect(frasi.chiesti.sort()).toStrictEqual(['en', 'it']);
+        expect(insieme).toBe(prime);
+        expect(prime).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
+        expect(Object.isFrozen(prime)).toBe(true);
+        expect(frasi.pronte('IT')).toBe(prime);
+        // Le altre lingue non sono in memoria finché nessuno le chiede.
+        expect(frasi.pronte('es')).toBeUndefined();
+        expect(frasi.pronte('en')).toBeUndefined();
+
+        expect(await frasi.carica('it')).toBe(prime);
+        expect(frasi.chiesti).toHaveLength(2);
+    });
+
+    it('una lingua senza una frase, o con la frase vuota, la ha in inglese; una frase di un tipo che l\'inglese non ha non entra; una lingua che zr-core non ha chiede il solo inglese (T1.4)', async () => {
+        const frasi = fileFinti();
+        const spagnole = await frasi.carica('es');
+
+        expect(spagnole['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
+        expect(spagnole['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Card changed');
+        expect(spagnole['notificationTitle.com.zeiras.board.cartella.creata']).toBe('Nueva carpeta');
+        expect(Object.keys(spagnole).sort()).toStrictEqual(Object.keys(frasiInglesi).sort());
+
+        frasi.chiesti.length = 0;
+        const diNessuno = await frasi.carica('zz');
+        expect(frasi.chiesti).toStrictEqual(['en']);
+        expect(diNessuno).toStrictEqual(frasiInglesi);
+        expect(frasi.pronte('constructor')).toBe(diNessuno);
+    });
+
+    it('se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte, e se arriva le frasi ci sono (T1.5)', async () => {
+        for (const rotto of ['it', 'en']) {
+            const frasi = fileFinti(new Set([rotto]));
+
+            await expect(frasi.carica('it')).rejects.toThrow('Failed to fetch dynamically imported module');
+            expect(frasi.pronte('it')).toBeUndefined();
+
+            frasi.rotti.clear();
+            frasi.chiesti.length = 0;
+            expect(await frasi.carica('it')).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
+            expect(frasi.chiesti.sort()).toStrictEqual(['en', 'it']);
+        }
+    });
+
+    it.each<[lingua: string, file: FrasiDelleNotifiche]>([
+        ['it', frasiItaliane],
+        ['es', frasiSpagnole],
+        ['en', frasiInglesi],
+        ['zz', frasiInglesi],
+    ])('con la lingua "%s" le frasi che carica la cornice sono quelle dei file del pacchetto, e il pannello e chi mostra le notifiche in una pagina sua hanno gli stessi testi, tipo per tipo (T1.4, T1.8)', async (lingua, file) => {
+        const { caricaFrasi, rigaConLeFrasi, titoloConLeFrasi } = await import('./lingue');
+        const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
+        const caricate = await caricaFrasi(lingua);
+        const tipi = [...Object.keys(frasiInglesi).filter((chiave) => chiave.startsWith('notificationTitle.')).map((chiave) => chiave.slice('notificationTitle.'.length)), 'com.zeiras.uat.ignoto', '', undefined, 7];
+
+        expect(caricate).toStrictEqual({ ...frasiInglesi, ...file });
+        expect(tipi).toHaveLength(42 + 4);
+        for (const tipo of tipi) {
+            for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
+                expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);
+            }
+            expect([tipo, titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titoloDellaNotifica(tipo, lingua)]);
+        }
+        // Un tipo che le lingue non hanno ha il titolo di ripiego, che è un testo della cornice.
+        expect(titoloDellaNotifica('com.zeiras.uat.ignoto', lingua)).toBe(testi(lingua).notificationTitle);
+    });
+
+    it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
+        const eUnaFrase = (chiave: string) => /^notificationTitle(Who(What)?)?\../.test(chiave);
+
+        for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
+            expect(typeof testiDelFile.notificationTitle).toBe('string');
+            expect(Object.keys(testiDelFile).filter(eUnaFrase)).toStrictEqual([]);
+            expect(Object.keys(frasiDelFile).filter((chiave) => !eUnaFrase(chiave))).toStrictEqual([]);
+            expect(Object.keys(frasiDelFile).sort()).toStrictEqual(Object.keys(frasiInglesi).sort());
+        }
     });
 });
