@@ -38,10 +38,40 @@ export interface RisultatoDellaRicerca {
     titolo: string;
 }
 
+/**
+ * Una rotta della cornice ha risposto 403 `{"errore": "accettazione_richiesta"}`: la persona non ha ancora accettato i documenti
+ * legali in vigore, e finché non lo fa il backoffice non dà né notifiche né ricerca (dalla `v1.14.0`). Per la cornice non è un
+ * guasto: passa allo stato ridotto, con l'avviso che porta alla pagina dell'accettazione. Per chi non la guarda è un errore
+ * come gli altri. Vale lo stesso il 403 col codice in `codice`, la forma con cui zr-auth risponde da sé a una richiesta JSON:
+ * arriva al browser se un middleware del frontend chiama il backoffice anche su una rotta della cornice senza prendere
+ * quell'errore.
+ */
+export class AccettazioneRichiesta extends Error {}
+
+/**
+ * I codici dell'errore, se la risposta ha un corpo JSON che li porta: quello che una rotta della cornice dà al suo errore
+ * (`errore`), e quello che dà zr-auth quando risponde da sé (`codice`).
+ */
+async function codiciDi(risposta: Response): Promise<unknown[]> {
+    try {
+        const corpo = (await risposta.json()) as { errore?: unknown; codice?: unknown } | null;
+
+        return [corpo?.errore, corpo?.codice];
+    } catch {
+        return [];
+    }
+}
+
 async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
     if (!risposta.ok) {
-        throw new Error(`${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`);
+        const esito = `${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
+        // Il corpo si legge solo di un 403, e solo quel codice cambia l'errore: un 403 con un altro codice (la sessione senza
+        // workspace), o lo stesso codice con un altro stato, restano l'errore di sempre.
+        if (risposta.status === 403 && (await codiciDi(risposta)).includes('accettazione_richiesta')) {
+            throw new AccettazioneRichiesta(esito);
+        }
+        throw new Error(esito);
     }
 
     return risposta.json();

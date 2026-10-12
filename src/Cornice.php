@@ -45,6 +45,13 @@ final class Cornice
      * (zr-auth): mai una lista di app vuota, che farebbe «Presto» di ogni prodotto, né un elenco di aziende vuoto o zero non
      * lette.
      *
+     * Con una sola eccezione, che non è un guasto: se a una delle letture il backoffice risponde 403 `accettazione_richiesta`
+     * (la persona non ha ancora accettato i documenti legali in vigore: vedi Accettazione) i dati escono ridotti — lingua,
+     * persona e workspace della sessione, nessuna app, nessuna azienda, zero non lette, il segno — e portano in più
+     * `accettazione_richiesta: true`, in fondo. La chiave c'è solo lì, mai a `false`: i dati di chi ha accettato sono quelli
+     * di sempre. Con quella chiave la lista di app vuota non dice «Presto» di ogni prodotto: dice che il backoffice non le
+     * ha date. Dopo quel 403 il backoffice non si chiama più.
+     *
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice (i dati sono almeno
      * freschi quanto il segno), nella forma di `Segno::adesso()`: in UTC qualunque sia il fuso dell'applicazione, coi
      * microsecondi sempre a sei cifre e `Z` in fondo (`2026-10-09T21:31:05.123456Z`), così due segni si ordinano anche come
@@ -57,7 +64,7 @@ final class Cornice
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
      * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -69,10 +76,12 @@ final class Cornice
         }
 
         $lettura = self::lettura($utente, $workspace, true);
+        $esito = $lettura['esito'];
 
-        // La lettura fallita di `lingua()`, che non lancia, è ancora un errore per i dati: lo stesso, senza rileggere.
-        if (! is_int($lettura['esito'])) {
-            throw $lettura['esito'];
+        // La lettura fallita di `lingua()`, che non lancia, è ancora un errore per i dati: lo stesso, senza rileggere. Il 403
+        // `accettazione_richiesta` no: i dati escono ridotti.
+        if (! is_int($esito) && ! Accettazione::richiesta($esito)) {
+            throw $esito;
         }
 
         // Se intanto la sessione è scaduta zr-auth non dà più la persona, e la lettura dopo lancia GettoneRifiutato prima che
@@ -80,20 +89,42 @@ final class Cornice
         // (`Sessione::utente()` può dare null). Oggi nessun test lo distingue, e l'analisi statica non lo chiede.
         $utente = Sessione::utente() ?? $utente;
 
-        $prodotti = [];
-        foreach (Api::workspace()->tutti('/v1/app') as $app) {
-            $prodotti[$app['codice']] = $app['stato'];
-        }
+        $letti = is_int($esito) ? self::appEAziende($esito) : null;
 
         return [
             'lingua' => $utente['lingua'],
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
-            'prodotti' => $prodotti,
-            'aziende' => self::aziende(),
-            'non_lette' => $lettura['esito'],
+            ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             'aggiornati_il' => $lettura['segno'],
+            ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
+    }
+
+    /**
+     * Ciò che dei dati si legge dopo io.mostra — lo stato di ogni app nel workspace (app.elenca) e le aziende della persona —,
+     * con le non lette già contate. null se a una di quelle letture il backoffice risponde col 403 `accettazione_richiesta`
+     * (Accettazione): da lì non lo si chiama più, e ciò che era già letto non esce.
+     *
+     * @param  int<0, max>  $nonLette
+     * @return array{prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int<0, max>}|null
+     */
+    private static function appEAziende(int $nonLette): ?array
+    {
+        try {
+            $prodotti = [];
+            foreach (Api::workspace()->tutti('/v1/app') as $app) {
+                $prodotti[$app['codice']] = $app['stato'];
+            }
+
+            return ['prodotti' => $prodotti, 'aziende' => self::aziende(), 'non_lette' => $nonLette];
+        } catch (ErroreApi $errore) {
+            if (Accettazione::richiesta($errore)) {
+                return null;
+            }
+
+            throw $errore;
+        }
     }
 
     /**
@@ -110,8 +141,9 @@ final class Cornice
      * sessione, e il backoffice non si chiama. Costa una lettura, io.mostra, e in una richiesta in cui c'è anche `dati()`
      * nessuna in più: è la stessa (vedi `lettura()`). Se il backoffice non risponde non lancia, perché la lingua di una
      * pagina non diventi un 500: dà la lingua che la sessione ha, lascia un avviso nel log, e l'errore lo lancia `dati()`,
-     * se in quella richiesta c'è. GettoneRifiutato passa: la sessione è finita, e lo tratta il frontend come da ogni altra
-     * chiamata.
+     * se in quella richiesta c'è. Davanti al 403 `accettazione_richiesta` dà la lingua della sessione allo stesso modo, ma
+     * senza avviso, e `dati()` non lancia: non è un guasto, e i dati escono ridotti. GettoneRifiutato passa: la sessione è
+     * finita, e lo tratta il frontend come da ogni altra chiamata.
      */
     public static function lingua(): ?string
     {
@@ -146,7 +178,7 @@ final class Cornice
      * che la lettura si tenesse, e i suoi dati hanno un altro segno. Si tengono anche BackofficeNonRisponde ed ErroreApi,
      * perché una lettura fallita non riparta nella stessa richiesta; GettoneRifiutato non si prende, e non si tiene niente.
      * L'errore preso per `lingua()`, che non lo lancia, va nel log come avviso: in una richiesta senza `dati()` non ne
-     * resterebbe traccia.
+     * resterebbe traccia. Il 403 `accettazione_richiesta` no: non è un guasto, e non lascia un avviso.
      *
      * @param  array<string, mixed>  $utente  la persona della sessione
      * @param  array<string, mixed>  $workspace  il workspace della sessione
@@ -175,7 +207,8 @@ final class Cornice
             $esito = $io['notifiche_non_lette'];
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
-            if (! $perIDati) {
+            // Il 403 `accettazione_richiesta` non è un guasto: non lascia un avviso.
+            if (! $perIDati && ! Accettazione::richiesta($errore)) {
                 self::avvisa($errore);
             }
         }

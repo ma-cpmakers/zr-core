@@ -6,6 +6,11 @@
             "risorse": [
                 { "tipo": "board.cartelle", "icona": "folder", "percorso": "", "contenitore": true },
                 { "tipo": "board.board", "icona": "board", "percorso": "/b/{id}", "contenitore": true }
+            ],
+            "notifiche": [
+                { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
+                { "tipo": "com.zeiras.board.scheda.modificata", "percorso": "/c/{id}" },
+                { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" }
             ]
         },
         {

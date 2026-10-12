@@ -202,17 +202,18 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         // Sprint 21 · T5: le due di un'azienda aprono la sua pagina nel CRM.
         expect(notifiche.slice(14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([`${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/aziende/uat-azienda-1`]);
-        // Le prime quattro, quelle di ogni pagina di prova, non hanno una destinazione: aprono la pagina delle notifiche.
-        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual([null, null, null, null]);
+        // Delle prime quattro, quelle di ogni pagina di prova, dallo sprint 24 (T3) «Nuova scheda» apre la sua scheda; le altre tre
+        // non hanno una destinazione: aprono la pagina delle notifiche.
+        expect(notifiche.slice(0, 4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'disponibile' }) ?? null)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null]);
         // Dalla più recente, come le dà la parte server: quelle del CRM sono più vecchie di tutte le altre.
         const istanti = notifiche.map(({ creata_il }) => new Date(creata_il).getTime());
         expect(istanti).toStrictEqual([...istanti].sort((a, b) => b - a));
     });
 
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
-    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una scheda o di una vista, né
-    // quello di una nota, né quello di una persona entrata nel workspace.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
+    // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -231,6 +232,26 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [notifica.id, diUnPercorsoSolo(notifica)])).toEqual(notifiche.map(({ id }) => [id, true]));
         // E quelle i cui percorsi chiedono tutti un id portano il loro, tranne la nota senza legami.
         expect(notifiche.filter((notifica) => chiesteDaOgniPercorso(notifica).every((chieste) => chieste.length > 0) && Object.keys(notifica.ids).length === 0).map(({ id }) => id)).toEqual(query.includes('crm') ? ['uat-c9'] : []);
+    });
+
+    // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata apre la sua pagina in zr-board. «Nuova scheda»,
+    // nell'elenco di sempre, porta l'id della sua scheda come dalla parte server; la scheda assegnata e una eliminata stanno
+    // dietro `?schede=1`.
+    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, e in fondo una scheda eliminata, letta; zr-core conosce i due tipi, la prima apre la scheda e la seconda no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4)', async () => {
+        await rotte(false, '?schede=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; creata_il: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const apre = (notifica: (typeof notifiche)[number]) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null;
+        const [assegnata, eliminata] = [notifiche[0], notifiche[5]];
+
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
+        expect(assegnata).toEqual({ id: 'uat-s1', creata_il: assegnata?.creata_il, letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } });
+        expect([eliminata?.app, eliminata?.tipo, eliminata?.letta, eliminata?.ids]).toEqual(['pm', 'com.zeiras.board.scheda.eliminata', true, {}]);
+        expect([assegnata, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true]);
+        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
+        expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
@@ -344,6 +365,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(await segnate()).toEqual([200, true]);
         expect(await lette()).toEqual([false, true, true, true]);
         expect(await segnate()).toEqual([200, false]);
+    });
+
+    // Sprint 24 · T4 (voce #1754). Con `?sessione=` vuoto la pagina di prova non dice il workspace della «sessione», e la parte
+    // server finta non dice di chi è l'elenco, come una di prima della `v1.12.0`: la cornice mostra «Segna tutte come lette», e
+    // la POST deve riuscire, perché non c'è un workspace con cui lo slug della pagina possa non tornare. Con la «sessione» in un
+    // altro workspace resta il 409 della parte server.
+    it.each<[string, string | undefined, [number, unknown], boolean[]]>([
+        ['che la pagina di prova non dice: riesce, e le segna tutte', undefined, [200, false], [true, true, true, true]],
+        ['in un altro workspace: 409, e non ne segna nessuna', 'uat-vendite', [409, undefined], [false, false, true, true]],
+    ])('«Segna tutte come lette» dalla pagina dei dati di prova, con la «sessione» %s (sprint 24 · T4.4)', async (_quale, dellaSessione, risposta, poi) => {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => dellaSessione);
+
+        expect(await segnate()).toEqual(risposta);
+        expect(await lette()).toEqual(poi);
     });
 
     // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa.
@@ -480,6 +517,20 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ], ...atteso } });
     });
 
+    // Sprint 24 · T4 (voce #1754): con `?id_malfatto=1` fra i risultati d'esempio c'è una board in più, con l'id `..`. La
+    // cornice non la mostra: gli altri risultati della stessa parola sì.
+    it.each<[string, string, Record<string, unknown>[]]>([
+        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }]],
+        ['senza `?id_malfatto` i risultati d\'esempio sono quelli di prima', '', []],
+    ])('%s (sprint 24 · T4.2)', async (_caso, query, inPiu) => {
+        expect((await rispostaDi('/cornice/ricerca', cerca('lancio'), query)).corpo.data).toStrictEqual([
+            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
+            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+            ...inPiu,
+            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+        ]);
+    });
+
     it('una GET non cerca, nemmeno con la parola nell\'indirizzo: 405 coi metodi ammessi, come la rotta vera, e senza un corpo che la rotta vera non ha (sprint 18 · T1.7)', async () => {
         const risposta = await rispostaGrezzaDi('/cornice/ricerca?q=marketing');
 
@@ -501,5 +552,53 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
 
     it('con ?errore=ricerca la POST fallisce (sprint 18 · T1.7)', async () => {
         expect((await rispostaDi('/cornice/ricerca', cerca('marketing'), '?errore=ricerca')).stato).toBe(502);
+    });
+});
+
+// Sprint 24 · T2 (voce #1745): con `?accettazione=dopo` la pagina di prova ha i dati di sempre, e che la persona non ha accettato
+// i documenti legali in vigore lo dicono le rotte: le quattro rispondono 403 col solo codice, come la parte server dalla `v1.14.0`.
+// Con `?accettazione=1` lo dicono i dati della pagina, e le rotte restano quelle di sempre (la cornice ridotta non le chiama).
+describe('con `?accettazione=dopo` le quattro rotte finte rispondono 403 `accettazione_richiesta`', () => {
+    const fetchDiPrima = window.fetch;
+
+    beforeEach(() => {
+        vi.resetModules();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.fetch = fetchDiPrima;
+    });
+
+    /** Lo stato e il corpo JSON della risposta di una rotta finta, sulla pagina di prova con quella query. */
+    async function rispostaDi(indirizzo: string, opzioni: RequestInit | undefined, query: string): Promise<{ stato: number; corpo: unknown }> {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
+        const { rotteFinte } = await import('./rotte-finte');
+        rotteFinte(() => 'uat-marketing');
+        const inArrivo = fetch(indirizzo, opzioni);
+        await vi.advanceTimersByTimeAsync(1500);
+        const risposta = await inArrivo;
+
+        return { stato: risposta.status, corpo: await risposta.json() };
+    }
+
+    const leQuattro: [string, string, RequestInit | undefined][] = [
+        ['GET /cornice/notifiche', '/cornice/notifiche', undefined],
+        ['PATCH /cornice/notifiche/<id>/lettura', '/cornice/notifiche/uat-c1/lettura', { method: 'PATCH', body: JSON.stringify({ letta: true }) }],
+        ['POST /cornice/notifiche/letture', '/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: '2026-10-10T00:00:00.000Z', workspace: 'uat-marketing' }) }],
+        ['POST /cornice/ricerca', '/cornice/ricerca', { method: 'POST', body: JSON.stringify({ q: 'marketing' }) }],
+    ];
+
+    it.each(leQuattro)('%s risponde 403 col solo codice (sprint 24 · T2.5)', async (_rotta, indirizzo, opzioni) => {
+        expect(await rispostaDi(indirizzo, opzioni, '?accettazione=dopo&crm=1&da_leggere=1')).toStrictEqual({ stato: 403, corpo: { errore: 'accettazione_richiesta' } });
+    });
+
+    it.each(leQuattro)('%s senza il parametro, e con `?accettazione=1`, risponde come sempre: lì lo dicono i dati della pagina, non le rotte (sprint 24 · T2.5)', async (_rotta, indirizzo, opzioni) => {
+        expect((await rispostaDi(indirizzo, opzioni, '?crm=1&da_leggere=1')).stato).toBe(200);
+        vi.resetModules();
+        expect((await rispostaDi(indirizzo, opzioni, '?accettazione=1&crm=1&da_leggere=1')).stato).toBe(200);
     });
 });

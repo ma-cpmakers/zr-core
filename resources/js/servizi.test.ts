@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cerca, segnaLetta } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA } from './servizi';
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -153,5 +153,65 @@ describe('cerca', () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultati, workspace })));
 
         await expect(cerca('uat', new AbortController().signal)).resolves.toStrictEqual({ risultati, workspace });
+    });
+});
+
+// Sprint 24 · T2 (voce #1745): se la persona non ha accettato i documenti legali in vigore le quattro rotte della cornice
+// rispondono 403 col solo codice, `{"errore":"accettazione_richiesta"}`. Per la cornice non è un guasto: le quattro chiamate
+// lanciano `AccettazioneRichiesta`, che lei riconosce. Ogni altro esito resta l'errore di prima.
+describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    const chiamate: [string, () => Promise<unknown>][] = [
+        ['caricaNotifiche', () => caricaNotifiche()],
+        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing')],
+        ['segnaLetta', () => segnaLetta('uat-n69')],
+        ['cerca', () => cerca('lancio', new AbortController().signal)],
+    ];
+    /** Come una chiamata finisce: con quell'errore, con un altro, o bene. */
+    const esitoDi = (chiama: () => Promise<unknown>) => chiama().then(() => 'riuscita', (errore: unknown) => (errore instanceof AccettazioneRichiesta ? 'AccettazioneRichiesta' : errore instanceof Error ? 'Error' : 'altro'));
+
+    it.each(chiamate)('%s: col 403 e il corpo {"errore":"accettazione_richiesta"} lancia AccettazioneRichiesta, che è un errore come gli altri per chi non la guarda (sprint 24 · T2.5)', async (_nome, chiama) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ errore: 'accettazione_richiesta' }, 403)));
+
+        const errore: unknown = await chiama().then(() => undefined, (lanciato: unknown) => lanciato);
+        expect(errore).toBeInstanceOf(AccettazioneRichiesta);
+        expect(errore).toBeInstanceOf(Error);
+    });
+
+    // Lettura della PR #52, R10. Le rotte della cornice danno il codice in `errore`. zr-auth, da sé, a una richiesta JSON risponde
+    // 403 col codice in `codice` e i documenti che mancano in `mancanti`: arriva al browser se un middleware del frontend chiama
+    // il backoffice anche su una rotta della cornice e nessuno prende quell'errore. Per la cornice è lo stesso segnale.
+    it.each(chiamate)('%s: col 403 e il corpo che dà zr-auth, {"codice":"accettazione_richiesta","mancanti":[…]}, lancia AccettazioneRichiesta come col codice in `errore` (sprint 24 · T5, R10)', async (_nome, chiama) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ codice: 'accettazione_richiesta', mancanti: ['termini', 'privacy'] }, 403)));
+
+        expect(await esitoDi(chiama)).toBe('AccettazioneRichiesta');
+    });
+
+    it.each<[string, () => Response]>([
+        ['un 403 con un altro `errore`', () => risposta({ errore: 'gettone_senza_workspace' }, 403)],
+        ['un 403 senza `errore`', () => risposta({}, 403)],
+        ['un 403 col codice sotto una chiave che non è né `errore` né `codice`', () => risposta({ code: 'accettazione_richiesta' }, 403)],
+        ['un 403 con un altro `codice`', () => risposta({ codice: 'gettone_senza_workspace', mancanti: [] }, 403)],
+        ['un 403 con un `codice` che lo contiene soltanto', () => risposta({ codice: 'accettazione_richiesta_altro' }, 403)],
+        ['un 409 con lo stesso `codice`', () => risposta({ codice: 'accettazione_richiesta', mancanti: ['termini'] }, 409)],
+        ['un 403 con un `errore` che lo contiene soltanto', () => risposta({ errore: 'accettazione_richiesta_altro' }, 403)],
+        ['un 403 con un corpo `null`', () => risposta(null, 403)],
+        ['un 403 con un corpo che non è JSON', () => ({ ok: false, status: 403, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } }) as unknown as Response],
+        ['un 409 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 409)],
+        ['un 500 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 500)],
+        ['un 200 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' })],
+    ])('%s resta l\'errore di prima per tutte e quattro le chiamate, non AccettazioneRichiesta (sprint 24 · T2.5)', async (_caso, risponde) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risponde()));
+
+        expect(await Promise.all(chiamate.map(([, chiama]) => esitoDi(chiama)))).toStrictEqual(['Error', 'Error', 'Error', 'Error']);
+    });
+
+    it('la rete giù resta l\'errore di `fetch`, non AccettazioneRichiesta (sprint 24 · T2.5)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+
+        expect(await Promise.all(chiamate.map(([, chiama]) => esitoDi(chiama)))).toStrictEqual(['Error', 'Error', 'Error', 'Error']);
     });
 });

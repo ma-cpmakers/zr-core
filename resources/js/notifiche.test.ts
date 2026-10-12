@@ -31,10 +31,16 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le diciotto destinazioni del CRM sono quelle del registro: nessun altro prodotto ne ha, e ogni tipo ha il suo percorso (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', () => {
+    it('le diciotto destinazioni del CRM sono quelle del registro, e ogni tipo ha il suo percorso; ne ha tre anche Project Management, quelle di una scheda, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
-        expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['crm']);
+        expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['pm', 'crm']);
+        // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
+        expect(registro.find((voce) => voce.id === 'pm')?.notifiche).toStrictEqual([
+            { tipo: 'com.zeiras.board.scheda.creata', percorso: '/c/{id}' },
+            { tipo: 'com.zeiras.board.scheda.modificata', percorso: '/c/{id}' },
+            { tipo: 'board.scheda.assegnata', percorso: '/c/{id}' },
+        ]);
         expect(registro.find((voce) => voce.id === 'crm')?.notifiche).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.persona.modificata', percorso: '/contatti/{id}' },
@@ -100,7 +106,15 @@ describe('la destinazione di una notifica', () => {
 
     it.each([
         ['del workspace, senza app', { app: null, tipo: 'com.zeiras.workspace.membro.creato', ids: { id: 'uat-membro-1' } }],
-        ['di Project Management', { app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } }],
+        // Sprint 24 · T3: una scheda nuova, modificata o assegnata ora si apre (più sotto). Di Project Management restano senza una
+        // destinazione una scheda eliminata, gli altri tipi della board, e i tipi scritti quasi come quelli del registro.
+        ['di una scheda eliminata, di Project Management', { app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } }],
+        ['di una lista di una board', { app: 'pm', tipo: 'com.zeiras.board.lista.creata', ids: { id: 'uat-lista-1', board_id: 'uat-board-1' } }],
+        ['di una board modificata', { app: 'pm', tipo: 'com.zeiras.board.board.modificata', ids: { id: 'uat-board-1' } }],
+        ['di una scheda assegnata, con `com.zeiras.` davanti', { app: 'pm', tipo: 'com.zeiras.board.scheda.assegnata', ids: { id: 'uat-scheda-1' } }],
+        ['di una scheda nuova, senza `com.zeiras.` davanti', { app: 'pm', tipo: 'board.scheda.creata', ids: { id: 'uat-scheda-1' } }],
+        ['di una scheda assegnata, con l\'app del CRM', { app: 'crm', tipo: 'board.scheda.assegnata', ids: { id: 'uat-scheda-1' } }],
+        ['di una scheda assegnata, senza app', { app: null, tipo: 'board.scheda.assegnata', ids: { id: 'uat-scheda-1' } }],
         ['del CRM, di un tipo che zr-core non conosce', delCrm('persona.assegnata', { id: 'uat-persona-1' })],
         ['del CRM, di un tipo che ne continua uno conosciuto', delCrm('persona.creata.v2', { id: 'uat-persona-1' })],
         ['del CRM, col solo pezzo di un tipo conosciuto', delCrm('persona', { id: 'uat-persona-1' })],
@@ -161,6 +175,44 @@ describe('la destinazione di una notifica', () => {
         // Il resto vale come per ogni destinazione: lo slug con la forma di uno slug, e un modulo che si può aprire.
         expect(destinazioneDellaNotifica({ app: 'crm', tipo, ids: {} }, 'Acme', prodotti)).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: {} }, { crm: 'in_arrivo' })).toBeUndefined();
+    });
+
+    // Sprint 24 · T3 (voce #1748). Project Management ha le sue prime destinazioni: una scheda nuova, modificata o assegnata a
+    // chi riceve la notifica apre la pagina della scheda in zr-board, `/c/<id>` dopo `/w/<slug>` (zr-board, nota 10451 del #95:
+    // quella pagina legge la scheda e rimanda al suo dettaglio nella board). «assegnata» non è un evento: arriva senza
+    // `com.zeiras.` davanti. L'id è quello della scheda, `id`: la board e la lista non prendono il suo posto.
+    const BOARD = 'https://board.zeiras.com/w/acme-marketing';
+    const diUnaScheda = [['board.scheda.assegnata'], ['com.zeiras.board.scheda.creata'], ['com.zeiras.board.scheda.modificata']];
+
+    it.each(diUnaScheda)('una notifica di Project Management di tipo «%s» apre la scheda, con l\'`id` che porta, dopo `/w/<slug>` del workspace che si dà (sprint 24 · T3.2, T3.4)', (tipo) => {
+        expect(apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } })).toBe(`${BOARD}/c/uat-scheda-1`);
+        // Un evento, per il contratto, porta anche la lista e la board: conta solo l'id della scheda.
+        expect(apre({ app: 'pm', tipo, ids: { id: '01jb2m5k8q9r7s6t4v3w2x1y0z', lista_id: 'uat-lista-1', board_id: 'uat-board-1' } })).toBe(`${BOARD}/c/01jb2m5k8q9r7s6t4v3w2x1y0z`);
+        // Lo slug è quello che si dà, il workspace dell'elenco: non un altro.
+        expect(destinazioneDellaNotifica({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, 'acme-vendite', prodotti)).toBe('https://board.zeiras.com/w/acme-vendite/c/uat-scheda-1');
+        // Disponibile ma non ancora attivo: il modulo si può aprire, come dal menu.
+        expect(apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, { pm: 'disponibile' })).toBe(`${BOARD}/c/uat-scheda-1`);
+    });
+
+    it.each(diUnaScheda)('una notifica di una scheda, di tipo «%s», senza l\'id o con un id fuori forma non ha una destinazione: mai un indirizzo con dentro quell\'id, e la board o la lista non lo sostituiscono (sprint 24 · T3.3)', (tipo) => {
+        const conId = (id: unknown) => apre({ app: 'pm', tipo, ids: { id } });
+        const fuoriForma: unknown[] = ['..', '../x', 'uat-scheda-1/x', 'uat scheda', 'uat.scheda', 'uat%2Fscheda', '', 'a'.repeat(65), 42, null, undefined, ['uat-scheda-1']];
+
+        expect(fuoriForma.map(conId)).toStrictEqual(fuoriForma.map(() => undefined));
+        // Il più lungo che passa è di 64 caratteri.
+        expect(conId('a'.repeat(64))).toBe(`${BOARD}/c/${'a'.repeat(64)}`);
+        expect(apre({ app: 'pm', tipo, ids: { board_id: 'uat-board-1', lista_id: 'uat-lista-1' } })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo, ids: null })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo })).toBeUndefined();
+    });
+
+    it.each([
+        ['il backoffice lo dà in arrivo', { pm: 'in_arrivo', crm: 'attivo' }],
+        ['i dati non lo elencano', { crm: 'attivo' }],
+        ['nessun modulo è elencato', {}],
+    ])('una notifica di una scheda in un workspace dove Project Management non si può aprire non ha una destinazione — %s (sprint 24 · T3.2)', (_quale, stati) => {
+        expect(diUnaScheda.map(([tipo]) => apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, stati as DatiDellaCornice['prodotti']))).toStrictEqual([undefined, undefined, undefined]);
     });
 
     // Una nota non ha una pagina sua, e può essere legata a più cose: si apre la più specifica (decisione di zr-pm, nota 10252

@@ -1,9 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
+import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Zeiras } from './zeiras';
 
@@ -43,6 +44,13 @@ export interface DatiDellaCornice {
      * (vedi «i dati più recenti», più sotto).
      */
     aggiornati_il?: string | undefined;
+    /**
+     * `true` se la persona non ha ancora accettato i documenti legali in vigore (dalla `v1.14.0`): la parte server lo dice
+     * quando il backoffice le risponde 403 `accettazione_richiesta`, e allora `prodotti` e `aziende` sono vuoti e le non lette
+     * zero perché non li ha potuti leggere, non perché non ci siano. La cornice esce ridotta, con l'avviso che porta alla
+     * pagina dell'accettazione. La parte server non manda mai `false`: vale come la chiave che manca.
+     */
+    accettazione_richiesta?: boolean | undefined;
 }
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
@@ -115,6 +123,12 @@ const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string
 
 /** La pagina di zr-home da cui si crea un workspace: sta dentro un workspace, dopo il suo slug. */
 const paginaNuovoWorkspace = '/nuovo-workspace';
+
+/**
+ * La pagina di zr-home in cui si accettano i documenti legali in vigore: sta su app.zeiras.com, fuori da un workspace e fuori
+ * dalla cornice, e dopo l'accettazione rimanda all'indirizzo di `ritorno`, se lo prende (senza, alla Dashboard).
+ */
+const paginaDellAccettazione = '/legale/accetta';
 
 /**
  * Il menu del profilo senza «Piano»: la lista che l'`AppShell` mette da sé, tolta quella voce. L'`AppShell` non ha un modo per
@@ -238,16 +252,19 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
  * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
  * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
  * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
- * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato.
+ * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato. E non si mostra un risultato il cui id non
+ * ha la forma di un id: arriva dal backoffice, e in un indirizzo non entra com'è (`encodeURIComponent` non tocca i punti, e
+ * `..` ne farebbe un altro). La forma si guarda solo di un testo: `RegExp.test` converte ciò che riceve, e un id che manca,
+ * `null` o un numero passerebbe come «undefined», «null», «12».
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
-    if (trovata === undefined) {
+    const { id } = risultato;
+    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         return undefined;
     }
     const { delProdotto, risorsa } = trovata;
     const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
-    const { id } = risultato;
 
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
@@ -356,13 +373,35 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     if (dati !== tenuti) {
         setTenuti(dati);
     }
+    // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
+    // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
+    // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
+    // recenti di quelli: sono quell'oggetto, o sono dello stesso workspace e il loro segno non è più avanti — un frontend può
+    // ricrearli a ogni disegno, o ritoccarli nel browser lasciando il segno, ed è la stessa lettura. Coi dati letti dopo, se non
+    // lo dicono, la cornice torna quella di sempre. `false` vale come la chiave che manca.
+    const [loDiceUnaRotta, setLoDiceUnaRotta] = useState(false);
+    const [daAccettareCon, setDaAccettareCon] = useState<DatiDellaCornice>();
+    if (loDiceUnaRotta) {
+        setLoDiceUnaRotta(false);
+        setDaAccettareCon(dati);
+    }
+    const ridotta = dati.accettazione_richiesta === true || (daAccettareCon !== undefined && nonPiuRecentiDeiDatiDi(dati, { con: daAccettareCon, il: undefined }));
+    // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
+    // dell'errore lo decide chi ha chiamato, come prima.
+    const seDaAccettare = (errore: unknown) => {
+        if (errore instanceof AccettazioneRichiesta) {
+            setLoDiceUnaRotta(true);
+        }
+    };
     const t = testi(dati.lingua);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
     const prodotti = {
         group: t.products,
         products: true,
-        items: registro.map((voce) => {
+        // A chi non ha accettato i documenti legali resta la sola Dashboard: gli altri moduli il backoffice non li ha dati, e
+        // con la lista vuota sarebbero tutti «Presto».
+        items: registro.filter((voce) => !ridotta || voce === dashboard).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
             // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta alla sua pagina, che dice
             // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
@@ -434,7 +473,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa, workspace });
                 }
             },
-            () => {
+            (errore: unknown) => {
+                seDaAccettare(errore);
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'error', elenco: [], richiesta: questa, workspace: undefined });
                 }
@@ -512,7 +552,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 setDaDire(id);
             },
             // La notifica resta da leggere, e il numero com'era.
-            () => {},
+            seDaAccettare,
         );
     };
     // L'avviso per chi usa un lettore di schermo: l'`AppShell` non ha un posto per dire che il numero è cambiato, e la cornice lo
@@ -542,8 +582,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const finoA = piuRecente(notifiche.elenco);
     // Il pulsante c'è con la campanella che ha un numero e almeno una notifica caricata, anche se le caricate sono tutte lette:
     // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
-    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Se non lo dice, il pulsante c'è.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && caricate.workspace !== dati.workspace.slug) ? undefined : async () => {
+    // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Un altro rispetto ai dati di adesso, o
+    // rispetto a quelli con cui l'elenco è stato chiesto, di cui il clic manda lo slug: se i dati passano al workspace
+    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è.
+    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
@@ -558,8 +600,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente.
             ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug));
-        } catch {
+        } catch (errore) {
             // Non cambia niente: il pulsante resta, per riprovare.
+            seDaAccettare(errore);
+
             return;
         } finally {
             leStaSegnando.current = false;
@@ -614,7 +658,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                     setRicerca({ stato: 'ready', risultati, workspace });
                 }
             },
-            () => {
+            (errore: unknown) => {
+                seDaAccettare(errore);
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'error' });
                 }
@@ -627,24 +672,75 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
     const suAccount = (azione: AccountAction) => (azione === 'logout' ? onLogout() : naviga(dashboard.indirizzo + pagineDiApp[azione]));
 
+    // Una notifica apre la sua risorsa, dove dice il registro (`destinazioneDellaNotifica`): nel prodotto da cui viene, nel
+    // workspace dell'elenco — quello che la parte server dice, mai quello dei dati della pagina: la sessione ha un workspace
+    // solo, e la scheda rimasta su un altro riceve le notifiche di quello. Se l'elenco è del workspace dei dati decide lo
+    // stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra, `inUnAltroWorkspace`). Una
+    // che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi tutte», portano alla pagina delle
+    // notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua risorsa è segnata letta (`leggi`): la
+    // richiesta parte prima dell'apertura, che non la aspetta.
+    const apriNotifica = (aperta: ShellNotification) => {
+        const notifica = elenco.find(({ id }) => id === aperta.id);
+        const elencoDi = notifiche.workspace;
+        const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+        if (notifica !== undefined && elencoDi !== undefined && risorsa !== undefined && !notifica.letta) {
+            leggi(notifica.id, elencoDi);
+        }
+        naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
+    };
+
+    // L'avviso di chi non ha accettato i documenti legali, sopra la pagina: titolo, frase e un pulsante che porta alla pagina
+    // dell'accettazione, sull'host della Dashboard nel registro — mai un indirizzo preso dai dati o dalla risposta di una rotta.
+    // Il `ritorno` è l'indirizzo in cui la persona è al clic, non quello del render: fra una visita e l'altra la cornice può
+    // restare montata mentre l'indirizzo cambia. Entra solo se comincia con `https://` e non supera i 2000 caratteri; senza,
+    // dopo l'accettazione zr-home porta alla Dashboard. Avviso e pagina stanno uno sotto l'altra con le classi del design
+    // system, e la pagina in un contenitore suo: ciò che dà resta com'è. La cornice non mostra testi legali, non dice quali
+    // documenti mancano e non fa accettare niente.
+    const vaiAllAccettazione = () => {
+        const qui = window.location.href;
+        naviga(dashboard.indirizzo + paginaDellAccettazione + (qui.startsWith('https://') && qui.length <= 2000 ? `?ritorno=${encodeURIComponent(qui)}` : ''));
+    };
+    const conLAvviso = (
+        <div className="zr-stack">
+            <Zeiras.Alert tone="warning" title={t.acceptanceTitle} action={<Zeiras.Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Zeiras.Button>}>
+                {t.acceptanceText}
+            </Zeiras.Alert>
+            <div>{pagina.children}</div>
+        </div>
+    );
+
     const shell = (
         <Zeiras.AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
             // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva»:
-            // senza `active` resta la Dashboard, come decide l'`AppShell`. Il numero sulla campanella è quello dei dati, e mai
+            // senza `active` resta la Dashboard, come decide l'`AppShell` — tranne nello stato ridotto su una pagina di un
+            // modulo, dove il modulo aperto all'`AppShell` non arriva e la Dashboard sarebbe segnata a chi è nel modulo: lì,
+            // senza `active`, nessuna voce. Il numero sulla campanella è quello dei dati, e mai
             // meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo aprendo la campanella. Con `piano`
             // nessuna lista del profilo: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
             {...senzaUndefined({
                 ...pagina,
-                active: active === null ? idDiNessunaVoce(voci) : active,
-                product: aperto?.id,
+                active: active === null || (ridotta && aperto !== undefined && active === undefined) ? idDiNessunaVoce(voci) : active,
                 companies,
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
-                unreadCount: nonLette,
-                onMarkAllRead: segnaTutteLette,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
+                // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
+                // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
+                // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama
+                // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. Le voci del modulo, il
+                // «+» e il resto restano quelli che la pagina dà.
+                product: ridotta ? undefined : aperto?.id,
+                unreadCount: ridotta ? 0 : nonLette,
+                onMarkAllRead: ridotta ? undefined : segnaTutteLette,
+                onNotificationsOpen: ridotta ? undefined : carica,
+                onRetryNotifications: ridotta ? undefined : carica,
+                onOpenNotification: ridotta ? undefined : apriNotifica,
+                onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
+                onSearch: ridotta ? undefined : cercaParola,
+                flush: ridotta ? undefined : pagina.flush,
+                children: ridotta ? conLAvviso : pagina.children,
             })}
             nav={voci}
             user={dati.persona.nome}
@@ -653,13 +749,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
-            notifications={elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
-            notificationsState={notifiche.stato}
-            onNotificationsOpen={carica}
-            onRetryNotifications={carica}
-            onSearch={cercaParola}
-            searchResults={risultati}
-            searchState={ricerca?.stato ?? 'ready'}
+            // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
+            // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
+            notifications={ridotta ? [] : elenco.map((notifica) => nelPannello(notifica, dati.lingua, adesso))}
+            notificationsState={ridotta ? 'error' : notifiche.stato}
+            searchResults={ridotta ? [] : risultati}
+            searchState={ridotta ? 'error' : (ricerca?.stato ?? 'ready')}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
             // contenitore a pagina intera.
             onSelectResult={(scelto) => {
@@ -671,27 +766,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
             // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
-            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano.
-            labels={unaSola || sulPulsante !== t.markAllRead ? { ...t, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante } : t}
+            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. A chi non ha
+            // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
+            // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
+            labels={ridotta
+                ? { ...t, notificationsError: t.acceptanceOff, searchHint: t.acceptanceOff, searchError: t.acceptanceOff }
+                : unaSola || sulPulsante !== t.markAllRead ? { ...t, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante } : t}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
-            // Una notifica apre la sua risorsa, dove dice il registro (`destinazioneDellaNotifica`): nel prodotto da cui viene, nel
-            // workspace dell'elenco — quello che la parte server dice, mai quello dei dati della pagina: la sessione ha un
-            // workspace solo, e la scheda rimasta su un altro riceve le notifiche di quello. Se l'elenco è del workspace dei
-            // dati decide lo stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra,
-            // `inUnAltroWorkspace`). Una che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi
-            // tutte», portano alla pagina delle notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua
-            // risorsa è segnata letta (`leggi`): la richiesta parte prima dell'apertura, che non la aspetta.
-            onOpenNotification={(aperta) => {
-                const notifica = elenco.find(({ id }) => id === aperta.id);
-                const elencoDi = notifiche.workspace;
-                const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
-                if (notifica !== undefined && elencoDi !== undefined && risorsa !== undefined && !notifica.letta) {
-                    leggi(notifica.id, elencoDi);
-                }
-                naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
-            }}
-            onAllNotifications={() => naviga(dashboard.indirizzo + pagineDiApp.notifiche)}
         />
     );
 

@@ -26,9 +26,10 @@
 // `?errore=lettura` fallisce sempre, e la notifica resta da leggere. La ricerca (POST /cornice/ricerca, la parola nel corpo: a una GET
 // risponde 405, senza una parola da 2 a 100 caratteri 422) dà i risultati d'esempio che hanno la parola nel titolo, nella forma
 // di ricerca.elenca (tipo, id e titolo, in ordine di titolo), coi tipi mescolati e due tipi che il registro non ha
-// (`board.schede`, `uat-ignoto`); «ua» risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di
-// seguito, la risposta di «ua» arriva dopo. Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una
-// richiesta annullata e la risposta che arriva lo stesso; il cookie del gettone CSRF è finto.
+// (`board.schede`, `uat-ignoto`), e con `?id_malfatto=1` una board in più con l'id `..`, che la cornice non mostra; «ua»
+// risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
+// Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
+// lo stesso; il cookie del gettone CSRF è finto.
 // `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
@@ -43,6 +44,9 @@ const crm = new URLSearchParams(window.location.search).has('crm');
 const daLeggere = new URLSearchParams(window.location.search).has('da_leggere');
 const viste = new URLSearchParams(window.location.search).has('viste');
 const opportunita = new URLSearchParams(window.location.search).has('opportunita');
+// Con `?schede=1` (sprint 24 · T3) in cima all'elenco c'è la notifica che Project Management manda a chi viene assegnata una
+// scheda, da leggere, e in fondo una scheda eliminata, letta: la prima apre la scheda, la seconda non ha una destinazione.
+const schede = new URLSearchParams(window.location.search).has('schede');
 
 /**
  * Gli `ids` delle tre note di `?crm=1`, come li dà la parte server: i soli del percorso che si apre. La prima è legata a
@@ -67,7 +71,13 @@ const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_m
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
 const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
-    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: {} },
+    // Solo con `?schede=1`, la più recente: una scheda assegnata, col tipo com'è nel backoffice, senza `com.zeiras.` davanti, chi
+    // l'ha assegnata e il nome della scheda, che per questo tipo il backoffice manda sempre. Un clic apre la scheda e la segna letta.
+    ...(schede
+        ? [{ id: 'uat-s1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } as Record<string, string> }]
+        : []),
+    // Dallo sprint 24 una scheda nuova porta il suo id, come dalla parte server: un clic apre la scheda.
+    { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: { id: 'uat-scheda-1' } as Record<string, string> },
     { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false), ids: {} },
     { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti, ids: {} },
     // Solo con `?chi=1`, una notifica su un'app: lì il backoffice dà il codice dell'app (`pm`), e il pannello ne mostra il nome.
@@ -111,6 +121,8 @@ const notificheDiProva = [
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
           ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
+    // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
+    ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),
 ];
 let letture = 0;
 let riuscite = 0;
@@ -118,6 +130,8 @@ let caricamenti = 0;
 const risultatiDiProva = [
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+    // Solo con `?id_malfatto=1`: una board il cui id non ha la forma di un id. La cornice non la mostra.
+    ...(new URLSearchParams(window.location.search).has('id_malfatto') ? [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }] : []),
     { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
     { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
     { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
@@ -126,6 +140,9 @@ const risultatiDiProva = [
 const errore = new URLSearchParams(window.location.search).get('errore');
 const arriva = new URLSearchParams(window.location.search).has('arriva');
 const altre = new URLSearchParams(window.location.search).has('altre');
+// Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
+// dalla `v1.14.0`, le quattro rispondono 403 col solo codice, dopo la loro attesa. I dati della pagina restano quelli di sempre.
+const daAccettare = new URLSearchParams(window.location.search).get('accettazione') === 'dopo';
 
 let partite = 0;
 const inAscolto = new Set<() => void>();
@@ -183,6 +200,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
+            if (daAccettare) {
+                return json({ errore: 'accettazione_richiesta' }, 403);
+            }
             if (errore === 'ricerca') {
                 return json({ errore: 'uat_errore' }, 502);
             }
@@ -199,13 +219,16 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
+        if (daAccettare) {
+            return json({ errore: 'accettazione_richiesta' }, 403);
+        }
         if (percorso === '/cornice/notifiche') {
             caricamenti += 1;
             if (errore === 'notifiche') {
                 return json({ errore: 'uat_errore' }, 502);
             }
             if (arriva && caricamenti === 2) {
-                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti, ids: {} });
+                notificheDiProva.unshift({ id: 'uat-5', creata_il: new Date().toISOString(), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', ...nonDetti, ids: { id: 'uat-scheda-1' } });
             }
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è. `workspace` è quello della «sessione», come lo dice
@@ -222,8 +245,10 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
             }
-            // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione.
-            if (workspace !== slugDellaSessione()) {
+            // Come la parte server: lo slug della pagina dev'essere quello del workspace della sessione. Se la pagina di prova
+            // non lo dà, non c'è un workspace con cui lo slug possa non tornare: la lettura riesce.
+            const dellaSessione = slugDellaSessione();
+            if (dellaSessione !== undefined && workspace !== dellaSessione) {
                 return json({ errore: 'workspace_diverso' }, 409);
             }
             // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.

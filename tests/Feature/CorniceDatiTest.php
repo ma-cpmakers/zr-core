@@ -3,6 +3,7 @@
 use Composer\InstalledVersions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
+use Illuminate\Http\Request as RichiestaDelBrowser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
+use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
@@ -1086,3 +1088,178 @@ it('una lingua del profilo ben fatta che non è una di Zeiras: con zr-auth fino 
     'una di Zeiras in maiuscole' => ['IT'],
     'una di Zeiras con la regione' => ['it-IT'],
 ]);
+
+// Sprint 24 · T1 (voce #1745): chi non ha ancora accettato i documenti legali in vigore riceve da /v1 un 403
+// `accettazione_richiesta` da quasi ogni metodo (restano aperti io.mostra, i documenti, l'accettazione e l'uscita). Per la
+// cornice non è un guasto: Cornice::dati() non lancia e dà i dati ridotti — lingua, persona e workspace della sessione, nessuna
+// app, nessuna azienda, zero non lette — con `accettazione_richiesta: true`, e dopo il primo 403 non chiama più il backoffice.
+// La chiave c'è solo lì: i dati di chi ha accettato sono quelli di sempre, senza la chiave. Il 403 si riconosce dallo stato e
+// dal codice insieme: ogni altra risposta resta l'errore che era. Il 403 è accettazioneRichiesta() di tests/Pest.php.
+
+/**
+ * I dati ridotti della cornice per la sessione dei test entrata in «UAT Marketing», nel loro ordine: le sette chiavi di sempre,
+ * senza app, senza aziende e con zero non lette, e `accettazione_richiesta` in fondo.
+ *
+ * @param  array<string, mixed>  $cambi
+ * @return array<string, mixed>
+ */
+function datiRidotti(string $aggiornatiIl, array $cambi = []): array
+{
+    return [
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'prodotti' => [],
+        'aziende' => [],
+        'non_lette' => 0,
+        'aggiornati_il' => $aggiornatiIl,
+        'accettazione_richiesta' => true,
+        ...$cambi,
+    ];
+}
+
+/**
+ * Il backoffice di chi ha accettato, quello dei dati di datiAttesi(): due app, tre non lette, le aziende e i workspace di
+ * aziendeEWorkspace(); con ciò che un caso gli fa rispondere diverso al posto suo.
+ *
+ * @param  array<string, mixed>  $alPosto  per percorso, come per backoffice()
+ */
+function backofficeDiChiHaAccettato(array $alPosto = []): void
+{
+    backoffice([
+        '/v1/app' => ['data' => [['codice' => 'pm', 'stato' => 'attivo'], ['codice' => 'crm', 'stato' => 'disponibile']], 'successivo' => null],
+        '/v1/io' => ioMostra(3),
+        ...aziendeEWorkspace(),
+        ...$alPosto,
+    ]);
+}
+
+/** @return list<string> i percorsi di /v1 chiamati, nell'ordine in cui le richieste sono partite */
+function percorsiChiamati(): array
+{
+    return Http::recorded()->map(fn (array $coppia) => (string) parse_url($coppia[0]->url(), PHP_URL_PATH))->values()->all();
+}
+
+it('con app.elenca che risponde 403 accettazione_richiesta la pagina ha i dati della cornice lo stesso: lingua, persona e workspace della sessione, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; aziende e workspace non li chiede (sprint 24 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/app' => accettazioneRichiesta()]);
+
+    $this->get('w/uat-marketing/cornice')->assertOk()->assertExactJson(datiRidotti('2026-10-09T21:31:05.123456Z'));
+
+    expect(percorsiChiamati())->toBe(['/v1/io', '/v1/app']);
+});
+
+it('i dati ridotti portano la lingua e il nome che io.mostra ha appena dato, come i dati di sempre: la sessione li ha già presi quando il 403 arriva (sprint 24 · T1.1)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace']), '/v1/app' => accettazioneRichiesta()]);
+
+    $dati = Cornice::dati();
+
+    expect([$dati['lingua'], $dati['persona'], $dati['accettazione_richiesta']])->toBe(['es', ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'], true])
+        ->and([Sessione::utente()['lingua'], Sessione::utente()['nome']])->toBe(['es', 'UAT Ada Lovelace']);
+});
+
+it('da qualunque delle quattro letture arrivi quel 403, anche a metà di un elenco, i dati sono quelli ridotti, interi e nel loro ordine — mai le app senza accettazione_richiesta —, e dopo il 403 il backoffice non è più chiamato (sprint 24 · T1.1, T1.2)', function (string $percorso, int $allaPagina, array $chiamate) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    $workspace = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing', 'ruolo' => 'proprietario', 'azienda_id' => 'az-b'];
+    backofficeDiChiHaAccettato([$percorso => $allaPagina === 1
+        ? accettazioneRichiesta()
+        : Http::sequence()->push(['data' => [$workspace], 'successivo' => 'uat-cursore-2'])->pushResponse(accettazioneRichiesta())]);
+
+    expect(Cornice::dati())->toBe(datiRidotti('2026-10-09T21:31:05.123456Z'))
+        ->and(percorsiChiamati())->toBe($chiamate);
+})->with([
+    'da io.mostra' => ['/v1/io', 1, ['/v1/io']],
+    'da app.elenca' => ['/v1/app', 1, ['/v1/io', '/v1/app']],
+    'da io.aziende.elenca' => ['/v1/io/aziende', 1, ['/v1/io', '/v1/app', '/v1/io/aziende']],
+    'da io.workspace.elenca' => ['/v1/io/workspace', 1, ['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace']],
+    'da io.workspace.elenca, alla seconda pagina' => ['/v1/io/workspace', 2, ['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']],
+]);
+
+it('quel 403 da io.mostra non è un guasto nemmeno per la riga: dà la lingua della sessione senza scrivere niente nel log, e Cornice::dati(), nella stessa richiesta, dà i dati ridotti col segno di quella lettura, senza richiamare il backoffice (sprint 24 · T1.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato(['/v1/io' => accettazioneRichiesta()]);
+
+    expect(Cornice::lingua())->toBe('en');
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000000', 'UTC'));
+
+    expect(Cornice::dati())->toBe(datiRidotti('2026-10-09T21:31:05.123456Z'))
+        ->and(Log::channel('della-riga')->getLogger()->getHandlers()[0]->getRecords())->toBe([])
+        ->and(percorsiChiamati())->toBe(['/v1/io']);
+});
+
+it('chi ha accettato ha i dati di sempre: senza quel 403 la chiave accettazione_richiesta non c\'è, nemmeno a false (sprint 24 · T1.4)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    $dati = Cornice::dati();
+
+    expect($dati)->not->toHaveKey('accettazione_richiesta')
+        ->and(array_keys($dati))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il'])
+        ->and($dati['prodotti'])->toBe(['pm' => 'attivo', 'crm' => 'disponibile']);
+});
+
+it('ogni altra risposta resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, fanno lanciare a Cornice::dati() il loro ErroreApi, da qualunque lettura arrivino (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $percorso) {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([$percorso => accettazioneRichiesta($stato, $codice)]);
+
+    expect(fn () => Cornice::dati())->toThrow(function (ErroreApi $errore) use ($stato, $codice) {
+        expect([$errore->stato, $errore->codice])->toBe([$stato, $codice]);
+    });
+})->with(quasiAccettazioneRichiesta())->with([
+    'da io.mostra' => ['/v1/io'],
+    'da app.elenca' => ['/v1/app'],
+    'da io.aziende.elenca' => ['/v1/io/aziende'],
+    'da io.workspace.elenca' => ['/v1/io/workspace'],
+]);
+
+// Sprint 24 · T5 (lettura della PR #52, R3). Il README dice che cosa succede alle chiamate del frontend a /v1 davanti a quel
+// 403: lì la cornice non c'entra, risponde zr-auth. È una frase su un'altra libreria: nomina la classe, e questo caso la
+// guarda nel giro che la installa. Dalla 0.12.17 l'errore è `AccettazioneRichiesta`, che non presa risponde in tre forme; con
+// una patch più vecchia — il vincolo le accetta — la classe non c'è, e quel 403 è un ErroreApi come gli altri.
+
+/** Dalla 0.12.17 zr-auth dà a quel 403 un'eccezione sua, che risponde da sé: la versione installata dice che cosa aspettarsi. */
+function zrAuthRispondeDaSeAQuel403(): bool
+{
+    return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.17', '>=');
+}
+
+it('una chiamata del frontend a /v1 davanti al 403 accettazione_richiesta: da zr-auth 0.12.17 è `AccettazioneRichiesta`, che non presa rimanda una visita alla pagina dell\'accettazione (302), a una visita di Inertia risponde 409 con `X-Inertia-Location`, e a una richiesta JSON 403 con `codice` e `mancanti`, senza rimando; con una patch più vecchia è un ErroreApi senza risposta sua (sprint 24 · T5, R3)', function () {
+    sessioneAMano(marketing());
+    Http::fake(['*' => accettazioneRichiesta()]);
+    config()->set('zr-auth.accettazione', 'https://app.zeiras.com/legale/accetta');
+    $classe = 'Zeiras\\Auth\\Errori\\AccettazioneRichiesta';
+
+    $errore = null;
+    try {
+        Api::workspace()->get('/v1/board/board');
+    } catch (ErroreApi $lanciato) {
+        $errore = $lanciato;
+    }
+
+    expect($errore)->toBeInstanceOf(ErroreApi::class)
+        ->and([$errore?->stato, $errore?->codice])->toBe([403, 'accettazione_richiesta']);
+
+    if (! zrAuthRispondeDaSeAQuel403()) {
+        expect(class_exists($classe))->toBe(false)
+            ->and(method_exists($errore, 'render'))->toBe(false);
+
+        return;
+    }
+
+    $pagina = 'https://board.zeiras.com/w/uat-marketing/b/01k6?vista=lista';
+    $verso = 'https://app.zeiras.com/legale/accetta?ritorno='.rawurlencode($pagina);
+    $allaVisita = $errore->render(RichiestaDelBrowser::create($pagina));
+    $aInertia = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_X_INERTIA' => 'true']));
+    $alJson = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_ACCEPT' => 'application/json']));
+
+    expect($errore)->toBeInstanceOf($classe)
+        ->and([$allaVisita->getStatusCode(), $allaVisita->headers->get('Location')])->toBe([302, $verso])
+        ->and([$aInertia->getStatusCode(), $aInertia->headers->get('X-Inertia-Location'), $aInertia->headers->has('Location')])->toBe([409, $verso, false])
+        ->and([$alJson->getStatusCode(), $alJson->headers->has('Location'), $alJson->headers->has('X-Inertia-Location')])->toBe([403, false, false])
+        ->and(json_decode((string) $alJson->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]]);
+});

@@ -12,6 +12,7 @@ use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Sessione;
+use Zeiras\Core\Accettazione;
 use Zeiras\Core\Segno;
 
 /**
@@ -26,7 +27,9 @@ use Zeiras\Core\Segno;
  * della notifica (`ids`): quelli del percorso che si apre — il primo che il registro dei moduli dà al suo tipo e che `dati`
  * soddisfa per intero —, e nessuno per un tipo che il registro non ha, o quando il percorso non chiede un id. Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
- * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto.
+ * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Se la
+ * persona non ha ancora accettato i documenti legali in vigore il backoffice risponde 403 `accettazione_richiesta`, e le tre
+ * rotte lo stesso, col solo codice (Accettazione).
  *
  * L'elenco, «segna tutte» e la lettura di una notifica dicono anche quando, col segno della parte server (`Segno::adesso()`,
  * lo stesso orologio e la stessa forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`;
@@ -137,7 +140,12 @@ final class NotificheDellaCornice
     {
         $aggiornatiIl = Segno::adesso();
         $workspace = Sessione::workspace()['slug'] ?? null;
-        $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
+
+        try {
+            $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
+        } catch (ErroreApi $errore) {
+            return Accettazione::rispostaA($errore);
+        }
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
             throw new BackofficeNonRisponde('La risposta di GET /v1/io/notifiche non è una lista di /v1.');
@@ -225,7 +233,7 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'non_trovato'], 404);
             }
 
-            throw $errore;
+            return Accettazione::rispostaA($errore);
         }
 
         if ($segnata['id'] !== $notifica) {
@@ -296,7 +304,7 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'dati_non_validi'], 422);
             }
 
-            throw $errore;
+            return Accettazione::rispostaA($errore);
         }
 
         return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a'], 'altre' => $segnate['altre']], 'segnate_il' => Segno::adesso()]);

@@ -1,9 +1,9 @@
 // Le forme che un testo deve avere per entrare in un indirizzo: l'id di una risorsa del backoffice, lo slug di un workspace. Ciò
 // che arriva dal browser — una risposta della parte server compresa — non entra in un indirizzo com'è: vale per gli id di una
-// notifica e per lo slug che una rotta dice (l'elenco delle notifiche, la ricerca). La forma non è ancora chiesta all'id di un
-// risultato della ricerca e allo slug dei dati della pagina: entrano in un indirizzo con `encodeURIComponent`. Stanno in un
-// modulo loro perché servono a chi chiama le rotte (`servizi.ts`) e a chi compone la destinazione di una notifica
-// (`notifiche.ts`).
+// notifica, per l'id di un risultato della ricerca e per lo slug che una rotta dice (l'elenco delle notifiche, la ricerca). La
+// forma non è ancora chiesta allo slug dei dati della pagina: entra in un indirizzo con `encodeURIComponent`. Stanno in un
+// modulo loro perché servono a chi chiama le rotte (`servizi.ts`), a chi compone la destinazione di una notifica
+// (`notifiche.ts`) e a chi compone l'indirizzo di un risultato della ricerca (`cornice.tsx`).
 
 /**
  * La forma di un id del backoffice: lettere, cifre, `-` e `_`, da 1 a 64. La stessa che la parte server chiede a ogni id di `ids`,

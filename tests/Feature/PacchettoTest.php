@@ -2704,7 +2704,8 @@ it('la pagina di prova ha i tre casi delle notifiche con ?chi=1, più una notifi
 
     expect(scritteNellaPaginaDiProva('rotte-finte.ts', [".has('chi');", $conChiECosa, $perTutti, '...nonDetti, ids: ', '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);']))
         // Cinque dallo sprint 21 · T5: alle tre di prima si aggiungono le due righe delle aziende del CRM e delle viste di una board.
-        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 5, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
+        // Sei dallo sprint 24 · T3: la scheda eliminata di `?schede=1`.
+        ->toBe([".has('chi');" => 1, $conChiECosa => 1, $perTutti => 1, '...nonDetti, ids: ' => 6, '(chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);' => 1])
         ->and(scritteNellaPaginaDiProva('demo.tsx', ['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa']))->toBe(['con `?chi=1` le notifiche dicono chi ha fatto, su che cosa' => 1]);
 });
 
@@ -3242,7 +3243,7 @@ it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende 
     'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
     'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
     'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
-    'R8: quelli che hanno una destinazione, diciotto dalla `v1.13.0` (sprint 23 · T3.7)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; le viste di una board e le schede non hanno una destinazione'],
+    'R8: quelli che hanno una destinazione, diciotto del CRM dalla `v1.13.0` e tre di Project Management dalla `v1.14.0` (sprint 23 · T3.7; sprint 24 · T3.5)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; dalla `v1.14.0` tre di Project Management'],
     'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
 ]);
 
@@ -3262,7 +3263,7 @@ it('il README non dice più ciò che la review della PR #44 ha trovato falso, e 
 // titolo. Il README lo dice nel punto «Le notifiche»: quali, quanti sono i titoli adesso, il tipo dei quattro «assegnata» e che
 // nessuno dei nove apre una risorsa.
 
-it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che i titoli sono 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apriva una risorsa fino alla v1.12.0, mentre dalla v1.13.0 ognuno apre la sua pagina (sprint 22 · T5.5; sprint 23 · T3.7)', function (string $frase) {
+it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi loro titoli, che con quelli i titoli erano 40, che i quattro «assegnata» hanno il tipo senza `com.zeiras.` davanti e che nessuno dei nove apriva una risorsa fino alla v1.12.0, mentre dalla v1.13.0 ognuno apre la sua pagina (sprint 22 · T5.5; sprint 23 · T3.7)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = suUnaRiga($punto[0] ?? '');
@@ -3276,7 +3277,8 @@ it('il README dice, nel punto «Le notifiche», i nove tipi nuovi del CRM coi lo
     'le quattro notifiche a chi diventa responsabile' => ['e le quattro notifiche che il CRM manda a chi diventa responsabile («Ti è stato assegnato un contatto», «Ti è stata assegnata un\'azienda», «Ti è stata assegnata un\'opportunità», «Ti è stata assegnata un\'attività»)'],
     'il tipo senza `com.zeiras.` davanti' => ['Queste quattro non sono eventi: il loro `tipo` arriva senza `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`, `crm.attivita.assegnata`)'],
     'la chiave del titolo' => ['la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non `notificationTitle.com.zeiras.crm.persona.assegnata`'],
-    'quanti sono i titoli' => ['Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
+    // Sprint 24 · T3: con la scheda assegnata i titoli sono 41, e i 40 restano al passato.
+    'quanti erano i titoli' => ['Con quelli i titoli erano 40: i 36 tipi di evento del contratto e i quattro «assegnata»'],
     'nessuno dei nove apriva una risorsa, e ora sì' => ['Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM'],
 ]);
 
@@ -3318,6 +3320,41 @@ it('il README non dice più che i tipi con una destinazione sono nove, né che o
         ->and(substr_count($readme, 'una di una nota il contatto a cui è attaccata'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'la pagina che si apre con un clic (il percorso dopo `/w/<slug>`, con l\'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare in più pagine, i percorsi in ordine, dal più specifico)'))->toBe(1);
+});
+
+// Sprint 24 · T3 (voce #1748): la notifica a chi viene assegnata una scheda ha il suo titolo, e una scheda nuova, modificata o
+// assegnata si apre con un clic. Il README lo dice dove dice le altre: titolo e tipo nel punto «Le notifiche», coi titoli che
+// ora sono 41; dove si apre, e che una scheda eliminata non si apre; le righe del registro. `MODULO-NUOVO.md` la porta come
+// esempio di una notifica che non è un evento.
+
+it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che i titoli sono 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo' => ['punto', 'Dalla `v1.14.0` ha un titolo anche la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda»'],
+    'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Come le quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la chiave del titolo è `notificationTitle.board.scheda.assegnata`'],
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
+    'il contratto non la elenca ancora' => ['punto', 'Il contratto pubblicato l\'11/10/2026 non la elenca ancora: titolo e destinazione sono pronti per quando il backoffice la manderà'],
+    'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
+    'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
+    'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
+    'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
+]);
+
+it('il README non dice più che i titoli sono 40 né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($readme, 'i titoli sono 40'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 40'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(1)
+        ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
+        ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
+        ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
 });
 
 it('il README non dice più ciò che la review della PR #51 ha trovato falso: che una nota apriva sempre il contatto, e che gli `ids` sono gli id che il percorso del registro chiede per il tipo (review della PR #51, R2 e R10)', function () {
@@ -3499,4 +3536,123 @@ it('il README dice, al punto «La ricerca», che dalla v1.13.0 anche un `workspa
     'la parte server finta di un frontend' => ['Una parte server finta che risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta'],
     // L'errore di prima resta detto com'era.
     'senza `workspace`, come prima' => ['Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore della ricerca'],
+]);
+
+// Sprint 24 · T2 (voce #1745): chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Il README lo dice in tre
+// posti — i dati nella parte server, il 403 delle rotte, il punto di «La cornice» con ciò che fa il frontend — e la guida del
+// modulo nuovo ha la riga. Nessuno nomina un documento, né dice che la cornice fa accettare.
+
+it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La cornice», che cosa vede la persona e che cosa fa il frontend (sprint 24 · T2.7)', function (string $frase) {
+    $punto = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Chi non ha accettato i documenti legali');
+
+    expect($punto)->not->toBe('')
+        ->and(str_contains($punto, $frase))->toBe(true);
+})->with([
+    'da quando, e con quali dati' => ['vede la cornice ridotta, dalla `v1.14.0`: coi dati che portano `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta`'],
+    'finché ha quei dati' => ['con dati letti dopo che non lo dicono torna quella di sempre'],
+    'il menu Moduli' => ['Nel menu Moduli c\'è solo la Dashboard, e il pulsante del modulo aperto non c\'è'],
+    'la campanella' => ['La campanella non ha numero, e il suo pannello dice «Non disponibile finché non accetti i documenti.», senza notifiche e senza «Segna tutte come lette», «Riprova» e «Vedi tutte»'],
+    'la ricerca' => ['la ricerca dice la stessa frase sotto il campo e non dà risultati'],
+    'nessuna rotta' => ['In quello stato la cornice non chiama nessuna delle sue rotte'],
+    'l\'avviso e dove porta' => ['c\'è un avviso («Ci sono documenti da accettare») col pulsante «Vai ai documenti», che porta a `https://app.zeiras.com/legale/accetta?ritorno=<indirizzo della pagina>`'],
+    'il ritorno' => ['va nel `ritorno` solo se comincia con `https://` e non supera i 2000 caratteri'],
+    'di chi è la pagina' => ['La pagina dell\'accettazione è di zr-home e sta fuori dalla cornice'],
+    'che cosa la cornice non fa' => ['la cornice non mostra testi legali, non dice quali documenti mancano e non fa accettare niente'],
+    'i dati così come sono' => ['dà i dati alla cornice così come sono'],
+    'non è «Presto»' => ['non legge `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`)'],
+    // Lettura della PR #52, R3: il rimando di zr-auth è delle visite, non di ogni chiamata.
+    'il rimando è di zr-auth, per le visite' => ['lascia a zr-auth il rimando dalle proprie visite che chiamano `/v1` (a una richiesta JSON zr-auth risponde 403 senza rimando, e lì decide il frontend: «La parte server»)'],
+    'le voci del modulo e il «+»' => ['se a chi non ha accettato non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`)'],
+    // Lettura della PR #52: R1, R6, R2, R10, e di chi è il ritorno.
+    'finché i dati non sono più recenti (R1)' => ['finché i dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non più avanti, anche se il frontend li ricrea a ogni disegno o li ritocca nel browser'],
+    'i dati senza segno (R1)' => ['dati senza segno valgono solo finché sono lo stesso oggetto'],
+    'la voce attiva (R6)' => ['Su una pagina di un modulo che non dà `active` nessuna voce della barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com'],
+    'il contenitore (R2)' => ['Avviso e pagina stanno in un contenitore (`div.zr-stack`), e la pagina in un `div` suo: lì non è figlia diretta di `main.zr-main`'],
+    'la pagina si rimonta (R2)' => ['quando lo stato arriva dal 403 di una rotta, o se ne va, la pagina si rimonta — stato locale, fuoco e scorrimento ripartono, e i suoi effetti si rilanciano'],
+    'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
+    'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
+]);
+
+it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
+    $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+
+    expect($parteServer)->not->toBe('')
+        ->and(str_contains($parteServer, $frase))->toBe(true);
+})->with([
+    // Lettura della PR #52, R5: `prodotti` vuoto è la lista che il server dà, `[]`.
+    'la riga della tabella' => ['| gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`'],
+    'la forma di `prodotti` (R5)' => ['Lì `prodotti` è una lista vuota, e al browser arriva `[]` e non `{}`: un frontend che valida la forma dei dati la ammette'],
+    'non lancia' => ['Per la cornice non è un guasto: `Cornice::dati()` non lancia e dà i dati ridotti'],
+    'mai a false' => ['La chiave c\'è solo lì, mai a `false`'],
+    'non è «Presto»' => ['Con quella chiave `prodotti` vuoto non vuol dire «Presto»'],
+    'chi legge i dati da sé' => ['guarda `accettazione_richiesta` prima di `prodotti`'],
+    'stato e codice' => ['un 403 con un altro codice resta l\'`ErroreApi` che era'],
+    'i documenti mancanti' => ['Quali documenti mancano la parte server non lo dà al browser'],
+    // Lettura della PR #52, R3: la classe di zr-auth, le sue tre forme, e le patch che non la hanno.
+    'le chiamate del frontend: la classe' => ['Da zr-auth `v0.12.17` quel 403 è l\'eccezione `Zeiras\\Auth\\Errori\\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in tre forme'],
+    'le chiamate del frontend: le tre forme' => ['a una visita un rimando alla pagina dell\'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un 403 con `codice` e `mancanti`, senza rimando'],
+    'le chiamate del frontend: chi decide' => ['lì la persona resta dov\'è, e che cosa mostrarle lo decide il frontend. Per le visite il frontend non scrive un rimando suo'],
+    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
+    // Lettura della PR #52, R10.
+    'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth, coi `mancanti`'],
+    'la cornice riconosce anche quella' => ['La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto'],
+]);
+
+it('il README dice che con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un ErroreApi e nessuno rimanda, finché il vincolo di composer.json ne ammette una: quando il vincolo parte da lì, la frase si toglie (sprint 24 · T5; lettura della PR #52, R3)', function () {
+    $vincolo = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true)['require']['zeiras/zr-auth'];
+    $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+    $frase = 'Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su';
+    $ammetteUnaPiuVecchia = fn (string $vincolo): bool => version_compare(ltrim($vincolo, '^'), '0.12.17', '<');
+
+    // Il vincolo è una versione sola col suo `^`: così la sua patch più bassa si legge togliendo il segno.
+    expect($vincolo)->toMatch('/^\^0\.\d+\.\d+$/')
+        ->and($parteServer)->not->toBe('')
+        ->and(str_contains($parteServer, $frase))->toBe($ammetteUnaPiuVecchia($vincolo))
+        // Il confronto nei due versi.
+        ->and([$ammetteUnaPiuVecchia('^0.12.4'), $ammetteUnaPiuVecchia('^0.12.16'), $ammetteUnaPiuVecchia('^0.12.17'), $ammetteUnaPiuVecchia('^0.13.0')])->toBe([true, true, false, false]);
+});
+
+it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti` ridotto è `{}`, né che lo stato ridotto vale finché la cornice ha quei dati (sprint 24 · T5; lettura della PR #52, R1, R3, R5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        // Il controllo vede ciò che cerca: la frase, a capo com'era nel README, su una riga è quella.
+        ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
+})->with([
+    'il rimando da ogni chiamata (R3)' => ['zr-auth manda la persona alla pagina dell\'accettazione da sé, e il frontend non scrive un rimando suo'],
+    'il rimando dalle chiamate, al punto di «La cornice» (R3)' => ['lascia a zr-auth il rimando dalle proprie chiamate a `/v1`;'],
+    '`prodotti` come oggetto (R5)' => ['ridotti: `prodotti` `{}`'],
+    'finché ha quei dati (R1)' => ['finché la cornice ha quei dati'],
+]);
+
+it('ciò che il README e la guida dicono di chi non ha accettato non nomina un documento, e non dice che la cornice fa accettare (sprint 24 · T2.7)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^\*\*Chi non ha accettato i documenti legali\*\*.*?(?=^$|\z)/ms', $readme, $dellaParteServer);
+    preg_match('/^\*\*Chi non ha accettato i documenti legali\*\*.*?(?=^$|\z)/ms', guidaDelModuloNuovo(), $dellaGuida);
+    $testi = [
+        'il punto di «La cornice»' => puntoDellaCornice($readme, 'Chi non ha accettato i documenti legali'),
+        'il capoverso della parte server' => suUnaRiga($dellaParteServer[0] ?? ''),
+        'il capoverso della guida' => suUnaRiga($dellaGuida[0] ?? ''),
+    ];
+    $documento = '/(?<![\p{L}])(?:termini|condizioni|privacy|cookie|dpa|informativa)(?![\p{L}])/iu';
+
+    expect(array_filter($testi, fn (string $testo): bool => $testo === ''))->toBe([])
+        ->and(array_filter($testi, fn (string $testo): bool => preg_match($documento, $testo) === 1))->toBe([])
+        ->and(array_filter($testi, fn (string $testo): bool => preg_match('/(?<!non )fa accettare/u', $testo) === 1))->toBe([])
+        // Il controllo vede ciò che cerca.
+        ->and(preg_match($documento, 'devi accettare i Termini di servizio'))->toBe(1)
+        ->and(preg_match('/(?<!non )fa accettare/u', 'la cornice fa accettare i documenti'))->toBe(1);
+});
+
+it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti legali: che cosa dà la parte server, che cosa fa il modulo, e dove lo dice il README (sprint 24 · T2.7)', function (string $frase) {
+    expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBe(true);
+})->with([
+    'che cosa dà la parte server' => ['`Cornice::dati()` non lancia e dà i dati ridotti, con `accettazione_richiesta: true`'],
+    'di chi è la pagina' => ['un avviso che porta alla pagina dell\'accettazione, che è di zr-home'],
+    // Lettura della PR #52, R3 e R5: il rimando è delle visite, e `prodotti` vuoto è una lista.
+    'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le visite non scrivi un rimando tuo'],
+    'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l\'eccezione `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia'],
+    'a una richiesta JSON decide il modulo' => ['A una tua richiesta JSON zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare'],
+    'le patch più vecchie' => ['Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su'],
+    'nessun middleware sulle rotte della cornice' => ['Sulle rotte `/cornice/*` non mettere un middleware che chiama `/v1` senza prendere quel 403'],
+    'la pagina si rimonta' => ['Nello stato ridotto la tua pagina sta in un contenitore sotto l\'avviso, e si rimonta quando lo stato arriva dal 403 di una rotta o se ne va'],
+    'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],
 ]);

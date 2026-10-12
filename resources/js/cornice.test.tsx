@@ -1330,6 +1330,34 @@ describe('il pannello delle notifiche', () => {
         expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
     });
 
+    // Sprint 24 · T4 (voce #1754; lettura della PR #51, R3). L'elenco chiesto coi dati di un workspace può essere, per la parte
+    // server, di un altro: la sessione è passata lì da un'altra scheda. Il pulsante manderebbe lo slug dei dati con cui
+    // l'elenco è stato chiesto, e la rotta risponderebbe 409: non c'è nemmeno quando i dati della pagina passano a quel
+    // workspace con la cornice montata, perché l'elenco in pagina è ancora quello chiesto coi dati di prima.
+    it('se l\'elenco è stato chiesto coi dati di un workspace, la parte server lo dice di un altro e poi i dati passano a quell\'altro con la cornice montata, «Segna tutte come lette» non c\'è: manderebbe lo slug dei dati di prima; torna con l\'elenco chiesto coi dati di adesso (sprint 24 · T4.1)', async () => {
+        const fetchFinto = rotteCheDicono({ workspace: 'acme-vendite' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()).toBeNull();
+
+        // La cornice resta montata e i dati sono del workspace che la parte server ha detto: l'elenco in pagina è suo, ma è
+        // stato chiesto coi dati dell'altro.
+        const altrove = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 };
+        await mostra(<Cornice dati={altrove} onLogout={esciSenzaEffetto} />);
+        expect([voci().length, campanella()]).toStrictEqual([3, '5']);
+        expect(segnaTutte()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+
+        // Chiuso e riaperto, il pannello chiede l'elenco coi dati di adesso: il pulsante torna, e manda il loro slug.
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
+    });
+
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
         const lettura = inAttesa();
         // Il primo elenco, quello chiesto riaprendo prima della risposta (ancora non lette), quello chiesto dopo.
@@ -1577,8 +1605,9 @@ describe('il pannello delle notifiche', () => {
     /**
      * Notifiche con gli id che la parte server dà di `dati`, dalla più recente. Le prime tre hanno la loro destinazione nel
      * registro: un contatto, una pipeline, una nota (che apre il contatto a cui è attaccata, anche da eliminata). Le altre no:
-     * una nota senza il contatto, una col contatto malfatto, una di Project Management, una del workspace, una del CRM di un
-     * tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
+     * una nota senza il contatto, una col contatto malfatto, una di Project Management che non ha una pagina (una scheda
+     * eliminata: dallo sprint 24 una scheda nuova, modificata o assegnata si apre, più sotto), una del workspace, una del CRM
+     * di un tipo che zr-core non conosce ancora, e una come la dà una parte server di prima, senza `ids`.
      */
     const conGliId = [
         { id: 'uat-n59', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } },
@@ -1586,7 +1615,7 @@ describe('il pannello delle notifiche', () => {
         { id: 'uat-n57', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } },
         { id: 'uat-n56', creata_il: '2026-10-06T11:40:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-2' } },
         { id: 'uat-n55', creata_il: '2026-10-06T11:35:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', ids: { id: 'uat-nota-3', persona_id: '../x' } },
-        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
+        { id: 'uat-n54', creata_il: '2026-10-06T11:30:00Z', letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ids: { id: 'uat-scheda-1', board_id: 'uat-board-1' } },
         { id: 'uat-n53', creata_il: '2026-10-06T11:25:00Z', letta: true, app: null, tipo: 'com.zeiras.workspace.membro.creato', ids: {} },
         { id: 'uat-n52', creata_il: '2026-10-06T11:20:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.assegnata', ids: { id: 'uat-persona-1' } },
         { id: 'uat-n51', creata_il: '2026-10-06T11:15:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.persona.creata' },
@@ -1787,8 +1816,8 @@ describe('il pannello delle notifiche', () => {
     const dellaPipeline = { id: 'uat-n68', creata_il: '2026-10-06T11:50:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.pipeline.modificata', ids: { id: 'uat-pipeline-1' } };
     /** Una già letta, con la sua destinazione: il contatto a cui la nota era attaccata. */
     const dellaNota = { id: 'uat-n67', creata_il: '2026-10-06T11:45:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.eliminata', ids: { id: 'uat-nota-1', persona_id: 'uat-persona-2' } };
-    /** Una non letta di Project Management, che nel registro non ha dove andare: il suo clic apre la pagina delle notifiche. */
-    const dellaScheda = { id: 'uat-n66', creata_il: '2026-10-06T11:40:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ids: {} };
+    /** Una non letta di Project Management che nel registro non ha dove andare, una scheda eliminata: il suo clic apre la pagina delle notifiche. */
+    const dellaScheda = { id: 'uat-n66', creata_il: '2026-10-06T11:40:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ids: {} };
     /** Le quattro, dalla più recente: tre non lette. */
     const daAprire = [delContatto, dellaPipeline, dellaNota, dellaScheda];
     const laLettura = (id: string) => `PATCH /cornice/notifiche/${id}/lettura`;
@@ -1863,6 +1892,94 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls).toStrictEqual([[aperto]]);
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    // Sprint 24 · T3 (voce #1748). Una scheda di Project Management — nuova, modificata, o assegnata a chi riceve la notifica —
+    // si apre con un clic: la pagina della scheda in zr-board, `/c/<id>` (zr-board, nota 10451 del #95), nel workspace
+    // dell'elenco, e il clic la segna letta come ogni notifica che ha una risorsa. Una scheda eliminata e gli altri tipi della
+    // board restano alla pagina delle notifiche; il titolo della scheda assegnata è nella tabella dei titoli, più sotto.
+    const nellaBoard = 'https://board.zeiras.com/w/acme-marketing';
+    const tipiDiUnaScheda = ['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'];
+    /** Tre non lette, una per tipo, come le dà la parte server: con chi ha fatto, il nome della scheda e il solo `id` fra gli `ids`. */
+    const delleSchede = tipiDiUnaScheda.map((tipo, indice) => ({
+        id: `uat-n${99 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo, autore_nome: 'Marta Rossi', risorsa_nome: `UAT Scheda ${indice + 1}`, per_me: indice === 0 ? true : null, ids: { id: `uat-scheda-${indice + 1}` },
+    }));
+
+    it.each<[string, string | undefined, { workspace?: string }, string]>([
+        ['il workspace dei dati, dalla Dashboard', undefined, {}, nellaBoard],
+        ['il workspace dei dati, dal CRM', 'crm', {}, nellaBoard],
+        ['un altro workspace', 'pm', { workspace: 'acme-vendite' }, 'https://board.zeiras.com/w/acme-vendite'],
+    ])('un clic su una notifica di una scheda nuova, modificata o assegnata apre la scheda in Project Management, `/c/<id>` nel workspace dell\'elenco — %s —, e la segna letta (sprint 24 · T3.2, T3.4)', async (_quale, prodotto, dellElenco, nelWorkspace) => {
+        const fetchFinto = rotteDelClic([{ data: delleSchede, ...dellElenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < delleSchede.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual([[`${nelWorkspace}/c/uat-scheda-1`], [`${nelWorkspace}/c/uat-scheda-2`], [`${nelWorkspace}/c/uat-scheda-3`]]);
+        // Una scheda ha una risorsa: ogni clic chiede la lettura della sua notifica, mai di un'altra.
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n99'), laLettura('uat-n98'), laLettura('uat-n97')]);
+        expect(naviga.mock.calls.flat().some((indirizzo) => String(indirizzo).startsWith(paginaDelleNotifiche))).toBe(false);
+    });
+
+    it.each([['it', 'Ti è stata assegnata una scheda'], ['en', 'A card was assigned to you'], ['es', 'Se te ha asignado una tarjeta']])('con la lingua "%s", nel pannello una notifica di una scheda assegnata si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 24 · T3.1)', async (lingua, titolo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: delleSchede.slice(0, 1) }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([titolo]);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual(['UAT Scheda 1']);
+    });
+
+    it.each<[string, unknown]>([
+        ['senza `ids`', undefined],
+        ['con `ids` vuoto', {}],
+        ['con la board e la lista ma non il suo id', { board_id: 'uat-board-1', lista_id: 'uat-lista-1' }],
+        ['con l\'id `..`', { id: '..' }],
+        ['con una barra nell\'id', { id: 'uat-scheda-1/x' }],
+        ['con un id di 65 caratteri', { id: 'a'.repeat(65) }],
+    ])('un clic su una notifica di una scheda %s apre la pagina delle notifiche e non la segna letta: mai un indirizzo con un id fuori forma (sprint 24 · T3.3)', async (_quale, ids) => {
+        const elenco = delleSchede.map((notifica) => ({ ...notifica, ids }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche], [paginaDelleNotifiche], [paginaDelleNotifiche]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+        expect(campanella()).toBe('3');
+    });
+
+    it('un clic su una scheda eliminata, su un altro tipo della board o su un tipo scritto quasi come quelli di una scheda apre la pagina delle notifiche e non la segna letta, anche con l\'id (sprint 24 · T3.4)', async () => {
+        const altri = ['com.zeiras.board.scheda.eliminata', 'com.zeiras.board.lista.creata', 'com.zeiras.board.board.modificata', 'com.zeiras.board.cartella.creata', 'com.zeiras.board.etichetta.creata', 'com.zeiras.board.vista.creata', 'com.zeiras.board.scheda.assegnata', 'board.scheda.creata'];
+        const elenco = altri.map((tipo, indice) => ({ id: `uat-n${89 - indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo, ids: { id: `uat-x-${indice + 1}`, board_id: 'uat-board-1' } }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 8 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual(altri.map(() => [paginaDelleNotifiche]));
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
+    it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
+        const fetchFinto = rotteDelClic([{ data: delleSchede }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, prodotti: { pm: 'in_arrivo', crm: 'attivo' }, non_lette: 3 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
     it.each([
@@ -1968,31 +2085,29 @@ describe('il pannello delle notifiche', () => {
     // Sprint 23 · T2 (voce #1742, S1). L'elenco del clic può essere più vecchio dei dati del clic: il pannello è rimasto aperto
     // mentre i dati cambiavano. Se nel mezzo la notifica è stata letta altrove, quei dati la contano già letta, e la lettura
     // non toglie niente dal loro numero: vale il numero dei dati, al più una in più fino alla visita dopo, mai una in meno.
-    it('se l\'elenco del clic è più vecchio dei dati del clic — la notifica letta altrove nel mezzo, e i dati la contano già letta — il clic apre la risorsa e il numero non scende: coi dati del clic, con quelli letti fra il clic e la risposta, con quelli letti dopo; e l\'avviso tace (sprint 23 · T2.1)', async () => {
+    it('se l\'elenco del clic è più vecchio dei dati del clic — la notifica letta altrove nel mezzo, e i dati la contano già letta — il clic apre la risorsa e il numero non scende: resta quello dei dati del clic; e l\'avviso tace (sprint 23 · T2.1; sprint 24 · T4.5)', async () => {
         const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], (id) => segnata(id, alSecondo(9)));
         vi.stubGlobal('fetch', fetchFinto);
         const naviga = vi.fn();
         const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={naviga} onLogout={esciSenzaEffetto} />;
         await mostra(pagina(letti(alSecondo(3), 3)));
         await clic(uno('.zr-bell'));
-        expect(campanella()).toBe('3');
 
         // A pannello aperto arrivano dati letti al secondo 7: la prima notifica è stata letta da un'altra scheda al 6, e ne
         // contano 2. Nell'elenco in pagina, letto al 5, è ancora da leggere.
         await mostra(pagina(letti(alSecondo(7), 2)));
-        expect([campanella(), nonLette()[0]]).toStrictEqual(['2', true]);
+        const prima = [campanella(), nonLette()[0]];
 
         await clic(voci()[0] ?? null);
-        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
-        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
-        // Coi dati del clic: la contavano già letta.
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
-
-        // Con dati letti fra il clic e la risposta (al secondo 8) e con dati letti dopo (al 10) vale il loro numero.
-        await mostra(pagina(letti(alSecondo(8), 2)));
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
-        await mostra(pagina(letti(alSecondo(10), 2)));
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+        // Un'asserzione sola, con ciò che c'era prima del clic: sul codice della `v1.12.0` è rossa, perché lì il numero scende
+        // a 1. Coi dati letti dopo il clic vale il loro numero anche lì: lo provano i casi più sopra, non questo.
+        expect({ prima, aperta: naviga.mock.calls, partite: richieste(fetchFinto), dopo: [campanella(), detto()] }).toStrictEqual({
+            prima: ['2', true],
+            aperta: [[`${nelCrm}/contatti/uat-persona-1`]],
+            partite: ['GET /cornice/notifiche', laLettura('uat-n69')],
+            // Coi dati del clic: la contavano già letta.
+            dopo: ['2', ''],
+        });
     });
 
     // Review della PR #44, R6. L'id di una notifica arriva dal backoffice, e la parte server controlla solo che sia un testo:
@@ -2198,11 +2313,12 @@ describe('il pannello delle notifiche', () => {
     });
 
     /**
-     * I titoli dei 40 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * I titoli dei 41 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
      * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`); dallo sprint 22
      * i nove in fondo (voce #1720: le opportunità, che nel contratto sono `trattativa`, le attività, e i quattro «assegnata», che
-     * non sono eventi e arrivano senza `com.zeiras.` davanti). Scritta qui e non letta dai file delle lingue.
+     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 l'ultimo (voce #1748: la scheda assegnata, di
+     * Project Management, che non è un evento nemmeno lei). Scritta qui e non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
         ['com.zeiras.app.modificata', 'Un modulo è stato attivato o disattivato', 'A module was turned on or off', 'Se activó o desactivó un módulo'],
@@ -2245,14 +2361,15 @@ describe('il pannello delle notifiche', () => {
         ['crm.organizzazione.assegnata', 'Ti è stata assegnata un\'azienda', 'A company was assigned to you', 'Se te ha asignado una empresa'],
         ['crm.trattativa.assegnata', 'Ti è stata assegnata un\'opportunità', 'An opportunity was assigned to you', 'Se te ha asignado una oportunidad'],
         ['crm.attivita.assegnata', 'Ti è stata assegnata un\'attività', 'An activity was assigned to you', 'Se te ha asignado una actividad'],
+        ['board.scheda.assegnata', 'Ti è stata assegnata una scheda', 'A card was assigned to you', 'Se te ha asignado una tarjeta'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 40 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(40);
-        expect(titoliPerTipo).toHaveLength(40);
+    it('la tabella dei titoli ha 41 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(41);
+        expect(titoliPerTipo).toHaveLength(41);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -2316,7 +2433,8 @@ describe('il pannello delle notifiche', () => {
     // i quattro «assegnata» no: il loro `tipo` è com'è nel backoffice, e lo stesso nome col prefisso resta un tipo che zr-core non
     // conosce.
     it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
-        const nuove = titoliPerTipo.slice(31);
+        // Le nove del CRM: dopo, dallo sprint 24, la tabella ha la scheda assegnata di Project Management.
+        const nuove = titoliPerTipo.slice(31, 40);
         const elenco = [
             ...nuove.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'crm' })),
             { ...nata('uat-n70', '2026-10-06T11:55:00Z'), tipo: 'com.zeiras.crm.persona.assegnata', app: 'crm' },
@@ -2353,9 +2471,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 40 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 41 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./index');
-        // I 40 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 41 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -2365,11 +2483,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 40 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 41 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 40)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(40)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 41)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(41)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
@@ -2996,7 +3114,7 @@ describe('la ricerca', () => {
         { tipo: 'board.board', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Lancio Q4' },
         { tipo: 'board.cartelle', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Marketing' },
         { tipo: 'uat-ignoto', id: '9', titolo: 'Piano di un tipo ignoto' },
-        { app: 'crm', tipo: 'board.board', id: 'uat/13', titolo: 'Report marketing' },
+        { app: 'crm', tipo: 'board.board', id: 'uat-13', titolo: 'Report marketing' },
         { tipo: 'board.schede', id: '12', titolo: 'Scrivere il brief' },
     ];
 
@@ -3115,8 +3233,8 @@ describe('la ricerca', () => {
         // Una cartella non ha una pagina sua in zr-board: si apre sulla pagina del workspace, dove stanno le cartelle, senza
         // altro dopo lo slug.
         ['Marketing', 'https://board.zeiras.com/w/acme-marketing'],
-        // Con `app: 'crm'` l'indirizzo resta quello di Project Management, e l'id entra codificato.
-        ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat%2F13'],
+        // Con `app: 'crm'` l'indirizzo resta quello di Project Management.
+        ['Report marketing', 'https://board.zeiras.com/w/acme-marketing/b/uat-13'],
     ])('scegliere «%s» apre l\'indirizzo del prodotto che ha quel tipo nel registro, nel workspace della risposta — qui quello dei dati —, seguito dal percorso del tipo, anche da un altro prodotto (sprint 5 · T4.3; sprint 6 · T5.1; sprint 22 · T6.5)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         const naviga = vi.fn();
@@ -3193,7 +3311,7 @@ describe('la ricerca', () => {
     it.each([
         ['Lancio Q4', 'https://board.zeiras.com/w/acme-vendite/b/01k6w2d5f7h9k1n3q5s7v9x1z3'],
         ['Marketing', 'https://board.zeiras.com/w/acme-vendite'],
-        ['Report marketing', 'https://board.zeiras.com/w/acme-vendite/b/uat%2F13'],
+        ['Report marketing', 'https://board.zeiras.com/w/acme-vendite/b/uat-13'],
     ])('con la risposta di un altro workspace, scegliere «%s» apre il suo indirizzo nel workspace che la risposta dice, mai in quello dei dati della pagina (sprint 22 · T6.5)', async (titolo, indirizzo) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer, 'acme-vendite')));
         const naviga = vi.fn();
@@ -3255,6 +3373,43 @@ describe('la ricerca', () => {
         expect(righe()).toHaveLength(0);
     });
 
+    // Sprint 24 · T4 (voce #1754; lettura della PR #51, R5). L'id di un risultato arriva dal backoffice, e la parte server guarda
+    // solo che sia un testo: entra nell'indirizzo solo con la forma di un id, come quello di una notifica. `encodeURIComponent`
+    // non tocca i punti, e con `..` l'indirizzo sarebbe quello della pagina del workspace. Un risultato con l'id fuori forma non
+    // compare, nemmeno se il suo tipo non mette l'id nell'indirizzo (una cartella); gli altri della stessa risposta sì. E la
+    // forma si guarda solo di un testo (lettura della PR #52, R7): `RegExp.test` converte ciò che riceve, e un id che manca,
+    // `null` o un numero passerebbe come «undefined», «null», «12».
+    it.each<[string, unknown]>([
+        ['`..`', '..'],
+        ['vuoto', ''],
+        ['con una barra', 'uat/13'],
+        ['più lungo di 64', 'a'.repeat(65)],
+        ['che manca', undefined],
+        ['`null`', null],
+        ['che è un numero, non un testo', 12],
+    ])('un risultato della ricerca con l\'id %s non compare fra i risultati, e gli altri della stessa risposta sì: la ricerca non va in errore (sprint 24 · T4.2)', async (_quale, id) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.board', id: 'uat-12', titolo: 'Lancio Q4' },
+            { tipo: 'board.board', id, titolo: 'Lancio fuori forma' },
+            { tipo: 'board.cartelle', id, titolo: 'Marketing fuori forma' },
+            // Il più lungo che la forma ammette.
+            { tipo: 'board.board', id: 'a'.repeat(64), titolo: 'Report marketing' },
+        ])));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Report marketing']);
+
+        // Quelli rimasti si aprono come sempre.
+        await act(async () => {
+            righe()[1]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[`https://board.zeiras.com/w/acme-marketing/b/${'a'.repeat(64)}`]]);
+    });
+
     // Sprint 23 · T2 (voce #1742, S7): lo stato della ricerca è un'unione, e dei risultati stanno sempre col loro workspace.
     it('uno stato della ricerca coi risultati porta il loro workspace: senza non compila, e prima di cercare la ricerca è pronta e senza risultati (sprint 23 · T2.7)', async () => {
         // @ts-expect-error `ready` vuole `workspace`: dei risultati senza il loro workspace non hanno un indirizzo.
@@ -3313,6 +3468,54 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-search input')?.getAttribute('aria-label')).toBe(nome);
+    });
+    // Sprint 24 · T2 (voce #1745): chi non ha accettato i documenti legali in vigore non cerca. Coi dati che lo dicono la
+    // ricerca non parte; coi dati di sempre lo dice la rotta, col suo 403, e da lì la cornice è ridotta (il resto dello stato
+    // lo prova «chi non ha accettato i documenti legali», più sotto).
+    const spenta = 'Non disponibile finché non accetti i documenti.';
+    const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
+
+    it.each([
+        ['una lettera', 'l'],
+        ['tre lettere', 'lan'],
+    ])('a chi non ha accettato i documenti legali, scrivendo %s, sotto il campo c\'è «Non disponibile finché non accetti i documenti.» e nessun risultato, e la ricerca non parte (sprint 24 · T2.2)', async (_quante, parola) => {
+        const fetchFinto = vi.fn(async () => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi(parola);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+        expect(righe()).toHaveLength(0);
+        expect(fetchFinto).not.toHaveBeenCalled();
+    });
+
+    it('coi dati di sempre, se la ricerca risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto: sotto il campo c\'è quella frase, non «La ricerca non ha risposto», e un\'altra parola non parte (sprint 24 · T2.5)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta' }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 7 }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await scrivi('lancio');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+        expect(righe()).toHaveLength(0);
+        expect([uno('main .zr-alert strong')?.textContent, uno('.zr-bell-count'), uno('.zr-product-switch')]).toStrictEqual(['Ci sono documenti da accettare', null, null]);
+
+        await scrivi('lancio q4');
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        expect(sottoIlCampo()).toStrictEqual([spenta]);
+    });
+
+    it.each<[string, unknown, number]>([
+        ['un 403 con un altro `errore`', { errore: 'gettone_senza_workspace' }, 403],
+        ['un 409 con lo stesso `errore`', { errore: 'accettazione_richiesta' }, 409],
+        ['un 500 con lo stesso `errore`', { errore: 'accettazione_richiesta' }, 500],
+    ])('%s dalla ricerca non porta la cornice in quello stato: resta l\'errore della ricerca, e la cornice è quella di sempre (sprint 24 · T2.5)', async (_caso, corpo, stato) => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta(corpo, stato)));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 7 }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await scrivi('lancio');
+        expect(sottoIlCampo()).toStrictEqual(['La ricerca non ha risposto. Riprova tra poco.']);
+        expect([uno('main .zr-alert'), uno('.zr-bell-count')?.textContent, uno('.zr-product-switch') === null]).toStrictEqual([null, '7', false]);
     });
 });
 
@@ -3442,5 +3645,279 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
         expect(appShell).toHaveBeenCalled();
         const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
         expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
+    });
+});
+
+// Sprint 24 · T2 (voce #1745): chi non ha ancora accettato i documenti legali in vigore. La parte server dà i dati ridotti con
+// `accettazione_richiesta: true` (T1), o una rotta della cornice risponde 403 `accettazione_richiesta` mentre la cornice ha i
+// dati di sempre: la cornice esce ridotta — nel menu Moduli solo la Dashboard, campanella e ricerca spente — e sopra la
+// pagina c'è l'avviso col pulsante che porta alla pagina dell'accettazione, che è di zr-home. La ricerca spenta la prova
+// «la ricerca», più sopra.
+describe('chi non ha accettato i documenti legali', () => {
+    /** I dati ridotti, come li dà `Cornice::dati()` davanti al 403 del backoffice. */
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
+    /** I dati di chi ha accettato: moduli, aziende, sette non lette. */
+    const diSempre: DatiDellaCornice = { ...dati, aziende, non_lette: 7, aggiornati_il: '2026-10-11T22:00:00.000001Z' };
+    const spenta = 'Non disponibile finché non accetti i documenti.';
+    const daAccettare = () => risposta({ errore: 'accettazione_richiesta' }, 403);
+    const avviso = () => uno('main .zr-alert');
+    /** I pulsanti del pannello che non sono le sue due schede: «Segna tutte come lette», «Riprova», «Vedi tutte». */
+    const pulsantiDelPannello = () => tutti('.zr-notif button:not([role="tab"])').map((pulsante) => pulsante.textContent);
+    /** Ciò che dice in pagina se la cornice è ridotta: le voci del menu Moduli, il modulo aperto, il numero, il titolo dell'avviso. */
+    const cornice = () => ({
+        moduli: [...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item') ?? [])].map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('href')]),
+        moduloAperto: uno('.zr-product-switch') !== null || uno('.zr-top-product') !== null,
+        numero: uno('.zr-bell-count')?.textContent ?? null,
+        avviso: avviso()?.querySelector('strong')?.textContent ?? null,
+    });
+    const ridotta = { moduli: [['Dashboard', 'https://app.zeiras.com/w/acme-marketing']], moduloAperto: false, numero: null, avviso: 'Ci sono documenti da accettare' };
+    /** La cornice di sempre su una pagina di Project Management: il menu chiuso nel suo pulsante, «7» sulla campanella, nessun avviso. */
+    const diSempreInPagina = () => [uno('.zr-product-switch') !== null, uno('.zr-bell-count')?.textContent ?? null, avviso()];
+    const l = (indirizzo: string) => (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(indirizzo);
+    let diPartenza: string;
+
+    beforeEach(() => {
+        diPartenza = window.location.href;
+    });
+
+    afterEach(() => {
+        l(diPartenza);
+    });
+
+    it.each<[string, string | undefined]>([
+        ['una pagina di app.zeiras.com', undefined],
+        ['una pagina di un modulo', 'pm'],
+    ])('coi dati `accettazione_richiesta: true` %s esce con la cornice ridotta: nel menu Moduli solo la Dashboard, nessun numero sulla campanella, e sopra il contenuto, che resta, l\'avviso con titolo, frase e pulsante (sprint 24 · T2.1)', async (_quale, product) => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
+        const crea = [{ label: 'Nuova board' }];
+        await mostra(<Cornice dati={ridotti} product={product} nav={delModulo} active="board" create={crea} flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        expect(uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent).toBe('Moduli');
+        expect(cornice()).toStrictEqual(ridotta);
+        // Nessun modulo, nemmeno «Presto»; e la campanella si chiama col suo nome, senza un numero.
+        expect(uno('.zr-nav-soon')).toBeNull();
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe('Notifiche');
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        expect('product' in props).toBe(false);
+        // Le voci del modulo e il «+» restano quelli che la pagina dà.
+        expect(tutti('.zr-nav .zr-nav-group').map((gruppo) => gruppo.querySelector('.zr-nav-title')?.textContent)).toStrictEqual(['Moduli', 'Lavoro']);
+        expect(props.create).toBe(crea);
+        // L'avviso del design system, col tono di un avviso.
+        expect([avviso()?.classList.contains('zr-alert-warning'), avviso()?.getAttribute('role')]).toStrictEqual([true, 'status']);
+        expect(avviso()?.querySelector('.zr-alert-body > div')?.textContent).toBe('Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.');
+        expect(tutti('main .zr-alert button').map((pulsante) => pulsante.textContent)).toStrictEqual(['Vai ai documenti']);
+        // Sta nel margine della pagina: `flush` non arriva all'`AppShell`.
+        expect('flush' in props).toBe(false);
+        expect(uno('main')?.classList.contains('is-flush')).toBe(false);
+        // Il contenuto della pagina resta, dopo l'avviso.
+        const pagina = uno('main p');
+        expect(pagina?.textContent).toBe('La pagina');
+        expect((avviso()?.compareDocumentPosition(pagina as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    });
+
+    it('la campanella è spenta: il pannello ha la frase e nessuna notifica, senza «Segna tutte come lette», «Riprova» e «Vedi tutte», e la cornice non chiama nessuna delle sue rotte (sprint 24 · T2.2)', async () => {
+        const fetchFinto = vi.fn(async () => risposta({ data: [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' }], workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        await mostra(<Cornice dati={ridotti} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(tutti('.zr-notif-list .zr-notif-item')).toHaveLength(0);
+        expect([uno('.zr-notif .zr-empty'), uno('.zr-notif .zr-count')]).toStrictEqual([null, null]);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        expect(fetchFinto).not.toHaveBeenCalled();
+        // Ciò che l'`AppShell` riceve: nessun gestore di campanella e ricerca, e la frase al posto dei suoi tre testi.
+        const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown> & { labels?: Record<string, string> };
+        expect(['onNotificationsOpen', 'onRetryNotifications', 'onMarkAllRead', 'onAllNotifications', 'onOpenNotification', 'onSearch'].filter((nome) => nome in props)).toStrictEqual([]);
+        expect([props.notifications, props.unreadCount, props.notificationsState, props.searchResults, props.searchState]).toStrictEqual([[], 0, 'error', [], 'error']);
+        expect([props.labels?.notificationsError, props.labels?.searchHint, props.labels?.searchError]).toStrictEqual([spenta, spenta, spenta]);
+    });
+
+    it.each([
+        ['es', 'Hay documentos por aceptar', 'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.', 'Ir a los documentos', 'No disponible hasta que aceptes los documentos.'],
+        ['en', 'There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'],
+        ['zz', 'There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'],
+    ])('con la lingua "%s" l\'avviso e la frase della campanella sono in quella lingua, o in inglese se zr-core non la ha (sprint 24 · T2.4)', async (lingua, titolo, frase, pulsante, nonDisponibile) => {
+        await mostra(<Cornice dati={{ ...ridotti, lingua }} onLogout={esciSenzaEffetto} />);
+
+        expect([avviso()?.querySelector('strong')?.textContent, avviso()?.querySelector('.zr-alert-body > div')?.textContent, avviso()?.querySelector('button')?.textContent]).toStrictEqual([titolo, frase, pulsante]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(nonDisponibile);
+    });
+
+    it('il menu del profilo resta intero, ed «Esci» funziona (sprint 24 · T2.1)', async () => {
+        const esci = vi.fn();
+        await mostra(<Cornice dati={ridotti} product="pm" onLogout={esci} />);
+
+        await clic(uno('.zr-avatar-btn'));
+        expect(vociDelProfilo().map((voce) => voce?.testo ?? null)).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', null, 'Esci']);
+        await clic(tutti('.zr-profile-menu [role="menuitem"]').at(-1) ?? null);
+        expect(esci).toHaveBeenCalledTimes(1);
+    });
+
+    const accettazione = 'https://app.zeiras.com/legale/accetta';
+    const lunga = (caratteri: number) => `https://board.zeiras.com/${'a'.repeat(caratteri - 'https://board.zeiras.com/'.length)}`;
+
+    it.each<[string, string, string]>([
+        ['una pagina `https://`, con la sua query e il suo frammento', 'https://board.zeiras.com/w/acme-marketing/b/01k6?vista=lista&ordine=nome#scheda-12', `${accettazione}?ritorno=https%3A%2F%2Fboard.zeiras.com%2Fw%2Facme-marketing%2Fb%2F01k6%3Fvista%3Dlista%26ordine%3Dnome%23scheda-12`],
+        ['una pagina `http://`', 'http://board.zeiras.com/w/acme-marketing', accettazione],
+        ['un indirizzo di 2000 caratteri', lunga(2000), `${accettazione}?ritorno=${encodeURIComponent(lunga(2000))}`],
+        ['un indirizzo di 2001 caratteri', lunga(2001), accettazione],
+    ])('un clic sul pulsante dell\'avviso da %s porta alla pagina dell\'accettazione sull\'host della Dashboard, col `ritorno` solo se l\'indirizzo della pagina comincia con `https://` e non supera i 2000 caratteri (sprint 24 · T2.3)', async (_quale, indirizzo, attesa) => {
+        const naviga = vi.fn();
+        // La pagina in cui la cornice è resa non è quella del clic: una visita di Inertia cambia l'indirizzo senza rifare la cornice.
+        l('https://board.zeiras.com/w/acme-marketing/la-pagina-di-prima');
+        await mostra(<Cornice dati={ridotti} product="pm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+        l(indirizzo);
+        expect(window.location.href).toBe(indirizzo);
+
+        await clic(avviso()?.querySelector('button') ?? null);
+        expect(naviga.mock.calls).toStrictEqual([[attesa]]);
+    });
+
+    it('coi dati di sempre, se l\'elenco delle notifiche risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto e ci resta finché ha quei dati; con dati letti dopo che non lo dicono torna quella di sempre (sprint 24 · T2.5)', async () => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Il pannello, rimasto aperto, ha la frase: non l'errore di caricamento con «Riprova».
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        expect(uno('main p')?.textContent).toBe('La pagina');
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+
+        // La pagina si ridisegna con gli stessi dati: resta ridotta.
+        await mostra(laPagina(diSempre));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        // Dati letti dopo, che non lo dicono: la cornice torna quella di sempre.
+        await mostra(laPagina({ ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' }));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    // Lettura della PR #52, R1. Il segnale di una rotta non vale per un oggetto solo: un frontend può ricreare i dati a ogni
+    // disegno, o ritoccarli nel browser lasciando il segno. Sono la stessa lettura — stesso workspace, stesso segno — e la
+    // cornice resta ridotta: non torna quella di sempre con «Non riusciamo a caricare le notifiche» e «Riprova».
+    it.each<[string, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['ricreati uguali a ogni disegno', (deiDati) => ({ ...deiDati })],
+        ['ritoccati nel browser lasciando il segno', (deiDati) => ({ ...deiDati, non_lette: 3 })],
+    ])('dopo il 403 `accettazione_richiesta` di una rotta, coi dati %s la cornice resta ridotta: il segnale vale finché i dati non sono più recenti, non per un oggetto solo (sprint 24 · T5, R1)', async (_caso, altri) => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        await mostra(laPagina(altri(diSempre)));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Il pannello, rimasto aperto, ha ancora la frase: non l'errore di caricamento con «Riprova».
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        // E un altro disegno ancora, con un altro oggetto: la cornice non chiede di nuovo l'elenco.
+        await mostra(laPagina(altri(diSempre)));
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // Lettura della PR #52, R5. `Cornice::dati()` dà `prodotti` come lista vuota, e al browser arriva `[]`, non `{}`: è la forma
+    // vera dei dati ridotti.
+    it('coi `prodotti` dei dati ridotti come arrivano dal server, una lista vuota (`[]`), la cornice esce ridotta come con `{}` (sprint 24 · T5, R5)', async () => {
+        await mostra(<Cornice dati={{ ...ridotti, prodotti: [] as unknown as DatiDellaCornice['prodotti'] }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(uno('.zr-nav-soon')).toBeNull();
+        expect(uno('main p')?.textContent).toBe('La pagina');
+    });
+
+    // Lettura della PR #52, R6. Nello stato ridotto il modulo aperto non arriva all'`AppShell`, che senza una voce attiva segna
+    // la Dashboard: ma la persona è in una pagina del modulo. Su una pagina di un modulo che non dice la sua voce attiva nessuna
+    // voce è segnata; se la dice vale quella, e su una pagina di app.zeiras.com resta la Dashboard.
+    it.each<[string, { product?: string; active?: string }, string[]]>([
+        ['una pagina di un modulo che non dice la voce attiva', { product: 'pm' }, []],
+        ['una pagina di un modulo che la dice', { product: 'pm', active: 'board' }, ['Le board']],
+        ['una pagina di app.zeiras.com', {}, ['Dashboard']],
+    ])('nello stato ridotto, su %s le voci segnate nella barra sono quelle giuste: mai la Dashboard per chi è in un modulo (sprint 24 · T5, R6)', async (_quale, dellaPagina, attese) => {
+        const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
+        await mostra(<Cornice dati={ridotti} nav={dellaPagina.product === undefined ? [] : delModulo} {...dellaPagina} onLogout={esciSenzaEffetto} />);
+
+        expect(cornice()).toStrictEqual(ridotta);
+        const nomeDi = (voce: HTMLElement) => voce.querySelector('.zr-nav-label')?.textContent;
+        expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(attese);
+        expect(tutti('a.zr-nav-item[aria-current]').map(nomeDi)).toStrictEqual(attese);
+    });
+
+    it.each<[string, () => Response]>([
+        ['un 403 con un altro `errore`', () => risposta({ errore: 'gettone_senza_workspace' }, 403)],
+        ['un 403 con un corpo che non è JSON', () => ({ ok: false, status: 403, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } }) as unknown as Response],
+        ['un 409 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 409)],
+        ['un 500 con lo stesso `errore`', () => risposta({ errore: 'accettazione_richiesta' }, 500)],
+    ])('%s dall\'elenco delle notifiche non porta la cornice in quello stato: resta l\'errore del pannello, con «Riprova» (sprint 24 · T2.5)', async (_caso, fallisce) => {
+        vi.stubGlobal('fetch', vi.fn(async () => fallisce()));
+        await mostra(<Cornice dati={diSempre} product="pm" onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"] p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(pulsantiDelPannello()).toStrictEqual(['Riprova', 'Vedi tutte']);
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    it('lo dice anche «Segna tutte come lette»: se la rotta risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto (sprint 24 · T2.5)', async () => {
+        const elenco = [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: null }];
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco, workspace: 'acme-marketing' }) : daAccettare()));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif .zr-pop-head button'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/letture']);
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+    });
+
+    it('lo dice anche la lettura di una notifica con un clic: se la rotta risponde 403 `accettazione_richiesta` la risorsa si apre lo stesso, e la cornice passa allo stato ridotto (sprint 24 · T2.5)', async () => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: [delContatto], workspace: 'acme-marketing' }) : daAccettare()));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(cornice()).toStrictEqual(ridotta);
+    });
+
+    it('`accettazione_richiesta: false` vale come assente, e senza la chiave e senza il segnale l\'`AppShell` riceve le prop di prima: né una in più né una in meno (sprint 24 · T2.6)', async () => {
+        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const date = async (deiDati: DatiDellaCornice) => {
+            await mostra(<Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+            return (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
+        };
+        /** Una prop senza le sue funzioni, che a ogni render sono altre: conta che ci siano. La pagina (`children`) si guarda nel DOM. */
+        const valori = (valore: unknown): unknown => (typeof valore === 'function' ? 'una funzione' : Array.isArray(valore) ? valore.map(valori) : valore !== null && typeof valore === 'object' ? Object.fromEntries(Object.entries(valore).map(([nome, suo]) => [nome, valori(suo)])) : valore);
+        const senzaLaPagina = (props: Record<string, unknown>) => valori(Object.fromEntries(Object.entries(props).filter(([nome]) => nome !== 'children')));
+
+        const senza = await date(diSempre);
+        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`.
+        expect(Object.keys(senza).sort()).toStrictEqual([
+            'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
+            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
+        ]);
+        expect([senza.product, senza.flush, senza.unreadCount, senza.notificationsState, senza.searchState]).toStrictEqual(['pm', true, 7, 'ready', 'ready']);
+        expect([avviso(), uno('main')?.textContent]).toStrictEqual([null, 'La pagina']);
+
+        const conFalse = await date({ ...diSempre, accettazione_richiesta: false });
+        expect(senzaLaPagina(conFalse)).toStrictEqual(senzaLaPagina(senza));
+        expect([avviso(), uno('main')?.textContent, uno('.zr-bell-count')?.textContent]).toStrictEqual([null, 'La pagina', '7']);
     });
 });

@@ -33,9 +33,9 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * Di che app è un tipo di notifica, dal suo inizio: il backoffice dice `app` dall'evento, e la cornice cerca la destinazione
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
- * è del CRM (sprint 23 · T3).
+ * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3).
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -67,7 +67,8 @@ function mappaDegliIndirizzi(): array
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
  * «contenitore» che non è un sì o un no, un nome; in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
  * un'altra app, o di un'app che il controllo non conosce, un percorso che non comincia con / o che ha un carattere o un
- * segnaposto non ammesso, una chiave che non è `tipo` né `percorso`.
+ * segnaposto non ammesso, una chiave che non è `tipo`, `percorso` né `altrimenti`, e in `altrimenti` un percorso scritto due
+ * volte o che non si aprirebbe mai.
  *
  * @param  list<array<string, mixed>>  $voci
  * @return list<string>
@@ -141,7 +142,9 @@ function problemiDelRegistro(array $voci): array
         // in tutto il registro; il percorso comincia con / ed è fatto di minuscole, cifre, `/`, `-`, `_` e segnaposto, `{id}` o
         // `{<nome>_id}`; nessun'altra chiave: il titolo sta nelle lingue. Sprint 23 · T3: `altrimenti`, che può non esserci, è la
         // lista dei percorsi che si provano dopo `percorso`, in ordine: non vuota, ognuno con le regole di `percorso`, e nessuno
-        // scritto due volte né uguale a `percorso`.
+        // scritto due volte né uguale a `percorso`. Sprint 24 · T4: e nessuno che chiede almeno gli id di uno che viene prima —
+        // quindi nessuno dopo un percorso senza segnaposto —, perché browser e parte server si fermano al primo che ha tutti i
+        // suoi id, e lui non si aprirebbe mai.
         foreach ($voce['notifiche'] ?? [] as $notifica) {
             $tipo = $notifica['tipo'] ?? null;
             $nome = $id.', notifica '.(is_string($tipo) && trim($tipo) !== '' ? $tipo : '?');
@@ -166,6 +169,11 @@ function problemiDelRegistro(array $voci): array
             }
             $percorso = $notifica['percorso'] ?? null;
             $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*$~D';
+            $chiaviDi = function (string $unPercorso): array {
+                preg_match_all('~\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}~', $unPercorso, $segnaposto);
+
+                return $segnaposto[1];
+            };
             if (! is_string($percorso) || preg_match($formaDiUnPercorso, $percorso) !== 1) {
                 $problemi[] = "$nome: il percorso «".(is_string($percorso) ? $percorso : '').'» non comincia con /, o ha un carattere o un segnaposto che non è ammesso';
             }
@@ -180,6 +188,13 @@ function problemiDelRegistro(array $voci): array
                             $problemi[] = "$nome: il percorso «".(is_string($altro) ? $altro : '').'» di «altrimenti» non comincia con /, o ha un carattere o un segnaposto che non è ammesso';
                         } elseif (in_array($altro, $giaScritti, true)) {
                             $problemi[] = "$nome: il percorso «{$altro}» di «altrimenti» è scritto due volte";
+                        } else {
+                            foreach ($giaScritti as $prima) {
+                                if (is_string($prima) && preg_match($formaDiUnPercorso, $prima) === 1 && array_diff($chiaviDi($prima), $chiaviDi($altro)) === []) {
+                                    $problemi[] = "$nome: il percorso «{$altro}» di «altrimenti» non si aprirebbe mai: quando ha i suoi id li ha anche «{$prima}», che viene prima";
+                                    break;
+                                }
+                            }
                         }
                         $giaScritti[] = $altro;
                     }
@@ -227,7 +242,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto'],
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse', 'tono'],
+            // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
             ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
@@ -390,12 +406,34 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, 
             ['tipo' => 'crm.persona.assegnata', 'percorso' => '/contatti/{id}'],
             ['tipo' => 'crm.organizzazione.assegnata', 'percorso' => '/aziende/{id}'],
         ])
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['crm'])
+        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; le diciotto del CRM restano com'erano.
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });
 
-it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ognuno con le regole di `percorso` e nessuno ripetuto, non accetta un\'altra chiave accanto, e sa che un tipo `crm.…` è del CRM (sprint 23 · T3.6)', function () {
+// Sprint 24 · T3 (voce #1748). Project Management ha le sue prime destinazioni: una scheda nuova, modificata o assegnata apre la
+// pagina della scheda in zr-board, `/c/{id}` (zr-board, nota 10451 del #95: quella pagina legge la scheda e rimanda al suo
+// dettaglio nella board; zr-pm, nota 10565: una notifica con una risorsa apre la risorsa). L'id è `id` nei `dati` dei due eventi
+// del contratto e in quelli della notifica a chi viene assegnata la scheda, che non è un evento e arriva senza `com.zeiras.`
+// davanti. Una scheda eliminata non ha più una pagina, e gli altri tipi della board restano senza destinazione.
+
+it('nel registro le notifiche di Project Management che aprono la loro risorsa sono tre, tutte di una scheda — nuova, modificata, assegnata —, e aprono la pagina della scheda, `/c/{id}`: una scheda eliminata e gli altri tipi della board non hanno una destinazione, e quelle del CRM restano diciotto (sprint 24 · T3.2, T3.4, T3.5)', function () {
+    $voci = registroDeiProdotti();
+
+    expect(problemiDelRegistro($voci))->toBe([])
+        ->and($voci[1]['id'])->toBe('pm')
+        // La lista intera: un tipo in più — una scheda eliminata, una vista, una lista — è il difetto.
+        ->and($voci[1]['notifiche'] ?? null)->toBe([
+            ['tipo' => 'com.zeiras.board.scheda.creata', 'percorso' => '/c/{id}'],
+            ['tipo' => 'com.zeiras.board.scheda.modificata', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.scheda.assegnata', 'percorso' => '/c/{id}'],
+        ])
+        ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
+        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(18);
+});
+
+it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ognuno con le regole di `percorso` e nessuno ripetuto, non accetta un\'altra chiave accanto, e sa che un tipo `crm.…` è del CRM e uno `board.…` di Project Management (sprint 23 · T3.6; sprint 24 · T3.5)', function () {
     $voci = registroDeiProdotti();
     $voci[1]['notifiche'] = [
         // Buone: una lista di uno, e una di due con un percorso senza segnaposto in fondo.
@@ -413,16 +451,22 @@ it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ogn
         ['tipo' => 'com.zeiras.board.uat.domanda', 'percorso' => '/b/{id}', 'altrimenti' => ['/b?x=1']],
         // Ripetuto: uguale a `percorso`, o due volte nella lista.
         ['tipo' => 'com.zeiras.board.uat.uguale', 'percorso' => '/b/{id}', 'altrimenti' => ['/b/{id}']],
-        ['tipo' => 'com.zeiras.board.uat.doppio', 'percorso' => '/b/{id}', 'altrimenti' => ['/b', '/c', '/b']],
+        ['tipo' => 'com.zeiras.board.uat.doppio', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/b/{board_id}', '/c/{id}', '/b/{board_id}']],
         // Un'altra chiave accanto ad `altrimenti`.
         ['tipo' => 'com.zeiras.board.uat.poi', 'percorso' => '/b/{id}', 'altrimenti' => ['/b'], 'poi' => ['/c']],
         // Un tipo che non è un evento: `crm.…` è del CRM, e fra quelli di Project Management non si aprirebbe mai.
         ['tipo' => 'crm.uat.assegnata', 'percorso' => '/b/{id}'],
+        // Sprint 24 · T3: anche `board.…` non è un evento, ed è di Project Management: nella sua voce va bene.
+        ['tipo' => 'board.uat.assegnata', 'percorso' => '/c/{id}'],
     ];
     // Nella sua voce va bene; `crm` attaccato a un'altra parola, o non all'inizio, non dice l'app.
     $voci[2]['notifiche'][] = ['tipo' => 'crm.uat.assegnato', 'percorso' => '/contatti/{id}'];
     $voci[2]['notifiche'][] = ['tipo' => 'crmx.uat.attaccato', 'percorso' => '/contatti/{id}'];
     $voci[2]['notifiche'][] = ['tipo' => 'x.crm.uat.davanti', 'percorso' => '/contatti/{id}'];
+    // `board.…` fra quelli del CRM non si aprirebbe mai; attaccato a un'altra parola, o non all'inizio, non dice l'app.
+    $voci[2]['notifiche'][] = ['tipo' => 'board.uat.assegnato', 'percorso' => '/contatti/{id}'];
+    $voci[2]['notifiche'][] = ['tipo' => 'boardx.uat.attaccato', 'percorso' => '/contatti/{id}'];
+    $voci[2]['notifiche'][] = ['tipo' => 'x.board.uat.davanti', 'percorso' => '/contatti/{id}'];
 
     $nonLista = fn (string $tipo) => "pm, notifica com.zeiras.board.uat.$tipo: «altrimenti» non è una lista di percorsi, o è vuota";
     $sbagliato = fn (string $tipo, string $percorso) => "pm, notifica com.zeiras.board.uat.$tipo: il percorso «{$percorso}» di «altrimenti» non comincia con /, o ha un carattere o un segnaposto che non è ammesso";
@@ -437,12 +481,43 @@ it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ogn
         $sbagliato('numero', ''),
         $sbagliato('domanda', '/b?x=1'),
         'pm, notifica com.zeiras.board.uat.uguale: il percorso «/b/{id}» di «altrimenti» è scritto due volte',
-        'pm, notifica com.zeiras.board.uat.doppio: il percorso «/b» di «altrimenti» è scritto due volte',
+        'pm, notifica com.zeiras.board.uat.doppio: il percorso «/b/{board_id}» di «altrimenti» è scritto due volte',
         'pm, notifica com.zeiras.board.uat.poi: ha una chiave che non è tipo, percorso né altrimenti',
         'pm, notifica crm.uat.assegnata: il tipo è di crm, e nella voce di pm non si aprirebbe mai',
         'crm, notifica crmx.uat.attaccato: il controllo non sa di che app è questo tipo',
         'crm, notifica x.crm.uat.davanti: il controllo non sa di che app è questo tipo',
+        'crm, notifica board.uat.assegnato: il tipo è di pm, e nella voce di crm non si aprirebbe mai',
+        'crm, notifica boardx.uat.attaccato: il controllo non sa di che app è questo tipo',
+        'crm, notifica x.board.uat.davanti: il controllo non sa di che app è questo tipo',
     ]);
+});
+
+// Sprint 24 · T4 (voce #1754; lettura della PR #51, R6). Browser e parte server provano i percorsi in ordine e si fermano al
+// primo che ha tutti i suoi id: un percorso che chiede almeno gli id di uno che viene prima non si aprirebbe mai, perché quando
+// li ha tutti li ha anche quello. Vale per uno le cui chiavi comprendono quelle di uno prima, e per ogni percorso dopo uno senza
+// segnaposto, che si apre sempre.
+it('il controllo trova un percorso di `altrimenti` che non si aprirebbe mai: uno che chiede almeno gli id di un percorso che viene prima, e uno dopo un percorso senza segnaposto; il registro di oggi non ne ha (sprint 24 · T4.3)', function () {
+    $voci = registroDeiProdotti();
+    $voci[1]['notifiche'] = [
+        // Buone: ogni percorso fa a meno di un id che quelli prima chiedono, e quello senza segnaposto è l'ultimo.
+        ['tipo' => 'com.zeiras.board.uat.stretto', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/b/{board_id}', '/elenco']],
+        ['tipo' => 'com.zeiras.board.uat.altri', 'percorso' => '/a/{trattativa_id}', 'altrimenti' => ['/p/{persona_id}', '/o/{organizzazione_id}']],
+        // Mai: chiede gli id di `percorso`, e uno in più.
+        ['tipo' => 'com.zeiras.board.uat.largo', 'percorso' => '/b/{board_id}', 'altrimenti' => ['/b/{board_id}/c/{id}']],
+        // Mai: chiede gli stessi id di `percorso`, in un altro percorso.
+        ['tipo' => 'com.zeiras.board.uat.stessi', 'percorso' => '/b/{id}', 'altrimenti' => ['/c/{id}']],
+        // Mai: viene dopo un percorso senza segnaposto — `percorso`, o uno di `altrimenti`.
+        ['tipo' => 'com.zeiras.board.uat.dopo-il-fisso', 'percorso' => '/elenco', 'altrimenti' => ['/b/{id}']],
+        ['tipo' => 'com.zeiras.board.uat.in-mezzo', 'percorso' => '/b/{board_id}/c/{id}', 'altrimenti' => ['/elenco', '/b/{board_id}']],
+    ];
+    $mai = fn (string $tipo, string $percorso, string $prima) => "pm, notifica com.zeiras.board.uat.$tipo: il percorso «{$percorso}» di «altrimenti» non si aprirebbe mai: quando ha i suoi id li ha anche «{$prima}», che viene prima";
+
+    expect(problemiDelRegistro($voci))->toEqualCanonicalizing([
+        $mai('largo', '/b/{board_id}/c/{id}', '/b/{board_id}'),
+        $mai('stessi', '/c/{id}', '/b/{id}'),
+        $mai('dopo-il-fisso', '/b/{id}', '/elenco'),
+        $mai('in-mezzo', '/b/{board_id}', '/elenco'),
+    ])->and(problemiDelRegistro(registroDeiProdotti()))->toBe([]);
 });
 
 it('il controllo trova, fra le notifiche di un prodotto, un tipo vuoto, uno scritto due volte nello stesso prodotto o in un altro, uno di un\'altra app o di un\'app che non conosce, un percorso che non comincia con /, un segnaposto che non è `{id}` né `{…_id}`, un carattere che in un percorso non ci sta e una chiave in più (sprint 21 · T3, guardia; review della PR #31, R11)', function () {

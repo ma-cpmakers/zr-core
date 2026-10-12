@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\File;
 // lette» mentre la richiesta è in corso e quando ne restano: `markAllRead` è dell'`AppShell`, e in italiano resta quello del design system.
 // Sprint 22 · T2 (voce #1712): di zr-core è anche `unreadNone`, ciò che l'avviso della cornice dice al lettore di schermo quando
 // l'ultima non letta è stata letta: `notifications` e `unread`, con cui dice un numero, sono dell'`AppShell`.
+// Sprint 24 · T2 (voce #1745): di zr-core sono anche i quattro testi di chi non ha accettato i documenti legali in vigore —
+// `acceptanceTitle`, `acceptanceText` e `acceptanceAction` per l'avviso sopra la pagina, `acceptanceOff` per campanella e ricerca
+// spente —, e nessuno nomina un documento né una versione: quali mancano lo sa la pagina dell'accettazione, non la cornice.
 
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
@@ -103,13 +106,14 @@ function tipiDiNotificaDelContratto(): array
 
 /**
  * I tipi che hanno un titolo: i tipi di evento del contratto più le quattro notifiche «assegnata» del CRM, che non sono eventi e
- * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4).
+ * nel contratto stanno solo nella descrizione di `tipo` delle notifiche (sprint 22 · T5.4), e quella di Project Management a
+ * chi viene assegnata una scheda, che non è un evento nemmeno lei (sprint 24 · T3).
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata())];
 }
 
 /**
@@ -188,6 +192,20 @@ function titoliDelleNotificheDiCioCheVieneAssegnato(): array
     ];
 }
 
+/**
+ * Il titolo della notifica che Project Management manda a chi viene assegnata una scheda, con le parole di zr-board (nota 10451
+ * del #95). Non è un evento: il `tipo` arriva com'è nel backoffice, senza `com.zeiras.` davanti, e la chiave del titolo è
+ * `notificationTitle.board.scheda.assegnata`. Scritto qui, non letto dai file delle lingue (sprint 24 · T3.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoloDellaNotificaDellaSchedaAssegnata(): array
+{
+    return [
+        'board.scheda.assegnata' => ['it' => 'Ti è stata assegnata una scheda', 'en' => 'A card was assigned to you', 'es' => 'Se te ha asignado una tarjeta'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -238,6 +256,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
     ];
 
@@ -382,14 +401,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 40 tipi di notifica, i 36 tipi di evento del contratto più i quattro «assegnata» che non sono eventi, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 41 tipi di notifica, i 36 tipi di evento del contratto più i cinque «assegnata» che non sono eventi — quattro del CRM e uno di Project Management —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(36)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(40)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(41)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -456,6 +475,22 @@ it('i quattro «assegnata» hanno il titolo sotto il tipo com\'è nel backoffice
         ->and(array_intersect(array_keys($tabella), tipiDiNotificaDelContratto()))->toBe([]);
 })->with(['it', 'en', 'es']);
 
+it('la notifica a chi viene assegnata una scheda ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: lo stesso nome col prefisso resta senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (sprint 24 · T3.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoloDellaNotificaDellaSchedaAssegnata();
+    $titolo = $testi['notificationTitle.board.scheda.assegnata'] ?? null;
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['board.scheda.assegnata'])
+        ->and($titolo)->toBe($tabella['board.scheda.assegnata'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.board.scheda.assegnata', $testi))->toBe(false)
+        // Una parola per ogni `not->toContain`: con due si ferma alla prima che manca, e una sola nel contratto passerebbe.
+        ->and(tipiDiNotificaDelContratto())->not->toContain('board.scheda.assegnata')
+        ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.board.scheda.assegnata')
+        // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
+        ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.scheda.assegnata']);
+})->with(['it', 'en', 'es']);
+
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
     $lingue = lingueDellaCornice();
     // Un tipo che il contratto non ha: in una lingua sola, e anche nell'inglese, che è il ripiego. Un tipo del contratto tolto
@@ -478,6 +513,57 @@ it('il testo dell\'avviso senza non lette c\'è nelle tre lingue ed è di zr-cor
     expect([$lingue['it']['unreadNone'] ?? null, $lingue['en']['unreadNone'] ?? null, $lingue['es']['unreadNone'] ?? null])
         ->toBe(['Nessuna notifica non letta', 'No unread notifications', 'Ninguna notificación sin leer'])
         ->and(chiaviDiAppShellLabels())->not->toContain('unreadNone');
+});
+
+/**
+ * I nomi di documenti legali e le versioni che un testo dice, nelle tre lingue: un testo dell'accettazione non ne deve dire
+ * nessuno, perché la cornice non sa quali documenti mancano. Una parola che ne contiene un'altra non conta («determinato»).
+ *
+ * @return list<string>
+ */
+function documentiNominatiIn(string $testo): array
+{
+    $parole = ['termini', 'terms', 'términos', 'condizioni', 'conditions', 'condiciones', 'privacy', 'privacidad', 'cookie', 'cookies', 'dpa', 'informativa', 'versione', 'version', 'versión'];
+    preg_match_all('/(?<![\p{L}\p{N}])(?:'.implode('|', $parole).'|v?\d+(?:\.\d+)+)(?![\p{L}\p{N}])/iu', $testo, $trovati);
+
+    return array_values(array_unique(array_map(mb_strtolower(...), $trovati[0])));
+}
+
+it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre lingue e sono di zr-core: l\'AppShell non ha una chiave con quei nomi (sprint 24 · T2.4)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null])->toBe($attesi)
+        ->and(chiaviDiAppShellLabels())->not->toContain($chiave);
+})->with([
+    'il titolo dell\'avviso' => ['acceptanceTitle', ['Ci sono documenti da accettare', 'There are documents to accept', 'Hay documentos por aceptar']],
+    'la frase dell\'avviso' => ['acceptanceText', [
+        'Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.',
+        'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.',
+        'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.',
+    ]],
+    'il pulsante dell\'avviso' => ['acceptanceAction', ['Vai ai documenti', 'Go to the documents', 'Ir a los documentos']],
+    'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
+]);
+
+it('nessuno dei quattro testi di chi non ha accettato nomina un documento o una versione, in nessuna lingua (sprint 24 · T2.4)', function () {
+    $nominati = [];
+    foreach (lingueDellaCornice() as $codice => $testi) {
+        foreach (['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff'] as $chiave) {
+            foreach (documentiNominatiIn((string) ($testi[$chiave] ?? '')) as $parola) {
+                $nominati[] = "$codice: «{$chiave}» dice «{$parola}»";
+            }
+        }
+    }
+
+    expect($nominati)->toBe([]);
+});
+
+it('il controllo vede il nome di un documento e una versione, in mezzo a una frase e in maiuscolo, e non una parola che li contiene (sprint 24 · T2.4)', function () {
+    expect(documentiNominatiIn('Devi accettare i Termini di servizio e la Privacy.'))->toBe(['termini', 'privacy'])
+        ->and(documentiNominatiIn('Accept the Terms (version 3) and the DPA v2.1'))->toBe(['terms', 'version', 'dpa', 'v2.1'])
+        ->and(documentiNominatiIn('Acepta los términos, la política de privacidad y las cookies.'))->toBe(['términos', 'privacidad', 'cookies'])
+        ->and(documentiNominatiIn('Per usare Zeiras devi accettare i documenti legali in vigore, a tempo determinato.'))->toBe([])
+        ->and(documentiNominatiIn('Hay 2 documentos por aceptar'))->toBe([]);
 });
 
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {

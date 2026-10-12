@@ -45,7 +45,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   che il tuo modulo genera gli dai il titolo in ogni lingua di Zeiras, con le tue parole, e la pagina che si apre con
   un clic (il percorso dopo `/w/<slug>`, con l'id che serve, o senza se la pagina non ne chiede; se la risorsa può stare
   in più pagine, i percorsi in ordine, dal più specifico). Senza, la campanella dice «Novità nel workspace» e un clic
-  apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche».
+  apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche». Vale anche per una notifica che non è
+  un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il
+  titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
@@ -235,6 +237,17 @@ eccezioni di `bootstrap/app.php`, che cosa mostrare quando il backoffice non ris
 **Prova**: una tua pagina riceve `cornice` col nome della persona e il workspace; senza workspace riceve `null` e si vede
 senza cornice. Nei test guardi **quali** letture partono e con quale gettone, non in che ordine: il backoffice finto di
 zr-auth sta sul finto HTTP di Laravel, e le richieste partite si leggono da lì.
+
+**Chi non ha accettato i documenti legali** in vigore, dalla `v1.14.0`: `Cornice::dati()` non lancia e dà i dati ridotti,
+con `accettazione_richiesta: true`; la cornice esce ridotta, con un avviso che porta alla pagina dell'accettazione, che è
+di zr-home. Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le
+visite non scrivi un rimando tuo: dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l'eccezione
+`AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia. A una tua richiesta JSON
+zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Con una patch più vecchia
+quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su. Sulle rotte `/cornice/*` non mettere un middleware che chiama
+`/v1` senza prendere quel 403. Nello stato ridotto la tua pagina sta in un contenitore sotto l'avviso, e si rimonta quando
+lo stato arriva dal 403 di una rotta o se ne va — README, «La cornice», al punto «Chi non ha accettato i documenti
+legali».
 
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa

@@ -73,7 +73,9 @@ function CorniceMontata({ children, ...dellaCornice }: CorniceProps) {
         document.querySelectorAll('.zr-shell > .zr-main, .zr-shell > .zr-main > .zr-main-body').forEach((area) => area.setAttribute('scroll-region', ''));
     });
 
-    // Nessun elemento intorno: `.zr-shell` è una griglia alta quanto la finestra, e la pagina resta figlia di `main.zr-main`.
+    // Nessun elemento intorno: `.zr-shell` è una griglia alta quanto la finestra, e la pagina resta figlia di `main.zr-main` —
+    // tranne nello stato ridotto di chi non ha accettato i documenti legali, dove la cornice la mette in un contenitore sotto
+    // l'avviso.
     // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei.
     return (
         <ContestoDellaCornice value={daLaPagina}>

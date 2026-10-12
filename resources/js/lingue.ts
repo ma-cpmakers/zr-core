@@ -36,6 +36,22 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
      * nome non ha un numero da dire (README, «Le notifiche»).
      */
     unreadNone: string;
+    /**
+     * Il titolo dell'avviso che la cornice mette sopra la pagina a chi non ha ancora accettato i documenti legali in vigore.
+     * I quattro testi dell'accettazione non nominano un documento né una versione: quali mancano lo sa la pagina
+     * dell'accettazione, che è di zr-home, non la cornice (README, «La cornice»).
+     */
+    acceptanceTitle: string;
+    /** La frase dello stesso avviso: che cosa fare, e che cosa resta spento fino ad allora. */
+    acceptanceText: string;
+    /** Il pulsante dello stesso avviso: porta alla pagina dell'accettazione. */
+    acceptanceAction: string;
+    /**
+     * Ciò che campanella e ricerca dicono a chi non ha accettato, al posto delle notifiche e dei risultati. L'`AppShell` non
+     * ha un testo per «non disponibile»: la cornice gli dà questo al posto dei suoi tre (`notificationsError`, `searchHint`,
+     * `searchError`), su una copia.
+     */
+    acceptanceOff: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
     /**

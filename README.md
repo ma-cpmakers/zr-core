@@ -94,6 +94,7 @@ public function share(Request $request): array
 | `Cornice::dati()` dà | quando |
 |---|---|
 | `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
@@ -125,6 +126,26 @@ cornice ha valgono come li dà la pagina: un frontend che li ritocca nel browser
 dalla pagina, e il numero che scende) vede il cambio. Il segno viene dall'orologio del server che risponde: se i server
 del frontend sono più di uno devono avere l'ora allineata (NTP), o i dati letti da un server che va indietro passano per
 più vecchi.
+
+**Chi non ha accettato i documenti legali** (dalla `v1.14.0`). Finché la persona non accetta i documenti legali in vigore
+il backoffice le apre solo `io.mostra`, i documenti, l'accettazione e l'uscita, e a ogni altra lettura risponde 403
+`accettazione_richiesta`. Per la cornice non è un guasto: `Cornice::dati()` non lancia e dà i dati ridotti — lingua,
+persona e workspace della sessione, `prodotti` e `aziende` vuoti, `non_lette` 0, il segno — con in più
+`accettazione_richiesta: true`. La chiave c'è solo lì, mai a `false`: i dati di chi ha accettato sono quelli di sempre.
+Lì `prodotti` è una lista vuota, e al browser arriva `[]` e non `{}`: un frontend che valida la forma dei dati la ammette.
+Dopo quel 403 `Cornice::dati()` non chiama più il backoffice. Il frontend dà i dati alla cornice così come sono, e la
+pagina esce con la cornice ridotta (vedi «La cornice», al punto «Chi non ha accettato i documenti legali»). Con quella
+chiave `prodotti` vuoto non vuol dire «Presto»: vuol dire che il backoffice non li ha dati, e un frontend che legge i
+dati da sé (le schede dei moduli nella Dashboard) guarda `accettazione_richiesta` prima di `prodotti`. Quel 403 si
+riconosce dallo stato e dal codice insieme: un 403 con un altro codice resta l'`ErroreApi` che era. Quali documenti
+mancano la parte server non lo dà al browser: lo sa la pagina dell'accettazione, che è di zr-home. Le chiamate del
+frontend a `/v1` ricevono lo stesso 403, e lì la cornice non c'entra. Da zr-auth `v0.12.17` quel 403 è l'eccezione
+`Zeiras\Auth\Errori\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in tre forme: a una visita un rimando
+alla pagina dell'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un
+403 con `codice` e `mancanti`, senza rimando — lì la persona resta dov'è, e che cosa mostrarle lo decide il frontend. Per
+le visite il frontend non scrive un rimando suo. Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un
+`ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede
+nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
@@ -217,6 +238,13 @@ Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: 
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
 sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
 guardia.
+
+Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le quattro rotte rispondono 403
+`{errore: "accettazione_richiesta"}`, col solo codice: titolo, dettaglio e documenti mancanti del backoffice restano
+nella parte server. La cornice lo riconosce e passa allo stato ridotto (vedi «La cornice», al punto «Chi non ha accettato
+i documenti legali»); ogni altro errore del backoffice resta quello di prima. Su quelle rotte nessun middleware del
+frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di
+zr-auth, coi `mancanti`. La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto.
 
 ## La cornice
 
@@ -319,11 +347,16 @@ cornice === null ? pagina : (
   `com.zeiras.` davanti (`crm.persona.assegnata`, `crm.organizzazione.assegnata`, `crm.trattativa.assegnata`,
   `crm.attivita.assegnata`), e la chiave del titolo è `notificationTitle.crm.persona.assegnata`, non
   `notificationTitle.com.zeiras.crm.persona.assegnata`. Nel contratto un'opportunità è una `trattativa`: il titolo usa la
-  parola del CRM, come per i contatti e le aziende. Con quelli i titoli sono 40: i 36 tipi di evento del contratto e i
+  parola del CRM, come per i contatti e le aziende. Con quelli i titoli erano 40: i 36 tipi di evento del contratto e i
   quattro «assegnata». Per il contratto nemmeno i cinque eventi di opportunità e attività generano ancora notifiche per i
   colleghi: delle nove arrivano le quattro «assegnata», e titoli e destinazioni dei cinque sono pronti per quando il
   backoffice le manderà. Fino alla `v1.12.0` nessuno dei nove apriva una risorsa, e un clic apriva la pagina delle notifiche
-  (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM (più sotto). Di che prodotto è
+  (`https://app.zeiras.com/notifiche`); dalla `v1.13.0` ognuno apre la sua pagina nel CRM (più sotto). Dalla `v1.14.0` ha un titolo anche
+  la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda». Come le
+  quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la
+  chiave del titolo è `notificationTitle.board.scheda.assegnata`. Con lei i titoli sono 41: i 36 tipi di evento del
+  contratto e i cinque «assegnata». Il contratto pubblicato l'11/10/2026 non la elenca ancora: titolo e destinazione sono
+  pronti per quando il backoffice la manderà. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -408,6 +441,10 @@ cornice === null ? pagina : (
   (`workspace`, nella risposta di `GET /cornice/notifiche`): con due schede su due workspace, da lì la rotta risponde 409
   `workspace_diverso` e non segna niente. Se la risposta dell'elenco non dice di quale workspace è, il pulsante c'è come
   prima: il controllo resta della parte server.
+  Dalla `v1.14.0` non c'è nemmeno quando l'elenco è stato chiesto coi dati di un workspace, la parte server lo dice di un
+  altro e poi i dati della pagina passano a quell'altro senza che la cornice si rifaccia: il clic manderebbe lo slug dei dati
+  di prima. Succede solo con `Cornice` usata da sola (`LayoutDellaCornice` la rifà a ogni cambio di workspace), e il pulsante
+  torna con l'elenco chiesto coi dati di adesso, alla prossima apertura del pannello.
   Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace
   dell'elenco: una
   notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue
@@ -416,7 +453,9 @@ cornice === null ? pagina : (
   assegnata — apre `https://crm.zeiras.com/w/<slug>/opportunita/<id>`, un contatto o un'azienda assegnati la loro pagina,
   e una di un'attività — nuova, modificata, eliminata o assegnata — la pagina «Da fare»
   (`https://crm.zeiras.com/w/<slug>/da-fare`), senza un id: un'attività non ha una pagina sua. Di opportunità e attività
-  oggi arrivano solo le «assegnata» (più sopra). Una nota apre la cosa più
+  oggi arrivano solo le «assegnata» (più sopra). Dalla `v1.14.0` una di una scheda di Project Management — nuova,
+  modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`; una di una scheda eliminata no:
+  la sua pagina non c'è più. Una nota apre la cosa più
   specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
   `v1.12.0` apriva solo il contatto, e senza quello la pagina delle notifiche). Dove si apre ogni tipo lo dice il registro (`notifiche`
   della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
@@ -433,7 +472,8 @@ cornice === null ? pagina : (
   non ha dove andare apre
   `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (dalla `v1.13.0` ci sono diciotto
   tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
-  le viste di una board e le schede non hanno una destinazione), le mancano gli id di ogni percorso del suo tipo, o il
+  dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
+  tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
@@ -484,8 +524,9 @@ cornice === null ? pagina : (
   parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un
   risultato porta solo tipo, id e titolo: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
   Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
-  l'icona del tipo; un tipo che il registro non ha non si mostra. Scegliere un risultato apre l'indirizzo del suo prodotto,
-  nel workspace dei risultati, seguito dal percorso del tipo: una board si apre su
+  l'icona del tipo; un tipo che il registro non ha non si mostra. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui
+  id non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
+  risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre su
   `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace dove
   stanno le cartelle, `https://board.zeiras.com/w/<slug>`. Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice
   (`workspace`), che non è sempre quello dei dati della pagina: la sessione ha un workspace solo, e con due schede su due
@@ -510,6 +551,33 @@ cornice === null ? pagina : (
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
   la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
   (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
+- **Chi non ha accettato i documenti legali** in vigore vede la cornice ridotta, dalla `v1.14.0`: coi dati che portano
+  `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta` (finché i
+  dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non
+  più avanti, anche se il frontend li ricrea a ogni disegno o li ritocca nel browser; con dati letti dopo che non lo dicono
+  torna quella di sempre; dati senza segno valgono solo finché sono lo stesso oggetto). Nel menu Moduli c'è solo la
+  Dashboard, e il pulsante del modulo aperto non c'è. Su una pagina di un modulo che non dà `active` nessuna voce della
+  barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com. La campanella non ha numero, e il suo pannello dice «Non disponibile
+  finché non accetti i documenti.», senza notifiche e senza «Segna tutte come lette», «Riprova» e «Vedi tutte»; la ricerca
+  dice la stessa frase sotto il campo e non dà risultati. In quello stato la cornice non chiama nessuna delle sue rotte.
+  Sopra il contenuto della pagina, che resta, c'è un avviso («Ci sono documenti da accettare») col pulsante «Vai ai
+  documenti», che porta a `https://app.zeiras.com/legale/accetta?ritorno=<indirizzo della pagina>`: l'indirizzo è quello
+  in cui la persona è al clic, e va nel `ritorno` solo se comincia con `https://` e non supera i 2000 caratteri (senza
+  `ritorno`, dopo l'accettazione zr-home porta alla Dashboard). Il `ritorno` è una richiesta: dove la persona torna dopo
+  l'accettazione lo decide zr-home. La pagina dell'accettazione è di zr-home e sta fuori dalla
+  cornice: la cornice non mostra testi legali, non dice quali documenti mancano e non fa accettare niente. Il menu del
+  profilo resta intero, ed «Esci» funziona. Che cosa fa il frontend: dà i dati alla cornice così come sono; non legge
+  `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`); lascia a zr-auth il rimando dalle proprie visite che
+  chiamano `/v1` (a una richiesta JSON zr-auth risponde 403 senza rimando, e lì decide il frontend: «La parte server»);
+  sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403; e se a chi non ha accettato
+  non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`): la cornice li mostra come la pagina li dà.
+  In quello stato `flush` non vale: l'avviso sta nel margine della pagina. Avviso e pagina stanno in un contenitore
+  (`div.zr-stack`), e la pagina in un `div` suo: lì non è figlia diretta di `main.zr-main`, e quando lo stato arriva dal
+  403 di una rotta, o se ne va, la pagina si rimonta — stato locale, fuoco e scorrimento ripartono, e i suoi effetti si
+  rilanciano. I
+  quattro testi sono di zr-core, nelle tre lingue (`acceptanceTitle`, `acceptanceText`, `acceptanceAction`,
+  `acceptanceOff`). Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
+  ha ancora uno stato «non disponibile».
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.
@@ -573,9 +641,13 @@ percorso nel modulo dopo `/w/<slug>`, dove un segnaposto è `{id}` o `{<nome>_id
 quella chiave (`/contatti/{id}` per un contatto). Un percorso può non avere un segnaposto (`/da-fare`, per un'attività):
 allora non chiede un id. Dalla `v1.13.0` una riga può avere anche `altrimenti`, la lista dei percorsi che si provano dopo
 `percorso`, in ordine, quando la risorsa può stare in più pagine: si apre il primo che ha tutti i suoi id — per una nota
-`/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`. Un tipo
+`/opportunita/{trattativa_id}`, altrimenti `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`. Per questo
+un percorso che chiede gli stessi id di uno che viene prima, o di più, non si aprirebbe mai, e nemmeno uno dopo un percorso
+senza segnaposto: dalla `v1.14.0` il controllo del registro li rifiuta. Un tipo
 che non è un evento, come ciò che il CRM manda a chi diventa responsabile (`crm.persona.assegnata`), è scritto com'è nel
-backoffice, senza `com.zeiras.` davanti. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+backoffice, senza `com.zeiras.` davanti. Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una
+scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata
+(`board.scheda.assegnata`), tutte e tre con `/c/{id}`. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:

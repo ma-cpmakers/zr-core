@@ -677,14 +677,15 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
     Carbon::setTestNow(Carbon::parse('2026-10-10 05:20:07.000321', 'UTC'));
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [
-        notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null, 'pm', 'com.zeiras.board.scheda.creata'),
+        // Sprint 24 · T3: una scheda nuova ora ha una destinazione, e porta il suo id (in fondo al file); qui una eliminata, che non ne ha.
+        notificaDelBackoffice('uat-n3', '2026-10-07T09:03:00.123Z', null, 'pm', 'com.zeiras.board.scheda.eliminata'),
         // Un tipo che /v1 oggi non ha, con le maiuscole e uno spazio: passa com'è, non si traduce e non si abbassa.
         notificaDelBackoffice('uat-n2', '2026-10-07T09:02:00.123Z', '2026-10-07T09:05:00.456Z', 'uat-ignota', 'com.zeiras.UAT.Tipo ignoto.v2'),
         notificaDelBackoffice('uat-n1', '2026-10-07T09:01:00.123Z', null, null, 'com.zeiras.workspace.membro.creato'),
     ], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing']);
@@ -1552,7 +1553,16 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
         ->and(substr_count($corpo, 'uat-x'))->toBe(0)
         ->and(substr_count($corpo, '_id'))->toBe(0);
 })->with([
-    'una scheda di una board, di Project Management' => ['pm', 'com.zeiras.board.scheda.creata'],
+    // Sprint 24 · T3: una scheda nuova, modificata o assegnata ora ha una destinazione, e sta nei casi in fondo al file. Qui resta
+    // ciò che di Project Management non ce l'ha: una scheda eliminata, che non ha più una pagina, gli altri tipi della board, e
+    // un tipo scritto quasi come uno del registro — «assegnata» arriva senza `com.zeiras.` davanti, un evento con.
+    'una scheda eliminata, di Project Management' => ['pm', 'com.zeiras.board.scheda.eliminata'],
+    'una lista di una board' => ['pm', 'com.zeiras.board.lista.creata'],
+    'una board modificata' => ['pm', 'com.zeiras.board.board.modificata'],
+    'una scheda assegnata, con `com.zeiras.` davanti' => ['pm', 'com.zeiras.board.scheda.assegnata'],
+    'una scheda nuova, senza `com.zeiras.` davanti' => ['pm', 'board.scheda.creata'],
+    'una scheda assegnata, in una notifica del CRM' => ['crm', 'board.scheda.assegnata'],
+    'una scheda assegnata, in una notifica che non è di un\'app' => [null, 'board.scheda.assegnata'],
     'una vista di una board' => ['pm', 'com.zeiras.board.vista.creata'],
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
@@ -1965,6 +1975,27 @@ it('una nota dà al browser i soli id della cosa più specifica a cui è legata 
     'nessun legame: nessun id' => [[], []],
 ]);
 
+// Sprint 24 · T4 (voce #1754; lettura della PR #51, R6). Un percorso può ripetere un segnaposto: l'id che chiede è uno, e con
+// quello è intero. Contato due volte non lo sarebbe mai: si aprirebbe il percorso dopo, e i suoi id sparirebbero in silenzio.
+it('un percorso che ripete un segnaposto chiede quell\'id una volta sola: con l\'id è intero, e la parte server dà quello, non gli id del percorso dopo; la rotta dà gli stessi del metodo (sprint 24 · T4.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    registroGiaLetto([
+        ['id' => 'crm', 'presto' => false, 'notifiche' => [
+            ['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/x/{id}/y/{id}', 'altrimenti' => ['/elenco']],
+            ['tipo' => 'com.zeiras.crm.nota.modificata', 'percorso' => '/x/{id}/y/{id}', 'altrimenti' => ['/a/{primo_id}']],
+        ]],
+    ]);
+    $dati = ['id' => 'uat-nota-1', 'primo_id' => 'uat-primo-1'];
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n2', $dati),
+        notificaConDati('uat-n1', $dati, 'com.zeiras.crm.nota.modificata'),
+    ], 'successivo' => null])]);
+
+    expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.creata', $dati))->toBe(['id' => 'uat-nota-1'])
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.nota.modificata', $dati))->toBe(['id' => 'uat-nota-1'])
+        ->and(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.*.ids'))->toBe([['id' => 'uat-nota-1'], ['id' => 'uat-nota-1']]);
+});
+
 it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa per intero, nell\'ordine del registro: mai gli id di due percorsi insieme, nessuno se si apre un percorso senza segnaposto, e se nessun percorso è intero quelli in forma del primo, com\'era con un percorso solo; la rotta dà gli stessi del metodo (sprint 23 · T3.5)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     registroGiaLetto([
@@ -2002,3 +2033,106 @@ it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa p
             ['board_id' => 'uat-board-1', 'id' => 'uat-scheda-1'], [], ['primo_id' => 'uat-primo-1'], ['id' => 'uat-scheda-1'],
         ]);
 });
+
+// Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) le rotte
+// della cornice rispondono 403 col solo codice, nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
+// backoffice restano nella parte server. Il 403 si riconosce dallo stato e dal codice insieme: ogni altra risposta resta
+// l'errore che era. La quarta rotta, la ricerca, è in RicercaTest. Il 403 è accettazioneRichiesta() di tests/Pest.php.
+
+/** Una delle tre rotte delle notifiche, chiamata come la chiama la cornice: `elenco`, `lettura` o `letture`. */
+function rottaDelleNotifiche(string $rotta): TestResponse
+{
+    return senzaGettone(match ($rotta) {
+        'elenco' => test()->getJson('cornice/notifiche'),
+        'lettura' => test()->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]),
+        'letture' => test()->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
+    });
+}
+
+it('davanti al 403 accettazione_richiesta del backoffice le tre rotte delle notifiche rispondono 403 col solo codice: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3)', function (string $rotta) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => accettazioneRichiesta()]);
+
+    $risposta = rottaDelleNotifiche($rotta)->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    Http::assertSentCount(1);
+})->with([
+    'GET /cornice/notifiche' => ['elenco'],
+    'PATCH /cornice/notifiche/{id}/lettura' => ['lettura'],
+    'POST /cornice/notifiche/letture' => ['letture'],
+]);
+
+it('quel 403 a un richiamo delle letture è lo stesso 403 col solo codice, e dopo non parte un\'altra chiamata (sprint 24 · T1.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true), fn () => accettazioneRichiesta(), lettureDopo(0, false)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    Http::assertSentCount(2);
+});
+
+it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere accettazione_richiesta a nessuna delle tre rotte delle notifiche (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $rotta) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => accettazioneRichiesta($stato, $codice)]);
+
+    $risposta = rottaDelleNotifiche($rotta);
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('errore'))->toBeNull();
+    Http::assertSentCount(1);
+})->with(quasiAccettazioneRichiesta())->with([
+    'GET /cornice/notifiche' => ['elenco'],
+    'PATCH /cornice/notifiche/{id}/lettura' => ['lettura'],
+    'POST /cornice/notifiche/letture' => ['letture'],
+]);
+
+// Sprint 24 · T3 (voce #1748; indirizzo di zr-board, nota 10451 del #95; decisione di zr-pm, nota 10565). Una scheda di Project
+// Management — nuova, modificata, o assegnata a chi riceve la notifica — apre la sua pagina in zr-board, `/c/{id}`: al browser
+// va il solo `id` dei `dati`, che nei due eventi del contratto portano anche `aggiornata_il`, `lista_id` e `board_id`, e nella
+// notifica a chi viene assegnata la scheda il solo `id`. Una scheda eliminata non ha più una pagina: `ids` vuoto.
+
+it('GET /cornice/notifiche dà a una scheda nuova, modificata o assegnata il suo `id` e nient\'altro dei `dati`, né la lista né la board, e a una scheda eliminata `ids` vuoto; `idsDellaNotifica()` dà lo stesso (sprint 24 · T3.2, T3.4)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n4', ['id' => 'uat-scheda-1'], 'board.scheda.assegnata', 'pm'),
+        notificaConDati('uat-n3', ['id' => 'uat-scheda-2', 'aggiornata_il' => '2026-10-11T12:29:00.123Z', 'lista_id' => 'uat-lista-1', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.creata', 'pm'),
+        notificaConDati('uat-n2', ['id' => 'uat-scheda-3', 'aggiornata_il' => '2026-10-11T12:28:00.123Z', 'lista_id' => 'uat-lista-2', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.modificata', 'pm'),
+        notificaConDati('uat-n1', ['id' => 'uat-scheda-4', 'lista_id' => 'uat-lista-1', 'board_id' => 'uat-board-1'], 'com.zeiras.board.scheda.eliminata', 'pm'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-scheda-1'], ['id' => 'uat-scheda-2'], ['id' => 'uat-scheda-3'], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Per la scheda eliminata `ids` è vuoto, ma un oggetto; del suo id, della lista, della board e del resto di `dati`, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(1)
+        ->and(substr_count($corpo, 'uat-scheda-4'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-lista'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-board'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0)
+        ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0);
+});
+
+it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, 'pm')], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, $dati))->toBe([])
+        ->and($risposta->json('data.0.ids'))->toBe([])
+        ->and(substr_count((string) $risposta->getContent(), 'uat-fuori'))->toBe(0);
+})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'])->with([
+    'due punti' => [['id' => '..']],
+    'con una barra' => [['id' => 'uat-fuori/x']],
+    'con ../ davanti' => [['id' => '../uat-fuori']],
+    'lungo 65 caratteri' => [['id' => 'uat-fuori-'.str_repeat('a', 55)]],
+    'un numero' => [['id' => 42]],
+    'senza `id`, con la board e la lista' => [['board_id' => 'uat-fuori-board', 'lista_id' => 'uat-fuori-lista']],
+    'senza `dati`' => [null],
+]);
