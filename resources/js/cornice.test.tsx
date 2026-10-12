@@ -4928,15 +4928,85 @@ describe('«Salta al contenuto»', () => {
         expect(main.contains(uno('#della-pagina'))).toBe(true);
     });
 
-    it('il salto si rifà: la seconda volta il `main` ha già il suo `tabindex`, e resta quello (T4.3)', async () => {
+    it('il salto si rifà: ogni volta il `main` prende il fuoco col suo `tabindex`, e lo perde quando il fuoco va altrove (T4.3; lettura della PR #61, R4)', async () => {
         await mostra(laPagina());
 
         for (const _volta of [1, 2]) {
             await conIlFuoco(pulsante());
+            // Il fuoco ha lasciato il `main`: l'attributo del salto di prima non c'è più.
+            expect(uno('main')?.hasAttribute('tabindex')).toBe(false);
             await act(async () => pulsante().click());
             expect(document.activeElement).toBe(uno('main'));
+            expect(uno('main')?.getAttribute('tabindex')).toBe('-1');
         }
-        expect(uno('main')?.getAttribute('tabindex')).toBe('-1');
+    });
+
+    // Lettura della PR #61, R4. Col `tabindex` lasciato sul `main`, dopo un salto ogni clic su un punto della pagina che non
+    // prende il fuoco lo darebbe al `main`: il Tab dopo ripartirebbe dal primo elemento del contenuto e non dal punto del clic.
+    it('il `tabindex` sta sul `main` solo finché ha il fuoco: quando il fuoco passa a un elemento della pagina il `main` torna com\'era, senza attributi della cornice (lettura della PR #61, R4)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
+
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect([main.hasAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual([false, '', null, 'zr-main']);
+    });
+
+    it('un `tabindex` che il `main` ha già non è della cornice: il salto non lo cambia e non lo toglie (lettura della PR #61, R4)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+        main.setAttribute('tabindex', '0');
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '0']);
+
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.getAttribute('tabindex')).toBe('0');
+    });
+
+    // Lettura della PR #61, R3. Il `main` è quello dell'`AppShell` accanto al pulsante, non il primo del documento: un
+    // frontend può avere un `main` suo, prima della cornice o intorno a lei.
+    it.each<[caso: string, metti: (delFrontend: HTMLElement) => void, togli: (delFrontend: HTMLElement) => void]>([
+        ['prima della cornice', (delFrontend) => document.body.prepend(delFrontend), (delFrontend) => delFrontend.remove()],
+        ['intorno alla cornice', (delFrontend) => { contenitore.replaceWith(delFrontend); delFrontend.append(contenitore); }, (delFrontend) => delFrontend.replaceWith(contenitore)],
+    ])('con un `main` del frontend %s il salto porta il fuoco al `main` dell\'`AppShell`, e a quello del frontend non scrive niente (lettura della PR #61, R3)', async (_caso, metti, togli) => {
+        const delFrontend = document.createElement('main');
+        metti(delFrontend);
+        try {
+            await mostra(laPagina());
+            const main = uno('main.zr-main') as HTMLElement;
+            // Il caso non è vuoto: il primo `main` del documento è quello del frontend.
+            expect(document.querySelector('main')).toBe(delFrontend);
+
+            await conIlFuoco(pulsante());
+            await act(async () => pulsante().click());
+
+            expect(document.activeElement).toBe(main);
+            expect([main.getAttribute('tabindex'), delFrontend.hasAttribute('tabindex')]).toStrictEqual(['-1', false]);
+        } finally {
+            togli(delFrontend);
+        }
+    });
+
+    it('senza un `AppShell` accanto al pulsante il salto non fa niente: non cerca un altro `main` nel documento (lettura della PR #61, R3)', async () => {
+        const delFrontend = document.createElement('main');
+        document.body.prepend(delFrontend);
+        try {
+            await mostra(laPagina());
+            uno('.zr-shell')?.classList.remove('zr-shell');
+
+            await conIlFuoco(pulsante());
+            await act(async () => pulsante().click());
+
+            expect(document.activeElement).toBe(pulsante());
+            expect([delFrontend.hasAttribute('tabindex'), uno('main.zr-main')?.hasAttribute('tabindex')]).toStrictEqual([false, false]);
+        } finally {
+            delFrontend.remove();
+        }
     });
 
     it('con una pagina senza niente che prende il fuoco il fuoco sta comunque sul `main` (T4.4)', async () => {

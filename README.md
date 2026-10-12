@@ -36,10 +36,12 @@ prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
-Il CSS del design system sta fuori dai layer della cascata, e per questo vince su ogni classe di utilità di Tailwind, che sta
-in un layer: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un pulsante, il
-bordo di un campo), perché la classe non avrebbe effetto. Se serve un aspetto che il componente non ha, lo si chiede
-all'agente di zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
+Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
+vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
+pulsante, il bordo di un campo), perché la classe non avrebbe effetto. Vale per le proprietà che il componente dichiara e per
+una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i layer della cascata, decidono specificità e
+ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
+zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia.
@@ -241,7 +243,9 @@ se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `
 Se a quella lettura il backoffice ha risposto 429, il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`): dà
 l'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice), e
 `null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore.
-`Cornice::frenata()` non legge niente: guarda la lettura che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto. Il
+`Cornice::frenata()` non legge niente: guarda la lettura di `io.mostra` che `Cornice::lingua()` o `Cornice::dati()` hanno
+già fatto, e solo quella. Un 429 che `Cornice::dati()` prende da una delle altre sue tre letture (`/v1/app`,
+`/v1/io/aziende`, `/v1/io/workspace`) lo dà l'`ErroreApi` che `dati()` lancia, e `Cornice::frenata()` resta `null`. Il
 freno è lo stato, 429, con qualunque codice. Serve al modulo che dopo la riga chiamerebbe ancora `/v1`: dopo un 429 non
 si richiama, e il middleware risponde col suo 429 prima che parta un'altra chiamata.
 
@@ -355,7 +359,11 @@ cornice === null ? pagina : (
   laterale e alla barra in alto, che non si vede finché non ha il fuoco. Col primo Tab compare in alto a sinistra, sopra
   la cornice; Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell'`AppShell`, e il Tab dopo
   va al primo elemento della pagina invece di rifare tutta la barra. C'è anche nello stato ridotto. Il modulo non deve fare
-  niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo. È provvisorio: l'`AppShell` del design system
+  niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo. Il `main` è quello dell'`AppShell`, anche se il
+  frontend ne ha uno suo prima della cornice o intorno a lei. Per chi aggiorna cambiano due cose senza che tocchi niente:
+  `.zr-shell` non è più il primo elemento di ciò che la `Cornice` rende (prima c'è il `div` del pulsante), e dopo un salto
+  il `main` ha `tabindex="-1"` finché tiene il fuoco. Un test del modulo sul primo figlio della cornice, su `:first-child`
+  o sul primo elemento che prende il fuoco va riletto. È provvisorio: l'`AppShell` del design system
   non ha ancora il suo, e la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i
   token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
@@ -1199,9 +1207,10 @@ immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel 
 
 Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\Core\Http\PrecaricoDegliIngressi`, che sulla risposta intera di una
 pagina scrive nell'header `Link` i file che `@vite` ha messo nel documento: l'ingresso, i pezzi che importa staticamente e
-i CSS, non i pezzi dinamici. Con Early Hints acceso sulla zona, Cloudflare li ripete in un 103 alla visita dopo, prima che
-il server abbia letto il backoffice: il JS scende mentre arrivano i dati. zr-core non lo registra da sé, e installare il
-pacchetto non precarica niente: lo registra il frontend, in uno dei due modi. Sul gruppo `web`, per ogni pagina, nel suo
+i CSS, non i pezzi dinamici. Il browser comincia a scaricarli quando arrivano le intestazioni, prima di leggere il
+documento. È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento (più sotto, «Che cosa dice di chi
+guarda»). zr-core non lo registra da sé, e installare il pacchetto non precarica niente: lo registra il frontend, in uno dei
+due modi. Sul gruppo `web`, per ogni pagina, nel suo
 `bootstrap/app.php`:
 
 ```php
@@ -1219,16 +1228,47 @@ Route::get('b/{board}', [BoardController::class, 'mostra'])->middleware(\Zeiras\
 Non c'è niente da configurare, e `config/zr-core.php` non ha una chiave per lui: le rotte le dice dove lo agganci, i file li
 dice `@vite` nel documento, e il middleware non legge il manifest.
 
-- **Che cosa scrive**: una voce per file, nell'ordine in cui `@vite` li ha scritti e con gli stessi indirizzi: un CSS come
+- **Che cosa scrive**: una voce per file, nell'ordine in cui `@vite` li ha scritti: un CSS come
   `<url>; rel=preload; as=style`, un modulo come `<url>; rel=preload; as=script; crossorigin`. Mai `modulepreload`:
   Cloudflare in un 103 ripete solo `preload` e `preconnect`. E sempre `crossorigin` su un modulo: la richiesta di un modulo
   è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte. Un altro precarico di Vite (un font) non esce.
+  Degli attributi che Vite calcola il middleware guarda solo `as`: non copia `integrity` né il valore di `crossorigin`. Un
+  frontend con l'integrità dei file nel manifest, con `crossorigin="use-credentials"` o con `crossorigin` sui CSS non lo
+  registra: il precarico non combacerebbe col tag del documento, e il file scenderebbe due volte. Non c'è un tetto alle
+  voci: l'header cresce con ogni pezzo che l'ingresso importa staticamente.
+- **Con quale indirizzo**: mai con un host che viene dalla richiesta. Una voce è il solo percorso, `</build/assets/…>`,
+  che il browser risolve sull'origine della pagina; con `ASSET_URL` nel `.env` del frontend è l'indirizzo intero, che
+  comincia con quello. Di un indirizzo con l'host della richiesta (un frontend che ha rimesso il resolver di Laravel) il
+  middleware scrive il solo percorso, e un file con un altro host non esce.
 - **Dove scrive**: solo su una risposta `200` che è un documento HTML. Non sulla visita Inertia (la richiesta porta
   `X-Inertia`), su un redirect, su una pagina d'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un
   JSON, un file o uno stream; e se `@vite` non ha scritto niente l'header non c'è. Un `Link` che la risposta porta già
-  resta: il middleware aggiunge il suo accanto.
-- **Che cosa dice di chi guarda**: niente. L'header dipende solo dalla build, è uguale per tutti e ripete ciò che il
-  documento dice già: nessun dato, id o lingua della persona. Il rischio accettato è uno: il 103 che Cloudflare manda prima
-  dell'origine dice, a chi conosce già un indirizzo, che è stato aperto di recente.
+  resta: il middleware aggiunge il suo accanto. È per PHP-FPM, dove ogni richiesta parte da zero: in un processo che resta
+  vivo fra una richiesta e l'altra (Octane) `Vite` tiene i file della richiesta di prima, e una pagina senza `@vite`
+  porterebbe i suoi.
+- **Dove si registra**: in un posto solo. Fra i middleware globali e anche su un gruppo scriverebbe due righe uguali
+  (gruppo e rotta insieme no: Laravel toglie il doppione). E al posto di quello di Laravel,
+  `Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets`, non accanto: con tutti e due ogni file uscirebbe due
+  volte, come `modulepreload` e come `preload`.
+- **Che cosa dice di chi guarda**: col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua
+  della persona, e nessun host che venga dalla richiesta. Per Zeiras Early Hints su Cloudflare resta spento: zr-pm dichiara
+  che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente. Chi lo accende accetta un rischio, e lo
+  decide zr-pm: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce o indovina un indirizzo, che la pagina
+  esiste ed è stata aperta da poco — e lo slug di un workspace è il nome di un'azienda. Per questo un modulo con uno slug
+  o un id nel percorso registra il middleware sulle sole rotte che accetta di esporre.
 - **Quanto vale**: non è una misura di zr-core. I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a
   freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati.
+
+### Gli indirizzi dei file della build
+
+Dalla `v1.18.0` il pacchetto registra un resolver di Vite (`Vite::createAssetPathsUsing`), per ogni frontend che lo
+installa e senza che faccia niente: `@vite` scrive i file della build col solo percorso, `/build/assets/…`, nel documento
+come nel `Link`. Prima Laravel li scriveva con la radice della richiesta — l'header `Host`, o `X-Forwarded-Host` se il
+frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli indirizzi della pagina. Con `ASSET_URL` nel
+`.env` l'indirizzo resta intero e comincia con quello: non viene dalla richiesta.
+
+- **`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da
+  `config('app.url')`.
+- **Un frontend in una sottocartella del dominio** imposta `ASSET_URL`: il percorso parte dalla radice del dominio.
+- **Un resolver del frontend** registrato nel suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha
+  uno uguale lo toglie quando installa la `v1.18.0`.

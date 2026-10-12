@@ -2,14 +2,16 @@
 
 namespace Zeiras\Core;
 
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 /**
  * Il punto d'ingresso di zr-core nell'app che lo installa: Laravel lo trova da solo (extra.laravel.providers nel
  * composer.json). Registra le rotte che la cornice chiama dal browser (routes/cornice.php), nel gruppo `web` del frontend, la
  * favicon di Zeiras — la vista `zr-core::favicon` e i tre file statici che `vendor:publish` mette in public/ — e i valori di
- * partenza della configurazione (config/zr-core.php). Il middleware delle intestazioni di sicurezza non lo registra: il suo
- * posto, primo dei globali, lo decide il frontend nel suo bootstrap/app.php.
+ * partenza della configurazione (config/zr-core.php), e il resolver di Vite che scrive i file della build col solo percorso.
+ * Il middleware delle intestazioni di sicurezza non lo registra: il suo posto, primo dei globali, lo decide il frontend nel suo
+ * bootstrap/app.php.
  */
 class ZrCoreServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,12 @@ class ZrCoreServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/cornice.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'zr-core');
+
+        // Gli indirizzi dei file della build: senza `ASSET_URL` Laravel li scrive con la radice della richiesta (l'header
+        // `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy), e chi manda un host suo lo ritrova nel documento.
+        // Qui `@vite` scrive il solo percorso; con `ASSET_URL` l'indirizzo resta intero, perché non viene dalla richiesta. Un
+        // resolver che il frontend registra nel suo provider parte dopo, e vince.
+        Vite::createAssetPathsUsing(fn (string $path, ?bool $secure = null): string => filled(config('app.asset_url')) ? asset($path, $secure) : '/'.ltrim($path, '/'));
 
         // La favicon: file statici, nessuna rotta (/favicon.ico lo serve il server web). Due tag: quello di zr-core, e
         // `laravel-assets`, che un frontend Laravel pubblica già a ogni `composer update` (il suo post-update-cmd): senza il

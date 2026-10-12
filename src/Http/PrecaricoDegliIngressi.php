@@ -10,19 +10,20 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Il precarico dei file d'ingresso: la risposta intera di una pagina dice in `Link` i file che `@vite` ha messo nel documento
- * (`Vite::preloadedAssets()`: l'ingresso, i pezzi che importa staticamente, i CSS; non i pezzi dinamici). Cloudflare, con Early
- * Hints acceso sulla zona, li ripete in un 103 alla visita dopo, prima che il server abbia letto il backoffice: il JS scende
- * mentre arrivano i dati.
+ * (`Vite::preloadedAssets()`: l'ingresso, i pezzi che importa staticamente, i CSS; non i pezzi dinamici). Il browser comincia
+ * a scaricarli quando arrivano le intestazioni, prima di leggere il documento.
  *
  * zr-core non lo registra da sé: lo registra il frontend, sul gruppo `web` o sulle sole rotte che vuole. Non c'è niente da
  * configurare: le rotte le dice dove è agganciato, i file li dice `@vite`, e il manifest non si legge.
  *
- * Cloudflare in un 103 ripete solo `preload` e `preconnect`: un modulo va come `preload; as=script; crossorigin`, mai
- * `modulepreload`, e col `crossorigin` (la richiesta di un modulo è CORS: senza, il browser scaricherebbe il file due volte).
+ * Un modulo va come `preload; as=script; crossorigin`, mai `modulepreload`, e col `crossorigin` (la richiesta di un modulo è
+ * CORS: senza, il browser scaricherebbe il file due volte): è la sola forma che Cloudflare ripeterebbe in un 103.
  *
- * Il `Link` dipende solo dalla build: è uguale per tutti e ripete ciò che il documento dice già, senza dati, id o lingua della
- * persona. Rischio accettato: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce già un indirizzo, che è stato
- * aperto di recente.
+ * Il `Link` ripete ciò che il documento dice già, senza dati, id o lingua della persona, e senza un host che venga dalla
+ * richiesta (`indirizzoDellaVoce`). È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento. Chi lo
+ * accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce o indovina
+ * un indirizzo (lo slug di un workspace è il nome di un'azienda), che la pagina esiste ed è stata aperta da poco. Per questo
+ * un modulo con uno slug o un id nel percorso lo registra sulle sole rotte che accetta di esporre.
  */
 final class PrecaricoDegliIngressi
 {
@@ -38,10 +39,14 @@ final class PrecaricoDegliIngressi
         // Solo CSS e moduli: un altro precarico di Vite (un font, `as="font"`) non si spaccia per script.
         $voci = [];
         foreach (Vite::preloadedAssets() as $url => $attributi) {
+            $indirizzo = $this->indirizzoDellaVoce($richiesta, (string) $url);
+            if ($indirizzo === null) {
+                continue;
+            }
             if (in_array('as="style"', $attributi, true)) {
-                $voci[] = '<'.$url.'>; rel=preload; as=style';
+                $voci[] = '<'.$indirizzo.'>; rel=preload; as=style';
             } elseif (in_array('as="script"', $attributi, true)) {
-                $voci[] = '<'.$url.'>; rel=preload; as=script; crossorigin';
+                $voci[] = '<'.$indirizzo.'>; rel=preload; as=script; crossorigin';
             }
         }
         // Un `Link` che la risposta porta già resta: questo gli si aggiunge accanto.
@@ -50,6 +55,30 @@ final class PrecaricoDegliIngressi
         }
 
         return $risposta;
+    }
+
+    /**
+     * L'indirizzo con cui un file esce nel `Link`, mai con un host che viene dalla richiesta: il solo percorso, com'è scritto
+     * col resolver del pacchetto (`ZrCoreServiceProvider`); l'indirizzo intero, se comincia con `ASSET_URL`, che è del
+     * frontend e non di chi chiama; e col resolver di Laravel senza `ASSET_URL`, che scrive la radice della richiesta (l'header
+     * `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy), il percorso senza quella radice. Ogni altro indirizzo
+     * non esce: null.
+     */
+    private function indirizzoDellaVoce(Request $richiesta, string $url): ?string
+    {
+        // Un percorso comincia con una barra sola: `//host` e `/\host` per un browser sono un altro host.
+        if (preg_match('~^/(?![/\\\\])~', $url) === 1) {
+            return $url;
+        }
+        $fissa = rtrim((string) config('app.asset_url'), '/');
+        if ($fissa !== '' && str_starts_with($url, $fissa.'/')) {
+            return $url;
+        }
+        if (preg_match('~^https?://'.preg_quote($richiesta->getHttpHost(), '~').'(/(?![/\\\\]).*)$~i', $url, $parti) === 1) {
+            return $parti[1];
+        }
+
+        return null;
     }
 
     /**

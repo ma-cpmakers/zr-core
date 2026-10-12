@@ -97,8 +97,9 @@ final class RicercaDellaCornice
 
     /**
      * Il contesto di un risultato, per riconoscerlo: di ciò che il backoffice ha dato, le sole chiavi che il registro dei
-     * moduli dà al tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline`
-     * e `fase` di un'opportunità, il `ruolo` di un membro del workspace, che è un codice e non un testo da mostrare), coi
+     * moduli dà al tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline`,
+     * `fase` ed `esito` di un'opportunità, il `ruolo` di un membro del workspace; l'`esito` e il `ruolo` del membro sono
+     * codici e non testi da mostrare, e dell'esito passa anche `aperta`, che la cornice non mostra), coi
      * soli valori di testo non vuoti e nell'ordine del backoffice; oppure null se non ne
      * resta nessuno. È una lista chiusa: al browser passa solo ciò che la cornice mostra, e una chiave che il backoffice
      * aggiungesse domani non esce da sola, entra dal registro. Per questo un tipo a cui il registro non dà chiavi, o che il
