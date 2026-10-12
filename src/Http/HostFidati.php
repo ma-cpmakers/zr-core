@@ -51,7 +51,7 @@ final class HostFidati
             $ricevuto = null;
         }
 
-        if ($ricevuto === $atteso || app()->runningUnitTests()) {
+        if ($ricevuto === $atteso) {
             return $next($richiesta);
         }
 
