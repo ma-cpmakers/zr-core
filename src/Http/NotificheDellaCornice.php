@@ -13,6 +13,7 @@ use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Accettazione;
+use Zeiras\Core\Registro;
 use Zeiras\Core\Segno;
 
 /**
@@ -90,15 +91,6 @@ final class NotificheDellaCornice
     private const MARGINE = 5;
 
     /**
-     * Le voci del registro dei moduli, lette una volta per processo da quello del pacchetto
-     * (resources/registro/prodotti.json), sempre: nessun metodo e nessuna configurazione sceglie un altro file. Un test
-     * che vuole un registro di prova scrive questa proprietà con la reflection.
-     *
-     * @var list<array<string, mixed>>|null
-     */
-    private static ?array $registro = null;
-
-    /**
      * Per quanti secondi POST /cornice/notifiche/letture tiene il lock della sessione (`Route::block`): più di quanto può
      * durare, cioè SECONDI di richiami, più il tempo che zr-auth aspetta l'ultima risposta (`zr-auth.timeout`), più un margine.
      * Non i 10 secondi di `->bloccaSessione()` di zr-auth: col lock scaduto a metà corsa un'uscita da un'altra scheda lo
@@ -132,7 +124,7 @@ final class NotificheDellaCornice
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
      * quanto il suo segno. Di `dati` di ogni notifica passano, in `ids`, i soli id che alla cornice servono per aprire la sua
      * risorsa (`idsDellaNotifica()`): una notifica di un tipo che nel registro non ha una destinazione non ne ha, e se `dati` manca, o non è
-     * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte delle notifiche, il registro dei moduli lo legge solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
+     * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte delle notifiche, il registro dei moduli lo usa solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
      * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
      * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
      */
@@ -340,7 +332,7 @@ final class NotificheDellaCornice
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
-     * l'elenco (`ids`), che delle rotte delle notifiche è la sola a leggere il registro dei moduli. La lettura di una notifica risponde senza.
+     * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
      *
      * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
      */
@@ -370,15 +362,14 @@ final class NotificheDellaCornice
      * che il browser usa. Un elenco di chiavi per percorso, nell'ordine in cui si provano: `percorso`, poi quelli di
      * `altrimenti`; un percorso senza segnaposto ha un elenco vuoto. La voce è quella dell'app della notifica, e il tipo si
      * cerca intero. Nessun percorso per un tipo che lì non ha una destinazione, per un'app che il registro non ha, o senza
-     * app; e nessuno per una voce «Presto», che il browser non apre: i suoi id non servono ad aprire niente.
+     * app; e nessuno per una voce «Presto», che il browser non apre: i suoi id non servono ad aprire niente. Le voci le dà
+     * `Registro`, che il file lo legge una volta per processo: qui non c'è una lettura, né una copia.
      *
      * @return list<list<string>>
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
-        self::$registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
-
-        foreach (self::$registro as $voce) {
+        foreach (Registro::voci() as $voce) {
             foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     return array_map(function (string $percorso): array {

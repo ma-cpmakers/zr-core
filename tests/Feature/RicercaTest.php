@@ -543,7 +543,10 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
 
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
 // tutte le rotte: un registro di prova lasciato da un caso arriverebbe a ogni caso dopo, di questo file e degli altri. Lo
-// dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto.
+// dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto. Lo
+// toglie l'`afterEach` qui sotto, dopo ogni caso di questo file.
+
+afterEach(fn () => (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, null));
 
 it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo la ricerca dà a un contatto le chiavi del registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $contesto) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);

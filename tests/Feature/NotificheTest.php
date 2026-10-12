@@ -17,6 +17,7 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\NotificheDellaCornice;
+use Zeiras\Core\Registro;
 
 // Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
 // notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
@@ -1734,7 +1735,7 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
  */
 function registroGiaLetto(?array $voci): void
 {
-    (new ReflectionProperty(NotificheDellaCornice::class, 'registro'))->setValue(null, $voci);
+    (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $voci);
 }
 
 afterEach(fn () => registroGiaLetto(null));
@@ -2137,4 +2138,24 @@ it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuo
     'un numero' => [['id' => 42]],
     'senza `id`, con la board e la lista' => [['board_id' => 'uat-fuori-board', 'lista_id' => 'uat-fuori-lista']],
     'senza `dati`' => [null],
+]);
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
+// tutte le rotte: il registro di prova di un caso lo scrive lì `registroGiaLetto()`, e lasciato lì arriverebbe a ogni caso
+// dopo, di questo file e degli altri. Lo toglie l'`afterEach` di questo file, e lo dicono due casi di fila: il primo scrive
+// un registro di prova e non lo toglie, il secondo trova quello del pacchetto.
+
+it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo l\'elenco dà di una nota gli id che chiede il registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $ids) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n2', ['id' => 'uat-nota-1', 'organizzazione_id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1']),
+    ], 'successivo' => null])]);
+    if ($diProva !== null) {
+        registroGiaLetto($diProva);
+    }
+
+    expect(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.0.ids'))->toBe($ids);
+})->with([
+    'il primo: un registro di prova che apre la nota dall\'azienda' => [[['id' => 'crm', 'presto' => false, 'notifiche' => [['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/aziende/{organizzazione_id}/note/{id}']]]], ['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1']],
+    'il secondo: nessuno lo scrive, ed è quello del pacchetto' => [null, ['persona_id' => 'uat-persona-1']],
 ]);
