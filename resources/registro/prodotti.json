@@ -16,7 +16,7 @@
             ]
         },
         {
-            "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true,
+            "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": false,
             "risorse": [
                 { "tipo": "crm.persona", "icona": "users", "percorso": "/contatti/{id}", "contenitore": false, "contesto": ["organizzazione", "ruolo"] },
                 { "tipo": "crm.organizzazione", "icona": "building", "percorso": "/aziende/{id}", "contenitore": false },

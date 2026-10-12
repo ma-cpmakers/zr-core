@@ -749,7 +749,10 @@ di un prodotto: lì un prodotto in arrivo si mostra «In arrivo», non «Disponi
 nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la sessione lo stato di un prodotto lo dà il
 backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
 apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il
-registro (`resources/registro/prodotti.json`).
+registro (`resources/registro/prodotti.json`). Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in
+arrivo e non è «Presto». Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo
+dà `disponibile` a ogni workspace; in arrivo restano Bookings e i tre «Presto». Fino alla `v1.15.0` il registro dava in
+arrivo anche il CRM.
 
 Il colore di un workspace fuori dalla cornice — un elenco dei workspace in una pagina del frontend — lo dà
 `tonoDelWorkspace(id)`, dallo stesso ingresso (dalla `v1.7.0`): è la regola che usa il selettore della cornice, quindi per

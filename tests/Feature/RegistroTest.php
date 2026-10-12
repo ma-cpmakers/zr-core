@@ -17,7 +17,8 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // contatti, aziende e opportunità —, e un tipo può dire le chiavi di `contesto` che fanno la seconda riga del risultato.
 // Sprint 16 · T7 (voce #1621): ogni voce dice anche se il prodotto è «in arrivo» per chi non ha una sessione (`in_arrivo`): lo
 // leggono le pagine senza un workspace a cui chiedere lo stato. Non è «Presto», che è della cornice e vale in ogni workspace:
-// un prodotto in anteprima (il CRM) è in arrivo, e nel workspace dell'anteprima la cornice lo apre.
+// un prodotto in arrivo che non è «Presto» (Bookings; fino alla `v1.15.0` anche il CRM) la cornice lo apre nei workspace in cui il
+// backoffice lo dà.
 // Sprint 21 · T3 (voce #1641): le notifiche di un prodotto che dal pannello aprono la loro risorsa (`notifiche`), ognuna col tipo
 // intero dell'evento e il percorso nel prodotto, dopo `/w/<slug>`: un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la
 // notifica ha con quella chiave. Un tipo sta una volta sola in tutto il registro, e ha il suo titolo in ogni lingua.
@@ -376,7 +377,7 @@ it('il controllo trova la Dashboard in arrivo, una voce senza «in arrivo», una
     unset($voci[2]['in_arrivo']);
     $voci[3]['in_arrivo'] = 'sì';
     $voci[4]['in_arrivo'] = false;
-    // Un prodotto in arrivo che non è «Presto» va bene (il CRM in anteprima), e uno che non è né l'uno né l'altro anche.
+    // Un prodotto in arrivo che non è «Presto» va bene (Bookings), e uno che non è né l'uno né l'altro anche (il CRM).
     $voci[5]['presto'] = false;
     $voci[6]['presto'] = false;
     $voci[6]['in_arrivo'] = false;

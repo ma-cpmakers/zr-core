@@ -36,7 +36,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   Con `presto` la voce del menu Moduli è «Presto» e non porta da nessuna parte, in nessun workspace; con `in_arrivo`
   il prodotto non è ancora per tutti, e le pagine senza sessione lo mostrano «In arrivo» — README, «La cornice». Se il
   tuo c'è, il codice è quello: se ha `presto`, chiedi di toglierlo; `in_arrivo` si spegne quando il prodotto esce per
-  tutti: lo decide zr-pm, e lo chiedi allo stesso modo. Se non c'è, chiedi il prodotto nuovo.
+  tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`). Se non
+  c'è, chiedi il prodotto nuovo.
   Gli dai: il codice (lettere minuscole, corto, come `pm` o `crm`: è lo stesso che il backoffice usa per l'app, e non lo
   scegli tu — un codice nuovo lo decide zr-pm, a cui lo porta zr-core), il nome in ogni lingua di Zeiras (`it`, `en`,
   `es`), l'icona (un nome del set di Zeiras), il tono, l'indirizzo senza workspace, e le risorse che la ricerca deve
@@ -301,8 +302,11 @@ da nessuna parte finché una versione di zr-core non toglie `presto`. Tutti gli 
 **Prova**: con la versione di zr-core che porta il prodotto, nel menu Moduli la tua voce ha il suo nome nella lingua
 della persona e porta a `<indirizzo>/w/<slug>`; dentro il modulo il menu mostra aperto il tuo prodotto, con le tue voci.
 
-**Errore già pagato**: nessuno (per zr-board e zr-crm è andata liscia). Da sapere: «in arrivo» vuol dire due cose.
-`in_arrivo` del registro è un sì o un no per chi non ha una sessione (le pagine senza un workspace a cui chiedere). Dentro
+**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`. Registrati, in zr-home,
+leggeva `presto` e mostrava «Disponibile» due moduli in arrivo, CRM e Bookings (12/10/2026): `presto` è della cornice, e
+per quei due è no. Chi non ha una sessione legge `in_arrivo`. Da sapere: «in arrivo» vuol dire due cose.
+`in_arrivo` del registro è un sì o un no per chi non ha una sessione (le pagine senza un workspace a cui chiedere):
+dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto». Dentro
 la sessione lo stato lo dà il backoffice, workspace per workspace — `attivo`, `disponibile`, `in_arrivo` —, e la cornice
 legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il backoffice non dà il prodotto `attivo` né
 `disponibile` — README, «La cornice».
