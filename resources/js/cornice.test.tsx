@@ -3376,12 +3376,17 @@ describe('la ricerca', () => {
     // Sprint 24 · T4 (voce #1754; lettura della PR #51, R5). L'id di un risultato arriva dal backoffice, e la parte server guarda
     // solo che sia un testo: entra nell'indirizzo solo con la forma di un id, come quello di una notifica. `encodeURIComponent`
     // non tocca i punti, e con `..` l'indirizzo sarebbe quello della pagina del workspace. Un risultato con l'id fuori forma non
-    // compare, nemmeno se il suo tipo non mette l'id nell'indirizzo (una cartella); gli altri della stessa risposta sì.
-    it.each([
+    // compare, nemmeno se il suo tipo non mette l'id nell'indirizzo (una cartella); gli altri della stessa risposta sì. E la
+    // forma si guarda solo di un testo (lettura della PR #52, R7): `RegExp.test` converte ciò che riceve, e un id che manca,
+    // `null` o un numero passerebbe come «undefined», «null», «12».
+    it.each<[string, unknown]>([
         ['`..`', '..'],
         ['vuoto', ''],
         ['con una barra', 'uat/13'],
         ['più lungo di 64', 'a'.repeat(65)],
+        ['che manca', undefined],
+        ['`null`', null],
+        ['che è un numero, non un testo', 12],
     ])('un risultato della ricerca con l\'id %s non compare fra i risultati, e gli altri della stessa risposta sì: la ricerca non va in errore (sprint 24 · T4.2)', async (_quale, id) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati([
             { tipo: 'board.board', id: 'uat-12', titolo: 'Lancio Q4' },
@@ -3794,6 +3799,58 @@ describe('chi non ha accettato i documenti legali', () => {
         // Dati letti dopo, che non lo dicono: la cornice torna quella di sempre.
         await mostra(laPagina({ ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' }));
         expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    // Lettura della PR #52, R1. Il segnale di una rotta non vale per un oggetto solo: un frontend può ricreare i dati a ogni
+    // disegno, o ritoccarli nel browser lasciando il segno. Sono la stessa lettura — stesso workspace, stesso segno — e la
+    // cornice resta ridotta: non torna quella di sempre con «Non riusciamo a caricare le notifiche» e «Riprova».
+    it.each<[string, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['ricreati uguali a ogni disegno', (deiDati) => ({ ...deiDati })],
+        ['ritoccati nel browser lasciando il segno', (deiDati) => ({ ...deiDati, non_lette: 3 })],
+    ])('dopo il 403 `accettazione_richiesta` di una rotta, coi dati %s la cornice resta ridotta: il segnale vale finché i dati non sono più recenti, non per un oggetto solo (sprint 24 · T5, R1)', async (_caso, altri) => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        await mostra(laPagina(altri(diSempre)));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Il pannello, rimasto aperto, ha ancora la frase: non l'errore di caricamento con «Riprova».
+        expect(uno('.zr-notif .zr-notif-state p')?.textContent).toBe(spenta);
+        expect(pulsantiDelPannello()).toStrictEqual([]);
+        // E un altro disegno ancora, con un altro oggetto: la cornice non chiede di nuovo l'elenco.
+        await mostra(laPagina(altri(diSempre)));
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // Lettura della PR #52, R5. `Cornice::dati()` dà `prodotti` come lista vuota, e al browser arriva `[]`, non `{}`: è la forma
+    // vera dei dati ridotti.
+    it('coi `prodotti` dei dati ridotti come arrivano dal server, una lista vuota (`[]`), la cornice esce ridotta come con `{}` (sprint 24 · T5, R5)', async () => {
+        await mostra(<Cornice dati={{ ...ridotti, prodotti: [] as unknown as DatiDellaCornice['prodotti'] }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(uno('.zr-nav-soon')).toBeNull();
+        expect(uno('main p')?.textContent).toBe('La pagina');
+    });
+
+    // Lettura della PR #52, R6. Nello stato ridotto il modulo aperto non arriva all'`AppShell`, che senza una voce attiva segna
+    // la Dashboard: ma la persona è in una pagina del modulo. Su una pagina di un modulo che non dice la sua voce attiva nessuna
+    // voce è segnata; se la dice vale quella, e su una pagina di app.zeiras.com resta la Dashboard.
+    it.each<[string, { product?: string; active?: string }, string[]]>([
+        ['una pagina di un modulo che non dice la voce attiva', { product: 'pm' }, []],
+        ['una pagina di un modulo che la dice', { product: 'pm', active: 'board' }, ['Le board']],
+        ['una pagina di app.zeiras.com', {}, ['Dashboard']],
+    ])('nello stato ridotto, su %s le voci segnate nella barra sono quelle giuste: mai la Dashboard per chi è in un modulo (sprint 24 · T5, R6)', async (_quale, dellaPagina, attese) => {
+        const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
+        await mostra(<Cornice dati={ridotti} nav={dellaPagina.product === undefined ? [] : delModulo} {...dellaPagina} onLogout={esciSenzaEffetto} />);
+
+        expect(cornice()).toStrictEqual(ridotta);
+        const nomeDi = (voce: HTMLElement) => voce.querySelector('.zr-nav-label')?.textContent;
+        expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(attese);
+        expect(tutti('a.zr-nav-item[aria-current]').map(nomeDi)).toStrictEqual(attese);
     });
 
     it.each<[string, () => Response]>([

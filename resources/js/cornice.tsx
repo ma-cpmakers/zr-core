@@ -254,12 +254,13 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
  * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
  * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato. E non si mostra un risultato il cui id non
  * ha la forma di un id: arriva dal backoffice, e in un indirizzo non entra com'è (`encodeURIComponent` non tocca i punti, e
- * `..` ne farebbe un altro).
+ * `..` ne farebbe un altro). La forma si guarda solo di un testo: `RegExp.test` converte ciò che riceve, e un id che manca,
+ * `null` o un numero passerebbe come «undefined», «null», «12».
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
     const { id } = risultato;
-    if (trovata === undefined || !FORMA_DI_UN_ID.test(id)) {
+    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         return undefined;
     }
     const { delProdotto, risorsa } = trovata;
@@ -374,15 +375,17 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     }
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
-    // (`loDiceUnaRotta`) e si lega qui all'oggetto dei dati di quel momento, mentre si rende. Vale finché la cornice ha
-    // quell'oggetto: coi dati letti dopo, se non lo dicono, la cornice torna quella di sempre. `false` vale come la chiave che manca.
+    // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
+    // recenti di quelli: sono quell'oggetto, o sono dello stesso workspace e il loro segno non è più avanti — un frontend può
+    // ricrearli a ogni disegno, o ritoccarli nel browser lasciando il segno, ed è la stessa lettura. Coi dati letti dopo, se non
+    // lo dicono, la cornice torna quella di sempre. `false` vale come la chiave che manca.
     const [loDiceUnaRotta, setLoDiceUnaRotta] = useState(false);
     const [daAccettareCon, setDaAccettareCon] = useState<DatiDellaCornice>();
     if (loDiceUnaRotta) {
         setLoDiceUnaRotta(false);
         setDaAccettareCon(dati);
     }
-    const ridotta = dati.accettazione_richiesta === true || daAccettareCon === dati;
+    const ridotta = dati.accettazione_richiesta === true || (daAccettareCon !== undefined && nonPiuRecentiDeiDatiDi(dati, { con: daAccettareCon, il: undefined }));
     // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
     // dell'errore lo decide chi ha chiamato, come prima.
     const seDaAccettare = (errore: unknown) => {
@@ -711,12 +714,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
             // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva»:
-            // senza `active` resta la Dashboard, come decide l'`AppShell`. Il numero sulla campanella è quello dei dati, e mai
+            // senza `active` resta la Dashboard, come decide l'`AppShell` — tranne nello stato ridotto su una pagina di un
+            // modulo, dove il modulo aperto all'`AppShell` non arriva e la Dashboard sarebbe segnata a chi è nel modulo: lì,
+            // senza `active`, nessuna voce. Il numero sulla campanella è quello dei dati, e mai
             // meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo aprendo la campanella. Con `piano`
             // nessuna lista del profilo: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
             {...senzaUndefined({
                 ...pagina,
-                active: active === null ? idDiNessunaVoce(voci) : active,
+                active: active === null || (ridotta && aperto !== undefined && active === undefined) ? idDiNessunaVoce(voci) : active,
                 companies,
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
