@@ -3598,12 +3598,18 @@ it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi
     'la cornice riconosce anche quella' => ['La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto'],
 ]);
 
-it('il README dice che con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un ErroreApi e nessuno rimanda, col vincolo che composer.json ha oggi: quando il vincolo sale, la frase si riguarda (sprint 24 · T5; lettura della PR #52, R3)', function () {
+it('il README dice che con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un ErroreApi e nessuno rimanda, finché il vincolo di composer.json ne ammette una: quando il vincolo parte da lì, la frase si toglie (sprint 24 · T5; lettura della PR #52, R3)', function () {
     $vincolo = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true)['require']['zeiras/zr-auth'];
     $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+    $frase = 'Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su';
+    $ammetteUnaPiuVecchia = fn (string $vincolo): bool => version_compare(ltrim($vincolo, '^'), '0.12.17', '<');
 
-    expect($parteServer)->not->toBe('')
-        ->and(str_contains($parteServer, "Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core (`{$vincolo}`) la ammette, e un frontend che vuole il rimando chiede zr-auth `^0.12.17` nel proprio `composer.json`"))->toBe(true);
+    // Il vincolo è una versione sola col suo `^`: così la sua patch più bassa si legge togliendo il segno.
+    expect($vincolo)->toMatch('/^\^0\.\d+\.\d+$/')
+        ->and($parteServer)->not->toBe('')
+        ->and(str_contains($parteServer, $frase))->toBe($ammetteUnaPiuVecchia($vincolo))
+        // Il confronto nei due versi.
+        ->and([$ammetteUnaPiuVecchia('^0.12.4'), $ammetteUnaPiuVecchia('^0.12.16'), $ammetteUnaPiuVecchia('^0.12.17'), $ammetteUnaPiuVecchia('^0.13.0')])->toBe([true, true, false, false]);
 });
 
 it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti` ridotto è `{}`, né che lo stato ridotto vale finché la cornice ha quei dati (sprint 24 · T5; lettura della PR #52, R1, R3, R5)', function (string $frase) {
@@ -3645,7 +3651,7 @@ it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti leg
     'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le visite non scrivi un rimando tuo'],
     'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l\'eccezione `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia'],
     'a una richiesta JSON decide il modulo' => ['A una tua richiesta JSON zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare'],
-    'le patch più vecchie' => ['Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi zr-auth `^0.12.17`'],
+    'le patch più vecchie' => ['Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su'],
     'nessun middleware sulle rotte della cornice' => ['Sulle rotte `/cornice/*` non mettere un middleware che chiama `/v1` senza prendere quel 403'],
     'la pagina si rimonta' => ['Nello stato ridotto la tua pagina sta in un contenitore sotto l\'avviso, e si rimonta quando lo stato arriva dal 403 di una rotta o se ne va'],
     'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],

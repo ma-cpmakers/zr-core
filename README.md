@@ -144,8 +144,8 @@ frontend a `/v1` ricevono lo stesso 403, e lì la cornice non c'entra. Da zr-aut
 alla pagina dell'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un
 403 con `codice` e `mancanti`, senza rimando — lì la persona resta dov'è, e che cosa mostrarle lo decide il frontend. Per
 le visite il frontend non scrive un rimando suo. Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un
-`ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core (`^0.12.4`) la ammette, e un frontend che vuole il
-rimando chiede zr-auth `^0.12.17` nel proprio `composer.json`.
+`ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede
+nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
