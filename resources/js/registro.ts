@@ -10,9 +10,9 @@ export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations'
 
 /**
  * Le risorse del registro che la ricerca mostra, `<voce>.<tipo>`: ognuna ha in ogni lingua il nome del suo gruppo, con questa
- * chiave, e il suo nome da elenco, minuscolo, con `searchSource.` davanti (quello che segnaposto e invito della ricerca
- * nominano). Sono dei prodotti, tranne il membro del workspace, la cui pagina è di app: sta nella voce `home`. Una risorsa
- * nuova entra anche qui.
+ * chiave, e il suo nome da elenco, minuscolo, con `searchSource.` davanti (quello che l'invito della ricerca nomina). Sono
+ * dei prodotti, tranne il membro del workspace, la cui pagina è di app: sta nella voce `home`. Una risorsa nuova entra anche
+ * qui.
  */
 export type TipoDiRisorsa = 'home.workspace.membro' | 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
 
@@ -119,8 +119,9 @@ export function nelWorkspace(indirizzo: string, slug: string): string {
  * Le fonti della ricerca in un workspace: i tipi di risorsa dei prodotti che lì sono `attivo`, nell'ordine del registro, e dopo
  * quelli della voce della Dashboard (il membro del workspace). Il backoffice cerca solo nelle app attive nel workspace: un
  * prodotto `disponibile` o in arrivo non dà fonti. I membri non sono di un'app: li cerca in ogni workspace, e sono una fonte
- * anche dove nessun prodotto è attivo. Vengono per ultimi, benché la loro voce sia la prima del registro: chi nomina solo le
- * prime fonti nomina quelle dei prodotti. `prodotti` è lo stato di ogni prodotto nel workspace, come nei dati della cornice.
+ * anche dove nessun prodotto è attivo. Vengono per ultimi, benché la loro voce sia la prima del registro: l'invito della
+ * ricerca nomina le fonti in quest'ordine, prima quelle dei prodotti attivi e in fondo i membri. `prodotti` è lo stato di
+ * ogni prodotto nel workspace, come nei dati della cornice.
  */
 export function fontiDellaRicerca(prodotti: Partial<Record<IdDiProdotto, string | undefined>>): TipoDiRisorsa[] {
     const tipiDi = (voce: VoceDelRegistro) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}` as TipoDiRisorsa);

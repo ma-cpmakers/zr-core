@@ -3913,10 +3913,10 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
 
-// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639): il segnaposto e l'invito della ricerca dicono le
-// fonti del workspace. Il README lo dice nel punto «La ricerca» — come si compongono, i testi nelle tre lingue con Project
-// Management attivo, quelli senza fonti, quelli fissi di prima e come un frontend li trova nei suoi test —, e nel punto «Il
-// menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639) e nello sprint 27 · T7 (voce #1810): l'invito della
+// ricerca dice le fonti del workspace, e il segnaposto è uno solo. Il README lo dice nel punto «La ricerca» — come si compone
+// l'invito, i testi nelle tre lingue con Project Management attivo, quelli senza fonti, quelli fissi di prima e come un
+// frontend li trova nei suoi test —, e nel punto «Il menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
 
 it('il README dice che dalla v1.17.0 il segnaposto della ricerca è uno solo e che l\'invito dice le fonti del workspace: nel punto «La ricerca» come si compone, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');

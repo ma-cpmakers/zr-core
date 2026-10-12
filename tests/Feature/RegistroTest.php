@@ -309,8 +309,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Le risorse di Project Management che la ricerca mostra, col tipo del contratto (ricerca.crea) e con le rotte di
         // zr-board: la scheda si apre nel pannello della sua board, e la sua seconda riga sono board e lista; la board ha la sua
         // pagina; la cartella no, sta con le altre sulla pagina del workspace, e il suo percorso è vuoto. Icone: `file` per la
-        // scheda, `board` per la board, `folder` per la cartella (come `ProjectFolder`). L'ordine è quello in cui segnaposto e
-        // invito della ricerca le nominano (sprint 25 · T4).
+        // scheda, `board` per la board, `folder` per la cartella (come `ProjectFolder`). L'ordine è quello in cui l'invito della
+        // ricerca le nomina (sprint 25 · T4; dalla `v1.17.0` il segnaposto non nomina più le fonti).
         ->and($voci[1]['risorse'])->toBe([
             ['tipo' => 'board.scheda', 'icona' => 'file', 'percorso' => '/c/{id}', 'contenitore' => false, 'contesto' => ['board', 'lista']],
             ['tipo' => 'board.board', 'icona' => 'board', 'percorso' => '/b/{id}', 'contenitore' => true],

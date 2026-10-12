@@ -587,7 +587,11 @@ cornice === null ? pagina : (
   `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`); e ogni risultato di `POST /cornice/ricerca` ha
   `contesto`, che un caso che confronta la risposta intera aggiunge. Cambiano anche il segnaposto e l'invito del campo, che non sono più i due
   testi fissi di prima (più sotto). Una parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non
-  sostituisce mai quella dell'ultima parola. Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
+  sostituisce mai quella dell'ultima parola. Fa eccezione il `429` del freno, che è della persona e non di una richiesta:
+  dalla `v1.17.0` anche quello di una richiesta che non è più l'ultima annulla la ricerca in volo e mette l'errore al posto
+  dei suoi risultati (nella `v1.16.0` armava il freno senza mostrare l'errore). In un browser una richiesta annullata non
+  risponde, e il caso non si dà; si dà nei test di un frontend, con una `fetch` finta che non guarda l'annullo.
+  Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
   prodotto è lo dice il registro, dal tipo. Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede
   (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le
   aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`). Fino alla `v1.14.0` mostrava solo board e cartelle.
@@ -643,27 +647,28 @@ cornice === null ? pagina : (
   trova così, secondo i moduli attivi nei suoi dati di prova: con Project Management attivo e il CRM no il segnaposto era
   «Cerca schede, board, cartelle…» e l'invito «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (cerca `cartelle…`
   e `e cartelle:`; in inglese `folders…` e `and folders:`, in spagnolo `carpetas…` e `y carpetas:`); con tutti e due attivi il
-  segnaposto era lo stesso e l'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `e
-  opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`); col solo CRM attivo il segnaposto era
-  «Cerca contatti, aziende, opportunità…» (cerca `opportunità…`; in inglese `opportunities…`, in spagnolo `oportunidades…`);
-  senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.». I due testi senza fonti sono
-  «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.»,
-  «Escribe al menos 2 caracteres.»): dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha
-  fonti. L'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i
-  sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0`
-  la cornice si disegna lo stesso e l'invito è quello senza fonti, quante che siano le fonti; dalla `v1.17.0` il segnaposto lì
-  è quello unico, come ovunque (nella `v1.16.0` era «Cerca…»); nella `v1.15.0`, con almeno una fonte, lì il disegno della
-  cornice lanciava un errore. Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser
-  così lo aggiunge il frontend. I due testi li dà la cornice dai testi delle lingue: `searchHintSources` ha il posto
-  dell'elenco, `{sources}`; `searchPlaceholderSources` è il segnaposto unico e dalla `v1.17.0` non lo ha più (la chiave
-  resta); `searchPlaceholder` e `searchHint` sono quelli senza fonti. Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi:
-  «Cerca
-  board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e
-  «Search boards and folders: type at least 2 characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y
-  carpetas: escribe al menos 2 caracteres.»); prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli:
-  scrivi almeno 2 caratteri.». Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards
-  and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in
-  inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`).
+  segnaposto era lo stesso e l'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca
+  `e opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`); col solo CRM attivo il segnaposto
+  era «Cerca contatti, aziende, opportunità…» e l'invito «Cerca contatti, aziende e opportunità: scrivi almeno 2
+  caratteri.» (cerca `opportunità…` e `e opportunità:`; in inglese `opportunities…` e `and opportunities:`, in spagnolo
+  `oportunidades…` e `y oportunidades:`); senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2
+  caratteri.». I due testi senza fonti sono «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2
+  caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»): dalla `v1.17.0` «Cerca…» resta a chi non
+  ha accettato i documenti legali, che non ha fonti. L'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca,
+  in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e
+  `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e l'invito è quello senza fonti, quante che
+  siano le fonti; dalla `v1.17.0` il segnaposto lì è quello unico, come ovunque (nella `v1.16.0` era «Cerca…»); nella
+  `v1.15.0`, con almeno una fonte, lì il disegno della cornice lanciava un errore. Dove manca anche il resto la cornice
+  non si disegna, nella `v1.16.0` come prima: a un browser così lo aggiunge il frontend. I due testi li dà la cornice dai
+  testi delle lingue: `searchHintSources` ha il posto dell'elenco, `{sources}`; `searchPlaceholderSources` è il segnaposto
+  unico e dalla `v1.17.0` non lo ha più (la chiave resta); `searchPlaceholder` e `searchHint` sono quelli senza fonti.
+  Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi
+  almeno 2 caratteri.» (in inglese «Search boards and folders…» e «Search boards and folders: type at least 2
+  characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas: escribe al menos 2 caracteres.»);
+  prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.». Un frontend
+  che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards and folders`, in spagnolo
+  `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e
+  `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`).
 - **Il menu del profilo** ha Profilo, Impostazioni, Azienda e, dopo una linea, Esci: le prime tre aprono le loro pagine su
   app.zeiras.com (`/impostazioni/profilo`, `/impostazioni/preferenze`, `/azienda`), «Esci» chiama `onLogout`. La voce
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
