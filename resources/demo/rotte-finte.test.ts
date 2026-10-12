@@ -534,7 +534,9 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ['con `?schede=1` per prima c\'è una scheda, col suo `contesto`', '?schede=1', [scheda, ...diPrima]],
         ['con `?crm_attivo=1` per primi ci sono contatti, aziende e opportunità, ognuno col suo `contesto`', '?crm_attivo=1', [...delCrm, ...diPrima]],
         ['con tutti e due, nell\'ordine di ricerca.crea: schede, contatti, aziende e opportunità, poi board e cartelle', '?schede=1&crm_attivo=1', [scheda, ...delCrm, ...diPrima]],
-        ['con `?senza_crm=1` i risultati del CRM non ci sono', '?schede=1&senza_crm=1', [scheda, ...diPrima]],
+        // Letture della PR #56, N3: `crm_attivo` c'è, ed è `senza_crm` a togliere i risultati del CRM. Senza `crm_attivo`
+        // mancherebbero comunque, e il caso resterebbe verde anche se la rotta finta non guardasse `senza_crm`.
+        ['con `?senza_crm=1` i risultati del CRM non ci sono, nemmeno con `?crm_attivo=1`', '?schede=1&crm_attivo=1&senza_crm=1', [scheda, ...diPrima]],
     ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13)', async (_caso, query, attesi) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });

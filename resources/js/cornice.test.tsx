@@ -4119,11 +4119,12 @@ describe('chi non ha accettato i documenti legali', () => {
     // Lettura della PR #56, R5 e R6. Dove sta la pagina: dentro `main.zr-main`, o dentro `div.zr-main-body` se ha il percorso (è
     // lì che l'`AppShell` mette `children`). In tutti e due i posti l'avviso le sta subito prima, e la pagina non si rimonta. E
     // ciò che la cornice dà all'`AppShell` come `children` è sempre un frammento, anche fuori dallo stato ridotto: il primo
-    // figlio è l'avviso, o niente; il secondo è la pagina, com'è.
-    it.each<[string, { label: string }[] | undefined, string]>([
-        ['senza percorso', undefined, 'main.zr-main'],
-        ['col percorso', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }], 'main.zr-main > div.zr-main-body'],
-    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, crumbs, dove) => {
+    // figlio è l'avviso, o niente; il secondo è la pagina, com'è. Nella tupla `dove` viene prima delle briciole: vitest riempie i
+    // `%s` del titolo in ordine, e il secondo deve dire dove sta la pagina (letture della PR #56, N5).
+    it.each<[string, string, { label: string }[] | undefined]>([
+        ['senza percorso', 'main.zr-main', undefined],
+        ['col percorso', 'main.zr-main > div.zr-main-body', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }]],
+    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, dove, crumbs) => {
         const appShell = vi.spyOn(componenti, 'AppShell');
         const montata = vi.fn();
         const pagina = <PaginaConUnCampo montata={montata} />;
