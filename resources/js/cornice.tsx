@@ -739,12 +739,26 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         setRicerca(undefined);
     }
     // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
-    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato resta
-    // l'errore: una parola battuta nel frattempo non mostra il caricamento. Allo scadere non parte niente da solo: parte la
-    // prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna indietro.
+    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
+    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo non mostra il caricamento, e nemmeno «Nessun
+    // risultato» per una parola che non è partita (dopo lo stato ridotto, che la ricerca la dimentica). Il freno è della
+    // persona, non di una richiesta: vale anche quando il 429 è di una richiesta che non è più l'ultima, e allora quella in
+    // volo è annullata e non è più di nessuno, così la sua risposta non entra nello stato. Allo scadere non parte niente da
+    // solo: parte la prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna
+    // indietro. Nello stato ridotto l'errore non resta: la cornice dimentica la ricerca, qui sopra.
     const frenataFinoA = useRef(0);
+    const nelFreno = () => {
+        ricercaInVolo.current?.abort();
+        ricercaInVolo.current = undefined;
+        setRicerca({ stato: 'error' });
+    };
     const cercaParola = (parola: string) => {
-        if (ridottaAdesso.current || performance.now() < frenataFinoA.current) {
+        if (ridottaAdesso.current) {
+            return;
+        }
+        if (performance.now() < frenataFinoA.current) {
+            nelFreno();
+
             return;
         }
         ricercaInVolo.current?.abort();
@@ -761,8 +775,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 seDaAccettare(errore);
                 if (errore instanceof TroppeRichieste) {
                     frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
-                }
-                if (ricercaInVolo.current === questa) {
+                    nelFreno();
+                } else if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'error' });
                 }
             },

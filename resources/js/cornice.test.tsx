@@ -3954,6 +3954,72 @@ describe('la ricerca', () => {
             expect(visto()).toStrictEqual([[errore], undefined, 0]);
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
+
+        // Sprint 27 · T4 (lettura della PR #59, R2). Nei secondi del freno sotto il campo c'è l'errore della ricerca per qualunque
+        // strada ci si arrivi, mai «Nessun risultato» per una parola che non è partita: anche dopo lo stato ridotto, che la
+        // ricerca la dimentica, e anche quando il 429 è di una richiesta che non è più l'ultima.
+        it('nel freno una parola scritta mette l\'errore anche se lo stato non era più l\'errore: dopo il 429 la cornice passa allo stato ridotto, che dimentica la ricerca, e torna quella di sempre; nei secondi del freno la parola non parte e sotto il campo c\'è l\'errore, non «Nessun risultato» (sprint 27 · T4.1)', async () => {
+            const fetchFinto = primaPoiTrova(frenata('30'));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // Lo stato ridotto: la ricerca è spenta, e sotto il campo c'è la sua frase, non l'errore del freno.
+            await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio q');
+            expect(sottoIlCampo()).toStrictEqual([spenta]);
+
+            // Tornata quella di sempre la cornice ha dimenticato la ricerca di prima; il freno no: è del backoffice.
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await passano(10_000);
+            await scrivi('lancio q4');
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            expect([sottoIlCampo(), righe().length]).toStrictEqual([[errore], 0]);
+
+            // Il freno scade: non parte niente da solo, e la prima parola scritta dopo parte.
+            await passano(20_000);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            await scrivi('piano');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('piano')]);
+            expect(titoli()).toStrictEqual(['Risultato di «piano»']);
+        });
+
+        it('un 429 che arriva per una richiesta che non è più l\'ultima frena lo stesso e mette l\'errore: la richiesta in volo è annullata, e la sua risposta, se arriva, non entra nello stato; nei secondi del freno nessuna parola parte (sprint 27 · T4.2)', async () => {
+            // Una `fetch` che non guarda `signal`: la risposta di una richiesta annullata arriva lo stesso.
+            const [prima, seconda] = [inAttesaDellaRicerca(), inAttesaDellaRicerca()];
+            const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovati([{ tipo: 'board.board', id: '3', titolo: `Risultato di «${String(parolaDi(opzioni))}»` }]))
+                .mockReturnValueOnce(prima.promessa)
+                .mockReturnValueOnce(seconda.promessa);
+            const annullate = () => fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal?.aborted);
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            await scrivi('lancio q4');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4')]);
+            expect(annullate()).toStrictEqual([true, false]);
+
+            // Il 429 è della prima, che non è più l'ultima: il freno è della persona, non di una richiesta.
+            await prima.arriva(frenata('5'));
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+            expect(annullate()).toStrictEqual([true, true]);
+
+            // La risposta della seconda arriva lo stesso, coi suoi risultati: non entra nello stato.
+            await seconda.arriva(trovati([{ tipo: 'board.board', id: '2', titolo: 'Risultato di «lancio q4»' }]));
+            expect([titoli(), sottoIlCampo()]).toStrictEqual([[], [errore]]);
+
+            // A 4,9 secondi dal 429 una parola non parte.
+            await passano(4000);
+            await scrivi('piano');
+            expect(fetchFinto).toHaveBeenCalledTimes(2);
+            expect([titoli(), sottoIlCampo()]).toStrictEqual([[], [errore]]);
+
+            // Passati i 5 secondi la prima parola scritta parte.
+            await passano(1000);
+            await scrivi('piano di lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4'), ricercaDi('piano di lancio')]);
+            expect(titoli()).toStrictEqual(['Risultato di «piano di lancio»']);
+        });
     });
 });
 
