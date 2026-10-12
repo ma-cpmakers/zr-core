@@ -4813,10 +4813,10 @@ it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i ca
     'resta fuori: dentro un iframe' => ['Tab dentro un dialogo aperto', 'Restano fuori anche tre casi: da dentro un `iframe` i tasti sono della sua pagina, e Tab dall\'ultimo suo elemento esce dal dialogo (il Tab dopo rientra)'],
     'resta fuori: lo shadow DOM' => ['Tab dentro un dialogo aperto', 'gli elementi dentro uno shadow DOM non si contano'],
     'resta fuori: un tabindex positivo' => ['Tab dentro un dialogo aperto', 'un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l\'ordine del documento'],
-    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video, il fuoco dopo il clic su una notifica.
+    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video. La riga del fuoco dopo il clic su
+    // una notifica è nel caso dello sprint 32 · T2.4, più sotto: la frase è cambiata.
     'il summary con ciò che ha dentro' => ['Tab dentro un dialogo aperto', 'tranne il `summary` che lo apre, con ciò che ha dentro'],
     'resta fuori: i comandi di un video' => ['Tab dentro un dialogo aperto', 'E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata sola, e quando è l\'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono'],
-    'dopo il clic su una notifica' => ['Il fuoco nel pannello delle notifiche', 'In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello'],
 ]);
 
 // Sprint 32 · T1.3 (voce #1912; review della PR #64, R7 e R8): un riquadro che non si vede non è una fermata, e chiuso un dialogo
@@ -4830,6 +4830,18 @@ it('il README dice, nel punto del Tab dentro un dialogo, i due casi chiusi dalla
     'un riquadro che non si vede' => ['Dalla `v1.22.0`: un `iframe` largo o alto zero — un riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima invece di passare da lì e uscire dietro il velo'],
     'il fuoco torna a chi lo aveva' => ['chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna all\'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha preso un altro (provati in Chrome)'],
 ]);
+
+// Sprint 32 · T2.4 (voce #1912; review della PR #64, R12): dove va il fuoco dopo il clic su una notifica o su «Vedi tutte» il
+// README lo dice col browser in cui è provato (UAT, riga B5), e non di ogni browser. Che il fuoco ci vada lo prova
+// `cornice.test.tsx` (sprint 32 · T2.4), non questo caso, che lega solo la frase.
+
+it('il README dice, nel punto del fuoco nel pannello delle notifiche, dove va il fuoco dopo il clic su una notifica o su «Vedi tutte» e in quale browser è provato, e non lo dice più di ogni browser (sprint 32 · T2.4)', function () {
+    $punto = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Il fuoco nel pannello delle notifiche');
+
+    expect(str_contains($punto, 'Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è provato'))->toBe(true)
+        ->and(str_contains($punto, 'un campo cliccato fuori dal pannello — non si toglie (provato in Chrome)'))->toBe(true)
+        ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false);
+});
 
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;

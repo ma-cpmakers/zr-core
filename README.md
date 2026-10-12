@@ -386,9 +386,9 @@ cornice === null ? pagina : (
   con l'ultima non letta —, e dove va il fuoco allora lo decide il browser: di solito esce dal pannello, che resta aperto.
   Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Dalla `v1.21.0` il fuoco torna sulla campanella
   anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS): prima
-  restava alla pagina. In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
-  chiudono il pannello ed escono dal documento col fuoco.
-  A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie. Vale anche
+  restava alla pagina. Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
+  chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è
+  provato. A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie (provato in Chrome). Vale anche
   nello stato ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
   classe non prende il fuoco. Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda
   l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla

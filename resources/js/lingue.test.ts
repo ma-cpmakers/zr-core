@@ -923,25 +923,51 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     // Sprint 31 · T4.2 (voce #1908; review della PR #63, S8). Le attese sono scritte qui a mano, una per famiglia di frase: il
     // pannello e la pagina passano dalla stessa funzione, e confrontati fra loro un nome perso lo perdono insieme. Che le frasi
     // caricate dalla cornice siano quelle dei file lo prova `frasi-con-fetch.test.ts`, dal caricatore vero (T4.1).
+    // Sprint 32 · T2.2 (voce #1912; review della PR #64): le attese a mano sono per un tipo di ogni famiglia di notifica —
+    // Project Management, CRM, workspace — e con loro si confronta anche ciò che mostra il pannello, non solo la funzione della
+    // pagina: una frase cambiata in un file delle frasi fa rosso questo caso. Per il tipo del CRM la frase con chi e che cosa
+    // non c'è ancora (`null`): con tutti e due i nomi il titolo è quello con solo chi.
     const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
     const [GIULIA, LANCIO] = [isolato('Giulia Bianchi'), isolato('Lancio corso')];
+    type AMano = [tipo: string, conChiECosa: string | null, conSoloChi: string, titolo: string];
+    const inInglese: AMano[] = [
+        ['com.zeiras.board.scheda.modificata', `${GIULIA} changed the card “${LANCIO}”`, `${GIULIA} changed a card`, 'Card changed'],
+        ['com.zeiras.crm.organizzazione.modificata', null, `${GIULIA} edited a company`, 'Company changed'],
+        ['com.zeiras.workspace.modificato', `${GIULIA} changed the workspace “${LANCIO}”`, `${GIULIA} changed the workspace`, 'The workspace was changed'],
+    ];
 
-    it.each<[lingua: string, file: FrasiDelleNotifiche, conChiECosa: string, conSoloChi: string, titolo: string]>([
-        ['it', frasiItaliane, `${GIULIA} ha modificato la scheda «${LANCIO}»`, `${GIULIA} ha modificato una scheda`, 'Scheda modificata'],
-        ['es', frasiSpagnole, `${GIULIA} ha modificado la tarjeta «${LANCIO}»`, `${GIULIA} ha modificado una tarjeta`, 'Tarjeta modificada'],
-        ['en', frasiInglesi, `${GIULIA} changed the card “${LANCIO}”`, `${GIULIA} changed a card`, 'Card changed'],
-        ['zz', frasiInglesi, `${GIULIA} changed the card “${LANCIO}”`, `${GIULIA} changed a card`, 'Card changed'],
-    ])('con la lingua "%s" chi mostra le notifiche in una pagina sua ha i testi scritti qui a mano — con chi e che cosa, con solo chi, titolo e riga sotto — e il pannello gli stessi, tipo per tipo (T1.8; sprint 31 · T4.2)', async (lingua, file, conChiECosa, conSoloChi, titolo) => {
+    it.each<[lingua: string, file: FrasiDelleNotifiche, aMano: AMano[]]>([
+        ['it', frasiItaliane, [
+            ['com.zeiras.board.scheda.modificata', `${GIULIA} ha modificato la scheda «${LANCIO}»`, `${GIULIA} ha modificato una scheda`, 'Scheda modificata'],
+            ['com.zeiras.crm.organizzazione.modificata', null, `${GIULIA} ha modificato un'azienda`, 'Azienda modificata'],
+            ['com.zeiras.workspace.modificato', `${GIULIA} ha modificato il workspace «${LANCIO}»`, `${GIULIA} ha modificato il workspace`, 'Il workspace è stato modificato'],
+        ]],
+        ['es', frasiSpagnole, [
+            ['com.zeiras.board.scheda.modificata', `${GIULIA} ha modificado la tarjeta «${LANCIO}»`, `${GIULIA} ha modificado una tarjeta`, 'Tarjeta modificada'],
+            ['com.zeiras.crm.organizzazione.modificata', null, `${GIULIA} ha modificado una empresa`, 'Empresa modificada'],
+            ['com.zeiras.workspace.modificato', `${GIULIA} ha modificado el workspace «${LANCIO}»`, `${GIULIA} ha modificado el workspace`, 'Se modificó el workspace'],
+        ]],
+        ['en', frasiInglesi, inInglese],
+        ['zz', frasiInglesi, inInglese],
+    ])('con la lingua "%s" il pannello e chi mostra le notifiche in una pagina sua hanno i testi scritti qui a mano per un tipo di Project Management, uno del CRM e uno del workspace — con chi e che cosa, con solo chi, titolo e riga sotto —, e per ogni altro tipo il pannello ha gli stessi della pagina (T1.8; sprint 31 · T4.2; sprint 32 · T2.2)', async (lingua, file, aMano) => {
         const { rigaConLeFrasi, titoloConLeFrasi } = await import('./lingue');
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
         const caricate = { ...frasiInglesi, ...file };
-        const modificata = 'com.zeiras.board.scheda.modificata';
         const tipi = [...Object.keys(frasiInglesi).filter((chiave) => chiave.startsWith('notificationTitle.')).map((chiave) => chiave.slice('notificationTitle.'.length)), 'com.zeiras.uat.ignoto', '', undefined, 7];
+        const righe: [di: string, riga: (notifica: { tipo: string; autore_nome?: string; risorsa_nome?: string }) => { titolo: string; sotto?: string }][] = [
+            ['la pagina', (notifica) => rigaDellaNotifica(notifica, lingua)],
+            ['il pannello', (notifica) => rigaConLeFrasi(caricate, notifica, lingua)],
+        ];
 
-        expect(rigaDellaNotifica({ tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, lingua)).toStrictEqual({ titolo: conChiECosa });
-        expect(rigaDellaNotifica({ tipo: modificata, autore_nome: 'Giulia Bianchi' }, lingua)).toStrictEqual({ titolo: conSoloChi });
-        expect(rigaDellaNotifica({ tipo: modificata, risorsa_nome: 'Lancio corso' }, lingua)).toStrictEqual({ titolo, sotto: 'Lancio corso' });
-        expect(titoloDellaNotifica(modificata, lingua)).toBe(titolo);
+        expect(aMano.map(([tipo]) => tipo.split('.')[2])).toStrictEqual(['board', 'crm', 'workspace']);
+        for (const [tipo, conChiECosa, conSoloChi, titolo] of aMano) {
+            for (const [di, riga] of righe) {
+                expect([di, tipo, riga({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' })]).toStrictEqual([di, tipo, conChiECosa === null ? { titolo: conSoloChi, sotto: 'Lancio corso' } : { titolo: conChiECosa }]);
+                expect([di, tipo, riga({ tipo, autore_nome: 'Giulia Bianchi' })]).toStrictEqual([di, tipo, { titolo: conSoloChi }]);
+                expect([di, tipo, riga({ tipo, risorsa_nome: 'Lancio corso' })]).toStrictEqual([di, tipo, { titolo, sotto: 'Lancio corso' }]);
+            }
+            expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
+        }
         expect(tipi).toHaveLength(42 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
