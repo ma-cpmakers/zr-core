@@ -13,6 +13,7 @@ use Zeiras\Auth\Testing\Finto\RichiestaSconosciuta;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\Http\NotificheDellaCornice;
+use Zeiras\Core\Registro;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -4020,4 +4021,51 @@ it('le pagine di prova sono tre, e quella dell\'ingresso per le app prende la co
         ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
         ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
         ->and(scritteNellaPaginaDiProva('index.tsx', ["import { Cornice } from '../js';"]))->toBe(["import { Cornice } from '../js';" => 1]);
+});
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro dei moduli lo leggevano due classi, la ricerca e l'elenco delle
+// notifiche, ognuna con la sua lettura del file e la sua copia tenuta per il processo: un terzo lettore sarebbe stato una terza
+// copia. Lo legge una classe sola, `Zeiras\Core\Registro`, interna al pacchetto, e le rotte le voci le chiedono a lei. Le
+// risposte delle rotte sono quelle di prima.
+
+it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`: le due rotte che lo usano le voci le chiedono a lei, una volta l\'una nel codice, e non leggono nessun file (sprint 26 · T3.2)', function () {
+    $sorgenti = [];
+    foreach (File::allFiles(__DIR__.'/../../src') as $file) {
+        $sorgenti[str_replace('\\', '/', $file->getRelativePathname())] = senzaCommenti($file->getContents());
+    }
+
+    // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
+    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json'))))->toBe(['Registro.php'])
+        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(1)
+        ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/prodotti.json')"))->toBe(1)
+        ->and(array_map(fn (string $rotta): array => [substr_count($sorgenti[$rotta], 'file_get_contents('), substr_count($sorgenti[$rotta], 'Registro::voci()')], ['Http/RicercaDellaCornice.php', 'Http/NotificheDellaCornice.php']))
+        ->toBe([[0, 1], [0, 1]]);
+});
+
+it('`Registro` legge il file una volta per processo: la prima richiesta dà le voci del registro del pacchetto e le tiene, e con delle voci già in mano dà quelle, senza tornare al file (sprint 26 · T3.2)', function () {
+    $voci = new ReflectionProperty(Registro::class, 'voci');
+    $voci->setValue(null, null);
+
+    try {
+        expect(Registro::voci())->toBe(registroDeiProdotti())
+            ->and($voci->getValue())->toBe(registroDeiProdotti());
+        // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
+        $voci->setValue(null, [['id' => 'uat-gia-letto']]);
+        expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
+    } finally {
+        $voci->setValue(null, null);
+    }
+});
+
+it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un altro file: fuori dal privato ha il solo `voci()`, statico e senza argomenti, e l\'unica proprietà è privata; è una classe interna, non per chi installa il pacchetto (sprint 26 · T3.3)', function () {
+    $classe = new ReflectionClass(Registro::class);
+    $nomi = fn (array $membri): array => array_map(fn (ReflectionMethod|ReflectionProperty $membro): string => $membro->getName(), $membri);
+
+    expect($nomi($classe->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED)))->toBe(['voci'])
+        ->and($classe->getMethod('voci')->isStatic())->toBe(true)
+        ->and($classe->getMethod('voci')->getNumberOfParameters())->toBe(0)
+        ->and($nomi($classe->getProperties()))->toBe(['voci'])
+        ->and($classe->getProperty('voci')->isPrivate())->toBe(true)
+        ->and($classe->isFinal())->toBe(true)
+        ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
 });

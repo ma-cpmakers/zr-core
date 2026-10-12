@@ -1739,7 +1739,7 @@ function registroGiaLetto(?array $voci): void
 
 afterEach(fn () => registroGiaLetto(null));
 
-it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie (review della PR #44, R5; sprint 22 · T7.3)', function () {
+it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (review della PR #44, R5; sprint 22 · T7.3; sprint 26 · T3.2)', function () {
     $classe = new ReflectionClass(NotificheDellaCornice::class);
     $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
     sort($pubblici);
@@ -1748,9 +1748,11 @@ it('la parte server delle notifiche non ha agganci per i test nel codice che va 
     expect($pubblici)->toBe(['elenco', 'idsDellaNotifica', 'lettura', 'letture', 'tenutaDelBlocco'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
-        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
-        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
-        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+        // Il registro è quello del pacchetto, e lo legge `Registro`: qui non c'è una lettura di file, né una copia tenuta, e le
+        // voci si chiedono a lei in un punto solo del codice (sprint 26 · T3.2).
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(0)
+        ->and($classe->hasProperty('registro'))->toBe(false)
+        ->and(substr_count(senzaCommenti($sorgente), 'Registro::voci()'))->toBe(1);
 });
 
 it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei moduli: con un registro che non si legge segna la notifica e risponde, mentre l\'elenco, che dal registro prende gli id, non risponde (sprint 22 · T3.1)', function () {

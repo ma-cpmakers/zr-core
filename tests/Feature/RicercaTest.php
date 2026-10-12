@@ -252,7 +252,7 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
     }
 });
 
-it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie (sprint 25 · T6, R1)', function () {
+it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (sprint 25 · T6, R1; sprint 26 · T3.2)', function () {
     $classe = new ReflectionClass(RicercaDellaCornice::class);
     $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
     $sorgente = (string) file_get_contents((string) $classe->getFileName());
@@ -260,9 +260,11 @@ it('la parte server della ricerca non ha agganci per i test nel codice che va in
     expect($pubblici)->toBe(['cerca'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
-        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
-        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
-        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+        // Il registro è quello del pacchetto, e lo legge `Registro`: qui non c'è una lettura di file, né una copia tenuta, e le
+        // voci si chiedono a lei in un punto solo del codice (sprint 26 · T3.2).
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(0)
+        ->and($classe->hasProperty('registro'))->toBe(false)
+        ->and(substr_count(senzaCommenti($sorgente), 'Registro::voci()'))->toBe(1);
 });
 
 it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', function (string $q) {
