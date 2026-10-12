@@ -4792,7 +4792,11 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'con ASSET_URL' => ['Con `ASSET_URL` nel `.env` l\'indirizzo resta intero e comincia con quello: non viene dalla richiesta'],
     'Vite::asset' => ['**`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da `config(\'app.url\')`'],
     'in una sottocartella' => ['**Un frontend in una sottocartella del dominio** imposta `ASSET_URL`'],
-    'un resolver del frontend vince' => ['**Un resolver del frontend** registrato nel suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`'],
+    // Seconda lettura della PR #61, N2-N4: ciò che cambia da solo in chi installa, e dove un resolver del frontend vince davvero.
+    'ASSET_URL nel .env' => ['**`ASSET_URL` va nel `.env`**: un\'origine data a tempo d\'esecuzione, con `URL::useAssetOrigin()` o `URL::forceRootUrl()`, il resolver non la vede, e scrive il solo percorso'],
+    'un test del frontend' => ['**Un test del frontend** che confronta un indirizzo intero di un file della build (`http://localhost/build/…`) va riletto: ora è il solo percorso'],
+    'un resolver del frontend vince' => ['**Un resolver del frontend** registrato nel `boot()` del suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`'],
+    'nel register no' => ['Nel `register()` no: lì quello del pacchetto lo sovrascrive'],
     'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
 ]);
 
@@ -4814,9 +4818,10 @@ it('la guida nomina il precarico dove il modulo registra i middleware, e dice ch
 
     expect(str_contains($passo, 'Dalla `v1.18.0` puoi registrare anche il precarico dei file d\'ingresso, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`, sul gruppo `web` o sulle sole rotte che vuoi'))->toBe(true)
         ->and(str_contains($passo, 'non parte da solo — README, «Il precarico dei file d\'ingresso»'))->toBe(true)
-        // Lettura della PR #61, R1 e R2: le rotte da esporre, il resolver, e niente più Early Hints dato per acceso.
+        // Lettura della PR #61, R1 e R2: le rotte da esporre, il resolver, e niente più Early Hints dato per acceso. Seconda
+        // lettura, N3: un resolver del frontend vince dal `boot()`.
         ->and(str_contains($passo, 'Se nei tuoi indirizzi c\'è uno slug o un id, lo registri sulle sole rotte che accetti di esporre'))->toBe(true)
-        ->and(str_contains($passo, 'Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli — README, «Gli indirizzi dei file della build»'))->toBe(true)
+        ->and(str_contains($passo, 'Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli, e uno diverso lo registri nel `boot()` del tuo `AppServiceProvider` — README, «Gli indirizzi dei file della build»'))->toBe(true)
         ->and(str_contains($passo, 'con Early Hints Cloudflare li manda prima della pagina'))->toBe(false)
         ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/IngressiPrecaricoTest.php');
 });

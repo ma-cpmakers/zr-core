@@ -76,11 +76,11 @@ function rottaCheTieneLHost(?string &$visto): void
     })->middleware(PrecaricoDegliIngressi::class);
 }
 
-/** Un frontend che si fida dei proxy: `X-Forwarded-Host` diventa l'host della richiesta. */
-function frontendCheSiFidaDeiProxy(): void
+/** Un frontend che si fida dei proxy: `X-Forwarded-Host` diventa l'host della richiesta, e così le altre intestazioni date. */
+function frontendCheSiFidaDeiProxy(int $intestazioni = Request::HEADER_X_FORWARDED_HOST): void
 {
     TrustProxies::at('*');
-    Request::setTrustedProxies(['127.0.0.1'], Request::HEADER_X_FORWARDED_HOST);
+    Request::setTrustedProxies(['127.0.0.1'], $intestazioni);
 }
 
 /**
@@ -291,7 +291,7 @@ it('senza `ASSET_URL` il documento e il `Link` portano i file della build col so
     'tutti e due falsi' => ['http://attaccante.example/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example'],
 ]);
 
-it('un frontend che rimette il resolver di Laravel ha nel documento l\'host della richiesta, ma nel `Link` no: la voce è il solo percorso (lettura della PR #61, R1)', function (string $indirizzo, array $intestazioni, string $atteso) {
+it('un frontend che rimette il resolver di Laravel ha nel documento l\'host della richiesta, ma nel `Link` no: la voce è il solo percorso (lettura della PR #61, R1; seconda lettura, N1)', function (string $indirizzo, array $intestazioni, string $atteso, string $radice) {
     frontendCheSiFidaDeiProxy();
     Vite::createAssetPathsUsing(null);
     $visto = null;
@@ -302,12 +302,33 @@ it('un frontend che rimette il resolver di Laravel ha nel documento l\'host dell
 
     // Il contro-esempio è nel documento: lì l'host falso c'è, perché il resolver non è quello del pacchetto.
     expect($visto)->toBe($atteso)
-        ->and(fileNelDocumento((string) $risposta->getContent()))->toEqualCanonicalizing(fileAllApertura('http://'.$atteso))
+        ->and(fileNelDocumento((string) $risposta->getContent()))->toEqualCanonicalizing(fileAllApertura($radice))
         ->and(array_keys(vociDelPrecarico($link)))->toEqualCanonicalizing(fileAllApertura())
         ->and($link)->not->toContain('attaccante.example')->not->toContain('altro.example')->not->toContain('://');
 })->with([
-    'un `Host` falso' => ['http://attaccante.example/prova/precarico', [], 'attaccante.example'],
-    'un `X-Forwarded-Host` falso' => ['/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example'],
+    'un `Host` falso' => ['http://attaccante.example/prova/precarico', [], 'attaccante.example', 'http://attaccante.example'],
+    'un `X-Forwarded-Host` falso' => ['/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example', 'http://altro.example'],
+    // La radice della richiesta ha anche la porta: il middleware toglie quella, non il solo nome.
+    'un `Host` falso con la porta' => ['http://attaccante.example:8080/prova/precarico', [], 'attaccante.example', 'http://attaccante.example:8080'],
+]);
+
+// Seconda lettura della PR #61, N1. Col resolver di Laravel la radice della richiesta non è solo l'host: se il frontend si fida
+// dei proxy ha davanti anche `X-Forwarded-Prefix`, che Symfony non controlla carattere per carattere. Tolto l'host, quel prefisso
+// resterebbe nella voce: con un `>` chiude l'indirizzo, e i parametri della voce li scrive chi chiama; con una tabulazione, che
+// un browser toglie dagli indirizzi, `/<TAB>/altro.example` si legge `//altro.example`, un altro host.
+it('col resolver di Laravel e un frontend che si fida dei proxy, un `X-Forwarded-Prefix` con un carattere che in un `Link` chiude l\'indirizzo o cambia l\'host non esce: nessuna voce (seconda lettura della PR #61, N1)', function (string $prefisso) {
+    frontendCheSiFidaDeiProxy(Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PREFIX);
+    Vite::createAssetPathsUsing(null);
+    Route::get('/prova/precarico', fn () => documentoConVite())->middleware(PrecaricoDegliIngressi::class);
+
+    $risposta = $this->get('/prova/precarico', ['X-Forwarded-Prefix' => $prefisso])->assertOk();
+
+    // Il caso non è vuoto: il prefisso è arrivato negli indirizzi che `@vite` ha scritto.
+    expect(array_keys(Vite::preloadedAssets()))->toEqualCanonicalizing(fileAllApertura('http://localhost'.$prefisso))
+        ->and($risposta->headers->has('Link'))->toBeFalse();
+})->with([
+    'un `>`, che chiude l\'indirizzo della voce' => ['/x>; rel=stylesheet; y='],
+    'una tabulazione, che un browser toglie: `//altro.example`' => ["/\t/altro.example"],
 ]);
 
 it('con `ASSET_URL` il documento e il `Link` portano l\'indirizzo intero, che comincia con quello e non con l\'host della richiesta (lettura della PR #61, R1)', function () {
