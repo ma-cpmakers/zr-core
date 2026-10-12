@@ -328,19 +328,13 @@ export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNot
             if (pronte !== undefined) {
                 return Promise.resolve(pronte);
             }
-            const chiesta = inVolo.get(codice) ?? Promise.all([perCodice.get(codice)?.(), inglesi()]).then(
-                ([scelte, ripiego]) => {
-                    const frasi = componiFrasi(scelte, ripiego);
-                    composte.set(codice, frasi);
-                    inVolo.delete(codice);
+            // Riuscita o no, la richiesta non resta in volo: una fallita — anche per una risposta che non si può comporre — si rifà.
+            const chiesta = inVolo.get(codice) ?? Promise.all([perCodice.get(codice)?.(), inglesi()]).then(([scelte, ripiego]) => {
+                const frasi = componiFrasi(scelte, ripiego);
+                composte.set(codice, frasi);
 
-                    return frasi;
-                },
-                (errore: unknown) => {
-                    inVolo.delete(codice);
-                    throw errore;
-                },
-            );
+                return frasi;
+            }).finally(() => inVolo.delete(codice));
             inVolo.set(codice, chiesta);
 
             return chiesta;
@@ -350,15 +344,17 @@ export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNot
 
 // I file delle frasi, a richiesta. La cornice ne ha solo l'indirizzo (`?url`: un file `.json` della build, con la sua impronta
 // nel nome) e li chiede con `fetch`, non con `import()`: in Chrome un `import()` che non arriva resta fallito finché la pagina
-// non si ricarica, e «Riprova» non lo richiederebbe mai (UAT dello sprint 30, T1.5). `./frasi` importa gli stessi file per
-// intero, come moduli: per la build sono un'altra cosa, e questi restano fuori dal JS d'ingresso anche se un ingresso
-// riesporta quelle funzioni. Una richiesta che non risponde entro `ATTESA_DELLE_FRASI` è un errore come un'altra.
+// non si ricarica, e «Riprova» non lo richiederebbe mai. `no-inline` perché restino file anche in un frontend che alza
+// `build.assetsInlineLimit`: scritti nel JS come `data:`, la CSP di tutti (`connect-src 'self'`) fermerebbe la richiesta.
+// `./frasi` importa gli stessi file per intero, come moduli: per la build sono un'altra cosa, e questi restano fuori dal JS
+// d'ingresso anche se un ingresso riesporta quelle funzioni. Una richiesta che non risponde entro `ATTESA_DELLE_FRASI` è un
+// errore come un'altra; dove il browser non ha `AbortSignal.timeout` la richiesta parte lo stesso, senza un tempo massimo.
 const ATTESA_DELLE_FRASI = 10_000;
 /** L'indirizzo di ogni file delle frasi, per percorso (`'../lingue/notifiche/it.json'`). Esportato per `./prove`. */
-export const indirizziDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?url', import: 'default', eager: true });
+export const indirizziDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?url&no-inline', import: 'default', eager: true });
 
 const lette = (percorso: string) => (): Promise<FrasiDelleNotifiche> =>
-    fetch(indirizziDelleFrasi[percorso] as string, { signal: AbortSignal.timeout(ATTESA_DELLE_FRASI) }).then((risposta) => (risposta.ok ? (risposta.json() as Promise<FrasiDelleNotifiche>) : Promise.reject()));
+    fetch(indirizziDelleFrasi[percorso] as string, { signal: AbortSignal.timeout?.(ATTESA_DELLE_FRASI) }).then((risposta) => (risposta.ok ? (risposta.json() as Promise<FrasiDelleNotifiche>) : Promise.reject()));
 
 export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
     Object.fromEntries(Object.keys(indirizziDelleFrasi).map((percorso) => [percorso, lette(percorso)])),

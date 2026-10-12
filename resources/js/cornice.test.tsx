@@ -5490,6 +5490,30 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         await apri();
         expect(document.activeElement).toBe(uno('.zr-top-actions > .zr-notif [role="tab"][aria-selected="true"]'));
     });
+
+    it('fuori dalla cornice non si tocca niente: un pannello accanto a una barra con le stesse classi, ma non dentro la cornice, non prende il fuoco (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conIlFuoco(uno('#della-pagina'));
+
+        const barra = document.createElement('div');
+        barra.className = 'zr-top-actions';
+        const pannello = document.createElement('div');
+        pannello.className = 'zr-notif';
+        pannello.innerHTML = '<div class="zr-notif-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" id="altrove">Tutte</button></div>';
+        document.body.append(barra);
+        await act(async () => {
+            barra.append(pannello);
+        });
+
+        expect(barra.closest('.zr-shell')).toBeNull();
+        expect(document.getElementById('altrove')).not.toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+        barra.remove();
+    });
 });
 
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
@@ -5731,6 +5755,39 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(voce);
     });
 
+    it('un `Menu` che sta altrove nella pagina, senza il fuoco, non spegne niente: Tab resta nel dialogo e da fuori entra (T4.6)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+        </>);
+        expect(uno('.zr-dialog .zr-menu')).toBeNull();
+        expect(uno('.zr-menu')).not.toBeNull();
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('Tab con Ctrl, Alt o Meta non è il giro del fuoco: il gestore non lo tocca (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+        await conIlFuoco(uno('#salva'));
+
+        for (const modificatore of ['ctrlKey', 'altKey', 'metaKey'] as const) {
+            const tasto = new KeyboardEvent('keydown', { key: 'Tab', [modificatore]: true, bubbles: true, cancelable: true });
+            await act(async () => {
+                uno('#salva')?.dispatchEvent(tasto);
+            });
+            expect(tasto.defaultPrevented).toBe(false);
+            expect(document.activeElement).toBe(uno('#salva'));
+        }
+    });
+
     it('se un campo del dialogo tiene Tab per sé il gestore non sposta il fuoco (T4.1)', async () => {
         largaAlPiu720(false);
         await laPagina(ilDialogo(<input id="nome" />));
@@ -5794,6 +5851,20 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             expect(gradino()).toBe(SOPRA_IL_PANNELLO);
             // Il pannello resta dov'è: è il dialogo a salire.
             expect(uno('.zr-detail')?.style.getPropertyValue('z-index')).toBe('');
+        });
+
+        it('un velo senza un dialogo dentro non è di un `Dialog`: resta com\'è', async () => {
+            largaAlPiu720(true);
+            await laPagina(<p>La pagina</p>);
+            const velo = document.createElement('div');
+            velo.className = 'zr-scrim';
+            velo.id = 'del-modulo';
+            await act(async () => {
+                uno('.zr-shell')?.append(velo);
+            });
+
+            expect(uno('.zr-shell #del-modulo')).not.toBeNull();
+            expect(gradino('#del-modulo')).toBe('');
         });
 
         it('vale per ogni dialogo di una pagina che entra già coi dialoghi aperti', async () => {

@@ -23,13 +23,13 @@ afterEach(() => {
 describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', () => {
     it('per una lingua partono due richieste, il suo file e quello dell\'inglese, agli indirizzi della build e con un tempo massimo di dieci secondi (T1.3, T1.4)', async () => {
         const attesa = vi.spyOn(AbortSignal, 'timeout');
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(indirizzo.includes('it') ? { 'notificationTitle.uat': 'UAT titolo' } : { 'notificationTitle.uat': 'UAT title', 'notificationTitle.solo': 'UAT only' }));
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(/\/it\.json/.test(indirizzo) ? { 'notificationTitle.uat': 'UAT titolo' } : { 'notificationTitle.uat': 'UAT title', 'notificationTitle.solo': 'UAT only' }));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./lingue');
 
         expect(fetchFinto).not.toHaveBeenCalled();
         expect(Object.keys(indirizziDelleFrasi).sort()).toStrictEqual([EN, '../lingue/notifiche/es.json', IT]);
-        expect(indirizziDelleFrasi[IT]).toMatch(/it\.json$/);
+        expect(indirizziDelleFrasi[IT]).toMatch(/\/it\.json(\?|$)/);
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT titolo', 'notificationTitle.solo': 'UAT only' });
         expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo).sort()).toStrictEqual([indirizziDelleFrasi[EN], indirizziDelleFrasi[IT]].sort());
@@ -54,6 +54,36 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
         expect(fetchFinto).toHaveBeenCalledTimes(4);
+    });
+
+    it('un 200 col corpo `null` è un errore e non resta in volo: la richiesta dopo riparte da capo e riesce (T1.5)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ 'notificationTitle.uat': 'UAT' }));
+        fetchFinto.mockImplementationOnce(async () => risposta(null)).mockImplementationOnce(async () => risposta(null));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte } = await import('./lingue');
+
+        await expect(caricaFrasi('it')).rejects.toBeInstanceOf(TypeError);
+        expect(frasiPronte('it')).toBeUndefined();
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+
+        await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
+        expect(fetchFinto).toHaveBeenCalledTimes(4);
+    });
+
+    it('dove il browser non ha `AbortSignal.timeout` le frasi si chiedono lo stesso, senza un tempo massimo: niente lancia e il pannello non resta in attesa (T1.5)', async () => {
+        expect(AbortSignal.timeout).toBeTypeOf('function');
+        // Una proprietà sua che copre quella vera: tolta, torna quella di prima.
+        Object.defineProperty(AbortSignal, 'timeout', { value: undefined, configurable: true, writable: true });
+        try {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT' }));
+            vi.stubGlobal('fetch', fetchFinto);
+            const { caricaFrasi } = await import('./lingue');
+
+            await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
+            expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal)).toStrictEqual([undefined, undefined]);
+        } finally {
+            Reflect.deleteProperty(AbortSignal, 'timeout');
+        }
     });
 
     it('una richiesta che non risponde entro il tempo massimo è un errore come un altro: la promessa è respinta e «Riprova» può richiedere (T1.5)', async () => {

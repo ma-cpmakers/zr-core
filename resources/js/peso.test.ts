@@ -30,8 +30,8 @@ const DAL_BUNDLE = ['resources/js/zeiras/react-globale.ts', 'resources/zeiras/bu
 const DAL_MODULO = ['resources/js/zeiras/index.ts'];
 const MEZZO_KB = 512;
 
-// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno più nel JS d'ingresso: la cornice le carica quando si apre
-// la campanella, un pezzo per lingua. Una frase per lingua, com'è scritta nel suo file: la stessa notifica, la cartella creata.
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno più nel JS d'ingresso: la cornice le chiede con `fetch` quando
+// si apre la campanella, un file `.json` per lingua. Una frase per lingua, com'è scritta nel suo file: la stessa notifica, la cartella creata.
 const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha creado la carpeta' };
 /**
  * Il tetto sul JS d'ingresso dell'app che prende solo la cornice, con gzip: prima dello sprint 30 pesava 18,8 KB. Il refining
@@ -79,8 +79,8 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
 }
 
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
-async function app(file: string): Promise<Costruito> {
-    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
+async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}): Promise<Costruito> {
+    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
 }
 
 /** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
@@ -120,6 +120,7 @@ function pesiNelReadme(nome: string): number[] {
 }
 
 let soloCornice: Costruito;
+let conIlLimiteAlto: Costruito;
 let perNome: Costruito;
 let diSempre: Costruito;
 let ingressoPerLeApp: Costruito;
@@ -132,6 +133,7 @@ let dalModulo: Costruito;
 beforeAll(async () => {
     vi.stubEnv('NODE_ENV', 'production');
     soloCornice = await app('resources/demo/peso/cornice.ts');
+    conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
     ingressoPerLeApp = await ingresso('resources/js/app.ts');
@@ -200,6 +202,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
         expect(costruita().js).not.toContain(DEI_RIMEDI);
         expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
+    });
+
+    it('in un frontend che alza `build.assetsInlineLimit` i file delle frasi restano file: come `data:` nel JS la CSP di tutti (`connect-src \'self\'`) fermerebbe la richiesta (sprint 30 · T1)', () => {
+        expect(conIlLimiteAlto.fileDelleFrasi).toHaveLength(3);
+        expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
     it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB e 32 byte: i 32 sono dei rimedi provvisori di tastiera', () => {

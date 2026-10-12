@@ -47,6 +47,9 @@ function eUnaFermata(elemento: HTMLElement): boolean {
     return true;
 }
 
+/** Un `Dialog` aperto che non è un'anteprima, dentro il suo velo. */
+const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
+
 /**
  * Chi trattiene il fuoco adesso: l'ultimo `Dialog` aperto, che sta sopra a tutto; senza, l'ultimo `DetailPanel`, ma solo
  * sotto la larghezza a cui il CSS del design system lo fa largo tutta la pagina (da lì in su Tab esce verso la pagina, come
@@ -59,21 +62,22 @@ function chiTrattieneIlFuoco(): HTMLElement | null {
     }
     const aperti = (selettore: string): HTMLElement | null => [...document.querySelectorAll<HTMLElement>(selettore)].pop() ?? null;
 
-    return aperti('.zr-scrim:not(.is-inline) > .zr-dialog')
+    return aperti(DIALOGO_APERTO)
         ?? (typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
 }
 
 /**
  * Con un `Dialog` aperto, o un `DetailPanel` a tutta pagina, Tab resta dentro: dall'ultima fermata torna alla prima, dalla
  * prima all'ultima con Maiusc, e da fuori entra. Nel mezzo il Tab resta del browser, e degli altri tasti non si tocca niente.
- * Con un `Menu` aperto, che ha le sue frecce e il suo Esc, il gestore non interviene: si guarda tutto il documento, come fa
- * il design system, perché un menu può stare accanto al dialogo e non dentro. E se qualcuno ha già tenuto il Tab per sé — un
- * campo che ci accetta un suggerimento — il fuoco non si sposta.
+ * Con un `Menu` aperto dentro il dialogo, che ha le sue frecce e il suo Esc, il gestore non interviene; lo stesso col fuoco in
+ * un menu che sta accanto al dialogo e non dentro. Un menu che sta altrove nella pagina, senza il fuoco, non spegne niente.
+ * Se qualcuno ha già tenuto il Tab per sé — un campo che ci accetta un suggerimento — il fuoco non si sposta, e Tab con Ctrl,
+ * Alt o Meta non è il giro del fuoco: resta del browser.
  */
 function tabRestaDentro(tasto: KeyboardEvent): void {
-    const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented ? chiTrattieneIlFuoco() : null;
+    const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey ? chiTrattieneIlFuoco() : null;
 
-    if (dentro === null || document.querySelector('.zr-menu') !== null) {
+    if (dentro === null || dentro.querySelector('.zr-menu') !== null || document.activeElement?.closest('.zr-menu')) {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
@@ -94,18 +98,18 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
     }
 }
 
-/** Il velo di un `Dialog` che non è un'anteprima. */
-const VELO = '.zr-scrim:not(.is-inline)';
-
 /**
  * Sotto 720 px un `DetailPanel` è largo tutta la pagina, e il CSS del design system lo mette un gradino sopra i dialoghi
- * (`--z-dialog` + 1): un `Dialog` aperto da dentro il pannello — una conferma — resta sotto, e non si vede. Quando il velo
- * di un dialogo entra nel documento sale di un gradino sopra il pannello, col token del design system. Vale a ogni
- * larghezza: sopra i 720 px il dialogo sta già sopra, e non cambia niente. Senza una cornice in pagina non fa niente.
+ * (`--z-dialog` + 1): un `Dialog` aperto da dentro il pannello — una conferma — resta sotto, e non si vede. Quando un dialogo
+ * entra nel documento il suo velo sale di un gradino sopra il pannello, col token del design system; un velo senza un dialogo
+ * dentro non è di un `Dialog` e resta com'è. Vale a ogni larghezza: sopra i 720 px pannello e velo stanno allo stesso
+ * livello, e il dialogo sta sopra perché viene dopo nel documento. È provvisorio come il resto, e sta qui, in uno stile
+ * scritto sull'elemento, perché il pacchetto non porta un CSS suo e la cascata del design system non si tocca: se questo
+ * modulo non arriva, sotto 720 px il dialogo resta sotto il pannello. Senza una cornice in pagina non fa niente.
  */
 function dialogoSopraIlPannello(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement && document.querySelector('.zr-shell') !== null) {
-        (aggiunto.matches(VELO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(VELO)).forEach((velo) => velo.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)'));
+        (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)'));
     }
 }
 
