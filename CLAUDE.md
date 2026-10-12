@@ -64,7 +64,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8, vitest 5.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
-  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
+  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
 - `zeiras/zr-auth` `^0.12.4`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:
@@ -74,6 +74,10 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
+- `resources/js/zeiras/componenti.js` esce da `npm run componenti`, dal bundle del design system (`resources/zeiras/bundle.js`): gli
+  stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`. Non si ritocca a mano, e a un
+  riallineamento che cambia il bundle si rigenera nello stesso commit; se il bundle ha un'altra forma lo script si ferma e si
+  riallinea lo script.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 

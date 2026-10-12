@@ -6,7 +6,7 @@ import { destinazioneDellaNotifica } from './notifiche';
 import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
-import { Zeiras } from './zeiras';
+import { Alert, AppShell, Button } from './zeiras/componenti';
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
 // il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
@@ -702,15 +702,15 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     };
     const conLAvviso = (
         <div className="zr-stack">
-            <Zeiras.Alert tone="warning" title={t.acceptanceTitle} action={<Zeiras.Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Zeiras.Button>}>
+            <Alert tone="warning" title={t.acceptanceTitle} action={<Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button>}>
                 {t.acceptanceText}
-            </Zeiras.Alert>
+            </Alert>
             <div>{pagina.children}</div>
         </div>
     );
 
     const shell = (
-        <Zeiras.AppShell
+        <AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
             // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva»:

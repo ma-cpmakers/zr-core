@@ -6,7 +6,8 @@
         "demo": "vite build --config vite.demo.config.ts",
         "test": "vitest run",
         "token": "node scripts/token-css.mjs",
-        "favicon": "node scripts/favicon.mjs"
+        "favicon": "node scripts/favicon.mjs",
+        "componenti": "node scripts/componenti.mjs"
     },
     "peerDependencies": {
         "react": "^19.3.0",

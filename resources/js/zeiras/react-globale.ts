@@ -1,8 +1,8 @@
 import * as React from 'react';
 
-// Il bundle del design system (resources/zeiras/bundle.js) legge `window.React` quando si valuta. Va scritto qui, in un modulo a
-// sé importato prima del bundle: nello stesso modulo gli import si valutano prima del corpo, e il bundle troverebbe `window.React`
-// vuoto.
+// `window.React` lo scrive l'ingresso di sempre (./index.ts), con `window.Zeiras`: un frontend può leggerli. Fino alla v1.14.0 lo
+// leggeva il bundle del design system (resources/zeiras/bundle.js) quando si valutava, e per questo sta in un modulo a sé,
+// importato per primo. I componenti di oggi (./componenti.js) importano React da sé e `window.React` non lo leggono.
 declare global {
     interface Window {
         React: typeof React;

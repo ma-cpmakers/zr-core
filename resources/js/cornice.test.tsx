@@ -6,6 +6,7 @@ import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi } from './lingue';
 import { Zeiras } from './zeiras';
+import * as componenti from './zeiras/componenti';
 
 // Sprint 1 · T6 (voce #1255), riscritto nello sprint 2 · T4 (voce #1256). La `Cornice` resa in un DOM finto coi dati della parte
 // server (`Cornice::dati()`): il menu Moduli dal registro incrociato con lo stato dei prodotti nel workspace, il pulsante del
@@ -199,7 +200,7 @@ describe('la Cornice', () => {
     ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2; sprint 21 · T1.1: il nome del menu, esteso e chiuso)', async (lingua, nomi, bookings, menu) => {
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
         expect(appShell.mock.lastCall?.[0].labels).toStrictEqual(testi(lingua));
         expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
@@ -264,7 +265,7 @@ describe('la Cornice', () => {
 
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
         const attesi = testi(lingua);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         // Con `piano`: la voce «Piano» è spenta di default (sprint 15 · T1), e il suo testo si legge solo col menu intero.
         await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} piano />);
 
@@ -319,7 +320,7 @@ describe('la Cornice', () => {
     });
 
     it('nome ed email della persona in cima al menu del profilo; il workspace dei dati come testo in cima alla sidebar, senza azienda né selettore (T4.3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={percorso} />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
@@ -376,7 +377,7 @@ describe('la Cornice', () => {
     it('con la prop `piano` il menu del profilo è quello del design system, con «Piano» fra Impostazioni e Azienda: ogni voce porta alla sua pagina su app.zeiras.com, «Piano» a quella del piano, ed «Esci» chiama il frontend (sprint 15 · T1.2)', async () => {
         const naviga = vi.fn();
         const esci = vi.fn();
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esci} piano />);
 
         // La lista è quella che l'`AppShell` mette da sé: la cornice non gliene dà una, e la prop resta alla cornice.
@@ -434,7 +435,7 @@ describe('la Cornice', () => {
 // dei dati (linea guida 15, passo 8).
 describe('il selettore «Azienda › workspace» e la campanella', () => {
     it('in cima alla sidebar azienda e workspace attivo; aperto, ogni azienda coi suoi workspace nell\'ordine dei dati, la ✓ sull\'attivo; senza `nuovo_workspace` nei dati, nessun «Nuovo workspace» (T2.1)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
 
         const pulsante = uno('.zr-ws-switch');
@@ -483,7 +484,7 @@ describe('il selettore «Azienda › workspace» e la campanella', () => {
         // Senza il controllo l'`AppShell` segnerebbe attivo il primo workspace della prima azienda: un workspace sbagliato.
         ['col workspace dei dati in nessuna azienda', [aziende[0], { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }] }]],
     ])('%s il workspace resta testo, senza selettore (T2.3)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
@@ -521,7 +522,7 @@ describe('il colore di ogni workspace nel selettore', () => {
     }
 
     it('ogni workspace ha il pallino del suo tono, quello che la regola esportata dà per il suo id (sprint 17 · T4.1, T4.6)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
 
         expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'plum']]);
@@ -538,7 +539,7 @@ describe('il colore di ogni workspace nel selettore', () => {
         ['con un workspace in più prima di lui, e la sua azienda per prima', [{ ...acme, workspace: [{ id: 'ws-9', nome: 'Assistenza', slug: 'acme-assistenza' }, vendite, marketing] }, zeta], 'acme-marketing'],
         ['da solo nella sua azienda', [{ ...acme, workspace: [marketing] }], 'acme-marketing'],
     ])('%s il workspace «ws-4» ha lo stesso tono (sprint 17 · T4.1)', async (_caso, aziendeDeiDati, slug) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Marketing', slug }, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         const workspace = appShell.mock.lastCall?.[0].companies?.flatMap((azienda) => azienda.workspaces).filter((ws) => ws.slug === slug);
@@ -546,7 +547,7 @@ describe('il colore di ogni workspace nel selettore', () => {
     });
 
     it('lo stesso nome, lo stesso slug e lo stesso posto con un altro id: un altro tono (sprint 17 · T4.1)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: [zeta, { ...acme, workspace: [vendite, { ...marketing, id: 'ws-5' }] }] }} onLogout={esciSenzaEffetto} />);
 
         expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'sky']]);
@@ -558,7 +559,7 @@ describe('il colore di ogni workspace nel selettore', () => {
         ['con un id che non è un testo', 5],
         ['con un id null', null],
     ])('un workspace %s non ha tono, e il suo pallino è quello che il design system mette da sé; gli altri hanno il loro (sprint 17 · T4.4)', async (_caso, id) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         // Nome e slug sono testi che come id avrebbero un tono (sky e coral): senza id non se ne ricava uno da lì, né dal posto.
         const senzaId = { nome: 'ws-5', slug: 'ws-2', ...(id === undefined ? {} : { id: id as string }) };
         await mostra(<Cornice dati={{ ...dati, aziende: [{ ...acme, workspace: [marketing, senzaId] }] }} onLogout={esciSenzaEffetto} />);
@@ -617,7 +618,7 @@ describe('«Nuovo workspace» in fondo al selettore', () => {
         // Lo stesso workspace in due aziende: l'`AppShell` mostra in cima l'ultima, e conta quella.
         ['vero nella prima delle due aziende che hanno quel workspace e falso nell\'ultima', [{ ...holding, nuovo_workspace: true }, { ...acme, nuovo_workspace: false }]],
     ])('con `nuovo_workspace` %s, nell\'azienda del workspace dei dati il pulsante non c\'è (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe('Acme');
@@ -638,7 +639,7 @@ describe('«Nuovo workspace» in fondo al selettore', () => {
         ['con un elenco vuoto', []],
         ['col workspace dei dati in nessuna azienda', [{ ...zeta, nuovo_workspace: true }, { id: '3', nome: 'Acme', workspace: [{ nome: 'Vendite', slug: 'acme-vendite' }], nuovo_workspace: true }]],
     ])('%s il workspace resta testo e la cornice non dà «Nuovo workspace» all\'`AppShell`, nemmeno se ogni azienda lo permette (sprint 19 · T1.2)', async (_caso, aziendeDeiDati) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, aziende: aziendeDeiDati }} onLogout={esciSenzaEffetto} />);
 
         expect(uno('.zr-workspace')?.textContent).toBe('Marketing');
@@ -919,7 +920,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     it('all\'`AppShell` `forMe` arriva solo quando `per_me` è un booleano, ed è quel booleano: con `null`, senza la chiave o con un valore che non è un booleano la chiave non c\'è, nemmeno con `undefined` o col valore com\'è (sprint 20 · T1.3; review, R3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await apriSu([
             conInPiu('uat-n51', { per_me: true }),
             conInPiu('uat-n52', { per_me: false }),
@@ -1037,7 +1038,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     it('senza aver aperto la campanella «Segna tutte come lette» non c\'è, anche con 12 non lette nei dati (sprint 5 · T3.5; sprint 6 · T4.2)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const fetchFinto = rotte(notificheDelServer);
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 12 }} onLogout={esciSenzaEffetto} />);
@@ -1056,7 +1057,7 @@ describe('il pannello delle notifiche', () => {
         ['con le notifiche tutte lette e zero non lette nei dati', 0, async () => risposta({ data: tutteLette })],
         ['con le notifiche tutte lette e nessun numero nei dati', undefined, async () => risposta({ data: tutteLette })],
     ])('col pannello %s «Segna tutte come lette» non c\'è (sprint 5 · T3.5; sprint 6 · T4.2)', async (_caso, nonLetteNeiDati, elenco) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         vi.stubGlobal('fetch', vi.fn(elenco));
         await mostra(<Cornice dati={{ ...dati, non_lette: nonLetteNeiDati }} onLogout={esciSenzaEffetto} />);
 
@@ -3417,7 +3418,7 @@ describe('la ricerca', () => {
         expect(senzaWorkspace.stato).toBe('ready');
 
         // Prima della prima parola all'`AppShell` arriva ciò che arrivava: né un errore, né un caricamento, né un risultato.
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         expect([appShell.mock.lastCall?.[0].searchState, appShell.mock.lastCall?.[0].searchResults]).toStrictEqual(['ready', []]);
     });
@@ -3561,7 +3562,7 @@ describe('la voce attiva della barra', () => {
         ['con l\'id di una voce del prodotto', { active: 'elenco' }, { product: 'pm', nav: vociDiPm }, ['Elenco']],
         ['con un id che nessuna voce ha, dentro un prodotto', { active: 'uat-nessuna' }, { product: 'pm', nav: vociDiPm }, []],
     ])('senza null la voce segnata è quella della v1.2.2: %s (sprint 12 · T5.2)', async (_caso, attiva, pagina, attese) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} {...pagina} {...attiva} />);
 
         expect(segnate()).toStrictEqual(attese);
@@ -3570,7 +3571,7 @@ describe('la voce attiva della barra', () => {
     });
 
     it('nessuna voce può avere l\'id con cui la cornice dice «nessuna»: data una voce proprio con quell\'id, non è segnata, e l\'id è un altro (sprint 12 · T5.4)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const idDato = () => appShell.mock.lastCall?.[0].active;
         const voci = [...vociDiPm[0].items];
         const dati_: string[] = [];
@@ -3631,7 +3632,7 @@ describe('la voce attiva della barra', () => {
 // quella del frontend.
 describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decide la cornice', () => {
     it('con uno spread di props che `Cornice` non ha, quando la cornice non dà niente al loro posto all\'`AppShell` non arrivano (sprint 19 · review, R3)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const fuoriDalTipo = {
             companies: [{ id: 'x', name: 'X', workspaces: [{ slug: 'x', name: 'X' }] }],
             unreadCount: 99,
@@ -3688,7 +3689,7 @@ describe('chi non ha accettato i documenti legali', () => {
         ['una pagina di app.zeiras.com', undefined],
         ['una pagina di un modulo', 'pm'],
     ])('coi dati `accettazione_richiesta: true` %s esce con la cornice ridotta: nel menu Moduli solo la Dashboard, nessun numero sulla campanella, e sopra il contenuto, che resta, l\'avviso con titolo, frase e pulsante (sprint 24 · T2.1)', async (_quale, product) => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const delModulo: GruppoDiVoci[] = [{ group: 'Lavoro', items: [{ id: 'board', label: 'Le board', icon: 'board' }] }];
         const crea = [{ label: 'Nuova board' }];
         await mostra(<Cornice dati={ridotti} product={product} nav={delModulo} active="board" create={crea} flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
@@ -3719,7 +3720,7 @@ describe('chi non ha accettato i documenti legali', () => {
     it('la campanella è spenta: il pannello ha la frase e nessuna notifica, senza «Segna tutte come lette», «Riprova» e «Vedi tutte», e la cornice non chiama nessuna delle sue rotte (sprint 24 · T2.2)', async () => {
         const fetchFinto = vi.fn(async () => risposta({ data: [{ id: 'uat-n41', creata_il: '2026-10-06T11:55:00+00:00', letta: false, app: 'pm' }], workspace: 'acme-marketing' }));
         vi.stubGlobal('fetch', fetchFinto);
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={ridotti} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
@@ -3897,7 +3898,7 @@ describe('chi non ha accettato i documenti legali', () => {
     });
 
     it('`accettazione_richiesta: false` vale come assente, e senza la chiave e senza il segnale l\'`AppShell` riceve le prop di prima: né una in più né una in meno (sprint 24 · T2.6)', async () => {
-        const appShell = vi.spyOn(Zeiras, 'AppShell');
+        const appShell = vi.spyOn(componenti, 'AppShell');
         const date = async (deiDati: DatiDellaCornice) => {
             await mostra(<Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
