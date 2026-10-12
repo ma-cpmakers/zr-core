@@ -82,9 +82,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 17,9 KB | 19,1 KB | 2,5 KB |
+| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,0 KB | 19,1 KB | 2,5 KB |
 | la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 19,1 KB | 2,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,1 KB | 19,1 KB | 2,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 19,1 KB | 2,5 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre pezzi, uno per lingua (circa 0,85 KB l'uno con gzip), che la cornice chiede quando si apre
@@ -493,6 +493,13 @@ cornice === null ? pagina : (
   eliminata, è la frase con solo chi; senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di
   prima col nome sotto. Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c'è. La board
   su cui è successo non compare: il contratto del 12/10/2026 non la dà.
+  Dalla `v1.20.0` i due nomi, che ha scritto una persona, sono difesi prima di entrare in pagina. Restano testo: mai
+  HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando. Sono puliti: senza i caratteri che cambiano
+  la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
+  che pulito è vuoto vale come un nome che manca, e l'avatar dice lo stesso nome pulito. E nella frase ognuno sta fra
+  U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno: chi confronta un titolo con un
+  testo scritto a mano li conti. Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuterà
+  il backoffice alla scrittura.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
@@ -796,7 +803,7 @@ lingua («Novità nel workspace»), mai il codice del tipo. Dalla `v1.10.0` si i
 riferisce: è la riga che il pannello scrive sotto il titolo quando il nome non è già nella frase. `notifica` è la notifica
 com'è, del backoffice o di
 `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`. Di norma dà `risorsa_nome` senza gli spazi
-intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
+intorno e, dalla `v1.20.0`, pulito come nel pannello (vedi «Le notifiche»); per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
 (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
 c'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del
 registro: lì la riga non si mostra, e il codice mai.

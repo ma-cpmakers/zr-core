@@ -260,9 +260,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // pagine di prova di prima restano com'erano: una dice chi e che cosa, una solo chi, e una senza chi ha il titolo di sempre
     // col nome sotto. Sono lette, e stanno fra quelle di oggi e quella di ieri.
     it.each([
-        ['it', [{ titolo: 'Marta Rossi ha modificato la scheda «UAT Preparare il lancio»' }, { titolo: 'Bruno Neri ha eliminato una scheda' }, { titolo: 'Scheda modificata', sotto: 'UAT Rivedere il piano editoriale' }]],
-        ['en', [{ titolo: 'Marta Rossi changed the card “UAT Preparare il lancio”' }, { titolo: 'Bruno Neri deleted a card' }, { titolo: 'Card changed', sotto: 'UAT Rivedere il piano editoriale' }]],
-        ['es', [{ titolo: 'Marta Rossi ha modificado la tarjeta «UAT Preparare il lancio»' }, { titolo: 'Bruno Neri ha eliminado una tarjeta' }, { titolo: 'Tarjeta modificada', sotto: 'UAT Rivedere il piano editoriale' }]],
+        ['it', [{ titolo: '\u{2068}Marta Rossi\u{2069} ha modificato la scheda «\u{2068}UAT Preparare il lancio\u{2069}»' }, { titolo: '\u{2068}Bruno Neri\u{2069} ha eliminato una scheda' }, { titolo: 'Scheda modificata', sotto: 'UAT Rivedere il piano editoriale' }]],
+        ['en', [{ titolo: '\u{2068}Marta Rossi\u{2069} changed the card “\u{2068}UAT Preparare il lancio\u{2069}”' }, { titolo: '\u{2068}Bruno Neri\u{2069} deleted a card' }, { titolo: 'Card changed', sotto: 'UAT Rivedere il piano editoriale' }]],
+        ['es', [{ titolo: '\u{2068}Marta Rossi\u{2069} ha modificado la tarjeta «\u{2068}UAT Preparare il lancio\u{2069}»' }, { titolo: '\u{2068}Bruno Neri\u{2069} ha eliminado una tarjeta' }, { titolo: 'Tarjeta modificada', sotto: 'UAT Rivedere il piano editoriale' }]],
     ])('con `?frasi=1` ci sono tre notifiche di Project Management, e nella lingua "%s" la prima dice chi e che cosa, la seconda solo chi, la terza il titolo col nome sotto (sprint 29 · T3.1)', async (lingua, righe) => {
         await rotte(false, '?frasi=1');
         const { rigaDellaNotifica } = await import('../js/index');

@@ -145,9 +145,9 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     // Sprint 29 · T3 (voce #1865): è ciò che la riga 3 della UAT guarda in un browser. Con `?frasi=1` il pannello ha tre notifiche
     // di Project Management: la prima dice chi e che cosa in una riga sola, la seconda solo chi, la terza il titolo col nome sotto.
     it.each([
-        ['?frasi=1', [['Marta Rossi ha modificato la scheda «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminato una scheda', null], ['Scheda modificata', 'UAT Rivedere il piano editoriale']]],
-        ['?frasi=1&lingua=en', [['Marta Rossi changed the card “UAT Preparare il lancio”', null], ['Bruno Neri deleted a card', null], ['Card changed', 'UAT Rivedere il piano editoriale']]],
-        ['?frasi=1&lingua=es', [['Marta Rossi ha modificado la tarjeta «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminado una tarjeta', null], ['Tarjeta modificada', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1', [['\u{2068}Marta Rossi\u{2069} ha modificato la scheda «\u{2068}UAT Preparare il lancio\u{2069}»', null], ['\u{2068}Bruno Neri\u{2069} ha eliminato una scheda', null], ['Scheda modificata', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=en', [['\u{2068}Marta Rossi\u{2069} changed the card “\u{2068}UAT Preparare il lancio\u{2069}”', null], ['\u{2068}Bruno Neri\u{2069} deleted a card', null], ['Card changed', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=es', [['\u{2068}Marta Rossi\u{2069} ha modificado la tarjeta «\u{2068}UAT Preparare il lancio\u{2069}»', null], ['\u{2068}Bruno Neri\u{2069} ha eliminado una tarjeta', null], ['Tarjeta modificada', 'UAT Rivedere il piano editoriale']]],
     ])('con «%s», aperta la campanella, tre righe di Project Management: chi e che cosa senza riga di sotto, solo chi, e senza chi il titolo col nome sotto (sprint 29 · T3.1)', async (query, attese) => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         try {

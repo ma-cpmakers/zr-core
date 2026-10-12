@@ -216,19 +216,16 @@ export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[
 const TIPO_SU_UN_APP = 'com.zeiras.app.';
 
 /**
- * Il nome della cosa a cui si riferisce una notifica, in una lingua: la riga sotto il titolo. È il suo `risorsa_nome`, senza gli
- * spazi intorno. Per una notifica su un'app (un tipo `com.zeiras.app.…`) il backoffice dà lì il codice dell'app (`pm`), e il nome
+ * Il nome della cosa a cui si riferisce una notifica, in una lingua: la riga sotto il titolo. È il suo `risorsa_nome`, pulito
+ * (`nomePulito`). Per una notifica su un'app (un tipo `com.zeiras.app.…`) il backoffice dà lì il codice dell'app (`pm`), e il nome
  * è quello che il prodotto ha nel registro e nelle lingue, anche per un prodotto «Presto» o non attivo nel workspace: un codice che
  * il registro non ha, o la Dashboard, non dà niente, e il codice non si mostra mai. Niente (`undefined`) anche quando il nome non
  * c'è: `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo. È la funzione del pannello delle notifiche
  * della cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
  */
 export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: unknown }, lingua: string): string | undefined {
-    const nome = typeof notifica.risorsa_nome === 'string' ? notifica.risorsa_nome.trim() : '';
-    if (nome === '') {
-        return undefined;
-    }
-    if (typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
+    const nome = nomePulito(notifica.risorsa_nome);
+    if (nome === undefined || typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
         return nome;
     }
     const prodotto = prodottoDelRegistro(nome);
@@ -240,17 +237,40 @@ export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: 
 const POSTI_DEI_NOMI = /\{who\}|\{what\}/g;
 
 /**
+ * I caratteri che cambiano la direzione del testo (U+061C, U+200E, U+200F, U+202A-202E, U+2066-2069: la proprietà Unicode
+ * `Bidi_Control`): in un nome non servono, e uno lasciato aperto rovescia ciò che segue.
+ */
+const DI_DIREZIONE = /\p{Bidi_C}/gu;
+
+/**
+ * Gli spazi e i caratteri di controllo, anche più d'uno di fila: a capo, tabulazioni e gli altri di U+0000-001F e U+007F-009F
+ * (`Cc`), e i due separatori di riga e di capoverso, U+2028 e U+2029 (`Zl`, `Zp`).
+ */
+const SPAZI_E_CONTROLLI = /[ \p{Cc}\p{Zl}\p{Zp}]+/gu;
+
+/**
+ * Un nome del backoffice, pulito: lo ha scritto una persona, e fino a che il backoffice non lo rifiuta arriva com'è. Senza i
+ * caratteri di direzione; a capo, tabulazioni e gli altri caratteri di controllo sono uno spazio, più spazi di fila uno solo, e
+ * intorno nessuno. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto: è un nome che manca.
+ */
+export function nomePulito(valore: unknown): string | undefined {
+    return (typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').trim()) || undefined;
+}
+
+/**
  * Una frase delle lingue coi due nomi al posto di `{who}` e `{what}`. I nomi vengono dal backoffice e sono testo: entrano in un
  * passaggio solo, così un `{what}` scritto dentro il nome di una persona resta com'è, e da una funzione, così `$&` non è un
- * comando. Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa e il nome non c'è: in pagina non
- * arriva mai un posto vuoto.
+ * comando. Ogni nome sta fra U+2068 e U+2069, i caratteri che lo isolano dalla direzione della frase: un nome in arabo o in
+ * ebraico non sposta le parole intorno. Li mette questa funzione, sempre in coppia: i nomi arrivano già puliti (`nomePulito`).
+ * Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa e il nome non c'è: in pagina non arriva mai un
+ * posto vuoto.
  */
 export function fraseConINomi(frase: unknown, chi: string, cosa?: string): string | undefined {
     if (typeof frase !== 'string' || frase === '' || (cosa === undefined && frase.includes('{what}'))) {
         return undefined;
     }
 
-    return frase.replace(POSTI_DEI_NOMI, (posto) => (posto === '{who}' ? chi : (cosa ?? '')));
+    return frase.replace(POSTI_DEI_NOMI, (posto) => `\u2068${posto === '{who}' ? chi : (cosa ?? '')}\u2069`);
 }
 
 /**
@@ -357,23 +377,19 @@ export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, ling
  * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
  * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (una
  * cosa eliminata). In ogni altro caso — senza chi, o per un tipo senza frasi — è la riga di prima: `titoloConLeFrasi`, e sotto
- * `risorsaDellaNotifica`. È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
+ * `risorsaDellaNotifica`. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
+ * isolati (`fraseConINomi`). È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
  * stessi testi a chi mostra le notifiche in una pagina sua.
  */
 export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     const cosa = risorsaDellaNotifica(notifica, lingua);
-    const chi = typeof notifica.autore_nome === 'string' ? notifica.autore_nome.trim() : '';
-    if (chi !== '' && typeof notifica.tipo === 'string') {
-        const conCosa = cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
-        if (conCosa !== undefined) {
-            return { titolo: conCosa };
-        }
-        const conChi = fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi);
-        if (conChi !== undefined) {
-            return cosa === undefined ? { titolo: conChi } : { titolo: conChi, sotto: cosa };
-        }
+    // Le frasi sono di un tipo che è un testo: senza, chi ha fatto non entra nel titolo.
+    const chi = typeof notifica.tipo === 'string' ? nomePulito(notifica.autore_nome) : undefined;
+    const conCosa = chi === undefined || cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
+    if (conCosa !== undefined) {
+        return { titolo: conCosa };
     }
-    const titolo = titoloConLeFrasi(frasi, notifica.tipo, lingua);
+    const titolo = (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
 
     return cosa === undefined ? { titolo } : { titolo, sotto: cosa };
 }

@@ -5,7 +5,7 @@ import italiano from '../lingue/it.json';
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
-import { caricaLingue, frasiARichiesta, frasiDiOgniLingua, linguaDeiTesti, lingue, nomeDellaVoce, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { caricaLingue, frasiARichiesta, frasiDiOgniLingua, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, rigaConLeFrasi, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -639,6 +639,9 @@ describe('rigaDellaNotifica', () => {
     /** I testi e le frasi delle notifiche di ogni lingua, insieme: i due file che ha in resources/lingue. */
     const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', { ...italiano, ...frasiItaliane }], ['en', { ...inglese, ...frasiInglesi }], ['es', { ...spagnolo, ...frasiSpagnole }]];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
+    /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
+    const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
+    const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare'];
 
     it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management e dei due «per me» ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi (sprint 29 · T2.1, T2.2, T2.4)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./index');
@@ -646,7 +649,7 @@ describe('rigaDellaNotifica', () => {
         expect(frasi).toHaveLength(18);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
         for (const [tipo, perLingua] of frasi) {
-            const [conCosa, soloChi] = perLingua[lingua];
+            const [conCosa, soloChi] = [perLingua[lingua][0] === null ? null : coiNomiIsolati(perLingua[lingua][0], ...NOMI_DEI_CASI), coiNomiIsolati(perLingua[lingua][1], ...NOMI_DEI_CASI)];
             // Di una cosa eliminata il backoffice non dà il nome: se arrivasse, resta sotto, e non si legge due volte.
             expect([tipo, rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua)]).toStrictEqual([tipo, conCosa === null ? { titolo: soloChi, sotto: 'Lancio corso' } : { titolo: conCosa }]);
             for (const senzaNome of [null, '', ' \t\n ', undefined, 7]) {
@@ -660,21 +663,21 @@ describe('rigaDellaNotifica', () => {
         const { rigaDellaNotifica } = await import('./index');
         const titolo = (tipo: string, lingua: string, cosa: unknown = 'Lancio corso') => rigaDellaNotifica(diGiulia(tipo, cosa), lingua);
 
-        expect(titolo('com.zeiras.board.scheda.modificata', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato la scheda «Lancio corso»' });
-        expect(titolo('com.zeiras.board.scheda.modificata', 'en')).toStrictEqual({ titolo: 'Giulia Bianchi changed the card “Lancio corso”' });
-        expect(titolo('com.zeiras.board.scheda.modificata', 'es')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificado la tarjeta «Lancio corso»' });
-        expect(titolo('com.zeiras.board.scheda.modificata', 'it', null)).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato una scheda' });
-        expect(titolo('com.zeiras.board.scheda.eliminata', 'it', null)).toStrictEqual({ titolo: 'Giulia Bianchi ha eliminato una scheda' });
-        expect(titolo('com.zeiras.board.board.creata', 'it', 'Corsi 2026')).toStrictEqual({ titolo: 'Giulia Bianchi ha creato la board «Corsi 2026»' });
-        expect(titolo('com.zeiras.board.etichetta.modificata', 'it', 'Urgente')).toStrictEqual({ titolo: "Giulia Bianchi ha modificato l'etichetta «Urgente»" });
-        expect(titolo('board.scheda.assegnata', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ti ha assegnato la scheda «Lancio corso»' });
-        expect(titolo('board.commento.menzione', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ti ha menzionato in «Lancio corso»' });
-        expect(titolo('board.scheda.assegnata', 'en')).toStrictEqual({ titolo: 'Giulia Bianchi assigned you the card “Lancio corso”' });
-        expect(titolo('board.commento.menzione', 'es')).toStrictEqual({ titolo: 'Giulia Bianchi te ha mencionado en «Lancio corso»' });
-        expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.lista.creata', autore_nome: '  Giulia Bianchi ', risorsa_nome: '\tDa fare ' }, 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha creato la lista «Da fare»' });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificato la scheda «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'en')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi changed the card “Lancio corso”', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'es')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificado la tarjeta «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificato una scheda', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.scheda.eliminata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha eliminato una scheda', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.board.creata', 'it', 'Corsi 2026')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato la board «Corsi 2026»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.etichetta.modificata', 'it', 'Urgente')).toStrictEqual({ titolo: coiNomiIsolati("Giulia Bianchi ha modificato l'etichetta «Urgente»", ...NOMI_DEI_CASI) });
+        expect(titolo('board.scheda.assegnata', 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ti ha assegnato la scheda «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(titolo('board.commento.menzione', 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ti ha menzionato in «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(titolo('board.scheda.assegnata', 'en')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi assigned you the card “Lancio corso”', ...NOMI_DEI_CASI) });
+        expect(titolo('board.commento.menzione', 'es')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi te ha mencionado en «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.lista.creata', autore_nome: '  Giulia Bianchi ', risorsa_nome: '\tDa fare ' }, 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato la lista «Da fare»', ...NOMI_DEI_CASI) });
         // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
-        expect(titolo('com.zeiras.board.scheda.creata', 'es_ES')).toStrictEqual({ titolo: 'Giulia Bianchi ha creado la tarjeta «Lancio corso»' });
-        expect(titolo('com.zeiras.board.scheda.creata', 'fr')).toStrictEqual({ titolo: 'Giulia Bianchi created the card “Lancio corso”' });
+        expect(titolo('com.zeiras.board.scheda.creata', 'es_ES')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creado la tarjeta «Lancio corso»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.board.scheda.creata', 'fr')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi created the card “Lancio corso”', ...NOMI_DEI_CASI) });
     });
 
     it('senza chi — `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo — la riga è quella di prima: il titolo del tipo e il nome della cosa sotto (sprint 29 · T2.3)', async () => {
@@ -716,12 +719,14 @@ describe('rigaDellaNotifica', () => {
         const { rigaDellaNotifica } = await import('./index');
         const riga = (autore_nome: string, risorsa_nome: string | null, tipo = 'com.zeiras.board.scheda.modificata') => rigaDellaNotifica({ tipo, autore_nome, risorsa_nome }, 'it');
 
-        expect(riga('Ada {what}', 'Piano {who}')).toStrictEqual({ titolo: 'Ada {what} ha modificato la scheda «Piano {who}»' });
-        expect(riga('{who} {what}', '{what} {who}')).toStrictEqual({ titolo: '{who} {what} ha modificato la scheda «{what} {who}»' });
-        expect(riga("$& $1 $` $' $$", "$& $1 $` $' $$")).toStrictEqual({ titolo: "$& $1 $` $' $$ ha modificato la scheda «$& $1 $` $' $$»" });
-        expect(riga('<b>Ada</b>', '<i>Piano</i> & co.')).toStrictEqual({ titolo: '<b>Ada</b> ha modificato la scheda «<i>Piano</i> & co.»' });
-        expect(riga('Ada {what} $&', null)).toStrictEqual({ titolo: 'Ada {what} $& ha modificato una scheda' });
-        expect(riga('Ada {what}', 'Piano {who}', 'com.zeiras.board.scheda.eliminata')).toStrictEqual({ titolo: 'Ada {what} ha eliminato una scheda', sotto: 'Piano {who}' });
+        expect(riga('Ada {what}', 'Piano {who}')).toStrictEqual({ titolo: coiNomiIsolati('Ada {what} ha modificato la scheda «Piano {who}»', 'Ada {what}', 'Piano {who}') });
+        expect(riga('{who} {what}', '{what} {who}')).toStrictEqual({ titolo: coiNomiIsolati('{who} {what} ha modificato la scheda «{what} {who}»', '{who} {what}', '{what} {who}') });
+        expect(riga("$& $1 $` $' $$", "$& $1 $` $' $$")).toStrictEqual({ titolo: coiNomiIsolati("$& $1 $` $' $$ ha modificato la scheda «$& $1 $` $' $$»", "$& $1 $` $' $$") });
+        expect(riga('<b>Ada</b>', '<i>Piano</i> & co.')).toStrictEqual({ titolo: coiNomiIsolati('<b>Ada</b> ha modificato la scheda «<i>Piano</i> & co.»', '<b>Ada</b>', '<i>Piano</i> & co.') });
+        expect(riga('Ada {what} $&', null)).toStrictEqual({ titolo: coiNomiIsolati('Ada {what} $& ha modificato una scheda', 'Ada {what} $&') });
+        expect(riga('Ada {what}', 'Piano {who}', 'com.zeiras.board.scheda.eliminata')).toStrictEqual({ titolo: coiNomiIsolati('Ada {what} ha eliminato una scheda', 'Ada {what}'), sotto: 'Piano {who}' });
+        // Ogni nome è isolato una volta: due caratteri di apertura e due di chiusura, non di più.
+        expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
     it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 32, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7)', (_lingua, file) => {
@@ -746,9 +751,9 @@ describe('rigaDellaNotifica', () => {
         expect(conUnaInMeno('es')['notificationTitleWhoWhat.com.zeiras.board.scheda.modificata']).toBe('{who} changed the card “{what}”');
         expect(conUnaInMeno('es')['notificationTitleWho.com.zeiras.board.scheda.modificata']).toBe('{who} ha modificado una tarjeta');
         // Un file scritto male: una frase che chiede il nome della cosa non si usa quando il nome non c'è, e una senza testo mai.
-        expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi', 'Lancio corso')).toBe('Giulia Bianchi + Lancio corso');
+        expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi', 'Lancio corso')).toBe('\u{2068}Giulia Bianchi\u{2069} + \u{2068}Lancio corso\u{2069}');
         expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi')).toBeUndefined();
-        expect(fraseConINomi('{who} ha creato una scheda', 'Giulia Bianchi')).toBe('Giulia Bianchi ha creato una scheda');
+        expect(fraseConINomi('{who} ha creato una scheda', 'Giulia Bianchi')).toBe('\u{2068}Giulia Bianchi\u{2069} ha creato una scheda');
         expect([undefined, '', null, 7].map((frase) => fraseConINomi(frase, 'Giulia Bianchi', 'Lancio corso'))).toStrictEqual([undefined, undefined, undefined, undefined]);
     });
 
@@ -762,7 +767,7 @@ describe('rigaDellaNotifica', () => {
         expect(delleFrasi.titoloDellaNotifica).toBe(diSempre.titoloDellaNotifica);
         expect(perLeApp.risorsaDellaNotifica).toBe(diSempre.risorsaDellaNotifica);
         // Sincrone, come prima dello sprint 30: un testo, non una promessa (sprint 30 · T1.8).
-        expect(diSempre.rigaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', 'Lancio corso'), 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato la scheda «Lancio corso»' });
+        expect(diSempre.rigaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', 'Lancio corso'), 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificato la scheda «Lancio corso»', ...NOMI_DEI_CASI) });
         expect(diSempre.titoloDellaNotifica('com.zeiras.board.scheda.modificata', 'it')).toBe('Scheda modificata');
         expect(diSempre.risorsaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', ' Lancio corso '), 'it')).toBe('Lancio corso');
     });
@@ -874,5 +879,102 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             expect(Object.keys(frasiDelFile).filter((chiave) => !eUnaFrase(chiave))).toStrictEqual([]);
             expect(Object.keys(frasiDelFile).sort()).toStrictEqual(Object.keys(frasiInglesi).sort());
         }
+    });
+});
+
+// Sprint 30 · T2 (voce #1875). I due nomi di una notifica li scrive una persona e arrivano dal backoffice com'è stata scritta:
+// finché il backoffice non li rifiuta alla scrittura (sua voce #1880) la difesa è qui. I caratteri sono scritti col loro
+// codice, mai incollati: in un file di prova un carattere di direzione non si vede.
+describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
+    const INIZIO = '\u{2068}';
+    const FINE = '\u{2069}';
+    const isolato = (nome: string) => `${INIZIO}${nome}${FINE}`;
+    const modificata = 'com.zeiras.board.scheda.modificata';
+    const eliminata = 'com.zeiras.board.scheda.eliminata';
+    const DI_DIREZIONE = [0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069].map((codice) => String.fromCodePoint(codice));
+    const DI_CONTROLLO = [...Array.from({ length: 0x20 }, (_, codice) => codice), ...Array.from({ length: 0x21 }, (_, indice) => 0x7f + indice), 0x2028, 0x2029].map((codice) => String.fromCodePoint(codice));
+    const riga = (notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }) => rigaConLeFrasi(frasiItaliane, notifica, 'it');
+    const quanti = (testo: string, carattere: string) => testo.split(carattere).length - 1;
+
+    it('nel titolo ognuno dei due nomi sta fra U+2068 e U+2069, e solo i nomi: non la frase, non la riga di sotto (T2.1)', () => {
+        expect(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha modificato la scheda «${isolato('Lancio corso')}»` });
+        expect(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi' })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha modificato una scheda` });
+        // Una cosa eliminata non ha la frase col nome della cosa: il nome è la riga di sotto, da solo, e lì non c'è da isolarlo.
+        expect(riga({ tipo: eliminata, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha eliminato una scheda`, sotto: 'Lancio corso' });
+        // Senza chi il titolo è quello di prima: nessun nome dentro, nessun carattere di isolamento.
+        expect(riga({ tipo: modificata, risorsa_nome: 'Lancio corso' })).toStrictEqual({ titolo: frasiItaliane[`notificationTitle.${modificata}`], sotto: 'Lancio corso' });
+        for (const frasi of [frasiItaliane, frasiSpagnole, frasiInglesi]) {
+            const { titolo } = rigaConLeFrasi(frasi, { tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, 'it');
+
+            expect(titolo.startsWith(`${isolato('Giulia Bianchi')} `)).toBe(true);
+            expect(titolo).toContain(isolato('Lancio corso'));
+            expect([quanti(titolo, INIZIO), quanti(titolo, FINE)]).toStrictEqual([2, 2]);
+        }
+    });
+
+    it.each(DI_DIREZIONE.map((carattere) => [`U+${(carattere.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`, carattere]))('un nome con %s arriva nel titolo, nella riga di sotto e in `nomePulito` senza quel carattere, e la frase dopo il nome non resta dentro un cambio di direzione (T2.2)', (_, carattere) => {
+        const sporco = { autore_nome: `${carattere}Giu${carattere}lia Bianchi${carattere}`, risorsa_nome: `${carattere}Lancio${carattere} corso${carattere}` };
+
+        expect(riga({ tipo: modificata, ...sporco })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha modificato la scheda «${isolato('Lancio corso')}»` });
+        expect(riga({ tipo: eliminata, ...sporco })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha eliminato una scheda`, sotto: 'Lancio corso' });
+        expect(riga({ tipo: modificata, risorsa_nome: sporco.risorsa_nome })).toStrictEqual({ titolo: frasiItaliane[`notificationTitle.${modificata}`], sotto: 'Lancio corso' });
+        expect(nomePulito(sporco.autore_nome)).toBe('Giulia Bianchi');
+    });
+
+    it('la pulizia è del nome, non della frase delle lingue: un carattere di direzione scritto in una frase resta (T2.2)', () => {
+        const frasi: FrasiDelleNotifiche = { 'notificationTitleWho.uat.tipo': '\u{200F}{who} \u{202B}fatto\u{202C}', 'notificationTitleWhoWhat.uat.tipo': '{what}\u{200E}: {who}' };
+
+        expect(rigaConLeFrasi(frasi, { tipo: 'uat.tipo', autore_nome: 'Ada\u{202E}' }, 'it').titolo).toBe(`\u{200F}${isolato('Ada')} \u{202B}fatto\u{202C}`);
+        expect(rigaConLeFrasi(frasi, { tipo: 'uat.tipo', autore_nome: 'Ada\u{202E}', risorsa_nome: '\u{202E}Piano' }, 'it').titolo).toBe(`${isolato('Piano')}\u{200E}: ${isolato('Ada')}`);
+    });
+
+    it('a capo, tabulazioni e gli altri caratteri di controllo diventano uno spazio, e più spazi di fila uno solo (T2.3)', () => {
+        expect(DI_CONTROLLO).toHaveLength(32 + 33 + 2);
+        for (const carattere of DI_CONTROLLO) {
+            const codice = carattere.codePointAt(0);
+
+            expect([codice, nomePulito(`Giulia${carattere}Bianchi`)]).toStrictEqual([codice, 'Giulia Bianchi']);
+            expect([codice, nomePulito(`${carattere}Giulia Bianchi${carattere}`)]).toStrictEqual([codice, 'Giulia Bianchi']);
+        }
+        expect(nomePulito('  Giulia \r\n\t  Bianchi \u{2028} ')).toBe('Giulia Bianchi');
+        expect(riga({ tipo: modificata, autore_nome: 'Giulia\nBianchi', risorsa_nome: 'Lancio\t\tcorso\u{0085}Q4' })).toStrictEqual({ titolo: `${isolato('Giulia Bianchi')} ha modificato la scheda «${isolato('Lancio corso Q4')}»` });
+        // Ciò che non è un carattere di controllo né di direzione resta: uno spazio che non va a capo, un'emoji, un accento.
+        expect(nomePulito('Zoë\u{00A0}D\u{2019}Arcy 🎉')).toBe('Zoë\u{00A0}D\u{2019}Arcy 🎉');
+    });
+
+    it.each([
+        ['di soli spazi e a capo', ' \n\t '],
+        ['di soli caratteri di direzione', '\u{202E}\u{2066}\u{2069}'],
+        ['di caratteri di controllo e di direzione', '\u{0000}\u{202E} \u{009F}\u{200F}'],
+        ['vuoto', ''],
+    ])('un nome %s dopo la pulizia è un nome che manca: il titolo di prima, senza frase (T2.3)', (_, nome) => {
+        expect(nomePulito(nome)).toBeUndefined();
+        expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: 'Lancio corso' })).toStrictEqual(riga({ tipo: modificata, risorsa_nome: 'Lancio corso' }));
+        expect(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: nome })).toStrictEqual(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi' }));
+        expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: frasiItaliane[`notificationTitle.${modificata}`] });
+    });
+
+    it('ciò che non è un testo non è un nome (T2.3)', () => {
+        expect([undefined, null, 7, true, {}, ['Ada']].map(nomePulito)).toStrictEqual(Array(6).fill(undefined));
+    });
+
+    // Il taglio del nome a 60 caratteri (AC T2.4 del refining) non è in questa versione: il suo codice non stava nel tetto del JS
+    // d'ingresso (peso.test.ts) e non si può caricare a richiesta, perché lo usano anche le funzioni per le pagine. Decisione di
+    // zr-pm del 12/10/2026: è una voce a sé. Fino ad allora un nome lungo sta intero, e il tetto di lunghezza è del backoffice.
+    it('un nome lungo sta intero nel titolo, isolato, e nessun carattere si spezza: un\'emoji, una lettera con l\'accento composto', () => {
+        const titoloDi = (nome: string) => riga({ tipo: modificata, autore_nome: nome }).titolo;
+        const famiglia = '\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}';
+        const lungo = `${'a'.repeat(100)}${famiglia}${'e\u{0301}'.repeat(100)}`;
+
+        expect(titoloDi('a'.repeat(255))).toBe(`${isolato('a'.repeat(255))} ha modificato una scheda`);
+        expect(titoloDi(lungo)).toBe(`${isolato(lungo)} ha modificato una scheda`);
+        expect(nomePulito(lungo)).toBe(lungo);
+        expect(riga({ tipo: modificata, autore_nome: 'Ada', risorsa_nome: 'c'.repeat(255) }).titolo).toBe(`${isolato('Ada')} ha modificato la scheda «${isolato('c'.repeat(255))}»`);
+    });
+
+    it.each(['{{cosa}}', '%s', '{what}', '{who}', '$&', '$1', '$\'', '<b>x</b>', '&lt;'])('un nome «%s» resta nel titolo carattere per carattere (T2.5)', (nome) => {
+        expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha modificato la scheda «${isolato(nome)}»` });
+        expect(riga({ tipo: eliminata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha eliminato una scheda`, sotto: nome });
+        expect(nomePulito(nome)).toBe(nome);
     });
 });

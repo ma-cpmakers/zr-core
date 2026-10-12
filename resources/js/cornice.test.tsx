@@ -959,7 +959,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelectorAll('.zr-avatar, .zr-iconbox').length)).toStrictEqual(Array(9).fill(1));
         // Il nome di chi l'ha fatto sta nell'avatar e, dallo sprint 29, nel titolo (una frase con solo chi: qui il nome della
         // cosa non c'è); non al posto del nome della cosa, e un valore che non è un nome non entra da nessuna parte.
-        expect(titoli()).toStrictEqual(['Marta Rossi ha creato una cartella', ...Array(4).fill('Nuova cartella'), 'Bruno ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
+        expect(titoli()).toStrictEqual(['\u{2068}Marta Rossi\u{2069} ha creato una cartella', ...Array(4).fill('Nuova cartella'), '\u{2068}Bruno\u{2069} ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
         expect(secondeRighe()).toStrictEqual(Array(9).fill(null));
         expect(uno('.zr-notif-list')?.textContent?.match(/Marta|Bruno/g)).toStrictEqual(['Marta', 'Bruno']);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
@@ -987,8 +987,8 @@ describe('il pannello delle notifiche', () => {
         const t = testi('it');
 
         expect(titoli()).toStrictEqual([
-            'Giulia Bianchi ha modificato la scheda «Lancio corso»', 'Giulia Bianchi ha modificato una scheda', 'Giulia Bianchi ha modificato una scheda',
-            'Giulia Bianchi ha eliminato una scheda',
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
+            '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
             frasiItaliane['notificationTitle.crm.trattativa.assegnata'], frasiItaliane['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
         ]);
@@ -1000,8 +1000,8 @@ describe('il pannello delle notifiche', () => {
     });
 
     it.each([
-        ['en', 'Giulia Bianchi changed the card “Lancio corso”', 'Giulia Bianchi deleted a card'],
-        ['es', 'Giulia Bianchi ha modificado la tarjeta «Lancio corso»', 'Giulia Bianchi ha eliminado una tarjeta'],
+        ['en', '\u{2068}Giulia Bianchi\u{2069} changed the card “\u{2068}Lancio corso\u{2069}”', '\u{2068}Giulia Bianchi\u{2069} deleted a card'],
+        ['es', '\u{2068}Giulia Bianchi\u{2069} ha modificado la tarjeta «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha eliminado una tarjeta'],
     ])('con la lingua "%s" il pannello ha la frase di quella lingua (sprint 29 · T2.1)', async (lingua, conCosa, soloChi) => {
         vi.stubGlobal('fetch', rotte([
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
@@ -1019,9 +1019,35 @@ describe('il pannello delle notifiche', () => {
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Ada {what} $&', risorsa_nome: 'Piano {who} <b>B</b>' }),
         ]);
 
-        expect(titoli()).toStrictEqual(['Ada {what} $& ha modificato la scheda «Piano {who} <b>B</b>»']);
+        expect(titoli()).toStrictEqual(['\u{2068}Ada {what} $&\u{2069} ha modificato la scheda «\u{2068}Piano {who} <b>B</b>\u{2069}»']);
         expect(secondeRighe()).toStrictEqual([null]);
         expect(uno('.zr-notif-list')?.querySelector('b')).toBeNull();
+    });
+
+    // Sprint 30 · T2 (voce #1875). I caratteri sono scritti col loro codice, mai incollati.
+    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, intero, e l\'avatar dice lo stesso nome pulito (sprint 30 · T2.1, T2.2, T2.3)', async () => {
+        const lungo = `Maria ${'Addolorata '.repeat(6)}De Rossi`;
+        await apriSu([
+            conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia\u{202E} Bianchi', risorsa_nome: '\u{202E}Lancio\ncorso' }),
+            conInPiu('uat-n62', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: `${lungo}\u{200F}`, risorsa_nome: null }),
+            conInPiu('uat-n63', { tipo: 'com.zeiras.board.scheda.eliminata', autore_nome: '\tAda\r\nNeri ', risorsa_nome: 'Piano\u{2066} B' }),
+            // Un nome che pulito è vuoto è un nome che manca: il titolo di prima, l'icona di prima.
+            conInPiu('uat-n64', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: '\u{202E}\n\u{2069}', risorsa_nome: 'Lancio corso' }),
+        ]);
+        const avatar = (voce: HTMLElement) => voce.querySelector('.zr-avatar');
+
+        expect(lungo).toHaveLength(80);
+        expect(titoli()).toStrictEqual([
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»',
+            `\u{2068}${lungo}\u{2069} ha modificato una scheda`,
+            '\u{2068}Ada Neri\u{2069} ha eliminato una scheda',
+            'Scheda modificata',
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, 'Piano B', 'Lancio corso']);
+        expect(voci().map((voce) => avatar(voce)?.getAttribute('aria-label') ?? null)).toStrictEqual(['Giulia Bianchi', lungo, 'Ada Neri', null]);
+        // In tutto il pannello i soli caratteri di direzione sono le tre coppie che isolano i nomi nelle frasi.
+        expect(uno('.zr-notif-list')?.textContent?.match(/[\u{061C}\u{200E}\u{200F}\u{202A}-\u{202E}\u{2066}-\u{2069}]/gu)).toStrictEqual(['\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}']);
+        expect(uno('.zr-notif-list')?.innerHTML).not.toMatch(/[\u{0000}-\u{001F}\u{007F}-\u{009F}\u{2028}\u{2029}]/u);
     });
 
     it('`per_me` dice in quale scheda sta una notifica: `true` in «Per me» e in «Tutte», `false` solo in «Tutte»; `null`, senza la chiave o con un valore che non è un booleano, in tutte e due, come prima (sprint 20 · T1.3)', async () => {
@@ -5134,8 +5160,8 @@ describe('«Salta al contenuto»', () => {
 // chiesto e che il caso può fermare o rompere, file per file.
 describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint 30 · T1)', () => {
     const elenco = [{ id: 'uat-n81', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }];
-    const inItaliano = 'Giulia Bianchi ha creato la cartella «Lancio corso»';
-    const inSpagnolo = 'Giulia Bianchi ha creado la carpeta «Lancio corso»';
+    const inItaliano = '\u{2068}Giulia Bianchi\u{2069} ha creato la cartella «\u{2068}Lancio corso\u{2069}»';
+    const inSpagnolo = '\u{2068}Giulia Bianchi\u{2069} ha creado la carpeta «\u{2068}Lancio corso\u{2069}»';
     const titoli = () => tutti('.zr-notif-list .zr-notif-title').map((titolo) => titolo.textContent);
     const errore = () => uno('.zr-notif [role="alert"]');
     const inAttesa = () => uno('.zr-notif [role="status"]') !== null;

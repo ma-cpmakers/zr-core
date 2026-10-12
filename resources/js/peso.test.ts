@@ -37,6 +37,8 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * Il tetto sul JS d'ingresso dell'app che prende solo la cornice, con gzip: prima dello sprint 30 pesava 18,8 KB. Il refining
  * diceva 17,5: la misura è 17,9, perché con il primo `import()` di un'app Vite mette nel JS d'ingresso il suo aiuto per i pezzi
  * a richiesta (circa 0,7 KB con gzip, da solo), che un'app con le pagine a richiesta ha già. Il tetto è la misura, a 18.
+ * Con le difese dei due nomi (T2) la misura è 18,0: il tetto resta dov'è (decisione di zr-pm del 12/10/2026), e ciò che non
+ * ci sta non entra nel JS d'ingresso.
  */
 const TETTO_DELL_INGRESSO = 18 * 1024;
 

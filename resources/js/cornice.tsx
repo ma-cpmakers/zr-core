@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { caricaFrasi, frasiPronte, linguaDeiTesti, nomeDellaVoce, rigaConLeFrasi, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
+import { caricaFrasi, frasiPronte, linguaDeiTesti, nomeDellaVoce, nomePulito, rigaConLeFrasi, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
@@ -207,11 +207,6 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
     return new Intl.DateTimeFormat(lingua, { day: 'numeric', month: 'short', year: data.getFullYear() === adesso.getFullYear() ? undefined : 'numeric' }).format(data);
 }
 
-/** Un nome del backoffice, senza gli spazi intorno. Un testo vuoto o di soli spazi non è un dato, e nemmeno ciò che non è un testo. */
-function testoDaMostrare(valore: unknown): string | undefined {
-    return typeof valore === 'string' && valore.trim() !== '' ? valore.trim() : undefined;
-}
-
 /**
  * Una notifica della parte server nel pannello: il titolo e l'ora, nella lingua dei testi. Il titolo e la riga di sotto li dà
  * `rigaConLeFrasi`, con le frasi di quella lingua: per una notifica di Project Management con chi ha fatto, una frase con chi e
@@ -232,7 +227,7 @@ function nelPannello(notifica: NotificaDellaCornice, frasi: FrasiDelleNotifiche,
         id: notifica.id,
         title: riga.titolo,
         text: riga.sotto,
-        actor: testoDaMostrare(notifica.autore_nome),
+        actor: nomePulito(notifica.autore_nome),
         forMe: typeof notifica.per_me === 'boolean' ? notifica.per_me : undefined,
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
@@ -276,7 +271,7 @@ const FRA_DUE_TESTI = ' · ';
  * appeso. Dove il registro dice che una chiave porta un codice (`risorsa.codici`: il ruolo di un membro del workspace, l'esito
  * di un'opportunità chiusa) si legge il testo che quel codice ha nella lingua (`t`), mai il codice: un valore che non è uno di
  * quei codici non conta (l'esito `aperta` di un'opportunità aperta, che resta con pipeline e fase). Una chiave
- * senza codici porta un testo, e si mostra com'è arrivato (il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
+ * senza codici porta un testo, e si mostra com'è arrivato, pulito come un nome (`nomePulito`: il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
  * senza `contesto`, o per un tipo che nel registro non ha chiavi.
  */
 function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDelProdotto, t: TestiDellaCornice): string | undefined {
@@ -285,7 +280,7 @@ function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDel
         return undefined;
     }
     const presenti = chiavi.flatMap((chiave) => {
-        const testo = testoDaMostrare(Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined);
+        const testo = nomePulito(Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined);
         if (testo === undefined) {
             return [];
         }
