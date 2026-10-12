@@ -4864,6 +4864,37 @@ it('la guida nomina gli host fidati dove il modulo registra i middleware, e dice
         ->and(fileDelloZipDiHead())->toContain('src/Http/HostFidati.php')->not->toContain('tests/Feature/HostFidatiTest.php');
 });
 
+// Sprint 29 · T3 (voce #1865): dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa. Il README dice le
+// due famiglie di chiavi e i tipi che le hanno, la discesa quando un dato manca, che il nome della cosa sta una volta sola,
+// `rigaDellaNotifica` per chi mostra le notifiche in una pagina sua, e che la board non compare perché il contratto non la dà;
+// la guida dice come un modulo chiede le sue frasi. Il README non dice più che il nome della cosa è sempre la riga di sotto.
+it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il nome una volta sola, rigaDellaNotifica e la board che manca; la guida dice come un modulo chiede le sue (sprint 29 · T3.2, T3.3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'notifiche' => puntoDellaCornice($readme, 'Le notifiche'),
+        'fuori' => paragrafoFuoriDallaCornice($readme),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
+    'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
+    'i tipi che le hanno' => ['notifiche', 'Le hanno i diciotto tipi di Project Management: tutti la seconda, e la prima i quattordici che non sono una cosa eliminata'],
+    'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
+    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per una cosa eliminata, è la frase con solo chi'],
+    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di prima col nome sotto'],
+    'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
+    'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
+    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
+    'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
+    'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
+    'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
+    'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
+]);
+
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
     $chiamate = ['set'.'Value(', 'registroGiaLetto('.'null)'];
@@ -4912,34 +4943,3 @@ it('un caso che scrive un registro di prova e non lo toglie non lo lascia ai cas
 
     expect(Registro::voci())->toBe($diProva);
 });
-
-// Sprint 29 · T3 (voce #1865): dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa. Il README dice le
-// due famiglie di chiavi e i tipi che le hanno, la discesa quando un dato manca, che il nome della cosa sta una volta sola,
-// `rigaDellaNotifica` per chi mostra le notifiche in una pagina sua, e che la board non compare perché il contratto non la dà;
-// la guida dice come un modulo chiede le sue frasi. Il README non dice più che il nome della cosa è sempre la riga di sotto.
-it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il nome una volta sola, rigaDellaNotifica e la board che manca; la guida dice come un modulo chiede le sue (sprint 29 · T3.2, T3.3)', function (string $dove, string $frase) {
-    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    $testi = [
-        'notifiche' => puntoDellaCornice($readme, 'Le notifiche'),
-        'fuori' => paragrafoFuoriDallaCornice($readme),
-        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
-    ];
-
-    expect($testi[$dove])->not->toBe('')
-        ->and(str_contains($testi[$dove], $frase))->toBe(true);
-})->with([
-    'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
-    'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
-    'i tipi che le hanno' => ['notifiche', 'Le hanno i diciotto tipi di Project Management: tutti la seconda, e la prima i quattordici che non sono una cosa eliminata'],
-    'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
-    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per una cosa eliminata, è la frase con solo chi'],
-    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di prima col nome sotto'],
-    'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
-    'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
-    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
-    'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
-    'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
-    'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
-    'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
-    'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
-]);
