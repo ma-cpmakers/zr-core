@@ -95,7 +95,7 @@ final class Cornice
             'lingua' => $utente['lingua'],
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
-            ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
+            ...($letti ?? ['prodotti' => json_decode('{}'), 'aziende' => [], 'non_lette' => 0]),
             'aggiornati_il' => $lettura['segno'],
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
