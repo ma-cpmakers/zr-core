@@ -4814,3 +4814,5 @@ it('un caso che scrive un registro di prova e non lo toglie non lo lascia ai cas
 
     expect(Registro::voci())->toBe($diProva);
 });
+
+test('uat in fondo', fn () => expect(true)->toBe(true));
