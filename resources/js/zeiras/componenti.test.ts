@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { describe, expect, it } from 'vitest';
-import { genera } from '../../../scripts/componenti.mjs';
+import { genera } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
 import dichiarazioni from '../../zeiras/index.d.ts?raw';
 import * as componenti from './componenti';

@@ -1721,7 +1721,7 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
     'la pagina da cui si chiede è di un altro workspace' => [WORKSPACE_DELLE_NOTIFICHE, 'cornice/notifiche', ['Referer' => 'https://app.zeiras.com/w/uat-vendite/notifiche']],
 ]);
 
-// Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Il registro dei moduli lo legge solo l'elenco, che ne
+// Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Delle rotte delle notifiche, il registro dei moduli lo legge solo l'elenco, che ne
 // prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova, già
 // letto, e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto. Il registro di prova entra
 // dalla proprietà privata, con la reflection: nel codice che va in produzione non c'è un aggancio per i test (review della

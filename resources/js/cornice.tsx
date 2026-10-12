@@ -313,7 +313,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
 
 /**
  * I risultati di un gruppo vicini, perché l'`AppShell` ne apre uno a ogni cambio di gruppo: i gruppi nell'ordine del primo
- * risultato di ognuno, e dentro un gruppo l'ordine del backoffice (per titolo).
+ * risultato di ognuno, e dentro un gruppo l'ordine del backoffice.
  */
 function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     const gruppi = [...new Set(risultati.map((risultato) => risultato.group))];
@@ -752,8 +752,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // dopo l'accettazione zr-home porta alla Dashboard. La cornice non mostra testi legali, non dice quali documenti mancano e
     // non fa accettare niente.
     //
-    // L'avviso sta prima della pagina, in un contenitore suo, e la pagina resta dov'è: figlia diretta di `main.zr-main`, nello
-    // stesso posto dell'albero con e senza l'avviso (sotto, `children`). Così quando lo stato arriva o se ne va React non la
+    // L'avviso sta prima della pagina, in un contenitore suo, e la pagina resta dov'è — dentro `main.zr-main`, o dentro
+    // `div.zr-main-body` se ha il percorso: è lì che l'`AppShell` mette `children` —, nello stesso posto dell'albero con e senza
+    // l'avviso (sotto, `children`, che per questo è sempre un frammento: l'avviso o niente, poi la pagina). Così quando lo stato arriva o se ne va React non la
     // rimonta, e ciò che la persona ha scritto in un campo, il fuoco e lo scorrimento restano. Lo spazio fra avviso e pagina è
     // quello di `zr-stack`, che lo mette fra due figli: il secondo è un `div` vuoto, finché l'`AppShell` non ha un posto suo
     // per un avviso (richiesta al design system).

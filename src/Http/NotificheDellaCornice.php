@@ -132,7 +132,7 @@ final class NotificheDellaCornice
      * `aggiornati_il` è l'istante in cui la lettura comincia, preso prima di chiamare il backoffice: l'elenco è almeno fresco
      * quanto il suo segno. Di `dati` di ogni notifica passano, in `ids`, i soli id che alla cornice servono per aprire la sua
      * risorsa (`idsDellaNotifica()`): una notifica di un tipo che nel registro non ha una destinazione non ne ha, e se `dati` manca, o non è
-     * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte, il registro dei moduli lo legge solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
+     * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte delle notifiche, il registro dei moduli lo legge solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
      * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
      * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
      */
@@ -340,7 +340,7 @@ final class NotificheDellaCornice
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
      *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
-     * l'elenco (`ids`), che delle rotte è la sola a leggere il registro dei moduli. La lettura di una notifica risponde senza.
+     * l'elenco (`ids`), che delle rotte delle notifiche è la sola a leggere il registro dei moduli. La lettura di una notifica risponde senza.
      *
      * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
      */

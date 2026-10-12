@@ -22,9 +22,10 @@ import { rotteFinte } from './rotte-finte';
 // indirizzi che la cornice apre (account, notifiche, un altro workspace, un risultato della ricerca) non si aprono: si
 // scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts), `?viste=1` (quelle delle viste di una board),
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
-// assegnata e una eliminata, di Project Management) l'ultimo si legge anche in pagina, sotto le scelte.
+// assegnata e una eliminata, di Project Management; e la ricerca trova anche una scheda) l'ultimo si legge anche in pagina,
+// sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
-// nomina anche le sue fonti (contatti, aziende, opportunità). Non entra nel pacchetto.
+// nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts). Non entra nel pacchetto.
 // La cornice gliela dà chi la monta (`avvia`, in fondo): index.tsx, per index.html, quella dell'ingresso di sempre; app.tsx,
 // per app.html, quella dell'ingresso per le app, e sotto le scelte scrive se `window.Zeiras` c'è.
 

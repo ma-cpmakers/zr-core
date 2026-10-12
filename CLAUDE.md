@@ -80,6 +80,10 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`. Non si ritocca a mano, e a un
   riallineamento che cambia il bundle si rigenera nello stesso commit; se il bundle ha un'altra forma lo script si ferma e si
   riallinea lo script.
+- I pesi che il README dice (la tabella delle tre app di prova) sono quelli che misura `resources/js/peso.test.ts`, entro mezzo
+  KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
+  numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
+  build fatte nel caso, mai con un numero scritto a mano.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 

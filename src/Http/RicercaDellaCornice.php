@@ -15,7 +15,8 @@ use Zeiras\Core\Accettazione;
  * La ricerca della cornice (Ctrl/Cmd+K), per il browser: la parte server la gira a ricerca.crea (POST /v1/ricerca) col gettone
  * del workspace in cui la persona è entrata, e alla cornice dà di ogni risultato tipo, id, titolo e contesto, coi tipi e
  * nell'ordine del backoffice, la prima pagina. Di che prodotto è un risultato il contratto non lo dice: lo trova la cornice,
- * dal tipo, nel registro. Un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Coi
+ * dal tipo, nel registro. Dal registro dei moduli la parte server prende solo quali chiavi di `contesto` passano, tipo per
+ * tipo. Un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Coi
  * risultati la risposta dice di quale workspace sono (`workspace`): la sessione ha un workspace solo, e una pagina rimasta su
  * un altro (un'altra scheda) sa così dove si apre ciò che ha trovato. Se la persona non ha ancora accettato i documenti legali
  * in vigore il backoffice risponde 403 `accettazione_richiesta`, e la rotta lo stesso, col solo codice (Accettazione); se il
@@ -26,6 +27,15 @@ final class RicercaDellaCornice
 {
     /** Il codice del freno di ricerca.crea: nel problema di /v1 e nella risposta della rotta. */
     private const TROPPE_RICHIESTE = 'troppe_richieste';
+
+    /**
+     * Le voci del registro dei moduli, lette una volta per processo da quello del pacchetto
+     * (resources/registro/prodotti.json), sempre: nessun metodo e nessuna configurazione sceglie un altro file. Un test
+     * che vuole un registro di prova scrive questa proprietà con la reflection.
+     *
+     * @var list<array<string, mixed>>|null
+     */
+    private static ?array $registro = null;
 
     /**
      * POST /cornice/ricerca con `{q}`: `q` da 2 a 100 caratteri, come vuole ricerca.crea, senza gli spazi ai bordi (anche in
@@ -77,8 +87,9 @@ final class RicercaDellaCornice
     /**
      * Ciò che la cornice usa di un risultato di /v1: il tipo della risorsa, il suo id e il suo nome, tutti di testo, e il suo
      * contesto. Una risposta senza uno dei primi tre non è un risultato, ed è un guasto: mai un elenco più corto, mai un
-     * risultato a metà. Un tipo che zr-core non conosce passa: non mostrarlo è della cornice, che ha il registro. Il resto di
-     * ciò che il backoffice dà di un risultato, il suo indirizzo in /v1 compreso, resta nella parte server.
+     * risultato a metà. Un tipo che zr-core non conosce passa, senza contesto: non mostrarlo è della cornice, che ha il
+     * registro. Il resto di ciò che il backoffice dà di un risultato, il suo indirizzo in /v1 compreso, resta nella parte
+     * server.
      *
      * @return array{tipo: string, id: string, titolo: string, contesto: array<string, string>|null}
      */
@@ -89,28 +100,55 @@ final class RicercaDellaCornice
             throw new BackofficeNonRisponde('La risposta di POST /v1/ricerca non è un risultato di /v1.');
         }
 
-        return ['tipo' => $risultato['tipo'], 'id' => $risultato['id'], 'titolo' => $risultato['titolo'], 'contesto' => self::contesto($risultato['contesto'] ?? null)];
+        return ['tipo' => $risultato['tipo'], 'id' => $risultato['id'], 'titolo' => $risultato['titolo'], 'contesto' => self::contesto($risultato['tipo'], $risultato['contesto'] ?? null)];
     }
 
     /**
-     * Il contesto di un risultato, per riconoscerlo: i soli valori di testo non vuoti che il backoffice ha dato, con le loro
-     * chiavi e nel suo ordine (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase`
-     * di un'opportunità), oppure null se non ne resta nessuno. Un contesto che manca, o che non è un oggetto, non è un guasto:
-     * è un aiuto, e senza la cornice mostra il titolo. Una chiave che non è di testo non passa: in PHP la chiave numerica di
-     * un oggetto JSON è un numero, e con quelle sole la risposta porterebbe una lista al posto di un oggetto.
+     * Il contesto di un risultato, per riconoscerlo: di ciò che il backoffice ha dato, le sole chiavi che il registro dei
+     * moduli dà al tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline`
+     * e `fase` di un'opportunità), coi soli valori di testo non vuoti e nell'ordine del backoffice; oppure null se non ne
+     * resta nessuno. È una lista chiusa: al browser passa solo ciò che la cornice mostra, e una chiave che il backoffice
+     * aggiungesse domani non esce da sola, entra dal registro. Per questo un tipo a cui il registro non dà chiavi, o che il
+     * registro non ha, ha sempre null. Un contesto che manca, o che non è un oggetto, non è un guasto: è un aiuto, e senza la
+     * cornice mostra il titolo. Il confronto delle chiavi è esatto: in PHP la chiave numerica di un oggetto JSON è un numero, e
+     * non è nessuna di quelle del registro.
      *
      * @return array<string, string>|null
      */
-    private static function contesto(mixed $contesto): ?array
+    private static function contesto(string $tipo, mixed $contesto): ?array
     {
+        $chiavi = self::chiaviDelContesto($tipo);
         $testi = [];
 
         foreach (is_array($contesto) ? $contesto : [] as $chiave => $valore) {
-            if (is_string($chiave) && is_string($valore) && $valore !== '') {
+            if (in_array($chiave, $chiavi, true) && is_string($valore) && $valore !== '') {
                 $testi[$chiave] = $valore;
             }
         }
 
         return $testi === [] ? null : $testi;
+    }
+
+    /**
+     * Le chiavi di `contesto` che il registro dei moduli del pacchetto (resources/registro/prodotti.json) dà a un tipo di
+     * risultato, in `risorse[].contesto`: lo stesso file da cui il browser compone la seconda riga del risultato, così ciò che
+     * esce da qui è ciò che il browser mostra. Il tipo si cerca intero, fra le risorse di ogni voce. Nessuna chiave per un tipo
+     * che lì non ne ha, o che il registro non ha.
+     *
+     * @return list<string>
+     */
+    private static function chiaviDelContesto(string $tipo): array
+    {
+        self::$registro ??= json_decode((string) file_get_contents(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+
+        foreach (self::$registro as $voce) {
+            foreach ($voce['risorse'] ?? [] as $risorsa) {
+                if ($risorsa['tipo'] === $tipo) {
+                    return $risorsa['contesto'] ?? [];
+                }
+            }
+        }
+
+        return [];
     }
 }

@@ -1,4 +1,4 @@
-import { act, useEffect, type ReactElement } from 'react';
+import { act, Fragment, useEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
@@ -4068,8 +4068,8 @@ describe('chi non ha accettato i documenti legali', () => {
     /** Dati di sempre letti dopo: il loro segno è più avanti di quello di `diSempre` e di `ridotti`. */
     const lettiDopo: DatiDellaCornice = { ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' };
 
-    // T5.1 (S1, e ciò che restava di R2). L'avviso entra sopra la pagina e la pagina resta dov'è, figlia diretta di `main.zr-main`
-    // com'è fuori dallo stato ridotto: quando lo stato arriva o se ne va non si rimonta. Ciò che la persona ha scritto in un
+    // T5.1 (S1, e ciò che restava di R2). L'avviso entra sopra la pagina e la pagina resta dov'è — qui, senza percorso, figlia
+    // diretta di `main.zr-main` — com'è fuori dallo stato ridotto: quando lo stato arriva o se ne va non si rimonta. Ciò che la persona ha scritto in un
     // campo resta, col fuoco e con lo scorrimento, e gli effetti della pagina non ripartono. Lo stato arriva in due modi: coi
     // dati di una visita che tiene la pagina montata, o dal 403 di una rotta.
     it.each<[string, boolean]>([
@@ -4085,7 +4085,7 @@ describe('chi non ha accettato i documenti legali', () => {
         const riquadro = uno('main .uat-scorre') as HTMLElement;
         campo.value = 'una bozza';
         riquadro.scrollTop = 40;
-        /** Ciò che una pagina rimontata perderebbe, e dove sta la pagina: figlia diretta di `main.zr-main`. */
+        /** Ciò che una pagina rimontata perderebbe, e dove sta la pagina: senza percorso, figlia diretta di `main.zr-main`. */
         const dellaPagina = () => ({
             campo: uno('main input') === campo,
             scritto: (uno('main input') as HTMLInputElement | null)?.value,
@@ -4114,6 +4114,48 @@ describe('chi non ha accettato i documenti legali', () => {
         // E se ne va, coi dati letti dopo che non lo dicono.
         await mostra(laPagina(lettiDopo));
         expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
+    });
+
+    // Lettura della PR #56, R5 e R6. Dove sta la pagina: dentro `main.zr-main`, o dentro `div.zr-main-body` se ha il percorso (è
+    // lì che l'`AppShell` mette `children`). In tutti e due i posti l'avviso le sta subito prima, e la pagina non si rimonta. E
+    // ciò che la cornice dà all'`AppShell` come `children` è sempre un frammento, anche fuori dallo stato ridotto: il primo
+    // figlio è l'avviso, o niente; il secondo è la pagina, com'è.
+    it.each<[string, { label: string }[] | undefined, string]>([
+        ['senza percorso', undefined, 'main.zr-main'],
+        ['col percorso', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }], 'main.zr-main > div.zr-main-body'],
+    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, crumbs, dove) => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        const montata = vi.fn();
+        const pagina = <PaginaConUnCampo montata={montata} />;
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" crumbs={crumbs} onLogout={esciSenzaEffetto}>{pagina}</Cornice>;
+        /** Dove sta la pagina, che cosa ha accanto, e ciò che l'`AppShell` ha ricevuto come `children`. */
+        const dellaPagina = () => {
+            const dato = appShell.mock.lastCall?.[0].children as ReactElement<{ children: unknown[] }>;
+
+            return {
+                padre: uno('main form')?.parentElement === uno(dove),
+                accanto: [...(uno(dove)?.children ?? [])].map((figlio) => [figlio.tagName, figlio.querySelector('.zr-alert') !== null]),
+                frammento: dato.type === Fragment,
+                figli: dato.props.children.length,
+                senzaAvviso: dato.props.children[0] === null,
+                laPagina: dato.props.children[1] === pagina,
+                montaggi: montata.mock.calls.length,
+            };
+        };
+
+        await mostra(laPagina(diSempre));
+        const campo = uno('main input');
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['FORM', false]], frammento: true, figli: 2, senzaAvviso: true, laPagina: true, montaggi: 1 });
+
+        // Lo stato ridotto arriva: l'avviso entra subito prima della pagina, nello stesso posto.
+        await mostra(laPagina(ridotti));
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['DIV', true], ['FORM', false]], frammento: true, figli: 2, senzaAvviso: false, laPagina: true, montaggi: 1 });
+        expect(uno('main input')).toBe(campo);
+
+        // E se ne va.
+        await mostra(laPagina(lettiDopo));
+        expect(dellaPagina()).toStrictEqual({ padre: true, accanto: [['FORM', false]], frammento: true, figli: 2, senzaAvviso: true, laPagina: true, montaggi: 1 });
+        expect(uno('main input')).toBe(campo);
     });
 
     // T5.3 (S3). Il segnale di una rotta vale per i dati dello stesso workspace che non sono più recenti: non per quelli di un

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
-import { build } from 'vite';
+import { build, type Plugin } from 'vite';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
@@ -22,9 +22,12 @@ const DELLA_TABELLA = 'zr-table';
 const DEL_PULSANTE = 'zr-btn';
 const DELLA_CORNICE = 'zr-shell';
 
-// `dist/zr-core.js` sul tag v1.14.0, dove la cornice caricava il bundle del design system: 152.611 byte, 41.056 con gzip al
-// livello 9 (zlib di node, come qui; `gzip -9` da riga di comando ne dà 40.835).
-const GZIP_DELLA_V1_14_0 = 41_056;
+// Il design system intero in un'app, in due modi: com'era fino al tag v1.14.0, dal bundle (resources/zeiras/bundle.js, che
+// legge `window.React` e scrive `window.Zeiras`), e com'è ora, dal modulo che ne esce (resources/js/zeiras/index.ts). Sono i
+// testi di due ingressi senza un file: si costruiscono qui, uno accanto all'altro, con gli stessi strumenti, e si confrontano
+// fra loro. Mai con un numero scritto a mano: sarebbe un tetto sulla cornice che cresce, e cambierebbe con gli strumenti.
+const DAL_BUNDLE = ['resources/js/zeiras/react-globale.ts', 'resources/zeiras/bundle.js'];
+const DAL_MODULO = ['resources/js/zeiras/index.ts'];
 const MEZZO_KB = 512;
 
 interface Costruito {
@@ -47,6 +50,18 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
 async function app(file: string): Promise<Costruito> {
     return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
+}
+
+/** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
+async function appCheImporta(file: string[]): Promise<Costruito> {
+    const nome = 'virtuale:ingresso';
+    const senzaFile: Plugin = {
+        name: 'zr-core:ingresso-senza-file',
+        resolveId: (id) => (id === nome ? `\0${nome}` : null),
+        load: (id) => (id === `\0${nome}` ? file.map((uno) => `import ${JSON.stringify(delRepo(uno))};`).join('\n') : null),
+    };
+
+    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react(), senzaFile], build: { write: false, minify: true, rolldownOptions: { input: nome, external: FUORI } } }));
 }
 
 /** Un ingresso del pacchetto, costruito come lo costruisce `npm run build` (vite.config.ts). */
@@ -75,6 +90,8 @@ let perNome: Costruito;
 let diSempre: Costruito;
 let ingressoPerLeApp: Costruito;
 let ingressoDiSempre: Costruito;
+let dalBundle: Costruito;
+let dalModulo: Costruito;
 
 // vitest gira con NODE_ENV=test, e così il plugin di React renderebbe il JSX come in sviluppo, più pesante: qui si costruisce
 // come fa `vite build`, in produzione.
@@ -85,6 +102,8 @@ beforeAll(async () => {
     diSempre = await app('resources/demo/peso/oggi.ts');
     ingressoPerLeApp = await ingresso('resources/js/app.ts');
     ingressoDiSempre = await ingresso('resources/js/index.ts');
+    dalBundle = await appCheImporta(DAL_BUNDLE);
+    dalModulo = await appCheImporta(DAL_MODULO);
     vi.unstubAllEnvs();
 }, 120_000);
 
@@ -144,8 +163,12 @@ describe('chi installa come oggi non paga niente in più (T1.4)', () => {
         expect(volte(ingressoDiSempre.js, 'Zeiras è davvero gratis?')).toBe(1);
     });
 
-    it('e il JS non pesa, con gzip, più di 0,5 KB in più che sul tag v1.14.0', () => {
-        expect(gzip(ingressoDiSempre.js)).toBeLessThanOrEqual(GZIP_DELLA_V1_14_0 + MEZZO_KB);
+    // Lettura della PR #56, R2: il confronto è fra due build fatte qui, non con un numero scritto a mano.
+    it('e il design system dal modulo non pesa, con gzip, più di 0,5 KB in più che dal bundle, com\'era sul tag v1.14.0: due build fatte qui', () => {
+        // Le due build portano davvero il design system intero, ognuna una volta: altrimenti il confronto non direbbe niente.
+        expect([dalBundle, dalModulo].map((costruita) => DI_ALTRI.map((testo) => volte(costruita.js, testo)))).toStrictEqual([[1, 1, 1], [1, 1, 1]]);
+        expect(gzip(dalBundle.js)).toBeGreaterThan(20 * 1024);
+        expect(gzip(dalModulo.js)).toBeLessThanOrEqual(gzip(dalBundle.js) + MEZZO_KB);
     });
 });
 
