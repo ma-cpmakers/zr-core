@@ -1705,6 +1705,22 @@ it('né il README né i file che si installano dicono più che al backoffice la 
     'il servizio del browser: nessun «finché»' => ['resources/js/servizi.ts', 'finché il backoffice non dà un metodo col termine nel corpo', false],
 ]);
 
+// Letture della PR #56, N1 e N2: commenti rimasti a prima della `v1.15.0` in file che si installano. Dalla `v1.15.0` la pagina
+// non sta in un contenitore della cornice nemmeno nello stato ridotto, e di `contesto` escono dalla rotta le sole chiavi del
+// registro, coi soli testi.
+it('layout, servizi e registro del browser dicono nei commenti dove sta la pagina e che cosa arriva in `contesto` (sprint 26 · T1.1, T1.2)', function (string $file, string $frase, bool $ceLHa) {
+    expect(str_contains(commentiSuUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file)), $frase))->toBe($ceLHa);
+})->with([
+    'layout: nessun contenitore sotto l\'avviso' => ['resources/js/layout.tsx', 'in un contenitore sotto', false],
+    'layout: col percorso la pagina sta in div.zr-main-body' => ['resources/js/layout.tsx', 'o di `div.zr-main-body`, se ha il percorso', true],
+    'layout: nello stato ridotto l\'avviso sta subito prima' => ['resources/js/layout.tsx', 'le mette l\'avviso subito prima', true],
+    'servizi: non «con le sue chiavi»' => ['resources/js/servizi.ts', 'con le sue chiavi', false],
+    'servizi: non «ognuno un testo o null»' => ['resources/js/servizi.ts', 'ognuno un testo o `null`', false],
+    'servizi: le sole chiavi del registro' => ['resources/js/servizi.ts', 'le sole chiavi che il registro dà al tipo', true],
+    'servizi: mai un null fra i valori' => ['resources/js/servizi.ts', 'mai un `null` fra i valori', true],
+    'registro: le chiavi sono anche ciò che la parte server lascia uscire' => ['resources/js/registro.ts', 'le sole chiavi che la parte server lascia uscire', true],
+]);
+
 it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il README con quel punto e quello della ricerca scambiati di nome: la frase c'è, ma dove si legge della ricerca.
