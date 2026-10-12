@@ -4797,6 +4797,24 @@ it('il README dice, nel punto «Tab dentro un dialogo aperto» di «La cornice»
     'a richiesta' => ['Sta nello stesso pezzo a richiesta del punto sopra: se non arriva, Tab fa il giro di prima'],
 ]);
 
+// Sprint 31 · T3.7 (voce #1907): i casi che i due rimedi di tastiera non chiudevano (review della PR #63: R11, R13, R14, R19, S11
+// e S13). Il README li dice nei due punti dei rimedi, da quando, e dice quelli che restano fuori.
+
+it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i casi chiusi dalla `v1.21.0` e quelli che restano fuori (sprint 31 · T3.7)', function (string $punto, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, $punto), $frase))->toBe(true);
+})->with([
+    'la campanella chiusa col clic' => ['Il fuoco nel pannello delle notifiche', 'Dalla `v1.21.0` il fuoco torna sulla campanella anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS)'],
+    'il fuoco non si toglie' => ['Il fuoco nel pannello delle notifiche', 'A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie'],
+    'un dialogo senza fermate' => ['Tab dentro un dialogo aperto', 'Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al primo Tab, e Invio non preme più il pulsante della pagina dietro'],
+    'inerti e dettagli chiusi' => ['Tab dentro un dialogo aperto', 'ciò che sta dentro un elemento `inert`, o dentro un `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre'],
+    'iframe, video e audio' => ['Tab dentro un dialogo aperto', 'un `iframe`, e un `video` o un `audio` coi comandi, contano dove il browser li mette nel giro del Tab'],
+    'resta fuori: dentro un iframe' => ['Tab dentro un dialogo aperto', 'Restano fuori anche tre casi: da dentro un `iframe` i tasti sono della sua pagina, e Tab dall\'ultimo suo elemento esce dal dialogo (il Tab dopo rientra)'],
+    'resta fuori: lo shadow DOM' => ['Tab dentro un dialogo aperto', 'gli elementi dentro uno shadow DOM non si contano'],
+    'resta fuori: un tabindex positivo' => ['Tab dentro un dialogo aperto', 'un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l\'ordine del documento'],
+]);
+
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
