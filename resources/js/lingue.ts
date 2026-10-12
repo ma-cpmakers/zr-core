@@ -82,6 +82,13 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      * Quali tipi zr-core conosce lo dicono le chiavi dell'inglese: un tipo che l'inglese non ha non ha un titolo, in nessuna lingua.
      */
     [delTipo: `notificationTitle.${string}`]: string | undefined;
+    /**
+     * Il titolo di una notifica di quel tipo quando il backoffice dice chi ha fatto e su che cosa: una frase, con `{who}` al posto
+     * del nome di chi e `{what}` al posto del nome della cosa (`rigaDellaNotifica`). La ha chi ha anche il titolo.
+     */
+    [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
+    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per una cosa eliminata. */
+    [conChi: `notificationTitleWho.${string}`]: string | undefined;
 };
 
 /** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */
@@ -222,4 +229,49 @@ export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: 
     const prodotto = prodottoDelRegistro(nome);
 
     return prodotto && nomeDellaVoce(prodotto, lingua);
+}
+
+/** I posti dei due nomi in una frase delle lingue: `{who}` chi ha fatto, `{what}` la cosa. */
+const POSTI_DEI_NOMI = /\{who\}|\{what\}/g;
+
+/**
+ * Una frase delle lingue coi due nomi al posto di `{who}` e `{what}`. I nomi vengono dal backoffice e sono testo: entrano in un
+ * passaggio solo, così un `{what}` scritto dentro il nome di una persona resta com'è, e da una funzione, così `$&` non è un
+ * comando. Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa e il nome non c'è: in pagina non
+ * arriva mai un posto vuoto.
+ */
+export function fraseConINomi(frase: unknown, chi: string, cosa?: string): string | undefined {
+    if (typeof frase !== 'string' || frase === '' || (cosa === undefined && frase.includes('{what}'))) {
+        return undefined;
+    }
+
+    return frase.replace(POSTI_DEI_NOMI, (posto) => (posto === '{who}' ? chi : (cosa ?? '')));
+}
+
+/**
+ * Il titolo e la riga di sotto di una notifica, in una lingua. Quando il backoffice dice chi ha fatto (`autore_nome`) e le
+ * lingue hanno una frase per quel tipo — oggi le notifiche di Project Management — il titolo è la frase: con chi e che cosa
+ * (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è niente; o con solo chi
+ * (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (una cosa eliminata). In ogni
+ * altro caso — senza chi, o per un tipo senza frasi — è la riga di prima: `titoloDellaNotifica`, e sotto
+ * `risorsaDellaNotifica`. È la funzione del pannello delle notifiche della cornice: chi mostra le notifiche in una pagina sua ha
+ * gli stessi testi.
+ */
+export function rigaDellaNotifica(notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
+    const cosa = risorsaDellaNotifica(notifica, lingua);
+    const chi = typeof notifica.autore_nome === 'string' ? notifica.autore_nome.trim() : '';
+    if (chi !== '' && typeof notifica.tipo === 'string') {
+        const t = testi(lingua);
+        const conCosa = cosa === undefined ? undefined : fraseConINomi(t[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
+        if (conCosa !== undefined) {
+            return { titolo: conCosa };
+        }
+        const conChi = fraseConINomi(t[`notificationTitleWho.${notifica.tipo}`], chi);
+        if (conChi !== undefined) {
+            return cosa === undefined ? { titolo: conChi } : { titolo: conChi, sotto: cosa };
+        }
+    }
+    const titolo = titoloDellaNotifica(notifica.tipo, lingua);
+
+    return cosa === undefined ? { titolo } : { titolo, sotto: cosa };
 }

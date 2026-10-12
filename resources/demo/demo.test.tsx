@@ -138,6 +138,29 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         expect(scritti()).toStrictEqual([[`https://app.zeiras.com/legale/accetta?ritorno=${encodeURIComponent(`https://uat.example.com/${query}`)}`]]);
     });
 
+    // Sprint 29 · T3 (voce #1865): è ciò che la riga 3 della UAT guarda in un browser. Con `?frasi=1` il pannello ha tre notifiche
+    // di Project Management: la prima dice chi e che cosa in una riga sola, la seconda solo chi, la terza il titolo col nome sotto.
+    it.each([
+        ['?frasi=1', [['Marta Rossi ha modificato la scheda «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminato una scheda', null], ['Scheda modificata', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=en', [['Marta Rossi changed the card “UAT Preparare il lancio”', null], ['Bruno Neri deleted a card', null], ['Card changed', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=es', [['Marta Rossi ha modificado la tarjeta «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminado una tarjeta', null], ['Tarjeta modificada', 'UAT Rivedere il piano editoriale']]],
+    ])('con «%s», aperta la campanella, tre righe di Project Management: chi e che cosa senza riga di sotto, solo chi, e senza chi il titolo col nome sotto (sprint 29 · T3.1)', async (query, attese) => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await apri(query);
+            await clic(uno('.zr-bell'));
+            // Le rotte finte rispondono dopo 800 ms.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(800);
+            });
+
+            const righe = [...document.querySelectorAll('#pagina .zr-notif-list .zr-notif-item')].map((voce) => [voce.querySelector('.zr-notif-title')?.textContent ?? null, voce.querySelector('.zr-notif-sub')?.textContent ?? null]);
+            expect(righe.slice(2, 5)).toStrictEqual(attese);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('con «?accettazione=dopo» la pagina è quella di sempre finché una rotta non risponde: aperta la campanella la cornice passa allo stato ridotto, e il pannello ha la frase, non l\'errore di caricamento (sprint 24 · T2.5)', async () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         try {

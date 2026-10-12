@@ -82,9 +82,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip |
 |---|---|---|
-| solo la cornice, dall'ingresso per le app | 59,9 KB | 17,8 KB |
-| la cornice e due componenti per nome | 63,1 KB | 18,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 122,0 KB | 37,1 KB |
+| solo la cornice, dall'ingresso per le app | 69,3 KB | 18,8 KB |
+| la cornice e due componenti per nome | 72,5 KB | 20,0 KB |
+| la stessa cornice, dall'ingresso di sempre | 131,4 KB | 38,2 KB |
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -461,13 +461,24 @@ cornice === null ? pagina : (
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
-  backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»); con
+  backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»), tranne
+  quando il nome è già nella frase del titolo (più sotto); con
   `autore_nome` ha, al posto dell'icona, l'avatar con le iniziali di chi ha fatto; e `per_me` dice la scheda: `true` in
   «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due, perché `null` vuol dire che il backoffice non lo
   sa, non che la notifica è per altri. Un nome vuoto o di soli spazi non si mostra. Per una notifica su un'app (un tipo
   che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
   prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
-  registro non ha la seconda riga non c'è. Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
+  registro non ha la seconda riga non c'è.
+  Dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa, in una frase al posto del titolo
+  («Marta Rossi ha modificato la scheda «Lancio Q4»»). Per questo le lingue hanno due famiglie di chiavi in più:
+  `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo
+  `{who}` («Marta Rossi ha eliminato una scheda»). Le hanno i diciotto tipi di Project Management: tutti la seconda,
+  e la prima i quattordici che non sono una cosa eliminata. La frase si sceglie scendendo: con `autore_nome` e il
+  nome della cosa il titolo è la frase con chi e che cosa; con `autore_nome` e senza il nome, o per una cosa
+  eliminata, è la frase con solo chi; senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di
+  prima col nome sotto. Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c'è. La board
+  su cui è successo non compare: il contratto del 12/10/2026 non la dà.
+  Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
   caricamento fallisce, l'errore e «Riprova».
@@ -760,19 +771,27 @@ apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
 persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`. Dallo stesso ingresso si importa
 `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua: dà il titolo di una notifica di quel
-tipo nella lingua, ed è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso. `tipo`
-è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
+tipo nella lingua: è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto.
+`tipo` è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
 della lingua della persona, e vale come per la cornice: `it-IT` è `it`, e con una lingua che zr-core non ha il titolo è in
 inglese. I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell'inglese (`resources/lingue/en.json`):
 un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della
 lingua («Novità nel workspace»), mai il codice del tipo. Dalla `v1.10.0` si importa anche
 `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo: dà il nome della cosa a cui la notifica si
-riferisce, ed è la funzione che usa il pannello. `notifica` è la notifica com'è, del backoffice o di
+riferisce: è la riga che il pannello scrive sotto il titolo quando il nome non è già nella frase. `notifica` è la notifica
+com'è, del backoffice o di
 `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`. Di norma dà `risorsa_nome` senza gli spazi
 intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
 (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
 c'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del
-registro: lì la riga non si mostra, e il codice mai. Dalla `v1.11.0` si importa anche
+registro: lì la riga non si mostra, e il codice mai.
+Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina
+sua: dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello, con la frase di chi ha fatto
+quando il tipo ce l'ha — vedi «Le notifiche», più sopra —, ed è la funzione che usa il pannello. Della notifica legge
+`tipo`, `autore_nome` e `risorsa_nome`; `sotto` manca quando sotto il titolo non c'è niente da scrivere.
+`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono: chi le usa insieme ha la riga di prima, senza le
+frasi.
+Dalla `v1.11.0` si importa anche
 `destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua: dà l'indirizzo che il
 pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello. `notifica` è la
 notifica di `GET /cornice/notifiche`: la funzione ne legge `app`, `tipo` e `ids`; `slug` è il workspace dell'elenco, cioè
@@ -1202,6 +1221,60 @@ Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.goog
 
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
 immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.
+
+## Gli host fidati
+
+Dalla `v1.19.0` il pacchetto ha un middleware, `Zeiras\Core\Http\HostFidati`, che a una richiesta per un host che non è
+quello del modulo risponde `400`, prima delle rotte. L'host del modulo è quello di `APP_URL` e basta: il nome intero, senza
+la porta e senza distinguere le maiuscole. Niente sottodomini, e `config/zr-core.php` non ha una chiave per lui. zr-core
+non lo registra da sé, e installare il pacchetto non rifiuta niente: lo registra il frontend, in coda ai middleware globali,
+nel suo `bootstrap/app.php`, accanto alla riga delle intestazioni di sicurezza:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->prepend(\Zeiras\Core\Http\IntestazioniSicurezza::class);
+    $middleware->append(\Zeiras\Core\Http\HostFidati::class);
+})
+```
+
+Le intestazioni con `prepend`, gli host con `append`, e non il contrario. In coda ai globali il middleware gira dopo i
+proxy fidati di Laravel, e guarda l'host che l'app userebbe per scrivere i suoi indirizzi: l'intestazione `Host`, oppure
+`X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato. E gira dentro `IntestazioniSicurezza`: anche
+il `400` esce con le intestazioni di sicurezza. Registrato con `prepend` il `400` uscirebbe senza, e l'host detto da un
+proxy fidato non lo guarderebbe nessuno. I middleware globali girano prima di quelli del gruppo `web`: una richiesta
+rifiutata non apre una sessione e non lascia un cookie.
+
+- **A che cosa serve**: Laravel scrive i suoi indirizzi — un rimando, un collegamento in una mail — con l'host della
+  richiesta. Chi chiama il server con un altro nome se li farebbe scrivere col suo. È la seconda difesa: la prima è il
+  server web, che per un nome che non è il suo non dovrebbe rispondere. Il middleware di Laravel per gli host,
+  `TrustHosts`, non è lo stesso: di suo ammette anche i sottodomini di `APP_URL`, e in locale e nei test non fa niente.
+- **Che cosa risponde**: `400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell'host
+  ricevuto non ripete niente, né nella risposta né nel log: nel log lascia un avviso con l'host atteso.
+- **Che cosa risponde Laravel prima di lui**: non tutto arriva al middleware. In coda ai globali il middleware viene dopo
+  quelli di Laravel per il CORS, la manutenzione e la dimensione del corpo, che rispondono a qualunque host: a una
+  richiesta di preflight del CORS, a un corpo troppo grande (`413`), e con l'app in manutenzione (`503`). In manutenzione
+  con `php artisan down --redirect` un host falso prende un `302` scritto con quell'host, e con `--secret` chi chiama
+  l'indirizzo segreto riceve anche il cookie `laravel_maintenance`: finché l'app è in manutenzione la difesa è il server
+  web. Un host con caratteri che un nome non ha lo rifiuta Laravel prima: `400` col corpo di Laravel, e nel log nessun
+  avviso.
+- **La porta non entra nel confronto**: `Host: board.zeiras.com:8443` passa, e Laravel scrive i suoi indirizzi con quella
+  porta. La porta la tiene ferma il server web.
+- **Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev'essere il nome pubblico del modulo, scritto per
+  intero e con lo schema (`https://board.zeiras.com`). Se `APP_URL` non ha un host — è vuoto, o è senza lo schema — il
+  middleware non rifiuta niente e lo scrive nel log a ogni richiesta, finché non lo correggi. Se `APP_URL` manca del
+  tutto vale quello del `config/app.php` del modulo, di norma `http://localhost`, e il middleware rifiuta ogni richiesta
+  fatta col nome pubblico. Lo stesso se il nome ha lettere non ASCII — va scritto in Punycode, come lo manda il browser —
+  o finisce con un punto.
+- **Vale per ogni rotta, anche `/up`**: una sonda che chiama il server con l'indirizzo della macchina, e non col nome
+  del modulo, da quel momento prende `400`. Prima di registrarlo chiedi a chi tiene le sonde con quale nome chiamano.
+- **Riguarda le richieste in ingresso**: le chiamate del modulo ad `api.zeiras.com` non passano di qui.
+- **Nei test vale come in produzione**, senza eccezioni per l'ambiente. Laravel nei test chiama l'host che `APP_URL` ha
+  all'avvio, quindi i test passano senza toccare niente. Prende `400` un test che cambia `app.url` a metà e poi chiama una
+  pagina, o che chiama un indirizzo intero con un altro host: lì l'indirizzo della chiamata si scrive con l'host di
+  `app.url`.
+- **La prova dopo averlo registrato**, in produzione: dal nome pubblico una pagina risponde `200` e `/up` risponde `200`;
+  la stessa richiesta con un host falso nell'intestazione `Host` prende `400`. Se davanti al server c'è chi un altro nome
+  non lo fa arrivare, la prova con l'host falso si fa al server d'origine.
 
 ## Il precarico dei file d'ingresso
 

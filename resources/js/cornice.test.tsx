@@ -930,7 +930,7 @@ describe('il pannello delle notifiche', () => {
         expect(secondeRighe()).toStrictEqual([pm, reports, 'pm']);
     });
 
-    it('una notifica con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di quel nome; con `null`, un nome vuoto o di soli spazi, senza la chiave, o con un valore che non è un testo, resta l\'icona di prima; il nome non entra nel titolo né nella seconda riga (sprint 20 · T1.2)', async () => {
+    it('una notifica con `autore_nome` ha, al posto dell\'icona, l\'avatar con le iniziali di quel nome; con `null`, un nome vuoto o di soli spazi, senza la chiave, o con un valore che non è un testo, resta l\'icona di prima; il nome non entra nella seconda riga e, dallo sprint 29, sta nel titolo di una notifica di Project Management (sprint 20 · T1.2; sprint 29 · T2.2)', async () => {
         await apriSu([
             conInPiu('uat-n51', { autore_nome: 'Marta Rossi' }),
             conInPiu('uat-n52', { autore_nome: null }),
@@ -953,10 +953,71 @@ describe('il pannello delle notifiche', () => {
             null, ...(['board', 'board', 'board', 'board'] as const).map(tracciatoDi), null, tracciatoDi('bell'), tracciatoDi('board'), tracciatoDi('board'),
         ]);
         expect(voci().map((voce) => voce.querySelectorAll('.zr-avatar, .zr-iconbox').length)).toStrictEqual(Array(9).fill(1));
-        // Il nome di chi l'ha fatto sta nell'avatar: non nel titolo, e non al posto del nome della cosa.
-        expect(titoli()).toStrictEqual(Array(9).fill('Nuova cartella'));
+        // Il nome di chi l'ha fatto sta nell'avatar e, dallo sprint 29, nel titolo (una frase con solo chi: qui il nome della
+        // cosa non c'è); non al posto del nome della cosa, e un valore che non è un nome non entra da nessuna parte.
+        expect(titoli()).toStrictEqual(['Marta Rossi ha creato una cartella', ...Array(4).fill('Nuova cartella'), 'Bruno ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
         expect(secondeRighe()).toStrictEqual(Array(9).fill(null));
-        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/Marta|Bruno|UAT oggetto|example\.com/);
+        expect(uno('.zr-notif-list')?.textContent?.match(/Marta|Bruno/g)).toStrictEqual(['Marta', 'Bruno']);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
+    });
+
+    // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: quando il backoffice dà il nome
+    // di chi, il titolo è una frase delle lingue; il nome della cosa, se c'è, sta nella frase e non anche sotto.
+    it('una notifica di Project Management con chi e che cosa ha per titolo la frase, senza seconda riga; con solo chi la frase senza il nome della cosa; senza chi resta com\'era; un tipo senza frasi resta com\'era anche con chi (sprint 29 · T2.1, T2.2, T2.3, T2.5)', async () => {
+        const modificata = (id: string, inPiu: Record<string, unknown>) => conInPiu(id, { tipo: 'com.zeiras.board.scheda.modificata', ...inPiu });
+        await apriSu([
+            modificata('uat-n61', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
+            modificata('uat-n62', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            modificata('uat-n63', { autore_nome: ' Giulia Bianchi ', risorsa_nome: '   ' }),
+            conInPiu('uat-n64', { tipo: 'com.zeiras.board.scheda.eliminata', autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            // Senza chi: la riga di prima.
+            modificata('uat-n65', { autore_nome: null, risorsa_nome: 'Lancio corso' }),
+            modificata('uat-n66', { autore_nome: '  ', risorsa_nome: 'Lancio corso' }),
+            modificata('uat-n67', { risorsa_nome: 'Lancio corso' }),
+            modificata('uat-n68', { autore_nome: { nome: 'UAT oggetto' }, risorsa_nome: 'Lancio corso' }),
+            // Un tipo senza frasi: del CRM, di un'app, uno che zr-core non conosce.
+            conInPiu('uat-n69', { app: 'crm', tipo: 'crm.trattativa.assegnata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Rinnovo' }),
+            conInPiu('uat-n70', { app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
+            conInPiu('uat-n71', { tipo: 'com.zeiras.board.scheda.spostata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
+        ]);
+        const t = testi('it');
+
+        expect(titoli()).toStrictEqual([
+            'Giulia Bianchi ha modificato la scheda «Lancio corso»', 'Giulia Bianchi ha modificato una scheda', 'Giulia Bianchi ha modificato una scheda',
+            'Giulia Bianchi ha eliminato una scheda',
+            'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
+            t['notificationTitle.crm.trattativa.assegnata'], t['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', 'Project Management', 'Lancio corso']);
+        // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
+        expect(voci()[0].textContent?.split('Lancio corso')).toHaveLength(2);
+        expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual(['GB', 'GB', 'GB', 'GB', null, null, null, null, 'GB', 'GB', 'GB']);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»|UAT oggetto/);
+    });
+
+    it.each([
+        ['en', 'Giulia Bianchi changed the card “Lancio corso”', 'Giulia Bianchi deleted a card'],
+        ['es', 'Giulia Bianchi ha modificado la tarjeta «Lancio corso»', 'Giulia Bianchi ha eliminado una tarjeta'],
+    ])('con la lingua "%s" il pannello ha la frase di quella lingua (sprint 29 · T2.1)', async (lingua, conCosa, soloChi) => {
+        vi.stubGlobal('fetch', rotte([
+            conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
+            conInPiu('uat-n62', { tipo: 'com.zeiras.board.scheda.eliminata', autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+        ]));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([conCosa, soloChi]);
+        expect(secondeRighe()).toStrictEqual([null, null]);
+    });
+
+    it('un nome con dentro `{what}`, `{who}`, `$&` o `<b>` si legge in pagina com\'è scritto, una volta sola, e non diventa un elemento (sprint 29 · T2.6)', async () => {
+        await apriSu([
+            conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Ada {what} $&', risorsa_nome: 'Piano {who} <b>B</b>' }),
+        ]);
+
+        expect(titoli()).toStrictEqual(['Ada {what} $& ha modificato la scheda «Piano {who} <b>B</b>»']);
+        expect(secondeRighe()).toStrictEqual([null]);
+        expect(uno('.zr-notif-list')?.querySelector('b')).toBeNull();
     });
 
     it('`per_me` dice in quale scheda sta una notifica: `true` in «Per me» e in «Tutte», `false` solo in «Tutte»; `null`, senza la chiave o con un valore che non è un booleano, in tutte e due, come prima (sprint 20 · T1.3)', async () => {
@@ -1988,7 +2049,9 @@ describe('il pannello delle notifiche', () => {
     });
 
     it.each([['it', 'Ti è stata assegnata una scheda'], ['en', 'A card was assigned to you'], ['es', 'Se te ha asignado una tarjeta']])('con la lingua "%s", nel pannello una notifica di una scheda assegnata si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 24 · T3.1)', async (lingua, titolo) => {
-        vi.stubGlobal('fetch', rotteDelClic([{ data: delleSchede.slice(0, 1) }]));
+        // Dallo sprint 29 una notifica di Project Management con chi ha fatto ha per titolo una frase (T2): il titolo del tipo
+        // resta quello di una notifica senza `autore_nome`, ed è quella che questo caso guarda.
+        vi.stubGlobal('fetch', rotteDelClic([{ data: delleSchede.slice(0, 1).map((scheda) => ({ ...scheda, autore_nome: null })) }]));
         await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
@@ -2055,7 +2118,9 @@ describe('il pannello delle notifiche', () => {
     });
 
     it.each([['it', 'Ti hanno menzionato in un commento'], ['en', 'You were mentioned in a comment'], ['es', 'Te han mencionado en un comentario']])('con la lingua "%s", nel pannello una notifica di una menzione in un commento si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 26 · T6.1)', async (lingua, titolo) => {
-        vi.stubGlobal('fetch', rotteDelClic([{ data: [dellaMenzione] }]));
+        // Dallo sprint 29 con chi ha fatto il titolo è una frase (T2): il titolo del tipo resta quello di una notifica senza
+        // `autore_nome`, ed è quella che questo caso guarda.
+        vi.stubGlobal('fetch', rotteDelClic([{ data: [{ ...dellaMenzione, autore_nome: null }] }]));
         await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 

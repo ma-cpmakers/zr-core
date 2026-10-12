@@ -23,6 +23,7 @@ import { rotteFinte } from './rotte-finte';
 // scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts), `?viste=1` (quelle delle viste di una board),
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
 // assegnata, una menzione in un commento e una scheda eliminata, di Project Management; e la ricerca trova anche una scheda)
+// o `?frasi=1` (tre di Project Management: chi e che cosa in una frase, solo chi, e il titolo col nome sotto)
 // l'ultimo si legge anche in pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
 // nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts): fra le opportunità una è
@@ -96,7 +97,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
     }, [senzaCrm, crmAttivo, senzaModuli, lingua, aziende, nonLette, daAccettare]);
-    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1` o `?schede=1`, così le
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1`, `?schede=1` o `?frasi=1`, così le
     // altre pagine restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
@@ -130,7 +131,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
             {inFondo}
         </Cornice>
     );

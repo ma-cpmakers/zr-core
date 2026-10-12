@@ -2353,8 +2353,9 @@ it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CS
     preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
     preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
 
-    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo: i tre restano uno dopo l'altro.
-    expect(array_slice($titoli[1], -4))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Il precarico dei file d\'ingresso'])
+    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo, e dallo sprint 29 fra i due «Gli host
+    // fidati»: i primi tre restano uno dopo l'altro.
+    expect(array_slice($titoli[1], -5))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Gli host fidati', 'Il precarico dei file d\'ingresso'])
         ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
         // La più stretta una volta, dove il README dice lo scarto; quella di tutti due: da sola, e nel test che un modulo ricopia.
         ->and($scritte[0])->toBe([CSP_PIU_STRETTA_NEL_README, CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
@@ -2453,7 +2454,8 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'nome e argomenti' => ['`titoloDellaNotifica(tipo, lingua)`'],
     'da dove si importa, e per chi' => ['Dallo stesso ingresso si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['dà il titolo di una notifica di quel tipo nella lingua'],
-    'è la funzione del pannello' => ['è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso'],
+    // Sprint 29 · T4 (review della PR #62, R5): dalla `v1.19.0` il pannello usa `rigaDellaNotifica`, e questo è il titolo di prima.
+    'è il titolo senza la frase' => ['è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto'],
     'che cos\'è tipo' => ['`tipo` è il `tipo` della notifica, com\'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`)'],
     'che cos\'è lingua' => ['`lingua` è il codice della lingua della persona, e vale come per la cornice: `it-IT` è `it`'],
     'una lingua che zr-core non ha' => ['con una lingua che zr-core non ha il titolo è in inglese'],
@@ -2475,7 +2477,8 @@ it('il README dice, nel paragrafo di titoloDellaNotifica, la funzione che dà la
         ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
 })->with([
     'nome, argomenti e versione' => ['Dalla `v1.10.0` si importa anche `risorsaDellaNotifica(notifica, lingua)`, per la riga sotto il titolo'],
-    'che cosa dà' => ['dà il nome della cosa a cui la notifica si riferisce, ed è la funzione che usa il pannello'],
+    // Sprint 29 · T4 (review della PR #62, R5): è la riga di sotto solo quando il nome non è già nella frase del titolo.
+    'che cosa dà' => ['dà il nome della cosa a cui la notifica si riferisce: è la riga che il pannello scrive sotto il titolo quando il nome non è già nella frase'],
     'che cosa legge' => ['`notifica` è la notifica com\'è, del backoffice o di `GET /cornice/notifiche`: la funzione ne legge `tipo` e `risorsa_nome`'],
     'il nome com\'è' => ['Di norma dà `risorsa_nome` senza gli spazi intorno'],
     'una notifica su un\'app' => ['per una notifica su un\'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell\'app (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`'],
@@ -4826,6 +4829,96 @@ it('la guida nomina il precarico dove il modulo registra i middleware, e dice ch
         ->and(str_contains($passo, 'con Early Hints Cloudflare li manda prima della pagina'))->toBe(false)
         ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/IngressiPrecaricoTest.php');
 });
+
+it('il README ha il punto «Gli host fidati», che dice come si registra, che cosa controllare prima e la prova da fare dopo (sprint 29 · T1.10)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Gli host fidati');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $frase))->toBe(true);
+})->with([
+    'da quando, e la classe' => ['Dalla `v1.19.0` il pacchetto ha un middleware, `Zeiras\\Core\\Http\\HostFidati`, che a una richiesta per un host che non è quello del modulo risponde `400`, prima delle rotte'],
+    'l\'host di APP_URL e basta' => ['L\'host del modulo è quello di `APP_URL` e basta: il nome intero, senza la porta e senza distinguere le maiuscole. Niente sottodomini, e `config/zr-core.php` non ha una chiave per lui'],
+    'non parte da solo' => ['zr-core non lo registra da sé, e installare il pacchetto non rifiuta niente: lo registra il frontend, in coda ai middleware globali'],
+    'la riga delle intestazioni' => ['$middleware->prepend(\\Zeiras\\Core\\Http\\IntestazioniSicurezza::class);'],
+    'la riga degli host' => ['$middleware->append(\\Zeiras\\Core\\Http\\HostFidati::class);'],
+    'l\'ordine delle due righe' => ['Le intestazioni con `prepend`, gli host con `append`, e non il contrario'],
+    'perché in coda' => ['guarda l\'host che l\'app userebbe per scrivere i suoi indirizzi: l\'intestazione `Host`, oppure `X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato'],
+    'il 400 con le intestazioni' => ['anche il `400` esce con le intestazioni di sicurezza'],
+    'niente sessione e niente cookie' => ['I middleware globali girano prima di quelli del gruppo `web`: una richiesta rifiutata non apre una sessione e non lascia un cookie'],
+    'la seconda difesa' => ['È la seconda difesa: la prima è il server web, che per un nome che non è il suo non dovrebbe rispondere'],
+    'che cosa risponde' => ['`400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell\'host ricevuto non ripete niente, né nella risposta né nel log'],
+    'prima si legge APP_URL' => ['**Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev\'essere il nome pubblico del modulo, scritto per intero e con lo schema'],
+    'se APP_URL non ha un host' => ['Se `APP_URL` non ha un host — è vuoto, o è senza lo schema — il middleware non rifiuta niente e lo scrive nel log a ogni richiesta'],
+    'anche /up' => ['**Vale per ogni rotta, anche `/up`**: una sonda che chiama il server con l\'indirizzo della macchina, e non col nome del modulo, da quel momento prende `400`'],
+    'in ingresso' => ['**Riguarda le richieste in ingresso**: le chiamate del modulo ad `api.zeiras.com` non passano di qui'],
+    'nei test' => ['**Nei test vale come in produzione**, senza eccezioni per l\'ambiente. Laravel nei test chiama l\'host che `APP_URL` ha all\'avvio, quindi i test passano senza toccare niente'],
+    'un test che cambia app.url' => ['Prende `400` un test che cambia `app.url` a metà e poi chiama una pagina, o che chiama un indirizzo intero con un altro host'],
+    'la prova in produzione' => ['**La prova dopo averlo registrato**, in produzione: dal nome pubblico una pagina risponde `200` e `/up` risponde `200`; la stessa richiesta con un host falso nell\'intestazione `Host` prende `400`'],
+    // Sprint 29 · T4 (review della PR #62): che cosa risponde Laravel prima del middleware (R1, R2), la porta (R3), il
+    // middleware di Laravel per gli host (R6), e gli `APP_URL` con cui il middleware rifiuta tutti (R9).
+    'prima di lui i globali di Laravel (R1)' => ['In coda ai globali il middleware viene dopo quelli di Laravel per il CORS, la manutenzione e la dimensione del corpo, che rispondono a qualunque host'],
+    'in manutenzione (R1)' => ['con `php artisan down --redirect` un host falso prende un `302` scritto con quell\'host, e con `--secret` chi chiama l\'indirizzo segreto riceve anche il cookie `laravel_maintenance`'],
+    'in manutenzione difende il server web (R1)' => ['finché l\'app è in manutenzione la difesa è il server web'],
+    'un host con caratteri non validi (R2)' => ['Un host con caratteri che un nome non ha lo rifiuta Laravel prima: `400` col corpo di Laravel, e nel log nessun avviso'],
+    'la porta (R3)' => ['**La porta non entra nel confronto**: `Host: board.zeiras.com:8443` passa, e Laravel scrive i suoi indirizzi con quella porta. La porta la tiene ferma il server web'],
+    'il middleware di Laravel (R6)' => ['Il middleware di Laravel per gli host, `TrustHosts`, non è lo stesso: di suo ammette anche i sottodomini di `APP_URL`, e in locale e nei test non fa niente'],
+    'APP_URL che manca (R9)' => ['Se `APP_URL` manca del tutto vale quello del `config/app.php` del modulo, di norma `http://localhost`, e il middleware rifiuta ogni richiesta fatta col nome pubblico'],
+    'APP_URL in Unicode o col punto (R9)' => ['Lo stesso se il nome ha lettere non ASCII — va scritto in Punycode, come lo manda il browser — o finisce con un punto'],
+]);
+
+it('la guida nomina gli host fidati dove il modulo registra i middleware, e dice che non rifiuta niente da solo; la classe è nello zip del tag, il suo test no (sprint 29 · T1.10)', function () {
+    preg_match('/^## 3\. Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', guidaDelModuloNuovo(), $delPasso);
+    $passo = suUnaRiga($delPasso[1] ?? '');
+
+    expect(str_contains($passo, 'Dalla `v1.19.0` puoi registrare anche gli host fidati, `Zeiras\\Core\\Http\\HostFidati`, in coda ai middleware globali: a una richiesta per un host che non è quello di `APP_URL` risponde `400`, anche su `/up`'))->toBe(true)
+        ->and(str_contains($passo, 'Prima leggi quanto vale `APP_URL` in produzione e con quale nome chiamano le sonde; dopo fai la prova in produzione'))->toBe(true)
+        ->and(str_contains($passo, 'non rifiuta niente da solo — README, «Gli host fidati»'))->toBe(true)
+        ->and(fileDelloZipDiHead())->toContain('src/Http/HostFidati.php')->not->toContain('tests/Feature/HostFidatiTest.php');
+});
+
+// Sprint 29 · T3 (voce #1865): dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa. Il README dice le
+// due famiglie di chiavi e i tipi che le hanno, la discesa quando un dato manca, che il nome della cosa sta una volta sola,
+// `rigaDellaNotifica` per chi mostra le notifiche in una pagina sua, e che la board non compare perché il contratto non la dà;
+// la guida dice come un modulo chiede le sue frasi. Il README non dice più che il nome della cosa è sempre la riga di sotto.
+it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il nome una volta sola, rigaDellaNotifica e la board che manca; la guida dice come un modulo chiede le sue (sprint 29 · T3.2, T3.3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'notifiche' => puntoDellaCornice($readme, 'Le notifiche'),
+        'fuori' => paragrafoFuoriDallaCornice($readme),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
+    'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
+    'i tipi che le hanno' => ['notifiche', 'Le hanno i diciotto tipi di Project Management: tutti la seconda, e la prima i quattordici che non sono una cosa eliminata'],
+    'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
+    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per una cosa eliminata, è la frase con solo chi'],
+    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di prima col nome sotto'],
+    'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
+    'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
+    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
+    'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
+    'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
+    'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
+    'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
+]);
+
+// Sprint 29 · T4 (review della PR #62, R2, R5, R6): quattro frasi che il README diceva e che non erano vere.
+it('il README non dice più che il pannello usa titoloDellaNotifica e risorsaDellaNotifica, né che il middleware di Laravel da solo non rifiuta, né che un host con caratteri non validi prende lo stesso 400 del middleware (sprint 29 · T4, review della PR #62)', function (string $frase) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(strlen($readme))->toBeGreaterThan(1000)
+        ->and(str_contains($readme, $frase))->toBe(false);
+})->with([
+    'titoloDellaNotifica non è più la funzione del pannello (R5)' => ['è la funzione che usa il pannello delle notifiche della cornice, quindi il testo è lo stesso'],
+    'risorsaDellaNotifica non è più la funzione del pannello (R5)' => ['dà il nome della cosa a cui la notifica si riferisce, ed è la funzione che usa il pannello'],
+    'il middleware di Laravel rifiuta (R6)' => ['e da solo non rifiuta nessuna richiesta'],
+    'un host con caratteri non validi (R2)' => ['Un host con caratteri che un nome non ha prende `400` lo stesso'],
+]);
 
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.

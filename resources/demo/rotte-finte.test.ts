@@ -213,7 +213,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
     // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
     // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -254,6 +254,30 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect([assegnata, menzione, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true, true]);
         expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-3', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
+    });
+
+    // Sprint 29 · T3 (voce #1865): le tre righe che una notifica di Project Management può avere stanno dietro `?frasi=1`, così le
+    // pagine di prova di prima restano com'erano: una dice chi e che cosa, una solo chi, e una senza chi ha il titolo di sempre
+    // col nome sotto. Sono lette, e stanno fra quelle di oggi e quella di ieri.
+    it.each([
+        ['it', [{ titolo: 'Marta Rossi ha modificato la scheda «UAT Preparare il lancio»' }, { titolo: 'Bruno Neri ha eliminato una scheda' }, { titolo: 'Scheda modificata', sotto: 'UAT Rivedere il piano editoriale' }]],
+        ['en', [{ titolo: 'Marta Rossi changed the card “UAT Preparare il lancio”' }, { titolo: 'Bruno Neri deleted a card' }, { titolo: 'Card changed', sotto: 'UAT Rivedere il piano editoriale' }]],
+        ['es', [{ titolo: 'Marta Rossi ha modificado la tarjeta «UAT Preparare il lancio»' }, { titolo: 'Bruno Neri ha eliminado una tarjeta' }, { titolo: 'Tarjeta modificada', sotto: 'UAT Rivedere il piano editoriale' }]],
+    ])('con `?frasi=1` ci sono tre notifiche di Project Management, e nella lingua "%s" la prima dice chi e che cosa, la seconda solo chi, la terza il titolo col nome sotto (sprint 29 · T3.1)', async (lingua, righe) => {
+        await rotte(false, '?frasi=1');
+        const { rigaDellaNotifica } = await import('../js/index');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
+
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']);
+        const nuove = notifiche.slice(2, 5);
+        expect(nuove.map(({ app, tipo, letta, autore_nome, risorsa_nome, ids }) => [app, tipo, letta, autore_nome, risorsa_nome, ids])).toEqual([
+            ['pm', 'com.zeiras.board.scheda.modificata', true, 'Marta Rossi', 'UAT Preparare il lancio', { id: 'uat-scheda-2' }],
+            ['pm', 'com.zeiras.board.scheda.eliminata', true, 'Bruno Neri', null, {}],
+            ['pm', 'com.zeiras.board.scheda.modificata', true, null, 'UAT Rivedere il piano editoriale', { id: 'uat-scheda-3' }],
+        ]);
+        expect(nuove.map((notifica) => rigaDellaNotifica(notifica, lingua))).toEqual(righe);
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
@@ -316,6 +340,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?crm=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`)]],
         ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
+        ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
         ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
     ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
         await rotte(false, query);
