@@ -156,12 +156,13 @@ const FONTI_NEL_SEGNAPOSTO = 3;
  * nome da elenco (`searchSource.<prodotto>.<tipo>`). L'invito le nomina tutte, unite come la lingua unisce un elenco, con la sua
  * congiunzione («schede, board e cartelle»); il segnaposto le prime tre, col separatore dello stesso elenco e senza
  * congiunzione («schede, board, cartelle»). Senza fonti sono i due testi della lingua che non ne nominano nessuna. L'elenco lo
- * scrive `Intl` nella lingua dei testi, mai in quella del browser.
+ * scrive `Intl` nella lingua dei testi, mai in quella del browser. Un browser può non avere `Intl.ListFormat` anche quando ha il
+ * resto di `Intl`: lì i due testi sono quelli senza fonti, quante che siano le fonti, e niente lancia.
  */
 export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
     const [prima] = fonti;
-    if (prima === undefined) {
+    if (prima === undefined || typeof Intl.ListFormat !== 'function') {
         return { searchPlaceholder: t.searchPlaceholder, searchHint: t.searchHint };
     }
     const nomi = fonti.map((fonte) => t[`searchSource.${fonte}`]);

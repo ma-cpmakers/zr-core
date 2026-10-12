@@ -241,6 +241,26 @@ describe('la Cornice', () => {
         expect(uno('.zr-search-note')?.textContent).toBe(invito);
     });
 
+    // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non
+    // averlo anche quando ha il resto di `Intl`: lì la cornice si disegna lo stesso, e i due testi sono quelli senza fonti.
+    it.each<[lingua: string, segnaposto: string, invito: string]>([
+        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['es', 'Busca…', 'Escribe al menos 2 caracteres.'],
+        ['en', 'Search…', 'Type at least 2 characters.'],
+    ])('in un browser senza `Intl.ListFormat` la cornice si disegna, in "%s", coi moduli che danno fonti: il segnaposto del campo di ricerca e l\'invito prima di due caratteri sono i due testi senza fonti, e il resto della cornice c\'è (sprint 26 · T5.1)', async (lingua, segnaposto, invito) => {
+        // Il resto di `Intl` c'è: manca solo l'elenco, come in un browser che non lo ha ancora.
+        vi.stubGlobal('Intl', Object.create(Intl, { ListFormat: { value: undefined } }));
+        expect(Intl.ListFormat).toBeUndefined();
+
+        await mostra(<Cornice dati={{ ...dati, lingua, prodotti: { pm: 'attivo', crm: 'attivo' } }} onLogout={esciSenzaEffetto}><p id="pagina">La pagina</p></Cornice>);
+        expect(uno('#pagina')?.textContent).toBe('La pagina');
+        expect(uno('.zr-bell')).not.toBeNull();
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
+        await act(async () => uno('.zr-search input')?.focus());
+
+        expect(uno('.zr-search-note')?.textContent).toBe(invito);
+    });
+
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
         const ingresso = await import('./index');
 
@@ -3356,6 +3376,26 @@ describe('la ricerca', () => {
         await scrivi('brief');
         expect(titoli()).toStrictEqual(['Scrivere il brief']);
         expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent ?? null).toBe(secondaRiga);
+    });
+
+    // Sprint 26 · T5 (voce #1767; lettura della PR #56, R10). « · » sta scritto nel codice della cornice e non fra i testi delle
+    // lingue: è il segno che il design system scrive da sé fra due testi di una riga dell'`AppShell`. Il caso lega i due: il segno
+    // si legge dall'`AppShell` da solo, fra il prodotto e l'ora di una notifica, e la seconda riga di un risultato usa quello.
+    it('i due testi della seconda riga di un risultato sono uniti dal segno che l\'`AppShell` del design system scrive da sé fra il prodotto e l\'ora di una notifica: se uno dei due cambia, non sono più lo stesso (sprint 26 · T5.3)', async () => {
+        await mostra(<componenti.AppShell user="Ada Lovelace" notifications={[{ id: 'n1', title: 'Una notifica', product: 'Prima', time: 'dopo' }]} />);
+        await act(async () => {
+            uno('.zr-bell')?.click();
+            await giro();
+        });
+        const riga = uno('.zr-notif-meta')?.textContent ?? '';
+        expect([riga.startsWith('Prima'), riga.endsWith('dopo')]).toStrictEqual([true, true]);
+        const delDesignSystem = riga.slice('Prima'.length, riga.length - 'dopo'.length);
+        expect(delDesignSystem.trim()).not.toBe('');
+
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', contesto: { board: 'Lancio Q4', lista: 'Da fare' } }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('brief');
+        expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent).toBe(`Lancio Q4${delDesignSystem}Da fare`);
     });
 
     it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {

@@ -255,7 +255,12 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     return scelta;
 }
 
-/** Ciò che unisce due testi in una riga, come nel design system. */
+/**
+ * Ciò che unisce due testi in una riga. Non è un testo delle lingue, ed è scritto qui apposta: è il segno che il design system
+ * scrive da sé fra due testi di una riga dell'`AppShell` (il prodotto e l'ora di una notifica), e la seconda riga di un
+ * risultato, che sta nello stesso `AppShell`, li unisce allo stesso modo. Un caso di `cornice.test.tsx` lo lega a quello del
+ * design system: se lì cambia, il caso è rosso e questo si cambia con lui.
+ */
 const FRA_DUE_TESTI = ' · ';
 
 /**

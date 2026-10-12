@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
@@ -480,5 +480,35 @@ describe('le lingue della cornice', () => {
 
         expect([testi('it').searchPlaceholder, testi('it').searchHint, testi('it').searchPlaceholderSources, testi('it').searchHintSources])
             .toStrictEqual(['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca {sources}…', 'Cerca {sources}: scrivi almeno 2 caratteri.']);
+    });
+
+    // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non
+    // averlo anche quando ha il resto di `Intl`: lì i due testi sono quelli della lingua che non nominano fonti, e niente lancia.
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it.each<[lingua: string, segnaposto: string, invito: string]>([
+        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['es', 'Busca…', 'Escribe al menos 2 caracteres.'],
+        ['en', 'Search…', 'Type at least 2 characters.'],
+        // Una lingua che zr-core non ha: in inglese, come dove l'elenco c'è.
+        ['pt-BR', 'Search…', 'Type at least 2 characters.'],
+    ])('dove `Intl.ListFormat` manca, con la lingua "%s" il segnaposto e l\'invito sono i due testi senza fonti, quante che siano le fonti, e niente lancia; dove c\'è, le nominano (sprint 26 · T5.1)', (lingua, segnaposto, invito) => {
+        const senzaFonti = { searchPlaceholder: segnaposto, searchHint: invito };
+        const conLElenco = testiDellaRicerca(lingua, diProjectManagement);
+        expect([conLElenco.searchPlaceholder, conLElenco.searchHint]).not.toContain(segnaposto);
+        expect([conLElenco.searchPlaceholder, conLElenco.searchHint]).not.toContain(invito);
+
+        // Il resto di `Intl` c'è: manca solo l'elenco, come in un browser che non lo ha ancora.
+        vi.stubGlobal('Intl', Object.create(Intl, { ListFormat: { value: undefined } }));
+        expect(Intl.ListFormat).toBeUndefined();
+        expect(typeof Intl.DateTimeFormat).toBe('function');
+        expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual(senzaFonti);
+        expect(testiDellaRicerca(lingua, [...diProjectManagement, ...delCrm])).toStrictEqual(senzaFonti);
+        expect(testiDellaRicerca(lingua, [])).toStrictEqual(senzaFonti);
+
+        vi.unstubAllGlobals();
+        expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual(conLElenco);
     });
 });
