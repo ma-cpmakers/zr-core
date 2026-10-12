@@ -3315,6 +3315,7 @@ function nomiDiAltriNellaGuida(): array
         'prependToPriorityList' => 'Laravel',
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
+        'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
 
