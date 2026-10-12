@@ -270,8 +270,9 @@ const FRA_DUE_TESTI = ' · ';
  * La seconda riga di un risultato della ricerca: i testi di `contesto` che il registro dice per il suo tipo (le chiavi di
  * `risorsa.contesto`), nel loro ordine e senza gli spazi intorno, uniti da « · ». Solo quelli che ci sono: `contesto` arriva dal
  * backoffice, e una chiave può mancare, essere `null`, vuota o non essere un testo — allora non conta, e non lascia un « · »
- * appeso. Dove il registro dice che una chiave porta un codice (`risorsa.codici`: il ruolo di un membro del workspace) si legge
- * il testo che quel codice ha nella lingua (`t`), mai il codice: un valore che non è uno di quei codici non conta. Una chiave
+ * appeso. Dove il registro dice che una chiave porta un codice (`risorsa.codici`: il ruolo di un membro del workspace, l'esito
+ * di un'opportunità chiusa) si legge il testo che quel codice ha nella lingua (`t`), mai il codice: un valore che non è uno di
+ * quei codici non conta (l'esito `aperta` di un'opportunità aperta, che resta con pipeline e fase). Una chiave
  * senza codici porta un testo, e si mostra com'è arrivato (il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
  * senza `contesto`, o per un tipo che nel registro non ha chiavi.
  */

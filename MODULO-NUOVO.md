@@ -296,9 +296,10 @@ chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso de
 Nel registro stanno anche le risorse del tuo prodotto che la ricerca mostra (passo 9). Se una chiave di `contesto` di una
 risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa:
 nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice
-(`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
-codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi ha `codici` il
-membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`).
+(`searchContext.<voce>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
+codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi hanno `codici` il
+membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l'opportunità del
+CRM, per l'`esito` (`vinta`, `persa`: `aperta` non è un codice, e un'opportunità aperta non mostra l'esito).
 
 **Durante lo sviluppo** la cornice non si rompe, in nessuno dei due casi. Finché il registro installato non ha il tuo
 prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Moduli esteso, nessun

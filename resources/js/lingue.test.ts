@@ -474,17 +474,32 @@ describe('le lingue della cornice', () => {
         expect(registro.find((voce) => voce.id === 'home')?.risorse).toStrictEqual([
             { tipo: 'workspace.membro', icona: 'user', percorso: '/impostazioni/membri/{id}', contenitore: false, contesto: ['ruolo'], codici: { ruolo: ['proprietario', 'amministratore', 'membro'] } },
         ]);
-        // Solo il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero, e resta senza codici.
-        expect(registro.flatMap((voce) => (voce.risorse ?? []).filter((risorsa) => risorsa.codici !== undefined).map((risorsa) => risorsa.tipo))).toStrictEqual(['workspace.membro']);
+        // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero, e resta senza codici. Dallo sprint 28
+        // ha dei codici anche l'opportunità, per l'esito (T1.4).
+        expect(registro.flatMap((voce) => (voce.risorse ?? []).filter((risorsa) => risorsa.codici !== undefined).map((risorsa) => risorsa.tipo))).toStrictEqual(['workspace.membro', 'crm.trattativa']);
         expect(registro.flatMap((voce) => (voce.risorse ?? []).filter((risorsa) => risorsa.tipo === 'crm.persona').map((risorsa) => risorsa.contesto))).toStrictEqual([['organizzazione', 'ruolo']]);
     });
 
+    // Sprint 28 · T1 (voce #1826): un'opportunità chiusa dice l'esito. Il backoffice dà `esito` come codice — `aperta`, `vinta`,
+    // `persa` —, e il registro ne dà alla chiave due soli: `aperta` non è un codice, non ha un testo nelle lingue, ed è così che
+    // di un'opportunità aperta non si mostra.
+    it('nel registro l\'opportunità ha per seconda riga pipeline, fase ed esito, e dell\'esito i soli due codici di un\'opportunità chiusa: `aperta` non è fra quelli (sprint 28 · T1.4)', () => {
+        expect(registro.find((voce) => voce.id === 'crm')?.risorse?.find((risorsa) => risorsa.tipo === 'crm.trattativa')).toStrictEqual(
+            { tipo: 'crm.trattativa', icona: 'target', percorso: '/opportunita/{id}', contenitore: false, contesto: ['pipeline', 'fase', 'esito'], codici: { esito: ['vinta', 'persa'] } },
+        );
+        expect(codiciDelRegistro.filter((codice) => codice.endsWith('.aperta'))).toStrictEqual([]);
+        expect([italiano, spagnolo, inglese].flatMap((file) => Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.') && chiave.endsWith('.aperta')))).toStrictEqual([]);
+    });
+
     it.each<[lingua: string, file: Record<string, string>, ruoli: string[]]>([
-        ['it', italiano, ['Proprietario', 'Amministratore', 'Membro']],
-        ['es', spagnolo, ['Propietario', 'Administrador', 'Miembro']],
-        ['en', inglese, ['Owner', 'Admin', 'Member']],
+        ['it', italiano, ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
+        ['es', spagnolo, ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
+        ['en', inglese, ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
     ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, e la lingua non ha il testo di un codice che il registro non ha (sprint 27 · T1.3)', (_lingua, file, ruoli) => {
-        expect(codiciDelRegistro).toStrictEqual(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro']);
+        expect(codiciDelRegistro).toStrictEqual([
+            'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
+            'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
+        ]);
         expect(codiciDelRegistro.map((codice) => file[`searchContext.${codice}`])).toStrictEqual(ruoli);
         expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual(codiciDelRegistro.map((codice) => `searchContext.${codice}`));
     });

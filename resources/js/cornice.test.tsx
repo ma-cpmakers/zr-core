@@ -3590,6 +3590,56 @@ describe('la ricerca', () => {
         ]);
     });
 
+    // Sprint 28 · T1 (voce #1826): un'opportunità chiusa dice l'esito. Il backoffice dà `esito` come codice (`aperta`, `vinta`,
+    // `persa`), e il registro dà alla chiave i soli due codici di un'opportunità chiusa: `aperta` non è fra quelli, ed è così che
+    // un'opportunità aperta resta con pipeline e fase. Il testo di ogni codice è delle lingue, con le parole di zr-crm.
+    const opportunita = (contesto: Record<string, unknown>, id = '01k7d1t1') => ({ tipo: 'crm.trattativa', id, titolo: 'Rinnovo 2027', contesto });
+    /** Di ogni riga la seconda riga; `null` dove non c'è. */
+    const secondeRighe = () => righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null);
+
+    it.each<[lingua: string, vinta: string, persa: string]>([
+        ['it', 'Vinta', 'Persa'],
+        ['es', 'Ganada', 'Perdida'],
+        ['en', 'Won', 'Lost'],
+        // Una lingua che zr-core non ha: in inglese.
+        ['zz', 'Won', 'Lost'],
+    ])('con la lingua "%s", un\'opportunità chiusa mostra l\'esito nella lingua come terzo testo della seconda riga, dopo pipeline e fase: mai il codice del backoffice, mai il testo di un\'altra lingua (sprint 28 · T1.1)', async (lingua, vinta, persa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            opportunita({ pipeline: 'Vendite', fase: 'Proposta', esito: 'vinta' }, '01k7d1t1'),
+            opportunita({ pipeline: 'Vendite', fase: 'Proposta', esito: 'persa' }, '01k7d1t2'),
+        ])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([`Vendite · Proposta · ${vinta}`, `Vendite · Proposta · ${persa}`]);
+        // Nel pannello non si legge nessun codice.
+        const pannello = uno('.zr-search-panel')?.textContent ?? '';
+        expect(['vinta', 'persa'].filter((codice) => pannello.includes(codice))).toStrictEqual([]);
+    });
+
+    it.each<[caso: string, contesto: Record<string, unknown>, attesa: string | null]>([
+        ['aperta resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'aperta' }, 'Vendite · Proposta'],
+        ['aperta, senza pipeline e senza fase, non ha una seconda riga', { esito: 'aperta' }, null],
+        ['con un esito che il registro non ha resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'sospesa' }, 'Vendite · Proposta'],
+        ['col testo di un esito, e non il suo codice, resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'Vinta' }, 'Vendite · Proposta'],
+        ['con l\'esito vuoto resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: '' }, 'Vendite · Proposta'],
+        ['con l\'esito `null` resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: null }, 'Vendite · Proposta'],
+        ['con un numero per esito resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 1 }, 'Vendite · Proposta'],
+        ['senza esito resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta' }, 'Vendite · Proposta'],
+        ['vinta, senza pipeline e senza fase, ha il solo esito', { esito: 'vinta' }, 'Vinta'],
+        ['persa, con pipeline e fase `null`, ha il solo esito', { pipeline: null, fase: null, esito: 'persa' }, 'Persa'],
+        ['vinta, con la sola fase, ha fase ed esito', { pipeline: '', fase: 'Proposta', esito: ' vinta ' }, 'Proposta · Vinta'],
+    ])('un\'opportunità %s: `aperta` non è un codice del registro e non aggiunge niente, ciò che non è un codice non si mostra, e non resta un « · » appeso (sprint 28 · T1.2)', async (_caso, contesto, attesa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([opportunita(contesto)])));
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([attesa]);
+        // Ciò che l'`AppShell` riceve: senza testi la seconda riga manca, non è vuota.
+        expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([attesa]);
+    });
+
     it.each<[come: string, scegli: () => void]>([
         ['con un clic', () => righe()[0]?.click()],
         ['con Invio', () => uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))],

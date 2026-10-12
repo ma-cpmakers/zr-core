@@ -25,7 +25,8 @@ import { rotteFinte } from './rotte-finte';
 // assegnata, una menzione in un commento e una scheda eliminata, di Project Management; e la ricerca trova anche una scheda)
 // l'ultimo si legge anche in pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
-// nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts). In ogni caso la ricerca
+// nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts): fra le opportunità una è
+// aperta e ha solo pipeline e fase, l'altra è vinta e la sua seconda riga finisce con l'esito nella lingua. In ogni caso la ricerca
 // nomina per ultimi i membri del workspace, e ne trova uno («UAT Katherine Johnson», col ruolo nella lingua): un clic lo
 // aprirebbe fra i membri di app. Con `?senza_moduli=1` nel workspace di prova nessun modulo è attivo (Project Management e
 // Report sono `disponibile`, qualunque cosa dicano gli altri due parametri): l'invito della ricerca nomina i soli membri, e la

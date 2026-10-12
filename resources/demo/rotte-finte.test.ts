@@ -519,7 +519,9 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
         { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
         { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
-        { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
+        // Sprint 28 · T1.6: un'opportunità aperta e una vinta, con l'`esito` che il backoffice dà a ogni opportunità.
+        { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta', esito: 'aperta' } },
+        { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
     ];
     // Sprint 27 · T2 (voce #1787): un membro del workspace, col solo ruolo e come codice, c'è senza parametri: non dipende da un
     // modulo, e il backoffice lo dà in ogni workspace. Viene dopo le altre fonti nuove e prima di board e cartelle, come in
@@ -583,10 +585,12 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect(fuoriForma.map(({ id }) => id)).toStrictEqual([]);
         expect(risultati.find(({ id }) => id === 'uat-p2')?.contesto).toBeNull();
         // Il controllo non è vuoto: fra i risultati ce ne sono col contesto, e sono quelli di una scheda, di un contatto e di un'opportunità.
-        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1', 'uat-m1']);
-        // Dove il registro dice che una chiave porta un codice, il valore è uno dei suoi codici.
+        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1', 'uat-t2', 'uat-m1']);
+        // Dove il registro dice che una chiave porta un codice, il valore è uno dei suoi codici. Fuori resta la sola opportunità
+        // aperta (sprint 28 · T1.6): `aperta` è un valore del contratto e non un codice del registro, ed è così che non si mostra.
         const fuoriCodice = risultati.filter(({ tipo, contesto }) => Object.entries(risorsaDi(tipo)?.codici ?? {}).some(([chiave, codici]) => !codici.includes(String(contesto?.[chiave]))));
-        expect(fuoriCodice.map(({ id }) => id)).toStrictEqual([]);
+        expect(fuoriCodice.map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta']]);
+        expect(risultati.filter(({ tipo }) => tipo === 'crm.trattativa').map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta'], ['uat-t2', 'vinta']]);
         expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } }]);
     });
 

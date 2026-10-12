@@ -18,9 +18,10 @@ export type TipoDiRisorsa = 'home.workspace.membro' | 'pm.board.scheda' | 'pm.bo
 
 /**
  * I codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>` (`codici`): ognuno
- * ha il suo testo in ogni lingua, con `searchContext.` davanti. Un codice nuovo entra anche qui.
+ * ha il suo testo in ogni lingua, con `searchContext.` davanti. Un codice nuovo entra anche qui. Dell'esito di un'opportunità
+ * i codici sono due: `aperta`, che il backoffice dà per un'opportunità aperta, non è un codice e non ha un testo.
  */
-export type CodiceDelContesto = 'home.workspace.membro.ruolo.proprietario' | 'home.workspace.membro.ruolo.amministratore' | 'home.workspace.membro.ruolo.membro';
+export type CodiceDelContesto = 'home.workspace.membro.ruolo.proprietario' | 'home.workspace.membro.ruolo.amministratore' | 'home.workspace.membro.ruolo.membro' | 'crm.crm.trattativa.esito.vinta' | 'crm.crm.trattativa.esito.persa';
 
 /** Un tipo di risorsa di una voce del registro, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
 export interface RisorsaDelProdotto {
@@ -46,8 +47,10 @@ export interface RisorsaDelProdotto {
     contesto?: string[];
     /**
      * I codici che una chiave di `contesto` può portare, dove il backoffice dà un codice e non un testo da mostrare: il `ruolo`
-     * di un membro del workspace (`proprietario`, `amministratore`, `membro`). Il testo di ogni codice sta nelle lingue
-     * (`CodiceDelContesto`). Una chiave senza codici porta un testo, come il `ruolo` di un contatto del CRM («Direttore»).
+     * di un membro del workspace (`proprietario`, `amministratore`, `membro`), l'`esito` di un'opportunità chiusa (`vinta`,
+     * `persa`). Il testo di ogni codice sta nelle lingue (`CodiceDelContesto`). Un valore che non è fra i codici non si mostra:
+     * è così che un'opportunità aperta (`aperta`) non mostra l'esito. Una chiave senza codici porta un testo, come il `ruolo` di
+     * un contatto del CRM («Direttore»).
      */
     codici?: Record<string, string[]>;
 }
