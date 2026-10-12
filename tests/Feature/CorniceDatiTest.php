@@ -1453,3 +1453,31 @@ it('il freno è della richiesta: la richiesta dopo, nello stesso processo, non l
         ->and(richiesteA('/v1/io'))->toHaveCount(2)
         ->and(Http::recorded())->toHaveCount(2);
 });
+
+it('il middleware del README, riga per riga: dopo la riga, se la lettura ha preso un 429 il modulo risponde col suo 429, con Retry-After se il backoffice l\'ha detto, e la chiamata a /v1 del controller non parte; senza freno parte (sprint 28 · T3.5)', function (bool $frenato, ?string $riprovaFra) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => $frenato ? troppeRichieste($riprovaFra) : ioMostra(0), '/v1/board/board' => ['data' => [], 'successivo' => null]]);
+    Route::aliasMiddleware('la-riga-col-freno', function ($request, Closure $next) {
+        App::setLocale(Cornice::lingua() ?? config('app.locale'));
+
+        $freno = Cornice::frenata();
+
+        if ($freno !== null) {
+            return response('', 429, $freno->riprovaFra === null ? [] : ['Retry-After' => (string) $freno->riprovaFra]);
+        }
+
+        return $next($request);
+    });
+    Route::middleware(['web', 'la-riga-col-freno'])->get('w/{slug}/chiama-v1', fn () => ['chiamato' => Api::workspace()->get('/v1/board/board') !== []]);
+
+    $risposta = $this->get('w/uat-marketing/chiama-v1');
+
+    expect([$risposta->getStatusCode(), $risposta->headers->get('Retry-After')])->toBe($frenato ? [429, $riprovaFra] : [200, null])
+        ->and($risposta->getContent())->toBe($frenato ? '' : '{"chiamato":true}')
+        // Dopo il freno il backoffice non è più chiamato: resta la lettura della riga.
+        ->and(percorsiChiamati())->toBe($frenato ? ['/v1/io'] : ['/v1/io', '/v1/board/board']);
+})->with([
+    'frenato, con Retry-After' => [true, '30'],
+    'frenato, senza Retry-After' => [true, null],
+    'senza freno' => [false, null],
+]);

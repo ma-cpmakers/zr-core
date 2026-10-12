@@ -233,6 +233,28 @@ suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la pr
 se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
 
+Se a quella lettura il backoffice ha risposto 429, il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`): dà
+l'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice), e
+`null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore.
+`Cornice::frenata()` non legge niente: guarda la lettura che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto. Il
+freno è lo stato, 429, con qualunque codice. Serve al modulo che dopo la riga chiamerebbe ancora `/v1`: dopo un 429 non
+si richiama, e il middleware risponde col suo 429 prima che parta un'altra chiamata.
+
+```php
+App::setLocale(Cornice::lingua() ?? config('app.locale'));
+
+$freno = Cornice::frenata();
+
+if ($freno !== null) {
+    return response('', 429, $freno->riprovaFra === null ? [] : ['Retry-After' => (string) $freno->riprovaFra]);
+}
+
+return $next($request);
+```
+
+Il freno vale per quella richiesta: la richiesta dopo non lo trova, finché una sua lettura non prende un altro 429.
+`Cornice::lingua()` e `Cornice::dati()` fanno ciò che facevano: la prima non lancia, la seconda lancia quell'`ErroreApi`.
+
 Quale lingua c'è nella sessione lo decide zr-auth, in due momenti. All'ingresso `Sessione::apri` e `Sessione::entra` mettono
 nella sessione la persona come la dà il backoffice, con la lingua del profilo com'è: vale dalla 0.12.4 alla 0.12.12. Dopo, a
 ogni lettura, `Sessione::aggiorna` cambia la lingua della sessione solo con una lingua del profilo che prende: fino alla

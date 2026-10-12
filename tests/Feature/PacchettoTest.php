@@ -4599,6 +4599,48 @@ it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un al
         ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
 });
 
+// Sprint 28 · T3.5 (voce #1827): `Cornice::frenata()`. Il README lo dice dove dice la riga, in «La parte server»: che cosa dà,
+// che non legge, che il freno è lo stato e vale per quella richiesta; e mostra il middleware di un modulo che dopo la riga
+// risponde col suo 429. Quel middleware gira in `CorniceDatiTest.php`, riga per riga: lì si vede che dopo il freno il
+// backoffice non è più chiamato.
+
+it('il README dice, in «La parte server», `Cornice::frenata()`: da quale versione, che cosa dà, che non legge, che il freno è lo stato e vale per quella richiesta, e che la riga e i dati non cambiano (sprint 28 · T3.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'da quale versione' => ['il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`)'],
+    'che cosa dà' => ['dà l\'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice)'],
+    'null in ogni altro caso' => ['`null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore'],
+    'non legge' => ['`Cornice::frenata()` non legge niente: guarda la lettura che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto'],
+    'il freno è lo stato' => ['Il freno è lo stato, 429, con qualunque codice'],
+    'a chi serve' => ['dopo un 429 non si richiama, e il middleware risponde col suo 429 prima che parta un\'altra chiamata'],
+    'vale per quella richiesta' => ['Il freno vale per quella richiesta: la richiesta dopo non lo trova, finché una sua lettura non prende un altro 429'],
+    'la riga e i dati non cambiano' => ['`Cornice::lingua()` e `Cornice::dati()` fanno ciò che facevano: la prima non lancia, la seconda lancia quell\'`ErroreApi`'],
+]);
+
+it('l\'esempio del README con `Cornice::frenata()` è, riga per riga, il middleware che `CorniceDatiTest.php` fa girare: comincia dalla riga, risponde 429 e solo dopo passa la richiesta (sprint 28 · T3.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^## La parte server$.*?^```php\n((?:(?!^```).)*?Cornice::frenata\(\).*?)^```$/ms', $readme, $blocco);
+    $righe = array_values(array_filter(array_map('trim', explode("\n", $blocco[1] ?? '')), fn (string $riga): bool => $riga !== ''));
+    $delCaso = array_map('trim', explode("\n", (string) file_get_contents(__DIR__.'/CorniceDatiTest.php')));
+    $primo = array_search('$freno = Cornice::frenata();', $delCaso, true);
+    $girano = array_values(array_filter(array_slice($delCaso, (int) $primo - 2, 9), fn (string $riga): bool => $riga !== ''));
+
+    expect($righe)->toBe([
+        'App::setLocale(Cornice::lingua() ?? config(\'app.locale\'));',
+        '$freno = Cornice::frenata();',
+        'if ($freno !== null) {',
+        'return response(\'\', 429, $freno->riprovaFra === null ? [] : [\'Retry-After\' => (string) $freno->riprovaFra]);',
+        '}',
+        'return $next($request);',
+    ])
+        ->and($primo)->not->toBe(false)
+        ->and($girano)->toBe($righe);
+});
+
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
 // file di test: la scrive `registroGiaLetto()`, e si toglie in un posto solo, `tests/Pest.php`, dopo ogni caso di ogni file.
 // Prima la toglievano due `afterEach` e due `try/finally`, ognuno nel suo file: un altro file che la scriveva e non la toglieva
