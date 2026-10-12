@@ -217,9 +217,9 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * il nome unico di Project Management, CRM e gli altri (regola di Luciano dell'11/10/2026; sprint 21 · T1), e il design system
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
  * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
- * Il segnaposto e l'invito della ricerca dicono ciò che la ricerca trova oggi, board e cartelle (zr-pm, note 10255 e 10288 del
- * progetto; sprint 22 · T8): il design system dice ancora progetti, schede e contatti, che la ricerca non trova. Tornano larghi,
- * una fonte alla volta, quando il backoffice le dà.
+ * Il segnaposto e l'invito della ricerca non promettono ciò che la ricerca non trova (zr-pm, note 10255 e 10288 del progetto;
+ * sprint 22 · T8): dallo sprint 25 (T4) la cornice li compone dalle fonti del workspace, e questi due sono quelli senza fonti.
+ * Il design system ha ancora due testi fissi, che dicono progetti, schede e contatti in ogni workspace.
  *
  * @return array<string, string>
  */
@@ -227,8 +227,8 @@ function italianoDecisoPrimaDelDesignSystem(): array
 {
     return [
         'products' => 'Moduli',
-        'searchHint' => 'Cerca board e cartelle: scrivi almeno 2 caratteri.',
-        'searchPlaceholder' => 'Cerca board e cartelle…',
+        'searchHint' => 'Scrivi almeno 2 caratteri.',
+        'searchPlaceholder' => 'Cerca…',
     ];
 }
 
@@ -257,7 +257,10 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
         'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
+        // Sprint 25 · T4: i due testi della ricerca che nominano le fonti, e il nome da elenco di ogni tipo di risorsa.
+        'searchPlaceholderSources', 'searchHintSources',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
+        ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
     ];
 
     $problemi = [];
@@ -365,7 +368,8 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
             'automations' => 'Automazioni', 'content' => 'Contenuti',
         ])
         ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
-            'pm.board.cartelle' => 'Cartelle', 'pm.board.board' => 'Board',
+            'pm.board.scheda' => 'Schede', 'pm.board.board' => 'Board', 'pm.board.cartelle' => 'Cartelle',
+            'crm.crm.persona' => 'Contatti', 'crm.crm.organizzazione' => 'Aziende', 'crm.crm.trattativa' => 'Opportunità',
         ]);
 });
 
@@ -666,7 +670,7 @@ function testiCheNonDiconoModuli(array $lingue): array
     return $trovati;
 }
 
-it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima; l\'aiuto della ricerca, che la aveva, dalla v1.12.0 dice board e cartelle (sprint 21 · T1.1, T1.4; sprint 22 · T8.2)', function (string $chiave, array $attesi) {
+it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prima; l\'aiuto della ricerca, che la aveva, dalla v1.12.0 non la ha più (sprint 21 · T1.1, T1.4; sprint 22 · T8.2)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
@@ -679,37 +683,56 @@ it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prim
     ]],
 ]);
 
-// Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto). Il segnaposto del campo di ricerca e l'invito sotto il
-// campo dicono ciò che la ricerca trova oggi, board e cartelle, con le parole che zr-core usa già per i due tipi
-// (`pm.board.board`, `pm.board.cartelle`). Gli altri testi della ricerca restano com'erano.
+// Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto), riscritto nello sprint 25 · T4 (voce #1639). Il
+// segnaposto del campo di ricerca e l'invito sotto il campo li compone la cornice dalle fonti del workspace: le lingue danno i
+// due testi senza fonti, i due col posto dell'elenco (`{sources}`) e, per ogni tipo di risorsa del registro, il nome da elenco.
 
-it('nelle tre lingue il segnaposto e l\'invito della ricerca dicono board e cartelle (sprint 22 · T8.1, T8.2)', function (string $chiave, array $attesi) {
+it('nelle tre lingue ci sono i due testi della ricerca senza fonti e i due col posto dell\'elenco (sprint 25 · T4.3)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
-    expect([$lingue['it'][$chiave], $lingue['en'][$chiave], $lingue['es'][$chiave]])->toBe($attesi);
+    expect([$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null])->toBe($attesi);
 })->with([
-    'T8.1: il segnaposto' => ['searchPlaceholder', ['Cerca board e cartelle…', 'Search boards and folders…', 'Busca tableros y carpetas…']],
-    'T8.2: l\'invito' => ['searchHint', [
-        'Cerca board e cartelle: scrivi almeno 2 caratteri.',
-        'Search boards and folders: type at least 2 characters.',
-        'Busca tableros y carpetas: escribe al menos 2 caracteres.',
+    'il segnaposto senza fonti' => ['searchPlaceholder', ['Cerca…', 'Search…', 'Busca…']],
+    'l\'invito senza fonti' => ['searchHint', ['Scrivi almeno 2 caratteri.', 'Type at least 2 characters.', 'Escribe al menos 2 caracteres.']],
+    'il segnaposto con le fonti' => ['searchPlaceholderSources', ['Cerca {sources}…', 'Search {sources}…', 'Busca {sources}…']],
+    'l\'invito con le fonti' => ['searchHintSources', [
+        'Cerca {sources}: scrivi almeno 2 caratteri.',
+        'Search {sources}: type at least 2 characters.',
+        'Busca {sources}: escribe al menos 2 caracteres.',
     ]],
 ]);
 
-it('in ogni lingua il segnaposto e l\'invito della ricerca usano le parole dei due tipi e non nominano ciò che la ricerca non trova: progetti, schede, contatti, «tutti i moduli»; i puntini del segnaposto sono il carattere «…» (sprint 22 · T8.1, T8.2)', function (string $codice, array $nonTrova) {
+it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il nome da elenco, minuscolo; i quattro testi della ricerca non nominano nessuna fonte, i due con le fonti hanno una volta sola il posto dell\'elenco, e i puntini dei segnaposto sono il carattere «…» (sprint 25 · T4.3, T4.5)', function (string $codice, array $gruppi, array $daElenco) {
     $testi = lingueDellaCornice()[$codice];
-    $iDue = mb_strtolower($testi['searchPlaceholder'].' '.$testi['searchHint']);
+    $tipi = tipiDiRisorsa();
+    $iQuattro = mb_strtolower(implode(' ', array_map(fn (string $chiave): string => (string) ($testi[$chiave] ?? ''), ['searchPlaceholder', 'searchHint', 'searchPlaceholderSources', 'searchHintSources'])));
+    $segnaposto = [(string) ($testi['searchPlaceholder'] ?? ''), (string) ($testi['searchPlaceholderSources'] ?? '')];
 
-    expect(array_values(array_filter($nonTrova, fn (string $parola): bool => str_contains($iDue, $parola))))->toBe([])
-        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.board'])))->toBe(2)
-        ->and(substr_count($iDue, mb_strtolower($testi['pm.board.cartelle'])))->toBe(2)
-        ->and(mb_substr($testi['searchPlaceholder'], -1))->toBe('…')
-        ->and(substr_count($testi['searchPlaceholder'], '.'))->toBe(0);
+    expect(array_map(fn (string $tipo) => $testi[$tipo] ?? null, $tipi))->toBe($gruppi)
+        ->and(array_map(fn (string $tipo) => $testi["searchSource.$tipo"] ?? null, $tipi))->toBe($daElenco)
+        ->and(array_map('mb_strtolower', $daElenco))->toBe($daElenco)
+        ->and(array_values(array_filter($daElenco, fn (string $nome): bool => str_contains($iQuattro, $nome))))->toBe([])
+        ->and([substr_count((string) ($testi['searchPlaceholderSources'] ?? ''), '{sources}'), substr_count((string) ($testi['searchHintSources'] ?? ''), '{sources}')])->toBe([1, 1])
+        ->and(substr_count($testi['searchPlaceholder'].$testi['searchHint'], '{'))->toBe(0)
+        ->and(array_map(fn (string $testo): string => mb_substr($testo, -1), $segnaposto))->toBe(['…', '…'])
+        ->and(substr_count(implode('', $segnaposto), '.'))->toBe(0);
 })->with([
-    'italiano' => ['it', ['progett', 'sched', 'contatt', 'tutti i moduli']],
-    'inglese' => ['en', ['project', 'card', 'contact', 'all modules']],
-    'spagnolo' => ['es', ['proyecto', 'tarjeta', 'contacto', 'todos los módulos']],
+    'italiano' => ['it', ['Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
+    'inglese' => ['en', ['Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
+    'spagnolo' => ['es', ['Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
 ]);
+
+it('il controllo trova un tipo di risorsa senza il nome da elenco, un testo della ricerca che manca e un nome da elenco di un tipo che il registro non ha (sprint 25 · T4.5)', function () {
+    $lingue = lingueDellaCornice();
+    unset($lingue['es']['searchSource.crm.crm.persona'], $lingue['it']['searchHintSources']);
+    $lingue['en']['searchSource.uat.ignoto'] = 'things';
+
+    expect(problemiDelleLingue($lingue))->toBe([
+        'it: manca «searchHintSources»',
+        'es: manca «searchSource.crm.crm.persona»',
+        'en: «searchSource.uat.ignoto» non è un testo della cornice',
+    ]);
+});
 
 it('nessun testo delle lingue di zr-core chiama «prodotti» o «app» i moduli, e ogni lingua ha le sue parole da cercare (sprint 21 · T1.4)', function () {
     expect(testiCheNonDiconoModuli(lingueDellaCornice()))->toBe([]);
@@ -754,7 +777,7 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
         // Il design system dice ancora il testo di prima: quando dirà «Moduli», questa riga è rossa e lo scostamento si toglie.
         ->and($delDesignSystem['products'])->toBe('Prodotti')
         ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i prodotti: scrivi almeno 2 caratteri.')
-        // Il segnaposto del design system promette ciò che la ricerca non trova ancora: nella cornice è un problema.
+        // Il segnaposto del design system promette le stesse fonti in ogni workspace: nella cornice è un problema.
         ->and($delDesignSystem['searchPlaceholder'])->toBe('Cerca progetti, schede, contatti…')
         ->and(problemiDelleLingue($colSegnapostoDelDesignSystem))->toBe(['it: «searchPlaceholder» non è il testo deciso prima del design system'])
         // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.

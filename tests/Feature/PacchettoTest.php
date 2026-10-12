@@ -3496,25 +3496,66 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
 
-// Sprint 22 · T8 (voce #1728): il segnaposto e l'aiuto della ricerca dicono board e cartelle. Il README lo dice nel punto «La
-// ricerca» — i testi nuovi nelle tre lingue, quelli di prima, e come un frontend li trova nei suoi test —, e nel punto «Il menu
-// Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639): il segnaposto e l'invito della ricerca dicono le
+// fonti del workspace. Il README lo dice nel punto «La ricerca» — come si compongono, i testi nelle tre lingue con Project
+// Management attivo, quelli senza fonti, quelli fissi di prima e come un frontend li trova nei suoi test —, e nel punto «Il
+// menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
 
-it('il README dice che dalla v1.12.0 il segnaposto e l\'aiuto della ricerca dicono board e cartelle: nel punto «La ricerca» i testi nuovi nelle tre lingue, quelli di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2)', function (string $dove, string $frase) {
+it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dicono le fonti del workspace: nel punto «La ricerca» come si compongono, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.12.0` il segnaposto del campo e l\'aiuto che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle'],
-    'i due testi in italiano' => ['ricerca', '«Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search boards and folders…» e «Search boards and folders: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas: escribe al menos 2 caracteres.»'],
-    'i testi di prima' => ['ricerca', 'Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
-    'come trovarli nei test di un frontend' => ['ricerca', 'un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
-    'quando tornano larghi' => ['ricerca', 'Tornano larghi, una fonte alla volta, quando la ricerca del backoffice trova altro'],
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
+    'quante ne nominano' => ['ricerca', 'Il segnaposto ne nomina al più tre, l\'invito tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
+    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, and folders: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»'],
+    'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
+    'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
+    'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
+    'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
+    'e quelli di prima ancora' => ['ricerca', 'prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
+    'come trovarli nei test di un frontend' => ['ricerca', 'Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
     'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
+]);
+
+// Sprint 25 · T4 (voce #1639): la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga. Il README
+// dice i tipi, i gruppi, la seconda riga e dove si apre ognuno; la guida dice che cosa chiedere perché la ricerca trovi le
+// risorse di un modulo nuovo. Nessuno dei due dice più che la ricerca trova solo board e cartelle.
+
+it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la seconda riga e dove si apre ognuno; la guida dice come un modulo aggiunge un suo tipo (sprint 25 · T4.6)', function (string $dove, string $frase) {
+    $testi = [
+        'ricerca' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'i sei tipi' => ['ricerca', 'Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`)'],
+    'i gruppi e il loro ordine' => ['ricerca', 'col nome del tipo nella lingua (Schede, Board, Cartelle, Contatti, Aziende, Opportunità), il nome e il tono del prodotto e l\'icona del tipo; i gruppi escono nell\'ordine del backoffice, quello del primo risultato di ognuno'],
+    'la seconda riga' => ['ricerca', 'Sotto il titolo sta la seconda riga: i testi di `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un contatto, pipeline e fase di un\'opportunità —, solo quelli che ci sono'],
+    'chi non ha la seconda riga' => ['ricerca', 'un\'azienda, una board e una cartella non hanno una seconda riga'],
+    'dove si aprono' => ['ricerca', 'una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un\'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`, un\'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`'],
+    'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
+    'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
+    'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
+    'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
+    'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
+]);
+
+it('né il README né la guida dicono più che la ricerca trova solo board e cartelle (sprint 25 · T4.6)', function (string $file, string $frase) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(false);
+})->with([
+    'README: le fonti di oggi' => ['README.md', 'oggi board e cartelle, di Project Management'],
+    'README: i due testi di oggi' => ['README.md', 'dicono ciò che la ricerca trova oggi, board e cartelle'],
+    'la guida' => ['MODULO-NUOVO.md', 'trova solo board e cartelle'],
 ]);
 
 // Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
