@@ -116,12 +116,19 @@ export function nelWorkspace(indirizzo: string, slug: string): string {
 }
 
 /**
- * Le fonti della ricerca in un workspace: i tipi di risorsa dei prodotti che lì sono `attivo`, nell'ordine del registro. Il
- * backoffice cerca solo nelle app attive nel workspace: un prodotto `disponibile` o in arrivo non dà fonti.
- * `prodotti` è lo stato di ogni prodotto nel workspace, come nei dati della cornice.
+ * Le fonti della ricerca in un workspace: i tipi di risorsa dei prodotti che lì sono `attivo`, nell'ordine del registro, e dopo
+ * quelli della voce della Dashboard (il membro del workspace). Il backoffice cerca solo nelle app attive nel workspace: un
+ * prodotto `disponibile` o in arrivo non dà fonti. I membri non sono di un'app: li cerca in ogni workspace, e sono una fonte
+ * anche dove nessun prodotto è attivo. Vengono per ultimi, benché la loro voce sia la prima del registro: chi nomina solo le
+ * prime fonti nomina quelle dei prodotti. `prodotti` è lo stato di ogni prodotto nel workspace, come nei dati della cornice.
  */
 export function fontiDellaRicerca(prodotti: Partial<Record<IdDiProdotto, string | undefined>>): TipoDiRisorsa[] {
-    return registro.flatMap((voce) => (voce.id !== 'home' && prodotti[voce.id] === 'attivo' ? (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}` as TipoDiRisorsa) : []));
+    const tipiDi = (voce: VoceDelRegistro) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}` as TipoDiRisorsa);
+
+    return [
+        ...registro.flatMap((voce) => (voce.id !== 'home' && prodotti[voce.id] === 'attivo' ? tipiDi(voce) : [])),
+        ...registro.flatMap((voce) => (voce.id === 'home' ? tipiDi(voce) : [])),
+    ];
 }
 
 /** Porta al prodotto solo uno stato che zr-core conosce: `attivo` o `disponibile`. Ogni altro, anche nuovo, è «Presto». */

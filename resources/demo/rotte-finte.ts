@@ -28,7 +28,8 @@
 // di ricerca.crea senza `indirizzo` (tipo, id, titolo e `contesto`): board e cartelle in ordine di titolo, e in fondo due tipi
 // che il registro non ha (`board.schede`, `uat-ignoto`), com'era sul tag `v1.14.0`; le fonti nuove di ricerca.crea vengono per
 // prime e stanno dietro un parametro, come ogni dato nuovo della pagina di prova: con `?schede=1` una scheda, con
-// `?crm_attivo=1` — lo stesso che nei dati di prova accende il CRM — contatti, aziende e opportunità; con
+// `?crm_attivo=1` — lo stesso che nei dati di prova accende il CRM — contatti, aziende e opportunità; dopo di loro, senza
+// parametri, un membro del workspace, col ruolo come codice: non è di un modulo, e il backoffice lo dà in ogni workspace; con
 // `?id_malfatto=1` c'è una board in più con l'id `..`, che la cornice non mostra; «ua»
 // risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
 // Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
@@ -156,6 +157,9 @@ const risultatiDiProva = [
             { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
         ]
         : []),
+    // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il solo `ruolo`, e come codice: è ciò
+    // che la rotta vera lascia uscire (mai l'email), e il suo testo nella lingua lo mette la cornice.
+    { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } },
     // Poi board e cartelle, in ordine di titolo, senza `contesto`.
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },

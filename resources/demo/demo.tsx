@@ -25,7 +25,9 @@ import { rotteFinte } from './rotte-finte';
 // assegnata, una menzione in un commento e una scheda eliminata, di Project Management; e la ricerca trova anche una scheda)
 // l'ultimo si legge anche in pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
-// nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts). Non entra nel pacchetto.
+// nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts). In ogni caso la ricerca
+// nomina per ultimi i membri del workspace, e ne trova uno («UAT Katherine Johnson», col ruolo nella lingua): un clic lo
+// aprirebbe fra i membri di app. Non entra nel pacchetto.
 // La cornice gliela dà chi la monta (`avvia`, in fondo): index.tsx, per index.html, quella dell'ingresso di sempre; app.tsx,
 // per app.html, quella dell'ingresso per le app, e sotto le scelte scrive se `window.Zeiras` c'è.
 

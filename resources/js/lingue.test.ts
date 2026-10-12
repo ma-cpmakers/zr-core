@@ -18,6 +18,8 @@ const codiciDelRegistro = registro.flatMap((voce) =>
 /** Le fonti della ricerca di Project Management e quelle del CRM, nell'ordine del registro. */
 const diProjectManagement: TipoDiRisorsa[] = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle'];
 const delCrm: TipoDiRisorsa[] = ['crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'];
+/** La fonte che non è di un modulo: il membro del workspace, che nel registro sta nella voce della Dashboard. */
+const deiMembri: TipoDiRisorsa[] = ['home.workspace.membro'];
 
 describe('le lingue della cornice', () => {
     it("dove una lingua non ha un testo, o l'ha vuoto, quel testo è in inglese (T5.2)", () => {
@@ -484,16 +486,31 @@ describe('le lingue della cornice', () => {
         expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual(codiciDelRegistro.map((codice) => `searchContext.${codice}`));
     });
 
+    // Sprint 27 · T2 (voce #1787): il membro del workspace non è di un modulo, e il backoffice lo cerca in ogni workspace: è una
+    // fonte anche dove nessun modulo è attivo. Nel registro sta nella prima voce, quella della Dashboard, ma fra le fonti viene
+    // per ultimo: il segnaposto ne nomina tre, e le prime restano quelle dei moduli.
     it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: TipoDiRisorsa[]]>([
-        ['Project Management attivo e il CRM solo disponibile', { pm: 'attivo', crm: 'disponibile' }, diProjectManagement],
+        ['Project Management attivo e il CRM solo disponibile', { pm: 'attivo', crm: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
         // Nell'ordine del registro, non in quello dei dati.
-        ['tutti e due attivi', { crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm]],
-        ['il CRM attivo e Project Management in arrivo', { pm: 'in_arrivo', crm: 'attivo' }, delCrm],
-        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, []],
-        ['nessun modulo', {}, []],
-        ['uno stato che zr-core non conosce, e uno scritto `undefined`', { pm: 'sospeso', crm: undefined }, []],
-    ])('con %s, le fonti della ricerca sono i tipi di risorsa dei moduli attivi nel workspace, nell\'ordine del registro (sprint 25 · T4.3)', (_caso, prodotti, fonti) => {
+        ['tutti e due attivi', { crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm, ...deiMembri]],
+        ['il CRM attivo e Project Management in arrivo', { pm: 'in_arrivo', crm: 'attivo' }, [...delCrm, ...deiMembri]],
+        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, deiMembri],
+        ['nessun modulo', {}, deiMembri],
+        ['uno stato che zr-core non conosce, e uno scritto `undefined`', { pm: 'sospeso', crm: undefined }, deiMembri],
+    ])('con %s, le fonti della ricerca sono i tipi di risorsa dei moduli attivi nel workspace, nell\'ordine del registro, e per ultimo il membro del workspace, che c\'è in ogni workspace (sprint 25 · T4.3; sprint 27 · T2.4)', (_caso, prodotti, fonti) => {
         expect(fontiDellaRicerca(prodotti)).toStrictEqual(fonti);
+    });
+
+    it.each<[lingua: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], segnaposto: string, invito: string]>([
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca membri…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
+        ['es', {}, 'Busca miembros…', 'Busca miembros: escribe al menos 2 caracteres.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
+        ['en', {}, 'Search members…', 'Search members: type at least 2 characters.'],
+    ])('con la lingua "%s" e i moduli %j, i due testi della ricerca nominano i membri dopo le fonti dei moduli attivi: l\'invito per ultimi, il segnaposto solo dove le fonti dei moduli sono meno di tre; senza moduli attivi sono la sola fonte, mai i due testi corti (sprint 27 · T2.4)', (lingua, prodotti, segnaposto, invito) => {
+        expect(testiDellaRicerca(lingua, fontiDellaRicerca(prodotti))).toStrictEqual({ searchPlaceholder: segnaposto, searchHint: invito });
     });
 
     it.each<[lingua: string, fonti: TipoDiRisorsa[], segnaposto: string, invito: string]>([
