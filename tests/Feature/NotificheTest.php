@@ -1372,6 +1372,129 @@ it('una delle tre chiavi con una forma che il contratto non ammette è un guasto
         ->and($risposta->json('data'))->toBeNull();
 })->with(notificheColChiECosaSbagliato());
 
+// Sprint 32 · T3 (voce #1913). Dal 12/10/2026 una notifica di /v1 può raccontare più azioni: `creata_il` è l'istante della prima,
+// `ultima_azione_il` quello dell'ultima (uguale a `creata_il` finché è una sola), `azioni` quante sono, e l'elenco del backoffice
+// è ordinato sull'ultima. Alla pagina la parte server dà, in `creata_il`, l'istante dell'ultima azione: è l'ora che il pannello
+// mostra, ed è fin lì che arriva «Segna tutte come lette». Le chiavi in pagina restano nove: `ultima_azione_il`, `azioni` e
+// `board` non passano. Un backoffice di prima non manda `ultima_azione_il`, e allora `creata_il` è quella di sempre.
+
+/**
+ * Una notifica di /v1 non letta che racconta `$azioni` azioni, dalla prima all'ultima, su una lista di una board.
+ *
+ * @return array<string, mixed>
+ */
+function notificaAccorpata(string $id, string $creataIl, mixed $ultimaAzioneIl, int $azioni = 2): array
+{
+    return notificaDelBackoffice($id, $creataIl, null, 'pm', 'com.zeiras.board.lista.modificata') + [
+        'ultima_azione_il' => $ultimaAzioneIl, 'azioni' => $azioni, 'autore' => ['nome' => 'UAT Bruno'], 'risorsa_nome' => 'UAT Da fare',
+        'board' => ['id' => 'uat-board-accorpata', 'nome' => 'UAT Lancio accorpato'], 'per_me' => null,
+    ];
+}
+
+it('GET /cornice/notifiche dà in creata_il l\'istante dell\'ultima azione di una notifica che ne racconta più d\'una, nell\'ordine del backoffice; le chiavi restano nove, e `ultima_azione_il`, `azioni` e `board` non arrivano in pagina (sprint 32 · T3.1, T3.3, T3.4)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-12 09:00:00.000000', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $delBackoffice = [
+        // Nata un'ora fa, l'ultima azione due minuti fa: è la prima dell'elenco, che il backoffice ordina sull'ultima azione.
+        notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', '2026-10-12T08:58:00.456Z'),
+        // Un'azione sola: i due istanti sono lo stesso.
+        notificaAccorpata('uat-n2', '2026-10-12T08:50:00.000Z', '2026-10-12T08:50:00.000Z', 1),
+        // Il backoffice di prima: `ultima_azione_il` non c'è.
+        notificaDelBackoffice('uat-n1', '2026-10-12T08:40:00.789Z', null),
+    ];
+    Http::fake(['*' => Http::response(['data' => $delBackoffice, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect(array_column($risposta->json('data'), 'creata_il', 'id'))->toBe([
+        'uat-n3' => '2026-10-12T08:58:00.456Z', 'uat-n2' => '2026-10-12T08:50:00.000Z', 'uat-n1' => '2026-10-12T08:40:00.789Z',
+    ]);
+    foreach ($risposta->json('data') as $notifica) {
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'ids']);
+    }
+    // «Segna tutte come lette» arriva all'istante più avanti fra quelli in pagina: non sta prima della nascita di nessuna.
+    $finoA = max(array_map(fn (array $notifica): int => Carbon::parse($notifica['creata_il'])->getTimestampMs(), $risposta->json('data')));
+    foreach ($delBackoffice as $notifica) {
+        expect($finoA)->toBeGreaterThanOrEqual(Carbon::parse($notifica['creata_il'])->getTimestampMs());
+    }
+    $corpo = (string) $risposta->getContent();
+    expect(substr_count($corpo, 'ultima_azione_il'))->toBe(0)
+        ->and(substr_count($corpo, '"azioni"'))->toBe(0)
+        ->and(substr_count($corpo, '"board"'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-board-accorpata'))->toBe(0)
+        ->and(substr_count($corpo, 'UAT Lancio accorpato'))->toBe(0)
+        ->and(substr_count($corpo, '08:00:00.123Z'))->toBe(0);
+});
+
+it('anche la lettura di una notifica che racconta più azioni risponde con l\'istante dell\'ultima in creata_il, e senza le chiavi in più (sprint 32 · T3.1, T3.4)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => ['letta_il' => '2026-10-12T08:59:00.000Z'] + notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', '2026-10-12T08:58:00.456Z')])]);
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))->assertOk();
+
+    expect($risposta->json('data.creata_il'))->toBe('2026-10-12T08:58:00.456Z')
+        ->and($risposta->json('data.letta'))->toBeTrue();
+    $corpo = (string) $risposta->getContent();
+    expect(substr_count($corpo, 'ultima_azione_il'))->toBe(0)
+        ->and(substr_count($corpo, '"azioni"'))->toBe(0)
+        ->and(substr_count($corpo, '"board"'))->toBe(0)
+        ->and(substr_count($corpo, '08:00:00.123Z'))->toBe(0);
+});
+
+it('senza `ultima_azione_il`, o con null, la notifica non è rifiutata e creata_il è quella del backoffice, com\'era (sprint 32 · T3.2)', function (array $notifica) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [$notifica], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect($risposta->json('data.0.creata_il'))->toBe('2026-10-12T08:00:00.123Z')
+        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'ids']);
+})->with([
+    'il backoffice di prima: la chiave non c\'è' => [array_diff_key(notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', null), ['ultima_azione_il' => true, 'azioni' => true, 'board' => true])],
+    'la chiave c\'è e vale null' => [notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', null)],
+]);
+
+/**
+ * Valori di `ultima_azione_il` che non sono un testo. Una riga per forma, per l'elenco e per la lettura di una notifica.
+ *
+ * @return array<string, array{mixed}>
+ */
+function ultimeAzioniCheNonSonoUnTesto(): array
+{
+    return [
+        'un numero' => [1791795480],
+        'zero' => [0],
+        'true' => [true],
+        'false' => [false],
+        'una lista' => [['2026-10-12T08:58:00.456Z']],
+        'un oggetto' => [['il' => '2026-10-12T08:58:00.456Z']],
+    ];
+}
+
+it('un `ultima_azione_il` che non è un testo è un guasto dell\'elenco: mai un 200 che lo toglie in silenzio, mai un numero al posto di un istante (sprint 32 · T3.1)', function (mixed $ultimaAzioneIl) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    // La prima è una notifica intera: il guasto è della seconda.
+    Http::fake(['*' => Http::response(['data' => [
+        notificaAccorpata('uat-n4', '2026-10-12T08:30:00.000Z', '2026-10-12T08:59:00.000Z'),
+        notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', $ultimaAzioneIl),
+    ], 'successivo' => null])]);
+
+    $elenco = senzaGettone($this->getJson('cornice/notifiche'));
+
+    expect($elenco->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($elenco->json('data'))->toBeNull();
+})->with(ultimeAzioniCheNonSonoUnTesto());
+
+it('un `ultima_azione_il` che non è un testo è un guasto anche nella risposta della lettura di una notifica: mai un 200 (sprint 32 · T3.1)', function (mixed $ultimaAzioneIl) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', $ultimaAzioneIl)])]);
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => false]));
+
+    expect($risposta->status())->toBeGreaterThanOrEqual(500)->toBeLessThan(600)
+        ->and($risposta->json('data'))->toBeNull();
+})->with(ultimeAzioniCheNonSonoUnTesto());
+
 it('il guasto di una delle tre chiavi è quello di una notifica senza id: la stessa risposta, stato e corpo (sprint 20 · T1.6)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     $casi = [
