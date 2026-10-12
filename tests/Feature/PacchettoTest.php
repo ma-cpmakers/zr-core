@@ -4005,9 +4005,13 @@ it('il README dice, dove fa importare `bundle.css`, che il CSS del design system
     expect($css)->not->toBe('')
         ->and(str_contains($css, $frase))->toBe(true);
 })->with([
-    'fuori dai layer, e vince' => ['Il CSS del design system sta fuori dai layer della cascata, e per questo vince su ogni classe di utilità di Tailwind, che sta in un layer'],
+    'fuori dai layer' => ['Il CSS del design system sta fuori dai layer della cascata.'],
+    // Lettura della PR #61, R11: vince dove le utilità stanno in un layer, e il README dice quale Tailwind.
+    'con quale Tailwind vince' => ['Con Tailwind 4, che mette le sue classi di utilità in un layer, vince su ognuna di loro'],
     'che cosa non fa una pagina' => ['una pagina non ritocca con una classe una proprietà che un componente già dà'],
-    'a chi si chiede' => ['Se serve un aspetto che il componente non ha, lo si chiede all\'agente di zr-core'],
+    'per che cosa vale' => ['Vale per le proprietà che il componente dichiara e per una classe senza il modificatore che forza (`!`)'],
+    'con Tailwind 3' => ['con Tailwind 3, che non usa i layer della cascata, decidono specificità e ordine'],
+    'a chi si chiede' => ['In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all\'agente di zr-core'],
     'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/zeiras/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
 ]);
 
@@ -4020,6 +4024,8 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
     'forzare una proprietà' => ['!important'],
     'un layer per il design system, nell\'`@import`' => ['layer('],
     'un layer dichiarato' => ['@layer'],
+    // Lettura della PR #61, R11: non vince su «ogni» classe di qualunque Tailwind.
+    'vince sempre' => ['per questo vince su ogni classe di utilità di Tailwind'],
 ]);
 
 // Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
@@ -4669,7 +4675,9 @@ it('il README dice, in «La parte server», `Cornice::frenata()`: da quale versi
     'da quale versione' => ['il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`)'],
     'che cosa dà' => ['dà l\'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice)'],
     'null in ogni altro caso' => ['`null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore'],
-    'non legge' => ['`Cornice::frenata()` non legge niente: guarda la lettura che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto'],
+    // Lettura della PR #61, R5: il freno è quello di io.mostra; il 429 delle altre tre letture di `dati()` lo dà l'eccezione.
+    'non legge' => ['`Cornice::frenata()` non legge niente: guarda la lettura di `io.mostra` che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto, e solo quella'],
+    'le altre tre letture' => ['Un 429 che `Cornice::dati()` prende da una delle altre sue tre letture (`/v1/app`, `/v1/io/aziende`, `/v1/io/workspace`) lo dà l\'`ErroreApi` che `dati()` lancia, e `Cornice::frenata()` resta `null`'],
     'il freno è lo stato' => ['Il freno è lo stato, 429, con qualunque codice'],
     'a chi serve' => ['dopo un 429 non si richiama, e il middleware risponde col suo 429 prima che parta un\'altra chiamata'],
     'vale per quella richiesta' => ['Il freno vale per quella richiesta: la richiesta dopo non lo trova, finché una sua lettura non prende un altro 429'],
@@ -4715,6 +4723,10 @@ it('il README dice, nel punto «Salta al contenuto» di «La cornice», che c\'�
     'il Tab dopo' => ['il Tab dopo va al primo elemento della pagina invece di rifare tutta la barra'],
     'nello stato ridotto' => ['C\'è anche nello stato ridotto'],
     'il modulo non deve fare niente' => ['Il modulo non deve fare niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo'],
+    // Lettura della PR #61, R3, R4 e R12.
+    'quale main' => ['Il `main` è quello dell\'`AppShell`, anche se il frontend ne ha uno suo prima della cornice o intorno a lei'],
+    'che cosa cambia per chi aggiorna' => ['`.zr-shell` non è più il primo elemento di ciò che la `Cornice` rende (prima c\'è il `div` del pulsante), e dopo un salto il `main` ha `tabindex="-1"` finché tiene il fuoco'],
+    'i test da rileggere' => ['Un test del modulo sul primo figlio della cornice, su `:first-child` o sul primo elemento che prende il fuoco va riletto'],
     'è provvisorio' => ['È provvisorio: l\'`AppShell` del design system non ha ancora il suo'],
     'coi pezzi del design system' => ['la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i token)'],
     'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
@@ -4726,8 +4738,12 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
 
     expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
-        ->and(substr_count($cornice, "saltoColFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
-        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{fuocoAlContenuto\}>\{t\.skipToContent\}<\/Button>/', $cornice))->toBe(1);
+        // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
+        ->and(substr_count($cornice, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
+        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{\(\) => fuocoAlContenuto\(contenitore\.current\)\}>\{testo\}<\/Button>/', $cornice))->toBe(1)
+        ->and(substr_count($cornice, '<SaltaAlContenuto testo={t.skipToContent} />'))->toBe(1)
+        // Lettura della PR #61, R3: il `main` si cerca dal pulsante, non dal documento.
+        ->and(str_contains($cornice, "document.querySelector('main')"))->toBe(false);
 });
 
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
@@ -4755,9 +4771,41 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'sempre crossorigin' => ['la richiesta di un modulo è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte'],
     'dove non scrive' => ['Non sulla visita Inertia (la richiesta porta `X-Inertia`), su un redirect, su una pagina d\'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un JSON, un file o uno stream'],
     'un Link di prima resta' => ['Un `Link` che la risposta porta già resta: il middleware aggiunge il suo accanto'],
-    'niente della persona' => ['L\'header dipende solo dalla build, è uguale per tutti e ripete ciò che il documento dice già: nessun dato, id o lingua della persona'],
-    'il rischio accettato' => ['Il rischio accettato è uno: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce già un indirizzo, che è stato aperto di recente'],
+    // Lettura della PR #61, R1, R2 e R6-R8 (`Decisione:` 11432 di zr-pm).
+    'niente della persona' => ['col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua della persona, e nessun host che venga dalla richiesta'],
+    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento'],
+    'di chi è la misura' => ['zr-pm dichiara che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente'],
+    'il rischio di chi accende Early Hints' => ['Chi lo accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce o indovina un indirizzo, che la pagina esiste ed è stata aperta da poco'],
+    'lo slug è un nome' => ['lo slug di un workspace è il nome di un\'azienda'],
+    'sulle sole rotte che accetta di esporre' => ['un modulo con uno slug o un id nel percorso registra il middleware sulle sole rotte che accetta di esporre'],
+    'con quale indirizzo' => ['mai con un host che viene dalla richiesta. Una voce è il solo percorso, `</build/assets/…>`, che il browser risolve sull\'origine della pagina; con `ASSET_URL` nel `.env` del frontend è l\'indirizzo intero, che comincia con quello'],
+    'un altro host non esce' => ['Di un indirizzo con l\'host della richiesta (un frontend che ha rimesso il resolver di Laravel) il middleware scrive il solo percorso, e un file con un altro host non esce'],
+    'gli attributi che non copia' => ['Degli attributi che Vite calcola il middleware guarda solo `as`: non copia `integrity` né il valore di `crossorigin`'],
+    'chi non lo registra' => ['Un frontend con l\'integrità dei file nel manifest, con `crossorigin="use-credentials"` o con `crossorigin` sui CSS non lo registra'],
+    'nessun tetto' => ['Non c\'è un tetto alle voci: l\'header cresce con ogni pezzo che l\'ingresso importa staticamente'],
+    'un processo che resta vivo' => ['È per PHP-FPM, dove ogni richiesta parte da zero: in un processo che resta vivo fra una richiesta e l\'altra (Octane) `Vite` tiene i file della richiesta di prima'],
+    'in un posto solo' => ['in un posto solo. Fra i middleware globali e anche su un gruppo scriverebbe due righe uguali'],
+    'al posto di quello di Laravel' => ['al posto di quello di Laravel, `Illuminate\\Http\\Middleware\\AddLinkHeadersForPreloadedAssets`, non accanto: con tutti e due ogni file uscirebbe due volte, come `modulepreload` e come `preload`'],
+    'il resolver, da quando' => ['Dalla `v1.18.0` il pacchetto registra un resolver di Vite (`Vite::createAssetPathsUsing`), per ogni frontend che lo installa e senza che faccia niente'],
+    'che cosa scrive il resolver' => ['`@vite` scrive i file della build col solo percorso, `/build/assets/…`, nel documento come nel `Link`'],
+    'com\'era prima' => ['Prima Laravel li scriveva con la radice della richiesta — l\'header `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli indirizzi della pagina'],
+    'con ASSET_URL' => ['Con `ASSET_URL` nel `.env` l\'indirizzo resta intero e comincia con quello: non viene dalla richiesta'],
+    'Vite::asset' => ['**`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da `config(\'app.url\')`'],
+    'in una sottocartella' => ['**Un frontend in una sottocartella del dominio** imposta `ASSET_URL`'],
+    'un resolver del frontend vince' => ['**Un resolver del frontend** registrato nel suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`'],
     'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
+]);
+
+it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né che Early Hints è acceso (lettura della PR #61, R1 e R2)', function (string $diPrima) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $diPrima))->toBe(false);
+})->with([
+    'uguale per tutti' => ['dipende solo dalla build, è uguale per tutti'],
+    'solo chi conosce già un indirizzo' => ['a chi conosce già un indirizzo, che è stato aperto di recente'],
+    'Early Hints acceso' => ['Con Early Hints acceso sulla zona, Cloudflare li ripete in un 103 alla visita dopo'],
+    'con gli stessi indirizzi del documento' => ['nell\'ordine in cui `@vite` li ha scritti e con gli stessi indirizzi'],
 ]);
 
 it('la guida nomina il precarico dove il modulo registra i middleware, e dice che non parte da solo; la classe è nello zip del tag, il suo test no (sprint 28 · T2.6)', function () {
@@ -4766,6 +4814,10 @@ it('la guida nomina il precarico dove il modulo registra i middleware, e dice ch
 
     expect(str_contains($passo, 'Dalla `v1.18.0` puoi registrare anche il precarico dei file d\'ingresso, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`, sul gruppo `web` o sulle sole rotte che vuoi'))->toBe(true)
         ->and(str_contains($passo, 'non parte da solo — README, «Il precarico dei file d\'ingresso»'))->toBe(true)
+        // Lettura della PR #61, R1 e R2: le rotte da esporre, il resolver, e niente più Early Hints dato per acceso.
+        ->and(str_contains($passo, 'Se nei tuoi indirizzi c\'è uno slug o un id, lo registri sulle sole rotte che accetti di esporre'))->toBe(true)
+        ->and(str_contains($passo, 'Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli — README, «Gli indirizzi dei file della build»'))->toBe(true)
+        ->and(str_contains($passo, 'con Early Hints Cloudflare li manda prima della pagina'))->toBe(false)
         ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/IngressiPrecaricoTest.php');
 });
 
@@ -4784,8 +4836,11 @@ it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chia
     // ordine di nome e in un processo solo: così li lancia la CI).
     $file = array_map('basename', glob(__DIR__.'/*.php') ?: []);
     sort($file);
-    // Sprint 28 · T5.4 (seconda lettura della PR #60, residuo di R3): un caso si vede in qualunque forma sia scritto — `it(` o
-    // `test(`, con `function` o con `fn`, a inizio riga o rientrato in un `describe` —, e il rosso dice che cosa fare.
+    // Sprint 28 · T5.4 (seconda lettura della PR #60, residuo di R3): un caso si vede con `it(` o con `test(`, con `function`
+    // o con `fn`, a inizio riga o rientrato in un `describe`, e il rosso dice che cosa fare. Lettura della PR #61, R10: la
+    // regola non vede un titolo fra virgolette doppie, un titolo concatenato (`'a'.$b,`) né un caso di ordine superiore
+    // (`it('…')->…`, senza virgola), e prende per un caso una riga `it('…',` dentro una stringa del file: in `tests/Feature`
+    // oggi non ce ne sono, e chi ne scrive uno in coda a questo file o in testa a `RegistroTest.php` allarga la regola.
     $titoli = function (string $nome): array {
         preg_match_all('/^[ \t]*(?:it|test)\(\s*\'((?:[^\'\\\\]|\\\\.)*)\'\s*,/m', (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
 

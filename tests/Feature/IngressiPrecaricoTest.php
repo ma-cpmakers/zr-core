@@ -1,10 +1,13 @@
 <?php
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Zeiras\Core\Http\PrecaricoDegliIngressi;
 
@@ -33,6 +36,9 @@ beforeEach(function () {
 
 afterEach(function () {
     File::deleteDirectory(public_path(CARTELLA_DEL_PRECARICO));
+    // I proxy fidati sono di classe, non dell'app: un caso che li accende non li lascia al caso dopo.
+    TrustProxies::flushState();
+    Request::setTrustedProxies([], -1);
 });
 
 /** Un documento scritto con `@vite`, come la vista di un frontend. */
@@ -41,10 +47,40 @@ function documentoConVite(): string
     return Blade::render("<!doctype html><html><head>@vite('".INGRESSO_DEL_PRECARICO."')</head><body><p>una pagina</p></body></html>");
 }
 
-/** L'indirizzo di un file della build d'esempio, come `@vite` lo scrive nel documento. */
+/**
+ * L'indirizzo di un file della build d'esempio, come `@vite` lo scrive nel documento: il solo percorso, senza host (lettura della
+ * PR #61, R1: col resolver del pacchetto l'host non viene dalla richiesta).
+ */
 function fileDelPrecarico(string $nome): string
 {
-    return asset(CARTELLA_DEL_PRECARICO.'/assets/'.$nome);
+    return '/'.CARTELLA_DEL_PRECARICO.'/assets/'.$nome;
+}
+
+/**
+ * I tre file che il documento d'esempio carica all'apertura.
+ *
+ * @return list<string>
+ */
+function fileAllApertura(string $radice = ''): array
+{
+    return [$radice.fileDelPrecarico('app-CCCC3333.css'), $radice.fileDelPrecarico('app-AAAA1111.js'), $radice.fileDelPrecarico('fornitori-BBBB2222.js')];
+}
+
+/** Una rotta col middleware che rende il documento e tiene l'host che la richiesta ha dichiarato, come lo legge Laravel. */
+function rottaCheTieneLHost(?string &$visto): void
+{
+    Route::get('/prova/precarico', function () use (&$visto) {
+        $visto = request()->getHost();
+
+        return documentoConVite();
+    })->middleware(PrecaricoDegliIngressi::class);
+}
+
+/** Un frontend che si fida dei proxy: `X-Forwarded-Host` diventa l'host della richiesta. */
+function frontendCheSiFidaDeiProxy(): void
+{
+    TrustProxies::at('*');
+    Request::setTrustedProxies(['127.0.0.1'], Request::HEADER_X_FORWARDED_HOST);
 }
 
 /**
@@ -70,7 +106,7 @@ function vociDelPrecarico(?string $link): array
  */
 function fileNelDocumento(string $html): array
 {
-    preg_match_all('/<(?:script[^>]*\bsrc|link[^>]*\bhref)="([^"]+\/'.CARTELLA_DEL_PRECARICO.'\/[^"]+)"/', $html, $trovati);
+    preg_match_all('/<(?:script[^>]*\bsrc|link[^>]*\bhref)="([^"]*\/'.CARTELLA_DEL_PRECARICO.'\/[^"]+)"/', $html, $trovati);
 
     return array_values(array_unique($trovati[1]));
 }
@@ -228,3 +264,81 @@ it('il frontend lo registra sul gruppo `web`, e da lì ogni pagina intera del gr
     expect(vociDelPrecarico($this->get('/w/uat-marketing/precarico')->assertOk()->headers->get('Link')))->toHaveCount(3)
         ->and($this->get('/prova/precarico')->assertOk()->headers->has('Link'))->toBeFalse();
 });
+
+// Lettura della PR #61, R1 (e `Decisione:` 11432 di zr-pm con la sua aggiunta). Senza `ASSET_URL` Laravel scrive i file della
+// build con la radice della richiesta: l'header `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy. Chi manda un
+// host suo lo ritroverebbe nel documento e nel `Link`. Il pacchetto registra un resolver di Vite che scrive il solo percorso, e
+// il middleware non scrive mai un host che viene dalla richiesta, nemmeno se il frontend rimette il resolver di Laravel.
+
+it('senza `ASSET_URL` il documento e il `Link` portano i file della build col solo percorso: un host falso nella richiesta non si ritrova né nell\'uno né nell\'altro (lettura della PR #61, R1)', function (string $indirizzo, array $intestazioni, string $atteso) {
+    frontendCheSiFidaDeiProxy();
+    $visto = null;
+    rottaCheTieneLHost($visto);
+
+    $risposta = $this->get($indirizzo, $intestazioni)->assertOk();
+    $documento = (string) $risposta->getContent();
+    $link = (string) $risposta->headers->get('Link');
+
+    // Il caso non è vuoto: l'host falso è arrivato, ed è quello che Laravel userebbe per la radice.
+    expect($visto)->toBe($atteso)
+        ->and(fileNelDocumento($documento))->toEqualCanonicalizing(fileAllApertura())
+        ->and($documento)->not->toContain('attaccante.example')->not->toContain('altro.example')
+        ->and(array_keys(vociDelPrecarico($link)))->toEqualCanonicalizing(fileAllApertura())
+        ->and($link)->not->toContain('attaccante.example')->not->toContain('altro.example')->not->toContain('://');
+})->with([
+    'un `Host` falso' => ['http://attaccante.example/prova/precarico', [], 'attaccante.example'],
+    'un `X-Forwarded-Host` falso' => ['/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example'],
+    'tutti e due falsi' => ['http://attaccante.example/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example'],
+]);
+
+it('un frontend che rimette il resolver di Laravel ha nel documento l\'host della richiesta, ma nel `Link` no: la voce è il solo percorso (lettura della PR #61, R1)', function (string $indirizzo, array $intestazioni, string $atteso) {
+    frontendCheSiFidaDeiProxy();
+    Vite::createAssetPathsUsing(null);
+    $visto = null;
+    rottaCheTieneLHost($visto);
+
+    $risposta = $this->get($indirizzo, $intestazioni)->assertOk();
+    $link = (string) $risposta->headers->get('Link');
+
+    // Il contro-esempio è nel documento: lì l'host falso c'è, perché il resolver non è quello del pacchetto.
+    expect($visto)->toBe($atteso)
+        ->and(fileNelDocumento((string) $risposta->getContent()))->toEqualCanonicalizing(fileAllApertura('http://'.$atteso))
+        ->and(array_keys(vociDelPrecarico($link)))->toEqualCanonicalizing(fileAllApertura())
+        ->and($link)->not->toContain('attaccante.example')->not->toContain('altro.example')->not->toContain('://');
+})->with([
+    'un `Host` falso' => ['http://attaccante.example/prova/precarico', [], 'attaccante.example'],
+    'un `X-Forwarded-Host` falso' => ['/prova/precarico', ['X-Forwarded-Host' => 'altro.example'], 'altro.example'],
+]);
+
+it('con `ASSET_URL` il documento e il `Link` portano l\'indirizzo intero, che comincia con quello e non con l\'host della richiesta (lettura della PR #61, R1)', function () {
+    // Come `ASSET_URL` nel `.env` del frontend: Laravel lo legge all'avvio, qui si dà alle due parti che lo tengono.
+    config(['app.asset_url' => 'https://cdn.zeiras.example']);
+    URL::useAssetOrigin('https://cdn.zeiras.example');
+    $visto = null;
+    rottaCheTieneLHost($visto);
+
+    $risposta = $this->get('http://attaccante.example/prova/precarico')->assertOk();
+    $link = (string) $risposta->headers->get('Link');
+
+    expect($visto)->toBe('attaccante.example')
+        ->and(fileNelDocumento((string) $risposta->getContent()))->toEqualCanonicalizing(fileAllApertura('https://cdn.zeiras.example'))
+        ->and(array_keys(vociDelPrecarico($link)))->toEqualCanonicalizing(fileAllApertura('https://cdn.zeiras.example'))
+        ->and($link)->not->toContain('attaccante.example');
+});
+
+it('un file con un indirizzo che non è un percorso, non comincia con `ASSET_URL` e non ha l\'host della richiesta non esce nel `Link` (lettura della PR #61, R1)', function (string $radice) {
+    config(['app.asset_url' => 'https://cdn.zeiras.example']);
+    Vite::createAssetPathsUsing(fn (string $percorso): string => $radice.$percorso);
+    Route::get('/prova/precarico', fn () => documentoConVite())->middleware(PrecaricoDegliIngressi::class);
+
+    $risposta = $this->get('/prova/precarico')->assertOk();
+
+    // Il caso non è vuoto: `@vite` ha scritto i suoi tre file, con quell'indirizzo.
+    expect(array_keys(Vite::preloadedAssets()))->toEqualCanonicalizing(fileAllApertura(rtrim($radice, '/')))
+        ->and($risposta->headers->has('Link'))->toBeFalse();
+})->with([
+    'un altro host' => ['https://altrove.example/'],
+    'un altro host senza schema: comincia con `//`, non è un percorso' => ['//altrove.example/'],
+    'un altro host scritto con la barra rovescia, che un browser legge come `//`' => ['/\\altrove.example/'],
+    'un altro host, con `ASSET_URL` che è un suo prefisso senza la barra' => ['https://cdn.zeiras.example.altrove.example/'],
+]);
