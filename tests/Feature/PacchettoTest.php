@@ -4868,6 +4868,20 @@ it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetc
         ->and(array_filter($ingressi, fn (string $codice): bool => preg_match('/(?:from|import\()\s*[\'"]\.\/prove[\'"]/', $codice) === 1))->toBe([]);
 });
 
+// Sprint 31 · T4.4 (voce #1908; review della PR #63, S8 e S9): chi rifà i moduli nei casi prende anche `frasiInMemoria` con un
+// import nuovo, e mentre carica lei risponde solo per i file delle frasi. README e guida lo dicono con le stesse parole e lo
+// stesso esempio.
+
+it('README e guida dicono a chi rifà i moduli nei casi che `frasiInMemoria` si prende con un import nuovo, con l\'esempio, e che le altre richieste passano al `fetch` che c\'era (sprint 31 · T4.4)', function (string $frase) {
+    foreach (['README.md', 'MODULO-NUOVO.md'] as $documento) {
+        expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$documento)), $frase))->toBe(true, $documento);
+    }
+})->with([
+    'un import nuovo' => ['Anche `frasiInMemoria` si prende con un import nuovo, dopo `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima'],
+    'l\'esempio' => ['In un caso, dopo `vi.resetModules()`: `const { frasiInMemoria } = await import(\'../../vendor/zeiras/zr-core/resources/js/prove\'); await frasiInMemoria();`'],
+    'le altre richieste' => ['Mentre carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c\'era'],
+]);
+
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');

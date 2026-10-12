@@ -920,18 +920,28 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
         }
     });
 
-    it.each<[lingua: string, file: FrasiDelleNotifiche]>([
-        ['it', frasiItaliane],
-        ['es', frasiSpagnole],
-        ['en', frasiInglesi],
-        ['zz', frasiInglesi],
-    ])('con la lingua "%s" le frasi che carica la cornice sono quelle dei file del pacchetto, e il pannello e chi mostra le notifiche in una pagina sua hanno gli stessi testi, tipo per tipo (T1.4, T1.8)', async (lingua, file) => {
-        const { caricaFrasi, rigaConLeFrasi, titoloConLeFrasi } = await import('./lingue');
+    // Sprint 31 · T4.2 (voce #1908; review della PR #63, S8). Le attese sono scritte qui a mano, una per famiglia di frase: il
+    // pannello e la pagina passano dalla stessa funzione, e confrontati fra loro un nome perso lo perdono insieme. Che le frasi
+    // caricate dalla cornice siano quelle dei file lo prova `frasi-con-fetch.test.ts`, dal caricatore vero (T4.1).
+    const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+    const [GIULIA, LANCIO] = [isolato('Giulia Bianchi'), isolato('Lancio corso')];
+
+    it.each<[lingua: string, file: FrasiDelleNotifiche, conChiECosa: string, conSoloChi: string, titolo: string]>([
+        ['it', frasiItaliane, `${GIULIA} ha modificato la scheda «${LANCIO}»`, `${GIULIA} ha modificato una scheda`, 'Scheda modificata'],
+        ['es', frasiSpagnole, `${GIULIA} ha modificado la tarjeta «${LANCIO}»`, `${GIULIA} ha modificado una tarjeta`, 'Tarjeta modificada'],
+        ['en', frasiInglesi, `${GIULIA} changed the card “${LANCIO}”`, `${GIULIA} changed a card`, 'Card changed'],
+        ['zz', frasiInglesi, `${GIULIA} changed the card “${LANCIO}”`, `${GIULIA} changed a card`, 'Card changed'],
+    ])('con la lingua "%s" chi mostra le notifiche in una pagina sua ha i testi scritti qui a mano — con chi e che cosa, con solo chi, titolo e riga sotto — e il pannello gli stessi, tipo per tipo (T1.8; sprint 31 · T4.2)', async (lingua, file, conChiECosa, conSoloChi, titolo) => {
+        const { rigaConLeFrasi, titoloConLeFrasi } = await import('./lingue');
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
-        const caricate = await caricaFrasi(lingua);
+        const caricate = { ...frasiInglesi, ...file };
+        const modificata = 'com.zeiras.board.scheda.modificata';
         const tipi = [...Object.keys(frasiInglesi).filter((chiave) => chiave.startsWith('notificationTitle.')).map((chiave) => chiave.slice('notificationTitle.'.length)), 'com.zeiras.uat.ignoto', '', undefined, 7];
 
-        expect(caricate).toStrictEqual({ ...frasiInglesi, ...file });
+        expect(rigaDellaNotifica({ tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, lingua)).toStrictEqual({ titolo: conChiECosa });
+        expect(rigaDellaNotifica({ tipo: modificata, autore_nome: 'Giulia Bianchi' }, lingua)).toStrictEqual({ titolo: conSoloChi });
+        expect(rigaDellaNotifica({ tipo: modificata, risorsa_nome: 'Lancio corso' }, lingua)).toStrictEqual({ titolo, sotto: 'Lancio corso' });
+        expect(titoloDellaNotifica(modificata, lingua)).toBe(titolo);
         expect(tipi).toHaveLength(42 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
