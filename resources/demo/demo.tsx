@@ -29,8 +29,8 @@ import { rotteFinte } from './rotte-finte';
 // aperta e ha solo pipeline e fase, l'altra è vinta e la sua seconda riga finisce con l'esito nella lingua. In ogni caso la ricerca
 // nomina per ultimi i membri del workspace, e ne trova uno («UAT Katherine Johnson», col ruolo nella lingua): un clic lo
 // aprirebbe fra i membri di app. Con `?senza_moduli=1` nel workspace di prova nessun modulo è attivo (Project Management e
-// Report sono `disponibile`, qualunque cosa dicano gli altri due parametri): l'invito della ricerca nomina i soli membri, e la
-// ricerca trova solo quello. Le fonti le nomina l'invito, a ricerca aperta: il segnaposto del campo è lo stesso in ogni caso.
+// Report sono `disponibile`, qualunque cosa dicano gli altri due parametri: `senza_moduli` vince anche su `?senza_crm=1`, e il CRM
+// resta `disponibile`, non in arrivo): l'invito della ricerca nomina i soli membri, e la ricerca trova solo quello, per ogni parola. Le fonti le nomina l'invito, a ricerca aperta: il segnaposto del campo è lo stesso in ogni caso.
 // Non entra nel pacchetto.
 // La cornice gliela dà chi la monta (`avvia`, in fondo): index.tsx, per index.html, quella dell'ingresso di sempre; app.tsx,
 // per app.html, quella dell'ingresso per le app, e sotto le scelte scrive se `window.Zeiras` c'è.

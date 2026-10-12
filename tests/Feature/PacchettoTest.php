@@ -2528,6 +2528,8 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
 
 const PASSO_DEL_REGISTRO = '## 8. Il prodotto nel registro';
 
+const PASSO_DELLA_RICERCA = '## 9. La ricerca';
+
 /** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. Vuoto se non c'è. */
 function passoDellaGuida(string $guida, string $titolo): string
 {
@@ -2640,7 +2642,7 @@ function difettiDiChiEInArrivo(array $registro, string $readme, string $guida): 
     return $difetti;
 }
 
-it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; con Bookings fuori dall\'arrivo le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
+it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; col primo di loro uscito per tutti le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
     $registro = registroDeiProdotti();
@@ -2663,7 +2665,8 @@ it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in a
     // Prima i documenti col registro di oggi: se non tornano, il rosso dice quale frase. I due registri di prova valgono finché
     // nel registro un prodotto è in arrivo senza essere «Presto» e uno è «Presto»: chi sono, non conta.
     expect(difettiDiChiEInArrivo($registro, $readme, $guida))->toBe([])
-        ->and([$uscito, $tolto])->not->toContain(null)
+        // Sprint 28 · T5.5 (seconda lettura della PR #60, residuo di R4): il giorno che l'ultimo esce, il rosso dice che cosa fare.
+        ->and($uscito !== null && $tolto !== null)->toBe(true, 'Nel registro non c\'è più un prodotto in arrivo che non sia «Presto», o non c\'è più un «Presto»: i due registri di prova di questo caso (uno uscito per tutti, un «Presto» in meno) non si ricavano più. README e guida sono a posto, lo dice il controllo qui sopra: si riscrive questo caso, e con lui quello dopo, che ricava i documenti «di quel giorno» da quelli di oggi.')
         ->and(difettiDiChiEInArrivo($conUnoUscito, $readme, $guida))->toBe([
             $nonDice('README, «in arrivo e non «Presto»»', $conUnoUscito),
             $nonDice('README, «in arrivo restano»', $conUnoUscito),
@@ -2692,7 +2695,8 @@ it('README e guida possono dire che nessun prodotto è in arrivo senza essere «
     );
     $guidaDiQuelGiorno = (string) preg_replace('/e\s+lo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u', 'e lo restano i $1 «Presto»', $guida, -1, $nellaGuida);
 
-    expect([$nelReadme, $nellaGuida])->toBe([2, 1])
+    // Sprint 28 · T5.5 (residuo di R4): quel giorno i documenti sono già nella forma «nessuno», e qui non c'è più niente da sostituire.
+    expect([$nelReadme, $nellaGuida])->toBe([2, 1], 'README e guida non hanno più le tre frasi che nominano chi è in arrivo senza essere «Presto» (due nel README, una nella guida): se nel registro non ce n\'è più nessuno i documenti sono già quelli «di quel giorno», e questo caso si riscrive partendo da loro. Le frasi coi nomi non si rimettono.')
         ->and(difettiDiChiEInArrivo($senzaNessuno, $readmeDiQuelGiorno, $guidaDiQuelGiorno))->toBe([])
         ->and(count(difettiDiChiEInArrivo($senzaNessuno, $readme, $guida)))->toBe(3)
         ->and(count(difettiDiChiEInArrivo(registroDeiProdotti(), $readmeDiQuelGiorno, $guidaDiQuelGiorno)))->toBe(3);
@@ -3969,6 +3973,55 @@ it('il README non dice più, al presente, che il segnaposto della ricerca nomina
     'segnaposto e invito dove manca l\'elenco' => ['segnaposto e invito sono questi due'],
 ]);
 
+// Sprint 28 · T5.3 (seconda lettura della PR #60, S5). La guida diceva che il nome da elenco di un tipo lo nominano il segnaposto
+// e l'invito: dalla `v1.17.0` lo nomina il solo invito, e il passo «9. La ricerca» non ha più la frase di prima. La guardia guarda
+// quel passo, non tutta la guida. Il suo limite è quello di ogni guardia «non dice più», anche di quella del README qui sopra:
+// cerca le parole di prima, e una frase che dice lo stesso con altre parole non la vede. Quella la ferma chi rilegge.
+it('il passo «9. La ricerca» della guida non dice più che il segnaposto della ricerca nomina i tipi di un modulo (sprint 28 · T5.3)', function (string $diPrima) {
+    $passo = suUnaRiga(passoDellaGuida((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'), PASSO_DELLA_RICERCA));
+
+    expect($passo)->not->toBe('')
+        ->and(str_contains($passo, $diPrima))->toBe(false);
+})->with([
+    'lo nominano tutti e due' => ['che il segnaposto e l\'invito della ricerca nominano'],
+]);
+
+// Sprint 28 · T5.6 (voce #1829; `Decisione:` 11283 di zr-pm). Il CSS del design system sta fuori dai layer della cascata, e vince
+// su ogni classe di utilità di Tailwind, che sta in un layer: il README lo dice dove fa importare `bundle.css`, e dice che cosa
+// fa una pagina — non ritocca con una classe ciò che un componente già dà, e l'aspetto che manca lo chiede a zr-core. Non dice
+// mai di cambiare la cascata.
+
+/** Il capoverso «Il CSS» del README su una riga sola, da «**Il CSS**» a «**Il JS**», coi due `@import`. Vuoto se non c'è. */
+function capoversoDelCss(string $readme): string
+{
+    preg_match('/^\*\*Il CSS\*\*.*?(?=^\*\*Il JS\*\*)/ms', $readme, $capoverso);
+
+    return suUnaRiga($capoverso[0] ?? '');
+}
+
+it('il README dice, dove fa importare `bundle.css`, che il CSS del design system sta fuori dai layer e vince sulle classi di utilità di Tailwind, e che cosa fa una pagina (sprint 28 · T5.6)', function (string $frase) {
+    $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($css)->not->toBe('')
+        ->and(str_contains($css, $frase))->toBe(true);
+})->with([
+    'fuori dai layer, e vince' => ['Il CSS del design system sta fuori dai layer della cascata, e per questo vince su ogni classe di utilità di Tailwind, che sta in un layer'],
+    'che cosa non fa una pagina' => ['una pagina non ritocca con una classe una proprietà che un componente già dà'],
+    'a chi si chiede' => ['Se serve un aspetto che il componente non ha, lo si chiede all\'agente di zr-core'],
+    'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/zeiras/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
+]);
+
+it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di forzare una proprietà (sprint 28 · T5.6)', function (string $vietata) {
+    $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($css)->not->toBe('')
+        ->and(str_contains($css, $vietata))->toBe(false);
+})->with([
+    'forzare una proprietà' => ['!important'],
+    'un layer per il design system, nell\'`@import`' => ['layer('],
+    'un layer dichiarato' => ['@layer'],
+]);
+
 // Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
 // dal file. Uno spezzato da un a capo si copia in due pezzi, e nei test di un frontend non trova niente: ogni riga del punto
 // chiude gli accenti che apre.
@@ -3988,6 +4041,8 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     $testi = [
         'ricerca' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'),
         'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+        // Sprint 28 · T5.3 (seconda lettura della PR #60, S5): la frase su chi nomina il nome da elenco si cerca nel suo passo.
+        'passo 9' => suUnaRiga(passoDellaGuida((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'), PASSO_DELLA_RICERCA)),
     ];
 
     expect($testi[$dove])->not->toBe('')
@@ -4001,7 +4056,7 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
     'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
     'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
-    'la guida: chi nomina il nome da elenco' => ['guida', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
+    'la guida: chi nomina il nome da elenco' => ['passo 9', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
     'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
     'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
 ]);
@@ -4729,18 +4784,22 @@ it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chia
     // ordine di nome e in un processo solo: così li lancia la CI).
     $file = array_map('basename', glob(__DIR__.'/*.php') ?: []);
     sort($file);
+    // Sprint 28 · T5.4 (seconda lettura della PR #60, residuo di R3): un caso si vede in qualunque forma sia scritto — `it(` o
+    // `test(`, con `function` o con `fn`, a inizio riga o rientrato in un `describe` —, e il rosso dice che cosa fare.
     $titoli = function (string $nome): array {
-        preg_match_all("/^it\\('(.*)', function/m", (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
+        preg_match_all('/^[ \t]*(?:it|test)\(\s*\'((?:[^\'\\\\]|\\\\.)*)\'\s*,/m', (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
 
         return $trovati[1];
     };
     $diQui = $titoli('PacchettoTest.php');
     $delFileDopo = $titoli('RegistroTest.php');
+    $ultimoDiQui = (string) end($diQui);
+    $primoDelFileDopo = $delFileDopo[0] ?? '';
 
     expect(array_key_exists('PacchettoTest.php', $neiFile))->toBe(true)
-        ->and($file[(int) array_search('PacchettoTest.php', $file, true) + 1] ?? null)->toBe('RegistroTest.php')
-        ->and(str_starts_with((string) end($diQui), 'un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file'))->toBe(true)
-        ->and(str_starts_with($delFileDopo[0] ?? '', 'un registro di prova scritto dall\\\'ultimo caso di un altro file non arriva qui'))->toBe(true)
+        ->and($file[(int) array_search('PacchettoTest.php', $file, true) + 1] ?? null)->toBe('RegistroTest.php', 'Il file che Pest gira subito dopo `PacchettoTest.php` non è più `RegistroTest.php`: il caso che trova il registro del pacchetto senza una copia in mano si sposta in testa al file che ora viene dopo, e questo legame si riscrive col suo nome.')
+        ->and(str_starts_with($ultimoDiQui, 'un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file'))->toBe(true, "L'ultimo caso di `PacchettoTest.php` dev'essere «un caso che scrive un registro di prova e non lo toglie…», e ora è «{$ultimoDiQui}»: un caso nuovo si scrive prima di quello, non in fondo al file.")
+        ->and(str_starts_with($primoDelFileDopo, 'un registro di prova scritto dall\\\'ultimo caso di un altro file non arriva qui'))->toBe(true, "Il primo caso di `RegistroTest.php` dev'essere «un registro di prova scritto dall'ultimo caso di un altro file non arriva qui…», e ora è «{$primoDelFileDopo}»: un caso nuovo si scrive dopo quello, non in testa al file.")
         ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
         ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => {$chiamate[1]})->in('Feature');"))->toBe(1);

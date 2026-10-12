@@ -552,6 +552,12 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });
 
+    // Sprint 28 · T5.1 (seconda lettura della PR #60, S3). Senza moduli attivi c'è il solo membro per ogni parola: anche per «ua»,
+    // che altrove dà il risultato vecchio di una board, e che il nome del membro contiene.
+    it.each([['ua'], ['uat']])('con `?senza_moduli=1` cercando «%s» la ricerca finta dà il solo membro, e nessuna board (sprint 28 · T5.1)', async (parola) => {
+        expect((await rispostaDi('/cornice/ricerca', cerca(parola), '?schede=1&crm_attivo=1&senza_moduli=1')).corpo.data).toStrictEqual([membro]);
+    });
+
     // Sprint 26 · T4 (lettura della PR #56, R8). `?ricerca_frenata=<secondi>` fa rispondere alla prima ricerca come la parte
     // server quando il backoffice frena — 429 `troppe_richieste` con `Retry-After` —, e alle successive come sempre: così sulla
     // pagina di prova si vede la cornice che aspetta.

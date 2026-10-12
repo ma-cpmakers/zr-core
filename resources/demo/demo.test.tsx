@@ -158,4 +158,29 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
             vi.useRealTimers();
         }
     });
+
+    // Sprint 28 · T5.2 (seconda lettura della PR #60, S4). Con `?senza_moduli=1` nei dati di prova nessun modulo è attivo, e lo
+    // dice l'invito della ricerca, che nomina i soli membri: senza il ramo dei dati di prova nominerebbe le schede di Project
+    // Management, e con `?crm_attivo=1` anche le fonti del CRM. `senza_moduli` vince sugli altri due parametri: con `?senza_crm=1`
+    // il CRM resta com'è nei dati di prova, e nel menu Moduli non è «in arrivo».
+    const inArrivo = () => [...document.querySelectorAll('#pagina .zr-nav a.zr-nav-item.is-soon .zr-nav-label')].map((voce) => voce.textContent);
+
+    it.each([['?senza_moduli=1'], ['?senza_moduli=1&crm_attivo=1'], ['?senza_moduli=1&senza_crm=1']])('con «%s» nessun modulo è attivo: l\'invito della ricerca nomina i soli membri (sprint 28 · T5.2)', async (query) => {
+        await apri(query);
+
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(uno('.zr-search-note')?.textContent).toBe('Cerca membri: scrivi almeno 2 caratteri.');
+        expect(inArrivo()).not.toContain('CRM');
+    });
+
+    it.each([
+        ['', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.', false],
+        ['?senza_crm=1', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.', true],
+    ])('senza `?senza_moduli`, con «%s», l\'invito nomina anche le fonti di Project Management, e il CRM è in arrivo solo con `?senza_crm=1`: i casi di sopra non sono verdi da soli (sprint 28 · T5.2)', async (query, invito, crmInArrivo) => {
+        await apri(query);
+
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(uno('.zr-search-note')?.textContent).toBe(invito);
+        expect(inArrivo().includes('CRM')).toBe(crmInArrivo);
+    });
 });

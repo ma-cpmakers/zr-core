@@ -257,7 +257,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // `workspace` è quello della «sessione», come lo dice la parte server dalla `v1.12.0`, mai uno della richiesta: se la
             // pagina di prova non lo dà manca, e per la cornice la ricerca è un errore.
             return json({
-                data: parola === 'ua'
+                // «ua» dà il risultato vecchio di una board, ma non dove nessun modulo è attivo: lì passa dal filtro come ogni parola.
+                data: parola === 'ua' && !senzaModuli
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
