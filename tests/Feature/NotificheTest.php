@@ -1426,19 +1426,18 @@ it('GET /cornice/notifiche dà in creata_il l\'istante dell\'ultima azione di un
         ->and(substr_count($corpo, '08:00:00.123Z'))->toBe(0);
 });
 
-it('anche la lettura di una notifica che racconta più azioni risponde con l\'istante dell\'ultima in creata_il, e senza le chiavi in più (sprint 32 · T3.1, T3.4)', function () {
+it('la lettura di una notifica che racconta più azioni risponde come quella di ogni altra, con `id` e `letta`: nessun istante e nessuna delle chiavi in più (sprint 32 · T3.4)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => ['letta_il' => '2026-10-12T08:59:00.000Z'] + notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', '2026-10-12T08:58:00.456Z')])]);
 
     $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))->assertOk();
 
-    expect($risposta->json('data.creata_il'))->toBe('2026-10-12T08:58:00.456Z')
-        ->and($risposta->json('data.letta'))->toBeTrue();
+    expect($risposta->json('data'))->toBe(['id' => 'uat-n3', 'letta' => true]);
     $corpo = (string) $risposta->getContent();
     expect(substr_count($corpo, 'ultima_azione_il'))->toBe(0)
         ->and(substr_count($corpo, '"azioni"'))->toBe(0)
         ->and(substr_count($corpo, '"board"'))->toBe(0)
-        ->and(substr_count($corpo, '08:00:00.123Z'))->toBe(0);
+        ->and(substr_count($corpo, 'UAT Lancio accorpato'))->toBe(0);
 });
 
 it('senza `ultima_azione_il`, o con null, la notifica non è rifiutata e creata_il è quella del backoffice, com\'era (sprint 32 · T3.2)', function (array $notifica) {

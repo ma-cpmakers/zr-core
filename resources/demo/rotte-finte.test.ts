@@ -280,6 +280,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(nuove.map((notifica) => rigaDellaNotifica(notifica, lingua))).toEqual(righe);
     });
 
+    // Sprint 32 · T3 (voce #1913): una notifica che racconta più azioni sta dietro `?accorpata=1`, così le pagine di prova di prima
+    // restano com'erano. È come la dà la parte server: l'istante dell'ultima azione in `creata_il`, e le nove chiavi di sempre.
+    it('con `?accorpata=1` in cima all\'elenco c\'è una notifica che racconta più azioni, da leggere: in `creata_il` ha l\'istante dell\'ultima, due minuti fa, sopra quella di cinque minuti fa, e non porta `ultima_azione_il`, `azioni` né `board` (sprint 32 · T3.1, T3.4)', async () => {
+        await rotte(false, '?accorpata=1');
+        const { rigaDellaNotifica } = await import('../js/index');
+
+        const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; creata_il: string; letta: boolean; tipo?: string }[];
+        const [prima, seconda] = notifiche;
+        const minutiFa = (notifica: { creata_il: string } | undefined) => Math.round((Date.now() - new Date(notifica?.creata_il ?? '').getTime()) / 60_000);
+
+        expect([prima?.id, prima?.letta, prima?.tipo, minutiFa(prima)]).toEqual(['uat-a1', false, 'com.zeiras.board.lista.modificata', 2]);
+        expect([seconda?.id, minutiFa(seconda)]).toEqual(['uat-4', 5]);
+        expect(Object.keys(prima ?? {}).sort()).toEqual(['app', 'autore_nome', 'creata_il', 'id', 'ids', 'letta', 'per_me', 'risorsa_nome', 'tipo']);
+        expect(rigaDellaNotifica(prima ?? {}, 'it')).toEqual({ titolo: '\u{2068}Bruno Neri\u{2069} ha modificato la lista «\u{2068}UAT Da fare\u{2069}»' });
+    });
+
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
     // pagine di prova di prima restano com'erano.
     it('con `?viste=1` in fondo all\'elenco ci sono tre notifiche delle viste di una board, di Project Management, lette: una creata, una modificata, una eliminata, di tipi che zr-core conosce; nessuna ha una destinazione (sprint 21 · T5.1, T5.2)', async () => {
@@ -341,6 +357,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
+        ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
     ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
         await rotte(false, query);

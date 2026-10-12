@@ -4843,6 +4843,29 @@ it('il README dice, nel punto del fuoco nel pannello delle notifiche, dove va il
         ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false);
 });
 
+// Sprint 32 · T3.5 (voce #1913): una notifica del backoffice può raccontare più azioni. Il README dice, nella riga dell'elenco, che
+// `creata_il` è l'istante dell'ultima e da quale campo viene; nella riga delle letture, che cosa manda `fino_a`; nel punto delle
+// notifiche, che ora si vede.
+
+it('il README dice che una notifica che racconta più azioni mostra l\'ora dell\'ultima, da quale campo del backoffice viene e che cosa manda `fino_a` (sprint 32 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testo = match ($dove) {
+        'elenco' => rigaDellaRotta($readme, 'GET /cornice/notifiche'),
+        'letture' => rigaDellaRotta($readme, 'POST /cornice/notifiche/letture'),
+        default => puntoDellaCornice($readme, 'Le notifiche'),
+    };
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'che cos\'è creata_il' => ['elenco', 'dalla `v1.22.0` `creata_il` è l\'istante dell\'ultima azione che la notifica racconta'],
+    'da quale campo' => ['elenco', 'l\'istante dell\'ultima lo dice in `ultima_azione_il`; se non lo manda, è l\'istante in cui la notifica è nata, come prima'],
+    'ciò che non passa' => ['elenco', '`ultima_azione_il`, `azioni` e `board` del backoffice non arrivano in pagina'],
+    'che cosa manda fino_a' => ['letture', 'dalla `v1.22.0` la cornice manda in `fino_a` l\'istante dell\'ultima azione più recente fra le notifiche caricate'],
+    'fin dove segna' => ['letture', 'il backoffice segna quelle nate fino a lì, cioè tutte le caricate — ognuna è nata prima della sua ultima azione — e nessuna nata dopo il caricamento'],
+    'l\'ora nel pannello' => ['punto', 'Dalla `v1.22.0` una notifica che racconta più azioni mostra l\'ora dell\'ultima, non quella della prima'],
+]);
+
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.

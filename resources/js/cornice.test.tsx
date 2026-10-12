@@ -1802,6 +1802,25 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/notifiche'], ['https://app.zeiras.com/notifiche']]);
     });
 
+    // Sprint 32 · T3 (voce #1913). Una notifica che racconta più azioni arriva dalla parte server con l'istante dell'ultima in
+    // `creata_il` (lo prova `NotificheTest`): il pannello mostra quell'ora, e «Segna tutte come lette» arriva fin lì.
+    it('una notifica che racconta più azioni — nata un\'ora fa, l\'ultima azione due minuti fa — mostra «2 minuti fa» e sta sopra quella di dieci minuti fa; «Segna tutte come lette» manda l\'istante dell\'ultima azione, che non sta prima della nascita di nessuna delle due (sprint 32 · T3.1, T3.3)', async () => {
+        // Come le dà la parte server: nell'ordine del backoffice, che è sull'ultima azione.
+        const accorpate = [
+            { id: 'uat-n62', creata_il: '2026-10-06T11:58:00.000Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata' },
+            { id: 'uat-n61', creata_il: '2026-10-06T11:50:00.000Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.creata' },
+        ];
+        const fetchFinto = vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: accorpate }) : segnateFinoA(opzioni)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Project Management · 2 minuti fa', 'Project Management · 10 minuti fa']);
+        await clic(segnaTutte());
+        expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
+    });
+
     // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
     // prodotto, col tipo intero), e gli id li porta la notifica (`ids`, dalla parte server): senza una destinazione, o senza
     // l'id che il percorso chiede, o in un workspace dove il modulo non si può aprire, resta la pagina delle notifiche.
