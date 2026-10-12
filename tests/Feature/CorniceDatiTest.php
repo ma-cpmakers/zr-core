@@ -1,6 +1,7 @@
 <?php
 
 use Composer\InstalledVersions;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Http\Request as RichiestaDelBrowser;
@@ -1301,16 +1302,23 @@ it('una chiamata del frontend a /v1 davanti al 403 accettazione_richiesta: da zr
 // zr-auth. È un'altra frase su zr-auth, e questo caso la guarda nel giro che la installa: dalla 0.12.17 è il 403 di
 // `AccettazioneRichiesta`, con `codice` e `mancanti`, che la cornice riconosce dal `codice`; con una patch più vecchia
 // l'ErroreApi non ha una risposta sua, ed è un 500 — nel browser l'errore di sempre, con «Riprova».
-it('se un middleware del frontend chiama /v1 su una rotta della cornice senza prendere il 403 accettazione_richiesta, al browser non arriva la risposta della rotta: da zr-auth 0.12.17 il 403 di zr-auth con `codice` e `mancanti`, con una patch più vecchia un 500 (sprint 25 · T5.2)', function () {
-    sessioneAMano(marketing());
-    Http::fake(['*' => accettazioneRichiesta()]);
-    // Un middleware scritto qui entra nel gruppo `web` per nome, dopo la sessione e prima della rotta, come quello di un frontend.
-    Route::aliasMiddleware('chiama-v1', function ($richiesta, Closure $next) {
+/** Il middleware di un frontend che a ogni richiesta chiama /v1 e non prende gli errori. In un gruppo sta per classe: una closure lì non è ammessa. */
+final class ChiamaV1SenzaPrendereErrori
+{
+    public function handle(RichiestaDelBrowser $richiesta, Closure $next): mixed
+    {
         Api::workspace()->get('/v1/board/board');
 
         return $next($richiesta);
-    });
-    Route::pushMiddlewareToGroup('web', 'chiama-v1');
+    }
+}
+
+it('se un middleware del frontend chiama /v1 su una rotta della cornice senza prendere il 403 accettazione_richiesta, al browser non arriva la risposta della rotta: da zr-auth 0.12.17 il 403 di zr-auth con `codice` e `mancanti`, con una patch più vecchia un 500 (sprint 25 · T5.2)', function () {
+    sessioneAMano(marketing());
+    Http::fake(['*' => accettazioneRichiesta()]);
+    // In fondo al gruppo `web`, dopo la sessione e prima della rotta, come quello di un frontend. Si dà al kernel, che i gruppi li
+    // ridà al router: messo nel router prima della prima richiesta, il kernel lo coprirebbe coi suoi.
+    app(HttpKernel::class)->appendMiddlewareToGroup('web', ChiamaV1SenzaPrendereErrori::class);
 
     $risposta = $this->getJson('cornice/notifiche');
 

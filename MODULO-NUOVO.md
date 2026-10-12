@@ -250,9 +250,9 @@ visite non scrivi un rimando tuo: dalle tue chiamate a `/v1` lo fa zr-auth, dall
 `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia. A una tua richiesta JSON
 zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Con una patch più vecchia
 quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su. Sulle rotte `/cornice/*` non mettere un middleware che chiama
-`/v1` senza prendere quel 403. Nello stato ridotto la tua pagina sta in un contenitore sotto l'avviso, e si rimonta quando
-lo stato arriva dal 403 di una rotta o se ne va — README, «La cornice», al punto «Chi non ha accettato i documenti
-legali».
+`/v1` senza prendere quel 403. Nello stato ridotto l'avviso sta sopra la tua pagina, che resta dov'è e non si rimonta
+quando lo stato arriva o se ne va: ciò che è scritto in un campo resta — README, «La cornice», al punto «Chi non ha
+accettato i documenti legali».
 
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa

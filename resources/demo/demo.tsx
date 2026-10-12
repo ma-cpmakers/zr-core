@@ -75,7 +75,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     const senzaCrm = scelti.has('senza_crm');
     const crmAttivo = scelti.has('crm_attivo');
     // Con `?accettazione=1` i dati sono quelli di chi non ha accettato i documenti legali in vigore, come li dà la parte server
-    // dalla `v1.14.0`: nessun modulo, nessuna azienda, zero non lette, e `accettazione_richiesta: true` in fondo. Con
+    // dalla `v1.14.0`: nessun modulo (una lista vuota, `[]`), nessuna azienda, zero non lette, e `accettazione_richiesta: true` in fondo. Con
     // `?accettazione=dopo` i dati sono quelli di sempre, e lo dicono le rotte finte (rotte-finte.ts).
     const daAccettare = scelti.get('accettazione') === '1';
     // Gli stessi dati finché non cambiano, come da una parte server: ridati a ogni disegno, la cornice li prenderebbe per dati
@@ -83,7 +83,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     const dati = useMemo(() => {
         const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : crmAttivo ? { ...datiDiProva.prodotti, crm: 'attivo' } : datiDiProva.prodotti;
 
-        const ridotti = daAccettare ? { prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
+        const ridotti = daAccettare ? { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
     }, [senzaCrm, crmAttivo, lingua, aziende, nonLette, daAccettare]);

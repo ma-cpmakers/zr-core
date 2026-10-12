@@ -3678,7 +3678,7 @@ it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La
     'il contenitore (R2, S1)' => ['l\'avviso sta nel margine della pagina, in un contenitore suo (`div.zr-stack`) prima della pagina. La pagina resta figlia diretta di `main.zr-main`, com\'è fuori da quello stato'],
     'la pagina non si rimonta (S1)' => ['quando lo stato arriva o se ne va non si rimonta (dalla `v1.15.0`): ciò che è scritto in un campo, il fuoco e lo scorrimento restano, e i suoi effetti non ripartono'],
     'comunque lo stato arrivi (S1)' => ['Vale comunque lo stato arrivi: dal 403 di una rotta, o coi dati di una visita che tiene la pagina montata'],
-    'il segnale non resta (S4)' => ['con dati letti dopo che non lo dicono, o di un altro workspace, torna quella di sempre, e da lì quel segnale non vale più nemmeno per i dati di prima'],
+    'il segnale non resta (S4)' => ['e così coi dati di un altro workspace: da lì quel segnale non vale più, nemmeno per i dati di prima'],
     'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
     'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
 ]);
@@ -3750,7 +3750,7 @@ it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti`
 ]);
 
 it('la guida del modulo nuovo non dice più che nello stato ridotto la pagina si rimonta (sprint 25 · T5.1)', function () {
-    $frase = 'si rimonta quando lo stato arriva';
+    $frase = 'e si rimonta quando lo stato arriva';
 
     expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBe(false)
         // Il controllo vede ciò che cerca: la frase, a capo, su una riga è quella.
@@ -3769,7 +3769,8 @@ it('il README dice, al punto «La voce attiva» di «La cornice», l\'eccezione 
 // Seconda lettura della PR #52, S6 (sprint 25 · T5.4). Chi legge il tipo nell'editor vede il commento di `active`, non il README:
 // l'eccezione dello stato ridotto sta anche lì.
 it('il commento di `active` in `CorniceProps` dice l\'eccezione dello stato ridotto: su una pagina di un modulo, senza `active` o con `active` vuoto, nessuna voce è segnata (sprint 25 · T5.4)', function () {
-    $cornice = suUnaRiga((string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx'));
+    // Il commento sta su più righe: si legge senza gli asterischi di mezzo.
+    $cornice = suUnaRiga((string) preg_replace('/\n\s*\* /', ' ', (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx')));
 
     expect(str_contains($cornice, '/** L\'id della voce attiva; senza, o vuoto, la Dashboard — tranne nello stato ridotto su una pagina di un modulo, dove nessuna voce è segnata. Con `null` nessuna voce della barra è attiva. */'))->toBe(true);
 });

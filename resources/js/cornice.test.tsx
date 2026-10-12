@@ -1,4 +1,4 @@
-import { act, type ReactElement } from 'react';
+import { act, useEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
@@ -3774,7 +3774,7 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
 // «la ricerca», più sopra.
 describe('chi non ha accettato i documenti legali', () => {
     /** I dati ridotti, come li dà `Cornice::dati()` davanti al 403 del backoffice. */
-    const ridotti: DatiDellaCornice = { ...dati, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, aggiornati_il: '2026-10-11T22:00:00.000001Z', accettazione_richiesta: true };
     /** I dati di chi ha accettato: moduli, aziende, sette non lette. */
     const diSempre: DatiDellaCornice = { ...dati, aziende, non_lette: 7, aggiornati_il: '2026-10-11T22:00:00.000001Z' };
     const spenta = 'Non disponibile finché non accetti i documenti.';
@@ -3956,10 +3956,14 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
-    // Lettura della PR #52, R5. `Cornice::dati()` dà `prodotti` come lista vuota, e al browser arriva `[]`, non `{}`: è la forma
-    // vera dei dati ridotti.
-    it('coi `prodotti` dei dati ridotti come arrivano dal server, una lista vuota (`[]`), la cornice esce ridotta come con `{}` (sprint 24 · T5, R5)', async () => {
-        await mostra(<Cornice dati={{ ...ridotti, prodotti: [] as unknown as DatiDellaCornice['prodotti'] }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+    // Lettura della PR #52, R5, e seconda lettura, S7 (sprint 25 · T5.5). `Cornice::dati()` dà `prodotti` come lista vuota, e al
+    // browser arriva `[]`, non `{}`: è la forma vera dei dati ridotti, quella di `ridotti` qui sopra, e il tipo esportato la
+    // ammette senza una conversione. Letta per id non dà niente, come l'oggetto vuoto di dati scritti a mano.
+    it('coi `prodotti` dei dati ridotti scritti a mano come un oggetto vuoto (`{}`) la cornice esce ridotta come con la lista vuota (`[]`) che arriva dal server, e il tipo ammette tutte e due le forme (sprint 24 · T5, R5; sprint 25 · T5.5)', async () => {
+        const comeDalServer: DatiDellaCornice['prodotti'] = [];
+        expect(ridotti.prodotti).toStrictEqual(comeDalServer);
+        expectTypeOf(ridotti.prodotti.pm).toEqualTypeOf<'attivo' | 'disponibile' | 'in_arrivo' | undefined>();
+        await mostra(<Cornice dati={{ ...ridotti, prodotti: {} }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         expect(cornice()).toStrictEqual(ridotta);
         expect(uno('.zr-nav-soon')).toBeNull();
@@ -3971,6 +3975,8 @@ describe('chi non ha accettato i documenti legali', () => {
     // voce è segnata; se la dice vale quella, e su una pagina di app.zeiras.com resta la Dashboard.
     it.each<[string, { product?: string; active?: string }, string[]]>([
         ['una pagina di un modulo che non dice la voce attiva', { product: 'pm' }, []],
+        // Seconda lettura della PR #52, S5 (sprint 25 · T5.4): una voce attiva vuota per l'`AppShell` è come assente.
+        ['una pagina di un modulo che dà una voce attiva vuota', { product: 'pm', active: '' }, []],
         ['una pagina di un modulo che la dice', { product: 'pm', active: 'board' }, ['Le board']],
         ['una pagina di app.zeiras.com', {}, ['Dashboard']],
     ])('nello stato ridotto, su %s le voci segnate nella barra sono quelle giuste: mai la Dashboard per chi è in un modulo (sprint 24 · T5, R6)', async (_quale, dellaPagina, attese) => {
@@ -4049,5 +4055,199 @@ describe('chi non ha accettato i documenti legali', () => {
         const conFalse = await date({ ...diSempre, accettazione_richiesta: false });
         expect(senzaLaPagina(conFalse)).toStrictEqual(senzaLaPagina(senza));
         expect([avviso(), uno('main')?.textContent, uno('.zr-bell-count')?.textContent]).toStrictEqual([null, 'La pagina', '7']);
+    });
+
+    // Sprint 25 · T5 (voce #1762): i minori della seconda lettura della PR #52.
+
+    /** Una pagina con uno stato suo: un campo, un riquadro che scorre, e un effetto che parte a ogni montaggio. */
+    function PaginaConUnCampo({ montata }: { montata: () => void }) {
+        useEffect(montata, [montata]);
+
+        return <form><input name="bozza" /><div className="uat-scorre" /></form>;
+    }
+    /** Dati di sempre letti dopo: il loro segno è più avanti di quello di `diSempre` e di `ridotti`. */
+    const lettiDopo: DatiDellaCornice = { ...diSempre, aggiornati_il: '2026-10-11T22:00:05.000001Z' };
+
+    // T5.1 (S1, e ciò che restava di R2). L'avviso entra sopra la pagina e la pagina resta dov'è, figlia diretta di `main.zr-main`
+    // com'è fuori dallo stato ridotto: quando lo stato arriva o se ne va non si rimonta. Ciò che la persona ha scritto in un
+    // campo resta, col fuoco e con lo scorrimento, e gli effetti della pagina non ripartono. Lo stato arriva in due modi: coi
+    // dati di una visita che tiene la pagina montata, o dal 403 di una rotta.
+    it.each<[string, boolean]>([
+        ['arriva coi dati di una visita che tiene la pagina montata', false],
+        ['arriva dal 403 di una rotta', true],
+    ])('quando lo stato ridotto %s, e quando se ne va, la pagina non si rimonta: il campo è lo stesso nodo, con ciò che c\'era scritto, col fuoco e con lo scorrimento, e il suo effetto non riparte (sprint 25 · T5.1)', async (_come, daUnaRotta) => {
+        const elenco = inAttesa();
+        vi.stubGlobal('fetch', vi.fn(() => elenco.promessa));
+        const montata = vi.fn();
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" flush onLogout={esciSenzaEffetto}><PaginaConUnCampo montata={montata} /></Cornice>;
+        await mostra(laPagina(diSempre));
+        const campo = uno('main input') as HTMLInputElement;
+        const riquadro = uno('main .uat-scorre') as HTMLElement;
+        campo.value = 'una bozza';
+        riquadro.scrollTop = 40;
+        /** Ciò che una pagina rimontata perderebbe, e dove sta la pagina: figlia diretta di `main.zr-main`. */
+        const dellaPagina = () => ({
+            campo: uno('main input') === campo,
+            scritto: (uno('main input') as HTMLInputElement | null)?.value,
+            colFuoco: document.activeElement === campo,
+            scorrimento: uno('main .uat-scorre')?.scrollTop,
+            montaggi: montata.mock.calls.length,
+            figliaDiMain: uno('main form')?.parentElement === uno('main'),
+        });
+        const comEra = { campo: true, scritto: 'una bozza', colFuoco: true, scorrimento: 40, montaggi: 1, figliaDiMain: true };
+
+        if (daUnaRotta) {
+            await clic(uno('.zr-bell'));
+        }
+        campo.focus();
+        expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
+
+        // Lo stato ridotto arriva.
+        await (daUnaRotta ? elenco.arriva(daAccettare()) : mostra(laPagina(ridotti)));
+        expect([cornice(), dellaPagina()]).toStrictEqual([ridotta, comEra]);
+        // L'avviso sta prima della pagina, in un contenitore suo.
+        expect([...(uno('main')?.children ?? [])].map((figlio) => [figlio.tagName, figlio.querySelector('.zr-alert') !== null])).toStrictEqual([['DIV', true], ['FORM', false]]);
+        // Lo spazio fra avviso e pagina è quello di `zr-stack`, fra l'avviso e un secondo figlio vuoto.
+        const delAvviso = uno('main > div');
+        expect([delAvviso?.className, delAvviso?.children.length, delAvviso?.firstElementChild === avviso(), delAvviso?.lastElementChild?.childNodes.length]).toStrictEqual(['zr-stack', 2, true, 0]);
+
+        // E se ne va, coi dati letti dopo che non lo dicono.
+        await mostra(laPagina(lettiDopo));
+        expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
+    });
+
+    // T5.3 (S3). Il segnale di una rotta vale per i dati dello stesso workspace che non sono più recenti: non per quelli di un
+    // altro workspace, nemmeno con lo stesso segno, e senza segno solo per lo stesso oggetto.
+    it.each<[string, DatiDellaCornice, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['dati di un altro workspace con lo stesso segno', diSempre, (deiDati) => ({ ...deiDati, workspace: { nome: 'Vendite', slug: 'acme-vendite' } })],
+        ['un altro oggetto senza segno', { ...dati, aziende, non_lette: 7 }, (deiDati) => ({ ...deiDati })],
+    ])('dopo il 403 `accettazione_richiesta` di una rotta, con %s la cornice torna quella di sempre (sprint 25 · T5.3)', async (_caso, primi, altri) => {
+        vi.stubGlobal('fetch', vi.fn(async () => daAccettare()));
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(primi));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+        // Con lo stesso oggetto resta ridotta.
+        await mostra(laPagina(primi));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        await mostra(laPagina(altri(primi)));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+    });
+
+    // T5.3 (S4). Un frontend può tenere la `Cornice` montata fra due workspace, senza la `key` del layout. Il segnale di A non
+    // vale in B, e non torna a valere in A: la prima volta che non vale per i dati della cornice si toglie. Altrimenti, tornati
+    // in A coi dati di prima (Indietro del browser), la cornice uscirebbe ridotta per un segnale vecchio a chi nel frattempo ha
+    // accettato. Se in A serve ancora, lo ridice la prima rotta che risponde.
+    it.each<[string, (deiDati: DatiDellaCornice) => DatiDellaCornice]>([
+        ['lo stesso oggetto', (deiDati) => deiDati],
+        ['una copia con lo stesso segno', (deiDati) => ({ ...deiDati })],
+    ])('con la cornice tenuta montata fra due workspace il segnale di una rotta non resta: A col 403, poi B, poi di nuovo A coi dati di prima (%s), e la cornice non esce ridotta per un segnale vecchio (sprint 25 · T5.3)', async (_quali, diPrima) => {
+        const fetchFinto = vi.fn(async () => daAccettare());
+        vi.stubGlobal('fetch', fetchFinto);
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        await mostra(laPagina(diSempre));
+        await clic(uno('.zr-bell'));
+        expect(cornice()).toStrictEqual(ridotta);
+
+        // In B il segnale di A non vale.
+        await mostra(laPagina({ ...diSempre, workspace: { nome: 'Vendite', slug: 'acme-vendite' } }));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+        // Di nuovo in A, coi dati di prima.
+        await mostra(laPagina(diPrima(diSempre)));
+        expect(diSempreInPagina()).toStrictEqual([true, '7', null]);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // T5.8 (A8), l'avviso per il lettore di schermo. Ciò che la cornice ha detto nel suo `role="status"` nascosto — il numero
+    // sceso dopo una lettura con un clic — nello stato ridotto non resta: la campanella non ha più un numero, e la zona non
+    // continua a dirne uno. Il numero può non cambiare: col 403 di una rotta i dati sono gli stessi, e i dati ridotti contano
+    // zero come chi ha appena letto l'ultima.
+    it.each<[string, number, string, boolean]>([
+        ['dal 403 di una rotta, coi dati di prima', 7, 'Notifiche, 6 non lette', true],
+        ['coi dati ridotti, che contano zero come l\'avviso', 1, 'Nessuna notifica non letta', false],
+    ])('un avviso già detto al lettore di schermo non resta nel `role="status"` nascosto quando lo stato ridotto arriva %s (sprint 25 · T5.8)', async (_come, nonLette, dettoPrima, daUnaRotta) => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        let caricamenti = 0;
+        const fetchFinto = vi.fn(async (indirizzo: string) => {
+            if (indirizzo === '/cornice/notifiche') {
+                return ++caricamenti === 1 ? risposta({ data: [delContatto], workspace: 'acme-marketing' }) : daAccettare();
+            }
+
+            return risposta({ data: { id: 'uat-n69', letta: true } });
+        });
+        vi.stubGlobal('fetch', fetchFinto);
+        const detto = () => [...contenitore.children].find((figlio) => figlio.getAttribute('role') === 'status')?.textContent;
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
+        const conQuelNumero = { ...diSempre, non_lette: nonLette };
+        await mostra(laPagina(conQuelNumero));
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(detto()).toBe(dettoPrima);
+
+        await (daUnaRotta ? clic(uno('.zr-bell')) : mostra(laPagina(ridotti)));
+        expect(cornice()).toStrictEqual(ridotta);
+        expect(detto()).toBe('');
+    });
+
+    // T5.8 (A8), la ricerca. L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva al tasto: se nel
+    // mezzo la cornice è passata allo stato ridotto, quella chiamata non fa partire una `POST /cornice/ricerca`.
+    describe('i 300 ms che l\'`AppShell` aspetta dopo l\'ultimo tasto', () => {
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>;
+        /** Scrive nel campo della ricerca, come una persona, e lascia passare quei millisecondi. */
+        const batte = async (parola: string, poi: number) => {
+            const campo = uno('.zr-search input') as HTMLInputElement;
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(poi);
+            });
+        };
+        const passano = async (millisecondi: number) => act(async () => {
+            await vi.advanceTimersByTimeAsync(millisecondi);
+        });
+
+        it.each<[string, DatiDellaCornice, string[]]>([
+            ['arrivano i dati ridotti: la ricerca non parte', ridotti, []],
+            // Il controllo vede ciò che cerca: con altri dati di sempre, dopo gli stessi tasti, la ricerca parte.
+            ['arrivano altri dati di sempre: la ricerca parte', lettiDopo, ['/cornice/ricerca']],
+        ])('fra l\'ultimo tasto e i 300 ms %s (sprint 25 · T5.8)', async (_caso, arrivati, partite) => {
+            const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ data: [], workspace: 'acme-marketing' }));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            await batte('uat', 100);
+            await mostra(laPagina(arrivati));
+            await passano(300);
+
+            expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(partite);
+        });
+
+        it('se lo stato ridotto lo dice il 403 di una ricerca in volo, il tasto battuto nel frattempo non ne fa partire un\'altra (sprint 25 · T5.8)', async () => {
+            let arriva!: (valore: Response) => void;
+            const fetchFinto = vi.fn((_indirizzo: string) => new Promise<Response>((risolvi) => (arriva = risolvi)));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            // La prima ricerca parte, e resta in volo.
+            await batte('ua', 300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            // Un altro tasto: l'`AppShell` aspetta i suoi 300 ms. Dopo 100 arriva il 403.
+            await batte('uat', 100);
+            await act(async () => {
+                arriva(daAccettare());
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(cornice()).toStrictEqual(ridotta);
+
+            await passano(300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
     });
 });

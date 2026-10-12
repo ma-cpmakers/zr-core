@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaRicerca, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
@@ -26,8 +26,13 @@ export interface DatiDellaCornice {
     persona: { nome: string; email: string };
     /** Il nome sta in cima alla sidebar, come testo; lo slug in ogni indirizzo dei prodotti. */
     workspace: { nome: string; slug: string };
-    /** Lo stato di ogni prodotto nel workspace (app.elenca): un prodotto che manca è «Presto». */
-    prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo' | undefined>>;
+    /**
+     * Lo stato di ogni prodotto nel workspace (app.elenca): un prodotto che manca è «Presto». Nei dati ridotti
+     * (`accettazione_richiesta`) la parte server li dà vuoti, e al browser arrivano come una lista vuota, `[]`: il tipo ammette
+     * anche quella (dalla `v1.15.0`). È una lista che letta per id non dà niente: chi legge `prodotti.pm` non deve prima
+     * chiedersi quale delle due forme ha.
+     */
+    prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo' | undefined>> | (never[] & Partial<Record<IdDiProdotto, undefined>>);
     /**
      * Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace
      * dei dati non sta in nessuna, il workspace resta testo. Dall'`id` di un workspace viene il tono del suo pallino
@@ -66,7 +71,10 @@ export interface CorniceProps {
     product?: string | undefined;
     /** Le voci del prodotto aperto. */
     nav?: GruppoDiVoci[] | undefined;
-    /** L'id della voce attiva; senza, la Dashboard. Con `null` nessuna voce della barra è attiva. */
+    /**
+     * L'id della voce attiva; senza, o vuoto, la Dashboard — tranne nello stato ridotto su una pagina di un modulo, dove nessuna
+     * voce è segnata. Con `null` nessuna voce della barra è attiva.
+     */
     active?: string | null | undefined;
     onNavigate?: ((id: string) => void) | undefined;
     /** Il percorso Workspace › Cartella › Oggetto: l'ultima voce è la pagina. */
@@ -402,14 +410,20 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
     // recenti di quelli: sono quell'oggetto, o sono dello stesso workspace e il loro segno non è più avanti — un frontend può
     // ricrearli a ogni disegno, o ritoccarli nel browser lasciando il segno, ed è la stessa lettura. Coi dati letti dopo, se non
-    // lo dicono, la cornice torna quella di sempre. `false` vale come la chiave che manca.
+    // lo dicono, la cornice torna quella di sempre. `false` vale come la chiave che manca. La prima volta che il segnale non
+    // vale per i dati della cornice — letti dopo, o di un altro workspace — si toglie: non torna a valere coi dati di prima,
+    // quando un frontend tiene la cornice montata fra due workspace e la persona torna indietro. Se serve ancora, lo ridice la
+    // prima rotta che risponde.
     const [loDiceUnaRotta, setLoDiceUnaRotta] = useState(false);
     const [daAccettareCon, setDaAccettareCon] = useState<DatiDellaCornice>();
+    const loDiceIlSegnale = daAccettareCon !== undefined && nonPiuRecentiDeiDatiDi(dati, { con: daAccettareCon, il: undefined });
     if (loDiceUnaRotta) {
         setLoDiceUnaRotta(false);
         setDaAccettareCon(dati);
+    } else if (daAccettareCon !== undefined && !loDiceIlSegnale) {
+        setDaAccettareCon(undefined);
     }
-    const ridotta = dati.accettazione_richiesta === true || (daAccettareCon !== undefined && nonPiuRecentiDeiDatiDi(dati, { con: daAccettareCon, il: undefined }));
+    const ridotta = dati.accettazione_richiesta === true || loDiceIlSegnale;
     // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
     // dell'errore lo decide chi ha chiamato, come prima.
     const seDaAccettare = (errore: unknown) => {
@@ -591,15 +605,16 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // clic: arrivata la risposta (`daDire`) confronta il numero con quello che sarebbe senza quella lettura, e se è sceso dice
     // il nome della campanella col numero nuovo — quello vero, anche oltre 99, dove la campanella scrive «99+» — o, a zero,
     // il testo di zr-core. Tace quando il numero cambia per altro (dati nuovi, un elenco arrivato, «Segna tutte come lette»),
-    // e allora ciò che aveva detto si toglie: non resta in pagina a dire un numero che non è più quello. Si decide mentre si
-    // rende, come per i dati tenuti (sopra).
+    // e allora ciò che aveva detto si toglie: non resta in pagina a dire un numero che non è più quello. Nello stato ridotto
+    // ciò che ha detto si toglie anche se il numero dei dati è lo stesso, prima di andare in pagina: la campanella non ne ha
+    // più uno. Si decide mentre si rende, come per i dati tenuti (sopra).
     const [avviso, setAvviso] = useState<{ testo: string; numero: number }>();
     if (daDire !== undefined) {
         setDaDire(undefined);
         if (sullaCampanella < conLeLetture(letteConUnClic.filter((una) => una.id !== daDire)).sullaCampanella) {
             setAvviso({ numero: sullaCampanella, testo: sullaCampanella === 0 ? t.unreadNone : `${t.notifications}, ${sullaCampanella} ${unaSola ? t.unreadOne : t.unread}` });
         }
-    } else if (avviso !== undefined && avviso.numero !== sullaCampanella) {
+    } else if (avviso !== undefined && (ridotta || avviso.numero !== sullaCampanella)) {
         setAvviso(undefined);
     }
     // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
@@ -678,7 +693,17 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // l'`AppShell` è una ricerca pronta, senza risultati.
     const [ricerca, setRicerca] = useState<StatoDellaRicerca>();
     const ricercaInVolo = useRef<AbortController>(undefined);
+    // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
+    // mezzo la cornice è passata allo stato ridotto, la ricerca di prima arriva qui lo stesso. Che cosa vale adesso lo dice un
+    // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
+    const ridottaAdesso = useRef(ridotta);
+    useLayoutEffect(() => {
+        ridottaAdesso.current = ridotta;
+    });
     const cercaParola = (parola: string) => {
+        if (ridottaAdesso.current) {
+            return;
+        }
         ricercaInVolo.current?.abort();
         const questa = new AbortController();
         ricercaInVolo.current = questa;
@@ -724,19 +749,24 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // dell'accettazione, sull'host della Dashboard nel registro — mai un indirizzo preso dai dati o dalla risposta di una rotta.
     // Il `ritorno` è l'indirizzo in cui la persona è al clic, non quello del render: fra una visita e l'altra la cornice può
     // restare montata mentre l'indirizzo cambia. Entra solo se comincia con `https://` e non supera i 2000 caratteri; senza,
-    // dopo l'accettazione zr-home porta alla Dashboard. Avviso e pagina stanno uno sotto l'altra con le classi del design
-    // system, e la pagina in un contenitore suo: ciò che dà resta com'è. La cornice non mostra testi legali, non dice quali
-    // documenti mancano e non fa accettare niente.
+    // dopo l'accettazione zr-home porta alla Dashboard. La cornice non mostra testi legali, non dice quali documenti mancano e
+    // non fa accettare niente.
+    //
+    // L'avviso sta prima della pagina, in un contenitore suo, e la pagina resta dov'è: figlia diretta di `main.zr-main`, nello
+    // stesso posto dell'albero con e senza l'avviso (sotto, `children`). Così quando lo stato arriva o se ne va React non la
+    // rimonta, e ciò che la persona ha scritto in un campo, il fuoco e lo scorrimento restano. Lo spazio fra avviso e pagina è
+    // quello di `zr-stack`, che lo mette fra due figli: il secondo è un `div` vuoto, finché l'`AppShell` non ha un posto suo
+    // per un avviso (richiesta al design system).
     const vaiAllAccettazione = () => {
         const qui = window.location.href;
         naviga(dashboard.indirizzo + paginaDellAccettazione + (qui.startsWith('https://') && qui.length <= 2000 ? `?ritorno=${encodeURIComponent(qui)}` : ''));
     };
-    const conLAvviso = (
+    const avvisoSopraLaPagina = (
         <div className="zr-stack">
             <Alert tone="warning" title={t.acceptanceTitle} action={<Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button>}>
                 {t.acceptanceText}
             </Alert>
-            <div>{pagina.children}</div>
+            <div />
         </div>
     );
 
@@ -745,14 +775,14 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
             // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva»:
-            // senza `active` resta la Dashboard, come decide l'`AppShell` — tranne nello stato ridotto su una pagina di un
-            // modulo, dove il modulo aperto all'`AppShell` non arriva e la Dashboard sarebbe segnata a chi è nel modulo: lì,
-            // senza `active`, nessuna voce. Il numero sulla campanella è quello dei dati, e mai
+            // senza `active`, o con `active` vuoto, resta la Dashboard, come decide l'`AppShell` — tranne nello stato ridotto su
+            // una pagina di un modulo, dove il modulo aperto all'`AppShell` non arriva e la Dashboard sarebbe segnata a chi è
+            // nel modulo: lì, senza `active` o con `active` vuoto, nessuna voce. Il numero sulla campanella è quello dei dati, e mai
             // meno delle non lette di un elenco più recente (sopra): l'elenco si carica solo aprendo la campanella. Con `piano`
             // nessuna lista del profilo: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
             {...senzaUndefined({
                 ...pagina,
-                active: active === null || (ridotta && aperto !== undefined && active === undefined) ? idDiNessunaVoce(voci) : active,
+                active: active === null || (ridotta && aperto !== undefined && !active) ? idDiNessunaVoce(voci) : active,
                 companies,
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
@@ -761,7 +791,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
                 // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama
                 // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. Le voci del modulo, il
-                // «+» e il resto restano quelli che la pagina dà.
+                // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
+                // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
                 unreadCount: ridotta ? 0 : nonLette,
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
@@ -771,7 +802,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
                 onSearch: ridotta ? undefined : cercaParola,
                 flush: ridotta ? undefined : pagina.flush,
-                children: ridotta ? conLAvviso : pagina.children,
+                children: <>{ridotta ? avvisoSopraLaPagina : null}{pagina.children}</>,
             })}
             nav={voci}
             user={dati.persona.nome}

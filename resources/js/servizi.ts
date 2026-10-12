@@ -142,7 +142,9 @@ export async function segnaLetteFinoA(finoA: string, workspace: string): Promise
  * manca, o ha un'altra forma, non è un errore, è senza segno.
  */
 export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
-    if (!FORMA_DI_UN_ID.test(id)) {
+    // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
+    // un'espressione regolare lo converte da sé, e `null` o un numero hanno la forma di un id.
+    if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
     }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
