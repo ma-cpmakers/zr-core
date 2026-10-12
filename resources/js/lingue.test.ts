@@ -602,3 +602,155 @@ describe('le lingue della cornice', () => {
         expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual(conLElenco);
     });
 });
+
+// Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: il titolo è una frase delle lingue
+// col nome di chi e, quando c'è, quello della cosa; senza chi resta il titolo di prima, col nome della cosa sotto. La dà una
+// funzione sola, `rigaDellaNotifica`, al pannello della cornice e a chi mostra le notifiche in una pagina sua.
+describe('rigaDellaNotifica', () => {
+    type Lingua = 'it' | 'en' | 'es';
+    /** Per ogni tipo con le frasi, e per lingua: la frase con «Giulia Bianchi» e «Lancio corso» (un tipo `….eliminata` non la ha), e quella con la sola Giulia. */
+    const frasi: [tipo: string, perLingua: Record<Lingua, [conCosa: string | null, soloChi: string]>][] = [
+        ['com.zeiras.board.cartella.creata', { it: ['Giulia Bianchi ha creato la cartella «Lancio corso»', 'Giulia Bianchi ha creato una cartella'], en: ['Giulia Bianchi created the folder “Lancio corso”', 'Giulia Bianchi created a folder'], es: ['Giulia Bianchi ha creado la carpeta «Lancio corso»', 'Giulia Bianchi ha creado una carpeta'] }],
+        ['com.zeiras.board.cartella.modificata', { it: ['Giulia Bianchi ha modificato la cartella «Lancio corso»', 'Giulia Bianchi ha modificato una cartella'], en: ['Giulia Bianchi changed the folder “Lancio corso”', 'Giulia Bianchi changed a folder'], es: ['Giulia Bianchi ha modificado la carpeta «Lancio corso»', 'Giulia Bianchi ha modificado una carpeta'] }],
+        ['com.zeiras.board.cartella.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una cartella'], en: [null, 'Giulia Bianchi deleted a folder'], es: [null, 'Giulia Bianchi ha eliminado una carpeta'] }],
+        ['com.zeiras.board.board.creata', { it: ['Giulia Bianchi ha creato la board «Lancio corso»', 'Giulia Bianchi ha creato una board'], en: ['Giulia Bianchi created the board “Lancio corso”', 'Giulia Bianchi created a board'], es: ['Giulia Bianchi ha creado el tablero «Lancio corso»', 'Giulia Bianchi ha creado un tablero'] }],
+        ['com.zeiras.board.board.modificata', { it: ['Giulia Bianchi ha modificato la board «Lancio corso»', 'Giulia Bianchi ha modificato una board'], en: ['Giulia Bianchi changed the board “Lancio corso”', 'Giulia Bianchi changed a board'], es: ['Giulia Bianchi ha modificado el tablero «Lancio corso»', 'Giulia Bianchi ha modificado un tablero'] }],
+        ['com.zeiras.board.lista.creata', { it: ['Giulia Bianchi ha creato la lista «Lancio corso»', 'Giulia Bianchi ha creato una lista'], en: ['Giulia Bianchi created the list “Lancio corso”', 'Giulia Bianchi created a list'], es: ['Giulia Bianchi ha creado la lista «Lancio corso»', 'Giulia Bianchi ha creado una lista'] }],
+        ['com.zeiras.board.lista.modificata', { it: ['Giulia Bianchi ha modificato la lista «Lancio corso»', 'Giulia Bianchi ha modificato una lista'], en: ['Giulia Bianchi changed the list “Lancio corso”', 'Giulia Bianchi changed a list'], es: ['Giulia Bianchi ha modificado la lista «Lancio corso»', 'Giulia Bianchi ha modificado una lista'] }],
+        ['com.zeiras.board.scheda.creata', { it: ['Giulia Bianchi ha creato la scheda «Lancio corso»', 'Giulia Bianchi ha creato una scheda'], en: ['Giulia Bianchi created the card “Lancio corso”', 'Giulia Bianchi created a card'], es: ['Giulia Bianchi ha creado la tarjeta «Lancio corso»', 'Giulia Bianchi ha creado una tarjeta'] }],
+        ['com.zeiras.board.scheda.modificata', { it: ['Giulia Bianchi ha modificato la scheda «Lancio corso»', 'Giulia Bianchi ha modificato una scheda'], en: ['Giulia Bianchi changed the card “Lancio corso”', 'Giulia Bianchi changed a card'], es: ['Giulia Bianchi ha modificado la tarjeta «Lancio corso»', 'Giulia Bianchi ha modificado una tarjeta'] }],
+        ['com.zeiras.board.scheda.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una scheda'], en: [null, 'Giulia Bianchi deleted a card'], es: [null, 'Giulia Bianchi ha eliminado una tarjeta'] }],
+        ['com.zeiras.board.etichetta.creata', { it: ['Giulia Bianchi ha creato l\'etichetta «Lancio corso»', 'Giulia Bianchi ha creato un\'etichetta'], en: ['Giulia Bianchi created the label “Lancio corso”', 'Giulia Bianchi created a label'], es: ['Giulia Bianchi ha creado la etiqueta «Lancio corso»', 'Giulia Bianchi ha creado una etiqueta'] }],
+        ['com.zeiras.board.etichetta.modificata', { it: ['Giulia Bianchi ha modificato l\'etichetta «Lancio corso»', 'Giulia Bianchi ha modificato un\'etichetta'], en: ['Giulia Bianchi changed the label “Lancio corso”', 'Giulia Bianchi changed a label'], es: ['Giulia Bianchi ha modificado la etiqueta «Lancio corso»', 'Giulia Bianchi ha modificado una etiqueta'] }],
+        ['com.zeiras.board.etichetta.eliminata', { it: [null, 'Giulia Bianchi ha eliminato un\'etichetta'], en: [null, 'Giulia Bianchi deleted a label'], es: [null, 'Giulia Bianchi ha eliminado una etiqueta'] }],
+        ['com.zeiras.board.vista.creata', { it: ['Giulia Bianchi ha creato la vista «Lancio corso»', 'Giulia Bianchi ha creato una vista'], en: ['Giulia Bianchi created the view “Lancio corso”', 'Giulia Bianchi created a view'], es: ['Giulia Bianchi ha creado la vista «Lancio corso»', 'Giulia Bianchi ha creado una vista'] }],
+        ['com.zeiras.board.vista.modificata', { it: ['Giulia Bianchi ha modificato la vista «Lancio corso»', 'Giulia Bianchi ha modificato una vista'], en: ['Giulia Bianchi changed the view “Lancio corso”', 'Giulia Bianchi changed a view'], es: ['Giulia Bianchi ha modificado la vista «Lancio corso»', 'Giulia Bianchi ha modificado una vista'] }],
+        ['com.zeiras.board.vista.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una vista'], en: [null, 'Giulia Bianchi deleted a view'], es: [null, 'Giulia Bianchi ha eliminado una vista'] }],
+        ['board.scheda.assegnata', { it: ['Giulia Bianchi ti ha assegnato la scheda «Lancio corso»', 'Giulia Bianchi ti ha assegnato una scheda'], en: ['Giulia Bianchi assigned you the card “Lancio corso”', 'Giulia Bianchi assigned you a card'], es: ['Giulia Bianchi te ha asignado la tarjeta «Lancio corso»', 'Giulia Bianchi te ha asignado una tarjeta'] }],
+        ['board.commento.menzione', { it: ['Giulia Bianchi ti ha menzionato in «Lancio corso»', 'Giulia Bianchi ti ha menzionato in un commento'], en: ['Giulia Bianchi mentioned you in “Lancio corso”', 'Giulia Bianchi mentioned you in a comment'], es: ['Giulia Bianchi te ha mencionado en «Lancio corso»', 'Giulia Bianchi te ha mencionado en un comentario'] }],
+    ];
+    const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', italiano], ['en', inglese], ['es', spagnolo]];
+    const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
+
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management e dei due «per me» ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi (sprint 29 · T2.1, T2.2, T2.4)', async (lingua) => {
+        const { rigaDellaNotifica } = await import('./index');
+
+        expect(frasi).toHaveLength(18);
+        expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
+        for (const [tipo, perLingua] of frasi) {
+            const [conCosa, soloChi] = perLingua[lingua];
+            // Di una cosa eliminata il backoffice non dà il nome: se arrivasse, resta sotto, e non si legge due volte.
+            expect([tipo, rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua)]).toStrictEqual([tipo, conCosa === null ? { titolo: soloChi, sotto: 'Lancio corso' } : { titolo: conCosa }]);
+            for (const senzaNome of [null, '', ' \t\n ', undefined, 7]) {
+                expect([tipo, rigaDellaNotifica(diGiulia(tipo, senzaNome), lingua)]).toStrictEqual([tipo, { titolo: soloChi }]);
+            }
+            expect(rigaDellaNotifica({ tipo, autore_nome: 'Giulia Bianchi' }, lingua)).toStrictEqual({ titolo: soloChi });
+        }
+    });
+
+    it('le frasi dei criteri, parola per parola, nelle tre lingue; gli spazi intorno ai due nomi non sono dei nomi (sprint 29 · T2.1, T2.2, T2.4)', async () => {
+        const { rigaDellaNotifica } = await import('./index');
+        const titolo = (tipo: string, lingua: string, cosa: unknown = 'Lancio corso') => rigaDellaNotifica(diGiulia(tipo, cosa), lingua);
+
+        expect(titolo('com.zeiras.board.scheda.modificata', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato la scheda «Lancio corso»' });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'en')).toStrictEqual({ titolo: 'Giulia Bianchi changed the card “Lancio corso”' });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'es')).toStrictEqual({ titolo: 'Giulia Bianchi ha modificado la tarjeta «Lancio corso»' });
+        expect(titolo('com.zeiras.board.scheda.modificata', 'it', null)).toStrictEqual({ titolo: 'Giulia Bianchi ha modificato una scheda' });
+        expect(titolo('com.zeiras.board.scheda.eliminata', 'it', null)).toStrictEqual({ titolo: 'Giulia Bianchi ha eliminato una scheda' });
+        expect(titolo('com.zeiras.board.board.creata', 'it', 'Corsi 2026')).toStrictEqual({ titolo: 'Giulia Bianchi ha creato la board «Corsi 2026»' });
+        expect(titolo('com.zeiras.board.etichetta.modificata', 'it', 'Urgente')).toStrictEqual({ titolo: "Giulia Bianchi ha modificato l'etichetta «Urgente»" });
+        expect(titolo('board.scheda.assegnata', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ti ha assegnato la scheda «Lancio corso»' });
+        expect(titolo('board.commento.menzione', 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ti ha menzionato in «Lancio corso»' });
+        expect(titolo('board.scheda.assegnata', 'en')).toStrictEqual({ titolo: 'Giulia Bianchi assigned you the card “Lancio corso”' });
+        expect(titolo('board.commento.menzione', 'es')).toStrictEqual({ titolo: 'Giulia Bianchi te ha mencionado en «Lancio corso»' });
+        expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.lista.creata', autore_nome: '  Giulia Bianchi ', risorsa_nome: '\tDa fare ' }, 'it')).toStrictEqual({ titolo: 'Giulia Bianchi ha creato la lista «Da fare»' });
+        // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
+        expect(titolo('com.zeiras.board.scheda.creata', 'es_ES')).toStrictEqual({ titolo: 'Giulia Bianchi ha creado la tarjeta «Lancio corso»' });
+        expect(titolo('com.zeiras.board.scheda.creata', 'fr')).toStrictEqual({ titolo: 'Giulia Bianchi created the card “Lancio corso”' });
+    });
+
+    it('senza chi — `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo — la riga è quella di prima: il titolo del tipo e il nome della cosa sotto (sprint 29 · T2.3)', async () => {
+        const { rigaDellaNotifica, risorsaDellaNotifica, titoloDellaNotifica } = await import('./index');
+        const senzaChi = [null, '', '   ', '\n', undefined, 7, true, { nome: 'Giulia Bianchi' }, ['Giulia Bianchi']];
+
+        for (const [lingua] of lingueDiPartenza) {
+            for (const [tipo] of frasi) {
+                const diPrima = { titolo: titoloDellaNotifica(tipo, lingua), sotto: risorsaDellaNotifica({ tipo, risorsa_nome: 'Lancio corso' }, lingua) };
+                expect(senzaChi.map((autore_nome) => rigaDellaNotifica({ tipo, autore_nome, risorsa_nome: 'Lancio corso' }, lingua))).toStrictEqual(senzaChi.map(() => diPrima));
+                expect(rigaDellaNotifica({ tipo, risorsa_nome: 'Lancio corso' }, lingua)).toStrictEqual(diPrima);
+                // Senza chi e senza cosa: il solo titolo, e la chiave `sotto` non c'è.
+                expect(Object.keys(rigaDellaNotifica({ tipo }, lingua))).toStrictEqual(['titolo']);
+            }
+        }
+        expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.scheda.modificata', autore_nome: null, risorsa_nome: 'Lancio corso' }, 'it')).toStrictEqual({ titolo: 'Scheda modificata', sotto: 'Lancio corso' });
+    });
+
+    it('un tipo senza frasi resta com\'è anche con chi: del CRM, del workspace, di un\'app (sotto il nome del prodotto), uno che zr-core non conosce, uno che non è un testo (sprint 29 · T2.5)', async () => {
+        const { rigaDellaNotifica, titoloDellaNotifica } = await import('./index');
+        const conLeFrasi = new Set(frasi.map(([tipo]) => tipo));
+        const senzaFrasi = Object.keys(inglese).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : [])).filter((tipo) => !conLeFrasi.has(tipo));
+
+        expect(senzaFrasi).toHaveLength(42 - 18);
+        for (const [lingua, file] of lingueDiPartenza) {
+            for (const tipo of senzaFrasi.filter((uno) => !uno.startsWith('com.zeiras.app.'))) {
+                expect([tipo, rigaDellaNotifica(diGiulia(tipo, 'UAT Rinnovo'), lingua)]).toStrictEqual([tipo, { titolo: file[`notificationTitle.${tipo}`], sotto: 'UAT Rinnovo' }]);
+                expect([tipo, rigaDellaNotifica(diGiulia(tipo, null), lingua)]).toStrictEqual([tipo, { titolo: file[`notificationTitle.${tipo}`] }]);
+            }
+            expect(rigaDellaNotifica(diGiulia('com.zeiras.app.modificata', 'pm'), lingua)).toStrictEqual({ titolo: file['notificationTitle.com.zeiras.app.modificata'], sotto: file.pm });
+            for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
+                expect(rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua)).toStrictEqual({ titolo: titoloDellaNotifica(tipo, lingua), sotto: 'Lancio corso' });
+                expect(rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua).titolo).toBe(file.notificationTitle);
+            }
+        }
+    });
+
+    it('un nome con dentro `{what}`, `{who}`, `$&` o `<b>` si legge com\'è scritto, una volta sola: nessun posto si riempie due volte (sprint 29 · T2.6)', async () => {
+        const { rigaDellaNotifica } = await import('./index');
+        const riga = (autore_nome: string, risorsa_nome: string | null, tipo = 'com.zeiras.board.scheda.modificata') => rigaDellaNotifica({ tipo, autore_nome, risorsa_nome }, 'it');
+
+        expect(riga('Ada {what}', 'Piano {who}')).toStrictEqual({ titolo: 'Ada {what} ha modificato la scheda «Piano {who}»' });
+        expect(riga('{who} {what}', '{what} {who}')).toStrictEqual({ titolo: '{who} {what} ha modificato la scheda «{what} {who}»' });
+        expect(riga("$& $1 $` $' $$", "$& $1 $` $' $$")).toStrictEqual({ titolo: "$& $1 $` $' $$ ha modificato la scheda «$& $1 $` $' $$»" });
+        expect(riga('<b>Ada</b>', '<i>Piano</i> & co.')).toStrictEqual({ titolo: '<b>Ada</b> ha modificato la scheda «<i>Piano</i> & co.»' });
+        expect(riga('Ada {what} $&', null)).toStrictEqual({ titolo: 'Ada {what} $& ha modificato una scheda' });
+        expect(riga('Ada {what}', 'Piano {who}', 'com.zeiras.board.scheda.eliminata')).toStrictEqual({ titolo: 'Ada {what} ha eliminato una scheda', sotto: 'Piano {who}' });
+    });
+
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 32, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7)', (_lingua, file) => {
+        const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
+        const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
+
+        expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).sort());
+        expect(chiavi).toHaveLength(32);
+        for (const chiave of chiavi) {
+            const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
+            expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);
+            expect([chiave, typeof file[`notificationTitle.${tipo}`]]).toStrictEqual([chiave, 'string']);
+        }
+    });
+
+    it('una frase che una lingua non ha è quella dell\'inglese; e una frase si usa solo se è un testo e se ha i nomi che chiede (sprint 29 · T2.3, T2.7)', async () => {
+        const { fraseConINomi } = await import('./lingue');
+        const { 'notificationTitleWhoWhat.com.zeiras.board.scheda.modificata': tolta, ...senzaUnaFrase } = spagnolo;
+        const conUnaInMeno = caricaLingue({ '../lingue/en.json': inglese, '../lingue/es.json': senzaUnaFrase });
+
+        expect(tolta).toBe('{who} ha modificado la tarjeta «{what}»');
+        expect(conUnaInMeno.testi('es')['notificationTitleWhoWhat.com.zeiras.board.scheda.modificata']).toBe('{who} changed the card “{what}”');
+        expect(conUnaInMeno.testi('es')['notificationTitleWho.com.zeiras.board.scheda.modificata']).toBe('{who} ha modificado una tarjeta');
+        // Un file scritto male: una frase che chiede il nome della cosa non si usa quando il nome non c'è, e una senza testo mai.
+        expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi', 'Lancio corso')).toBe('Giulia Bianchi + Lancio corso');
+        expect(fraseConINomi('{who} + {what}', 'Giulia Bianchi')).toBeUndefined();
+        expect(fraseConINomi('{who} ha creato una scheda', 'Giulia Bianchi')).toBe('Giulia Bianchi ha creato una scheda');
+        expect([undefined, '', null, 7].map((frase) => fraseConINomi(frase, 'Giulia Bianchi', 'Lancio corso'))).toStrictEqual([undefined, undefined, undefined, undefined]);
+    });
+
+    it('è esportata dai due ingressi, la stessa funzione; `titoloDellaNotifica` e `risorsaDellaNotifica` restano com\'erano (sprint 29 · T2.8)', async () => {
+        const [diSempre, perLeApp, delleLingue] = await Promise.all([import('./index'), import('./app'), import('./lingue')]);
+
+        expect(typeof diSempre.rigaDellaNotifica).toBe('function');
+        expect(perLeApp.rigaDellaNotifica).toBe(diSempre.rigaDellaNotifica);
+        expect(delleLingue.rigaDellaNotifica).toBe(diSempre.rigaDellaNotifica);
+        expect(diSempre.titoloDellaNotifica('com.zeiras.board.scheda.modificata', 'it')).toBe('Scheda modificata');
+        expect(diSempre.risorsaDellaNotifica(diGiulia('com.zeiras.board.scheda.modificata', ' Lancio corso '), 'it')).toBe('Lancio corso');
+    });
+});

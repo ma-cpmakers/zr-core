@@ -6,7 +6,7 @@
 // apre, quello della sua risorsa (`destinazioneDellaNotifica`); e, per chi mostra un workspace in una pagina sua, il tono che ha
 // nel selettore della cornice (`tonoDelWorkspace`).
 export { Zeiras } from './zeiras';
-export { nomeDellaVoce, risorsaDellaNotifica, titoloDellaNotifica } from './lingue';
+export { nomeDellaVoce, rigaDellaNotifica, risorsaDellaNotifica, titoloDellaNotifica } from './lingue';
 export { destinazioneDellaNotifica } from './notifiche';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { tonoDelWorkspace } from './tono';

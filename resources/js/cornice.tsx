@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaRicerca, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
+import { linguaDeiTesti, nomeDellaVoce, rigaDellaNotifica, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
@@ -213,7 +213,8 @@ function testoDaMostrare(valore: unknown): string | undefined {
 }
 
 /**
- * Una notifica della parte server nel pannello: il titolo del suo tipo e l'ora, nella lingua dei testi. Di che
+ * Una notifica della parte server nel pannello: il titolo e l'ora, nella lingua dei testi. Il titolo e la riga di sotto li dà
+ * `rigaDellaNotifica`: per una notifica di Project Management con chi ha fatto, una frase con chi e che cosa. Di che
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Quando il backoffice li
@@ -224,11 +225,12 @@ function testoDaMostrare(valore: unknown): string | undefined {
  */
 function nelPannello(notifica: NotificaDellaCornice, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
+    const riga = rigaDellaNotifica(notifica, lingua);
 
     return senzaUndefined({
         id: notifica.id,
-        title: titoloDellaNotifica(notifica.tipo, lingua),
-        text: risorsaDellaNotifica(notifica, lingua),
+        title: riga.titolo,
+        text: riga.sotto,
         actor: testoDaMostrare(notifica.autore_nome),
         forMe: typeof notifica.per_me === 'boolean' ? notifica.per_me : undefined,
         time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
