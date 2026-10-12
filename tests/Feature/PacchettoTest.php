@@ -3092,9 +3092,12 @@ it('il documento chiama il menu «menu Moduli» (sprint 21 · T1.5)', function (
 
 it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i documenti né la descrizione del pacchetto né i commenti del codice; le copie del design system restano le sue (sprint 21 · T1.5)', function () {
     $radice = dirname(__DIR__, 2);
+    // Sprint 25 · T1: del design system è anche resources/js/zeiras/componenti.js, il corpo di bundle.js riga per riga coi suoi
+    // commenti (la CI lo confronta con ciò che il bundle genera: una riga scritta a mano lì dentro la ferma).
     $conIlNomeDiPrima = array_values(array_filter(
         fileDelloZipDiHead(),
         fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
+            && $file !== 'resources/js/zeiras/componenti.js'
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 
