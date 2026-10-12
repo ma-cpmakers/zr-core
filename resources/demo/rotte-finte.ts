@@ -33,7 +33,9 @@
 // risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
 // Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
 // lo stesso; il cookie del gettone CSRF è finto.
-// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
+// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta; con `?ricerca_frenata=<secondi>` la prima ricerca risponde
+// come la parte server quando il backoffice frena (429 `troppe_richieste` con `Retry-After: <secondi>`), e le successive come
+// sempre. Con l'orologio che la pagina di prova dà, le due rotte delle
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
 // entra nel pacchetto.
@@ -159,6 +161,8 @@ const risultatiDiProva = [
     { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto', contesto: null },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
+const ricercaFrenata = new URLSearchParams(window.location.search).get('ricerca_frenata');
+let giaFrenata = false;
 const arriva = new URLSearchParams(window.location.search).has('arriva');
 const altre = new URLSearchParams(window.location.search).has('altre');
 // Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
@@ -221,6 +225,11 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
+            if (ricercaFrenata !== null && !giaFrenata) {
+                giaFrenata = true;
+
+                return new Response(JSON.stringify({ errore: 'troppe_richieste' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': ricercaFrenata } });
+            }
             if (daAccettare) {
                 return json({ errore: 'accettazione_richiesta' }, 403);
             }

@@ -3636,6 +3636,127 @@ describe('la ricerca', () => {
         expect(sottoIlCampo()).toStrictEqual(['La ricerca non ha risposto. Riprova tra poco.']);
         expect([uno('main .zr-alert'), uno('.zr-bell-count')?.textContent, uno('.zr-product-switch') === null]).toStrictEqual([null, '7', false]);
     });
+
+    // Sprint 26 · T4 (lettura della PR #56, R8). Il freno del backoffice: quando la ricerca risponde 429 con `Retry-After: N`, per
+    // N secondi — al più 60 — la cornice non manda altre ricerche, qualunque cosa la persona scriva, e resta sull'errore; passati,
+    // la prima parola scritta parte. Allo scadere non parte niente da solo. Un 429 che non dice i secondi, e ogni altro errore,
+    // sono l'errore di oggi: la parola dopo parte.
+    describe('il freno del backoffice', () => {
+        // Qui anche l'orologio è del test: i secondi del freno passano quando lo dice lui.
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+        });
+
+        const errore = 'La ricerca non ha risposto. Riprova tra poco.';
+        /** La risposta di una rotta che frena: lo stato, il codice e, se c'è, `Retry-After`, come `fetch` la dà. */
+        const frenata = (riprovaFra?: string, stato = 429) => ({
+            ok: false,
+            status: stato,
+            headers: new Headers(riprovaFra === undefined ? {} : { 'Retry-After': riprovaFra }),
+            json: async () => ({ errore: 'troppe_richieste' }),
+        }) as unknown as Response;
+        /** La prima ricerca riceve `prima`; le altre trovano un risultato che porta la loro parola. */
+        const primaPoiTrova = (prima: Response) => vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovati([{ tipo: 'board.board', id: '1', titolo: `Risultato di «${String(parolaDi(opzioni))}»` }])).mockResolvedValueOnce(prima);
+        const passano = async (millisecondi: number) => act(async () => {
+            await vi.advanceTimersByTimeAsync(millisecondi);
+        });
+
+        it('dopo un 429 con `Retry-After: 5` la cornice mostra l\'errore della ricerca e per 5 secondi non manda altre ricerche, qualunque cosa la persona scriva; allo scadere non parte niente da solo, e la prima parola scritta dopo parte (sprint 26 · T4.2)', async () => {
+            const fetchFinto = primaPoiTrova(frenata('5'));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+            await scrivi('lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // Nei 5 secondi: tre parole, e nessuna parte.
+            await scrivi('lancio q');
+            await scrivi('lancio q4');
+            await passano(3000);
+            await scrivi('piano');
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // Il freno scade, e passa altro tempo: senza un tasto non parte niente, nemmeno l'ultima parola scritta.
+            await passano(30_000);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            await scrivi('piano di lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('piano di lancio')]);
+            expect(titoli()).toStrictEqual(['Risultato di «piano di lancio»']);
+        });
+
+        it.each<[string, string, number, boolean]>([
+            ['`Retry-After: 5`: a 4,999 secondi dal 429 la parola non parte', '5', 4999, false],
+            ['`Retry-After: 5`: a 5 secondi dal 429 la parola parte', '5', 5000, true],
+            ['`Retry-After: 1`: a 0,999 secondi la parola non parte', '1', 999, false],
+            ['`Retry-After: 1`: a 1 secondo la parola parte', '1', 1000, true],
+            // Il tetto: un valore sbagliato del backoffice non spegne la ricerca per un'ora.
+            ['`Retry-After: 3600`: a 59,999 secondi la parola non parte', '3600', 59_999, false],
+            ['`Retry-After: 3600`: il freno è di 60 secondi, e a 60 la parola parte', '3600', 60_000, true],
+            ['`Retry-After` con più cifre di quante un numero ne tenga: il freno è di 60 secondi', '9'.repeat(400), 60_000, true],
+        ])('il freno dura i secondi di `Retry-After`, al più 60, dal momento del 429 — %s (sprint 26 · T4.2)', async (_caso, riprovaFra, dopo, parte) => {
+            const fetchFinto = primaPoiTrova(frenata(riprovaFra));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // L'`AppShell` chiama la cornice 300 ms dopo il tasto: il tasto cade 300 ms prima dell'istante che si prova.
+            await passano(dopo - 300);
+            await scrivi('lancio q4');
+            expect(partite(fetchFinto)).toStrictEqual(parte ? [ricercaDi('lancio'), ricercaDi('lancio q4')] : [ricercaDi('lancio')]);
+            expect([titoli(), sottoIlCampo()]).toStrictEqual(parte ? [['Risultato di «lancio q4»'], []] : [[], [errore]]);
+        });
+
+        it.each<[string, () => Response]>([
+            ['un 429 senza `Retry-After`', () => frenata()],
+            ['un 429 con `Retry-After: 0`', () => frenata('0')],
+            ['un 429 con `Retry-After: -1`', () => frenata('-1')],
+            ['un 429 con `Retry-After: 1.5`', () => frenata('1.5')],
+            ['un 429 con `Retry-After: abc`', () => frenata('abc')],
+            ['un 429 con una data in `Retry-After`', () => frenata('Wed, 21 Oct 2026 07:28:00 GMT')],
+            ['un 500 con `Retry-After: 5`', () => frenata('5', 500)],
+            ['un 403 con `Retry-After: 5`', () => frenata('5', 403)],
+        ])('%s è l\'errore di oggi e non frena: la parola dopo parte subito (sprint 26 · T4.3)', async (_caso, risponde) => {
+            const fetchFinto = primaPoiTrova(risponde());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            await scrivi('lancio q4');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4')]);
+            expect(titoli()).toStrictEqual(['Risultato di «lancio q4»']);
+        });
+
+        it('mentre la ricerca è frenata un tasto non mostra il caricamento: lo stato resta l\'errore, sia nei 300 ms dopo il tasto sia quando l\'`AppShell` chiama la cornice (sprint 26 · T4.4)', async () => {
+            const fetchFinto = primaPoiTrova(frenata('5'));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            const visto = () => [sottoIlCampo(), inCaricamento(), righe().length];
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+
+            const campo = uno('.zr-search input') as HTMLInputElement;
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'lancio q4');
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(299);
+            });
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            // Il millisecondo in cui l'`AppShell` chiama `onSearch`, senza lasciar passare altro.
+            await act(async () => {
+                vi.advanceTimersByTime(1);
+            });
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            await passano(1000);
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+    });
 });
 
 // Sprint 12 · T5 (voce #1464). `active={null}`: nessuna voce della barra è attiva. L'`AppShell` segna la voce che ha l'id
@@ -4290,6 +4411,73 @@ describe('chi non ha accettato i documenti legali', () => {
             expect(cornice()).toStrictEqual(ridotta);
 
             await passano(300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        // Sprint 26 · T4.1 (lettura della PR #56, R7). Passata allo stato ridotto la cornice dimentica la ricerca: tornata quella di
+        // sempre non mostra i risultati di prima sotto una parola che non ha mai cercato, e la risposta di una richiesta che era in
+        // volo non li rimette. La ricerca è pronta e vuota finché la persona non cerca di nuovo.
+        /** Ciò che la ricerca mostra: i titoli dei risultati, se sta cercando, se ha un errore. */
+        const laRicerca = () => ({
+            risultati: tutti('.zr-search-panel [role="option"]').map((riga) => riga.querySelector('.zr-search-title')?.textContent),
+            staCercando: uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent ?? null,
+            errore: uno('.zr-search-panel [role="alert"]')?.textContent ?? null,
+        });
+        const prontaEVuota = { risultati: [], staCercando: null, errore: null };
+        const trovato = (parola: unknown) => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: `Risultato di «${String(parola)}»` }], workspace: 'acme-marketing' });
+        const parolaDi = (opzioni?: RequestInit) => (JSON.parse(String(opzioni?.body)) as { q?: unknown }).q;
+
+        it.each<[string, DatiDellaCornice, { risultati: string[]; staCercando: string | null; errore: string | null }, unknown[]]>([
+            ['arrivano i dati ridotti: tornata quella di sempre, la ricerca è pronta e vuota, e la parola nuova non è partita', ridotti, prontaEVuota, ['ua']],
+            // Il controllo vede ciò che cerca: con altri dati di sempre, dopo gli stessi tasti, la parola nuova parte e si vedono i suoi risultati.
+            ['arrivano altri dati di sempre: la parola nuova parte, e i risultati sono i suoi', { ...diSempre, aggiornati_il: '2026-10-11T22:00:03.000001Z' }, { ...prontaEVuota, risultati: ['Risultato di «uat»'] }, ['ua', 'uat']],
+        ])('coi risultati di una parola in pagina, fra il tasto di un\'altra e i 300 ms %s (sprint 26 · T4.1)', async (_caso, arrivati, attesa, parole) => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovato(parolaDi(opzioni)));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            await batte('ua', 300);
+            expect(laRicerca()).toStrictEqual({ ...prontaEVuota, risultati: ['Risultato di «ua»'] });
+
+            await batte('uat', 100);
+            await mostra(laPagina(arrivati));
+            await passano(300);
+            await mostra(laPagina(lettiDopo));
+
+            expect(cornice()).not.toStrictEqual(ridotta);
+            expect(fetchFinto.mock.calls.map(([, opzioni]) => parolaDi(opzioni))).toStrictEqual(parole);
+            expect(laRicerca()).toStrictEqual(attesa);
+        });
+
+        it.each<[string, boolean]>([
+            ['arriva mentre la cornice è ridotta', true],
+            ['arriva dopo che la cornice è tornata quella di sempre', false],
+        ])('se la cornice passa allo stato ridotto con una ricerca in volo, la richiesta è annullata e la sua risposta non entra nella ricerca nemmeno se %s: tornata quella di sempre, la ricerca è pronta e vuota (sprint 26 · T4.1)', async (_caso, mentreERidotta) => {
+            let arriva!: (valore: Response) => void;
+            const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => new Promise<Response>((risolvi) => (arriva = risolvi)));
+            vi.stubGlobal('fetch', fetchFinto);
+            // La risposta arriva lo stesso, anche a richiesta annullata: è il caso peggiore.
+            const risponde = async () => act(async () => {
+                arriva(trovato('ua'));
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            await mostra(laPagina(diSempre));
+            await batte('ua', 300);
+            expect(laRicerca()).toStrictEqual({ ...prontaEVuota, staCercando: 'Sto cercando…' });
+            expect(fetchFinto.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+
+            await mostra(laPagina(ridotti));
+            expect(cornice()).toStrictEqual(ridotta);
+            expect(fetchFinto.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+            if (mentreERidotta) {
+                await risponde();
+            }
+            await mostra(laPagina(lettiDopo));
+            if (!mentreERidotta) {
+                await risponde();
+            }
+
+            expect(cornice()).not.toStrictEqual(ridotta);
+            expect(laRicerca()).toStrictEqual(prontaEVuota);
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
     });

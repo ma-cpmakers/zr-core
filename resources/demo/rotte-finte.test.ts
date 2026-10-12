@@ -541,6 +541,17 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });
 
+    // Sprint 26 · T4 (lettura della PR #56, R8). `?ricerca_frenata=<secondi>` fa rispondere alla prima ricerca come la parte
+    // server quando il backoffice frena — 429 `troppe_richieste` con `Retry-After` —, e alle successive come sempre: così sulla
+    // pagina di prova si vede la cornice che aspetta.
+    it('con `?ricerca_frenata=5` la prima ricerca risponde 429 `troppe_richieste` con `Retry-After: 5`, e le successive come sempre (sprint 26 · T4)', async () => {
+        const prima = await rispostaGrezzaDi('/cornice/ricerca', cerca('uat'), '?ricerca_frenata=5');
+        expect([prima.status, prima.headers.get('Retry-After'), await prima.json()]).toStrictEqual([429, '5', { errore: 'troppe_richieste' }]);
+
+        const seconda = await rispostaGrezzaDi('/cornice/ricerca', cerca('uat'), '?ricerca_frenata=5');
+        expect([seconda.status, seconda.headers.get('Retry-After'), ((await seconda.json()) as { data: unknown[] }).data.length > 0]).toStrictEqual([200, null, true]);
+    });
+
     // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
     // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
     // non dà altre forme: un contatto senza azienda né ruolo ha `null`.

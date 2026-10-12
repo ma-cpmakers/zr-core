@@ -58,6 +58,22 @@ export interface RisultatoDellaRicerca {
 export class AccettazioneRichiesta extends Error {}
 
 /**
+ * Una rotta della cornice ha risposto 429 dicendo fra quanti secondi riprovare (`Retry-After`, un intero da 1 in su): il
+ * backoffice frena le richieste della persona — oggi le ricerche —, e la parte server lo ripete al browser coi secondi che ha
+ * detto lui. `secondi` è quel numero, com'è: quanto fidarsene lo decide chi ha chiamato (la cornice ferma la ricerca per quei
+ * secondi, al più 60). Per chi non la guarda è un errore come gli altri. Un 429 senza `Retry-After`, o con un valore che non
+ * è un intero da 1 in su — `0`, un numero con la virgola, una data —, resta l'errore di sempre, e così ogni altro stato.
+ */
+export class TroppeRichieste extends Error {
+    readonly secondi: number;
+
+    constructor(esito: string, secondi: number) {
+        super(esito);
+        this.secondi = secondi;
+    }
+}
+
+/**
  * I codici dell'errore, se la risposta ha un corpo JSON che li porta: quello che una rotta della cornice dà al suo errore
  * (`errore`), e quello che dà zr-auth quando risponde da sé (`codice`).
  */
@@ -79,6 +95,12 @@ async function chiama(indirizzo: string, opzioni: { method?: string; headers?: R
         // workspace), o lo stesso codice con un altro stato, restano l'errore di sempre.
         if (risposta.status === 403 && (await codiciDi(risposta)).includes('accettazione_richiesta')) {
             throw new AccettazioneRichiesta(esito);
+        }
+        if (risposta.status === 429) {
+            const riprovaFra = risposta.headers.get('Retry-After') ?? '';
+            if (/^\d+$/.test(riprovaFra) && Number(riprovaFra) >= 1) {
+                throw new TroppeRichieste(esito, Number(riprovaFra));
+            }
         }
         throw new Error(esito);
     }

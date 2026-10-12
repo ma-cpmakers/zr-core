@@ -4,7 +4,7 @@ import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaR
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -359,6 +359,12 @@ interface LettaConUnClic extends Saputo {
 export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready'; risultati: RisultatoDellaRicerca[]; workspace: string };
 
 /**
+ * Quanti secondi, al più, la cornice tiene ferma la ricerca dopo un 429 del backoffice, qualunque cosa dica `Retry-After`: la
+ * cornice resta montata fra le pagine, e un valore sbagliato non deve spegnere la ricerca per un'ora.
+ */
+const TETTO_DEL_FRENO = 60;
+
+/**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
  * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
  * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
@@ -699,9 +705,25 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const ridottaAdesso = useRef(ridotta);
     useLayoutEffect(() => {
         ridottaAdesso.current = ridotta;
+        if (ridotta) {
+            ricercaInVolo.current?.abort();
+            ricercaInVolo.current = undefined;
+        }
     });
+    // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
+    // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
+    // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
+    // non ha cercato (quella scritta mentre era ridotta non è partita).
+    if (ridotta && ricerca !== undefined) {
+        setRicerca(undefined);
+    }
+    // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
+    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato resta
+    // l'errore: una parola battuta nel frattempo non mostra il caricamento. Allo scadere non parte niente da solo: parte la
+    // prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna indietro.
+    const frenataFinoA = useRef(0);
     const cercaParola = (parola: string) => {
-        if (ridottaAdesso.current) {
+        if (ridottaAdesso.current || performance.now() < frenataFinoA.current) {
             return;
         }
         ricercaInVolo.current?.abort();
@@ -716,6 +738,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
             (errore: unknown) => {
                 seDaAccettare(errore);
+                if (errore instanceof TroppeRichieste) {
+                    frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
+                }
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'error' });
                 }
