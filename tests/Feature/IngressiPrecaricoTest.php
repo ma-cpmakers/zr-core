@@ -220,7 +220,8 @@ it('zr-core non registra il precarico da sé: col solo provider una pagina 200 H
 
 it('il frontend lo registra sul gruppo `web`, e da lì ogni pagina intera del gruppo ha il `Link`; una rotta fuori dal gruppo no (sprint 28 · T2.5)', function () {
     sessioneAMano(WORKSPACE_DEL_PRECARICO);
-    Route::pushMiddlewareToGroup('web', PrecaricoDegliIngressi::class);
+    // Come `$middleware->web(append: […])` nel `bootstrap/app.php` di un frontend: sul kernel, che i gruppi li passa al router.
+    app(HttpKernel::class)->appendMiddlewareToGroup('web', PrecaricoDegliIngressi::class);
     Route::get('/w/uat-marketing/precarico', fn () => documentoConVite())->middleware('web');
     Route::get('/prova/precarico', fn () => documentoConVite());
 
