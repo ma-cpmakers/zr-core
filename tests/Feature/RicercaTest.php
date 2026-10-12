@@ -8,6 +8,7 @@ use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
+use Zeiras\Core\Http\RicercaDellaCornice;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -23,6 +24,9 @@ use Zeiras\Auth\Testing\Rotte;
 // ricerca.crea (POST /v1/ricerca, corpo `{q}` e nient'altro, indirizzo senza query); di ogni risultato dà anche `contesto`
 // (null, o i soli testi non vuoti che il backoffice ha dato) e mai `indirizzo`; davanti al 429 `troppe_richieste` risponde
 // 429 col solo codice e i secondi di `Retry-After`.
+// Sprint 25 · T6 (lettura della PR #56, R1): di `contesto` passano le sole chiavi che il registro dei moduli dà al tipo del
+// risultato (`risorse[].contesto`), una lista chiusa: una chiave che il backoffice aggiungesse domani non arriva al browser da
+// sola, entra dal registro. Il registro è quello del pacchetto, letto una volta per processo come fa l'elenco delle notifiche.
 
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLA_RICERCA = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
@@ -168,7 +172,7 @@ it('di ogni risultato la rotta dà `contesto`: i testi che il backoffice ha dato
         ->toContain('"contesto":{"pipeline":"UAT Vendite","fase":"Proposta"}');
 });
 
-it('di `contesto` passano solo i valori di testo non vuoti, con la loro chiave: un null, un testo vuoto, un numero, un vero, un oggetto e una lista non passano, e un contesto che così resta senza valori, o che non è un oggetto, è null (sprint 25 · T3.2)', function (mixed $delBackoffice, ?array $perLaCornice) {
+it('di `contesto` passano solo le chiavi che il registro dà al tipo del risultato, e solo coi valori di testo non vuoti: un null, un testo vuoto, un numero, un vero, un oggetto e una lista non passano, una chiave che il registro non dà a quel tipo nemmeno, e un contesto che così resta senza valori, o che non è un oggetto, è null (sprint 25 · T3.2; T6, R1)', function (mixed $delBackoffice, ?array $perLaCornice) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [
         ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => $delBackoffice, 'indirizzo' => '/v1/crm/persone/uat-p1'],
@@ -186,7 +190,12 @@ it('di `contesto` passano solo i valori di testo non vuoti, con la loro chiave: 
     'una lista accanto a un testo' => [['organizzazione' => ['UAT Impianti'], 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
     // In PHP la chiave numerica di un oggetto JSON è un numero: da sola farebbe della risposta una lista, e non passa.
     'una chiave numerica accanto a una di testo' => [[7 => 'UAT Impianti', 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
-    'una chiave che zr-core non conosce' => [['reparto' => 'UAT Acquisti', 'ruolo' => 'Direttore'], ['reparto' => 'UAT Acquisti', 'ruolo' => 'Direttore']],
+    // Lettura della PR #56, R1: una lista chiusa. Il registro dà a un contatto `organizzazione` e `ruolo`, e nient'altro.
+    'una chiave che il registro non dà al tipo, accanto a una che dà' => [['reparto' => 'UAT Acquisti', 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
+    'una chiave che il registro non dà al tipo, prima e dopo le sue' => [['reparto' => 'UAT Acquisti', 'organizzazione' => 'UAT Impianti', 'sede' => 'UAT Milano', 'ruolo' => 'Direttore', 'indirizzo' => '/v1/crm/persone/uat-p1'], ['organizzazione' => 'UAT Impianti', 'ruolo' => 'Direttore']],
+    'solo chiavi che il registro non dà al tipo' => [['reparto' => 'UAT Acquisti', 'sede' => 'UAT Milano'], null],
+    'le chiavi di un altro tipo, quelle di una scheda' => [['board' => 'UAT Sito', 'lista' => 'Da fare'], null],
+    'una chiave del tipo scritta con la maiuscola' => [['Ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti'], ['organizzazione' => 'UAT Impianti']],
     'tutti null' => [['organizzazione' => null, 'ruolo' => null], null],
     'tutti vuoti' => [['organizzazione' => '', 'ruolo' => ''], null],
     'solo chiavi numeriche' => [[3 => 'UAT Impianti', 7 => 'Direttore'], null],
@@ -196,6 +205,65 @@ it('di `contesto` passano solo i valori di testo non vuoti, con la loro chiave: 
     'un vero' => [true, null],
     'una lista di testi' => [['UAT Impianti', 'Direttore'], null],
 ]);
+
+/** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
+const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite'];
+
+it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di un contesto che le porta tutte restano le sue, nell\'ordine del backoffice (sprint 25 · T6, R1)', function (string $tipo, string $resta) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
+
+    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing"}');
+})->with([
+    'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
+    'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
+    'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite"}'],
+    // Il registro non dà chiavi a un'azienda, a una board, a una cartella: qualunque cosa il backoffice dia, null.
+    'un\'azienda' => ['crm.organizzazione', 'null'],
+    'una board' => ['board.board', 'null'],
+    'una cartella' => ['board.cartelle', 'null'],
+    // Un tipo che il registro non ha passa, e lo scarta la cornice: del suo contesto non passa niente.
+    'un tipo che il registro non ha' => ['uat-ignoto', 'null'],
+    'un tipo che somiglia a uno del registro' => ['board.schede', 'null'],
+]);
+
+it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco scritto nella rotta: con un registro di prova che al contatto dà `reparto`, passa `reparto` e non `ruolo`, e una scheda, che lì non ha chiavi, ha null (sprint 25 · T6, R1)', function () {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [
+        risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
+        risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
+    ], 'successivo' => null])]);
+    // Il registro di prova entra dalla proprietà privata, con la reflection, come per le notifiche: nel codice che va in
+    // produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
+    $registro = new ReflectionProperty(RicercaDellaCornice::class, 'registro');
+    $registro->setValue(null, [
+        ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
+        ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
+        ['id' => 'uat-senza-risorse'],
+    ]);
+
+    try {
+        cerca('UAT')->assertOk()->assertExactJson(['data' => [
+            ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
+            ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
+        ], 'workspace' => 'uat-marketing']);
+    } finally {
+        $registro->setValue(null, null);
+    }
+});
+
+it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie (sprint 25 · T6, R1)', function () {
+    $classe = new ReflectionClass(RicercaDellaCornice::class);
+    $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
+    $sorgente = (string) file_get_contents((string) $classe->getFileName());
+
+    expect($pubblici)->toBe(['cerca'])
+        ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
+        ->and(str_contains($sorgente, '@internal'))->toBe(false)
+        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
+        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+});
 
 it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', function (string $q) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
