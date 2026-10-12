@@ -276,6 +276,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         'searchPlaceholderSources', 'searchHintSources',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
+        // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
+        ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
     ];
 
     $problemi = [];
@@ -383,6 +385,7 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
             'automations' => 'Automazioni', 'content' => 'Contenuti',
         ])
         ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
+            'home.workspace.membro' => 'Membri',
             'pm.board.scheda' => 'Schede', 'pm.board.board' => 'Board', 'pm.board.cartelle' => 'Cartelle',
             'crm.crm.persona' => 'Contatti', 'crm.crm.organizzazione' => 'Aziende', 'crm.crm.trattativa' => 'Opportunità',
         ]);
@@ -750,10 +753,40 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
         ->and(array_map(fn (string $testo): string => mb_substr($testo, -1), $segnaposto))->toBe(['…', '…'])
         ->and(substr_count(implode('', $segnaposto), '.'))->toBe(0);
 })->with([
-    'italiano' => ['it', ['Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
-    'inglese' => ['en', ['Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
-    'spagnolo' => ['es', ['Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
+    // Dallo sprint 27 il primo è il membro del workspace, che nel registro sta nella voce della Dashboard (T1.3).
+    'italiano' => ['it', ['Membri', 'Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
+    'inglese' => ['en', ['Members', 'Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
+    'spagnolo' => ['es', ['Miembros', 'Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
 ]);
+
+// Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice
+// (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core, sotto
+// `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
+// codici, lo dice il registro (`risorse[].codici`), e le lingue hanno un testo per ognuno e per nessun altro.
+it('in ogni lingua i tre ruoli di un membro del workspace hanno il loro testo, quello della pagina dei membri, sotto il codice del registro (sprint 27 · T1.3)', function (string $codice, array $ruoli) {
+    $testi = lingueDellaCornice()[$codice];
+
+    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
+        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($ruoli)
+        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(3);
+})->with([
+    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro']],
+    'inglese' => ['en', ['Owner', 'Admin', 'Member']],
+    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro']],
+]);
+
+it('il controllo trova il testo di un ruolo che manca in una lingua, e il testo di un codice che il registro non ha: un ruolo in più, o il ruolo di un contatto, che è un testo libero (sprint 27 · T1.3)', function () {
+    $lingue = lingueDellaCornice();
+    unset($lingue['es']['searchContext.home.workspace.membro.ruolo.amministratore']);
+    $lingue['en']['searchContext.home.workspace.membro.ruolo.ospite'] = 'Guest';
+    $lingue['it']['searchContext.crm.crm.persona.ruolo.direttore'] = 'Direttore';
+
+    expect(problemiDelleLingue($lingue))->toBe([
+        'it: «searchContext.crm.crm.persona.ruolo.direttore» non è un testo della cornice',
+        'es: manca «searchContext.home.workspace.membro.ruolo.amministratore»',
+        'en: «searchContext.home.workspace.membro.ruolo.ospite» non è un testo della cornice',
+    ]);
+});
 
 it('il controllo trova un tipo di risorsa senza il nome da elenco, un testo della ricerca che manca e un nome da elenco di un tipo che il registro non ha (sprint 25 · T4.5)', function () {
     $lingue = lingueDellaCornice();

@@ -207,6 +207,27 @@ it('di `contesto` passano solo le chiavi che il registro dà al tipo del risulta
     'una lista di testi' => [['UAT Impianti', 'Direttore'], null],
 ]);
 
+// Sprint 27 · T1.5 (voce #1787): ricerca.crea trova anche i colleghi del workspace, per nome. Il backoffice non mette mai l'email
+// nella voce, e il registro dà al tipo la sola chiave `ruolo`: se un giorno l'email, o un'altra chiave, arrivasse nel contesto,
+// si fermerebbe qui e non arriverebbe al browser.
+it('un membro del workspace esce con tipo, id, titolo e il solo `ruolo` del contesto, il codice com\'è: un\'email, o un\'altra chiave che il backoffice mettesse nel contesto, non arriva al browser (sprint 27 · T1.5)', function (array $delBackoffice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    // La voce dell'esempio del contratto del 12/10/2026, e ciò che il caso le aggiunge nel contesto.
+    Http::fake(['*' => Http::response(['data' => [
+        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => $delBackoffice, 'indirizzo' => '/v1/workspace/membri/01k6w1b3d5f7h9k1n3q5s7u9wy'],
+    ], 'successivo' => null])]);
+
+    $risposta = cerca('Marta')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => ['ruolo' => 'amministratore']],
+    ], 'workspace' => 'uat-marketing']);
+
+    expect($risposta->getContent())->not->toContain('example.com')->not->toContain('email')->not->toContain('/v1/');
+})->with([
+    'il contesto del contratto: il solo ruolo' => [['ruolo' => 'amministratore']],
+    'con l\'email dopo il ruolo' => [['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com']],
+    'con l\'email prima del ruolo, e una mansione' => [['email' => 'uat-marta@example.com', 'ruolo' => 'amministratore', 'mansione' => 'UAT Direttrice']],
+]);
+
 /** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
 const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite'];
 
@@ -219,6 +240,9 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
     'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite"}'],
+    // Sprint 27 · T1.5: a un membro del workspace il registro dà il solo `ruolo`. Il valore passa com'è: quali codici hanno un
+    // testo lo sa la cornice, nel browser.
+    'un membro del workspace' => ['workspace.membro', '{"ruolo":"Direttore"}'],
     // Il registro non dà chiavi a un'azienda, a una board, a una cartella: qualunque cosa il backoffice dia, null.
     'un\'azienda' => ['crm.organizzazione', 'null'],
     'una board' => ['board.board', 'null'],

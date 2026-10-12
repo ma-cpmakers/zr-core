@@ -34,6 +34,26 @@ function tipiDiRisorsa(): array
 }
 
 /**
+ * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<prodotto>.<tipo>.<chiave>.<codice>`:
+ *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti
+ */
+function codiciDelContesto(): array
+{
+    $codici = [];
+    foreach (registroDeiProdotti() as $voce) {
+        foreach ($voce['risorse'] ?? [] as $risorsa) {
+            foreach ($risorsa['codici'] ?? [] as $chiave => $elenco) {
+                foreach ($elenco as $codice) {
+                    $codici[] = $voce['id'].'.'.$risorsa['tipo'].'.'.$chiave.'.'.$codice;
+                }
+            }
+        }
+    }
+
+    return $codici;
+}
+
+/**
  * Il codice senza i commenti, che citano i testi «così» e non si vedono. Le stringhe restano intere, anche con // o /* dentro
  * (`'../lingue/*.json'` non apre un commento), e `https://` fuori dalle virgolette non ne apre uno di riga.
  */

@@ -68,7 +68,8 @@ function mappaDegliIndirizzi(): array
  * in arrivo, la Dashboard in arrivo; in una risorsa, un tipo vuoto, ripetuto o già
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
  * «contenitore» che non è un sì o un no, un nome, un «contesto» che non è un elenco di chiavi minuscole e diverse, una chiave
- * che una risorsa non ha (sprint 25 · T4); in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
+ * che una risorsa non ha (sprint 25 · T4), dei «codici» che non danno a chiavi del suo «contesto» un elenco di codici minuscoli
+ * e diversi (sprint 27 · T1); in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
  * un'altra app, o di un'app che il controllo non conosce, un percorso che non comincia con / o che ha un carattere o un
  * segnaposto non ammesso, una chiave che non è `tipo`, `percorso` né `altrimenti`, e in `altrimenti` un percorso scritto due
  * volte o che non si aprirebbe mai.
@@ -149,8 +150,30 @@ function problemiDelRegistro(array $voci): array
             )) {
                 $problemi[] = "$nome: «contesto» non è un elenco di chiavi, minuscole e diverse";
             }
-            if (array_diff(array_keys($risorsa), ['tipo', 'icona', 'percorso', 'contenitore', 'contesto', 'nome']) !== []) {
-                $problemi[] = "$nome: ha una chiave che non è tipo, icona, percorso, contenitore né contesto";
+            // Sprint 27 · T1: i codici che una chiave di `contesto` può portare, dove il backoffice dà un codice e non un testo da
+            // mostrare (`ruolo` di un membro del workspace): il testo di ogni codice sta nelle lingue. Un oggetto non vuoto; ogni
+            // sua chiave è una chiave di `contesto` della stessa risorsa, e ha un elenco non vuoto di codici minuscoli
+            // (`proprietario`), ognuno una volta.
+            if (array_key_exists('codici', $risorsa)) {
+                $codici = $risorsa['codici'];
+                if (! is_array($codici) || $codici === [] || array_is_list($codici)) {
+                    $problemi[] = "$nome: «codici» non è un oggetto con un elenco di codici per chiave";
+                } else {
+                    foreach ($codici as $chiave => $elenco) {
+                        if (! is_array($chiavi) || ! in_array($chiave, $chiavi, true)) {
+                            $problemi[] = "$nome: «codici» nomina «{$chiave}», che non è una chiave di «contesto»";
+                        }
+                        if (
+                            ! is_array($elenco) || ! array_is_list($elenco) || $elenco === [] || count(array_unique($elenco, SORT_REGULAR)) !== count($elenco)
+                            || array_filter($elenco, fn (mixed $codice): bool => ! is_string($codice) || preg_match('/^[a-z_]+$/D', $codice) !== 1) !== []
+                        ) {
+                            $problemi[] = "$nome: i codici di «{$chiave}» non sono un elenco di codici, minuscoli e diversi";
+                        }
+                    }
+                }
+            }
+            if (array_diff(array_keys($risorsa), ['tipo', 'icona', 'percorso', 'contenitore', 'contesto', 'codici', 'nome']) !== []) {
+                $problemi[] = "$nome: ha una chiave che non è tipo, icona, percorso, contenitore, contesto né codici";
             }
         }
         // Sprint 21 · T3: le notifiche che dal pannello aprono la loro risorsa. Il tipo è quello intero dell'evento, una volta sola
@@ -256,7 +279,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto'],
+            // Dallo sprint 27 la Dashboard ha `risorse` (più sotto): il membro del workspace, la cui pagina è di app.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse'],
             // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
@@ -289,8 +313,24 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             ['tipo' => 'crm.organizzazione', 'icona' => 'building', 'percorso' => '/aziende/{id}', 'contenitore' => false],
             ['tipo' => 'crm.trattativa', 'icona' => 'target', 'percorso' => '/opportunita/{id}', 'contenitore' => false, 'contesto' => ['pipeline', 'fase']],
         ])
-        // Nessun altro prodotto ha risorse: un tipo in due prodotti sarebbe un problema (sopra), e qui non ce n'è nessuno.
-        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['pm', 'crm']);
+        // Sprint 27 · T1.1 (voce #1787): il membro del workspace, col tipo del contratto (ricerca.crea). Non è di un modulo: la
+        // pagina che si apre è Impostazioni › Membri di app, e la risorsa sta nella voce della Dashboard, che ha quell'indirizzo.
+        // Il percorso è quello di zr-home, non quello del backoffice (`/v1/workspace/membri/{id}`). La seconda riga è il ruolo,
+        // che il backoffice dà come codice: i tre codici stanno in `codici`, e il testo di ognuno nelle lingue. Mai l'email: ciò
+        // che sta in `contesto` è anche ciò che la parte server lascia uscire verso il browser.
+        ->and($voci[0]['risorse'] ?? null)->toBe([
+            [
+                'tipo' => 'workspace.membro', 'icona' => 'user', 'percorso' => '/impostazioni/membri/{id}', 'contenitore' => false,
+                'contesto' => ['ruolo'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
+            ],
+        ])
+        // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno.
+        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm'])
+        // Solo il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è.
+        ->and(array_keys(array_filter(array_merge(...array_map(
+            fn (array $voce): array => array_column($voce['risorse'] ?? [], 'codici', 'tipo'),
+            $voci,
+        )))))->toBe(['workspace.membro']);
 });
 
 it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole e diverse, e una chiave che una risorsa non ha (sprint 25 · T4.5)', function () {
@@ -307,9 +347,44 @@ it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole 
         'pm.board.board: «contesto» non è un elenco di chiavi, minuscole e diverse',
         'pm.board.cartelle: «contesto» non è un elenco di chiavi, minuscole e diverse',
         'crm.crm.persona: «contesto» non è un elenco di chiavi, minuscole e diverse',
-        'crm.crm.organizzazione: ha una chiave che non è tipo, icona, percorso, contenitore né contesto',
+        'crm.crm.organizzazione: ha una chiave che non è tipo, icona, percorso, contenitore, contesto né codici',
         'crm.crm.trattativa: «contesto» non è un elenco di chiavi, minuscole e diverse',
     ]);
+});
+
+it('il controllo accetta `codici` solo come un oggetto che a chiavi di «contesto» della stessa risorsa dà un elenco non vuoto di codici minuscoli e diversi (sprint 27 · T1.2)', function () {
+    $con = function (int $voce, int $risorsa, mixed $codici): array {
+        $voci = registroDeiProdotti();
+        $voci[$voce]['risorse'][$risorsa]['codici'] = $codici;
+
+        return problemiDelRegistro($voci);
+    };
+    $delMembro = fn (mixed $codici): array => $con(0, 0, $codici);
+
+    // Il caso parte dal registro di oggi, e cambia i soli `codici`: del membro, di una scheda, di un'azienda.
+    expect(array_map(fn (int $voce, int $risorsa) => registroDeiProdotti()[$voce]['risorse'][$risorsa]['tipo'] ?? null, [0, 1, 2], [0, 0, 1]))
+        ->toBe(['workspace.membro', 'board.scheda', 'crm.organizzazione'])
+        // Quali codici, il controllo non lo sa: un elenco diverso, fatto bene, passa.
+        ->and($delMembro(['ruolo' => ['proprietario', 'ospite']]))->toBe([])
+        // Una chiave che non è in `contesto`: il suo valore non arriverebbe mai al browser.
+        ->and($delMembro(['email' => ['personale']]))->toBe(['home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»'])
+        ->and($delMembro(['ruolo' => ['membro'], 'Ruolo' => ['membro']]))->toBe(['home.workspace.membro: «codici» nomina «Ruolo», che non è una chiave di «contesto»'])
+        // La chiave di un'altra risorsa non vale: una scheda ha `board` e `lista`, un'azienda non ha `contesto`.
+        ->and($con(1, 0, ['ruolo' => ['membro']]))->toBe(['pm.board.scheda: «codici» nomina «ruolo», che non è una chiave di «contesto»'])
+        ->and($con(2, 1, ['ruolo' => ['membro']]))->toBe(['crm.crm.organizzazione: «codici» nomina «ruolo», che non è una chiave di «contesto»'])
+        // Un elenco vuoto, un codice due volte, uno che non è un testo, uno con una maiuscola o uno spazio, un testo al posto dell'elenco.
+        ->and(array_map($delMembro, [
+            ['ruolo' => []], ['ruolo' => ['membro', 'membro']], ['ruolo' => ['membro', 7]], ['ruolo' => ['Membro']], ['ruolo' => ['co proprietario']],
+            ['ruolo' => 'membro'], ['ruolo' => ['primo' => 'membro']], ['ruolo' => null],
+        ]))->toBe(array_fill(0, 8, ['home.workspace.membro: i codici di «ruolo» non sono un elenco di codici, minuscoli e diversi']))
+        // Tutte e due le cose insieme.
+        ->and($delMembro(['email' => []]))->toBe([
+            'home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»',
+            'home.workspace.membro: i codici di «email» non sono un elenco di codici, minuscoli e diversi',
+        ])
+        // E ciò che non è un oggetto: vuoto, un elenco, un testo, niente.
+        ->and(array_map($delMembro, [[], ['proprietario', 'membro'], 'ruolo', null]))
+        ->toBe(array_fill(0, 4, ['home.workspace.membro: «codici» non è un oggetto con un elenco di codici per chiave']));
 });
 
 it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indirizzo fuori dalla mappa, un nome e un percorso che non è vuoto né `/…{id}…` (T4.1, T7.3; sprint 6 · T5.2)', function () {
@@ -414,7 +489,7 @@ it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc ch
 });
 
 it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<prodotto>.<tipo>`: tsc chiede all\'inglese il nome di ognuna (T5.3; sprint 5 · T4.5)', function () {
-    expect(tipiDiRisorsa())->toBe(['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'])
+    expect(tipiDiRisorsa())->toBe(['home.workspace.membro', 'pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'])
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
 
