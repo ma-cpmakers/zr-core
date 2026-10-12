@@ -82,14 +82,16 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,0 KB | 19,1 KB | 2,5 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 19,1 KB | 2,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 19,1 KB | 2,5 KB |
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 19,4 KB | 2,7 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 19,4 KB | 2,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 19,4 KB | 2,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre pezzi, uno per lingua (circa 0,85 KB l'uno con gzip), che la cornice chiede quando si apre
 la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello dell'inglese. Prima stavano nel
-JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Nel JS d'ingresso di queste app c'è anche l'aiuto
+JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto pezzo a richiesta sono i rimedi
+provvisori di tastiera (circa 0,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel pannello delle
+notifiche», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -374,6 +376,15 @@ cornice === null ? pagina : (
   o sul primo elemento che prende il fuoco va riletto. È provvisorio: l'`AppShell` del design system
   non ha ancora il suo, e la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i
   token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente.
+- **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
+  fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
+  fuoco si sposta solo all'apertura: quando arriva l'elenco, dopo «Riprova», dopo «Segna tutte come lette» o cambiando
+  linguetta resta dov'è. Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Vale anche nello stato
+  ridotto. Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda l'elemento attivo va
+  riletto. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla campanella, e la cornice
+  lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi
+  niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa 0,2 KB con gzip), fuori dal
+  JS d'ingresso: se non arriva, la campanella si apre come prima, col fuoco sul pulsante.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non

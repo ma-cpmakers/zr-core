@@ -5324,3 +5324,147 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inSpagnolo]);
     });
 });
+
+describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (sprint 30 · T3)', () => {
+    const elenco = [
+        { id: 'uat-n91', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' },
+        { id: 'uat-n90', creata_il: '2026-10-05T12:00:00Z', letta: true, app: null },
+    ];
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true };
+    const campanella = () => uno('.zr-bell') as HTMLButtonElement;
+    const linguette = () => tutti('.zr-notif .zr-notif-tabs [role="tab"]');
+    const scelta = () => uno('.zr-notif .zr-notif-tabs [role="tab"][aria-selected="true"]');
+    const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
+    const conIlFuoco = async (elemento: HTMLElement | null) => act(async () => elemento?.focus());
+    const tasto = async (key: string) => act(async () => {
+        document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        await prossimoGiro();
+    });
+    const rotte = (notifiche: () => Promise<Response> | Response) => vi.fn(async (indirizzo: string) => (
+        indirizzo === '/cornice/notifiche' ? notifiche() : risposta({ data: { fino_a: '2026-10-06T11:55:00.000000Z', altre: false } })
+    ));
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async (dellaCornice: DatiDellaCornice = { ...dati, non_lette: 3 }) => {
+        await mostra(<Cornice dati={dellaCornice} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    /** Come il clic di una persona: il pulsante prende il fuoco, poi il clic. */
+    const apri = async () => {
+        await conIlFuoco(campanella());
+        await clic(campanella());
+    };
+
+    it('aperta la campanella, l\'elemento attivo è la linguetta scelta del pannello, «Per me»: non la campanella, non «Segna tutte come lette» (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+
+        await apri();
+
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        expect(scelta()?.textContent).toBe('Per me');
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('il fuoco è nel pannello già mentre l\'elenco si carica, e con l\'errore del caricamento (T3.1)', async () => {
+        const lento = inAttesa();
+        vi.stubGlobal('fetch', rotte(() => lento.promessa));
+        await laCornice();
+
+        await apri();
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+
+        await lento.arriva(risposta({}, 500));
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('vale nella cornice ridotta, dove il pannello dice solo perché è spento e la cornice non chiede niente (T3.2)', async () => {
+        const fetchFinto = rotte(() => risposta({ data: elenco }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await laCornice(ridotti);
+
+        await apri();
+
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testi('it').acceptanceOff);
+        expect(fetchFinto).not.toHaveBeenCalled();
+        expect(scelta()).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('quando arriva l\'elenco il fuoco resta dov\'è: non torna sulla linguetta scelta (T3.3)', async () => {
+        const lento = inAttesa();
+        vi.stubGlobal('fetch', rotte(() => lento.promessa));
+        await laCornice();
+        await apri();
+        const [, tutte] = linguette();
+        await conIlFuoco(tutte ?? null);
+
+        await lento.arriva(risposta({ data: elenco }));
+
+        expect(tutti('.zr-notif-list .zr-notif-title')).toHaveLength(2);
+        expect(tutte?.getAttribute('aria-selected')).toBe('false');
+        expect(document.activeElement).toBe(tutte);
+    });
+
+    it('dopo «Riprova» e dopo «Segna tutte come lette» il fuoco non torna sulla linguetta scelta (T3.3)', async () => {
+        const fetchFinto = rotte(() => risposta({ data: elenco })).mockImplementationOnce(async () => risposta({}, 500));
+        vi.stubGlobal('fetch', fetchFinto);
+        await laCornice();
+        await apri();
+        const riprova = uno('.zr-notif [role="alert"] button');
+        await conIlFuoco(riprova);
+
+        await clic(riprova);
+        expect(tutti('.zr-notif-list .zr-notif-title')).toHaveLength(2);
+        expect(document.activeElement).not.toBe(scelta());
+
+        const pulsante = segnaTutte();
+        await conIlFuoco(pulsante);
+        await clic(pulsante);
+        expect(fetchFinto).toHaveBeenCalledTimes(3);
+        expect(scelta()).not.toBeNull();
+        expect(document.activeElement).not.toBe(scelta());
+    });
+
+    it('cambiando linguetta il fuoco resta sulla linguetta premuta (T3.3)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+        await apri();
+        const [perMe, tutte] = linguette();
+
+        await conIlFuoco(tutte ?? null);
+        await clic(tutte ?? null);
+        expect(scelta()).toBe(tutte);
+        expect(document.activeElement).toBe(tutte);
+
+        // Il fuoco altrove nel pannello, poi di nuovo «Per me» scelta col clic: il fuoco non si sposta da sé.
+        await conIlFuoco(tutte ?? null);
+        await act(async () => perMe?.click());
+        expect(scelta()).toBe(perMe);
+        expect(document.activeElement).toBe(tutte);
+    });
+
+    it('Esc chiude il pannello e il fuoco è sulla campanella; richiudendo col clic sulla campanella il fuoco resta sulla campanella (T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        await tasto('Escape');
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(campanella());
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        await apri();
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(campanella());
+
+        // Riaperta, il fuoco entra di nuovo: vale a ogni apertura, non solo alla prima.
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+    });
+});

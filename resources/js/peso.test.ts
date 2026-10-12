@@ -39,8 +39,15 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * a richiesta (circa 0,7 KB con gzip, da solo), che un'app con le pagine a richiesta ha già. Il tetto è la misura, a 18.
  * Con le difese dei due nomi (T2) la misura è 18,0: il tetto resta dov'è (decisione di zr-pm del 12/10/2026), e ciò che non
  * ci sta non entra nel JS d'ingresso.
+ *
+ * Una sola eccezione, di 32 byte (zr-pm, 12/10/2026, nota 11697 del progetto): i rimedi provvisori di tastiera, voci #1871
+ * (il fuoco nel pannello delle notifiche) e #1870 (Tab dentro un dialogo aperto). Stanno in un pezzo a richiesta, e nel JS
+ * d'ingresso c'è solo la riga che lo chiede. Il tetto torna a 18 KB quando i rimedi escono, perché il design system porta
+ * i suoi, o con la prossima versione maggiore.
  */
-const TETTO_DELL_INGRESSO = 18 * 1024;
+const TETTO_DELL_INGRESSO = 18 * 1024 + 32;
+/** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
+const DEI_RIMEDI = 'MutationObserver';
 
 interface Costruito {
     /** Il JS d'ingresso: ciò che la pagina scarica subito, coi pezzi che l'ingresso importa in modo statico. */
@@ -172,14 +179,20 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono pezzi a r
         expect(Object.values(FRASI).filter((frase) => costruita().js.includes(frase))).toStrictEqual([]);
     });
 
-    it.each(app)('«%s»: tre pezzi a richiesta, ognuno con le frasi di una lingua sola', (_nome, costruita) => {
+    it.each(app)('«%s»: tre pezzi a richiesta con le frasi, ognuno di una lingua sola; il quarto è dei rimedi di tastiera, senza frasi', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
-        expect(lingueDeiPezzi.sort()).toStrictEqual([['en'], ['es'], ['it']]);
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], ['en'], ['es'], ['it']]);
     });
 
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB', () => {
+    it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
+        expect(costruita().js).not.toContain(DEI_RIMEDI);
+        expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
+    });
+
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB e 32 byte: i 32 sono dei rimedi provvisori di tastiera', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
+        expect(TETTO_DELL_INGRESSO).toBe(18_464);
     });
 
     // Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente: il pezzo che importa

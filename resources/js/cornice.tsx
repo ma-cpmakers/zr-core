@@ -816,6 +816,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             ricercaInVolo.current = undefined;
         }
     });
+    // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
+    // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
+    useLayoutEffect(() => {
+        void import('./rimedi').catch(() => undefined);
+    }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
