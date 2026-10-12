@@ -62,19 +62,25 @@ final class PrecaricoDegliIngressi
      * col resolver del pacchetto (`ZrCoreServiceProvider`); l'indirizzo intero, se comincia con `ASSET_URL`, che è del
      * frontend e non di chi chiama; e col resolver di Laravel senza `ASSET_URL`, che scrive la radice della richiesta (l'header
      * `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy), il percorso senza quella radice. Ogni altro indirizzo
-     * non esce: null.
+     * non esce: null. E non esce un indirizzo con un carattere di controllo, uno spazio, `<`, `>`, `"` o `\`: tolto l'host, quel
+     * percorso può portare ancora un valore della richiesta (`X-Forwarded-Prefix`), che con un `>` chiuderebbe l'indirizzo
+     * della voce e con una tabulazione, che un browser toglie, diventerebbe un altro host.
      */
     private function indirizzoDellaVoce(Request $richiesta, string $url): ?string
     {
-        // Un percorso comincia con una barra sola: `//host` e `/\host` per un browser sono un altro host.
-        if (preg_match('~^/(?![/\\\\])~', $url) === 1) {
+        if (preg_match('~[\x00-\x20\x7f<>"\\\\]~', $url) === 1) {
+            return null;
+        }
+        // Un percorso comincia con una barra sola: `//host` per un browser è un altro host (e `/\host` anche, ma la barra
+        // rovescia è già fuori).
+        if (preg_match('~^/(?!/)~', $url) === 1) {
             return $url;
         }
         $fissa = rtrim((string) config('app.asset_url'), '/');
         if ($fissa !== '' && str_starts_with($url, $fissa.'/')) {
             return $url;
         }
-        if (preg_match('~^https?://'.preg_quote($richiesta->getHttpHost(), '~').'(/(?![/\\\\]).*)$~i', $url, $parti) === 1) {
+        if (preg_match('~^https?://'.preg_quote($richiesta->getHttpHost(), '~').'(/(?!/).*)$~i', $url, $parti) === 1) {
             return $parti[1];
         }
 

@@ -419,7 +419,8 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
  * Porta il fuoco al contenuto della pagina: il `main` dell'`AppShell`, che non ha un `id` e di suo non prende il fuoco. Si
  * trova dal pulsante — l'`AppShell` è accanto al suo contenitore —, non dal documento: un frontend può avere un `main` suo.
  * Gli si dà `tabindex="-1"` solo per il salto, e glielo si toglie quando il fuoco lo lascia: del `main` la cornice non
- * cambia altro, e un `tabindex` che ha già resta com'è.
+ * cambia altro, e un `tabindex` che ha già resta com'è. Il `blur` arriva anche quando è la finestra a perdere il fuoco, e lì
+ * il `main` resta l'elemento attivo: l'attributo resta, o al ritorno il `main` non terrebbe più il fuoco.
  */
 function fuocoAlContenuto(dalSalto: HTMLElement | null): void {
     const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main') ?? null;
@@ -428,8 +429,15 @@ function fuocoAlContenuto(dalSalto: HTMLElement | null): void {
         return;
     }
     if (!main.hasAttribute('tabindex')) {
+        const alBlur = (): void => {
+            if (main.ownerDocument.activeElement !== main) {
+                main.removeAttribute('tabindex');
+                main.removeEventListener('blur', alBlur);
+            }
+        };
+
         main.setAttribute('tabindex', '-1');
-        main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });
+        main.addEventListener('blur', alBlur);
     }
     main.focus();
 }

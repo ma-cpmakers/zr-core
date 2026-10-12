@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\Vite;
 use Zeiras\Core\Http\PrecaricoDegliIngressi;
 
 // Sprint 28 · T2 (voce #1811). Il precarico dei file d'ingresso: la risposta intera di una pagina dice in `Link` i file che
-// `@vite` ha messo nel documento, perché Cloudflare (Early Hints) li ripeta in un 103 alla visita dopo, prima che il server abbia
-// letto il backoffice. Era un middleware di zr-board (`PrecaricoDellaBoard`): dalla `v1.18.0` è del pacchetto, e lo registra il
-// frontend. Cloudflare nel 103 ripete solo `preload` e `preconnect`: un modulo va come `preload; as=script; crossorigin` (senza
-// `crossorigin` il browser lo scaricherebbe due volte: la richiesta di un modulo è CORS), mai `modulepreload`.
+// `@vite` ha messo nel documento, perché il browser cominci a scaricarli prima di leggere la pagina. È pensato per il solo
+// header: per Zeiras Early Hints su Cloudflare resta spento. Era un middleware di zr-board (`PrecaricoDellaBoard`): dalla
+// `v1.18.0` è del pacchetto, e lo registra il frontend. Un modulo va come `preload; as=script; crossorigin` (senza `crossorigin`
+// il browser lo scaricherebbe due volte: la richiesta di un modulo è CORS), mai `modulepreload`: chi accendesse Early Hints
+// troverebbe nel 103 solo `preload` e `preconnect`.
 // Un manifest d'esempio in una cartella sua, tolta a fine caso: l'ingresso, un pezzo che importa, un pezzo dinamico che il
 // documento non carica all'apertura, un CSS.
 
@@ -329,6 +330,12 @@ it('col resolver di Laravel e un frontend che si fida dei proxy, un `X-Forwarded
 })->with([
     'un `>`, che chiude l\'indirizzo della voce' => ['/x>; rel=stylesheet; y='],
     'una tabulazione, che un browser toglie: `//altro.example`' => ["/\t/altro.example"],
+    // Tolto l'host resterebbe `//altro.example/…`: non è un percorso.
+    'due barre: un altro host senza schema' => ['//altro.example'],
+    'uno spazio' => ['/x y'],
+    'un `<`' => ['/x<y'],
+    'una virgoletta' => ['/x"y'],
+    'un carattere di controllo' => ["/x\x7fy"],
 ]);
 
 it('con `ASSET_URL` il documento e il `Link` portano l\'indirizzo intero, che comincia con quello e non con l\'host della richiesta (lettura della PR #61, R1)', function () {

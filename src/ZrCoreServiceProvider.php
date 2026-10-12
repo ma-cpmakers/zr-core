@@ -29,7 +29,8 @@ class ZrCoreServiceProvider extends ServiceProvider
         // Gli indirizzi dei file della build: senza `ASSET_URL` Laravel li scrive con la radice della richiesta (l'header
         // `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy), e chi manda un host suo lo ritrova nel documento.
         // Qui `@vite` scrive il solo percorso; con `ASSET_URL` l'indirizzo resta intero, perché non viene dalla richiesta. Un
-        // resolver che il frontend registra nel suo provider parte dopo, e vince.
+        // resolver che il frontend registra nel `boot()` del suo provider parte dopo, e vince; nel `register()` no: questo lo
+        // sovrascrive. E guarda `ASSET_URL` com'è nella configurazione: un'origine data a tempo d'esecuzione non la vede.
         Vite::createAssetPathsUsing(fn (string $path, ?bool $secure = null): string => filled(config('app.asset_url')) ? asset($path, $secure) : '/'.ltrim($path, '/'));
 
         // La favicon: file statici, nessuna rotta (/favicon.ico lo serve il server web). Due tag: quello di zr-core, e

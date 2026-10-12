@@ -4955,6 +4955,39 @@ describe('«Salta al contenuto»', () => {
         expect([main.hasAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual([false, '', null, 'zr-main']);
     });
 
+    // Seconda lettura della PR #61, N5. Il `blur` arriva al `main` anche quando è la finestra a perdere il fuoco, e lì il `main`
+    // resta l'elemento attivo: senza l'attributo, al ritorno non terrebbe più il fuoco, e il Tab dopo rifarebbe la barra.
+    it('un `blur` che arriva al `main` mentre è ancora l\'elemento attivo non toglie il `tabindex`; lo toglie quello di quando il fuoco passa altrove (seconda lettura della PR #61, N5)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        await act(async () => {
+            main.dispatchEvent(new FocusEvent('blur'));
+        });
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
+
+        // Il gestore non è andato via col primo `blur`.
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.hasAttribute('tabindex')).toBe(false);
+    });
+
+    it('quando il fuoco ha lasciato il `main` il gestore del salto non c\'è più: un `tabindex` che il modulo gli dà dopo resta (seconda lettura della PR #61, N5)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.hasAttribute('tabindex')).toBe(false);
+
+        main.setAttribute('tabindex', '0');
+        await conIlFuoco(main);
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.getAttribute('tabindex')).toBe('0');
+    });
+
     it('un `tabindex` che il `main` ha già non è della cornice: il salto non lo cambia e non lo toglie (lettura della PR #61, R4)', async () => {
         await mostra(laPagina());
         const main = uno('main') as HTMLElement;

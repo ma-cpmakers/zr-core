@@ -1239,7 +1239,9 @@ dice `@vite` nel documento, e il middleware non legge il manifest.
 - **Con quale indirizzo**: mai con un host che viene dalla richiesta. Una voce è il solo percorso, `</build/assets/…>`,
   che il browser risolve sull'origine della pagina; con `ASSET_URL` nel `.env` del frontend è l'indirizzo intero, che
   comincia con quello. Di un indirizzo con l'host della richiesta (un frontend che ha rimesso il resolver di Laravel) il
-  middleware scrive il solo percorso, e un file con un altro host non esce.
+  middleware scrive il solo percorso, e un file con un altro host non esce. Non esce nemmeno un indirizzo con un
+  carattere di controllo, uno spazio, `<`, `>`, `"` o `\`: in un `Link` chiuderebbe la voce, o un browser ci leggerebbe
+  un altro host.
 - **Dove scrive**: solo su una risposta `200` che è un documento HTML. Non sulla visita Inertia (la richiesta porta
   `X-Inertia`), su un redirect, su una pagina d'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un
   JSON, un file o uno stream; e se `@vite` non ha scritto niente l'header non c'è. Un `Link` che la risposta porta già
@@ -1270,5 +1272,10 @@ frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli ind
 - **`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da
   `config('app.url')`.
 - **Un frontend in una sottocartella del dominio** imposta `ASSET_URL`: il percorso parte dalla radice del dominio.
-- **Un resolver del frontend** registrato nel suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha
-  uno uguale lo toglie quando installa la `v1.18.0`.
+- **`ASSET_URL` va nel `.env`**: un'origine data a tempo d'esecuzione, con `URL::useAssetOrigin()` o
+  `URL::forceRootUrl()`, il resolver non la vede, e scrive il solo percorso.
+- **Un test del frontend** che confronta un indirizzo intero di un file della build (`http://localhost/build/…`) va
+  riletto: ora è il solo percorso.
+- **Un resolver del frontend** registrato nel `boot()` del suo `AppServiceProvider` parte dopo quello del pacchetto, e
+  vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`. Nel `register()` no: lì quello del pacchetto lo
+  sovrascrive.

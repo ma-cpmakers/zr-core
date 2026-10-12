@@ -157,8 +157,8 @@ gruppo `web` o sulle sole rotte che vuoi: scrive nell'header `Link` i file che `
 comincia a scaricarli prima di leggere la pagina. Se nei tuoi indirizzi c'è uno slug o un id, lo registri sulle sole rotte
 che accetti di esporre. Installare zr-core non lo accende: non parte da solo — README,
 «Il precarico dei file d'ingresso». Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che
-tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli — README,
-«Gli indirizzi dei file della build».
+tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli, e uno diverso lo registri nel `boot()` del
+tuo `AppServiceProvider` — README, «Gli indirizzi dei file della build».
 
 **Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP. Guarda la risposta della pagina,
 non quella di chi non è entrato: senza il cookie della sessione risponde un rimando — la partenza del passo 2, o la
