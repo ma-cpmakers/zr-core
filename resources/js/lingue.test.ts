@@ -420,6 +420,17 @@ describe('le lingue della cornice', () => {
         expect([tedesco.notifications, ...chiavi.map((chiave) => tedesco[chiave])]).toStrictEqual(['Benachrichtigungen', ...inInglese]);
     });
 
+    // Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ha un
+    // testo per lui: è una chiave di zr-core.
+    it('il testo di «Salta al contenuto» è una chiave di zr-core nelle tre lingue, e in una lingua che zr-core non ha è in inglese (sprint 28 · T4.1)', () => {
+        expect([italiano, spagnolo, inglese].map((file: Record<string, string>) => file.skipToContent)).toStrictEqual(['Salta al contenuto', 'Saltar al contenido', 'Skip to content']);
+        expect([testi('it').skipToContent, testi('es').skipToContent, testi('pt-BR').skipToContent]).toStrictEqual(['Salta al contenuto', 'Saltar al contenido', 'Skip to content']);
+
+        // Una lingua che ha solo un testo dell'`AppShell`: quello di zr-core lo prende dall'inglese.
+        const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
+        expect([tedesco.notifications, tedesco.skipToContent]).toStrictEqual(['Benachrichtigungen', 'Skip to content']);
+    });
+
     // Sprint 25 · T4 (voce #1639): il segnaposto del campo di ricerca e l'invito sotto il campo dicono le fonti della ricerca nel
     // workspace — i tipi di risorsa dei moduli attivi —, col nome da elenco che la lingua ha per ogni tipo. Senza fonti restano
     // due testi corti, che non promettono niente. I puntini del segnaposto sono il carattere «…».

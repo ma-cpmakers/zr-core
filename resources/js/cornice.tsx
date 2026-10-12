@@ -416,6 +416,22 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
 }
 
 /**
+ * Porta il fuoco al contenuto della pagina: il `main` dell'`AppShell`, che non ha un `id` e di suo non prende il fuoco. Si
+ * trova dal documento, e gli si dà `tabindex="-1"` solo qui, al momento del salto: del `main` la cornice non cambia altro.
+ */
+function fuocoAlContenuto(): void {
+    const main = document.querySelector('main');
+
+    if (main === null) {
+        return;
+    }
+    if (!main.hasAttribute('tabindex')) {
+        main.setAttribute('tabindex', '-1');
+    }
+    main.focus();
+}
+
+/**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
  * niente di lì. Ogni modulo del registro si apre come uno `disponibile`, e se in quel workspace non è attivo lo dice il modulo,
  * come quando lo si apre dal menu. Un modulo «Presto» resta senza destinazione: quello lo dice il registro, non i dati.
@@ -617,6 +633,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // La richiesta parte qui, nello stesso giro del clic, e chi la chiama apre la risorsa senza aspettarla: se fallisce non
     // cambia niente, né in pagina né nell'apertura. Alla risposta resta ciò che la rotta ha detto, coi dati e l'elenco del clic.
     const [daDire, setDaDire] = useState<string>();
+    // «Salta al contenuto» si vede solo mentre ha il fuoco.
+    const [saltoColFuoco, setSaltoColFuoco] = useState(false);
     const leggi = (id: string, workspace: string) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
@@ -908,6 +926,17 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
 
     return (
         <>
+            {/* «Salta al contenuto», prima di tutto ciò che è dell'`AppShell`: senza il fuoco ha la classe del design system
+                che nasconde, col fuoco sta in alto a sinistra sopra la cornice, coi soli token. È provvisorio: si toglie quando
+                l'`AppShell` porta il suo. */}
+            <div
+                className={saltoColFuoco ? undefined : 'zr-visually-hidden'}
+                style={saltoColFuoco ? { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } : undefined}
+                onFocus={() => setSaltoColFuoco(true)}
+                onBlur={() => setSaltoColFuoco(false)}
+            >
+                <Button variant="secondary" size="sm" onClick={fuocoAlContenuto}>{t.skipToContent}</Button>
+            </div>
             {shell}
             <div role="status" className="zr-visually-hidden">{avviso?.testo}</div>
         </>

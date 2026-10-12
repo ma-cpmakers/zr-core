@@ -48,6 +48,7 @@
     "acceptanceText": "To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.",
     "acceptanceAction": "Go to the documents",
     "acceptanceOff": "Not available until you accept the documents.",
+    "skipToContent": "Skip to content",
     "notificationTitle": "News in the workspace",
     "notificationTitle.com.zeiras.app.modificata": "A module was turned on or off",
     "notificationTitle.com.zeiras.workspace.creato": "The workspace was created",

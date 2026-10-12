@@ -4641,6 +4641,40 @@ it('l\'esempio del README con `Cornice::frenata()` è, riga per riga, il middlew
         ->and($girano)->toBe($righe);
 });
 
+// Sprint 28 · T4.6 (voce #1828; `Decisione:` 11310 di zr-pm): «Salta al contenuto» è il primo elemento della cornice. Il README
+// lo dice in un punto suo di «La cornice»: che c'è e da quando, che cosa fa, che il modulo non deve fare niente, e che è
+// provvisorio. È fatto coi pezzi del design system: nel pacchetto non nasce un foglio di stile, e la copia del design system
+// non cambia.
+
+it('il README dice, nel punto «Salta al contenuto» di «La cornice», che c\'è e da quando, che cosa fa, che il modulo non deve fare niente e che è provvisorio (sprint 28 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, '«Salta al contenuto»'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), '«Salta al contenuto»'))->toBe('');
+})->with([
+    'che c\'è, e da quando' => ['è il primo elemento della cornice da tastiera, dalla `v1.18.0`'],
+    'dove sta' => ['un pulsante davanti alla barra laterale e alla barra in alto, che non si vede finché non ha il fuoco'],
+    'dove compare' => ['Col primo Tab compare in alto a sinistra, sopra la cornice'],
+    'che cosa fa' => ['Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell\'`AppShell`'],
+    'il Tab dopo' => ['il Tab dopo va al primo elemento della pagina invece di rifare tutta la barra'],
+    'nello stato ridotto' => ['C\'è anche nello stato ridotto'],
+    'il modulo non deve fare niente' => ['Il modulo non deve fare niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo'],
+    'è provvisorio' => ['È provvisorio: l\'`AppShell` del design system non ha ancora il suo'],
+    'coi pezzi del design system' => ['la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i token)'],
+    'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
+]);
+
+it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
+    $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
+    $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
+
+    expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/zeiras/bundle.css'])
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
+        ->and(substr_count($cornice, "saltoColFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
+        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{fuocoAlContenuto\}>\{t\.skipToContent\}<\/Button>/', $cornice))->toBe(1);
+});
+
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
 // file di test: la scrive `registroGiaLetto()`, e si toglie in un posto solo, `tests/Pest.php`, dopo ogni caso di ogni file.
 // Prima la toglievano due `afterEach` e due `try/finally`, ognuno nel suo file: un altro file che la scriveva e non la toglieva

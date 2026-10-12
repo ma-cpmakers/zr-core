@@ -274,7 +274,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
-        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'skipToContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
@@ -588,6 +588,17 @@ it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre
     'il pulsante dell\'avviso' => ['acceptanceAction', ['Vai ai documenti', 'Go to the documents', 'Ir a los documentos']],
     'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
 ]);
+
+// Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ne ha uno:
+// il testo è di zr-core, finché il design system non porta il suo.
+it('il testo di «Salta al contenuto» c\'è nelle tre lingue ed è di zr-core: l\'AppShell non ha una chiave con quel nome (sprint 28 · T4.1)', function () {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it']['skipToContent'] ?? null, $lingue['en']['skipToContent'] ?? null, $lingue['es']['skipToContent'] ?? null])
+        ->toBe(['Salta al contenuto', 'Skip to content', 'Saltar al contenido'])
+        ->and(chiaviDiAppShellLabels())->not->toContain('skipToContent')
+        ->and(problemiDelleLingue(array_map(fn (array $testi): array => array_diff_key($testi, ['skipToContent' => true]), $lingue)))->not->toBe([]);
+});
 
 it('nessuno dei quattro testi di chi non ha accettato nomina un documento o una versione, in nessuna lingua (sprint 24 · T2.4)', function () {
     $nominati = [];
