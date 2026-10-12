@@ -1618,18 +1618,14 @@ it('il README dice, nella riga di POST /cornice/ricerca, una frase per cosa (spr
     'il test di un frontend' => ['un test del frontend che la chiama passa alla POST'],
     // Review della PR #22, R4 e R2: ciò che la versione non fa.
     'una scheda aperta prima dell\'aggiornamento' => ['una scheda aperta prima dell\'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l\'errore della ricerca'],
-    'il tratto dal server del modulo al backoffice' => ['dal server del modulo al backoffice la parola viaggia ancora nell\'indirizzo (`GET /v1/ricerca?q=`), finché il backoffice non dà un metodo col termine nel corpo'],
 ]);
 
-it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, che la parola non sta più nell\'indirizzo della richiesta del browser ma resta in quello della richiesta al backoffice, e che nel codice del frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6)', function () {
+it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST, la parola nel corpo e il gettone CSRF, che la parola non sta più nell\'indirizzo della richiesta del browser, e che nel codice del frontend non cambia niente; la GET con la parola nell\'indirizzo non è più nominata (sprint 18 · T1.6; il tratto al backoffice: sprint 25 · T3.5, qui sotto)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDellaCornice($readme, 'La ricerca');
 
     expect(str_contains($punto, 'chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l\'ultimo tasto, con la parola nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell\'header `X-XSRF-TOKEN`'))->toBe(true)
         ->and(str_contains($punto, 'dalla `v1.8.0` ciò che la persona cerca non sta più nell\'indirizzo della richiesta del browser'))->toBe(true)
-        // Review della PR #22, R2: la promessa vale per il tratto del browser, e il README dice l'altro.
-        ->and(str_contains($punto, 'Il tratto dal server del modulo al backoffice resta una GET con la parola nell\'indirizzo, finché il backoffice non dà un metodo col termine nel corpo'))->toBe(true)
-        ->and(str_contains(suUnaRiga($readme), 'non sta più nell\'indirizzo di una richiesta'))->toBe(false)
         // Review, R4: una frase sola, la stessa della riga della rotta.
         ->and(str_contains($punto, 'Nel codice del frontend non cambia niente; un suo test che chiama la GET passa alla POST'))->toBe(true)
         ->and(substr_count($readme, '- **La ricerca**'))->toBe(1)
@@ -1637,6 +1633,56 @@ it('il README dice, nel punto «La ricerca», che la cornice cerca con una POST,
         ->and(rigaDellaRotta($readme, 'GET /cornice/ricerca?q='))->toBe('')
         ->and(str_contains($readme, 'GET /cornice/ricerca'))->toBe(false);
 });
+
+// Sprint 25 · T3 (voce #1639): anche dal server del modulo al backoffice la parola sta nel corpo (ricerca.crea), ogni risultato
+// porta `contesto`, e il freno del backoffice ha la sua risposta. Il README lo dice nella riga della rotta e nel punto «La
+// ricerca», con ciò che cambia nei test di un frontend; nessuna frase dice più che al backoffice la parola va nell'indirizzo, né
+// nel README né nei file che si installano.
+
+/** Un sorgente su una riga sola, senza i segni di commento a capo riga: una frase di un commento si trova anche dove va a capo. */
+function commentiSuUnaRiga(string $sorgente): string
+{
+    return suUnaRiga((string) preg_replace('~^\s*(?:\*|//)\s?~m', '', $sorgente));
+}
+
+it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice, che ogni risultato porta `contesto`, che cosa risponde la rotta al freno del backoffice e che cosa cambia nei test di un frontend (sprint 25 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = ['rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'), 'ricerca' => puntoDellaCornice($readme, 'La ricerca')];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la riga: che cosa trova' => ['rotta', 'ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell\'ordine del backoffice, la prima pagina'],
+    'la riga: il contesto di un risultato' => ['rotta', 'dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo, con le chiavi del backoffice (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un\'opportunità) e i soli valori di testo non vuoti'],
+    'la riga: il tratto al backoffice' => ['rotta', 'dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l\'indirizzo di quella richiesta non porta query'],
+    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
+    'il punto: il tratto al backoffice' => ['ricerca', 'Dalla `v1.15.0` anche il tratto dal server del modulo al backoffice porta la parola nel corpo: la parte server chiama `ricerca.crea`, una POST, e l\'indirizzo di quella richiesta non porta query'],
+    'il punto: il backoffice finto di un frontend' => ['ricerca', 'Per i test di un frontend che passa alla `v1.15.0` cambiano due cose: un backoffice finto che risponde alla ricerca la riceve come `POST /v1/ricerca` con la parola nel corpo (`{q}`), non più come GET con `q` nell\'indirizzo'],
+    'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
+    'il punto: il contesto in una risposta confrontata intera' => ['ricerca', 'ogni risultato di `POST /cornice/ricerca` ha `contesto`, che un caso che confronta la risposta intera aggiunge'],
+    'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
+]);
+
+it('né il README né i file che si installano dicono più che al backoffice la parola va nell\'indirizzo, e la parte server nomina ricerca.crea (sprint 25 · T3.5)', function (string $file, string $frase, bool $ceLHa) {
+    expect(str_contains(commentiSuUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file)), $frase))->toBe($ceLHa);
+})->with([
+    'README: la parola non viaggia più nell\'indirizzo' => ['README.md', 'viaggia ancora nell\'indirizzo', false],
+    'README: il tratto non resta una GET' => ['README.md', 'resta una GET con la parola nell\'indirizzo', false],
+    'README: nessuna GET al backoffice' => ['README.md', 'GET /v1/ricerca', false],
+    'README: nessun «finché»' => ['README.md', 'finché il backoffice non dà un metodo col termine nel corpo', false],
+    'README: ricerca.elenca non è ciò che zr-core chiama' => ['README.md', 'ricerca.elenca', false],
+    'README: ricerca.crea' => ['README.md', 'ricerca.crea', true],
+    'la classe: ricerca.elenca non c\'è più' => ['src/Http/RicercaDellaCornice.php', 'ricerca.elenca', false],
+    'la classe: nessuna GET al backoffice' => ['src/Http/RicercaDellaCornice.php', 'GET /v1/ricerca', false],
+    'la classe: la parola non va più nell\'indirizzo' => ['src/Http/RicercaDellaCornice.php', 'va ancora nell\'indirizzo', false],
+    'la classe: ricerca.crea' => ['src/Http/RicercaDellaCornice.php', 'ricerca.crea', true],
+    'la classe: la POST al backoffice' => ['src/Http/RicercaDellaCornice.php', 'POST /v1/ricerca', true],
+    'le rotte: ricerca.elenca non c\'è più' => ['routes/cornice.php', 'ricerca.elenca', false],
+    'le rotte: la parola non resta nell\'indirizzo' => ['routes/cornice.php', 'resta nell\'indirizzo', false],
+    'le rotte: ricerca.crea' => ['routes/cornice.php', 'ricerca.crea', true],
+    'il servizio del browser: la parola non ci sta più' => ['resources/js/servizi.ts', 'ci sta ancora', false],
+    'il servizio del browser: nessun «finché»' => ['resources/js/servizi.ts', 'finché il backoffice non dà un metodo col termine nel corpo', false],
+]);
 
 it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
@@ -3401,7 +3447,7 @@ it('il README dice che dalla v1.12.0 la ricerca porta il suo workspace e che un 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo}], workspace}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo, contesto}], workspace}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'la cornice apre lì' => ['rotta', 'è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca'],
     'dove si apre un risultato' => ['ricerca', 'Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non è sempre quello dei dati della pagina'],
