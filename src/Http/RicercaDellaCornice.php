@@ -47,7 +47,7 @@ final class RicercaDellaCornice
         $workspace = Sessione::workspace()['slug'] ?? null;
 
         try {
-            $risultati = Api::workspace()->post('/v1/ricerca', ['q' => $q])['data'] ?? null;
+            $risultati = Api::workspace()->get('/v1/ricerca', ['q' => $q])['data'] ?? null;
         } catch (ErroreApi $errore) {
             return self::frenata($errore) ?? Accettazione::rispostaA($errore);
         }
@@ -67,7 +67,7 @@ final class RicercaDellaCornice
      */
     private static function frenata(ErroreApi $errore): ?JsonResponse
     {
-        if ($errore->stato !== 429 || $errore->codice !== self::TROPPE_RICHIESTE) {
+        if ($errore->stato !== 429 && $errore->codice !== self::TROPPE_RICHIESTE) {
             return null;
         }
 
@@ -103,14 +103,6 @@ final class RicercaDellaCornice
      */
     private static function contesto(mixed $contesto): ?array
     {
-        $testi = [];
-
-        foreach (is_array($contesto) ? $contesto : [] as $chiave => $valore) {
-            if (is_string($chiave) && is_string($valore) && $valore !== '') {
-                $testi[$chiave] = $valore;
-            }
-        }
-
-        return $testi === [] ? null : $testi;
+        return is_array($contesto) ? $contesto : null;
     }
 }
