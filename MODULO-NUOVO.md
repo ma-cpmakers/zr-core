@@ -63,9 +63,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   dell'elenco. Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice. Se un caso rifà i
   moduli (`vi.resetModules()`), la richiama dopo l'import. Anche `frasiInMemoria` si prende con un import nuovo, dopo
-  `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima. In un caso, dopo `vi.resetModules()`:
-  `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();`
-  Mentre carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era.
+  `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima. In un caso, dopo
+  `vi.resetModules()`: `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();` Mentre
+  carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
