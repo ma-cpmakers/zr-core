@@ -540,7 +540,11 @@ cornice === null ? pagina : (
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, come a una seconda
   apertura. `prove` è per i test: non è un ingresso per le pagine. Un caso che rifà i moduli (`vi.resetModules()`)
   la richiama dopo aver importato di nuovo la cornice: le frasi stanno in memoria nel modulo delle lingue, e un modulo
-  rifatto riparte senza.
+  rifatto riparte senza. Anche `frasiInMemoria` si prende con un import nuovo, dopo `vi.resetModules()`: quella importata
+  in cima al file mette le frasi nel modulo di prima. In un caso, dopo `vi.resetModules()`:
+  `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();`
+  Mentre carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era (dalla `v1.21.0`;
+  prima a ogni indirizzo rispondeva lei, con un oggetto vuoto).
   Una notifica dice chi ha fatto che cosa, in una frase al posto del titolo («Marta Rossi ha modificato la scheda
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
