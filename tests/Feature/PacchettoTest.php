@@ -4782,7 +4782,12 @@ it('il README dice, nel punto «Tab dentro un dialogo aperto» di «La cornice»
     // Review della PR #63, R5: sotto 720 px il dialogo aperto da un pannello deve vedersi.
     'il dialogo si vede' => ['Con un dialogo sopra un pannello vale il dialogo, e il dialogo si vede: sotto 720 px il CSS del design system mette il pannello un gradino sopra i dialoghi, e la cornice alza il velo di ogni `Dialog` aperto a `--z-dialog` + 2, sopra il pannello'],
     // R10 e R12: un menu accanto al dialogo, e un elemento che tiene Tab per sé.
-    'anteprime e menu' => ['Le anteprime (`inline`) non trattengono niente, e con un `Menu` aperto, dentro il dialogo o accanto, la cornice non interviene'],
+    'anteprime e menu' => ['Le anteprime (`inline`) non trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene'],
+    // Seconda lettura della PR #63 (S5, S6, S16).
+    'un menu altrove' => ['un menu che sta altrove nella pagina, senza il fuoco, non cambia niente'],
+    'Tab coi modificatori' => ['né se Tab è premuto con Ctrl, Alt o Meta'],
+    'se il pezzo non arriva' => ['se non arriva, Tab fa il giro di prima, e sotto 720 px un `Dialog` aperto da un `DetailPanel` resta sotto il pannello'],
+    'il gradino è provvisorio' => ['Anche il gradino del velo è provvisorio'],
     'Tab tenuto da un elemento' => ['non interviene nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`)'],
     'il modulo non deve fare niente' => ['Il modulo non deve fare niente, e non scriva una trappola sua: sarebbero due'],
     'è provvisorio' => ['È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono ancora il fuoco'],
@@ -4817,6 +4822,11 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
+    // Seconda lettura della PR #63 (S1, S2, S8, S15).
+    'restano file' => ['notifiche', 'restano file anche se il frontend alza `build.assetsInlineLimit`'],
+    'in sviluppo' => ['notifiche', 'Lo stesso vale in sviluppo, se la pagina prende il JS dal server di Vite: è un\'altra origine'],
+    'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
+    'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
     'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono'],
 ]);
@@ -4827,6 +4837,9 @@ it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetc
     $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts']);
 
     expect($guida)->toContain('la cornice li chiede con `fetch` quando si apre la campanella: nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l\'errore di caricamento con «Riprova»')
+        // Seconda lettura della PR #63 (S10, S8): dove stanno i file, e chi rifà i moduli nei casi.
+        ->toContain('titoli e frasi delle notifiche stanno in un file loro per lingua (`vendor/zeiras/zr-core/resources/lingue/notifiche/`)')
+        ->toContain('Se un caso rifà i moduli (`vi.resetModules()`), la richiama dopo l\'import')
         ->toContain('Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l\'errore al posto dell\'elenco')
         ->toContain('Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice')
         // La frase di prima, che per i test non era vera.
