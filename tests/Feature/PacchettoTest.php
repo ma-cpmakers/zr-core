@@ -1800,6 +1800,15 @@ it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di quest
         ->and($package)->not->toHaveKey('dependencies');
 });
 
+it('la CI rigenera in memoria il modulo dei componenti del design system e lo confronta col file, dopo npm ci; lo script è di questo repo (sprint 25 · T1.1)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(substr_count($ci, 'npm run componenti -- --controlla'))->toBe(1)
+        ->and(strpos($ci, 'npm run componenti -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+        ->and($package['scripts']['componenti'] ?? null)->toBe('node scripts/componenti.mjs');
+});
+
 // Sprint 16 · T2 (voce #1472). Il pacchetto porta la sua configurazione, `config/zr-core.php`: è lì che un modulo scrive le
 // sorgenti che aggiunge alla CSP di tutti (Zeiras\Core\Http\IntestazioniSicurezza). Di partenza non aggiunge niente; il file del
 // frontend vince su quello del pacchetto; lo zip del tag lo porta.
