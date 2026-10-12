@@ -4735,6 +4735,29 @@ it('il README dice, nel punto «Salta al contenuto» di «La cornice», che c\'�
     'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
 ]);
 
+// Sprint 30 · T3.5 (voce #1871): aprendo la campanella il fuoco entra nel pannello delle notifiche. È un rimedio della cornice a
+// ciò che l'`AppShell` non fa ancora: il README lo dice in un punto suo di «La cornice», con ciò che cambia per chi aggiorna, e
+// lo dice provvisorio.
+
+it('il README dice, nel punto «Il fuoco nel pannello delle notifiche» di «La cornice», da quando e che cosa fa, che il modulo non deve fare niente e che è provvisorio (sprint 30 · T3.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Il fuoco nel pannello delle notifiche'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), 'Il fuoco nel pannello delle notifiche'))->toBe('');
+})->with([
+    'da quando, e che cosa fa' => ['dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il fuoco della tastiera entra nel pannello, sulla linguetta scelta'],
+    'solo all\'apertura' => ['Il fuoco si sposta solo all\'apertura: quando arriva l\'elenco, dopo «Riprova», dopo «Segna tutte come lette» o cambiando linguetta resta dov\'è'],
+    'Esc' => ['Esc chiude il pannello e riporta il fuoco sulla campanella, come prima'],
+    'nello stato ridotto' => ['Vale anche nello stato ridotto'],
+    'i test da rileggere' => ['Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda l\'elemento attivo va riletto'],
+    'è provvisorio' => ['È provvisorio: l\'`AppShell` del design system apre il pannello e lascia il fuoco sulla campanella'],
+    'senza toccare il componente' => ['la cornice lo sposta da sé, senza toccare il componente'],
+    'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
+    'a richiesta' => ['Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta'],
+    'se non arriva' => ['se non arriva, la campanella si apre come prima, col fuoco sul pulsante'],
+]);
+
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
