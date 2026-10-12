@@ -67,7 +67,8 @@ function mappaDegliIndirizzi(): array
  * di un altro prodotto, un'icona fuori dal set, un percorso che non è vuoto e non comincia con / o non ha un solo `{id}`,
  * «contenitore» che non è un sì o un no, un nome; in una notifica (sprint 21 · T3), un tipo vuoto o già scritto, un tipo di
  * un'altra app, o di un'app che il controllo non conosce, un percorso che non comincia con / o che ha un carattere o un
- * segnaposto non ammesso, una chiave che non è `tipo` né `percorso`.
+ * segnaposto non ammesso, una chiave che non è `tipo`, `percorso` né `altrimenti`, e in `altrimenti` un percorso scritto due
+ * volte o che non si aprirebbe mai.
  *
  * @param  list<array<string, mixed>>  $voci
  * @return list<string>
@@ -141,7 +142,9 @@ function problemiDelRegistro(array $voci): array
         // in tutto il registro; il percorso comincia con / ed è fatto di minuscole, cifre, `/`, `-`, `_` e segnaposto, `{id}` o
         // `{<nome>_id}`; nessun'altra chiave: il titolo sta nelle lingue. Sprint 23 · T3: `altrimenti`, che può non esserci, è la
         // lista dei percorsi che si provano dopo `percorso`, in ordine: non vuota, ognuno con le regole di `percorso`, e nessuno
-        // scritto due volte né uguale a `percorso`.
+        // scritto due volte né uguale a `percorso`. Sprint 24 · T4: e nessuno che chiede almeno gli id di uno che viene prima —
+        // quindi nessuno dopo un percorso senza segnaposto —, perché browser e parte server si fermano al primo che ha tutti i
+        // suoi id, e lui non si aprirebbe mai.
         foreach ($voce['notifiche'] ?? [] as $notifica) {
             $tipo = $notifica['tipo'] ?? null;
             $nome = $id.', notifica '.(is_string($tipo) && trim($tipo) !== '' ? $tipo : '?');
@@ -166,6 +169,11 @@ function problemiDelRegistro(array $voci): array
             }
             $percorso = $notifica['percorso'] ?? null;
             $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*$~D';
+            $chiaviDi = function (string $unPercorso): array {
+                preg_match_all('~\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}~', $unPercorso, $segnaposto);
+
+                return $segnaposto[1];
+            };
             if (! is_string($percorso) || preg_match($formaDiUnPercorso, $percorso) !== 1) {
                 $problemi[] = "$nome: il percorso «".(is_string($percorso) ? $percorso : '').'» non comincia con /, o ha un carattere o un segnaposto che non è ammesso';
             }
@@ -180,6 +188,13 @@ function problemiDelRegistro(array $voci): array
                             $problemi[] = "$nome: il percorso «".(is_string($altro) ? $altro : '').'» di «altrimenti» non comincia con /, o ha un carattere o un segnaposto che non è ammesso';
                         } elseif (in_array($altro, $giaScritti, true)) {
                             $problemi[] = "$nome: il percorso «{$altro}» di «altrimenti» è scritto due volte";
+                        } else {
+                            foreach ($giaScritti as $prima) {
+                                if (is_string($prima) && preg_match($formaDiUnPercorso, $prima) === 1 && array_diff($chiaviDi($prima), $chiaviDi($altro)) === []) {
+                                    $problemi[] = "$nome: il percorso «{$altro}» di «altrimenti» non si aprirebbe mai: quando ha i suoi id li ha anche «{$prima}», che viene prima";
+                                    break;
+                                }
+                            }
                         }
                         $giaScritti[] = $altro;
                     }
