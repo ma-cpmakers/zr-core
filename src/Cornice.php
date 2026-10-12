@@ -176,9 +176,19 @@ final class Cornice
      */
     public static function frenata(): ?ErroreApi
     {
-        $esito = request()->attributes->get(self::LETTURA)['esito'] ?? null;
+        $tenuta = request()->attributes->get(self::LETTURA);
+        $utente = Sessione::utente();
+        $workspace = Sessione::workspace();
 
-        return $esito instanceof ErroreApi && $esito->stato === 429 ? $esito : null;
+        // MUTANTE (si toglie): senza una lettura tenuta ne fa partire una.
+        if (! is_array($tenuta) && $utente !== null && $workspace !== null) {
+            $tenuta = self::lettura($utente, $workspace, false);
+        }
+
+        $esito = $tenuta['esito'] ?? null;
+
+        // MUTANTE (si toglie): ogni ErroreApi tenuto vale come freno.
+        return $esito instanceof ErroreApi ? $esito : null;
     }
 
     /**
