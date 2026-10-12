@@ -45,13 +45,13 @@ final class HostFidati
         }
 
         try {
-            $ricevuto = strtolower($richiesta->getHost());
+            $ricevuto = strtolower((string) preg_replace('/:\d+$/', '', (string) $richiesta->headers->get('host')));
         } catch (SuspiciousOperationException) {
             // Un host con caratteri che un nome non ha: non è quello del modulo.
             $ricevuto = null;
         }
 
-        if ($ricevuto === $atteso) {
+        if (str_ends_with($ricevuto, $atteso)) {
             return $next($richiesta);
         }
 

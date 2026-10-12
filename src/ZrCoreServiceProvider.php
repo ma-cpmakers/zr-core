@@ -2,6 +2,7 @@
 
 namespace Zeiras\Core;
 
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +25,7 @@ class ZrCoreServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/cornice.php');
+        $this->app->make(Kernel::class)->pushMiddleware(Http\HostFidati::class);
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'zr-core');
 
         // Gli indirizzi dei file della build: senza `ASSET_URL` Laravel li scrive con la radice della richiesta (l'header
