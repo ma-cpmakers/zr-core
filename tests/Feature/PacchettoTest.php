@@ -1539,10 +1539,16 @@ it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (
  */
 function puntoDellaCornice(string $readme, string $grassetto): string
 {
+    return suUnaRiga(puntoDellaCorniceNelFile($readme, $grassetto));
+}
+
+/** Lo stesso punto com'è nel file, coi suoi a capo: per ciò che dipende da dove una riga finisce. Vuoto se non c'è. */
+function puntoDellaCorniceNelFile(string $readme, string $grassetto): string
+{
     preg_match('/^## La cornice$(.*?)(?=^#{2,3} |\z)/ms', $readme, $paragrafo);
     preg_match('/^- \*\*'.preg_quote($grassetto, '/').'\*\*.*?(?=^- |^$|\z)/ms', $paragrafo[1] ?? '', $punto);
 
-    return suUnaRiga($punto[0] ?? '');
+    return $punto[0] ?? '';
 }
 
 it('il README dice, nel punto «La voce attiva» di «La cornice», che nessuna voce attiva si dice con active={null} (sprint 12 · T5.6)', function () {
@@ -1671,6 +1677,9 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
     'il punto: il contesto in una risposta confrontata intera' => ['ricerca', 'ogni risultato di `POST /cornice/ricerca` ha `contesto`, che un caso che confronta la risposta intera aggiunge'],
     'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
+    // Seconda lettura della PR #60, R8: «una risposta arrivata tardi non sostituisce mai» ha un'eccezione, il 429 del freno.
+    'il punto: il 429 fa eccezione' => ['ricerca', 'e una risposta arrivata tardi non sostituisce mai quella dell\'ultima parola. Fa eccezione il `429` del freno, che è della persona e non di una richiesta: dalla `v1.17.0` anche quello di una richiesta che non è più l\'ultima annulla la ricerca in volo e mette l\'errore al posto dei suoi risultati (nella `v1.16.0` armava il freno senza mostrare l\'errore)'],
+    'il punto: dove si dà il caso' => ['ricerca', 'In un browser una richiesta annullata non risponde, e il caso non si dà; si dà nei test di un frontend, con una `fetch` finta che non guarda l\'annullo'],
 ]);
 
 // Letture della PR #56, R12 e N4: che cosa il finto di zr-auth sa della ricerca si guarda nel giro che lo installa, con una
@@ -3959,6 +3968,17 @@ it('il README non dice più, al presente, che il segnaposto della ricerca nomina
     'segnaposto e invito dove manca l\'elenco' => ['segnaposto e invito sono questi due'],
 ]);
 
+// Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
+// dal file. Uno spezzato da un a capo si copia in due pezzi, e nei test di un frontend non trova niente: ogni riga del punto
+// chiude gli accenti che apre.
+it('nel punto «La ricerca» del README nessun frammento fra accenti è spezzato da un a capo (sprint 27 · T6)', function () {
+    $righe = explode("\n", puntoDellaCorniceNelFile((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'));
+    $spezzate = array_values(array_filter($righe, fn (string $riga): bool => substr_count($riga, '`') % 2 === 1));
+
+    expect(count($righe))->toBeGreaterThan(1)
+        ->and($spezzate)->toBe([]);
+});
+
 // Sprint 25 · T4 (voce #1639): la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga. Il README
 // dice i tipi, i gruppi, la seconda riga e dove si apre ognuno; la guida dice che cosa chiedere perché la ricerca trovi le
 // risorse di un modulo nuovo. Nessuno dei due dice più che la ricerca trova solo board e cartelle.
@@ -4039,7 +4059,8 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'i due testi di prima' => ['ricerca', 'Dalla `v1.15.0` alla `v1.16.0` anche il segnaposto nominava le fonti, al più tre, e i membri non erano una fonte'],
     'nei test di un frontend: Project Management attivo e il CRM no' => ['ricerca', 'con Project Management attivo e il CRM no il segnaposto era «Cerca schede, board, cartelle…» e l\'invito «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (cerca `cartelle…` e `e cartelle:`; in inglese `folders…` e `and folders:`, in spagnolo `carpetas…` e `y carpetas:`)'],
     'nei test di un frontend: tutti e due attivi' => ['ricerca', 'con tutti e due attivi il segnaposto era lo stesso e l\'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `e opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`)'],
-    'nei test di un frontend: il solo CRM attivo' => ['ricerca', 'col solo CRM attivo il segnaposto era «Cerca contatti, aziende, opportunità…» (cerca `opportunità…`; in inglese `opportunities…`, in spagnolo `oportunidades…`)'],
+    // Seconda lettura della PR #60, S1: col solo CRM attivo cambia anche l'invito, che prima finiva con le opportunità.
+    'nei test di un frontend: il solo CRM attivo' => ['ricerca', 'col solo CRM attivo il segnaposto era «Cerca contatti, aziende, opportunità…» e l\'invito «Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `opportunità…` e `e opportunità:`; in inglese `opportunities…` e `and opportunities:`, in spagnolo `oportunidades…` e `y oportunidades:`)'],
     'nei test di un frontend: nessun modulo attivo' => ['ricerca', 'senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.»'],
     'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
     'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
