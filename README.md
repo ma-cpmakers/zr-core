@@ -355,8 +355,8 @@ cornice === null ? pagina : (
   la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda». Come le
   quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la
   chiave del titolo è `notificationTitle.board.scheda.assegnata`. Con lei i titoli sono 41: i 36 tipi di evento del
-  contratto e i cinque «assegnata». Il contratto pubblicato l'11/10/2026 non la elenca ancora: titolo e destinazione sono
-  pronti per quando il backoffice la manderà. Di che prodotto è
+  contratto e i cinque «assegnata». Il contratto la elenca dal 12/10/2026: `app` `pm`, nei `dati` il solo `id` della
+  scheda, e `risorsa_nome` è il titolo della scheda. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
