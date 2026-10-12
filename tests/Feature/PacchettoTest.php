@@ -4833,7 +4833,8 @@ it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetc
         ->not->toContain('nel tuo modulo non cambia niente')
         ->and(fileDelloZipDiHead())->toContain('resources/js/prove.ts')
         ->and(substr_count($prove, 'export async function frasiInMemoria(): Promise<void>'))->toBe(1)
-        ->and(array_filter($ingressi, fn (string $codice): bool => str_contains($codice, './prove')))->toBe([]);
+        // Un commento può nominarlo: conta chi lo importa.
+        ->and(array_filter($ingressi, fn (string $codice): bool => preg_match('/(?:from|import\()\s*[\'"]\.\/prove[\'"]/', $codice) === 1))->toBe([]);
 });
 
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
