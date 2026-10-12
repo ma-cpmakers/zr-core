@@ -80,7 +80,7 @@ final class PrecaricoDegliIngressi
         if ($fissa !== '' && str_starts_with($url, $fissa.'/')) {
             return $url;
         }
-        if (preg_match('~^https?://'.preg_quote($richiesta->getHttpHost(), '~').'(/(?!/).*)$~i', $url, $parti) === 1) {
+        if (preg_match('~^https?://'.preg_quote($richiesta->getHost(), '~').'(/.*)$~i', $url, $parti) === 1) {
             return $parti[1];
         }
 
