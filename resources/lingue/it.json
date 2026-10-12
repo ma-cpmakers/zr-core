@@ -97,16 +97,21 @@
     "reports": "Report",
     "automations": "Automazioni",
     "content": "Contenuti",
+    "home.workspace.membro": "Membri",
     "pm.board.scheda": "Schede",
     "pm.board.board": "Board",
     "pm.board.cartelle": "Cartelle",
     "crm.crm.persona": "Contatti",
     "crm.crm.organizzazione": "Aziende",
     "crm.crm.trattativa": "Opportunità",
+    "searchSource.home.workspace.membro": "membri",
     "searchSource.pm.board.scheda": "schede",
     "searchSource.pm.board.board": "board",
     "searchSource.pm.board.cartelle": "cartelle",
     "searchSource.crm.crm.persona": "contatti",
     "searchSource.crm.crm.organizzazione": "aziende",
-    "searchSource.crm.crm.trattativa": "opportunità"
+    "searchSource.crm.crm.trattativa": "opportunità",
+    "searchContext.home.workspace.membro.ruolo.proprietario": "Proprietario",
+    "searchContext.home.workspace.membro.ruolo.amministratore": "Amministratore",
+    "searchContext.home.workspace.membro.ruolo.membro": "Membro"
 }

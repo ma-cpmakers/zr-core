@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
+import { prodottoDelRegistro, type CodiceDelContesto, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -9,10 +9,16 @@ import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDe
 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
- * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>`, il nome da elenco della stessa risorsa,
- * minuscolo, per `searchSource.<prodotto>.<tipo>` e il titolo di ogni tipo di notifica per `notificationTitle.<tipo>`.
+ * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
+ * minuscolo, per `searchSource.<voce>.<tipo>`, il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
+ * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>` e il titolo di ogni tipo di notifica per
+ * `notificationTitle.<tipo>`.
  */
-export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & Record<`searchSource.${TipoDiRisorsa}`, string> & {
+export type TestiDellaCornice = Required<AppShellLabels> &
+    Record<IdDiProdotto, string> &
+    Record<TipoDiRisorsa, string> &
+    Record<`searchSource.${TipoDiRisorsa}`, string> &
+    Record<`searchContext.${CodiceDelContesto}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Moduli. */

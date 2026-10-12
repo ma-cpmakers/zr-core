@@ -11,6 +11,10 @@ import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 /** I tipi di risorsa del registro, `<prodotto>.<tipo>`, nel suo ordine: le chiavi dei loro nomi nelle lingue. */
 const tipiDelRegistro = registro.flatMap((voce) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}`));
+/** I codici che il registro dà alle chiavi di `contesto`, `<prodotto>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nelle lingue, con `searchContext.` davanti. */
+const codiciDelRegistro = registro.flatMap((voce) =>
+    (voce.risorse ?? []).flatMap((risorsa) => Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `${voce.id}.${risorsa.tipo}.${chiave}.${codice}`))),
+);
 /** Le fonti della ricerca di Project Management e quelle del CRM, nell'ordine del registro. */
 const diProjectManagement: TipoDiRisorsa[] = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle'];
 const delCrm: TipoDiRisorsa[] = ['crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'];
@@ -446,14 +450,38 @@ describe('le lingue della cornice', () => {
     });
 
     it.each<[lingua: string, file: Record<string, string>, gruppi: string[], daElenco: string[]]>([
-        ['it', italiano, ['Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
-        ['es', spagnolo, ['Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
-        ['en', inglese, ['Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
+        // Dallo sprint 27 il primo è il membro del workspace, che nel registro sta nella voce della Dashboard (T1.3).
+        ['it', italiano, ['Membri', 'Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
+        ['es', spagnolo, ['Miembros', 'Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
+        ['en', inglese, ['Members', 'Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
     ])('con la lingua "%s", ogni tipo di risorsa del registro ha il nome del suo gruppo e il suo nome da elenco, minuscolo: un tipo che entra nel registro senza i suoi testi fa rosso questo caso (sprint 25 · T4.5)', (_lingua, file, gruppi, daElenco) => {
-        expect(tipiDelRegistro).toStrictEqual(['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa']);
+        expect(tipiDelRegistro).toStrictEqual(['home.workspace.membro', 'pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa']);
         expect(tipiDelRegistro.map((tipo) => file[tipo])).toStrictEqual(gruppi);
         expect(tipiDelRegistro.map((tipo) => file[`searchSource.${tipo}`])).toStrictEqual(daElenco);
         expect(daElenco.map((nome) => nome.toLowerCase())).toStrictEqual(daElenco);
+    });
+
+    // Sprint 27 · T1 (voce #1787): la ricerca trova i membri del workspace. Il membro non è di un modulo: la sua pagina è
+    // Impostazioni › Membri di app, e nel registro sta nella voce della Dashboard. Il ruolo arriva dal backoffice come codice, mai
+    // come testo da mostrare: quali codici, lo dice il registro (`codici`), e il testo di ognuno è delle lingue.
+    it('nel registro il membro del workspace è la sola risorsa della voce della Dashboard: icona `user`, la pagina dei membri di app, e per seconda riga il solo ruolo, coi suoi tre codici; mai l\'email (sprint 27 · T1.1)', () => {
+        expect(registro.filter((voce) => voce.risorse !== undefined).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm']);
+        expect(registro.find((voce) => voce.id === 'home')?.risorse).toStrictEqual([
+            { tipo: 'workspace.membro', icona: 'user', percorso: '/impostazioni/membri/{id}', contenitore: false, contesto: ['ruolo'], codici: { ruolo: ['proprietario', 'amministratore', 'membro'] } },
+        ]);
+        // Solo il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero, e resta senza codici.
+        expect(registro.flatMap((voce) => (voce.risorse ?? []).filter((risorsa) => risorsa.codici !== undefined).map((risorsa) => risorsa.tipo))).toStrictEqual(['workspace.membro']);
+        expect(registro.flatMap((voce) => (voce.risorse ?? []).filter((risorsa) => risorsa.tipo === 'crm.persona').map((risorsa) => risorsa.contesto))).toStrictEqual([['organizzazione', 'ruolo']]);
+    });
+
+    it.each<[lingua: string, file: Record<string, string>, ruoli: string[]]>([
+        ['it', italiano, ['Proprietario', 'Amministratore', 'Membro']],
+        ['es', spagnolo, ['Propietario', 'Administrador', 'Miembro']],
+        ['en', inglese, ['Owner', 'Admin', 'Member']],
+    ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, e la lingua non ha il testo di un codice che il registro non ha (sprint 27 · T1.3)', (_lingua, file, ruoli) => {
+        expect(codiciDelRegistro).toStrictEqual(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro']);
+        expect(codiciDelRegistro.map((codice) => file[`searchContext.${codice}`])).toStrictEqual(ruoli);
+        expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual(codiciDelRegistro.map((codice) => `searchContext.${codice}`));
     });
 
     it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: TipoDiRisorsa[]]>([

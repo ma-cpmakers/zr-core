@@ -75,9 +75,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip |
 |---|---|---|
-| solo la cornice, dall'ingresso per le app | 57,5 KB | 17,2 KB |
-| la cornice e due componenti per nome | 60,7 KB | 18,4 KB |
-| la stessa cornice, dall'ingresso di sempre | 119,6 KB | 36,5 KB |
+| solo la cornice, dall'ingresso per le app | 58,8 KB | 17,5 KB |
+| la cornice e due componenti per nome | 62,0 KB | 18,6 KB |
+| la stessa cornice, dall'ingresso di sempre | 120,9 KB | 36,8 KB |
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è

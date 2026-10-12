@@ -9,17 +9,24 @@ import type { IconName, Tone } from '../zeiras/index';
 export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations' | 'content';
 
 /**
- * Le risorse dei prodotti che la ricerca mostra, `<prodotto>.<tipo>`: ognuna ha in ogni lingua il nome del suo gruppo, con questa
+ * Le risorse del registro che la ricerca mostra, `<voce>.<tipo>`: ognuna ha in ogni lingua il nome del suo gruppo, con questa
  * chiave, e il suo nome da elenco, minuscolo, con `searchSource.` davanti (quello che segnaposto e invito della ricerca
- * nominano). Una risorsa nuova entra anche qui.
+ * nominano). Sono dei prodotti, tranne il membro del workspace, la cui pagina è di app: sta nella voce `home`. Una risorsa
+ * nuova entra anche qui.
  */
-export type TipoDiRisorsa = 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
+export type TipoDiRisorsa = 'home.workspace.membro' | 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
 
-/** Un tipo di risorsa di un prodotto, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
+/**
+ * I codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>` (`codici`): ognuno
+ * ha il suo testo in ogni lingua, con `searchContext.` davanti. Un codice nuovo entra anche qui.
+ */
+export type CodiceDelContesto = 'home.workspace.membro.ruolo.proprietario' | 'home.workspace.membro.ruolo.amministratore' | 'home.workspace.membro.ruolo.membro';
+
+/** Un tipo di risorsa di una voce del registro, come la ricerca del backoffice lo dà: come si mostra e dove si apre. */
 export interface RisorsaDelProdotto {
     /**
-     * Il tipo nel backoffice: il `tipo` di un risultato della ricerca (`board.scheda`, `crm.persona`). Sta in un prodotto
-     * solo: un risultato non dice di che prodotto è, e la cornice lo trova da qui.
+     * Il tipo nel backoffice: il `tipo` di un risultato della ricerca (`board.scheda`, `crm.persona`, `workspace.membro`). Sta
+     * in una voce sola: un risultato non dice di che prodotto è, e la cornice lo trova da qui.
      */
     tipo: string;
     icona: IconName;
@@ -37,6 +44,12 @@ export interface RisorsaDelProdotto {
      * apre anche quell'uscita.
      */
     contesto?: string[];
+    /**
+     * I codici che una chiave di `contesto` può portare, dove il backoffice dà un codice e non un testo da mostrare: il `ruolo`
+     * di un membro del workspace (`proprietario`, `amministratore`, `membro`). Il testo di ogni codice sta nelle lingue
+     * (`CodiceDelContesto`). Una chiave senza codici porta un testo, come il `ruolo` di un contatto del CRM («Direttore»).
+     */
+    codici?: Record<string, string[]>;
 }
 
 /** Una notifica di un prodotto che dal pannello della cornice apre la sua risorsa: il tipo dell'evento, e dove si apre. */
@@ -78,7 +91,10 @@ export interface VoceDelRegistro {
      * sessione lo stato lo dà il backoffice. Ogni prodotto «Presto» è anche in arrivo.
      */
     in_arrivo: boolean;
-    /** Le risorse del prodotto che la ricerca mostra: un risultato di un tipo che non è qui non si mostra. */
+    /**
+     * Le risorse della voce che la ricerca mostra: un risultato di un tipo che non è qui non si mostra. Quelle di `home` non sono
+     * di un modulo: il membro del workspace, che si apre in app.
+     */
     risorse?: RisorsaDelProdotto[];
     /**
      * Le notifiche del prodotto che dal pannello aprono la loro risorsa (`destinazioneDellaNotifica`): una notifica di un tipo che
