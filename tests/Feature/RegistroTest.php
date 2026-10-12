@@ -761,10 +761,7 @@ it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte 
 });
 
 it('ogni tipo di notifica del registro ha il suo titolo in ogni lingua, e il controllo trova un tipo che in una lingua non ce l\'ha, o ce l\'ha vuoto (sprint 21 · T3, guardia)', function () {
-    $lingue = [];
-    foreach (File::glob(__DIR__.'/../../resources/lingue/*.json') as $file) {
-        $lingue[basename($file, '.json')] = json_decode(File::get($file), true, flags: JSON_THROW_ON_ERROR);
-    }
+    $lingue = lingueDellaCornice();
 
     expect(array_keys($lingue))->toContain('it', 'es', 'en')
         ->and(notificheSenzaTitolo(registroDeiProdotti(), $lingue))->toBe([]);

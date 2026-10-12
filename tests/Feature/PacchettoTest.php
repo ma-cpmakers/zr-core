@@ -4166,9 +4166,8 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDelleNotifiche($readme);
     $titoli = [];
-    foreach (glob(__DIR__.'/../../resources/lingue/*.json') ?: [] as $file) {
-        $testi = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
-        $titoli[basename($file, '.json')] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
+    foreach (lingueDellaCornice() as $codice => $testi) {
+        $titoli[$codice] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
     }
 
     expect(str_contains($punto, 'uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal 12/10/2026 e che non genera notifiche (più sotto)'))->toBe(true)
