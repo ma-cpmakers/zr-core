@@ -3676,3 +3676,102 @@ it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti leg
     'la pagina si rimonta' => ['Nello stato ridotto la tua pagina sta in un contenitore sotto l\'avviso, e si rimonta quando lo stato arriva dal 403 di una rotta o se ne va'],
     'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],
 ]);
+
+// Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, e i componenti del
+// design system per nome dal loro modulo, così nella build di un frontend entra solo ciò che l'app usa. Lo zip del tag porta i
+// tre file; il README dice i due ingressi, il passaggio, che cosa da lì non si scrive, che i due non si mescolano, i pesi e
+// come misurarli nel frontend; la guida dice a un modulo che nasce da dove parte. I pesi li misura vitest (peso.test.ts), che
+// li confronta coi numeri del README.
+
+/** Il testo di un ingresso di resources/js; vuoto se il file non c'è. */
+function ingressoJs(string $file): string
+{
+    $percorso = dirname(__DIR__, 2).'/resources/js/'.$file;
+
+    return is_file($percorso) ? (string) file_get_contents($percorso) : '';
+}
+
+it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
+    $zip = fileDelloZipDiHead();
+    $delPacchetto = ['resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts'];
+    $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
+
+    expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
+        ->and(array_values(array_filter($zip, $degliStrumenti)))->toBe([]);
+});
+
+it('l\'ingresso per le app esporta i nomi dell\'ingresso di sempre tranne Zeiras, e non importa il modulo che scrive window.Zeiras (sprint 25 · T2.4)', function () {
+    $esportati = fn (string $testo): array => nomiFraLeGraffe('/^export \{([^}]*)\} from \'[^\']+\';$/m', $testo);
+    $diSempre = $esportati(ingressoJs('index.ts'));
+    $perLeApp = $esportati(ingressoJs('app.ts'));
+
+    expect($diSempre)->toContain('Zeiras')
+        ->and($perLeApp)->not->toBe([])
+        ->and($perLeApp)->toBe(array_values(array_diff($diSempre, ['Zeiras'])))
+        ->and(preg_match('/from \'\.\/zeiras\'|from \'\.\/zeiras\/index\'|import \'\.\/zeiras/', ingressoJs('app.ts')))->toBe(0)
+        ->and(preg_match('/from \'\.\/zeiras\'/', ingressoJs('index.ts')))->toBe(1);
+});
+
+it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso esporta (sprint 25 · T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $importati = fn (string $testo): array => nomiFraLeGraffe('/^\s*import \{([^}]*)\} from \'[^\']*\/zr-core\/resources\/js\/app\';$/m', $testo);
+    $esportati = nomiFraLeGraffe('/^export \{([^}]*)\} from \'[^\']+\';$/m', ingressoJs('app.ts'));
+
+    // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
+    $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
+
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice'])
+        ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
+        ->and($conZeiras)->not->toBe($readme)
+        ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
+});
+
+it('il README dice, in «Come si installa in un frontend», i due ingressi, il passaggio, che cosa dall\'ingresso per le app non si scrive, che i due non si mescolano, i pesi e come misurarli (sprint 25 · T2.5)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Come si installa in un frontend');
+
+    expect(str_contains($sezione, $frase))->toBeTrue();
+})->with([
+    'l\'ingresso per le app' => ['**L\'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi dell\'ingresso di sempre tranne `Zeiras`'],
+    'i componenti per nome' => ['I componenti del design system si prendono per nome dal loro modulo, `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l\'app usa'],
+    'l\'import dei componenti' => ['import * as Zeiras from \'../../vendor/zeiras/zr-core/resources/js/zeiras/componenti\';'],
+    'che cosa non si scrive' => ['Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.'],
+    'l\'ingresso di sempre' => ['**L\'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in `window.Zeiras`, con `window.React`. Resta com\'è, coi nomi di prima'],
+    'il passaggio, i componenti' => ['`import * as Zeiras from \'…/resources/js/zeiras/componenti\'` al posto di `import { Zeiras } from \'…/resources/js\'`'],
+    'il passaggio, il resto' => ['gli altri nomi da `…/resources/js/app` al posto di `…/resources/js`'],
+    'non si mescolano' => ['I due ingressi non si mescolano nella stessa app: basta un file che importa ancora dall\'ingresso di sempre perché nella build torni il design system intero'],
+    'niente si rompe' => ['Non si rompe niente (i componenti sono gli stessi oggetti, in una copia sola), ma il peso torna quello di prima'],
+    'chi spia un componente' => ['dalla `v1.15.0` spia il modulo dei componenti (`import * as componenti from \'…/resources/js/zeiras/componenti\'`, poi `vi.spyOn(componenti, \'AppShell\')`), da qualunque ingresso'],
+    'la tabella dei pesi' => ['| App di prova | JS | con gzip |'],
+    'il peso della sola cornice' => ['| solo la cornice, dall\'ingresso per le app |'],
+    'il peso con due componenti' => ['| la cornice e due componenti per nome |'],
+    'il peso dall\'ingresso di sempre' => ['| la stessa cornice, dall\'ingresso di sempre |'],
+    'quali componenti' => ['I due componenti sono `Button` e `DataTable`.'],
+    'come si misura' => ['`find public/build/assets -name \'*.js\' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip'],
+    'quando il passaggio è completo' => ['`grep -rhoE --include=\'*.js\' \'window\.Zeiras ?= ?Object\.assign\' public/build | wc -l`: risponde 0 dall\'ingresso per le app, 1 finché un file importa dall\'ingresso di sempre'],
+]);
+
+it('il README non dice più che l\'ingresso scrive window.React prima di caricare il design system: dalla v1.15.0 il bundle non si carica (sprint 25 · T2.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'prima di caricare il design system'))->toBeFalse()
+        ->and(str_contains($readme, 'da uno dei due ingressi del pacchetto (due dalla `v1.15.0`)'))->toBeTrue();
+});
+
+it('la guida dice a un modulo che nasce di partire dall\'ingresso per le app, coi due file, che cosa risponde la prova e che i due ingressi non si mescolano (sprint 25 · T2.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga(guidaDelModuloNuovo()), $frase))->toBeTrue();
+})->with([
+    'da dove parte' => ['Un modulo che nasce parte dall\'ingresso per le app (dalla `v1.15.0`): la cornice da `vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da `vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi'],
+    'la prova' => ['risponde 0 (dall\'ingresso di sempre, dove `Zeiras` è il design system intero, risponde 1)'],
+    'non si mescolano' => ['I due ingressi non si mescolano: un file che importa ancora dall\'ingresso di sempre riporta nella build il design system intero'],
+    'il test di allineamento' => ['lo sha256 di `bundle.js` resta il segno che il design system è cambiato'],
+]);
+
+it('le pagine di prova sono tre, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3)', function () {
+    $costruzione = (string) file_get_contents(__DIR__.'/../../vite.demo.config.ts');
+
+    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html']"))->toBe(1)
+        ->and(scritteNellaPaginaDiProva('app.html', ['<script type="module" src="./app.tsx"></script>']))->toBe(['<script type="module" src="./app.tsx"></script>' => 1])
+        ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
+        ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
+        ->and(scritteNellaPaginaDiProva('index.tsx', ["import { Cornice } from '../js';"]))->toBe(["import { Cornice } from '../js';" => 1]);
+});
