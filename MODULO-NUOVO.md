@@ -303,8 +303,9 @@ da nessuna parte finché una versione di zr-core non toglie `presto`. Tutti gli 
 della persona e porta a `<indirizzo>/w/<slug>`; dentro il modulo il menu mostra aperto il tuo prodotto, con le tue voci.
 
 **Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`. Registrati, in zr-home,
-leggeva `presto` e mostrava «Disponibile» due moduli in arrivo, CRM e Bookings (12/10/2026): `presto` è della cornice, e
-per quei due è no. Chi non ha una sessione legge `in_arrivo`. Da sapere: «in arrivo» vuol dire due cose.
+leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla
+`v1.15.0`): `presto` è della cornice, e per quei due è no. Chi non ha una sessione legge `in_arrivo`. Da sapere:
+«in arrivo» vuol dire due cose.
 `in_arrivo` del registro è un sì o un no per chi non ha una sessione (le pagine senza un workspace a cui chiedere):
 dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto». Dentro
 la sessione lo stato lo dà il backoffice, workspace per workspace — `attivo`, `disponibile`, `in_arrivo` —, e la cornice

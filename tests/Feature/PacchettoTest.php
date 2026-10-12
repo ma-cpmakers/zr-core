@@ -2458,7 +2458,8 @@ it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel
 })->with([
     'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)'],
     'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`'],
-    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli in arrivo, CRM e Bookings'],
+    // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
+    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)'],
     'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`'],
     'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»'],
 ]);
