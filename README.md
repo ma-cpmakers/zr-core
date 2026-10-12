@@ -1160,3 +1160,41 @@ Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.goog
 
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
 immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.
+
+## Il precarico dei file d'ingresso
+
+Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\Core\Http\PrecaricoDegliIngressi`, che sulla risposta intera di una
+pagina scrive nell'header `Link` i file che `@vite` ha messo nel documento: l'ingresso, i pezzi che importa staticamente e
+i CSS, non i pezzi dinamici. Con Early Hints acceso sulla zona, Cloudflare li ripete in un 103 alla visita dopo, prima che
+il server abbia letto il backoffice: il JS scende mentre arrivano i dati. zr-core non lo registra da sé, e installare il
+pacchetto non precarica niente: lo registra il frontend, in uno dei due modi. Sul gruppo `web`, per ogni pagina, nel suo
+`bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->web(append: [\Zeiras\Core\Http\PrecaricoDegliIngressi::class]);
+})
+```
+
+Oppure sulle sole rotte che vuole, nel file delle sue rotte:
+
+```php
+Route::get('b/{board}', [BoardController::class, 'mostra'])->middleware(\Zeiras\Core\Http\PrecaricoDegliIngressi::class);
+```
+
+Non c'è niente da configurare, e `config/zr-core.php` non ha una chiave per lui: le rotte le dice dove lo agganci, i file li
+dice `@vite` nel documento, e il middleware non legge il manifest.
+
+- **Che cosa scrive**: una voce per file, nell'ordine in cui `@vite` li ha scritti e con gli stessi indirizzi: un CSS come
+  `<url>; rel=preload; as=style`, un modulo come `<url>; rel=preload; as=script; crossorigin`. Mai `modulepreload`:
+  Cloudflare in un 103 ripete solo `preload` e `preconnect`. E sempre `crossorigin` su un modulo: la richiesta di un modulo
+  è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte. Un altro precarico di Vite (un font) non esce.
+- **Dove scrive**: solo su una risposta `200` che è un documento HTML. Non sulla visita Inertia (la richiesta porta
+  `X-Inertia`), su un redirect, su una pagina d'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un
+  JSON, un file o uno stream; e se `@vite` non ha scritto niente l'header non c'è. Un `Link` che la risposta porta già
+  resta: il middleware aggiunge il suo accanto.
+- **Che cosa dice di chi guarda**: niente. L'header dipende solo dalla build, è uguale per tutti e ripete ciò che il
+  documento dice già: nessun dato, id o lingua della persona. Il rischio accettato è uno: il 103 che Cloudflare manda prima
+  dell'origine dice, a chi conosce già un indirizzo, che è stato aperto di recente.
+- **Quanto vale**: non è una misura di zr-core. I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a
+  freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati.
