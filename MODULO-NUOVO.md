@@ -47,7 +47,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   in più pagine, i percorsi in ordine, dal più specifico). Senza, la campanella dice «Novità nel workspace» e un clic
   apre la pagina delle notifiche — README, «La cornice», al punto «Le notifiche». Vale anche per una notifica che non è
   un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il
-  titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`.
+  titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`. Lo stesso per quella a chi viene menzionato in un
+  commento (`board.commento.menzione`, dalla `v1.16.0`): il titolo, «Ti hanno menzionato in un commento», e la pagina
+  della scheda, `/c/{id}`, perché un commento non ha una pagina sua.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o

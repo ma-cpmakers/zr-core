@@ -237,20 +237,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata apre la sua pagina in zr-board. «Nuova scheda»,
     // nell'elenco di sempre, porta l'id della sua scheda come dalla parte server; la scheda assegnata e una eliminata stanno
     // dietro `?schede=1`.
-    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, e in fondo una scheda eliminata, letta; zr-core conosce i due tipi, la prima apre la scheda e la seconda no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4)', async () => {
+    // Sprint 26 · T6 (voce #1773): con lo stesso parametro, subito dopo la scheda assegnata, una menzione in un commento.
+    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, poi una menzione in un commento, da leggere, col solo id della sua scheda, e in fondo una scheda eliminata, letta; zr-core conosce i tre tipi, le prime due aprono ognuna la sua scheda e l\'ultima no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4; sprint 26 · T6.1, T6.2)', async () => {
         await rotte(false, '?schede=1');
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; creata_il: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
         const { destinazioneDellaNotifica } = await import('../js/index');
         const apre = (notifica: (typeof notifiche)[number]) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null;
-        const [assegnata, eliminata] = [notifiche[0], notifiche[5]];
+        const [assegnata, menzione, eliminata] = [notifiche[0], notifiche[1], notifiche[6]];
 
-        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-s3', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
         expect(assegnata).toEqual({ id: 'uat-s1', creata_il: assegnata?.creata_il, letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } });
+        expect(menzione).toEqual({ id: 'uat-s3', creata_il: menzione?.creata_il, letta: false, app: 'pm', tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Rivedere il piano editoriale', per_me: true, ids: { id: 'uat-scheda-3' } });
         expect([eliminata?.app, eliminata?.tipo, eliminata?.letta, eliminata?.ids]).toEqual(['pm', 'com.zeiras.board.scheda.eliminata', true, {}]);
-        expect([assegnata, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true]);
-        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
+        expect([assegnata, menzione, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true, true]);
+        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-3', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 

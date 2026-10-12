@@ -134,8 +134,8 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure.
         expect(t['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(t.notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 41, in ogni lingua, anche con un file che ne ha uno in più.
-        expect(tipiCheHa(inglese)).toHaveLength(41);
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 42, in ogni lingua, anche con un file che ne ha uno in più.
+        expect(tipiCheHa(inglese)).toHaveLength(42);
         expect(tipiCheHa(t)).toStrictEqual(tipiCheHa(inglese));
         expect(tipiCheHa(testi('it'))).toStrictEqual(tipiCheHa(inglese));
         expect(tipiCheHa(testi('zz'))).toStrictEqual(tipiCheHa(inglese));
@@ -152,16 +152,16 @@ describe('le lingue della cornice', () => {
         ['it', italiano, 'Nuova scheda'],
         ['es', spagnolo, 'Nueva tarjeta'],
         ['en', inglese, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 41 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 42 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./index');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(41);
+        expect(tipiConosciuti).toHaveLength(42);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 41 titoli sono 41 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 42 titoli sono 42 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(41);
+        expect(new Set(titoli).size).toBe(42);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -283,6 +283,21 @@ describe('le lingue della cornice', () => {
         const cheNonConosce = ['com.zeiras.board.scheda.assegnata', 'board.scheda.creata', 'board.scheda', 'board.scheda.assegnata.poi', 'BOARD.SCHEDA.ASSEGNATA'];
 
         expect(titoloDellaNotifica('board.scheda.assegnata', lingua)).toBe(titolo);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
+    });
+
+    // Sprint 26 · T6 (voce #1773): la notifica che Project Management manda a chi viene menzionato in un commento, con le parole
+    // di zr-board (nota 10846 del #95). Non è un evento nemmeno lei: il tipo arriva senza `com.zeiras.` davanti.
+    it.each<[lingua: 'it' | 'en' | 'es', titolo: string]>([
+        ['it', 'Ti hanno menzionato in un commento'],
+        ['en', 'You were mentioned in a comment'],
+        ['es', 'Te han mencionado en un comentario'],
+    ])('con la lingua "%s", titoloDellaNotifica dà a `board.commento.menzione` il titolo «%s»; lo stesso nome col prefisso, un pezzo del tipo, il tipo con un pezzo in più e un altro tipo di un commento restano col titolo di ripiego (sprint 26 · T6.1)', async (lingua, titolo) => {
+        const { titoloDellaNotifica } = await import('./index');
+        const cheNonConosce = ['com.zeiras.board.commento.menzione', 'board.commento', 'board.commento.menzione.poi', 'board.commento.creato', 'BOARD.COMMENTO.MENZIONE'];
+
+        expect(titoloDellaNotifica('board.commento.menzione', lingua)).toBe(titolo);
         expect(titolo).not.toBe(diRipiego[lingua]);
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });

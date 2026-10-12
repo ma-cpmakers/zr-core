@@ -51,6 +51,7 @@ const viste = new URLSearchParams(window.location.search).has('viste');
 const opportunita = new URLSearchParams(window.location.search).has('opportunita');
 // Con `?schede=1` (sprint 24 · T3) in cima all'elenco c'è la notifica che Project Management manda a chi viene assegnata una
 // scheda, da leggere, e in fondo una scheda eliminata, letta: la prima apre la scheda, la seconda non ha una destinazione.
+// Dallo sprint 26 (T6), subito dopo la prima, c'è la notifica a chi viene menzionato in un commento, da leggere: apre la sua scheda.
 const schede = new URLSearchParams(window.location.search).has('schede');
 
 /**
@@ -80,6 +81,12 @@ const notificheDiProva = [
     // l'ha assegnata e il nome della scheda, che per questo tipo il backoffice manda sempre. Un clic apre la scheda e la segna letta.
     ...(schede
         ? [{ id: 'uat-s1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } as Record<string, string> }]
+        : []),
+    // Solo con `?schede=1`, subito dopo: una menzione in un commento (sprint 26 · T6), col tipo com'è nel backoffice, senza
+    // `com.zeiras.` davanti, chi ha scritto il commento e il nome della scheda. Porta il solo id della scheda, come dalla parte
+    // server: quello del commento resta lì. Un clic apre la scheda e la segna letta.
+    ...(schede
+        ? [{ id: 'uat-s3', creata_il: fa(4), letta: false, app: 'pm', tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Rivedere il piano editoriale', per_me: true, ids: { id: 'uat-scheda-3' } as Record<string, string> }]
         : []),
     // Dallo sprint 24 una scheda nuova porta il suo id, come dalla parte server: un clic apre la scheda.
     { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: { id: 'uat-scheda-1' } as Record<string, string> },

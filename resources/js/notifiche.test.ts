@@ -31,15 +31,17 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le diciotto destinazioni del CRM sono quelle del registro, e ogni tipo ha il suo percorso; ne ha tre anche Project Management, quelle di una scheda, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4)', () => {
+    it('le diciotto destinazioni del CRM sono quelle del registro, e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
         expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['pm', 'crm']);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
+        // Sprint 26 · T6 (voce #1773): la quarta, una menzione in un commento, apre la scheda del commento.
         expect(registro.find((voce) => voce.id === 'pm')?.notifiche).toStrictEqual([
             { tipo: 'com.zeiras.board.scheda.creata', percorso: '/c/{id}' },
             { tipo: 'com.zeiras.board.scheda.modificata', percorso: '/c/{id}' },
             { tipo: 'board.scheda.assegnata', percorso: '/c/{id}' },
+            { tipo: 'board.commento.menzione', percorso: '/c/{id}' },
         ]);
         expect(registro.find((voce) => voce.id === 'crm')?.notifiche).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
@@ -115,6 +117,13 @@ describe('la destinazione di una notifica', () => {
         ['di una scheda nuova, senza `com.zeiras.` davanti', { app: 'pm', tipo: 'board.scheda.creata', ids: { id: 'uat-scheda-1' } }],
         ['di una scheda assegnata, con l\'app del CRM', { app: 'crm', tipo: 'board.scheda.assegnata', ids: { id: 'uat-scheda-1' } }],
         ['di una scheda assegnata, senza app', { app: null, tipo: 'board.scheda.assegnata', ids: { id: 'uat-scheda-1' } }],
+        // Sprint 26 · T6 (voce #1773): una menzione in un commento si apre (più sotto) solo col suo tipo intero, senza
+        // `com.zeiras.` davanti, e nella voce di Project Management.
+        ['di una menzione in un commento, con `com.zeiras.` davanti', { app: 'pm', tipo: 'com.zeiras.board.commento.menzione', ids: { id: 'uat-scheda-1' } }],
+        ['di un commento, col solo pezzo del tipo della menzione', { app: 'pm', tipo: 'board.commento', ids: { id: 'uat-scheda-1' } }],
+        ['di una menzione in un commento, con un pezzo in più in fondo', { app: 'pm', tipo: 'board.commento.menzione.poi', ids: { id: 'uat-scheda-1' } }],
+        ['di una menzione in un commento, con l\'app del CRM', { app: 'crm', tipo: 'board.commento.menzione', ids: { id: 'uat-scheda-1' } }],
+        ['di una menzione in un commento, senza app', { app: null, tipo: 'board.commento.menzione', ids: { id: 'uat-scheda-1' } }],
         ['del CRM, di un tipo che zr-core non conosce', delCrm('persona.assegnata', { id: 'uat-persona-1' })],
         ['del CRM, di un tipo che ne continua uno conosciuto', delCrm('persona.creata.v2', { id: 'uat-persona-1' })],
         ['del CRM, col solo pezzo di un tipo conosciuto', delCrm('persona', { id: 'uat-persona-1' })],
@@ -181,8 +190,10 @@ describe('la destinazione di una notifica', () => {
     // chi riceve la notifica apre la pagina della scheda in zr-board, `/c/<id>` dopo `/w/<slug>` (zr-board, nota 10451 del #95:
     // quella pagina legge la scheda e rimanda al suo dettaglio nella board). «assegnata» non è un evento: arriva senza
     // `com.zeiras.` davanti. L'id è quello della scheda, `id`: la board e la lista non prendono il suo posto.
+    // Sprint 26 · T6 (voce #1773): la quarta è la notifica a chi viene menzionato in un commento, che non è un evento nemmeno
+    // lei. Apre la scheda del commento, con lo stesso `id`.
     const BOARD = 'https://board.zeiras.com/w/acme-marketing';
-    const diUnaScheda = [['board.scheda.assegnata'], ['com.zeiras.board.scheda.creata'], ['com.zeiras.board.scheda.modificata']];
+    const diUnaScheda = [['board.scheda.assegnata'], ['com.zeiras.board.scheda.creata'], ['com.zeiras.board.scheda.modificata'], ['board.commento.menzione']];
 
     it.each(diUnaScheda)('una notifica di Project Management di tipo «%s» apre la scheda, con l\'`id` che porta, dopo `/w/<slug>` del workspace che si dà (sprint 24 · T3.2, T3.4)', (tipo) => {
         expect(apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } })).toBe(`${BOARD}/c/uat-scheda-1`);
@@ -212,7 +223,18 @@ describe('la destinazione di una notifica', () => {
         ['i dati non lo elencano', { crm: 'attivo' }],
         ['nessun modulo è elencato', {}],
     ])('una notifica di una scheda in un workspace dove Project Management non si può aprire non ha una destinazione — %s (sprint 24 · T3.2)', (_quale, stati) => {
-        expect(diUnaScheda.map(([tipo]) => apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, stati as DatiDellaCornice['prodotti']))).toStrictEqual([undefined, undefined, undefined]);
+        expect(diUnaScheda.map(([tipo]) => apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, stati as DatiDellaCornice['prodotti']))).toStrictEqual([undefined, undefined, undefined, undefined]);
+    });
+
+    // Sprint 26 · T6 (voce #1773). La notifica a chi viene menzionato in un commento porta nei `dati` l'id della scheda e quello
+    // del commento. Si apre la scheda: zr-board non ha un indirizzo che porti dritto a un commento (nota 10846 del #95), e la
+    // parte server dà al browser il solo `id`. Se `commento_id` arrivasse, nell'indirizzo non entrerebbe.
+    it('una menzione in un commento apre la scheda, `/c/<id>` con l\'id della scheda: `commento_id` non entra nell\'indirizzo, e da solo non apre niente (sprint 26 · T6.2)', () => {
+        const menzione = (ids: Record<string, unknown>) => apre({ app: 'pm', tipo: 'board.commento.menzione', ids });
+
+        expect(menzione({ id: 'uat-scheda-1' })).toBe(`${BOARD}/c/uat-scheda-1`);
+        expect(menzione({ id: 'uat-scheda-1', commento_id: 'uat-commento-9' })).toBe(`${BOARD}/c/uat-scheda-1`);
+        expect(menzione({ commento_id: 'uat-commento-9' })).toBeUndefined();
     });
 
     // Una nota non ha una pagina sua, e può essere legata a più cose: si apre la più specifica (decisione di zr-pm, nota 10252

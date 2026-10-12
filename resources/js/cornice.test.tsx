@@ -2009,6 +2009,51 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
     });
 
+    // Sprint 26 · T6 (voce #1773). Chi viene menzionato in un commento riceve una notifica di Project Management che non è un
+    // evento: il tipo arriva senza `com.zeiras.` davanti. Un clic apre la scheda del commento, `/c/<id>` (zr-board, nota 10846
+    // del #95: la board non ha un indirizzo che porti dritto a un commento), e la segna letta. La parte server dà il solo `id`
+    // della scheda; se `commento_id` arrivasse, nell'indirizzo non entrerebbe.
+    const dellaMenzione = { id: 'uat-n79', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' as string | null, tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Scheda 7', per_me: true, ids: { id: 'uat-scheda-7' } as Record<string, string> };
+
+    it.each<[string, Record<string, string>]>([
+        ['col solo `id` della scheda, come la dà la parte server', { id: 'uat-scheda-7' }],
+        ['anche se fra gli `ids` arrivasse `commento_id`', { id: 'uat-scheda-7', commento_id: 'uat-commento-9' }],
+    ])('un clic su una notifica di una menzione in un commento apre la scheda in Project Management, `/c/<id>` con l\'id della scheda, e la segna letta — %s (sprint 26 · T6.2)', async (_quale, ids) => {
+        const fetchFinto = rotteDelClic([{ data: [{ ...dellaMenzione, ids }] }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[`${nellaBoard}/c/uat-scheda-7`]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n79')]);
+    });
+
+    it.each([['it', 'Ti hanno menzionato in un commento'], ['en', 'You were mentioned in a comment'], ['es', 'Te han mencionado en un comentario']])('con la lingua "%s", nel pannello una notifica di una menzione in un commento si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 26 · T6.1)', async (lingua, titolo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: [dellaMenzione] }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([titolo]);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual(['UAT Scheda 7']);
+    });
+
+    it('un clic su una menzione col tipo scritto quasi giusto — `com.zeiras.` davanti, un pezzo in meno, uno in più —, con `app` `crm` o senza `app`, apre la pagina delle notifiche e non la segna letta (sprint 26 · T6.2)', async () => {
+        const quasi: [app: string | null, tipo: string][] = [['pm', 'com.zeiras.board.commento.menzione'], ['pm', 'board.commento'], ['pm', 'board.commento.menzione.poi'], ['crm', 'board.commento.menzione'], [null, 'board.commento.menzione']];
+        const elenco = quasi.map(([app, tipo], indice) => ({ ...dellaMenzione, id: `uat-n${69 - indice}`, app, tipo }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 5 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual(quasi.map(() => [paginaDelleNotifiche]));
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
     it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
         const fetchFinto = rotteDelClic([{ data: delleSchede }]);
         vi.stubGlobal('fetch', fetchFinto);
@@ -2351,12 +2396,13 @@ describe('il pannello delle notifiche', () => {
     });
 
     /**
-     * I titoli dei 41 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * I titoli dei 42 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
      * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`); dallo sprint 22
      * i nove in fondo (voce #1720: le opportunità, che nel contratto sono `trattativa`, le attività, e i quattro «assegnata», che
-     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 l'ultimo (voce #1748: la scheda assegnata, di
-     * Project Management, che non è un evento nemmeno lei). Scritta qui e non letta dai file delle lingue.
+     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 la scheda assegnata (voce #1748: di
+     * Project Management, non è un evento nemmeno lei); dallo sprint 26 l'ultimo (voce #1773: la menzione in un commento, come lei).
+     * Scritta qui e non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
         ['com.zeiras.app.modificata', 'Un modulo è stato attivato o disattivato', 'A module was turned on or off', 'Se activó o desactivó un módulo'],
@@ -2400,14 +2446,15 @@ describe('il pannello delle notifiche', () => {
         ['crm.trattativa.assegnata', 'Ti è stata assegnata un\'opportunità', 'An opportunity was assigned to you', 'Se te ha asignado una oportunidad'],
         ['crm.attivita.assegnata', 'Ti è stata assegnata un\'attività', 'An activity was assigned to you', 'Se te ha asignado una actividad'],
         ['board.scheda.assegnata', 'Ti è stata assegnata una scheda', 'A card was assigned to you', 'Se te ha asignado una tarjeta'],
+        ['board.commento.menzione', 'Ti hanno menzionato in un commento', 'You were mentioned in a comment', 'Te han mencionado en un comentario'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 41 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(41);
-        expect(titoliPerTipo).toHaveLength(41);
+    it('la tabella dei titoli ha 42 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(42);
+        expect(titoliPerTipo).toHaveLength(42);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -2509,9 +2556,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 41 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 42 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./index');
-        // I 41 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 42 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -2521,11 +2568,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 41 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 42 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 41)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(41)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 42)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(42)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
