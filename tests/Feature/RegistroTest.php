@@ -354,13 +354,16 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
         ]);
 });
 
-it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una sessione: CRM, Bookings e i tre «Presto» sì, Dashboard e Project Management no; «Presto» resta dei tre (sprint 16 · T7.1)', function () {
+// Sprint 26 · T8 (voce #1792): dal 12/10/2026 il backoffice dà il CRM `disponibile` a ogni workspace, e nel registro non è più in
+// arrivo. In arrivo restano Bookings e i tre «Presto»; `presto` non cambia per nessuno.
+it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una sessione: Bookings e i tre «Presto» sì, Dashboard, Project Management e CRM no; «Presto» resta dei tre (sprint 16 · T7.1; sprint 26 · T8.1)', function () {
     $voci = registroDeiProdotti();
 
     expect(array_column($voci, 'in_arrivo', 'id'))->toBe([
-        'home' => false, 'pm' => false, 'crm' => true, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
+        'home' => false, 'pm' => false, 'crm' => false, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
     ])
-        // «Presto» non cambia: con `crm` «Presto» la cornice lo chiuderebbe anche nel workspace dell'anteprima.
+        // «Presto» non cambia: con `crm` o `bookings` «Presto» la cornice chiuderebbe la voce in ogni workspace, anche dove il
+        // backoffice dà il modulo. Non è la leva per le pagine senza sessione.
         ->and(array_column($voci, 'presto', 'id'))->toBe([
             'home' => false, 'pm' => false, 'crm' => false, 'bookings' => false, 'reports' => true, 'automations' => true, 'content' => true,
         ])

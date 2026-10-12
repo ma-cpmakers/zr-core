@@ -1664,6 +1664,8 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
     // Sprint 26 · T4.5 (lettura della PR #56, R8): che cosa fa la cornice, nel browser, con quei secondi.
     'la riga: la cornice aspetta i secondi del freno' => ['rotta', 'e la cornice mostra l\'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo'],
+    // Lettura della PR #59, R3: il freno non regge a un rimontaggio.
+    'la riga: il freno è della cornice montata' => ['rotta', 'il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi'],
     'il punto: il tratto al backoffice' => ['ricerca', 'Dalla `v1.15.0` anche il tratto dal server del modulo al backoffice porta la parola nel corpo: la parte server chiama `ricerca.crea`, una POST, e l\'indirizzo di quella richiesta non porta query'],
     'il punto: il backoffice finto di un frontend' => ['ricerca', 'Per i test di un frontend che passa alla `v1.15.0` cambiano due cose: un backoffice finto che risponde alla ricerca la riceve come `POST /v1/ricerca` con la parola nel corpo (`{q}`), non più come GET con `q` nell\'indirizzo'],
     'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
@@ -2440,7 +2442,45 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     'si apre se il registro non lo dà «Presto» (terza lettura, R2)' => ['nel workspace di un\'anteprima il prodotto si apre, se il registro non lo dà «Presto»'],
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
+    // Sprint 26 · T8.4 (voce #1792): dal 12/10/2026 il CRM è per tutti. Chi legge che cosa, e quali restano in arrivo.
+    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in arrivo e non è «Presto»'],
+    'dalla v1.16.0 il CRM non è più in arrivo' => ['Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo dà `disponibile` a ogni workspace'],
+    'quali restano in arrivo' => ['in arrivo restano Bookings e i tre «Presto»'],
 ]);
+
+// Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
+// racconta l'errore pagato davvero: una pagina senza sessione che leggeva `presto`.
+
+it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4)', function (string $frase) {
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(str_contains($guida, $frase))->toBe(true);
+})->with([
+    'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)'],
+    'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`'],
+    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli in arrivo, CRM e Bookings'],
+    'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`'],
+    'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»'],
+]);
+
+it('la guida non dice più che il passo del registro non ha un errore pagato, e né i test, né il README, né la guida dicono più che il CRM è in anteprima (sprint 26 · T8.4)', function () {
+    // Le due frasi sono spezzate: intere, questo file le troverebbe in sé stesso.
+    $inAnteprima = ['il CRM in '.'anteprima', 'in anteprima '.'(il CRM)'];
+    $file = [...(glob(__DIR__.'/*.php') ?: []), ...(glob(__DIR__.'/../*.php') ?: []), __DIR__.'/../../README.md', __DIR__.'/../../MODULO-NUOVO.md'];
+    $trovate = [];
+    foreach ($file as $percorso) {
+        $testo = commentiSuUnaRiga((string) file_get_contents($percorso));
+        foreach ($inAnteprima as $frase) {
+            if (str_contains($testo, $frase)) {
+                $trovate[] = basename($percorso).': '.$frase;
+            }
+        }
+    }
+
+    expect(in_array(__DIR__.'/RegistroTest.php', $file, true))->toBe(true)
+        ->and($trovate)->toBe([])
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), '**Errore già pagato**: nessuno (per zr-board e zr-crm è andata liscia)'))->toBe(false);
+});
 
 // Sprint 17 · T4 (voce #1633): ogni workspace dei dati porta il suo `id`, e dall'id la cornice ricava il colore del suo pallino
 // nel selettore. Il README lo dice dove chi legge lo cerca: la forma dei dati in «La parte server», da dove viene il colore nel
@@ -3659,7 +3699,9 @@ it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dic
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
     'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
     // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
-    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
+    // Lettura della PR #59, R1: vale per un browser che ha il resto di ciò che i sorgenti usano; dove manca anche quello, no.
+    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
+    'e dove manca anche il resto' => ['ricerca', 'Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser così lo aggiunge il frontend'],
     'e nella versione di prima' => ['ricerca', 'nella `v1.15.0`, con almeno una fonte, lì il disegno della cornice lanciava un errore'],
     'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
     'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
@@ -3828,7 +3870,16 @@ it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La
     'il segnale non resta (S4)' => ['e così coi dati di un altro workspace: da lì quel segnale non vale più, nemmeno per i dati di prima'],
     'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
     'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
+    // Lettura della PR #59, R4: dalla `v1.16.0` la ricerca si dimentica, e che cosa si legge al ritorno sotto una parola rimasta.
+    'la ricerca si dimentica, e che cosa si legge al ritorno' => ['Dalla `v1.16.0`, passata a quello stato, la cornice dimentica la ricerca: tornata quella di sempre non mostra i risultati di prima, e se nel campo è rimasta una parola sotto si legge «Nessun risultato per «parola»», anche se quella parola non è stata cercata, finché la persona non scrive ancora'],
 ]);
+
+it('il README non promette più che senza `Intl.ListFormat` la cornice si disegna in ogni browser (lettura della PR #59, R1)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'dove manca, dalla `v1.16.0` la cornice si disegna lo stesso'))->toBe(false)
+        ->and(str_contains($readme, 'in un browser che ha il resto di ciò che i sorgenti usano'))->toBe(true);
+});
 
 it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
     $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
