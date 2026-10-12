@@ -2353,8 +2353,9 @@ it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CS
     preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
     preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
 
-    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo: i tre restano uno dopo l'altro.
-    expect(array_slice($titoli[1], -4))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Il precarico dei file d\'ingresso'])
+    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo, e dallo sprint 29 fra i due «Gli host
+    // fidati»: i primi tre restano uno dopo l'altro.
+    expect(array_slice($titoli[1], -5))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Gli host fidati', 'Il precarico dei file d\'ingresso'])
         ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
         // La più stretta una volta, dove il README dice lo scarto; quella di tutti due: da sola, e nel test che un modulo ricopia.
         ->and($scritte[0])->toBe([CSP_PIU_STRETTA_NEL_README, CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
@@ -4825,6 +4826,41 @@ it('la guida nomina il precarico dove il modulo registra i middleware, e dice ch
         ->and(str_contains($passo, 'Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli, e uno diverso lo registri nel `boot()` del tuo `AppServiceProvider` — README, «Gli indirizzi dei file della build»'))->toBe(true)
         ->and(str_contains($passo, 'con Early Hints Cloudflare li manda prima della pagina'))->toBe(false)
         ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/IngressiPrecaricoTest.php');
+});
+
+it('il README ha il punto «Gli host fidati», che dice come si registra, che cosa controllare prima e la prova da fare dopo (sprint 29 · T1.10)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Gli host fidati');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $frase))->toBe(true);
+})->with([
+    'da quando, e la classe' => ['Dalla `v1.19.0` il pacchetto ha un middleware, `Zeiras\\Core\\Http\\HostFidati`, che a una richiesta per un host che non è quello del modulo risponde `400`, prima delle rotte'],
+    'l\'host di APP_URL e basta' => ['L\'host del modulo è quello di `APP_URL` e basta: il nome intero, senza la porta e senza distinguere le maiuscole. Niente sottodomini, e `config/zr-core.php` non ha una chiave per lui'],
+    'non parte da solo' => ['zr-core non lo registra da sé, e installare il pacchetto non rifiuta niente: lo registra il frontend, in coda ai middleware globali'],
+    'la riga delle intestazioni' => ['$middleware->prepend(\\Zeiras\\Core\\Http\\IntestazioniSicurezza::class);'],
+    'la riga degli host' => ['$middleware->append(\\Zeiras\\Core\\Http\\HostFidati::class);'],
+    'l\'ordine delle due righe' => ['Le intestazioni con `prepend`, gli host con `append`, e non il contrario'],
+    'perché in coda' => ['guarda l\'host che l\'app userebbe per scrivere i suoi indirizzi: l\'intestazione `Host`, oppure `X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato'],
+    'il 400 con le intestazioni' => ['anche il `400` esce con le intestazioni di sicurezza'],
+    'la seconda difesa' => ['È la seconda difesa: la prima è il server web, che per un nome che non è il suo non dovrebbe rispondere'],
+    'che cosa risponde' => ['`400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell\'host ricevuto non ripete niente, né nella risposta né nel log'],
+    'prima si legge APP_URL' => ['**Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev\'essere il nome pubblico del modulo, scritto per intero e con lo schema'],
+    'se APP_URL non ha un host' => ['Se `APP_URL` non ha un host — è vuoto, o è senza lo schema — il middleware non rifiuta niente e lo scrive nel log a ogni richiesta'],
+    'anche /up' => ['**Vale per ogni rotta, anche `/up`**: una sonda che chiama il server con l\'indirizzo della macchina, e non col nome del modulo, da quel momento prende `400`'],
+    'in ingresso' => ['**Riguarda le richieste in ingresso**: le chiamate del modulo ad `api.zeiras.com` non passano di qui'],
+    'nei test' => ['**Nei test vale come in produzione**, senza eccezioni per l\'ambiente. Laravel nei test chiama l\'host che `APP_URL` ha all\'avvio, quindi i test passano senza toccare niente'],
+    'un test che cambia app.url' => ['Prende `400` un test che cambia `app.url` a metà e poi chiama una pagina, o che chiama un indirizzo intero con un altro host'],
+    'la prova in produzione' => ['**La prova dopo averlo registrato**, in produzione: dal nome pubblico una pagina risponde `200` e `/up` risponde `200`; la stessa richiesta con un host falso nell\'intestazione `Host` prende `400`'],
+]);
+
+it('la guida nomina gli host fidati dove il modulo registra i middleware, e dice che non rifiuta niente da solo; la classe è nello zip del tag, il suo test no (sprint 29 · T1.10)', function () {
+    preg_match('/^## 3\. Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', guidaDelModuloNuovo(), $delPasso);
+    $passo = suUnaRiga($delPasso[1] ?? '');
+
+    expect(str_contains($passo, 'Dalla `v1.19.0` puoi registrare anche gli host fidati, `Zeiras\\Core\\Http\\HostFidati`, in coda ai middleware globali: a una richiesta per un host che non è quello di `APP_URL` risponde `400`, anche su `/up`'))->toBe(true)
+        ->and(str_contains($passo, 'Prima leggi quanto vale `APP_URL` in produzione e con quale nome chiamano le sonde; dopo fai la prova in produzione'))->toBe(true)
+        ->and(str_contains($passo, 'non rifiuta niente da solo — README, «Gli host fidati»'))->toBe(true)
+        ->and(fileDelloZipDiHead())->toContain('src/Http/HostFidati.php')->not->toContain('tests/Feature/HostFidatiTest.php');
 });
 
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {

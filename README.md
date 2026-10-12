@@ -1203,6 +1203,48 @@ Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.goog
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
 immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.
 
+## Gli host fidati
+
+Dalla `v1.19.0` il pacchetto ha un middleware, `Zeiras\Core\Http\HostFidati`, che a una richiesta per un host che non è
+quello del modulo risponde `400`, prima delle rotte. L'host del modulo è quello di `APP_URL` e basta: il nome intero, senza
+la porta e senza distinguere le maiuscole. Niente sottodomini, e `config/zr-core.php` non ha una chiave per lui. zr-core
+non lo registra da sé, e installare il pacchetto non rifiuta niente: lo registra il frontend, in coda ai middleware globali,
+nel suo `bootstrap/app.php`, accanto alla riga delle intestazioni di sicurezza:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->prepend(\Zeiras\Core\Http\IntestazioniSicurezza::class);
+    $middleware->append(\Zeiras\Core\Http\HostFidati::class);
+})
+```
+
+Le intestazioni con `prepend`, gli host con `append`, e non il contrario. In coda ai globali il middleware gira dopo i
+proxy fidati di Laravel, e guarda l'host che l'app userebbe per scrivere i suoi indirizzi: l'intestazione `Host`, oppure
+`X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato. E gira dentro `IntestazioniSicurezza`: anche
+il `400` esce con le intestazioni di sicurezza. Registrato con `prepend` il `400` uscirebbe senza, e l'host detto da un
+proxy fidato non lo guarderebbe nessuno.
+
+- **A che cosa serve**: Laravel scrive i suoi indirizzi — un rimando, un collegamento in una mail — con l'host della
+  richiesta. Chi chiama il server con un altro nome se li farebbe scrivere col suo. È la seconda difesa: la prima è il
+  server web, che per un nome che non è il suo non dovrebbe rispondere. Il middleware di Laravel per gli host non basta:
+  ammette i sottodomini, in locale e nei test non fa niente, e da solo non rifiuta nessuna richiesta.
+- **Che cosa risponde**: `400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell'host
+  ricevuto non ripete niente, né nella risposta né nel log: nel log lascia un avviso con l'host atteso. Un host con
+  caratteri che un nome non ha prende `400` lo stesso.
+- **Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev'essere il nome pubblico del modulo, scritto per
+  intero e con lo schema (`https://board.zeiras.com`). Se `APP_URL` non ha un host — è vuoto, o è senza lo schema — il
+  middleware non rifiuta niente e lo scrive nel log a ogni richiesta, finché non lo correggi.
+- **Vale per ogni rotta, anche `/up`**: una sonda che chiama il server con l'indirizzo della macchina, e non col nome
+  del modulo, da quel momento prende `400`. Prima di registrarlo chiedi a chi tiene le sonde con quale nome chiamano.
+- **Riguarda le richieste in ingresso**: le chiamate del modulo ad `api.zeiras.com` non passano di qui.
+- **Nei test vale come in produzione**, senza eccezioni per l'ambiente. Laravel nei test chiama l'host che `APP_URL` ha
+  all'avvio, quindi i test passano senza toccare niente. Prende `400` un test che cambia `app.url` a metà e poi chiama una
+  pagina, o che chiama un indirizzo intero con un altro host: lì l'indirizzo della chiamata si scrive con l'host di
+  `app.url`.
+- **La prova dopo averlo registrato**, in produzione: dal nome pubblico una pagina risponde `200` e `/up` risponde `200`;
+  la stessa richiesta con un host falso nell'intestazione `Host` prende `400`. Se davanti al server c'è chi un altro nome
+  non lo fa arrivare, la prova con l'host falso si fa al server d'origine.
+
 ## Il precarico dei file d'ingresso
 
 Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\Core\Http\PrecaricoDegliIngressi`, che sulla risposta intera di una

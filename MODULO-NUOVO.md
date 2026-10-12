@@ -152,6 +152,11 @@ globali — README, «Le intestazioni di sicurezza». Se il frontend ha già una
 Poi scrivi il tuo test, coi cinque valori per intero — README, «Il test nel modulo» (zr-crm lo chiama `IntestazioniTest`,
 in `tests/Feature/`).
 
+Dalla `v1.19.0` puoi registrare anche gli host fidati, `Zeiras\Core\Http\HostFidati`, in coda ai middleware globali: a una
+richiesta per un host che non è quello di `APP_URL` risponde `400`, anche su `/up`. Prima leggi quanto vale `APP_URL` in
+produzione e con quale nome chiamano le sonde; dopo fai la prova in produzione. Installare zr-core non lo accende: non
+rifiuta niente da solo — README, «Gli host fidati».
+
 Dalla `v1.18.0` puoi registrare anche il precarico dei file d'ingresso, `Zeiras\Core\Http\PrecaricoDegliIngressi`, sul
 gruppo `web` o sulle sole rotte che vuoi: scrive nell'header `Link` i file che `@vite` ha messo nel documento, e il browser
 comincia a scaricarli prima di leggere la pagina. Se nei tuoi indirizzi c'è uno slug o un id, lo registri sulle sole rotte
