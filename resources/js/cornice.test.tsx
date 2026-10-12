@@ -5637,6 +5637,14 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         </>
     );
     const chiudi = () => uno('.zr-dialog .zr-dialog-head button');
+    /**
+     * happy-dom non fa geometria: `clientWidth` e `clientHeight` valgono sempre zero. Le misure di un riquadro le dà il caso;
+     * coi tasti veri, in un browser, lo prova la UAT.
+     */
+    const conLeMisure = (elemento: Element | null, larghezza: number, altezza: number) => {
+        expect(elemento).not.toBeNull();
+        Object.defineProperties(elemento, { clientWidth: { value: larghezza, configurable: true }, clientHeight: { value: altezza, configurable: true } });
+    };
 
     it('con un `Dialog` aperto, Tab dall\'ultimo elemento porta al primo del dialogo e Maiusc+Tab dal primo all\'ultimo; nel mezzo il Tab è del browser (T4.1)', async () => {
         largaAlPiu720(false);
@@ -6024,6 +6032,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             </Dialog>
         </>);
         expect(uno('#in-fondo')?.tabIndex).toBe(0);
+        conLeMisure(uno('#in-fondo'), 300, 150);
 
         // Dal pulsante che lo precede il Tab è del browser: dopo c'è ancora una fermata.
         await conIlFuoco(uno('#prima'));
@@ -6033,6 +6042,78 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(chiudi());
         expect(await premi('Tab', true)).toBe(true);
         expect(document.activeElement).toBe(uno('#in-fondo'));
+    });
+
+    it.each([
+        ['largo zero', 0, 150],
+        ['alto zero', 300, 0],
+    ])('un `iframe` %s non si vede e non è una fermata: quando è l\'ultima cosa del dialogo, Tab dall\'ultimo pulsante vero torna alla prima fermata (sprint 32 · T1.1)', async (_nome, larghezza, altezza) => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Anteprima" onClose={senzaEffetto}>
+                <button type="button" id="prima">Scarica</button>
+                <iframe title="Di servizio" id="in-fondo" />
+            </Dialog>
+        </>);
+        conLeMisure(uno('#in-fondo'), larghezza, altezza);
+
+        // Dopo il pulsante non c'è un'altra fermata: lasciato al browser, il Tab passerebbe dal riquadro e uscirebbe dietro il velo.
+        await conIlFuoco(uno('#prima'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#prima'));
+    });
+
+    it('chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna a chi lo aveva prima che il dialogo lo prendesse; riaperto, il dialogo non ha il `tabindex` della cornice (sprint 32 · T1.2)', async () => {
+        largaAlPiu720(false);
+        const pagina = (aperto: boolean) => (
+            <>
+                <button type="button" id="dietro">Dietro il dialogo</button>
+                <Dialog open={aperto} title="Attendi"><p>Solo testo</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(true));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('.zr-dialog'));
+        // Un secondo Tab, col fuoco già sul dialogo, non cambia chi lo aveva.
+        expect(await premi('Tab')).toBe(true);
+
+        await laPagina(pagina(false));
+        expect(uno('.zr-dialog')).toBeNull();
+        expect(document.activeElement).toBe(dietro());
+
+        await laPagina(pagina(true));
+        expect(uno('.zr-dialog')?.hasAttribute('tabindex')).toBe(false);
+    });
+
+    it('il fuoco non è mandato a chi non è più in pagina quando il dialogo si chiude, e non si toglie a un elemento che lo ha preso nel frattempo (sprint 32 · T1.2)', async () => {
+        largaAlPiu720(false);
+        const pagina = (aperto: boolean, colPulsante = true) => (
+            <>
+                {colPulsante ? <button type="button" id="dietro">Dietro il dialogo</button> : null}
+                <input id="della-pagina" />
+                <Dialog open={aperto} title="Attendi"><p>Solo testo</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(true));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        const alTolto = vi.spyOn(dietro() as HTMLElement, 'focus');
+        await laPagina(pagina(false, false));
+        expect(alTolto).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(document.body);
+
+        // Di nuovo: prima che il dialogo si chiuda, il fuoco lo prende un campo della pagina.
+        await laPagina(pagina(true));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('.zr-dialog'));
+        await conIlFuoco(uno('#della-pagina'));
+        await laPagina(pagina(false));
+        expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 
     it('la larghezza sotto cui il pannello di dettaglio trattiene il fuoco è quella a cui il CSS del design system lo fa largo tutta la pagina (sprint 31 · T3.5)', async () => {

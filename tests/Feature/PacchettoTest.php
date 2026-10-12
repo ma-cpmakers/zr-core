@@ -4819,6 +4819,18 @@ it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i ca
     'dopo il clic su una notifica' => ['Il fuoco nel pannello delle notifiche', 'In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello'],
 ]);
 
+// Sprint 32 · T1.3 (voce #1912; review della PR #64, R7 e R8): un riquadro che non si vede non è una fermata, e chiuso un dialogo
+// senza fermate il fuoco torna a chi lo aveva. Il README li dice nel punto del Tab, da quando e in che browser sono provati.
+
+it('il README dice, nel punto del Tab dentro un dialogo, i due casi chiusi dalla `v1.22.0` (sprint 32 · T1.3)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Tab dentro un dialogo aperto'), $frase))->toBe(true);
+})->with([
+    'un riquadro che non si vede' => ['Dalla `v1.22.0`: un `iframe` largo o alto zero — un riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima invece di passare da lì e uscire dietro il velo'],
+    'il fuoco torna a chi lo aveva' => ['chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna all\'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha preso un altro (provati in Chrome)'],
+]);
+
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.

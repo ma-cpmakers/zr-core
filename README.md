@@ -82,9 +82,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 29,1 KB | 4,1 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 29,1 KB | 4,1 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 29,1 KB | 4,1 KB |
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 29,8 KB | 4,3 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 29,8 KB | 4,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 29,8 KB | 4,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -409,7 +409,11 @@ cornice === null ? pagina : (
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
   `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
-  comandi, contano dove il browser li mette nel giro del Tab. Il modulo non deve fare niente,
+  comandi, contano dove il browser li mette nel giro del Tab. Dalla `v1.22.0`: un `iframe` largo o alto zero — un
+  riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima
+  invece di passare da lì e uscire dietro il velo; e chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco
+  torna all'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha
+  preso un altro (provati in Chrome). Il modulo non deve fare niente,
   e non scriva una trappola sua: sarebbero due. È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
   ancora il fuoco, e la cornice lo fa da sé, senza toccare i componenti; quando lo fanno loro questo si toglie, senza che
   il modulo cambi niente. Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e
