@@ -4758,6 +4758,30 @@ it('il README dice, nel punto «Il fuoco nel pannello delle notifiche» di «La 
     'se non arriva' => ['se non arriva, la campanella si apre come prima, col fuoco sul pulsante'],
 ]);
 
+// Sprint 30 · T4.8 (voce #1870): con un `Dialog` aperto, o un `DetailPanel` sotto 720 px, Tab resta dentro. È un altro rimedio
+// della cornice a ciò che i componenti non fanno ancora: il README lo dice in un punto suo di «La cornice», provvisorio, con
+// ciò che non copre.
+
+it('il README dice, nel punto «Tab dentro un dialogo aperto» di «La cornice», da quando e che cosa fa, che è provvisorio e che cosa non copre (sprint 30 · T4.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Tab dentro un dialogo aperto'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), 'Tab dentro un dialogo aperto'))->toBe('');
+})->with([
+    'da quando, e che cosa fa' => ['dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo'],
+    'il giro' => ['Tab dall\'ultimo elemento torna al primo, Maiusc+Tab dal primo va all\'ultimo, e se il fuoco è ancora fuori il primo Tab entra'],
+    'il pannello sotto 720 px' => ['Lo stesso per un `DetailPanel` sotto 720 px, dove è largo tutta la pagina; da 721 px in su Tab esce verso la pagina, come vuole la linea guida'],
+    'uno sopra l\'altro' => ['Con un dialogo sopra un pannello vale il dialogo'],
+    'anteprime e menu' => ['Le anteprime (`inline`) non trattengono niente, e con un `Menu` aperto dentro il dialogo la cornice non interviene'],
+    'il modulo non deve fare niente' => ['Il modulo non deve fare niente, e non scriva una trappola sua: sarebbero due'],
+    'è provvisorio' => ['È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono ancora il fuoco'],
+    'senza toccare i componenti' => ['la cornice lo fa da sé, senza toccare i componenti'],
+    'si toglie' => ['quando lo fanno loro questo si toglie, senza che il modulo cambi niente'],
+    'che cosa non copre' => ['Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e il primo campo in fuoco all\'apertura, che resta del modulo'],
+    'a richiesta' => ['Sta nello stesso pezzo a richiesta del punto sopra: se non arriva, Tab fa il giro di prima'],
+]);
+
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
