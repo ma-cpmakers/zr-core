@@ -4813,6 +4813,10 @@ it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i ca
     'resta fuori: dentro un iframe' => ['Tab dentro un dialogo aperto', 'Restano fuori anche tre casi: da dentro un `iframe` i tasti sono della sua pagina, e Tab dall\'ultimo suo elemento esce dal dialogo (il Tab dopo rientra)'],
     'resta fuori: lo shadow DOM' => ['Tab dentro un dialogo aperto', 'gli elementi dentro uno shadow DOM non si contano'],
     'resta fuori: un tabindex positivo' => ['Tab dentro un dialogo aperto', 'un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l\'ordine del documento'],
+    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video, il fuoco dopo il clic su una notifica.
+    'il summary con ciò che ha dentro' => ['Tab dentro un dialogo aperto', 'tranne il `summary` che lo apre, con ciò che ha dentro'],
+    'resta fuori: i comandi di un video' => ['Tab dentro un dialogo aperto', 'E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata sola, e quando è l\'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono'],
+    'dopo il clic su una notifica' => ['Il fuoco nel pannello delle notifiche', 'In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello'],
 ]);
 
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
@@ -5060,6 +5064,9 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
     'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
+    // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
+    'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline: il nome di un contatto è un dato personale)'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
