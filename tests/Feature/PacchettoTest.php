@@ -1891,7 +1891,9 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
  * Che cosa non va, in ci.yml, nel passo che lancia quel comando: niente se il passo è sano. Un passo sano è un passo vero del
  * job, non un commento; viene dopo `npm ci`; la sua riga `run:` è il solo comando, senza una coda che ne copra l'uscita
  * (`|| true`); non ha `continue-on-error` né `if:`. Letture della PR #56, R4: cercare la stringa del comando in ci.yml non basta,
- * perché resta lì anche in un passo spento.
+ * perché resta lì anche in un passo spento. Lettura della PR #59, R5: un passo sano non ha nemmeno uno `shell:` suo, e sta in
+ * un job che ferma la CI — senza `continue-on-error`, `if:` né `defaults:` —, in un file senza `defaults:`; un job che il
+ * controllo non riconosce non è sano.
  *
  * @return list<string>
  */
@@ -1911,10 +1913,25 @@ function difettiDelPassoCheLancia(string $comando, string $ci): array
     if (preg_match('/^ {8}run: '.preg_quote($comando, '/').'\n/m', $delComando[0]) !== 1) {
         $difetti[] = 'la riga `run:` non è il solo comando';
     }
-    foreach (['continue-on-error', 'if'] as $chiave) {
+    foreach (['continue-on-error', 'if', 'shell'] as $chiave) {
         if (preg_match('/^ {6}(?:- | {2})'.$chiave.':/m', $delComando[0]) === 1) {
             $difetti[] = "il passo ha `{$chiave}:`";
         }
+    }
+    // Un job va dalla riga del suo nome, a due spazi, alla riga prima del job dopo: le sue righe hanno almeno quattro spazi, o
+    // sono vuote. Quello del passo è il solo che lo contiene, e le sue chiavi stanno a quattro spazi.
+    preg_match_all('/^ {2}\S.*\n(?:(?: {4}.*)?\n)*/m', $senzaCommenti, $job);
+    $delPasso = array_values(array_filter($job[0], fn (string $blocco) => str_contains($blocco, $delComando[0])));
+    if (count($delPasso) !== 1) {
+        $difetti[] = 'il job del passo non si trova';
+    }
+    foreach (['continue-on-error', 'if', 'defaults'] as $chiave) {
+        if (preg_match('/^ {4}'.$chiave.':/m', $delPasso[0] ?? '') === 1) {
+            $difetti[] = "il job del passo ha `{$chiave}:`";
+        }
+    }
+    if (preg_match('/^defaults:/m', $senzaCommenti) === 1) {
+        $difetti[] = 'il file ha `defaults:`';
     }
     $npmCi = strpos($senzaCommenti, "\n          npm ci\n");
     if ($npmCi === false || strpos($senzaCommenti, $delComando[0]) < $npmCi) {
@@ -2492,11 +2509,12 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
 
 const PASSO_DEL_REGISTRO = '## 8. Il prodotto nel registro';
 
-/** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. */
+/** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. Vuoto se non c'è. */
 function passoDellaGuida(string $guida, string $titolo): string
 {
-    // Com'era fino allo sprint 26: le frasi di un passo si cercano in tutta la guida.
-    return $guida;
+    preg_match('/^'.preg_quote($titolo, '/').'\n.*?(?=^## |\z)/ms', $guida, $passo);
+
+    return $passo[0] ?? '';
 }
 
 /**
@@ -2551,24 +2569,48 @@ it('le frasi dell\'errore pagato del registro si cercano nel solo passo 8 della 
 // restano verdi. Questo controllo ricava i due elenchi dal registro e li cerca nelle tre frasi, là dove sono scritte.
 
 /**
- * Che cosa, nel README e nella guida, non dice chi è in arrivo com'è nel registro dato: niente se le tre frasi tornano.
+ * Che cosa, nel README e nella guida, non dice chi è in arrivo com'è nel registro dato: niente se le tre frasi tornano. Dal
+ * registro: i prodotti in arrivo che non sono «Presto», col nome italiano (quello delle lingue), e quanti sono i «Presto». Dal
+ * capoverso del README sui due sì o no e dal passo 8 della guida: le tre frasi che li elencano, i nomi divisi da virgole e da
+ * « e », il numero in lettere. Una frase che manca, che nomina altri prodotti o che ne conta altri è un difetto, e dice che
+ * cosa dà il registro.
  *
  * @param  list<array<string, mixed>>  $registro
  * @return list<string>
  */
 function difettiDiChiEInArrivo(array $registro, string $readme, string $guida): array
 {
-    // Com'era fino allo sprint 26: le tre frasi scritte, senza guardare il registro.
+    $nomi = json_decode(File::get(__DIR__.'/../../resources/lingue/it.json'), true, flags: JSON_THROW_ON_ERROR);
+    $inOrdine = function (array $elenco): array {
+        sort($elenco);
+
+        return $elenco;
+    };
+    $inArrivo = array_values(array_map(
+        fn (array $voce): string => $nomi[$voce['id']],
+        array_filter($registro, fn (array $voce): bool => $voce['in_arrivo'] && ! $voce['presto']),
+    ));
+    $presto = count(array_filter($registro, fn (array $voce): bool => $voce['presto']));
+    $delRegistro = 'in arrivo e non «Presto»: '.($inArrivo === [] ? 'nessuno' : implode(', ', $inArrivo))."; «Presto»: {$presto}";
+    $inLettere = ['due' => 2, 'tre' => 3, 'quattro' => 4, 'cinque' => 5, 'sei' => 6];
+    $capoverso = paragrafoDeiDueSiONo($readme);
     $frasi = [
-        'README, «in arrivo e non «Presto»»' => [paragrafoDeiDueSiONo($readme), 'non `presto`: Bookings è in arrivo e non è «Presto»'],
-        'README, «in arrivo restano»' => [paragrafoDeiDueSiONo($readme), 'in arrivo restano Bookings e i tre «Presto»'],
-        'guida, «e lo restano»' => [suUnaRiga(passoDellaGuida($guida, PASSO_DEL_REGISTRO)), 'e lo restano Bookings e i tre «Presto»'],
+        'README, «in arrivo e non «Presto»»' => [$capoverso, '/non `presto`: (?<nomi>[^.;]+?) (?:è|sono) in arrivo e non (?:è|sono) «Presto»/u'],
+        'README, «in arrivo restano»' => [$capoverso, '/in arrivo restano (?<nomi>[^.;]+?) e i (?<presto>\pL+) «Presto»/u'],
+        'guida, «e lo restano»' => [suUnaRiga(passoDellaGuida($guida, PASSO_DEL_REGISTRO)), '/e lo restano (?<nomi>[^.;]+?) e i (?<presto>\pL+) «Presto»/u'],
     ];
 
-    return array_values(array_map(
-        fn (string $dove): string => "{$dove}: la frase non c'è",
-        array_keys(array_filter($frasi, fn (array $frase): bool => ! str_contains($frase[0], $frase[1]))),
-    ));
+    $difetti = [];
+    foreach ($frasi as $dove => [$testo, $forma]) {
+        $torna = preg_match($forma, $testo, $detto) === 1
+            && $inOrdine(preg_split('/, | e /u', $detto['nomi']) ?: []) === $inOrdine($inArrivo)
+            && (! isset($detto['presto']) || ($inLettere[$detto['presto']] ?? null) === $presto);
+        if (! $torna) {
+            $difetti[] = "{$dove}: non dice ciò che dà il registro ({$delRegistro})";
+        }
+    }
+
+    return $difetti;
 }
 
 it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; con Bookings fuori dall\'arrivo le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
@@ -2596,7 +2638,7 @@ it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in a
         ]);
 });
 
-it('la guida non dice più che il passo del registro non ha un errore pagato, e né i test, né il README, né la guida dicono più che il CRM è in anteprima (sprint 26 · T8.4)', function () {
+it('la guida non dice più che il passo del registro non ha un errore pagato, e le due forme scritte dell\'anteprima del CRM non stanno in `tests/`, nel README e nella guida (sprint 26 · T8.4; il titolo: sprint 27 · T5.5)', function () {
     // Le due frasi sono spezzate: intere, questo file le troverebbe in sé stesso.
     $inAnteprima = ['il CRM in '.'anteprima', 'in anteprima '.'(il CRM)'];
     $file = [...(glob(__DIR__.'/*.php') ?: []), ...(glob(__DIR__.'/../*.php') ?: []), __DIR__.'/../../README.md', __DIR__.'/../../MODULO-NUOVO.md'];
@@ -4379,17 +4421,14 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
 
 it('`Registro` legge il file una volta per processo: la prima richiesta dà le voci del registro del pacchetto e le tiene, e con delle voci già in mano dà quelle, senza tornare al file (sprint 26 · T3.2)', function () {
     $voci = new ReflectionProperty(Registro::class, 'voci');
-    $voci->setValue(null, null);
 
-    try {
-        expect(Registro::voci())->toBe(registroDeiProdotti())
-            ->and($voci->getValue())->toBe(registroDeiProdotti());
-        // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
-        $voci->setValue(null, [['id' => 'uat-gia-letto']]);
-        expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
-    } finally {
-        $voci->setValue(null, null);
-    }
+    // Prima della prima richiesta la classe non ha niente in mano: la copia del caso prima l'ha tolta `tests/Pest.php`.
+    expect($voci->getValue())->toBeNull()
+        ->and(Registro::voci())->toBe(registroDeiProdotti())
+        ->and($voci->getValue())->toBe(registroDeiProdotti());
+    // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
+    registroGiaLetto([['id' => 'uat-gia-letto']]);
+    expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
 });
 
 it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un altro file: fuori dal privato ha il solo `voci()`, statico e senza argomenti, e l\'unica proprietà è privata; è una classe interna, non per chi installa il pacchetto (sprint 26 · T3.3)', function () {
@@ -4422,7 +4461,7 @@ it('la copia del registro si scrive e si azzera in un posto solo, `tests/Pest.ph
     expect(array_key_exists('PacchettoTest.php', $neiFile))->toBe(true)
         ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
         ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
-        ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => registroGiaLetto(null))->in('Feature');"))->toBe(1);
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => {$chiamate[1]})->in('Feature');"))->toBe(1);
 });
 
 // L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di

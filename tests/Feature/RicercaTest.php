@@ -9,7 +9,6 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\RicercaDellaCornice;
-use Zeiras\Core\Registro;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -258,23 +257,19 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
         risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
         risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
     ], 'successivo' => null])]);
-    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche: nel codice
-    // che va in produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
-    $registro = new ReflectionProperty(Registro::class, 'voci');
-    $registro->setValue(null, [
+    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche
+    // (`registroGiaLetto()`, in `tests/Pest.php`): nel codice che va in produzione non c'è un aggancio per i test. Dopo il
+    // caso lo toglie `tests/Pest.php`, e la parte server torna a leggere quello del pacchetto.
+    registroGiaLetto([
         ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
         ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
         ['id' => 'uat-senza-risorse'],
     ]);
 
-    try {
-        cerca('UAT')->assertOk()->assertExactJson(['data' => [
-            ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
-            ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
-        ], 'workspace' => 'uat-marketing']);
-    } finally {
-        $registro->setValue(null, null);
-    }
+    cerca('UAT')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
+        ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
+    ], 'workspace' => 'uat-marketing']);
 });
 
 it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (sprint 25 · T6, R1; sprint 26 · T3.2)', function () {
@@ -568,15 +563,14 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
 // tutte le rotte: un registro di prova lasciato da un caso arriverebbe a ogni caso dopo, di questo file e degli altri. Lo
 // dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto. Lo
-// toglie l'`afterEach` qui sotto, dopo ogni caso di questo file.
-
-afterEach(fn () => (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, null));
+// toglie `tests/Pest.php`, dopo ogni caso di ogni file (sprint 27 · T5.2): fino allo sprint 26 lo toglieva un `afterEach` di
+// questo file, e i due casi provavano solo quello.
 
 it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo la ricerca dà a un contatto le chiavi del registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $contesto) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
     if ($diProva !== null) {
-        (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $diProva);
+        registroGiaLetto($diProva);
     }
 
     expect(cerca('UAT')->assertOk()->json('data.0.contesto'))->toBe($contesto);
