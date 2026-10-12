@@ -52,11 +52,11 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   commento (`board.commento.menzione`, dalla `v1.16.0`): il titolo, «Ti hanno menzionato in un commento», e la pagina
   della scheda, `/c/{id}`, perché un commento non ha una pagina sua.
   Dalla `v1.19.0` una notifica può dire chi ha fatto che cosa in una frase al posto del titolo («Marta Rossi ha
-  modificato la scheda «Lancio Q4»»), e oggi lo fanno quelle di Project Management: un modulo che vuole le sue frasi
-  le chiede all'agente di zr-core coi suoi testi nelle tre lingue, due per tipo: una con chi e che cosa (chiave
-  `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi
-  (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca — README, «La cornice», al punto «Le
-  notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
+  modificato la scheda «Lancio Q4»»), e dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce: un modulo
+  che vuole le sue frasi le chiede all'agente di zr-core coi suoi testi nelle tre lingue, due per tipo: una con chi e
+  che cosa (chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi
+  (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca, ed è la sola per un tipo di cui il
+  backoffice non dà il nome — README, «La cornice», al punto «Le notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
   (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li chiede con `fetch` quando si apre la campanella:
   nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto

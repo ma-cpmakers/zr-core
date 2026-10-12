@@ -979,7 +979,7 @@ describe('il pannello delle notifiche', () => {
             modificata('uat-n66', { autore_nome: '  ', risorsa_nome: 'Lancio corso' }),
             modificata('uat-n67', { risorsa_nome: 'Lancio corso' }),
             modificata('uat-n68', { autore_nome: { nome: 'UAT oggetto' }, risorsa_nome: 'Lancio corso' }),
-            // Un tipo con la sola frase con chi (del CRM, sprint 31 · T1): il nome della cosa, se arriva, resta sotto. Poi due senza frasi: di un'app, e uno che zr-core non conosce.
+            // Un tipo con la sola frase con chi (del CRM, sprint 31 · T1): il nome della cosa, se arriva, resta sotto. Poi un modulo, col suo nome nella frase al posto del codice (T2), e un tipo che zr-core non conosce, senza frasi.
             conInPiu('uat-n69', { app: 'crm', tipo: 'crm.trattativa.assegnata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Rinnovo' }),
             conInPiu('uat-n70', { app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
             conInPiu('uat-n71', { tipo: 'com.zeiras.board.scheda.spostata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
@@ -990,9 +990,9 @@ describe('il pannello delle notifiche', () => {
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
             '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità", frasiItaliane['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
+            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', t.notificationTitle,
         ]);
-        expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', 'Project Management', 'Lancio corso']);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', null, 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
         expect(voci()[0].textContent?.split('Lancio corso')).toHaveLength(2);
         expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual(['GB', 'GB', 'GB', 'GB', null, null, null, null, 'GB', 'GB', 'GB']);
@@ -1020,6 +1020,32 @@ describe('il pannello delle notifiche', () => {
         expect(secondeRighe()).toStrictEqual([null, null, null, 'Vendite', null, null]);
         expect(voci()[0].textContent?.split('Vendite')).toHaveLength(2);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»/);
+    });
+
+    // Sprint 31 · T2 (voce #1866). Anche le notifiche del workspace e dei moduli dicono chi ha fatto: di un modulo la frase porta
+    // il nome, non il codice; per il contratto chi ha fatto, quando una persona entra, è la persona entrata.
+    it('una notifica del workspace o di un modulo con chi ha per titolo la frase: il modulo col suo nome e mai col codice, la persona entrata, il membro tolto, il ruolo cambiato; senza chi resta il titolo di prima (sprint 31 · T2.2, T2.3)', async () => {
+        const diTutti = (id: string, tipo: string, inPiu: Record<string, unknown>) => conInPiu(id, { app: null, tipo, ...inPiu });
+        await apriSu([
+            diTutti('uat-n91', 'com.zeiras.app.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
+            diTutti('uat-n92', 'com.zeiras.app.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'uat-modulo-che-non-c-e' }),
+            diTutti('uat-n93', 'com.zeiras.workspace.membro.creato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n94', 'com.zeiras.workspace.membro.eliminato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n95', 'com.zeiras.workspace.membro.modificato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n96', 'com.zeiras.workspace.modificato', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Marketing' }),
+            // Senza chi: il titolo di prima, e sotto il nome del modulo.
+            diTutti('uat-n97', 'com.zeiras.app.modificata', { autore_nome: null, risorsa_nome: 'pm' }),
+            diTutti('uat-n98', 'com.zeiras.workspace.membro.creato', { risorsa_nome: null }),
+        ]);
+
+        expect(titoli()).toStrictEqual([
+            '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo',
+            '\u{2068}Giulia Bianchi\u{2069} è ora nel workspace', '\u{2068}Giulia Bianchi\u{2069} ha tolto una persona dal workspace', '\u{2068}Giulia Bianchi\u{2069} ha cambiato il ruolo di un membro',
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato il workspace «\u{2068}UAT Marketing\u{2069}»',
+            frasiItaliane['notificationTitle.com.zeiras.app.modificata'], frasiItaliane['notificationTitle.com.zeiras.workspace.membro.creato'],
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, null, null, 'Project Management', null]);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»|\bpm\b|uat-modulo/);
     });
 
     it.each([

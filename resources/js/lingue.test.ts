@@ -654,18 +654,34 @@ describe('rigaDellaNotifica', () => {
         ['crm.organizzazione.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'azienda'], en: [null, 'Giulia Bianchi assigned you a company'], es: [null, 'Giulia Bianchi te ha asignado una empresa'] }],
         ['crm.trattativa.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'opportunità'], en: [null, 'Giulia Bianchi assigned you an opportunity'], es: [null, 'Giulia Bianchi te ha asignado una oportunidad'] }],
         ['crm.attivita.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'attività'], en: [null, 'Giulia Bianchi assigned you an activity'], es: [null, 'Giulia Bianchi te ha asignado una actividad'] }],
+        // Sprint 31 · T2 (voce #1866). I cinque tipi del workspace, con le parole di zr-home: di un membro il backoffice non dà il nome.
+        // `com.zeiras.app.modificata` ha le sue frasi e un caso suo, più sotto: il suo `{what}` è il nome di un modulo, non un nome scritto da una persona.
+        ['com.zeiras.workspace.creato', { it: ['Giulia Bianchi ha creato il workspace «Lancio corso»', 'Giulia Bianchi ha creato il workspace'], en: ['Giulia Bianchi created the workspace “Lancio corso”', 'Giulia Bianchi created the workspace'], es: ['Giulia Bianchi ha creado el workspace «Lancio corso»', 'Giulia Bianchi ha creado el workspace'] }],
+        ['com.zeiras.workspace.modificato', { it: ['Giulia Bianchi ha modificato il workspace «Lancio corso»', 'Giulia Bianchi ha modificato il workspace'], en: ['Giulia Bianchi changed the workspace “Lancio corso”', 'Giulia Bianchi changed the workspace'], es: ['Giulia Bianchi ha modificado el workspace «Lancio corso»', 'Giulia Bianchi ha modificado el workspace'] }],
+        ['com.zeiras.workspace.membro.creato', { it: [null, 'Giulia Bianchi è ora nel workspace'], en: [null, 'Giulia Bianchi joined the workspace'], es: [null, 'Giulia Bianchi ya está en el workspace'] }],
+        ['com.zeiras.workspace.membro.modificato', { it: [null, 'Giulia Bianchi ha cambiato il ruolo di un membro'], en: [null, 'Giulia Bianchi changed a member\'s role'], es: [null, 'Giulia Bianchi ha cambiado el rol de un miembro'] }],
+        ['com.zeiras.workspace.membro.eliminato', { it: [null, 'Giulia Bianchi ha tolto una persona dal workspace'], en: [null, 'Giulia Bianchi removed someone from the workspace'], es: [null, 'Giulia Bianchi ha quitado a una persona del workspace'] }],
     ];
     /** I testi e le frasi delle notifiche di ogni lingua, insieme: i due file che ha in resources/lingue. */
     const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', { ...italiano, ...frasiItaliane }], ['en', { ...inglese, ...frasiInglesi }], ['es', { ...spagnolo, ...frasiSpagnole }]];
+    /** Le due frasi di `com.zeiras.app.modificata`, con «Giulia Bianchi»: il posto di `{what}` lo prende il nome del modulo nella lingua. */
+    const diUnModulo: Record<Lingua, [conIlModulo: (modulo: string) => string, soloChi: string]> = {
+        it: [(modulo) => `Giulia Bianchi ha attivato o disattivato il modulo «${modulo}»`, 'Giulia Bianchi ha attivato o disattivato un modulo'],
+        en: [(modulo) => `Giulia Bianchi turned the module “${modulo}” on or off`, 'Giulia Bianchi turned a module on or off'],
+        es: [(modulo) => `Giulia Bianchi ha activado o desactivado el módulo «${modulo}»`, 'Giulia Bianchi ha activado o desactivado un módulo'],
+    };
+    const SU_UN_APP = 'com.zeiras.app.modificata';
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
     const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare', 'Vendite'];
 
-    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me» e delle due pipeline del CRM ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri sedici del CRM la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2)', async (lingua) => {
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», delle due pipeline del CRM e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri sedici del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./index');
 
-        expect(frasi).toHaveLength(36);
+        expect(frasi).toHaveLength(41);
+        expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.workspace.'))).toHaveLength(5);
+        expect(frasi.flatMap(([tipo, perLingua]) => (tipo.startsWith('com.zeiras.workspace.') && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.workspace.creato', 'com.zeiras.workspace.modificato']);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
         // Del CRM solo la pipeline ha la frase col nome della cosa: il nome di un contatto è un dato personale, e degli altri il contratto non lo dà.
         expect(frasi.filter(([tipo]) => /(^|\.)crm\./.test(tipo))).toHaveLength(18);
@@ -703,6 +719,14 @@ describe('rigaDellaNotifica', () => {
         expect(titolo('com.zeiras.crm.persona.creata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato un contatto', ...NOMI_DEI_CASI) });
         expect(titolo('crm.trattativa.assegnata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati("Giulia Bianchi ti ha assegnato un'opportunità", ...NOMI_DEI_CASI) });
         expect(titolo('com.zeiras.crm.persona.modificata', 'en', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi edited a contact', ...NOMI_DEI_CASI) });
+        // Sprint 31 · T2.3: per il contratto chi ha fatto, in `membro.creato`, è la persona entrata; di un membro non c'è il nome.
+        expect(titolo('com.zeiras.workspace.membro.creato', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi è ora nel workspace', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.membro.eliminato', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha tolto una persona dal workspace', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.membro.modificato', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha cambiato il ruolo di un membro', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.membro.modificato', 'en', null)).toStrictEqual({ titolo: coiNomiIsolati("Giulia Bianchi changed a member's role", ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.membro.creato', 'es', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ya está en el workspace', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.modificato', 'it', 'Corsi 2026')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificato il workspace «Corsi 2026»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.workspace.creato', 'en', 'Corsi 2026')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi created the workspace “Corsi 2026”', ...NOMI_DEI_CASI) });
         expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.lista.creata', autore_nome: '  Giulia Bianchi ', risorsa_nome: '\tDa fare ' }, 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato la lista «Da fare»', ...NOMI_DEI_CASI) });
         // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
         expect(titolo('com.zeiras.board.scheda.creata', 'es_ES')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creado la tarjeta «Lancio corso»', ...NOMI_DEI_CASI) });
@@ -725,23 +749,43 @@ describe('rigaDellaNotifica', () => {
         expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.scheda.modificata', autore_nome: null, risorsa_nome: 'Lancio corso' }, 'it')).toStrictEqual({ titolo: 'Scheda modificata', sotto: 'Lancio corso' });
     });
 
-    it('un tipo senza frasi resta com\'è anche con chi: del workspace, di un\'app (sotto il nome del prodotto), uno che zr-core non conosce, uno che non è un testo (sprint 29 · T2.5)', async () => {
+    it('ogni tipo che ha un titolo ha le sue frasi; uno che zr-core non conosce, o che non è un testo, resta com\'è anche con chi (sprint 29 · T2.5; sprint 31 · T2.1)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./index');
-        const conLeFrasi = new Set(frasi.map(([tipo]) => tipo));
-        const senzaFrasi = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : [])).filter((tipo) => !conLeFrasi.has(tipo));
+        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP]);
+        const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(senzaFrasi).toHaveLength(42 - 36);
+        expect(conUnTitolo).toHaveLength(42);
+        expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
-            for (const tipo of senzaFrasi.filter((uno) => !uno.startsWith('com.zeiras.app.'))) {
-                expect([tipo, rigaDellaNotifica(diGiulia(tipo, 'UAT Rinnovo'), lingua)]).toStrictEqual([tipo, { titolo: file[`notificationTitle.${tipo}`], sotto: 'UAT Rinnovo' }]);
-                expect([tipo, rigaDellaNotifica(diGiulia(tipo, null), lingua)]).toStrictEqual([tipo, { titolo: file[`notificationTitle.${tipo}`] }]);
-            }
-            expect(rigaDellaNotifica(diGiulia('com.zeiras.app.modificata', 'pm'), lingua)).toStrictEqual({ titolo: file['notificationTitle.com.zeiras.app.modificata'], sotto: file.pm });
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
                 expect(rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua)).toStrictEqual({ titolo: titoloDellaNotifica(tipo, lingua), sotto: 'Lancio corso' });
                 expect(rigaDellaNotifica(diGiulia(tipo, 'Lancio corso'), lingua).titolo).toBe(file.notificationTitle);
             }
         }
+    });
+
+    // Sprint 31 · T2.2. Di un modulo il backoffice dà il codice (`pm`): nella frase c'è il nome nella lingua, mai il codice.
+    it.each(lingueDiPartenza)('con la lingua "%s" un modulo attivato o disattivato da Giulia ha nella frase il nome del modulo; con un codice che il registro non ha, o senza, la frase con solo chi; senza chi resta il titolo di prima (sprint 31 · T2.2)', async (lingua, file) => {
+        const { rigaDellaNotifica } = await import('./index');
+        const [conIlModulo, soloChi] = diUnModulo[lingua];
+        const modulo = file.pm ?? '';
+
+        expect(modulo).not.toBe('');
+        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), lingua)).toStrictEqual({ titolo: coiNomiIsolati(conIlModulo(modulo), 'Giulia Bianchi', modulo) });
+        for (const codice of ['uat-modulo-che-non-c-e', 'Project Management', null, '', undefined, 7]) {
+            expect([codice, rigaDellaNotifica(diGiulia(SU_UN_APP, codice), lingua)]).toStrictEqual([codice, { titolo: coiNomiIsolati(soloChi, 'Giulia Bianchi') }]);
+        }
+        expect(rigaDellaNotifica({ tipo: SU_UN_APP, autore_nome: null, risorsa_nome: 'pm' }, lingua)).toStrictEqual({ titolo: file[`notificationTitle.${SU_UN_APP}`], sotto: modulo });
+        // Il codice non si legge mai: né nella frase, né sotto.
+        expect(JSON.stringify([rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), lingua), rigaDellaNotifica(diGiulia(SU_UN_APP, 'uat-modulo-che-non-c-e'), lingua)])).not.toMatch(/\bpm\b|uat-modulo/);
+    });
+
+    it('la frase di un modulo, parola per parola: in italiano «Giulia Bianchi ha attivato o disattivato il modulo «Project Management»» (sprint 31 · T2.2)', async () => {
+        const { rigaDellaNotifica } = await import('./index');
+
+        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), 'it')).toStrictEqual({ titolo: '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»' });
+        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'uat-modulo-che-non-c-e'), 'it')).toStrictEqual({ titolo: '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo' });
+        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), 'en').titolo).toMatch(/^\u{2068}Giulia Bianchi\u{2069} turned the module “\u{2068}.+\u{2069}” on or off$/u);
     });
 
     it('un nome con dentro `{what}`, `{who}`, `$&` o `<b>` si legge com\'è scritto, una volta sola: nessun posto si riempie due volte (sprint 29 · T2.6)', async () => {
@@ -758,12 +802,12 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 52, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 61, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
-        expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).sort());
-        expect(chiavi).toHaveLength(52);
+        expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).sort());
+        expect(chiavi).toHaveLength(61);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
             expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);

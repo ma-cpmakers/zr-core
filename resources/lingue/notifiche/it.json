@@ -92,5 +92,14 @@
     "notificationTitleWho.crm.persona.assegnata": "{who} ti ha assegnato un contatto",
     "notificationTitleWho.crm.organizzazione.assegnata": "{who} ti ha assegnato un'azienda",
     "notificationTitleWho.crm.trattativa.assegnata": "{who} ti ha assegnato un'opportunità",
-    "notificationTitleWho.crm.attivita.assegnata": "{who} ti ha assegnato un'attività"
+    "notificationTitleWho.crm.attivita.assegnata": "{who} ti ha assegnato un'attività",
+    "notificationTitleWhoWhat.com.zeiras.workspace.creato": "{who} ha creato il workspace «{what}»",
+    "notificationTitleWhoWhat.com.zeiras.workspace.modificato": "{who} ha modificato il workspace «{what}»",
+    "notificationTitleWhoWhat.com.zeiras.app.modificata": "{who} ha attivato o disattivato il modulo «{what}»",
+    "notificationTitleWho.com.zeiras.workspace.creato": "{who} ha creato il workspace",
+    "notificationTitleWho.com.zeiras.workspace.modificato": "{who} ha modificato il workspace",
+    "notificationTitleWho.com.zeiras.workspace.membro.creato": "{who} è ora nel workspace",
+    "notificationTitleWho.com.zeiras.workspace.membro.modificato": "{who} ha cambiato il ruolo di un membro",
+    "notificationTitleWho.com.zeiras.workspace.membro.eliminato": "{who} ha tolto una persona dal workspace",
+    "notificationTitleWho.com.zeiras.app.modificata": "{who} ha attivato o disattivato un modulo"
 }

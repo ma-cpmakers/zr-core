@@ -82,12 +82,12 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 26,4 KB | 3,8 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 26,4 KB | 3,8 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 26,4 KB | 3,8 KB |
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 29,1 KB | 4,1 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 29,1 KB | 4,1 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 29,1 KB | 4,1 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
-notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 0,9 KB l'uno con gzip), che la cornice chiede con
+notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
 di JS, i rimedi provvisori di tastiera (circa 1 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
@@ -532,15 +532,22 @@ cornice === null ? pagina : (
   apertura. `prove` è per i test: non è un ingresso per le pagine. Un caso che rifà i moduli (`vi.resetModules()`)
   la richiama dopo aver importato di nuovo la cornice: le frasi stanno in memoria nel modulo delle lingue, e un modulo
   rifatto riparte senza.
-  Dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa, in una frase al posto del titolo
-  («Marta Rossi ha modificato la scheda «Lancio Q4»»). Per questo le lingue hanno due famiglie di chiavi in più:
-  `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo
-  `{who}` («Marta Rossi ha eliminato una scheda»). Le hanno i diciotto tipi di Project Management: tutti la seconda,
-  e la prima i quattordici che non sono una cosa eliminata. La frase si sceglie scendendo: con `autore_nome` e il
-  nome della cosa il titolo è la frase con chi e che cosa; con `autore_nome` e senza il nome, o per una cosa
-  eliminata, è la frase con solo chi; senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di
-  prima col nome sotto. Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c'è. La board
-  su cui è successo non compare: il contratto del 12/10/2026 non la dà.
+  Una notifica dice chi ha fatto che cosa, in una frase al posto del titolo («Marta Rossi ha modificato la scheda
+  «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
+  `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
+  segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
+  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima diciannove: i quattordici di
+  Project Management che non sono una cosa eliminata, le due pipeline del CRM, il workspace creato e modificato, e il
+  modulo attivato o disattivato. Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa
+  eliminata, un membro del workspace, e del CRM tutto tranne la pipeline (il nome di un contatto è un dato
+  personale). Per un modulo c'è una differenza: di un modulo il backoffice dà il codice (`pm`), e nella frase c'è il
+  nome nella lingua della persona; con un codice che il registro non ha resta la frase con solo chi. E quando una
+  persona entra nel workspace chi ha fatto, per il contratto, è lei: la frase è «Marta Rossi è ora nel workspace».
+  La frase si sceglie scendendo: con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa; con
+  `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi; senza `autore_nome`, o
+  per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto. Il nome della cosa sta una volta
+  sola: quando è nella frase la seconda riga non c'è. La board su cui è successo non compare: il contratto del
+  12/10/2026 non la dà.
   Dalla `v1.20.0` i due nomi, che ha scritto una persona, sono difesi prima di entrare in pagina. Restano testo: mai
   HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando. Sono puliti: senza i caratteri che cambiano
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
