@@ -50,7 +50,7 @@ function tipiDiRisorsa(): array
 }
 
 /**
- * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<prodotto>.<tipo>.<chiave>.<codice>`:
+ * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>`:
  *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti
  */
 function codiciDelContesto(): array

@@ -767,19 +767,36 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
 
 // Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice
 // (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core, sotto
-// `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
+// `searchContext.<voce>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
 // codici, lo dice il registro (`risorse[].codici`), e le lingue hanno un testo per ognuno e per nessun altro.
-it('in ogni lingua i tre ruoli di un membro del workspace hanno il loro testo, quello della pagina dei membri, sotto il codice del registro (sprint 27 · T1.3)', function (string $codice, array $ruoli) {
+// Sprint 28 · T1.4 (voce #1826): dopo i tre ruoli, i due esiti di un'opportunità chiusa, con le parole che zr-crm usa per lo
+// stato di un'opportunità. `aperta` non è un codice del registro, e nessuna lingua le dà un testo.
+it('in ogni lingua i tre ruoli di un membro del workspace e i due esiti di un\'opportunità chiusa hanno il loro testo sotto il codice del registro; `aperta` non ne ha uno (sprint 27 · T1.3; sprint 28 · T1.4)', function (string $codice, array $attesi) {
     $testi = lingueDellaCornice()[$codice];
 
-    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
-        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($ruoli)
-        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(3);
+    expect(codiciDelContesto())->toBe([
+        'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
+        'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
+    ])
+        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($attesi)
+        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(5)
+        ->and(array_values(preg_grep('/^searchContext\..*\.aperta$/', array_keys($testi)) ?: []))->toBe([]);
 })->with([
-    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro']],
-    'inglese' => ['en', ['Owner', 'Admin', 'Member']],
-    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro']],
+    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
+    'inglese' => ['en', ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
+    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
 ]);
+
+it('il controllo trova l\'esito di un\'opportunità che manca in una lingua, e un testo per `aperta`, che non è un codice del registro (sprint 28 · T1.4)', function () {
+    $lingue = lingueDellaCornice();
+    unset($lingue['es']['searchContext.crm.crm.trattativa.esito.persa']);
+    $lingue['it']['searchContext.crm.crm.trattativa.esito.aperta'] = 'Aperta';
+
+    expect(problemiDelleLingue($lingue))->toBe([
+        'it: «searchContext.crm.crm.trattativa.esito.aperta» non è un testo della cornice',
+        'es: manca «searchContext.crm.crm.trattativa.esito.persa»',
+    ]);
+});
 
 it('il controllo trova il testo di un ruolo che manca in una lingua, e il testo di un codice che il registro non ha: un ruolo in più, o il ruolo di un contatto, che è un testo libero (sprint 27 · T1.3)', function () {
     $lingue = lingueDellaCornice();

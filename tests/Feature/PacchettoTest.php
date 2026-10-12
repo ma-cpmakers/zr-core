@@ -4070,7 +4070,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
     'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che si mostra com\'è arrivato (il ruolo di un contatto del CRM)'],
-    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
     'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
 ]);
 
@@ -4116,6 +4116,61 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
+// Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
+// README lo dice nel punto «La ricerca», nella riga della rotta (di un'opportunità passa anche `esito`, com'è arrivato) e nel
+// capoverso delle risorse del registro (ha `codici` anche l'opportunità; `aperta` non è un codice).
+it('il README dice che dalla v1.18.0 un\'opportunità chiusa mostra l\'esito e una aperta no: nel punto «La ricerca», nella riga della rotta e nel capoverso delle risorse del registro (sprint 28 · T1.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'registro' => capoversoDelleRisorse($readme),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la ricerca: l\'esito, per terzo' => ['ricerca', 'Dalla `v1.18.0` un\'opportunità chiusa mostra anche l\'esito, per terzo'],
+    'la ricerca: un\'opportunità aperta' => ['ricerca', 'un\'opportunità aperta resta con pipeline e fase, senza un terzo testo'],
+    'la ricerca: il codice e il registro' => ['ricerca', 'Dell\'esito il backoffice dà il codice (`aperta`, `vinta` o `persa`) e il registro ha i soli `vinta` e `persa`'],
+    'la riga: passa anche esito' => ['rotta', 'dalla `v1.18.0` di un\'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com\'è arrivato: quali esiti si mostrano lo sa la cornice'],
+    'il registro: i codici dell\'opportunità' => ['registro', 'Dalla `v1.18.0` ha `codici` anche l\'opportunità del CRM (`crm.trattativa`), che a `pipeline` e `fase` aggiunge la chiave `esito`'],
+    'il registro: i due testi' => ['registro', 'coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa`'],
+    'il registro: aperta non è un codice' => ['registro', '`aperta`, che il backoffice dà per un\'opportunità aperta, non è fra i codici e non ha un testo: così un\'opportunità aperta non mostra l\'esito'],
+]);
+
+it('gli esiti che README e guida dicono per un\'opportunità sono i codici del registro coi testi delle lingue, nell\'ordine del registro, e `aperta` non è fra quelli (sprint 28 · T1.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $davanti = 'crm.crm.trattativa.esito.';
+    $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
+    $fraAccenti = array_map(fn (string $codice): string => '`'.$codice.'`', $codici);
+    $nella = function (string $lingua) use ($codici, $davanti): array {
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        return array_map(fn (string $codice): string => $testi['searchContext.'.$davanti.$codice], $codici);
+    };
+    [$vinta, $persa] = $nella('it');
+
+    expect($codici)->toBe(['vinta', 'persa'])
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'per terzo: «Vendite · Proposta · '.$vinta.'», o «… · '.$persa.'» (in inglese «'.implode('» e «', $nella('en')).'», in spagnolo «'.implode('» e «', $nella('es')).'»)'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), 'i codici sono '.implode(' e ', $fraAccenti).', coi testi'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), '(«'.$vinta.'» e «'.$persa.'»)'))->toBe(true)
+        ->and(str_contains(suUnaRiga(guidaDelModuloNuovo()), 'per l\'`esito` ('.implode(', ', $fraAccenti).':'))->toBe(true);
+});
+
+// Lettura della PR #60, C1: la chiave del testo di un codice comincia con la voce del registro, e la voce `home` non è un
+// modulo. README e guida la scrivevano con `<prodotto>`.
+it('README e guida scrivono la chiave del testo di un codice con `<voce>` e non più con `<prodotto>`, e la guida non dice più il membro del workspace come la sola risorsa coi `codici` (sprint 28 · T1.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga(guidaDelModuloNuovo());
+
+    expect(str_contains($readme, 'searchContext.<prodotto>.'))->toBe(false)
+        ->and(str_contains($guida, 'searchContext.<prodotto>.'))->toBe(false)
+        ->and(substr_count($readme, '`searchContext.<voce>.<tipo>.<chiave>.<codice>`'))->toBe(1)
+        ->and(substr_count($guida, '`searchContext.<voce>.<tipo>.<chiave>.<codice>`'))->toBe(1)
+        ->and(str_contains($guida, 'Oggi ha `codici` il membro del workspace'))->toBe(false);
+});
+
 it('la guida dice nel passo del registro, e non altrove, come si dà a una risorsa una chiave di `contesto` che è un codice: `codici` nel registro e un testo per codice in ogni lingua; nel passo della ricerca nomina i membri e rimanda al passo del registro (sprint 27 · T3.3)', function (string $passo, string $frase) {
     $guida = guidaDelModuloNuovo();
     preg_match('/^## '.preg_quote($passo, '/').'$(.*?)(?=^## |\z)/ms', $guida, $delPasso);
@@ -4126,9 +4181,11 @@ it('la guida dice nel passo del registro, e non altrove, come si dà a una risor
         ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
 })->with([
     'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
-    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`)'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
     'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
-    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi ha `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`)'],
+    // Sprint 28 · T1.5: dalla `v1.18.0` li ha anche l'opportunità, e il membro non è più detto come la sola risorsa coi `codici`.
+    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi hanno `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l\'opportunità del CRM, per l\'`esito` (`vinta`, `persa`'],
+    'aperta non è un codice' => ['8. Il prodotto nel registro', '`aperta` non è un codice, e un\'opportunità aperta non mostra l\'esito'],
     'la ricerca trova anche i membri' => ['9. La ricerca', 'opportunità del CRM (dalla `v1.17.0` anche i membri del workspace, che non sono di un modulo)'],
     'il rimando dal passo della ricerca' => ['9. La ricerca', 'Una chiave di `contesto` che porta un codice vuole anche `codici` (passo 8)'],
 ]);

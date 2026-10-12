@@ -157,19 +157,20 @@ it('di ogni risultato la rotta dà `contesto`: i testi che il backoffice ha dato
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [
         risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', ['lista' => 'Da fare', 'board' => 'UAT Sito']),
-        risultatoDelBackoffice('crm.trattativa', 'uat-t1', 'UAT Opportunità', ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta']),
+        // Sprint 28 · T1.3: di un'opportunità esce anche `esito`, com'è arrivato — anche `aperta`: non mostrarlo è della cornice.
+        risultatoDelBackoffice('crm.trattativa', 'uat-t1', 'UAT Opportunità', ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta', 'esito' => 'aperta']),
         risultatoDelBackoffice('crm.organizzazione', 'uat-o1', 'UAT Azienda'),
     ], 'successivo' => null])]);
 
     $risposta = cerca('UAT')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => ['lista' => 'Da fare', 'board' => 'UAT Sito']],
-        ['tipo' => 'crm.trattativa', 'id' => 'uat-t1', 'titolo' => 'UAT Opportunità', 'contesto' => ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta']],
+        ['tipo' => 'crm.trattativa', 'id' => 'uat-t1', 'titolo' => 'UAT Opportunità', 'contesto' => ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta', 'esito' => 'aperta']],
         ['tipo' => 'crm.organizzazione', 'id' => 'uat-o1', 'titolo' => 'UAT Azienda', 'contesto' => null],
     ], 'workspace' => 'uat-marketing']);
 
     // Un oggetto, con le chiavi nell'ordine del backoffice (qui `lista` prima di `board`): l'ordine in cui mostrarle è della cornice.
     expect($risposta->getContent())->toContain('"contesto":{"lista":"Da fare","board":"UAT Sito"}')
-        ->toContain('"contesto":{"pipeline":"UAT Vendite","fase":"Proposta"}');
+        ->toContain('"contesto":{"pipeline":"UAT Vendite","fase":"Proposta","esito":"aperta"}');
 });
 
 it('di `contesto` passano solo le chiavi che il registro dà al tipo del risultato, e solo coi valori di testo non vuoti: un null, un testo vuoto, un numero, un vero, un oggetto e una lista non passano, una chiave che il registro non dà a quel tipo nemmeno, e un contesto che così resta senza valori, o che non è un oggetto, è null (sprint 25 · T3.2; T6, R1)', function (mixed $delBackoffice, ?array $perLaCornice) {
@@ -228,7 +229,7 @@ it('un membro del workspace esce con tipo, id, titolo e il solo `ruolo` del cont
 ]);
 
 /** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
-const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite'];
+const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite', 'esito' => 'vinta'];
 
 it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di un contesto che le porta tutte restano le sue, nell\'ordine del backoffice (sprint 25 · T6, R1)', function (string $tipo, string $resta) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
@@ -238,7 +239,8 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
 })->with([
     'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
-    'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite"}'],
+    // Sprint 28 · T1.3: `esito` esce per la sola opportunità; una scheda o un contatto che lo portassero non lo fanno uscire.
+    'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite","esito":"vinta"}'],
     // Sprint 27 · T1.5: a un membro del workspace il registro dà il solo `ruolo`. Il valore passa com'è: quali codici hanno un
     // testo lo sa la cornice, nel browser.
     'un membro del workspace' => ['workspace.membro', '{"ruolo":"Direttore"}'],
