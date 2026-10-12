@@ -82,7 +82,21 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
 
         expect([esito.uscita, esito.detto, esito.file === RITOCCATO]).toStrictEqual([1, '', true]);
         expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: la riga 1 dichiara il formato 5, lo script conosce il 4');
+        // Il rimedio di un bundle di un'altra forma è lo script (letture della PR #56, N7): resta detto qui, e solo qui.
+        expect(esito.errore).toContain('resources/js/zeiras/componenti.js non è stato scritto: lo script va riallineato alla forma nuova del bundle.');
+    });
+
+    // Letture della PR #56, N7. Un bundle che manca non è un bundle di un'altra forma: il comando dice che il file non si legge
+    // e perché, e non manda a riallineare lo script. Esce 1 e non scrive niente, come per ogni altro errore.
+    it.each([[['--controlla']], [[]]])('senza il bundle (argomenti: %j) esce 1, dice che il bundle non si legge e perché, non scrive niente e non dice di riallineare lo script (sprint 26 · T2.5)', (argomenti) => {
+        rmSync(nellaCopia(FILE_DEL_BUNDLE));
+        writeFileSync(nellaCopia(FILE_DEL_MODULO), RITOCCATO);
+        const esito = comando(argomenti);
+
+        expect([esito.uscita, esito.detto, esito.file === RITOCCATO]).toStrictEqual([1, '', true]);
+        expect(esito.errore).toContain('resources/zeiras/bundle.js: non si legge (ENOENT');
         expect(esito.errore).toContain('resources/js/zeiras/componenti.js non è stato scritto');
+        expect(esito.errore).not.toContain('riallineato');
     });
 
     it('lanciato da un collegamento simbolico alla cartella fa lo stesso lavoro: col file ritoccato `--controlla` esce 1', () => {

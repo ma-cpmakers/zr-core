@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -230,5 +230,68 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
         vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
 
         expect(await Promise.all(chiamate.map(([, chiama]) => esitoDi(chiama)))).toStrictEqual(['Error', 'Error', 'Error', 'Error']);
+    });
+});
+
+// Sprint 26 · T4 (lettura della PR #56, R8): il freno del backoffice. Quando una rotta della cornice risponde 429 con
+// `Retry-After` — i secondi che il backoffice ha detto, un intero da 1 in su — l'errore è `TroppeRichieste`, e li porta: che
+// cosa farne lo decide chi ha chiamato (la cornice ferma la ricerca per quei secondi: cornice.test.tsx). Senza
+// quell'intestazione, o con un valore che non è un intero da 1 in su, è l'errore di sempre; e lo è ogni altro stato, anche con
+// l'intestazione.
+describe('il 429 con `Retry-After` di una rotta della cornice', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    /** Una risposta con quello stato e, se c'è, quel `Retry-After`: come `fetch` la dà, con le sue intestazioni. */
+    const frenata = (stato: number, riprovaFra?: string) => ({
+        ok: false,
+        status: stato,
+        headers: new Headers(riprovaFra === undefined ? {} : { 'Retry-After': riprovaFra }),
+        json: async () => ({ errore: 'troppe_richieste' }),
+    }) as unknown as Response;
+    /** L'errore con cui la ricerca finisce. */
+    const erroreDellaRicerca = () => cerca('uat', new AbortController().signal).then(() => undefined, (errore: unknown) => errore);
+
+    it.each<[string, number]>([
+        ['1', 1],
+        ['5', 5],
+        ['60', 60],
+        // Il tetto non è di qui: l'errore dice ciò che il backoffice ha detto, e lo taglia chi frena.
+        ['3600', 3600],
+        ['007', 7],
+    ])('un 429 con `Retry-After: %s` lancia TroppeRichieste coi suoi secondi, che è un errore come gli altri per chi non la guarda (sprint 26 · T4.2)', async (riprovaFra, secondi) => {
+        vi.stubGlobal('fetch', vi.fn(async () => frenata(429, riprovaFra)));
+
+        const errore = await erroreDellaRicerca();
+        expect(errore).toBeInstanceOf(TroppeRichieste);
+        expect(errore).toBeInstanceOf(Error);
+        expect([(errore as TroppeRichieste).secondi, (errore as TroppeRichieste).message]).toStrictEqual([secondi, 'POST /cornice/ricerca: 429']);
+    });
+
+    it.each<[string, string | undefined]>([
+        ['senza `Retry-After`', undefined],
+        ['con `Retry-After: 0`', '0'],
+        ['con `Retry-After: -1`', '-1'],
+        ['con `Retry-After: 1.5`', '1.5'],
+        ['con `Retry-After: abc`', 'abc'],
+        ['con una data in `Retry-After`', 'Wed, 21 Oct 2026 07:28:00 GMT'],
+        ['con `Retry-After` vuoto', ''],
+        ['con `Retry-After: 1e3`', '1e3'],
+        ['con `Retry-After: +5`', '+5'],
+        ['con `Retry-After: 5s`', '5s'],
+        ['con `Retry-After: 0x10`', '0x10'],
+    ])('un 429 %s è l\'errore di sempre, non TroppeRichieste (sprint 26 · T4.3)', async (_caso, riprovaFra) => {
+        vi.stubGlobal('fetch', vi.fn(async () => frenata(429, riprovaFra)));
+
+        const errore = await erroreDellaRicerca();
+        expect([errore instanceof Error, errore instanceof TroppeRichieste, (errore as Error).message]).toStrictEqual([true, false, 'POST /cornice/ricerca: 429']);
+    });
+
+    it.each([500, 403, 503, 422])('un %d con `Retry-After: 5` è l\'errore di sempre, non TroppeRichieste: solo il 429 dice di aspettare (sprint 26 · T4.3)', async (stato) => {
+        vi.stubGlobal('fetch', vi.fn(async () => frenata(stato, '5')));
+
+        const errore = await erroreDellaRicerca();
+        expect([errore instanceof Error, errore instanceof TroppeRichieste, (errore as Error).message]).toStrictEqual([true, false, `POST /cornice/ricerca: ${stato}`]);
     });
 });

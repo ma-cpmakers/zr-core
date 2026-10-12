@@ -237,20 +237,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata apre la sua pagina in zr-board. «Nuova scheda»,
     // nell'elenco di sempre, porta l'id della sua scheda come dalla parte server; la scheda assegnata e una eliminata stanno
     // dietro `?schede=1`.
-    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, e in fondo una scheda eliminata, letta; zr-core conosce i due tipi, la prima apre la scheda e la seconda no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4)', async () => {
+    // Sprint 26 · T6 (voce #1773): con lo stesso parametro, subito dopo la scheda assegnata, una menzione in un commento.
+    it('con `?schede=1` in cima all\'elenco c\'è la notifica a chi viene assegnata una scheda, da leggere, col tipo senza `com.zeiras.` davanti, chi l\'ha assegnata e il nome della scheda, poi una menzione in un commento, da leggere, col solo id della sua scheda, e in fondo una scheda eliminata, letta; zr-core conosce i tre tipi, le prime due aprono ognuna la sua scheda e l\'ultima no, e «Nuova scheda» apre la sua (sprint 24 · T3.1, T3.2, T3.4; sprint 26 · T6.1, T6.2)', async () => {
         await rotte(false, '?schede=1');
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; creata_il: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
         const { destinazioneDellaNotifica } = await import('../js/index');
         const apre = (notifica: (typeof notifiche)[number]) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null;
-        const [assegnata, eliminata] = [notifiche[0], notifiche[5]];
+        const [assegnata, menzione, eliminata] = [notifiche[0], notifiche[1], notifiche[6]];
 
-        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-s1', 'uat-s3', 'uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-s2']);
         expect(assegnata).toEqual({ id: 'uat-s1', creata_il: assegnata?.creata_il, letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } });
+        expect(menzione).toEqual({ id: 'uat-s3', creata_il: menzione?.creata_il, letta: false, app: 'pm', tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Rivedere il piano editoriale', per_me: true, ids: { id: 'uat-scheda-3' } });
         expect([eliminata?.app, eliminata?.tipo, eliminata?.letta, eliminata?.ids]).toEqual(['pm', 'com.zeiras.board.scheda.eliminata', true, {}]);
-        expect([assegnata, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true]);
-        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
+        expect([assegnata, menzione, eliminata].map((notifica) => Object.keys(inglese).includes(`notificationTitle.${notifica?.tipo}`))).toEqual([true, true, true]);
+        expect(notifiche.map(apre)).toEqual(['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-2', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-3', 'https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1', null, null, null, null]);
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
@@ -515,7 +517,7 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     const scheda = { tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } };
     const delCrm = [
         { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
-        { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+        { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
         { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
         { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
     ];
@@ -534,9 +536,44 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ['con `?schede=1` per prima c\'è una scheda, col suo `contesto`', '?schede=1', [scheda, ...diPrima]],
         ['con `?crm_attivo=1` per primi ci sono contatti, aziende e opportunità, ognuno col suo `contesto`', '?crm_attivo=1', [...delCrm, ...diPrima]],
         ['con tutti e due, nell\'ordine di ricerca.crea: schede, contatti, aziende e opportunità, poi board e cartelle', '?schede=1&crm_attivo=1', [scheda, ...delCrm, ...diPrima]],
-        ['con `?senza_crm=1` i risultati del CRM non ci sono', '?schede=1&senza_crm=1', [scheda, ...diPrima]],
+        // Letture della PR #56, N3: `crm_attivo` c'è, ed è `senza_crm` a togliere i risultati del CRM. Senza `crm_attivo`
+        // mancherebbero comunque, e il caso resterebbe verde anche se la rotta finta non guardasse `senza_crm`.
+        ['con `?senza_crm=1` i risultati del CRM non ci sono, nemmeno con `?crm_attivo=1`', '?schede=1&crm_attivo=1&senza_crm=1', [scheda, ...diPrima]],
     ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13)', async (_caso, query, attesi) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
+    });
+
+    // Sprint 26 · T4 (lettura della PR #56, R8). `?ricerca_frenata=<secondi>` fa rispondere alla prima ricerca come la parte
+    // server quando il backoffice frena — 429 `troppe_richieste` con `Retry-After` —, e alle successive come sempre: così sulla
+    // pagina di prova si vede la cornice che aspetta.
+    it('con `?ricerca_frenata=5` la prima ricerca risponde 429 `troppe_richieste` con `Retry-After: 5`, e le successive come sempre (sprint 26 · T4)', async () => {
+        const prima = await rispostaGrezzaDi('/cornice/ricerca', cerca('uat'), '?ricerca_frenata=5');
+        expect([prima.status, prima.headers.get('Retry-After'), await prima.json()]).toStrictEqual([429, '5', { errore: 'troppe_richieste' }]);
+
+        const seconda = await rispostaGrezzaDi('/cornice/ricerca', cerca('uat'), '?ricerca_frenata=5');
+        expect([seconda.status, seconda.headers.get('Retry-After'), ((await seconda.json()) as { data: unknown[] }).data.length > 0]).toStrictEqual([200, null, true]);
+    });
+
+    // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
+    // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
+    // non dà altre forme: un contatto senza azienda né ruolo ha `null`.
+    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null` (sprint 26 · T1.3)', async () => {
+        const { registro } = await import('../js/registro');
+        const chiaviDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo)?.contesto ?? [];
+        const risultati = (await rispostaDi('/cornice/ricerca', cerca('uat'), '?schede=1&crm_attivo=1')).corpo.data as { tipo: unknown; id: unknown; contesto: Record<string, unknown> | null }[];
+        const fuoriForma = risultati.filter(({ tipo, contesto }) => {
+            if (contesto === null) {
+                return false;
+            }
+            const voci = Object.entries(contesto);
+
+            return voci.length === 0 || voci.some(([chiave, valore]) => !chiaviDi(tipo).includes(chiave) || typeof valore !== 'string' || valore === '');
+        });
+
+        expect(fuoriForma.map(({ id }) => id)).toStrictEqual([]);
+        expect(risultati.find(({ id }) => id === 'uat-p2')?.contesto).toBeNull();
+        // Il controllo non è vuoto: fra i risultati ce ne sono col contesto, e sono quelli di una scheda, di un contatto e di un'opportunità.
+        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1']);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([

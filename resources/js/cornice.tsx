@@ -4,7 +4,7 @@ import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaR
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -255,7 +255,12 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     return scelta;
 }
 
-/** Ciò che unisce due testi in una riga, come nel design system. */
+/**
+ * Ciò che unisce due testi in una riga. Non è un testo delle lingue, ed è scritto qui apposta: è il segno che il design system
+ * scrive da sé fra due testi di una riga dell'`AppShell` (il prodotto e l'ora di una notifica), e la seconda riga di un
+ * risultato, che sta nello stesso `AppShell`, li unisce allo stesso modo. Un caso di `cornice.test.tsx` lo lega a quello del
+ * design system: se lì cambia, il caso è rosso e questo si cambia con lui.
+ */
 const FRA_DUE_TESTI = ' · ';
 
 /**
@@ -357,6 +362,12 @@ interface LettaConUnClic extends Saputo {
  * Si esporta per i casi (`cornice.test.tsx`): non è dell'ingresso, e `index.ts` non lo riesporta.
  */
 export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready'; risultati: RisultatoDellaRicerca[]; workspace: string };
+
+/**
+ * Quanti secondi, al più, la cornice tiene ferma la ricerca dopo un 429 del backoffice, qualunque cosa dica `Retry-After`: la
+ * cornice resta montata fra le pagine, e un valore sbagliato non deve spegnere la ricerca per un'ora.
+ */
+const TETTO_DEL_FRENO = 60;
 
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
@@ -689,8 +700,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
     // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
     // un errore della ricerca, perché non c'è una pagina di ripiego: mai i risultati aperti nel workspace della pagina a tentoni.
-    // Lo stato è un'unione: dei risultati stanno sempre col loro workspace. `undefined` finché non si è cercato niente: per
-    // l'`AppShell` è una ricerca pronta, senza risultati.
+    // Lo stato è un'unione: dei risultati stanno sempre col loro workspace. `undefined` finché non si è cercato niente, e di
+    // nuovo dopo lo stato ridotto, che la dimentica: per l'`AppShell` è una ricerca pronta, senza risultati.
     const [ricerca, setRicerca] = useState<StatoDellaRicerca>();
     const ricercaInVolo = useRef<AbortController>(undefined);
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
@@ -699,9 +710,25 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const ridottaAdesso = useRef(ridotta);
     useLayoutEffect(() => {
         ridottaAdesso.current = ridotta;
+        if (ridotta) {
+            ricercaInVolo.current?.abort();
+            ricercaInVolo.current = undefined;
+        }
     });
+    // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
+    // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
+    // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
+    // non ha cercato (quella scritta mentre era ridotta non è partita).
+    if (ridotta && ricerca !== undefined) {
+        setRicerca(undefined);
+    }
+    // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
+    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato resta
+    // l'errore: una parola battuta nel frattempo non mostra il caricamento. Allo scadere non parte niente da solo: parte la
+    // prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna indietro.
+    const frenataFinoA = useRef(0);
     const cercaParola = (parola: string) => {
-        if (ridottaAdesso.current) {
+        if (ridottaAdesso.current || performance.now() < frenataFinoA.current) {
             return;
         }
         ricercaInVolo.current?.abort();
@@ -716,6 +743,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
             (errore: unknown) => {
                 seDaAccettare(errore);
+                if (errore instanceof TroppeRichieste) {
+                    frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
+                }
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'error' });
                 }

@@ -11,11 +11,12 @@
             "notifiche": [
                 { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
                 { "tipo": "com.zeiras.board.scheda.modificata", "percorso": "/c/{id}" },
-                { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" }
+                { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" },
+                { "tipo": "board.commento.menzione", "percorso": "/c/{id}" }
             ]
         },
         {
-            "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": true,
+            "id": "crm", "icona": "users", "tono": "sky", "indirizzo": "https://crm.zeiras.com", "presto": false, "in_arrivo": false,
             "risorse": [
                 { "tipo": "crm.persona", "icona": "users", "percorso": "/contatti/{id}", "contenitore": false, "contesto": ["organizzazione", "ruolo"] },
                 { "tipo": "crm.organizzazione", "icona": "building", "percorso": "/aziende/{id}", "contenitore": false },

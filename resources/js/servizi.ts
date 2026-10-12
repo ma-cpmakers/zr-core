@@ -37,10 +37,12 @@ export interface RisultatoDellaRicerca {
     id: string;
     titolo: string;
     /**
-     * I testi che il backoffice dà per riconoscerla, con le sue chiavi (dalla `v1.15.0`): `board` e `lista` di una scheda,
-     * `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità, ognuno un testo o `null`; `null` per
-     * un'azienda, una board e una cartella. Quali fanno la seconda riga del risultato lo dice il registro. Facoltativo: una parte
-     * server finta di prima della `v1.15.0` non lo dà, e vale come `null`.
+     * I testi che il backoffice dà per riconoscerla (dalla `v1.15.0`): `board` e `lista` di una scheda, `organizzazione` e
+     * `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità. Dalla rotta arrivano le sole chiavi che il registro dà al
+     * tipo (`risorse[].contesto`), coi soli testi non vuoti: mai un `null` fra i valori, e `null` tutto il contesto quando non
+     * ne resta nessuno — sempre per un'azienda, una board e una cartella. Sono le stesse chiavi che fanno la seconda riga del
+     * risultato. Il tipo ammette ancora un `null` fra i valori, e che `contesto` manchi: una parte server finta di prima della
+     * `v1.15.0` non lo dà, e vale come `null`.
      */
     contesto?: Record<string, string | null> | null | undefined;
 }
@@ -54,6 +56,22 @@ export interface RisultatoDellaRicerca {
  * quell'errore.
  */
 export class AccettazioneRichiesta extends Error {}
+
+/**
+ * Una rotta della cornice ha risposto 429 dicendo fra quanti secondi riprovare (`Retry-After`, un intero da 1 in su): il
+ * backoffice frena le richieste della persona — oggi le ricerche —, e la parte server lo ripete al browser coi secondi che ha
+ * detto lui. `secondi` è quel numero, com'è: quanto fidarsene lo decide chi ha chiamato (la cornice ferma la ricerca per quei
+ * secondi, al più 60). Per chi non la guarda è un errore come gli altri. Un 429 senza `Retry-After`, o con un valore che non
+ * è un intero da 1 in su — `0`, un numero con la virgola, una data —, resta l'errore di sempre, e così ogni altro stato.
+ */
+export class TroppeRichieste extends Error {
+    readonly secondi: number;
+
+    constructor(esito: string, secondi: number) {
+        super(esito);
+        this.secondi = secondi;
+    }
+}
 
 /**
  * I codici dell'errore, se la risposta ha un corpo JSON che li porta: quello che una rotta della cornice dà al suo errore
@@ -77,6 +95,12 @@ async function chiama(indirizzo: string, opzioni: { method?: string; headers?: R
         // workspace), o lo stesso codice con un altro stato, restano l'errore di sempre.
         if (risposta.status === 403 && (await codiciDi(risposta)).includes('accettazione_richiesta')) {
             throw new AccettazioneRichiesta(esito);
+        }
+        if (risposta.status === 429) {
+            const riprovaFra = risposta.headers.get('Retry-After') ?? '';
+            if (/^\d+$/.test(riprovaFra) && Number(riprovaFra) >= 1) {
+                throw new TroppeRichieste(esito, Number(riprovaFra));
+            }
         }
         throw new Error(esito);
     }

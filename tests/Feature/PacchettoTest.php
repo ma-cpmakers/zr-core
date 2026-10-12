@@ -4,13 +4,16 @@ use Composer\InstalledVersions;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
 use Zeiras\Auth\Testing\BackofficeFinto;
+use Zeiras\Auth\Testing\Finto\RichiestaSconosciuta;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\Http\NotificheDellaCornice;
+use Zeiras\Core\Registro;
 use Zeiras\Core\ZrCoreServiceProvider;
 
 it('dichiara per la scoperta automatica di Laravel solo provider che esistono', function () {
@@ -1659,6 +1662,10 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'la riga: il contesto di un risultato' => ['rotta', 'dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un\'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server'],
     'la riga: il tratto al backoffice' => ['rotta', 'dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l\'indirizzo di quella richiesta non porta query'],
     'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
+    // Sprint 26 · T4.5 (lettura della PR #56, R8): che cosa fa la cornice, nel browser, con quei secondi.
+    'la riga: la cornice aspetta i secondi del freno' => ['rotta', 'e la cornice mostra l\'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo'],
+    // Lettura della PR #59, R3: il freno non regge a un rimontaggio.
+    'la riga: il freno è della cornice montata' => ['rotta', 'il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi'],
     'il punto: il tratto al backoffice' => ['ricerca', 'Dalla `v1.15.0` anche il tratto dal server del modulo al backoffice porta la parola nel corpo: la parte server chiama `ricerca.crea`, una POST, e l\'indirizzo di quella richiesta non porta query'],
     'il punto: il backoffice finto di un frontend' => ['ricerca', 'Per i test di un frontend che passa alla `v1.15.0` cambiano due cose: un backoffice finto che risponde alla ricerca la riceve come `POST /v1/ricerca` con la parola nel corpo (`{q}`), non più come GET con `q` nell\'indirizzo'],
     'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
@@ -1666,18 +1673,27 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
 ]);
 
-// Lettura della PR #56, R12: la frase del README sul finto di zr-auth si guarda nel giro che lo installa. Il finto dichiara le
-// rotte che conosce in una tabella (metodo, percorso, nome): quella di ricerca.crea c'è dalla `v0.12.18`. Un giro della CI
-// installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il confronto è con la versione installata.
-it('il `BackofficeFinto` di zr-auth conosce ricerca.crea (`POST /v1/ricerca`) dalla `v0.12.18`, come dice il README, e prima no: guardato nella zr-auth installata (sprint 25 · T6, R12)', function () {
-    $finto = (string) file_get_contents((string) (new ReflectionClass(BackofficeFinto::class))->getFileName());
+// Letture della PR #56, R12 e N4: che cosa il finto di zr-auth sa della ricerca si guarda nel giro che lo installa, con una
+// chiamata al finto e non nel suo sorgente: una patch che riscrive la tabella delle sue rotte senza cambiare comportamento non
+// deve far rosso un giro. A una chiamata che non conosce il finto lancia `RichiestaSconosciuta`; a una che conosce risponde, qui
+// `401`, perché parte senza gettone. Un giro della CI installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il
+// caso prova questi due punti. Da quale versione il finto risponde lo dice il README, letto nei tag di zr-auth: qui non si prova.
+it('il `BackofficeFinto` della zr-auth installata non conosce ricerca.crea (`POST /v1/ricerca`) nel giro con la patch più bassa che il vincolo accetta, e le risponde nell\'altro, quello con l\'ultima: lo dice una chiamata al finto (sprint 26 · T2.2)', function () {
+    $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $piuBasse = array_values(minimiDiZrAuthIn($composer['require']['zeiras/zr-auth']));
     $installata = ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v');
-    $dallaV01218 = fn (string $versione): bool => version_compare($versione, '0.12.18', '>=');
+    BackofficeFinto::attiva();
+
+    $risposta = null;
+    try {
+        $risposta = Http::post(rtrim((string) config('zr-auth.api'), '/').'/v1/ricerca', ['q' => 'uat'])->status();
+    } catch (RichiestaSconosciuta) {
+        // Il finto non ha la rotta: nessuna risposta.
+    }
 
     expect($installata)->toMatch('/^\d+\.\d+\.\d+$/')
-        ->and(str_contains($finto, "['POST', '#^/v1/ricerca$#', 'ricerca.crea']"))->toBe($dallaV01218($installata))
-        // Il confronto nei due versi.
-        ->and([$dallaV01218('0.12.4'), $dallaV01218('0.12.17'), $dallaV01218('0.12.18'), $dallaV01218('0.12.20'), $dallaV01218('0.13.0')])->toBe([false, false, true, true, true]);
+        ->and($piuBasse)->not->toBe([])
+        ->and($risposta)->toBe(in_array($installata, $piuBasse, true) ? null : 401);
 });
 
 it('né il README né i file che si installano dicono più che al backoffice la parola va nell\'indirizzo, e la parte server nomina ricerca.crea (sprint 25 · T3.5)', function (string $file, string $frase, bool $ceLHa) {
@@ -1703,6 +1719,22 @@ it('né il README né i file che si installano dicono più che al backoffice la 
     'le rotte: ricerca.crea' => ['routes/cornice.php', 'ricerca.crea', true],
     'il servizio del browser: la parola non ci sta più' => ['resources/js/servizi.ts', 'ci sta ancora', false],
     'il servizio del browser: nessun «finché»' => ['resources/js/servizi.ts', 'finché il backoffice non dà un metodo col termine nel corpo', false],
+]);
+
+// Letture della PR #56, N1 e N2: commenti rimasti a prima della `v1.15.0` in file che si installano. Dalla `v1.15.0` la pagina
+// non sta in un contenitore della cornice nemmeno nello stato ridotto, e di `contesto` escono dalla rotta le sole chiavi del
+// registro, coi soli testi.
+it('layout, servizi e registro del browser dicono nei commenti dove sta la pagina e che cosa arriva in `contesto` (sprint 26 · T1.1, T1.2)', function (string $file, string $frase, bool $ceLHa) {
+    expect(str_contains(commentiSuUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file)), $frase))->toBe($ceLHa);
+})->with([
+    'layout: nessun contenitore sotto l\'avviso' => ['resources/js/layout.tsx', 'in un contenitore sotto', false],
+    'layout: col percorso la pagina sta in div.zr-main-body' => ['resources/js/layout.tsx', 'o di `div.zr-main-body`, se ha il percorso', true],
+    'layout: nello stato ridotto l\'avviso sta subito prima' => ['resources/js/layout.tsx', 'le mette l\'avviso subito prima', true],
+    'servizi: non «con le sue chiavi»' => ['resources/js/servizi.ts', 'con le sue chiavi', false],
+    'servizi: non «ognuno un testo o null»' => ['resources/js/servizi.ts', 'ognuno un testo o `null`', false],
+    'servizi: le sole chiavi del registro' => ['resources/js/servizi.ts', 'le sole chiavi che il registro dà al tipo', true],
+    'servizi: mai un null fra i valori' => ['resources/js/servizi.ts', 'mai un `null` fra i valori', true],
+    'registro: le chiavi sono anche ciò che la parte server lascia uscire' => ['resources/js/registro.ts', 'le sole chiavi che la parte server lascia uscire', true],
 ]);
 
 it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dice o non fa (sprint 12 · review, R2, R3, R4)', function (string $grassetto, string $frase) {
@@ -1855,12 +1887,74 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
     'la CSP non cambia' => ['la CSP non cambia'],
 ]);
 
+/**
+ * Che cosa non va, in ci.yml, nel passo che lancia quel comando: niente se il passo è sano. Un passo sano è un passo vero del
+ * job, non un commento; viene dopo `npm ci`; la sua riga `run:` è il solo comando, senza una coda che ne copra l'uscita
+ * (`|| true`); non ha `continue-on-error` né `if:`. Letture della PR #56, R4: cercare la stringa del comando in ci.yml non basta,
+ * perché resta lì anche in un passo spento.
+ *
+ * @return list<string>
+ */
+function difettiDelPassoCheLancia(string $comando, string $ci): array
+{
+    // Una riga di commento non è un passo, e nemmeno un suo pezzo.
+    $senzaCommenti = (string) preg_replace('/^\s*#.*\n/m', '', $ci);
+    // Un passo va dalla sua riga `      - ` alla riga prima del passo dopo: le sue righe hanno almeno otto spazi, o sono vuote.
+    preg_match_all('/^ {6}- .*\n(?:(?: {8}.*)?\n)*/m', $senzaCommenti, $passi);
+    $delComando = array_values(array_filter($passi[0], fn (string $passo) => str_contains($passo, $comando)));
+
+    if (count($delComando) !== 1) {
+        return ["i passi che lanciano «{$comando}» sono ".count($delComando).', non uno'];
+    }
+
+    $difetti = [];
+    if (preg_match('/^ {8}run: '.preg_quote($comando, '/').'\n/m', $delComando[0]) !== 1) {
+        $difetti[] = 'la riga `run:` non è il solo comando';
+    }
+    foreach (['continue-on-error', 'if'] as $chiave) {
+        if (preg_match('/^ {6}(?:- | {2})'.$chiave.':/m', $delComando[0]) === 1) {
+            $difetti[] = "il passo ha `{$chiave}:`";
+        }
+    }
+    $npmCi = strpos($senzaCommenti, "\n          npm ci\n");
+    if ($npmCi === false || strpos($senzaCommenti, $delComando[0]) < $npmCi) {
+        $difetti[] = 'il passo non viene dopo `npm ci`';
+    }
+
+    return $difetti;
+}
+
+it('in ci.yml il passo che rigenera e confronta è sano: un passo vero, dopo npm ci, con la riga `run:` che è il solo comando, senza `continue-on-error` né `if:`; lo stesso file col passo commentato, con `continue-on-error`, con `|| true` in coda, con un `if:` o senza npm ci prima non lo è (sprint 26 · T2.4)', function (string $comando) {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $riga = "        run: {$comando}\n";
+    $forme = [
+        'commentato' => (string) preg_replace('/^ {6}(- name: [^\n]*\n) {8}(run: '.preg_quote($comando, '/').'\n)/m', '      # $1      #   $2', $ci),
+        'con continue-on-error' => str_replace($riga, $riga."        continue-on-error: true\n", $ci),
+        'con || true in coda' => str_replace($riga, "        run: {$comando} || true\n", $ci),
+        'con un if' => str_replace($riga, "        if: false\n".$riga, $ci),
+        'senza npm ci prima' => str_replace("\n          npm ci\n", "\n", $ci),
+    ];
+
+    expect(substr_count($ci, $riga))->toBe(1)
+        ->and(difettiDelPassoCheLancia($comando, $ci))->toBe([])
+        // Ogni forma è un file diverso da quello vero: una forma rimasta uguale direbbe «sano» qui sotto.
+        ->and(array_map(fn (string $testo) => difettiDelPassoCheLancia($comando, $testo), $forme))->toBe([
+            'commentato' => ["i passi che lanciano «{$comando}» sono 0, non uno"],
+            'con continue-on-error' => ['il passo ha `continue-on-error:`'],
+            'con || true in coda' => ['la riga `run:` non è il solo comando'],
+            'con un if' => ['il passo ha `if:`'],
+            'senza npm ci prima' => ['il passo non viene dopo `npm ci`'],
+        ]);
+})->with([
+    'la favicon' => ['npm run favicon -- --controlla'],
+    'i componenti del design system' => ['npm run componenti -- --controlla'],
+]);
+
 it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
 
-    expect(substr_count($ci, 'npm run favicon -- --controlla'))->toBe(1)
-        ->and(strpos($ci, 'npm run favicon -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+    expect(difettiDelPassoCheLancia('npm run favicon -- --controlla', $ci))->toBe([])
         ->and($package['scripts']['favicon'] ?? null)->toBe('node scripts/favicon.mjs')
         ->and($package['devDependencies']['@resvg/resvg-js'] ?? null)->toBe('2.6.2')
         ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
@@ -1871,8 +1965,7 @@ it('la CI rigenera in memoria il modulo dei componenti del design system e lo co
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
 
-    expect(substr_count($ci, 'npm run componenti -- --controlla'))->toBe(1)
-        ->and(strpos($ci, 'npm run componenti -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+    expect(difettiDelPassoCheLancia('npm run componenti -- --controlla', $ci))->toBe([])
         ->and($package['scripts']['componenti'] ?? null)->toBe('node scripts/componenti.mjs');
 });
 
@@ -2349,7 +2442,46 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     'si apre se il registro non lo dà «Presto» (terza lettura, R2)' => ['nel workspace di un\'anteprima il prodotto si apre, se il registro non lo dà «Presto»'],
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
+    // Sprint 26 · T8.4 (voce #1792): dal 12/10/2026 il CRM è per tutti. Chi legge che cosa, e quali restano in arrivo.
+    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in arrivo e non è «Presto»'],
+    'dalla v1.16.0 il CRM non è più in arrivo' => ['Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo dà `disponibile` a ogni workspace'],
+    'quali restano in arrivo' => ['in arrivo restano Bookings e i tre «Presto»'],
 ]);
+
+// Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
+// racconta l'errore pagato davvero: una pagina senza sessione che leggeva `presto`.
+
+it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4)', function (string $frase) {
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(str_contains($guida, $frase))->toBe(true);
+})->with([
+    'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)'],
+    'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`'],
+    // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
+    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)'],
+    'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`'],
+    'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»'],
+]);
+
+it('la guida non dice più che il passo del registro non ha un errore pagato, e né i test, né il README, né la guida dicono più che il CRM è in anteprima (sprint 26 · T8.4)', function () {
+    // Le due frasi sono spezzate: intere, questo file le troverebbe in sé stesso.
+    $inAnteprima = ['il CRM in '.'anteprima', 'in anteprima '.'(il CRM)'];
+    $file = [...(glob(__DIR__.'/*.php') ?: []), ...(glob(__DIR__.'/../*.php') ?: []), __DIR__.'/../../README.md', __DIR__.'/../../MODULO-NUOVO.md'];
+    $trovate = [];
+    foreach ($file as $percorso) {
+        $testo = commentiSuUnaRiga((string) file_get_contents($percorso));
+        foreach ($inAnteprima as $frase) {
+            if (str_contains($testo, $frase)) {
+                $trovate[] = basename($percorso).': '.$frase;
+            }
+        }
+    }
+
+    expect(in_array(__DIR__.'/RegistroTest.php', $file, true))->toBe(true)
+        ->and($trovate)->toBe([])
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), '**Errore già pagato**: nessuno (per zr-board e zr-crm è andata liscia)'))->toBe(false);
+});
 
 // Sprint 17 · T4 (voce #1633): ogni workspace dei dati porta il suo `id`, e dall'id la cornice ricava il colore del suo pallino
 // nel selettore. Il README lo dice dove chi legge lo cerca: la forma dei dati in «La parte server», da dove viene il colore nel
@@ -3406,7 +3538,7 @@ it('il README non dice più che i tipi con una destinazione sono nove, né che o
 // ora sono 41; dove si apre, e che una scheda eliminata non si apre; le righe del registro. `MODULO-NUOVO.md` la porta come
 // esempio di una notifica che non è un evento.
 
-it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che i titoli sono 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
+it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che con lei i titoli erano 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
@@ -3416,13 +3548,42 @@ it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi vien
 })->with([
     'il titolo' => ['punto', 'Dalla `v1.14.0` ha un titolo anche la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda»'],
     'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Come le quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la chiave del titolo è `notificationTitle.board.scheda.assegnata`'],
-    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
+    // Sprint 26 · T6: con la menzione in un commento i titoli sono 42, e i 41 passano al passato.
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli erano 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
     'il contratto la elenca dal 12/10/2026' => ['punto', 'Il contratto la elenca dal 12/10/2026: `app` `pm`, nei `dati` il solo `id` della scheda, e `risorsa_nome` è il titolo della scheda'],
     'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
     'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
     'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
     'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
 ]);
+
+// Sprint 26 · T6 (voce #1773). Dalla `v1.16.0` la campanella dà un titolo anche alla notifica a chi viene menzionato in un
+// commento, e un clic apre la scheda del commento. Il README lo dice dove dice la scheda assegnata: titolo, tipo e chiave nel
+// punto «Le notifiche», coi titoli che ora sono 42 e ciò che ne dice il contratto; dove si apre, e che l'id del commento non
+// entra nell'indirizzo; la quarta riga del registro. `MODULO-NUOVO.md` la porta accanto alla scheda assegnata.
+
+it('il README dice, dalla v1.16.0, il titolo, il tipo e la chiave della notifica a chi viene menzionato in un commento, che i titoli sono 42, che cosa ne dice il contratto, che un clic apre la scheda e non porta l\'id del commento, e la quarta riga del registro (sprint 26 · T6.3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo' => ['punto', 'Dalla `v1.16.0` ha un titolo anche la notifica che Project Management manda a chi viene menzionato in un commento: «Ti hanno menzionato in un commento»'],
+    'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Non è un evento nemmeno lei: il suo `tipo` è `board.commento.menzione`, senza `com.zeiras.` davanti, e la chiave del titolo è `notificationTitle.board.commento.menzione`'],
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 42: i 36 tipi di evento del contratto, i cinque «assegnata» e la menzione'],
+    'che cosa ne dice il contratto' => ['punto', 'Anche lei è nel contratto dal 12/10/2026: `app` `pm`, nei `dati` l\'`id` della scheda e `commento_id`, l\'id del commento, mai il testo, e `risorsa_nome` è il titolo della scheda'],
+    'dove si apre' => ['punto', 'Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso indirizzo: l\'id è quello della scheda, e `commento_id` non entra nell\'indirizzo, perché Project Management non ha una pagina che porti dritto a un commento'],
+    'i tipi con una destinazione' => ['punto', 'non hanno una destinazione; dalla `v1.16.0` ne ha una anche una menzione in un commento'],
+    'la riga del registro' => ['readme', 'Dalla `v1.16.0` c\'è la quarta, una menzione in un commento (`board.commento.menzione`), con `/c/{id}` anche lei: l\'id è quello della scheda, e `commento_id`, che i `dati` portano, non è nel percorso'],
+]);
+
+it('`MODULO-NUOVO.md` porta la menzione in un commento accanto alla scheda assegnata: il tipo, la versione, il titolo e la pagina della scheda (sprint 26 · T6.3)', function () {
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($guida, 'Lo stesso per quella a chi viene menzionato in un commento (`board.commento.menzione`, dalla `v1.16.0`): il titolo, «Ti hanno menzionato in un commento», e la pagina della scheda, `/c/{id}`, perché un commento non ha una pagina sua'))->toBe(1);
+});
 
 it('il README non dice più che il contratto non elenca la notifica a chi viene assegnata una scheda: dal 12/10/2026 la elenca (sprint 24 · T5)', function () {
     $frase = 'non la elenca ancora';
@@ -3432,13 +3593,15 @@ it('il README non dice più che il contratto non elenca la notifica a chi viene 
         ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
 });
 
-it('il README non dice più che i titoli sono 40 né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5)', function () {
+it('il README non dice più che i titoli sono 40, né che sono 41, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
 
     expect(substr_count($readme, 'i titoli sono 40'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 40'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 41'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 42'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -3536,6 +3699,11 @@ it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dic
     'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»'],
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
     'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
+    // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
+    // Lettura della PR #59, R1: vale per un browser che ha il resto di ciò che i sorgenti usano; dove manca anche quello, no.
+    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
+    'e dove manca anche il resto' => ['ricerca', 'Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser così lo aggiunge il frontend'],
+    'e nella versione di prima' => ['ricerca', 'nella `v1.15.0`, con almeno una fonte, lì il disegno della cornice lanciava un errore'],
     'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
     'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
     'e quelli di prima ancora' => ['ricerca', 'prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
@@ -3703,7 +3871,16 @@ it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La
     'il segnale non resta (S4)' => ['e così coi dati di un altro workspace: da lì quel segnale non vale più, nemmeno per i dati di prima'],
     'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
     'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
+    // Lettura della PR #59, R4: dalla `v1.16.0` la ricerca si dimentica, e che cosa si legge al ritorno sotto una parola rimasta.
+    'la ricerca si dimentica, e che cosa si legge al ritorno' => ['Dalla `v1.16.0`, passata a quello stato, la cornice dimentica la ricerca: tornata quella di sempre non mostra i risultati di prima, e se nel campo è rimasta una parola sotto si legge «Nessun risultato per «parola»», anche se quella parola non è stata cercata, finché la persona non scrive ancora'],
 ]);
+
+it('il README non promette più che senza `Intl.ListFormat` la cornice si disegna in ogni browser (lettura della PR #59, R1)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'dove manca, dalla `v1.16.0` la cornice si disegna lo stesso'))->toBe(false)
+        ->and(str_contains($readme, 'in un browser che ha il resto di ciò che i sorgenti usano'))->toBe(true);
+});
 
 it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
     $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
@@ -3932,4 +4109,51 @@ it('le pagine di prova sono tre, e quella dell\'ingresso per le app prende la co
         ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
         ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
         ->and(scritteNellaPaginaDiProva('index.tsx', ["import { Cornice } from '../js';"]))->toBe(["import { Cornice } from '../js';" => 1]);
+});
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro dei moduli lo leggevano due classi, la ricerca e l'elenco delle
+// notifiche, ognuna con la sua lettura del file e la sua copia tenuta per il processo: un terzo lettore sarebbe stato una terza
+// copia. Lo legge una classe sola, `Zeiras\Core\Registro`, interna al pacchetto, e le rotte le voci le chiedono a lei. Le
+// risposte delle rotte sono quelle di prima.
+
+it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`: le due rotte che lo usano le voci le chiedono a lei, una volta l\'una nel codice, e non leggono nessun file (sprint 26 · T3.2)', function () {
+    $sorgenti = [];
+    foreach (File::allFiles(__DIR__.'/../../src') as $file) {
+        $sorgenti[str_replace('\\', '/', $file->getRelativePathname())] = senzaCommenti($file->getContents());
+    }
+
+    // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
+    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json'))))->toBe(['Registro.php'])
+        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(1)
+        ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/prodotti.json')"))->toBe(1)
+        ->and(array_map(fn (string $rotta): array => [substr_count($sorgenti[$rotta], 'file_get_contents('), substr_count($sorgenti[$rotta], 'Registro::voci()')], ['Http/RicercaDellaCornice.php', 'Http/NotificheDellaCornice.php']))
+        ->toBe([[0, 1], [0, 1]]);
+});
+
+it('`Registro` legge il file una volta per processo: la prima richiesta dà le voci del registro del pacchetto e le tiene, e con delle voci già in mano dà quelle, senza tornare al file (sprint 26 · T3.2)', function () {
+    $voci = new ReflectionProperty(Registro::class, 'voci');
+    $voci->setValue(null, null);
+
+    try {
+        expect(Registro::voci())->toBe(registroDeiProdotti())
+            ->and($voci->getValue())->toBe(registroDeiProdotti());
+        // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
+        $voci->setValue(null, [['id' => 'uat-gia-letto']]);
+        expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
+    } finally {
+        $voci->setValue(null, null);
+    }
+});
+
+it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un altro file: fuori dal privato ha il solo `voci()`, statico e senza argomenti, e l\'unica proprietà è privata; è una classe interna, non per chi installa il pacchetto (sprint 26 · T3.3)', function () {
+    $classe = new ReflectionClass(Registro::class);
+    $nomi = fn (array $membri): array => array_map(fn (ReflectionMethod|ReflectionProperty $membro): string => $membro->getName(), $membri);
+
+    expect($nomi($classe->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED)))->toBe(['voci'])
+        ->and($classe->getMethod('voci')->isStatic())->toBe(true)
+        ->and($classe->getMethod('voci')->getNumberOfParameters())->toBe(0)
+        ->and($nomi($classe->getProperties()))->toBe(['voci'])
+        ->and($classe->getProperty('voci')->isPrivate())->toBe(true)
+        ->and($classe->isFinal())->toBe(true)
+        ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
 });

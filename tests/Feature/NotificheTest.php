@@ -17,6 +17,7 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\NotificheDellaCornice;
+use Zeiras\Core\Registro;
 
 // Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
 // notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
@@ -1563,6 +1564,12 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una scheda nuova, senza `com.zeiras.` davanti' => ['pm', 'board.scheda.creata'],
     'una scheda assegnata, in una notifica del CRM' => ['crm', 'board.scheda.assegnata'],
     'una scheda assegnata, in una notifica che non è di un\'app' => [null, 'board.scheda.assegnata'],
+    // Sprint 26 · T6: una menzione in un commento ha una destinazione solo col suo tipo intero, senza `com.zeiras.` davanti, e
+    // nella voce di Project Management.
+    'una menzione in un commento, con `com.zeiras.` davanti' => ['pm', 'com.zeiras.board.commento.menzione'],
+    'un commento, col solo pezzo del tipo della menzione' => ['pm', 'board.commento'],
+    'una menzione in un commento, in una notifica del CRM' => ['crm', 'board.commento.menzione'],
+    'una menzione in un commento, in una notifica che non è di un\'app' => [null, 'board.commento.menzione'],
     'una vista di una board' => ['pm', 'com.zeiras.board.vista.creata'],
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
@@ -1734,12 +1741,12 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
  */
 function registroGiaLetto(?array $voci): void
 {
-    (new ReflectionProperty(NotificheDellaCornice::class, 'registro'))->setValue(null, $voci);
+    (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $voci);
 }
 
 afterEach(fn () => registroGiaLetto(null));
 
-it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie (review della PR #44, R5; sprint 22 · T7.3)', function () {
+it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (review della PR #44, R5; sprint 22 · T7.3; sprint 26 · T3.2)', function () {
     $classe = new ReflectionClass(NotificheDellaCornice::class);
     $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
     sort($pubblici);
@@ -1748,9 +1755,11 @@ it('la parte server delle notifiche non ha agganci per i test nel codice che va 
     expect($pubblici)->toBe(['elenco', 'idsDellaNotifica', 'lettura', 'letture', 'tenutaDelBlocco'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
-        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
-        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
-        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+        // Il registro è quello del pacchetto, e lo legge `Registro`: qui non c'è una lettura di file, né una copia tenuta, e le
+        // voci si chiedono a lei in un punto solo del codice (sprint 26 · T3.2).
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(0)
+        ->and($classe->hasProperty('registro'))->toBe(false)
+        ->and(substr_count(senzaCommenti($sorgente), 'Registro::voci()'))->toBe(1);
 });
 
 it('PATCH /cornice/notifiche/{id}/lettura risponde senza leggere il registro dei moduli: con un registro che non si legge segna la notifica e risponde, mentre l\'elenco, che dal registro prende gli id, non risponde (sprint 22 · T3.1)', function () {
@@ -2118,6 +2127,32 @@ it('GET /cornice/notifiche dà a una scheda nuova, modificata o assegnata il suo
         ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0);
 });
 
+// Sprint 26 · T6 (voce #1773; parole e pagina di zr-board, nota 10846 del #95). La notifica a chi viene menzionato in un commento
+// porta nei `dati` l'id della scheda e quello del commento, mai il testo. Apre la scheda, `/c/{id}`: al browser va il solo
+// `id`, e `commento_id` resta qui.
+
+it('GET /cornice/notifiche dà a una menzione in un commento il solo `id` della scheda: `commento_id` resta qui, senza `id` gli `ids` sono vuoti, e lo stesso tipo con `com.zeiras.` davanti non ne ha; `idsDellaNotifica()` dà lo stesso (sprint 26 · T6.2)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n3', ['id' => 'uat-scheda-1', 'commento_id' => 'uat-commento-9'], 'board.commento.menzione', 'pm'),
+        notificaConDati('uat-n2', ['commento_id' => 'uat-commento-8'], 'board.commento.menzione', 'pm'),
+        notificaConDati('uat-n1', ['id' => 'uat-scheda-2', 'commento_id' => 'uat-commento-7'], 'com.zeiras.board.commento.menzione', 'pm'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-scheda-1'], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Due senza una destinazione: `ids` vuoto, ma un oggetto. Dell'id del commento, e della scheda che non si apre, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-scheda-2'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-commento'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0);
+});
+
 it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, 'pm')], 'successivo' => null])]);
@@ -2127,7 +2162,7 @@ it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuo
     expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, $dati))->toBe([])
         ->and($risposta->json('data.0.ids'))->toBe([])
         ->and(substr_count((string) $risposta->getContent(), 'uat-fuori'))->toBe(0);
-})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'])->with([
+})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata', 'board.commento.menzione'])->with([
     'due punti' => [['id' => '..']],
     'con una barra' => [['id' => 'uat-fuori/x']],
     'con ../ davanti' => [['id' => '../uat-fuori']],
@@ -2135,4 +2170,24 @@ it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuo
     'un numero' => [['id' => 42]],
     'senza `id`, con la board e la lista' => [['board_id' => 'uat-fuori-board', 'lista_id' => 'uat-fuori-lista']],
     'senza `dati`' => [null],
+]);
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
+// tutte le rotte: il registro di prova di un caso lo scrive lì `registroGiaLetto()`, e lasciato lì arriverebbe a ogni caso
+// dopo, di questo file e degli altri. Lo toglie l'`afterEach` di questo file, e lo dicono due casi di fila: il primo scrive
+// un registro di prova e non lo toglie, il secondo trova quello del pacchetto.
+
+it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo l\'elenco dà di una nota gli id che chiede il registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $ids) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [
+        notificaConDati('uat-n2', ['id' => 'uat-nota-1', 'organizzazione_id' => 'uat-azienda-1', 'persona_id' => 'uat-persona-1']),
+    ], 'successivo' => null])]);
+    if ($diProva !== null) {
+        registroGiaLetto($diProva);
+    }
+
+    expect(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.0.ids'))->toBe($ids);
+})->with([
+    'il primo: un registro di prova che apre la nota dall\'azienda' => [[['id' => 'crm', 'presto' => false, 'notifiche' => [['tipo' => 'com.zeiras.crm.nota.creata', 'percorso' => '/aziende/{organizzazione_id}/note/{id}']]]], ['organizzazione_id' => 'uat-azienda-1', 'id' => 'uat-nota-1']],
+    'il secondo: nessuno lo scrive, ed è quello del pacchetto' => [null, ['persona_id' => 'uat-persona-1']],
 ]);

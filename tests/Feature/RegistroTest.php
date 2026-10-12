@@ -17,7 +17,8 @@ use Zeiras\Core\Http\NotificheDellaCornice;
 // contatti, aziende e opportunità —, e un tipo può dire le chiavi di `contesto` che fanno la seconda riga del risultato.
 // Sprint 16 · T7 (voce #1621): ogni voce dice anche se il prodotto è «in arrivo» per chi non ha una sessione (`in_arrivo`): lo
 // leggono le pagine senza un workspace a cui chiedere lo stato. Non è «Presto», che è della cornice e vale in ogni workspace:
-// un prodotto in anteprima (il CRM) è in arrivo, e nel workspace dell'anteprima la cornice lo apre.
+// un prodotto in arrivo che non è «Presto» (Bookings; fino alla `v1.15.0` anche il CRM) la cornice lo apre nei workspace in cui il
+// backoffice lo dà.
 // Sprint 21 · T3 (voce #1641): le notifiche di un prodotto che dal pannello aprono la loro risorsa (`notifiche`), ognuna col tipo
 // intero dell'evento e il percorso nel prodotto, dopo `/w/<slug>`: un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la
 // notifica ha con quella chiave. Un tipo sta una volta sola in tutto il registro, e ha il suo titolo in ogni lingua.
@@ -354,13 +355,16 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
         ]);
 });
 
-it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una sessione: CRM, Bookings e i tre «Presto» sì, Dashboard e Project Management no; «Presto» resta dei tre (sprint 16 · T7.1)', function () {
+// Sprint 26 · T8 (voce #1792): dal 12/10/2026 il backoffice dà il CRM `disponibile` a ogni workspace, e nel registro non è più in
+// arrivo. In arrivo restano Bookings e i tre «Presto»; `presto` non cambia per nessuno.
+it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una sessione: Bookings e i tre «Presto» sì, Dashboard, Project Management e CRM no; «Presto» resta dei tre (sprint 16 · T7.1; sprint 26 · T8.1)', function () {
     $voci = registroDeiProdotti();
 
     expect(array_column($voci, 'in_arrivo', 'id'))->toBe([
-        'home' => false, 'pm' => false, 'crm' => true, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
+        'home' => false, 'pm' => false, 'crm' => false, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
     ])
-        // «Presto» non cambia: con `crm` «Presto» la cornice lo chiuderebbe anche nel workspace dell'anteprima.
+        // «Presto» non cambia: con `crm` o `bookings` «Presto» la cornice chiuderebbe la voce in ogni workspace, anche dove il
+        // backoffice dà il modulo. Non è la leva per le pagine senza sessione.
         ->and(array_column($voci, 'presto', 'id'))->toBe([
             'home' => false, 'pm' => false, 'crm' => false, 'bookings' => false, 'reports' => true, 'automations' => true, 'content' => true,
         ])
@@ -373,7 +377,7 @@ it('il controllo trova la Dashboard in arrivo, una voce senza «in arrivo», una
     unset($voci[2]['in_arrivo']);
     $voci[3]['in_arrivo'] = 'sì';
     $voci[4]['in_arrivo'] = false;
-    // Un prodotto in arrivo che non è «Presto» va bene (il CRM in anteprima), e uno che non è né l'uno né l'altro anche.
+    // Un prodotto in arrivo che non è «Presto» va bene (Bookings), e uno che non è né l'uno né l'altro anche (il CRM).
     $voci[5]['presto'] = false;
     $voci[6]['presto'] = false;
     $voci[6]['in_arrivo'] = false;
@@ -460,7 +464,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, 
 // del contratto e in quelli della notifica a chi viene assegnata la scheda, che non è un evento e arriva senza `com.zeiras.`
 // davanti. Una scheda eliminata non ha più una pagina, e gli altri tipi della board restano senza destinazione.
 
-it('nel registro le notifiche di Project Management che aprono la loro risorsa sono tre, tutte di una scheda — nuova, modificata, assegnata —, e aprono la pagina della scheda, `/c/{id}`: una scheda eliminata e gli altri tipi della board non hanno una destinazione, e quelle del CRM restano diciotto (sprint 24 · T3.2, T3.4, T3.5)', function () {
+it('nel registro le notifiche di Project Management che aprono la loro risorsa sono quattro — una scheda nuova, modificata, assegnata, e una menzione in un commento —, e aprono tutte la pagina della scheda, `/c/{id}`: una scheda eliminata e gli altri tipi della board non hanno una destinazione, e quelle del CRM restano diciotto (sprint 24 · T3.2, T3.4, T3.5; sprint 26 · T6.2)', function () {
     $voci = registroDeiProdotti();
 
     expect(problemiDelRegistro($voci))->toBe([])
@@ -470,6 +474,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'com.zeiras.board.scheda.creata', 'percorso' => '/c/{id}'],
             ['tipo' => 'com.zeiras.board.scheda.modificata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.scheda.assegnata', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
         ])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
         ->and($voci[2]['notifiche'] ?? [])->toHaveCount(18);

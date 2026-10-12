@@ -33,7 +33,9 @@
 // risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
 // Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
 // lo stesso; il cookie del gettone CSRF è finto.
-// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta. Con l'orologio che la pagina di prova dà, le due rotte delle
+// `?errore=notifiche` o `?errore=ricerca` fa fallire quella rotta; con `?ricerca_frenata=<secondi>` la prima ricerca risponde
+// come la parte server quando il backoffice frena (429 `troppe_richieste` con `Retry-After: <secondi>`), e le successive come
+// sempre. Con l'orologio che la pagina di prova dà, le due rotte delle
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
 // entra nel pacchetto.
@@ -49,6 +51,7 @@ const viste = new URLSearchParams(window.location.search).has('viste');
 const opportunita = new URLSearchParams(window.location.search).has('opportunita');
 // Con `?schede=1` (sprint 24 · T3) in cima all'elenco c'è la notifica che Project Management manda a chi viene assegnata una
 // scheda, da leggere, e in fondo una scheda eliminata, letta: la prima apre la scheda, la seconda non ha una destinazione.
+// Dallo sprint 26 (T6), subito dopo la prima, c'è la notifica a chi viene menzionato in un commento, da leggere: apre la sua scheda.
 const schede = new URLSearchParams(window.location.search).has('schede');
 
 /**
@@ -78,6 +81,12 @@ const notificheDiProva = [
     // l'ha assegnata e il nome della scheda, che per questo tipo il backoffice manda sempre. Un clic apre la scheda e la segna letta.
     ...(schede
         ? [{ id: 'uat-s1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'board.scheda.assegnata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: true, ids: { id: 'uat-scheda-2' } as Record<string, string> }]
+        : []),
+    // Solo con `?schede=1`, subito dopo: una menzione in un commento (sprint 26 · T6), col tipo com'è nel backoffice, senza
+    // `com.zeiras.` davanti, chi ha scritto il commento e il nome della scheda. Porta il solo id della scheda, come dalla parte
+    // server: quello del commento resta lì. Un clic apre la scheda e la segna letta.
+    ...(schede
+        ? [{ id: 'uat-s3', creata_il: fa(4), letta: false, app: 'pm', tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Rivedere il piano editoriale', per_me: true, ids: { id: 'uat-scheda-3' } as Record<string, string> }]
         : []),
     // Dallo sprint 24 una scheda nuova porta il suo id, come dalla parte server: un clic apre la scheda.
     { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: { id: 'uat-scheda-1' } as Record<string, string> },
@@ -133,15 +142,16 @@ let caricamenti = 0;
 // Come nei dati di prova (demo.tsx): con `?crm_attivo=1` il CRM è attivo nel workspace, a meno di `?senza_crm=1`.
 const crmAttivo = new URLSearchParams(window.location.search).has('crm_attivo') && !new URLSearchParams(window.location.search).has('senza_crm');
 const risultatiDiProva = [
-    // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che il
-    // backoffice dà per riconoscerla. Un contatto può non avere né azienda né ruolo; un'azienda ha `null`. Stanno dietro un
-    // parametro: la scheda solo con `?schede=1`; contatti, aziende e opportunità solo col CRM attivo (`?crm_attivo=1`), come il
-    // backoffice, che una fonte la dà solo se il suo prodotto è attivo nel workspace.
+    // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che la
+    // rotta vera lascia uscire: le chiavi che il registro dà al tipo, coi soli testi. Un contatto può non avere né azienda né
+    // ruolo, e allora ha `null`, come un'azienda: mai un `null` fra i valori. Stanno dietro un parametro: la scheda solo con
+    // `?schede=1`; contatti, aziende e opportunità solo col CRM attivo (`?crm_attivo=1`), come il backoffice, che una fonte la
+    // dà solo se il suo prodotto è attivo nel workspace.
     ...(schede ? [{ tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } }] : []),
     ...(crmAttivo
         ? [
             { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
-            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
             { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
             { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
         ]
@@ -158,6 +168,8 @@ const risultatiDiProva = [
     { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto', contesto: null },
 ];
 const errore = new URLSearchParams(window.location.search).get('errore');
+const ricercaFrenata = new URLSearchParams(window.location.search).get('ricerca_frenata');
+let giaFrenata = false;
 const arriva = new URLSearchParams(window.location.search).has('arriva');
 const altre = new URLSearchParams(window.location.search).has('altre');
 // Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
@@ -220,6 +232,11 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
+            if (ricercaFrenata !== null && !giaFrenata) {
+                giaFrenata = true;
+
+                return new Response(JSON.stringify({ errore: 'troppe_richieste' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': ricercaFrenata } });
+            }
             if (daAccettare) {
                 return json({ errore: 'accettazione_richiesta' }, 403);
             }

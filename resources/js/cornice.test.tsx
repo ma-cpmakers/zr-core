@@ -241,6 +241,26 @@ describe('la Cornice', () => {
         expect(uno('.zr-search-note')?.textContent).toBe(invito);
     });
 
+    // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non
+    // averlo anche quando ha il resto di `Intl`: lì la cornice si disegna lo stesso, e i due testi sono quelli senza fonti.
+    it.each<[lingua: string, segnaposto: string, invito: string]>([
+        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['es', 'Busca…', 'Escribe al menos 2 caracteres.'],
+        ['en', 'Search…', 'Type at least 2 characters.'],
+    ])('in un browser senza `Intl.ListFormat` la cornice si disegna, in "%s", coi moduli che danno fonti: il segnaposto del campo di ricerca e l\'invito prima di due caratteri sono i due testi senza fonti, e il resto della cornice c\'è (sprint 26 · T5.1)', async (lingua, segnaposto, invito) => {
+        // Il resto di `Intl` c'è: manca solo l'elenco, come in un browser che non lo ha ancora.
+        vi.stubGlobal('Intl', Object.create(Intl, { ListFormat: { value: undefined } }));
+        expect(Intl.ListFormat).toBeUndefined();
+
+        await mostra(<Cornice dati={{ ...dati, lingua, prodotti: { pm: 'attivo', crm: 'attivo' } }} onLogout={esciSenzaEffetto}><p id="pagina">La pagina</p></Cornice>);
+        expect(uno('#pagina')?.textContent).toBe('La pagina');
+        expect(uno('.zr-bell')).not.toBeNull();
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
+        await act(async () => uno('.zr-search input')?.focus());
+
+        expect(uno('.zr-search-note')?.textContent).toBe(invito);
+    });
+
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
         const ingresso = await import('./index');
 
@@ -248,14 +268,15 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content']);
     });
 
-    it('l\'ingresso del pacchetto dà su ogni voce del registro `in_arrivo`: i prodotti che chi non ha una sessione vede «In arrivo», distinti da quelli «Presto» (sprint 16 · T7.3)', async () => {
+    // Sprint 26 · T8 (voce #1792): dal 12/10/2026 il CRM è per tutti, e nel registro non è più in arrivo.
+    it('l\'ingresso del pacchetto dà su ogni voce del registro `in_arrivo`: i prodotti che chi non ha una sessione vede «In arrivo», distinti da quelli «Presto»; il CRM non lo è più (sprint 16 · T7.3; sprint 26 · T8.2)', async () => {
         const ingresso = await import('./index');
 
         // Come lo legge una pagina senza sessione: `voce.in_arrivo`, un sì o un no su ogni voce.
-        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['crm', 'bookings', 'reports', 'automations', 'content']);
-        expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm']);
+        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['bookings', 'reports', 'automations', 'content']);
+        expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm']);
         expect(ingresso.registro.map((voce) => typeof voce.in_arrivo)).toStrictEqual(ordine.map(() => 'boolean'));
-        // «Presto» è un'altra cosa, e non cambia: CRM e Bookings sono in arrivo senza essere «Presto».
+        // «Presto» è un'altra cosa, e non cambia: Bookings è in arrivo senza essere «Presto», e il CRM non è né l'uno né l'altro.
         expect(ingresso.registro.filter((voce) => voce.presto).map((voce) => voce.id)).toStrictEqual(['reports', 'automations', 'content']);
     });
 
@@ -266,8 +287,9 @@ describe('la Cornice', () => {
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
     ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo` o `disponibile` (sprint 16 · T7.2, %j)', async (prodotti, aperti) => {
         const { registro } = await import('./index');
-        // La premessa: per il registro CRM e Bookings sono in arrivo. Se la cornice lo leggesse come «Presto», qui non si aprirebbero.
-        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['crm', 'bookings']);
+        // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
+        // «Presto», qui non si aprirebbe.
+        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['bookings']);
 
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
@@ -1989,6 +2011,51 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
     });
 
+    // Sprint 26 · T6 (voce #1773). Chi viene menzionato in un commento riceve una notifica di Project Management che non è un
+    // evento: il tipo arriva senza `com.zeiras.` davanti. Un clic apre la scheda del commento, `/c/<id>` (zr-board, nota 10846
+    // del #95: la board non ha un indirizzo che porti dritto a un commento), e la segna letta. La parte server dà il solo `id`
+    // della scheda; se `commento_id` arrivasse, nell'indirizzo non entrerebbe.
+    const dellaMenzione = { id: 'uat-n79', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' as string | null, tipo: 'board.commento.menzione', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Scheda 7', per_me: true, ids: { id: 'uat-scheda-7' } as Record<string, string> };
+
+    it.each<[string, Record<string, string>]>([
+        ['col solo `id` della scheda, come la dà la parte server', { id: 'uat-scheda-7' }],
+        ['anche se fra gli `ids` arrivasse `commento_id`', { id: 'uat-scheda-7', commento_id: 'uat-commento-9' }],
+    ])('un clic su una notifica di una menzione in un commento apre la scheda in Project Management, `/c/<id>` con l\'id della scheda, e la segna letta — %s (sprint 26 · T6.2)', async (_quale, ids) => {
+        const fetchFinto = rotteDelClic([{ data: [{ ...dellaMenzione, ids }] }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[`${nellaBoard}/c/uat-scheda-7`]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n79')]);
+    });
+
+    it.each([['it', 'Ti hanno menzionato in un commento'], ['en', 'You were mentioned in a comment'], ['es', 'Te han mencionado en un comentario']])('con la lingua "%s", nel pannello una notifica di una menzione in un commento si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della scheda (sprint 26 · T6.1)', async (lingua, titolo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: [dellaMenzione] }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([titolo]);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual(['UAT Scheda 7']);
+    });
+
+    it('un clic su una menzione col tipo scritto quasi giusto — `com.zeiras.` davanti, un pezzo in meno, uno in più —, con `app` `crm` o senza `app`, apre la pagina delle notifiche e non la segna letta (sprint 26 · T6.2)', async () => {
+        const quasi: [app: string | null, tipo: string][] = [['pm', 'com.zeiras.board.commento.menzione'], ['pm', 'board.commento'], ['pm', 'board.commento.menzione.poi'], ['crm', 'board.commento.menzione'], [null, 'board.commento.menzione']];
+        const elenco = quasi.map(([app, tipo], indice) => ({ ...dellaMenzione, id: `uat-n${69 - indice}`, app, tipo }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 5 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual(quasi.map(() => [paginaDelleNotifiche]));
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
     it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
         const fetchFinto = rotteDelClic([{ data: delleSchede }]);
         vi.stubGlobal('fetch', fetchFinto);
@@ -2331,12 +2398,13 @@ describe('il pannello delle notifiche', () => {
     });
 
     /**
-     * I titoli dei 41 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * I titoli dei 42 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
      * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`); dallo sprint 22
      * i nove in fondo (voce #1720: le opportunità, che nel contratto sono `trattativa`, le attività, e i quattro «assegnata», che
-     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 l'ultimo (voce #1748: la scheda assegnata, di
-     * Project Management, che non è un evento nemmeno lei). Scritta qui e non letta dai file delle lingue.
+     * non sono eventi e arrivano senza `com.zeiras.` davanti); dallo sprint 24 la scheda assegnata (voce #1748: di
+     * Project Management, non è un evento nemmeno lei); dallo sprint 26 l'ultimo (voce #1773: la menzione in un commento, come lei).
+     * Scritta qui e non letta dai file delle lingue.
      */
     const titoliPerTipo: [tipo: string, it: string, en: string, es: string][] = [
         ['com.zeiras.app.modificata', 'Un modulo è stato attivato o disattivato', 'A module was turned on or off', 'Se activó o desactivó un módulo'],
@@ -2380,14 +2448,15 @@ describe('il pannello delle notifiche', () => {
         ['crm.trattativa.assegnata', 'Ti è stata assegnata un\'opportunità', 'An opportunity was assigned to you', 'Se te ha asignado una oportunidad'],
         ['crm.attivita.assegnata', 'Ti è stata assegnata un\'attività', 'An activity was assigned to you', 'Se te ha asignado una actividad'],
         ['board.scheda.assegnata', 'Ti è stata assegnata una scheda', 'A card was assigned to you', 'Se te ha asignado una tarjeta'],
+        ['board.commento.menzione', 'Ti hanno menzionato in un commento', 'You were mentioned in a comment', 'Te han mencionado en un comentario'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 41 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(41);
-        expect(titoliPerTipo).toHaveLength(41);
+    it('la tabella dei titoli ha 42 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(42);
+        expect(titoliPerTipo).toHaveLength(42);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -2489,9 +2558,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 41 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 42 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./index');
-        // I 41 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 42 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -2501,11 +2570,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 41 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 42 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 41)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(41)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 42)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(42)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
@@ -3358,6 +3427,26 @@ describe('la ricerca', () => {
         expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent ?? null).toBe(secondaRiga);
     });
 
+    // Sprint 26 · T5 (voce #1767; lettura della PR #56, R10). « · » sta scritto nel codice della cornice e non fra i testi delle
+    // lingue: è il segno che il design system scrive da sé fra due testi di una riga dell'`AppShell`. Il caso lega i due: il segno
+    // si legge dall'`AppShell` da solo, fra il prodotto e l'ora di una notifica, e la seconda riga di un risultato usa quello.
+    it('i due testi della seconda riga di un risultato sono uniti dal segno che l\'`AppShell` del design system scrive da sé fra il prodotto e l\'ora di una notifica: se uno dei due cambia, non sono più lo stesso (sprint 26 · T5.3)', async () => {
+        await mostra(<componenti.AppShell user="Ada Lovelace" notifications={[{ id: 'n1', title: 'Una notifica', product: 'Prima', time: 'dopo' }]} />);
+        await act(async () => {
+            uno('.zr-bell')?.click();
+            await giro();
+        });
+        const riga = uno('.zr-notif-meta')?.textContent ?? '';
+        expect([riga.startsWith('Prima'), riga.endsWith('dopo')]).toStrictEqual([true, true]);
+        const delDesignSystem = riga.slice('Prima'.length, riga.length - 'dopo'.length);
+        expect(delDesignSystem.trim()).not.toBe('');
+
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', contesto: { board: 'Lancio Q4', lista: 'Da fare' } }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('brief');
+        expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent).toBe(`Lancio Q4${delDesignSystem}Da fare`);
+    });
+
     it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati([
             { tipo: 'board.board', id: '01k7b1b1', titolo: 'Lancio Q4', contesto: { board: 'Lancio Q4', lista: 'Da fare' } },
@@ -3635,6 +3724,129 @@ describe('la ricerca', () => {
         await scrivi('lancio');
         expect(sottoIlCampo()).toStrictEqual(['La ricerca non ha risposto. Riprova tra poco.']);
         expect([uno('main .zr-alert'), uno('.zr-bell-count')?.textContent, uno('.zr-product-switch') === null]).toStrictEqual([null, '7', false]);
+    });
+
+    // Sprint 26 · T4 (lettura della PR #56, R8). Il freno del backoffice: quando la ricerca risponde 429 con `Retry-After: N`, per
+    // N secondi — al più 60 — la cornice non manda altre ricerche, qualunque cosa la persona scriva, e resta sull'errore; passati,
+    // la prima parola scritta parte. Allo scadere non parte niente da solo. Un 429 che non dice i secondi, e ogni altro errore,
+    // sono l'errore di oggi: la parola dopo parte.
+    describe('il freno del backoffice', () => {
+        // Qui anche l'orologio è del test: i secondi del freno passano quando lo dice lui.
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+        });
+
+        const errore = 'La ricerca non ha risposto. Riprova tra poco.';
+        /** La risposta di una rotta che frena: lo stato, il codice e, se c'è, `Retry-After`, come `fetch` la dà. */
+        const frenata = (riprovaFra?: string, stato = 429) => ({
+            ok: false,
+            status: stato,
+            headers: new Headers(riprovaFra === undefined ? {} : { 'Retry-After': riprovaFra }),
+            json: async () => ({ errore: 'troppe_richieste' }),
+        }) as unknown as Response;
+        /** La prima ricerca riceve `prima`; le altre trovano un risultato che porta la loro parola. */
+        const primaPoiTrova = (prima: Response) => vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovati([{ tipo: 'board.board', id: '1', titolo: `Risultato di «${String(parolaDi(opzioni))}»` }])).mockResolvedValueOnce(prima);
+        const passano = async (millisecondi: number) => act(async () => {
+            await vi.advanceTimersByTimeAsync(millisecondi);
+        });
+
+        it('dopo un 429 con `Retry-After: 5` la cornice mostra l\'errore della ricerca e per 5 secondi non manda altre ricerche, qualunque cosa la persona scriva; allo scadere non parte niente da solo, e la prima parola scritta dopo parte (sprint 26 · T4.2)', async () => {
+            const fetchFinto = primaPoiTrova(frenata('5'));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+            await scrivi('lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // Nei 5 secondi: tre parole, e nessuna parte.
+            await scrivi('lancio q');
+            await scrivi('lancio q4');
+            await passano(3000);
+            await scrivi('piano');
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // Il freno scade, e passa altro tempo: senza un tasto non parte niente, nemmeno l'ultima parola scritta.
+            await passano(30_000);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            await scrivi('piano di lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('piano di lancio')]);
+            expect(titoli()).toStrictEqual(['Risultato di «piano di lancio»']);
+        });
+
+        it.each<[string, string, number, boolean]>([
+            ['`Retry-After: 5`: a 4,999 secondi dal 429 la parola non parte', '5', 4999, false],
+            ['`Retry-After: 5`: a 5 secondi dal 429 la parola parte', '5', 5000, true],
+            ['`Retry-After: 1`: a 0,999 secondi la parola non parte', '1', 999, false],
+            ['`Retry-After: 1`: a 1 secondo la parola parte', '1', 1000, true],
+            // Il tetto: un valore sbagliato del backoffice non spegne la ricerca per un'ora.
+            ['`Retry-After: 3600`: a 59,999 secondi la parola non parte', '3600', 59_999, false],
+            ['`Retry-After: 3600`: il freno è di 60 secondi, e a 60 la parola parte', '3600', 60_000, true],
+            // Lettura della PR #59, R9: la riga di prima, da sola, resta verde anche se quel valore non frenasse affatto.
+            ['`Retry-After` con più cifre di quante un numero ne tenga: a 59,999 secondi la parola non parte', '9'.repeat(400), 59_999, false],
+            ['`Retry-After` con più cifre di quante un numero ne tenga: il freno è di 60 secondi, e a 60 la parola parte', '9'.repeat(400), 60_000, true],
+        ])('il freno dura i secondi di `Retry-After`, al più 60, dal momento del 429 — %s (sprint 26 · T4.2)', async (_caso, riprovaFra, dopo, parte) => {
+            const fetchFinto = primaPoiTrova(frenata(riprovaFra));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            // L'`AppShell` chiama la cornice 300 ms dopo il tasto: il tasto cade 300 ms prima dell'istante che si prova.
+            await passano(dopo - 300);
+            await scrivi('lancio q4');
+            expect(partite(fetchFinto)).toStrictEqual(parte ? [ricercaDi('lancio'), ricercaDi('lancio q4')] : [ricercaDi('lancio')]);
+            expect([titoli(), sottoIlCampo()]).toStrictEqual(parte ? [['Risultato di «lancio q4»'], []] : [[], [errore]]);
+        });
+
+        it.each<[string, () => Response]>([
+            ['un 429 senza `Retry-After`', () => frenata()],
+            ['un 429 con `Retry-After: 0`', () => frenata('0')],
+            ['un 429 con `Retry-After: -1`', () => frenata('-1')],
+            ['un 429 con `Retry-After: 1.5`', () => frenata('1.5')],
+            ['un 429 con `Retry-After: abc`', () => frenata('abc')],
+            ['un 429 con una data in `Retry-After`', () => frenata('Wed, 21 Oct 2026 07:28:00 GMT')],
+            ['un 500 con `Retry-After: 5`', () => frenata('5', 500)],
+            ['un 403 con `Retry-After: 5`', () => frenata('5', 403)],
+        ])('%s è l\'errore di oggi e non frena: la parola dopo parte subito (sprint 26 · T4.3)', async (_caso, risponde) => {
+            const fetchFinto = primaPoiTrova(risponde());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            expect(sottoIlCampo()).toStrictEqual([errore]);
+
+            await scrivi('lancio q4');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4')]);
+            expect(titoli()).toStrictEqual(['Risultato di «lancio q4»']);
+        });
+
+        it('mentre la ricerca è frenata un tasto non mostra il caricamento: lo stato resta l\'errore, sia nei 300 ms dopo il tasto sia quando l\'`AppShell` chiama la cornice (sprint 26 · T4.4)', async () => {
+            const fetchFinto = primaPoiTrova(frenata('5'));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await scrivi('lancio');
+            const visto = () => [sottoIlCampo(), inCaricamento(), righe().length];
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+
+            const campo = uno('.zr-search input') as HTMLInputElement;
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'lancio q4');
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(299);
+            });
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            // Il millisecondo in cui l'`AppShell` chiama `onSearch`, senza lasciar passare altro.
+            await act(async () => {
+                vi.advanceTimersByTime(1);
+            });
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            await passano(1000);
+            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
     });
 });
 
@@ -4119,11 +4331,12 @@ describe('chi non ha accettato i documenti legali', () => {
     // Lettura della PR #56, R5 e R6. Dove sta la pagina: dentro `main.zr-main`, o dentro `div.zr-main-body` se ha il percorso (è
     // lì che l'`AppShell` mette `children`). In tutti e due i posti l'avviso le sta subito prima, e la pagina non si rimonta. E
     // ciò che la cornice dà all'`AppShell` come `children` è sempre un frammento, anche fuori dallo stato ridotto: il primo
-    // figlio è l'avviso, o niente; il secondo è la pagina, com'è.
-    it.each<[string, { label: string }[] | undefined, string]>([
-        ['senza percorso', undefined, 'main.zr-main'],
-        ['col percorso', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }], 'main.zr-main > div.zr-main-body'],
-    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, crumbs, dove) => {
+    // figlio è l'avviso, o niente; il secondo è la pagina, com'è. Nella tupla `dove` viene prima delle briciole: vitest riempie i
+    // `%s` del titolo in ordine, e il secondo deve dire dove sta la pagina (letture della PR #56, N5).
+    it.each<[string, string, { label: string }[] | undefined]>([
+        ['senza percorso', 'main.zr-main', undefined],
+        ['col percorso', 'main.zr-main > div.zr-main-body', [{ label: 'UAT Lancio' }, { label: 'UAT Scheda' }]],
+    ])('%s la pagina sta in `%s`, nello stato ridotto con l\'avviso subito prima, e non si rimonta; `children` dell\'`AppShell` è sempre un frammento con la pagina per secondo figlio (sprint 25 · T6, R5 e R6)', async (_caso, dove, crumbs) => {
         const appShell = vi.spyOn(componenti, 'AppShell');
         const montata = vi.fn();
         const pagina = <PaginaConUnCampo montata={montata} />;
@@ -4289,6 +4502,81 @@ describe('chi non ha accettato i documenti legali', () => {
             expect(cornice()).toStrictEqual(ridotta);
 
             await passano(300);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        // Sprint 26 · T4.1 (lettura della PR #56, R7). Passata allo stato ridotto la cornice dimentica la ricerca: tornata quella di
+        // sempre non mostra i risultati di prima sotto una parola che non ha mai cercato, e la risposta di una richiesta che era in
+        // volo non li rimette. La ricerca è pronta e vuota finché la persona non cerca di nuovo.
+        /** Ciò che la ricerca mostra: i titoli dei risultati, se sta cercando, se ha un errore. */
+        const laRicerca = () => ({
+            risultati: tutti('.zr-search-panel [role="option"]').map((riga) => riga.querySelector('.zr-search-title')?.textContent),
+            staCercando: uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent ?? null,
+            errore: uno('.zr-search-panel [role="alert"]')?.textContent ?? null,
+        });
+        const prontaEVuota = { risultati: [], staCercando: null, errore: null };
+        // Lettura della PR #59, R4. Con la ricerca pronta e vuota e una parola rimasta nel campo, sotto il campo l'`AppShell` scrive
+        // «Nessun risultato» per quella parola, che la cornice non ha cercato: lo dice il README, ed è chiesto al design system
+        // (un campo che si svuota). Il giorno che cambia, questi casi sono rossi e la frase del README si riscrive.
+        const nessunRisultatoPer = (parola: string) => [`Nessun risultato per «${parola}»Prova con un'altra parola o controlla di essere nel workspace giusto.`];
+        /** Ciò che si legge sotto il campo quando non ci sono righe di risultati. */
+        const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
+        const trovato = (parola: unknown) => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: `Risultato di «${String(parola)}»` }], workspace: 'acme-marketing' });
+        const parolaDi = (opzioni?: RequestInit) => (JSON.parse(String(opzioni?.body)) as { q?: unknown }).q;
+
+        it.each<[string, DatiDellaCornice, { risultati: string[]; staCercando: string | null; errore: string | null }, unknown[], string[]]>([
+            ['arrivano i dati ridotti: tornata quella di sempre, la ricerca è pronta e vuota, e la parola nuova non è partita', ridotti, prontaEVuota, ['ua'], nessunRisultatoPer('uat')],
+            // Il controllo vede ciò che cerca: con altri dati di sempre, dopo gli stessi tasti, la parola nuova parte e si vedono i suoi risultati.
+            ['arrivano altri dati di sempre: la parola nuova parte, e i risultati sono i suoi', { ...diSempre, aggiornati_il: '2026-10-11T22:00:03.000001Z' }, { ...prontaEVuota, risultati: ['Risultato di «uat»'] }, ['ua', 'uat'], []],
+        ])('coi risultati di una parola in pagina, fra il tasto di un\'altra e i 300 ms %s (sprint 26 · T4.1)', async (_caso, arrivati, attesa, parole, sotto) => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovato(parolaDi(opzioni)));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(laPagina(diSempre));
+            await batte('ua', 300);
+            expect(laRicerca()).toStrictEqual({ ...prontaEVuota, risultati: ['Risultato di «ua»'] });
+
+            await batte('uat', 100);
+            await mostra(laPagina(arrivati));
+            await passano(300);
+            await mostra(laPagina(lettiDopo));
+
+            expect(cornice()).not.toStrictEqual(ridotta);
+            expect(fetchFinto.mock.calls.map(([, opzioni]) => parolaDi(opzioni))).toStrictEqual(parole);
+            expect(laRicerca()).toStrictEqual(attesa);
+            expect(sottoIlCampo()).toStrictEqual(sotto);
+        });
+
+        it.each<[string, boolean]>([
+            ['arriva mentre la cornice è ridotta', true],
+            ['arriva dopo che la cornice è tornata quella di sempre', false],
+        ])('se la cornice passa allo stato ridotto con una ricerca in volo, la richiesta è annullata e la sua risposta non entra nella ricerca nemmeno se %s: tornata quella di sempre, la ricerca è pronta e vuota (sprint 26 · T4.1)', async (_caso, mentreERidotta) => {
+            let arriva!: (valore: Response) => void;
+            const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => new Promise<Response>((risolvi) => (arriva = risolvi)));
+            vi.stubGlobal('fetch', fetchFinto);
+            // La risposta arriva lo stesso, anche a richiesta annullata: è il caso peggiore.
+            const risponde = async () => act(async () => {
+                arriva(trovato('ua'));
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            await mostra(laPagina(diSempre));
+            await batte('ua', 300);
+            expect(laRicerca()).toStrictEqual({ ...prontaEVuota, staCercando: 'Sto cercando…' });
+            expect(fetchFinto.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+
+            await mostra(laPagina(ridotti));
+            expect(cornice()).toStrictEqual(ridotta);
+            expect(fetchFinto.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+            if (mentreERidotta) {
+                await risponde();
+            }
+            await mostra(laPagina(lettiDopo));
+            if (!mentreERidotta) {
+                await risponde();
+            }
+
+            expect(cornice()).not.toStrictEqual(ridotta);
+            expect(laRicerca()).toStrictEqual(prontaEVuota);
+            expect(sottoIlCampo()).toStrictEqual(nessunRisultatoPer('ua'));
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
     });

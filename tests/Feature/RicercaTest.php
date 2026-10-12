@@ -9,6 +9,7 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\RicercaDellaCornice;
+use Zeiras\Core\Registro;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -233,9 +234,9 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
         risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
         risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
     ], 'successivo' => null])]);
-    // Il registro di prova entra dalla proprietà privata, con la reflection, come per le notifiche: nel codice che va in
-    // produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
-    $registro = new ReflectionProperty(RicercaDellaCornice::class, 'registro');
+    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche: nel codice
+    // che va in produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
+    $registro = new ReflectionProperty(Registro::class, 'voci');
     $registro->setValue(null, [
         ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
         ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
@@ -252,7 +253,7 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
     }
 });
 
-it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie (sprint 25 · T6, R1)', function () {
+it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (sprint 25 · T6, R1; sprint 26 · T3.2)', function () {
     $classe = new ReflectionClass(RicercaDellaCornice::class);
     $pubblici = array_map(fn (ReflectionMethod $metodo): string => $metodo->getName(), $classe->getMethods(ReflectionMethod::IS_PUBLIC));
     $sorgente = (string) file_get_contents((string) $classe->getFileName());
@@ -260,9 +261,11 @@ it('la parte server della ricerca non ha agganci per i test nel codice che va in
     expect($pubblici)->toBe(['cerca'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
-        // Il registro è quello del pacchetto, scritto nel codice: un percorso che arriva da fuori non c'è.
-        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(1)
-        ->and(str_contains($sorgente, "file_get_contents(__DIR__.'/../../resources/registro/prodotti.json')"))->toBe(true);
+        // Il registro è quello del pacchetto, e lo legge `Registro`: qui non c'è una lettura di file, né una copia tenuta, e le
+        // voci si chiedono a lei in un punto solo del codice (sprint 26 · T3.2).
+        ->and(substr_count($sorgente, 'file_get_contents('))->toBe(0)
+        ->and($classe->hasProperty('registro'))->toBe(false)
+        ->and(substr_count(senzaCommenti($sorgente), 'Registro::voci()'))->toBe(1);
 });
 
 it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', function (string $q) {
@@ -536,4 +539,24 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
     'un 429 senza codice' => [429, null],
     'quel codice con un 403' => [403, 'troppe_richieste'],
     'quel codice con un 503' => [503, 'troppe_richieste'],
+]);
+
+// Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
+// tutte le rotte: un registro di prova lasciato da un caso arriverebbe a ogni caso dopo, di questo file e degli altri. Lo
+// dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto. Lo
+// toglie l'`afterEach` qui sotto, dopo ogni caso di questo file.
+
+afterEach(fn () => (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, null));
+
+it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo la ricerca dà a un contatto le chiavi del registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $contesto) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
+    if ($diProva !== null) {
+        (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $diProva);
+    }
+
+    expect(cerca('UAT')->assertOk()->json('data.0.contesto'))->toBe($contesto);
+})->with([
+    'il primo: un registro di prova che al contatto dà `reparto`' => [[['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]]], ['reparto' => 'UAT Acquisti']],
+    'il secondo: nessuno lo scrive, ed è quello del pacchetto' => [null, ['ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti']],
 ]);
