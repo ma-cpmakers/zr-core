@@ -770,7 +770,6 @@ scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.sc
 (`board.commento.menzione`), con `/c/{id}` anche lei: l'id è quello della scheda, e `commento_id`, che i `dati` portano,
 non è nel percorso. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
-
 Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com'è nel
 backoffice (`board.scheda`), l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno
 la seconda riga del risultato. Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del

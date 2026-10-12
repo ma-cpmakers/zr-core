@@ -3752,9 +3752,14 @@ it('né il README né la guida dicono più che la ricerca trova solo board e car
 // Sprint 27 · T3 (voce #1787): dalla `v1.17.0` la ricerca trova anche i membri del workspace. Il README lo dice nel punto «La
 // ricerca» — che cosa sono, il gruppo, il ruolo nella lingua e mai l'email, dove si apre, la fonte nominata per ultima, i due
 // testi senza moduli attivi e l'invito di prima —, nella riga della rotta e nel capoverso delle risorse del registro (`home`
-// ha una risorsa, `codici`, i testi nuovi delle lingue). La guida dice `codici` nel passo del registro, e non altrove.
+// ha una risorsa, `codici`, i testi nuovi delle lingue), che sta in coda al paragrafo «Fuori dalla cornice», dove il README dice
+// il registro: i due capoversi dopo, quello dei due sì o no e quello del tono, restano attaccati a lui. La guida dice `codici`
+// nel passo del registro, e non altrove.
 
-/** Il capoverso del README sulle risorse del registro, su una riga sola. Vuoto se non c'è. */
+/**
+ * Il capoverso del README sulle risorse del registro, su una riga sola: dalla riga che comincia con «Nel registro stanno anche
+ * le risorse» alla riga vuota. È la coda del paragrafo «Fuori dalla cornice», senza una riga vuota davanti. Vuoto se non c'è.
+ */
 function capoversoDelleRisorse(string $readme): string
 {
     preg_match('/^Nel registro stanno anche le risorse .*?(?=^$|\z)/ms', $readme, $capoverso);
@@ -3771,7 +3776,9 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     ];
 
     expect($testi[$dove])->not->toBe('')
-        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // Il capoverso delle risorse chiude il paragrafo che dice il registro: non è un paragrafo a sé, messo fra quello e i due dopo.
+        ->and(str_ends_with(paragrafoFuoriDallaCornice($readme), $testi['registro']))->toBe(true);
 })->with([
     'che cosa sono, e da quando' => ['ricerca', 'Dalla `v1.17.0` la ricerca trova anche i membri del workspace (`workspace.membro`): non sono di un modulo, il backoffice li cerca in ogni workspace, anche senza moduli attivi, e nel registro stanno nella voce `home`'],
     'il gruppo' => ['ricerca', 'Il gruppo dei membri è «Membri» (in inglese «Members», in spagnolo «Miembros»), con l\'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il nome di un prodotto, né un tono'],
