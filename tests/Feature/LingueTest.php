@@ -230,6 +230,136 @@ function chiaviDeiTitoliDelleNotifiche(): array
 }
 
 /**
+ * Le frasi delle notifiche di Project Management che dicono chi ha fatto che cosa (sprint 29 · T2): per ogni tipo la frase con
+ * chi e che cosa (`notificationTitleWhoWhat.<tipo>`, coi posti `{who}` e `{what}`) e quella con solo chi
+ * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
+ * backoffice non dà il nome. La tabella è scritta qui, non letta dai file delle lingue.
+ *
+ * @return array<string, array{chiECosa: array{it: string, en: string, es: string}|null, chi: array{it: string, en: string, es: string}}>
+ */
+function frasiDelleNotificheConChi(): array
+{
+    return [
+        'com.zeiras.board.cartella.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato la cartella «{what}»', 'en' => '{who} created the folder “{what}”', 'es' => '{who} ha creado la carpeta «{what}»'],
+            'chi' => ['it' => '{who} ha creato una cartella', 'en' => '{who} created a folder', 'es' => '{who} ha creado una carpeta'],
+        ],
+        'com.zeiras.board.cartella.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato la cartella «{what}»', 'en' => '{who} changed the folder “{what}”', 'es' => '{who} ha modificado la carpeta «{what}»'],
+            'chi' => ['it' => '{who} ha modificato una cartella', 'en' => '{who} changed a folder', 'es' => '{who} ha modificado una carpeta'],
+        ],
+        'com.zeiras.board.cartella.eliminata' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha eliminato una cartella', 'en' => '{who} deleted a folder', 'es' => '{who} ha eliminado una carpeta'],
+        ],
+        'com.zeiras.board.board.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato la board «{what}»', 'en' => '{who} created the board “{what}”', 'es' => '{who} ha creado el tablero «{what}»'],
+            'chi' => ['it' => '{who} ha creato una board', 'en' => '{who} created a board', 'es' => '{who} ha creado un tablero'],
+        ],
+        'com.zeiras.board.board.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato la board «{what}»', 'en' => '{who} changed the board “{what}”', 'es' => '{who} ha modificado el tablero «{what}»'],
+            'chi' => ['it' => '{who} ha modificato una board', 'en' => '{who} changed a board', 'es' => '{who} ha modificado un tablero'],
+        ],
+        'com.zeiras.board.lista.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato la lista «{what}»', 'en' => '{who} created the list “{what}”', 'es' => '{who} ha creado la lista «{what}»'],
+            'chi' => ['it' => '{who} ha creato una lista', 'en' => '{who} created a list', 'es' => '{who} ha creado una lista'],
+        ],
+        'com.zeiras.board.lista.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato la lista «{what}»', 'en' => '{who} changed the list “{what}”', 'es' => '{who} ha modificado la lista «{what}»'],
+            'chi' => ['it' => '{who} ha modificato una lista', 'en' => '{who} changed a list', 'es' => '{who} ha modificado una lista'],
+        ],
+        'com.zeiras.board.scheda.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato la scheda «{what}»', 'en' => '{who} created the card “{what}”', 'es' => '{who} ha creado la tarjeta «{what}»'],
+            'chi' => ['it' => '{who} ha creato una scheda', 'en' => '{who} created a card', 'es' => '{who} ha creado una tarjeta'],
+        ],
+        'com.zeiras.board.scheda.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato la scheda «{what}»', 'en' => '{who} changed the card “{what}”', 'es' => '{who} ha modificado la tarjeta «{what}»'],
+            'chi' => ['it' => '{who} ha modificato una scheda', 'en' => '{who} changed a card', 'es' => '{who} ha modificado una tarjeta'],
+        ],
+        'com.zeiras.board.scheda.eliminata' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha eliminato una scheda', 'en' => '{who} deleted a card', 'es' => '{who} ha eliminado una tarjeta'],
+        ],
+        'com.zeiras.board.etichetta.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato l\'etichetta «{what}»', 'en' => '{who} created the label “{what}”', 'es' => '{who} ha creado la etiqueta «{what}»'],
+            'chi' => ['it' => '{who} ha creato un\'etichetta', 'en' => '{who} created a label', 'es' => '{who} ha creado una etiqueta'],
+        ],
+        'com.zeiras.board.etichetta.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato l\'etichetta «{what}»', 'en' => '{who} changed the label “{what}”', 'es' => '{who} ha modificado la etiqueta «{what}»'],
+            'chi' => ['it' => '{who} ha modificato un\'etichetta', 'en' => '{who} changed a label', 'es' => '{who} ha modificado una etiqueta'],
+        ],
+        'com.zeiras.board.etichetta.eliminata' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha eliminato un\'etichetta', 'en' => '{who} deleted a label', 'es' => '{who} ha eliminado una etiqueta'],
+        ],
+        'com.zeiras.board.vista.creata' => [
+            'chiECosa' => ['it' => '{who} ha creato la vista «{what}»', 'en' => '{who} created the view “{what}”', 'es' => '{who} ha creado la vista «{what}»'],
+            'chi' => ['it' => '{who} ha creato una vista', 'en' => '{who} created a view', 'es' => '{who} ha creado una vista'],
+        ],
+        'com.zeiras.board.vista.modificata' => [
+            'chiECosa' => ['it' => '{who} ha modificato la vista «{what}»', 'en' => '{who} changed the view “{what}”', 'es' => '{who} ha modificado la vista «{what}»'],
+            'chi' => ['it' => '{who} ha modificato una vista', 'en' => '{who} changed a view', 'es' => '{who} ha modificado una vista'],
+        ],
+        'com.zeiras.board.vista.eliminata' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha eliminato una vista', 'en' => '{who} deleted a view', 'es' => '{who} ha eliminado una vista'],
+        ],
+        'board.scheda.assegnata' => [
+            'chiECosa' => ['it' => '{who} ti ha assegnato la scheda «{what}»', 'en' => '{who} assigned you the card “{what}”', 'es' => '{who} te ha asignado la tarjeta «{what}»'],
+            'chi' => ['it' => '{who} ti ha assegnato una scheda', 'en' => '{who} assigned you a card', 'es' => '{who} te ha asignado una tarjeta'],
+        ],
+        'board.commento.menzione' => [
+            'chiECosa' => ['it' => '{who} ti ha menzionato in «{what}»', 'en' => '{who} mentioned you in “{what}”', 'es' => '{who} te ha mencionado en «{what}»'],
+            'chi' => ['it' => '{who} ti ha menzionato in un commento', 'en' => '{who} mentioned you in a comment', 'es' => '{who} te ha mencionado en un comentario'],
+        ],
+    ];
+}
+
+/** @return list<string> le chiavi delle frasi con chi: `notificationTitleWhoWhat.<tipo>` e `notificationTitleWho.<tipo>` */
+function chiaviDelleFrasiConChi(): array
+{
+    $chiavi = [];
+    foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
+        if ($frasi['chiECosa'] !== null) {
+            $chiavi[] = "notificationTitleWhoWhat.$tipo";
+        }
+        $chiavi[] = "notificationTitleWho.$tipo";
+    }
+
+    return $chiavi;
+}
+
+/**
+ * Cosa non torna nelle frasi con chi di una lingua: una frase di un tipo che non ha un titolo (`notificationTitle.<tipo>`), o
+ * una che non ha esattamente i suoi segnaposto, una volta ciascuno: `{who}` e `{what}` quella con chi e che cosa, il solo
+ * `{who}` l'altra.
+ *
+ * @param  array<string, mixed>  $testi
+ * @return list<string>
+ */
+function problemiDelleFrasiConChi(array $testi): array
+{
+    $problemi = [];
+    foreach ($testi as $chiave => $testo) {
+        if (preg_match('/^notificationTitleWho(What)?\.(.+)$/', (string) $chiave, $parti) !== 1) {
+            continue;
+        }
+        if (! array_key_exists('notificationTitle.'.$parti[2], $testi)) {
+            $problemi[] = "«{$chiave}» è di un tipo che non ha un titolo";
+        }
+        preg_match_all('/\{[^{}]*\}/', is_string($testo) ? $testo : '', $segnaposto);
+        $attesi = $parti[1] === 'What' ? ['{what}', '{who}'] : ['{who}'];
+        $trovati = $segnaposto[0];
+        sort($trovati);
+        if ($trovati !== $attesi) {
+            $problemi[] = "«{$chiave}» ha ".($trovati === [] ? 'nessun segnaposto' : implode(' ', $trovati)).' invece di '.implode(' ', $attesi);
+        }
+    }
+
+    return $problemi;
+}
+
+/**
  * I testi italiani che una decisione ha cambiato prima che lo faccia il design system: la chiave e il testo di zr-core. «Moduli» è
  * il nome unico di Project Management, CRM e gli altri (regola di Luciano dell'11/10/2026; sprint 21 · T1), e il design system
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
@@ -278,7 +408,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
-        ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
+        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
         // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
         ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
@@ -882,4 +1012,53 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
         ->and(problemiDelleLingue($colSegnapostoDelDesignSystem))->toBe(['it: «searchPlaceholder» non è il testo deciso prima del design system'])
         // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
         ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
+});
+
+// Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
+// due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
+
+it('le notifiche di Project Management hanno in ogni lingua la frase con chi e che cosa e quella con solo chi: 32 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $attese = [];
+    foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
+        if ($frasi['chiECosa'] !== null) {
+            $attese["notificationTitleWhoWhat.$tipo"] = $frasi['chiECosa'][$codice];
+        }
+        $attese["notificationTitleWho.$tipo"] = $frasi['chi'][$codice];
+    }
+    $delleFrasi = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWho'), ARRAY_FILTER_USE_KEY);
+    ksort($attese);
+    ksort($delleFrasi);
+
+    expect($attese)->toHaveCount(32)
+        ->and(array_keys(frasiDelleNotificheConChi()))->each->toBeIn(tipiDiNotificaConUnTitolo())
+        // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
+        ->and($delleFrasi)->toBe($attese)
+        ->and(problemiDelleFrasiConChi($testi))->toBe([]);
+})->with(['it', 'en', 'es']);
+
+it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno scritto due volte, uno con un altro nome e la frase di un tipo senza titolo (sprint 29 · T2.7)', function () {
+    $testi = [
+        'notificationTitle.com.zeiras.board.scheda.modificata' => 'Tarjeta modificada',
+        'notificationTitle.com.zeiras.board.scheda.creata' => 'Nueva tarjeta',
+        'notificationTitleWhoWhat.com.zeiras.board.scheda.modificata' => '{who} ha modificado la tarjeta',
+        'notificationTitleWho.com.zeiras.board.scheda.modificata' => '{who} ha modificado «{what}»',
+        'notificationTitleWhoWhat.com.zeiras.board.scheda.creata' => '{who} y {who} han creado la tarjeta «{what}»',
+        'notificationTitleWho.com.zeiras.board.scheda.creata' => '{quien} ha creado una tarjeta',
+        'notificationTitleWho.com.zeiras.board.scheda.spostata' => '{who} ha movido una tarjeta',
+    ];
+    $giuste = [
+        'notificationTitle.board.scheda.assegnata' => 'Se te ha asignado una tarjeta',
+        'notificationTitleWhoWhat.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}»',
+        'notificationTitleWho.board.scheda.assegnata' => '{who} te ha asignado una tarjeta',
+        'unreadOne' => 'Tienes {n} sin leer',
+    ];
+
+    expect(problemiDelleFrasiConChi($testi))->toBe([
+        '«notificationTitleWhoWhat.com.zeiras.board.scheda.modificata» ha {who} invece di {what} {who}',
+        '«notificationTitleWho.com.zeiras.board.scheda.modificata» ha {what} {who} invece di {who}',
+        '«notificationTitleWhoWhat.com.zeiras.board.scheda.creata» ha {what} {who} {who} invece di {what} {who}',
+        '«notificationTitleWho.com.zeiras.board.scheda.creata» ha {quien} invece di {who}',
+        '«notificationTitleWho.com.zeiras.board.scheda.spostata» è di un tipo che non ha un titolo',
+    ])->and(problemiDelleFrasiConChi($giuste))->toBe([]);
 });
