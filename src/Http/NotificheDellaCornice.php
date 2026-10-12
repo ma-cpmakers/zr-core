@@ -384,7 +384,7 @@ final class NotificheDellaCornice
                     return array_map(function (string $percorso): array {
                         preg_match_all(self::SEGNAPOSTO, $percorso, $segnaposto);
 
-                        return array_values(array_unique($segnaposto[1]));
+                        return $segnaposto[1];
                     }, [$notifica['percorso'], ...($notifica['altrimenti'] ?? [])]);
                 }
             }
