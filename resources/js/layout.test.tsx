@@ -244,7 +244,7 @@ describe('LayoutDellaCornice', () => {
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(segnaposto()).toBe('Cerca schede, board, cartelle…');
+        expect(segnaposto()).toBe('Cerca nel workspace…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
         await visita(inSpagnolo, <PaginaB key="2" />);
@@ -256,7 +256,7 @@ describe('LayoutDellaCornice', () => {
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
-        expect(segnaposto()).toBe('Busca tarjetas, tableros, carpetas…');
+        expect(segnaposto()).toBe('Busca en el workspace…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);
@@ -397,8 +397,8 @@ describe('LayoutDellaCornice', () => {
             </LayoutDellaCornice>,
         );
         expect(uno('.zr-shell')?.className).toBe('zr-shell');
-        // Il segnaposto resta quello della cornice, con le fonti del workspace dei dati (sprint 25 · T4.3).
-        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca schede, board, cartelle…');
+        // Il segnaposto resta quello della cornice, uno solo in ogni workspace (sprint 25 · T4.3; sprint 27 · T7.1).
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca nel workspace…');
     });
 });
 

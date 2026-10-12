@@ -9,9 +9,9 @@ import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 // italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system (o, dove c'è una decisione, quello
 // deciso prima che il design system lo porti) e che nessuna lingua sia elencata nel codice lo prova tests/Feature/LingueTest.php.
 
-/** I tipi di risorsa del registro, `<prodotto>.<tipo>`, nel suo ordine: le chiavi dei loro nomi nelle lingue. */
+/** I tipi di risorsa del registro, `<voce>.<tipo>`, nel suo ordine: le chiavi dei loro nomi nelle lingue. */
 const tipiDelRegistro = registro.flatMap((voce) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}`));
-/** I codici che il registro dà alle chiavi di `contesto`, `<prodotto>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nelle lingue, con `searchContext.` davanti. */
+/** I codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nelle lingue, con `searchContext.` davanti. */
 const codiciDelRegistro = registro.flatMap((voce) =>
     (voce.risorse ?? []).flatMap((risorsa) => Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `${voce.id}.${risorsa.tipo}.${chiave}.${codice}`))),
 );
@@ -423,12 +423,15 @@ describe('le lingue della cornice', () => {
     // Sprint 25 · T4 (voce #1639): il segnaposto del campo di ricerca e l'invito sotto il campo dicono le fonti della ricerca nel
     // workspace — i tipi di risorsa dei moduli attivi —, col nome da elenco che la lingua ha per ogni tipo. Senza fonti restano
     // due testi corti, che non promettono niente. I puntini del segnaposto sono il carattere «…».
-    it('i due testi della ricerca senza fonti e i due che le nominano sono nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 25 · T4.3)', () => {
+    // Sprint 27 · T7 (voce #1810): il segnaposto è uno solo, uguale in ogni workspace e in ogni modulo, e non nomina più le
+    // fonti: le dice l'invito. La chiave resta (`searchPlaceholderSources`: il segnaposto di una ricerca che ha delle fonti),
+    // senza il posto dell'elenco; quello corto resta a chi non ha fonti, cioè a chi non ha accettato i documenti legali.
+    it('i due testi della ricerca senza fonti, il segnaposto unico e l\'invito che nomina le fonti sono nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 25 · T4.3; sprint 27 · T7.1)', () => {
         const chiavi = ['searchPlaceholder', 'searchHint', 'searchPlaceholderSources', 'searchHintSources'] as const;
-        const inInglese = ['Search…', 'Type at least 2 characters.', 'Search {sources}…', 'Search {sources}: type at least 2 characters.'];
+        const inInglese = ['Search…', 'Type at least 2 characters.', 'Search the workspace…', 'Search {sources}: type at least 2 characters.'];
         expect([italiano, spagnolo, inglese].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
-            ['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca {sources}…', 'Cerca {sources}: scrivi almeno 2 caratteri.'],
-            ['Busca…', 'Escribe al menos 2 caracteres.', 'Busca {sources}…', 'Busca {sources}: escribe al menos 2 caracteres.'],
+            ['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca nel workspace…', 'Cerca {sources}: scrivi almeno 2 caratteri.'],
+            ['Busca…', 'Escribe al menos 2 caracteres.', 'Busca en el workspace…', 'Busca {sources}: escribe al menos 2 caracteres.'],
             inInglese,
         ]);
         expect(chiavi.map((chiave) => testi('pt-BR')[chiave])).toStrictEqual(inInglese);
@@ -438,12 +441,12 @@ describe('le lingue della cornice', () => {
         ['it', italiano],
         ['en', inglese],
         ['es', spagnolo],
-    ])('con la lingua "%s", i due testi che nominano le fonti hanno una volta sola il posto dell\'elenco, quelli senza fonti non ne nominano nessuna, e i due segnaposto finiscono coi puntini (sprint 25 · T4.3)', (_lingua, file) => {
+    ])('con la lingua "%s", l\'invito che nomina le fonti ha una volta sola il posto dell\'elenco, il segnaposto unico e i due testi senza fonti non lo hanno, nessuno dei quattro nomina una fonte, e i due segnaposto finiscono coi puntini (sprint 25 · T4.3; sprint 27 · T7.5)', (_lingua, file) => {
         const volte = (testo: string | undefined, parola: string) => (testo ?? '').toLowerCase().split(parola.toLowerCase()).length - 1;
         const daElenco = tipiDelRegistro.map((tipo) => file[`searchSource.${tipo}`] ?? '?');
 
-        expect([volte(file['searchPlaceholderSources'], '{sources}'), volte(file['searchHintSources'], '{sources}')]).toStrictEqual([1, 1]);
-        expect([volte(file['searchPlaceholder'], '{'), volte(file['searchHint'], '{')]).toStrictEqual([0, 0]);
+        expect([volte(file['searchPlaceholderSources'], '{sources}'), volte(file['searchHintSources'], '{sources}')]).toStrictEqual([0, 1]);
+        expect([volte(file['searchPlaceholder'], '{'), volte(file['searchHint'], '{'), volte(file['searchPlaceholderSources'], '{')]).toStrictEqual([0, 0, 0]);
         expect(daElenco.filter((nome) => volte(`${file['searchPlaceholder']} ${file['searchHint']} ${file['searchPlaceholderSources']} ${file['searchHintSources']}`, nome) > 0)).toStrictEqual([]);
         // I puntini in fondo sono il carattere «…», non tre punti.
         for (const segnaposto of [file['searchPlaceholder'] ?? '', file['searchPlaceholderSources'] ?? '']) {
@@ -488,7 +491,7 @@ describe('le lingue della cornice', () => {
 
     // Sprint 27 · T2 (voce #1787): il membro del workspace non è di un modulo, e il backoffice lo cerca in ogni workspace: è una
     // fonte anche dove nessun modulo è attivo. Nel registro sta nella prima voce, quella della Dashboard, ma fra le fonti viene
-    // per ultimo: il segnaposto ne nomina tre, e le prime restano quelle dei moduli.
+    // per ultimo: l'invito nomina prima quelle dei moduli.
     it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: TipoDiRisorsa[]]>([
         ['Project Management attivo e il CRM solo disponibile', { pm: 'attivo', crm: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
         // Nell'ordine del registro, non in quello dei dati.
@@ -502,71 +505,72 @@ describe('le lingue della cornice', () => {
     });
 
     it.each<[lingua: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca membri…', 'Cerca membri: scrivi almeno 2 caratteri.'],
-        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
-        ['es', {}, 'Busca miembros…', 'Busca miembros: escribe al menos 2 caracteres.'],
-        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
-        ['en', {}, 'Search members…', 'Search members: type at least 2 characters.'],
-    ])('con la lingua "%s" e i moduli %j, i due testi della ricerca nominano i membri dopo le fonti dei moduli attivi: l\'invito per ultimi, il segnaposto solo dove le fonti dei moduli sono meno di tre; senza moduli attivi sono la sola fonte, mai i due testi corti (sprint 27 · T2.4)', (lingua, prodotti, segnaposto, invito) => {
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
+        ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
+        ['en', {}, 'Search the workspace…', 'Search members: type at least 2 characters.'],
+    ])('con la lingua "%s" e i moduli %j, l\'invito nomina i membri dopo le fonti dei moduli attivi, per ultimi, e senza moduli attivi sono la sola fonte, mai l\'invito corto; il segnaposto è lo stesso con qualunque modulo attivo e non nomina nessuna fonte (sprint 27 · T2.4, T7.1, T7.3)', (lingua, prodotti, segnaposto, invito) => {
         expect(testiDellaRicerca(lingua, fontiDellaRicerca(prodotti))).toStrictEqual({ searchPlaceholder: segnaposto, searchHint: invito });
     });
 
     it.each<[lingua: string, fonti: TipoDiRisorsa[], segnaposto: string, invito: string]>([
         ['it', [], 'Cerca…', 'Scrivi almeno 2 caratteri.'],
-        ['it', ['pm.board.scheda'], 'Cerca schede…', 'Cerca schede: scrivi almeno 2 caratteri.'],
-        ['it', ['pm.board.scheda', 'pm.board.board'], 'Cerca schede, board…', 'Cerca schede e board: scrivi almeno 2 caratteri.'],
-        ['it', diProjectManagement, 'Cerca schede, board, cartelle…', 'Cerca schede, board e cartelle: scrivi almeno 2 caratteri.'],
-        ['it', delCrm, 'Cerca contatti, aziende, opportunità…', 'Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
-        // Il segnaposto ne nomina al più tre, l'invito tutte.
-        ['it', [...diProjectManagement, ...delCrm], 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', ['pm.board.scheda'], 'Cerca nel workspace…', 'Cerca schede: scrivi almeno 2 caratteri.'],
+        ['it', ['pm.board.scheda', 'pm.board.board'], 'Cerca nel workspace…', 'Cerca schede e board: scrivi almeno 2 caratteri.'],
+        ['it', diProjectManagement, 'Cerca nel workspace…', 'Cerca schede, board e cartelle: scrivi almeno 2 caratteri.'],
+        ['it', delCrm, 'Cerca nel workspace…', 'Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        // L'invito le nomina tutte, quante che siano.
+        ['it', [...diProjectManagement, ...delCrm], 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
         ['es', [], 'Busca…', 'Escribe al menos 2 caracteres.'],
-        ['es', diProjectManagement, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
-        ['es', [...diProjectManagement, ...delCrm], 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
+        ['es', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
+        ['es', [...diProjectManagement, ...delCrm], 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
         ['en', [], 'Search…', 'Type at least 2 characters.'],
-        ['en', diProjectManagement, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
-        ['en', [...diProjectManagement, ...delCrm], 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, and opportunities: type at least 2 characters.'],
+        ['en', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and folders: type at least 2 characters.'],
+        ['en', [...diProjectManagement, ...delCrm], 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, and opportunities: type at least 2 characters.'],
         // Una variante regionale scritta come `Intl` non la accetta: la lingua dell'elenco è quella del file dei testi.
-        ['es_ES', diProjectManagement, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
+        ['es_ES', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
         // Una lingua che zr-core non ha: tutto in inglese, anche la congiunzione.
-        ['pt-BR', diProjectManagement, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
-    ])('con la lingua "%s" e le fonti %j, il segnaposto ne nomina al più tre, separate come la lingua separa un elenco, e l\'invito tutte, con la congiunzione della lingua; senza fonti i due testi corti (sprint 25 · T4.3)', (lingua, fonti, segnaposto, invito) => {
+        ['pt-BR', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and folders: type at least 2 characters.'],
+    ])('con la lingua "%s" e le fonti %j, l\'invito le nomina tutte, con la congiunzione della lingua, e il segnaposto è quello unico, che non ne nomina nessuna; senza fonti i due testi corti (sprint 25 · T4.3; sprint 27 · T7.1, T7.2)', (lingua, fonti, segnaposto, invito) => {
         expect(testiDellaRicerca(lingua, fonti)).toStrictEqual({ searchPlaceholder: segnaposto, searchHint: invito });
     });
 
-    it('i due testi della ricerca non toccano quelli della lingua, che sono di tutti: dopo, `testi` dà ancora i due senza fonti e i due col posto dell\'elenco (sprint 25 · T4.3)', () => {
+    it('i due testi della ricerca non toccano quelli della lingua, che sono di tutti: dopo, `testi` dà ancora i due senza fonti, il segnaposto unico e l\'invito col posto dell\'elenco (sprint 25 · T4.3)', () => {
         testiDellaRicerca('it', diProjectManagement);
 
         expect([testi('it').searchPlaceholder, testi('it').searchHint, testi('it').searchPlaceholderSources, testi('it').searchHintSources])
-            .toStrictEqual(['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca {sources}…', 'Cerca {sources}: scrivi almeno 2 caratteri.']);
+            .toStrictEqual(['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca nel workspace…', 'Cerca {sources}: scrivi almeno 2 caratteri.']);
     });
 
     // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non
-    // averlo anche quando ha il resto di `Intl`: lì i due testi sono quelli della lingua che non nominano fonti, e niente lancia.
+    // averlo anche quando ha il resto di `Intl`: lì l'invito è quello della lingua che non nomina fonti, e niente lancia.
+    // Sprint 27 · T7 (voce #1810): il segnaposto non passa più dall'elenco: dove `Intl.ListFormat` manca è quello unico, come
+    // dove c'è, e non quello corto, che resta a chi non ha fonti.
     afterEach(() => {
         vi.unstubAllGlobals();
     });
 
-    it.each<[lingua: string, segnaposto: string, invito: string]>([
-        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.'],
-        ['es', 'Busca…', 'Escribe al menos 2 caracteres.'],
-        ['en', 'Search…', 'Type at least 2 characters.'],
+    it.each<[lingua: string, corto: string, invito: string, unico: string]>([
+        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca nel workspace…'],
+        ['es', 'Busca…', 'Escribe al menos 2 caracteres.', 'Busca en el workspace…'],
+        ['en', 'Search…', 'Type at least 2 characters.', 'Search the workspace…'],
         // Una lingua che zr-core non ha: in inglese, come dove l'elenco c'è.
-        ['pt-BR', 'Search…', 'Type at least 2 characters.'],
-    ])('dove `Intl.ListFormat` manca, con la lingua "%s" il segnaposto e l\'invito sono i due testi senza fonti, quante che siano le fonti, e niente lancia; dove c\'è, le nominano (sprint 26 · T5.1)', (lingua, segnaposto, invito) => {
-        const senzaFonti = { searchPlaceholder: segnaposto, searchHint: invito };
+        ['pt-BR', 'Search…', 'Type at least 2 characters.', 'Search the workspace…'],
+    ])('dove `Intl.ListFormat` manca, con la lingua "%s" il segnaposto è quello unico e l\'invito quello senza fonti, quante che siano le fonti, e niente lancia; senza fonti i due testi corti; dove c\'è, l\'invito le nomina (sprint 26 · T5.1; sprint 27 · T7.2)', (lingua, corto, invito, unico) => {
         const conLElenco = testiDellaRicerca(lingua, diProjectManagement);
-        expect([conLElenco.searchPlaceholder, conLElenco.searchHint]).not.toContain(segnaposto);
-        expect([conLElenco.searchPlaceholder, conLElenco.searchHint]).not.toContain(invito);
+        expect(conLElenco.searchPlaceholder).toBe(unico);
+        expect(conLElenco.searchHint).not.toBe(invito);
 
         // Il resto di `Intl` c'è: manca solo l'elenco, come in un browser che non lo ha ancora.
         vi.stubGlobal('Intl', Object.create(Intl, { ListFormat: { value: undefined } }));
         expect(Intl.ListFormat).toBeUndefined();
         expect(typeof Intl.DateTimeFormat).toBe('function');
-        expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual(senzaFonti);
-        expect(testiDellaRicerca(lingua, [...diProjectManagement, ...delCrm])).toStrictEqual(senzaFonti);
-        expect(testiDellaRicerca(lingua, [])).toStrictEqual(senzaFonti);
+        expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual({ searchPlaceholder: unico, searchHint: invito });
+        expect(testiDellaRicerca(lingua, [...diProjectManagement, ...delCrm])).toStrictEqual({ searchPlaceholder: unico, searchHint: invito });
+        expect(testiDellaRicerca(lingua, [])).toStrictEqual({ searchPlaceholder: corto, searchHint: invito });
 
         vi.unstubAllGlobals();
         expect(testiDellaRicerca(lingua, diProjectManagement)).toStrictEqual(conLElenco);

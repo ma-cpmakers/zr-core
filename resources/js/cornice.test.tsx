@@ -5,6 +5,7 @@ import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import { testi, testiDellaRicerca } from './lingue';
+import { registro } from './registro';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
 
@@ -219,27 +220,28 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
-    // Sprint 25 · T4 (voce #1639): il segnaposto del campo e l'invito che si legge prima di due caratteri dicono le fonti della
-    // ricerca nel workspace, cioè i tipi di risorsa dei moduli attivi lì: il segnaposto ne nomina al più tre, l'invito tutte.
-    // Un modulo solo disponibile, in arrivo o senza risorse nel registro non dà fonti.
+    // Sprint 25 · T4 (voce #1639): l'invito che si legge prima di due caratteri dice le fonti della ricerca nel workspace, cioè i
+    // tipi di risorsa dei moduli attivi lì, tutte. Un modulo solo disponibile, in arrivo o senza risorse nel registro non dà fonti.
     // Sprint 27 · T2 (voce #1787): la ricerca trova anche i membri del workspace, che non sono di un modulo: sono una fonte in
-    // ogni workspace, nominata dopo quelle dei moduli attivi. Dove nessun modulo dà fonti sono la sola, e i due testi corti,
-    // che non nominano niente, restano a chi non ha accettato i documenti legali e a un browser senza `Intl.ListFormat`.
+    // ogni workspace, nominata dopo quelle dei moduli attivi. Dove nessun modulo dà fonti sono la sola.
+    // Sprint 27 · T7 (voce #1810): il segnaposto del campo non nomina più le fonti: è lo stesso in ogni workspace e in ogni
+    // modulo. Quello corto resta a chi non ha accettato i documenti legali; l'invito corto anche a un browser senza
+    // `Intl.ListFormat`.
     it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca contatti, aziende, opportunità…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca membri…', 'Cerca membri: scrivi almeno 2 caratteri.'],
-        ['it', {}, 'Cerca membri…', 'Cerca membri: scrivi almeno 2 caratteri.'],
-        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.'],
-        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
-        ['es', {}, 'Busca miembros…', 'Busca miembros: escribe al menos 2 caracteres.'],
-        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
-        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
-        ['en', {}, 'Search members…', 'Search members: type at least 2 characters.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['it', {}, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
+        ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
+        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
+        ['en', {}, 'Search the workspace…', 'Search members: type at least 2 characters.'],
         // Una lingua che zr-core non ha: in inglese.
-        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
-    ])('con la lingua "%s" e i moduli %j, il segnaposto del campo di ricerca e l\'invito prima di due caratteri nominano le fonti dei moduli attivi nel workspace e, dopo, i membri, che ci sono in ogni workspace: mai il testo fisso di prima, né quello dell\'`AppShell` (sprint 25 · T4.3; sprint 27 · T2.4)', async (lingua, prodotti, segnaposto, invito) => {
+        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
+    ])('con la lingua "%s" e i moduli %j, il segnaposto del campo di ricerca è quello unico, che non nomina nessuna fonte, e l\'invito prima di due caratteri nomina le fonti dei moduli attivi nel workspace e, dopo, i membri, che ci sono in ogni workspace: mai i due testi dell\'`AppShell` (sprint 25 · T4.3; sprint 27 · T2.4, T7.1, T7.3)', async (lingua, prodotti, segnaposto, invito) => {
         await mostra(<Cornice dati={{ ...dati, lingua, prodotti }} onLogout={esciSenzaEffetto} />);
         expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
         await act(async () => uno('.zr-search input')?.focus());
@@ -247,13 +249,28 @@ describe('la Cornice', () => {
         expect(uno('.zr-search-note')?.textContent).toBe(invito);
     });
 
+    // Sprint 27 · T7 (voce #1810; da zr-crm): dentro il CRM il campo nominava le fonti di Project Management. Il segnaposto non
+    // dipende dal prodotto in cui si è, né dai moduli attivi.
+    it.each<[caso: string, props: { product?: string }, prodotti: DatiDellaCornice['prodotti']]>([
+        ['sulla Dashboard, senza `product`', {}, { pm: 'attivo', crm: 'attivo' }],
+        ['dentro Project Management', { product: 'pm' }, { pm: 'attivo', crm: 'attivo' }],
+        ['dentro il CRM', { product: 'crm' }, { pm: 'attivo', crm: 'attivo' }],
+        ['dentro il CRM, con Project Management non attivo', { product: 'crm' }, { pm: 'disponibile', crm: 'attivo' }],
+        ['senza moduli attivi', {}, { pm: 'disponibile', crm: 'disponibile' }],
+    ])('%s il segnaposto del campo di ricerca è lo stesso, e non nomina nessuna fonte (sprint 27 · T7.1)', async (_caso, props, prodotti) => {
+        await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto} {...props} />);
+
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca nel workspace…');
+    });
+
     // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non
-    // averlo anche quando ha il resto di `Intl`: lì la cornice si disegna lo stesso, e i due testi sono quelli senza fonti.
+    // averlo anche quando ha il resto di `Intl`: lì la cornice si disegna lo stesso, e l'invito è quello senza fonti.
+    // Sprint 27 · T7 (voce #1810): il segnaposto non passa dall'elenco: anche lì è quello unico.
     it.each<[lingua: string, segnaposto: string, invito: string]>([
-        ['it', 'Cerca…', 'Scrivi almeno 2 caratteri.'],
-        ['es', 'Busca…', 'Escribe al menos 2 caracteres.'],
-        ['en', 'Search…', 'Type at least 2 characters.'],
-    ])('in un browser senza `Intl.ListFormat` la cornice si disegna, in "%s", coi moduli che danno fonti: il segnaposto del campo di ricerca e l\'invito prima di due caratteri sono i due testi senza fonti, e il resto della cornice c\'è (sprint 26 · T5.1)', async (lingua, segnaposto, invito) => {
+        ['it', 'Cerca nel workspace…', 'Scrivi almeno 2 caratteri.'],
+        ['es', 'Busca en el workspace…', 'Escribe al menos 2 caracteres.'],
+        ['en', 'Search the workspace…', 'Type at least 2 characters.'],
+    ])('in un browser senza `Intl.ListFormat` la cornice si disegna, in "%s", coi moduli che danno fonti: il segnaposto del campo di ricerca è quello unico, l\'invito prima di due caratteri è quello senza fonti, e il resto della cornice c\'è (sprint 26 · T5.1; sprint 27 · T7.2)', async (lingua, segnaposto, invito) => {
         // Il resto di `Intl` c'è: manca solo l'elenco, come in un browser che non lo ha ancora.
         vi.stubGlobal('Intl', Object.create(Intl, { ListFormat: { value: undefined } }));
         expect(Intl.ListFormat).toBeUndefined();
@@ -3528,6 +3545,33 @@ describe('la ricerca', () => {
         expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([null, 'Membro']);
     });
 
+    // Lettura della PR #60, R9. Le chiavi di `contesto` e i loro codici sono del registro, mai della risposta. Una chiave del
+    // registro può chiamarsi come una proprietà che ogni oggetto eredita (`constructor`: il controllo del registro la ammette): in
+    // una risorsa che dà dei codici a un'altra chiave lei non ne ha, porta un testo come ogni chiave senza codici, e la cornice
+    // si disegna. Il registro vero non ne ha: il caso la aggiunge alla risorsa del membro, e la toglie.
+    it('una chiave di `contesto` che si chiama come una proprietà ereditata da ogni oggetto, in una risorsa che dà dei codici a un\'altra chiave, porta il suo testo com\'è arrivato: non si cercano codici dove il registro non ne dà, e la cornice non cade (sprint 27 · lettura della PR #60, R9)', async () => {
+        const delMembro = registro.find((voce) => voce.id === 'home')?.risorse?.find((risorsa) => risorsa.tipo === 'workspace.membro');
+        const chiavi = delMembro?.contesto as string[] | undefined;
+        expect(chiavi).toStrictEqual(['ruolo']);
+        chiavi?.push('constructor');
+        try {
+            vi.stubGlobal('fetch', vi.fn(async () => trovati([
+                { tipo: 'workspace.membro', id: '01k7c1m1', titolo: 'Ada Lovelace', contesto: { ruolo: 'membro', constructor: 'UAT in prova' } },
+                { tipo: 'workspace.membro', id: '01k7c1m3', titolo: 'Alan Turing', contesto: { ruolo: 'proprietario' } },
+            ])));
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+            await scrivi('uat');
+            expect(nelleRighe()).toStrictEqual([
+                ['Ada Lovelace', 'Membro · UAT in prova', null],
+                ['Alan Turing', 'Proprietario', null],
+            ]);
+        } finally {
+            chiavi?.pop();
+        }
+        expect(delMembro?.contesto).toStrictEqual(['ruolo']);
+    });
+
     it('il `ruolo` di un contatto del CRM resta il testo che arriva, anche quando è scritto come il codice del ruolo di un membro: si traduce solo la chiave a cui il registro dà dei codici, tipo per tipo (sprint 27 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati([
             { tipo: 'crm.persona', id: '01k7b1p1', titolo: 'Grace Hopper', contesto: { organizzazione: 'Acme Srl', ruolo: 'Direttore' } },
@@ -4246,7 +4290,7 @@ describe('chi non ha accettato i documenti legali', () => {
     it.each<[caso: string, prodotti: DatiDellaCornice['prodotti']]>([
         ['coi dati che dicono un modulo attivo', dati.prodotti],
         ['senza moduli attivi, dove la sola fonte sarebbero i membri', {}],
-    ])('a chi non ha accettato i documenti legali il segnaposto della ricerca non nomina nessuna fonte, nemmeno %s, e l\'invito resta la frase dell\'accettazione (sprint 25 · T4.3; sprint 27 · T2.4)', async (_caso, prodotti) => {
+    ])('a chi non ha accettato i documenti legali il segnaposto della ricerca non nomina nessuna fonte, nemmeno %s, e l\'invito resta la frase dell\'accettazione (sprint 25 · T4.3; sprint 27 · T2.4, T7.2)', async (_caso, prodotti) => {
         await mostra(<Cornice dati={{ ...dati, prodotti, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
 
         expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca…');

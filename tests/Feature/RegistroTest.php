@@ -11,7 +11,8 @@ use Zeiras\Core\Registro;
 // sono quelli del design system alla versione delle copie in resources/zeiras/ (README «Iconografia», linee guida 10 e 15, anteprima
 // dell'AppShell). Sprint 3 · T5 (voce #1277): le risorse di un prodotto che la ricerca mostra, ognuna col tipo del backoffice,
 // un'icona del set, il percorso nel prodotto e se è un contenitore; i loro nomi stanno nelle lingue, con `<prodotto>.<tipo>`.
-// Sprint 5 · T4 (voce #1257): il tipo è quello di ricerca.elenca (`board.cartelle`, `board.board`), e sta in un prodotto solo,
+// Sprint 5 · T4 (voce #1257): il tipo è quello di ricerca.elenca (`board.cartelle`, `board.board`), e sta in una voce sola (un
+// prodotto, o dallo sprint 27 la Dashboard, per il membro del workspace),
 // perché un risultato della ricerca non dice di che prodotto è: la cornice lo trova dal tipo.
 // Sprint 6 · T5 (voce #1377): una risorsa che nel prodotto non ha una pagina sua (la cartella) ha il percorso vuoto, e si apre
 // sulla pagina del prodotto nel workspace. Sprint 25 · T4 (voce #1639): i tipi sono quelli di ricerca.crea — anche schede,

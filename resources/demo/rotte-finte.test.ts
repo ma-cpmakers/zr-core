@@ -544,6 +544,8 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         // mancherebbero comunque, e il caso resterebbe verde anche se la rotta finta non guardasse `senza_crm`.
         ['con `?senza_crm=1` i risultati del CRM non ci sono, nemmeno con `?crm_attivo=1`; il membro sì, che non è di un modulo', '?schede=1&crm_attivo=1&senza_crm=1', [scheda, membro, ...diPrima]],
         ['con `?senza_crm=1` e senza `?schede` il membro c\'è lo stesso', '?senza_crm=1', [membro, ...diPrima]],
+        // Sprint 27 · T7.6: senza moduli attivi il backoffice cerca i soli membri, che non sono di un modulo.
+        ['con `?senza_moduli=1` nessun modulo è attivo nel workspace e c\'è il solo membro, anche con `?schede=1&crm_attivo=1`', '?schede=1&crm_attivo=1&senza_moduli=1', [membro]],
     ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13; sprint 27 · T2.5)', async (_caso, query, attesi) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });

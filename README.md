@@ -612,7 +612,9 @@ cornice === null ? pagina : (
   dove stanno le cartelle, `https://board.zeiras.com/w/<slug>`; una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un
   contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`,
   un'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`: gli stessi percorsi che aprono le notifiche. Dalla
-  `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri. Nel CRM
+  `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri: la
+  pagina è di zr-home, apre l'elenco dei membri col pannello di quel membro, per tutti e tre i ruoli, e per un id che non è
+  più di un membro del workspace rimanda all'elenco. Nel CRM
   le aziende e le opportunità stanno dietro una voce che un workspace può spegnere: se è spenta la pagina di quel risultato
   risponde 404, ed è una risposta del CRM. Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non
   è sempre quello dei dati della pagina: la sessione ha un workspace solo, e con due schede su due workspace la scheda
@@ -624,34 +626,38 @@ cornice === null ? pagina : (
   della ricerca anche un `workspace` che non ha la forma di uno slug — minuscole e cifre, a pezzi uniti da un trattino, la
   stessa che vale per una notifica —: con `..` l'indirizzo di un risultato sarebbe un altro. Una parte server finta che
   risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta. Se la rotta fallisce, l'errore della ricerca,
-  mai «Nessun risultato». Dalla `v1.15.0` il segnaposto del campo e l'invito che si legge prima di due caratteri dicono le
-  fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell'ordine del registro, ognuno col
-  nome da elenco che ha nella lingua (`searchSource.<prodotto>.<tipo>`: «schede», «board», «cartelle», «contatti»,
-  «aziende», «opportunità»). Dalla `v1.17.0` dopo di loro vengono i membri del workspace
-  (`searchSource.home.workspace.membro`: «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono
-  nominati per ultimi. Il segnaposto ne nomina al più tre, l'invito tutte, unite come la lingua unisce un elenco
-  (`Intl.ListFormat`). Con Project Management attivo e il CRM no: «Cerca schede, board, cartelle…» e «Cerca schede, board,
-  cartelle e membri: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, folders…» e «Search cards, boards,
-  folders, and members: type at least 2 characters.», in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas,
-  tableros, carpetas y miembros: escribe al menos 2 caracteres.»); col CRM attivo l'invito nomina anche contatti, aziende e
-  opportunità, prima dei membri, e il segnaposto resta alle prime tre. Un modulo `disponibile` o in arrivo non dà fonti.
-  Senza moduli attivi restano i membri: «Cerca membri…» e «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search
-  members…» e «Search members: type at least 2 characters.», in spagnolo «Busca miembros…» e «Busca miembros: escribe al
-  menos 2 caracteres.»). Dalla `v1.15.0` alla `v1.16.0` i membri non erano una fonte: con Project Management attivo e il
-  CRM no l'invito era «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, and
-  folders: type at least 2 characters.», in spagnolo «Busca tarjetas, tableros y carpetas: escribe al menos 2
-  caracteres.»), e senza moduli attivi il campo aveva i due testi senza fonti; un frontend che ha l'invito nei suoi test lo
-  trova cercando `e cartelle:` (in inglese `and folders:`, in spagnolo `y carpetas:`). I due testi senza fonti sono «Cerca…»
-  (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al
-  menos 2 caracteres.»): dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti.
-  L'elenco delle fonti vuole
-  `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria
-  ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo
-  stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti; nella `v1.15.0`, con almeno
-  una fonte, lì il disegno della cornice lanciava un errore. Dove manca anche il resto la cornice non si disegna, nella
-  `v1.16.0` come prima: a un browser così lo aggiunge il frontend. I due testi li compone la cornice
-  dai testi delle lingue: `searchPlaceholderSources` e `searchHintSources` hanno il posto dell'elenco, `{sources}`, e
-  `searchPlaceholder` e `searchHint` sono quelli senza fonti. Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca
+  mai «Nessun risultato». Dalla `v1.17.0` il segnaposto del campo è uno solo, uguale in ogni workspace e in ogni modulo:
+  «Cerca nel workspace…» (in inglese «Search the workspace…», in spagnolo «Busca en el workspace…»). Non nomina le fonti: che
+  cosa si può cercare lo dice l'invito che si legge prima di due caratteri. Dalla `v1.15.0` l'invito dice le fonti della
+  ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell'ordine del registro, ognuno col nome da
+  elenco che ha nella lingua (`searchSource.<prodotto>.<tipo>`: «schede», «board», «cartelle», «contatti», «aziende»,
+  «opportunità»). Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`:
+  «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi. L'invito le nomina
+  tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`). Con Project Management attivo e il CRM no: «Cerca schede,
+  board, cartelle e membri: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, folders, and members: type at least
+  2 characters.», in spagnolo «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»); col CRM attivo
+  l'invito nomina anche contatti, aziende e opportunità, prima dei membri. Un modulo `disponibile` o in arrivo non dà fonti.
+  Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least
+  2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»). Dalla `v1.15.0` alla `v1.16.0` anche il
+  segnaposto nominava le fonti, al più tre, e i membri non erano una fonte. Un frontend che ha i due testi nei suoi test li
+  trova così, secondo i moduli attivi nei suoi dati di prova: con Project Management attivo e il CRM no il segnaposto era
+  «Cerca schede, board, cartelle…» e l'invito «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (cerca `cartelle…`
+  e `e cartelle:`; in inglese `folders…` e `and folders:`, in spagnolo `carpetas…` e `y carpetas:`); con tutti e due attivi il
+  segnaposto era lo stesso e l'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `e
+  opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`); col solo CRM attivo il segnaposto era
+  «Cerca contatti, aziende, opportunità…» (cerca `opportunità…`; in inglese `opportunities…`, in spagnolo `oportunidades…`);
+  senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.». I due testi senza fonti sono
+  «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.»,
+  «Escribe al menos 2 caracteres.»): dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha
+  fonti. L'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i
+  sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0`
+  la cornice si disegna lo stesso e l'invito è quello senza fonti, quante che siano le fonti; dalla `v1.17.0` il segnaposto lì
+  è quello unico, come ovunque (nella `v1.16.0` era «Cerca…»); nella `v1.15.0`, con almeno una fonte, lì il disegno della
+  cornice lanciava un errore. Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser
+  così lo aggiunge il frontend. I due testi li dà la cornice dai testi delle lingue: `searchHintSources` ha il posto
+  dell'elenco, `{sources}`; `searchPlaceholderSources` è il segnaposto unico e dalla `v1.17.0` non lo ha più (la chiave
+  resta); `searchPlaceholder` e `searchHint` sono quelli senza fonti. Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi:
+  «Cerca
   board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e
   «Search boards and folders: type at least 2 characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y
   carpetas: escribe al menos 2 caracteres.»); prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli:

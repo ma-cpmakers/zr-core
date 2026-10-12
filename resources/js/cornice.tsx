@@ -285,7 +285,8 @@ function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDel
         if (testo === undefined) {
             return [];
         }
-        const codici = risorsa.codici?.[chiave];
+        // I codici di una chiave sono solo quelli che il registro le dà: non una proprietà che ogni oggetto eredita.
+        const codici = risorsa.codici !== undefined && Object.hasOwn(risorsa.codici, chiave) ? risorsa.codici[chiave] : undefined;
         if (codici === undefined) {
             return [testo];
         }
@@ -459,9 +460,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
     };
     const t = testi(dati.lingua);
-    // I due testi della ricerca che dicono che cosa si può cercare: le fonti sono i tipi di risorsa dei moduli attivi nel
-    // workspace dei dati e, dopo, i membri del workspace, che ci sono anche senza moduli attivi. Nello stato ridotto nessuna:
-    // i moduli non si mostrano e la ricerca è spenta, anche quando i dati li dicono ancora attivi.
+    // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
+    // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
+    // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
+    // i dati li dicono ancora attivi.
     const fonti = ridotta ? [] : fontiDellaRicerca(dati.prodotti);
     // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
     const quali = fonti.join();
@@ -711,7 +713,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
-    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Alla
+    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Fa
+    // eccezione il 429: il freno vale per ogni parola, e anche quello di una richiesta che non è più l'ultima annulla quella in
+    // volo e mette l'errore al posto dei suoi risultati (più sotto). Alla
     // parte server vanno i primi 100 caratteri (code point, come `mb_strlen`): oltre risponderebbe 422, e sarebbe un errore.
     // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
     // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
@@ -890,7 +894,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
             // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
-            // copia il segnaposto e l'invito della ricerca, che dicono le fonti del workspace (`dellaRicerca`). A chi non ha
+            // copia il segnaposto della ricerca e l'invito, che dice le fonti del workspace (`dellaRicerca`). A chi non ha
             // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
             // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
             labels={ridotta

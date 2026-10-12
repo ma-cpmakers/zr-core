@@ -142,6 +142,9 @@ let riuscite = 0;
 let caricamenti = 0;
 // Come nei dati di prova (demo.tsx): con `?crm_attivo=1` il CRM è attivo nel workspace, a meno di `?senza_crm=1`.
 const crmAttivo = new URLSearchParams(window.location.search).has('crm_attivo') && !new URLSearchParams(window.location.search).has('senza_crm');
+// Con `?senza_moduli=1` nel workspace nessun modulo è attivo (demo.tsx), e il backoffice lì cerca i soli membri, che non sono di
+// un modulo: della ricerca finta resta il membro.
+const senzaModuli = new URLSearchParams(window.location.search).has('senza_moduli');
 const risultatiDiProva = [
     // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che la
     // rotta vera lascia uscire: le chiavi che il registro dà al tipo, coi soli testi. Un contatto può non avere né azienda né
@@ -253,7 +256,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             return json({
                 data: parola === 'ua'
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
-                    : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+                    : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
             });
         }

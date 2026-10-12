@@ -36,22 +36,25 @@ function vuole(condizione, cheCosa) {
  * Perché un testo non è un bundle intero: è vuoto, o si ferma a metà. `null` se non è né l'uno né l'altro, e allora che forma
  * ha lo dice `leggi`. Un bundle vuoto o troncato non è un bundle di un'altra forma: il rimedio è rimetterlo al suo posto, non
  * riallineare lo script. Si ferma a metà un testo che comincia come il bundle che lo script conosce — la riga 1 dichiara il
- * suo formato, o il testo è un pezzo di quella riga — e non finisce con la riga «})();». Un altro formato dichiarato è
- * un'altra forma, intera o no.
+ * suo formato, o il testo è un pezzo di quella riga — e a cui manca la riga «})();». Un testo che quella riga la ha è intero:
+ * se dopo ha un'altra coda (non finisce con l'a capo, ha una riga in più) è un bundle di un'altra forma, e rimetterlo al suo
+ * posto lo ridarebbe uguale. Lo stesso per un altro formato dichiarato, intero o no, anche in un file di una riga sola.
  */
 export function nonIntero(bundle) {
     if (bundle.trim() === '') return 'è vuoto';
 
     const righe = bundle.split('\n');
-    const dentroLaRigaUno = righe.length === 1 && (righe[0].startsWith(INIZIO_DEL_COMMENTO) || INIZIO_DEL_COMMENTO.startsWith(righe[0]));
+    const commento = COMMENTO_DEL_FORMATO.exec(righe[0]);
+    // Un pezzo della riga 1: il commento del formato non è intero, e il testo ne è l'inizio.
+    const dentroLaRigaUno = righe.length === 1 && commento === null && (righe[0].startsWith(INIZIO_DEL_COMMENTO) || INIZIO_DEL_COMMENTO.startsWith(righe[0]));
     let delFormato = false;
     try {
-        delFormato = JSON.parse(COMMENTO_DEL_FORMATO.exec(righe[0])?.[1] ?? 'null')?.format === FORMATO;
+        delFormato = JSON.parse(commento?.[1] ?? 'null')?.format === FORMATO;
     } catch {
         // La riga 1 non porta un JSON: che cosa non torna lo dice `leggi`.
     }
 
-    return (dentroLaRigaUno || delFormato) && !bundle.endsWith(`\n${CHIUSURA}\n`) ? `si ferma a metà: non finisce con la riga «${CHIUSURA}»` : null;
+    return (dentroLaRigaUno || delFormato) && !righe.includes(CHIUSURA) ? `si ferma a metà: manca la riga «${CHIUSURA}»` : null;
 }
 
 /** Il corpo del bundle, riga per riga, e i nomi che registra: solo se il bundle ha la forma che lo script conosce. */

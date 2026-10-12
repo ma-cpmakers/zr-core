@@ -72,7 +72,9 @@ function lingueDellaCornice(): array
 
 /**
  * I tipi di evento del contratto pubblicato di `/v1`, scritti qui dal contratto: una notifica porta in `tipo` quello dell'evento
- * che l'ha generata. Un tipo nuovo del contratto entra qui e nelle lingue insieme, con una versione nuova di zr-core.
+ * che l'ha generata. Un tipo nuovo del contratto entra qui e nelle lingue insieme, con una versione nuova di zr-core: tranne
+ * un tipo che non genera notifiche, che qui non sta e non ha un titolo. Dal 12/10/2026 il contratto ne ha uno,
+ * `com.zeiras.crm.persona.anonimizzata`: i tipi di evento del contratto sono 37, e qui ce ne sono 36.
  *
  * @return list<string>
  */
@@ -424,7 +426,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 42 tipi di notifica, i 36 tipi di evento del contratto più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 42 tipi di notifica, 36 dei 37 tipi di evento del contratto (quello che non genera notifiche non ha un titolo) più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),

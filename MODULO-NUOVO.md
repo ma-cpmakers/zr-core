@@ -328,8 +328,9 @@ anche i membri del workspace, che non sono di un modulo): perché trovi
 **le tue** risorse servono due cose, tutte e due da chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel
 registro (`risorse`: il tipo come lo dà il backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e, se
 il backoffice dà dei testi per riconoscerla, le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi
-in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che il segnaposto e l'invito della ricerca nominano
-dove il tuo modulo è attivo. Una chiave di `contesto` che porta un codice vuole anche `codici` (passo 8). Un risultato di
+in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che l'invito della ricerca nomina dove il tuo
+modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi). Una chiave di `contesto` che
+porta un codice vuole anche `codici` (passo 8). Un risultato di
 un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
 ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
 

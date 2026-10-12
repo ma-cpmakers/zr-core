@@ -13,7 +13,7 @@
     "search": "Cerca",
     "searchPlaceholder": "Cerca…",
     "searchHint": "Scrivi almeno 2 caratteri.",
-    "searchPlaceholderSources": "Cerca {sources}…",
+    "searchPlaceholderSources": "Cerca nel workspace…",
     "searchHintSources": "Cerca {sources}: scrivi almeno 2 caratteri.",
     "searchLoading": "Sto cercando…",
     "searchEmpty": "Nessun risultato per",
