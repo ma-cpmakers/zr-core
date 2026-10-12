@@ -1945,10 +1945,49 @@ it('in ci.yml il passo che rigenera e confronta è sano: un passo vero, dopo npm
             'con un if' => ['il passo ha `if:`'],
             'senza npm ci prima' => ['il passo non viene dopo `npm ci`'],
         ]);
-})->with([
-    'la favicon' => ['npm run favicon -- --controlla'],
-    'i componenti del design system' => ['npm run componenti -- --controlla'],
-]);
+})->with(comandiCheRigeneranoEConfrontano());
+
+/** @return array<string, array{string}> i comandi con cui la CI rigenera un file e lo confronta, ognuno in un passo suo: le righe di un dataset */
+function comandiCheRigeneranoEConfrontano(): array
+{
+    return [
+        'la favicon' => ['npm run favicon -- --controlla'],
+        'i componenti del design system' => ['npm run componenti -- --controlla'],
+    ];
+}
+
+// Sprint 27 · T5.1 (lettura della PR #59, R5). Un passo sano non basta, se sta in un job che non ferma niente: con
+// `continue-on-error` o con un `if:` sul job, con uno `shell:` sul passo che ne copre l'uscita, o con un `defaults:` — sul job
+// o su tutto il file — che dà quello `shell:` a ogni passo, il passo che rigenera e confronta può fallire e la CI resta verde.
+// Il controllo guarda anche lì, e un job che non riconosce non lo dà per sano.
+
+it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: lo stesso file con `continue-on-error` o con un `if:` sul job del passo, con uno `shell:` sul passo, con un `defaults:` sul job o sul file, o col job che non si trova non è sano (sprint 27 · T5.1)', function (string $comando) {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $riga = "        run: {$comando}\n";
+    $job = "    runs-on: ubuntu-latest\n";
+    // Uno `shell:` che copre l'uscita del comando: lo script del passo gira, e come finisce non conta.
+    $shell = 'shell: sh -c "sh {0} || true"'."\n";
+    $forme = [
+        'con continue-on-error sul job' => str_replace($job, $job."    continue-on-error: true\n", $ci),
+        'con un if sul job' => str_replace($job, "    if: false\n".$job, $ci),
+        'con shell sul passo' => str_replace($riga, $riga.'        '.$shell, $ci),
+        'con defaults sul job' => str_replace($job, $job."    defaults:\n      run:\n        ".$shell, $ci),
+        'con defaults sul file' => str_replace("\njobs:\n", "\ndefaults:\n  run:\n    ".$shell."\njobs:\n", $ci),
+        // Tre spazi davanti al nome del job: per YAML è lo stesso file, ma il controllo non sa più qual è il job del passo.
+        'col job che non si trova' => str_replace("\n  ci:\n", "\n   ci:\n", $ci),
+    ];
+
+    expect([substr_count($ci, $riga), substr_count($ci, $job), substr_count($ci, "\njobs:\n"), substr_count($ci, "\n  ci:\n")])->toBe([1, 1, 1, 1])
+        ->and(difettiDelPassoCheLancia($comando, $ci))->toBe([])
+        ->and(array_map(fn (string $testo) => difettiDelPassoCheLancia($comando, $testo), $forme))->toBe([
+            'con continue-on-error sul job' => ['il job del passo ha `continue-on-error:`'],
+            'con un if sul job' => ['il job del passo ha `if:`'],
+            'con shell sul passo' => ['il passo ha `shell:`'],
+            'con defaults sul job' => ['il job del passo ha `defaults:`'],
+            'con defaults sul file' => ['il file ha `defaults:`'],
+            'col job che non si trova' => ['il job del passo non si trova'],
+        ]);
+})->with(comandiCheRigeneranoEConfrontano());
 
 it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -2451,18 +2490,111 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
 // Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
 // racconta l'errore pagato davvero: una pagina senza sessione che leggeva `presto`.
 
-it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4)', function (string $frase) {
-    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+const PASSO_DEL_REGISTRO = '## 8. Il prodotto nel registro';
 
-    expect(str_contains($guida, $frase))->toBe(true);
-})->with([
-    'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)'],
-    'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`'],
-    // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
-    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)'],
-    'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`'],
-    'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»'],
-]);
+/** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. */
+function passoDellaGuida(string $guida, string $titolo): string
+{
+    // Com'era fino allo sprint 26: le frasi di un passo si cercano in tutta la guida.
+    return $guida;
+}
+
+/**
+ * Le frasi della guida su `in_arrivo` e sull'errore pagato del passo del registro, ognuna col titolo del passo in cui sta: le
+ * righe di un dataset.
+ *
+ * @return array<string, array{string, string}>
+ */
+function frasiDellaGuidaSuInArrivo(): array
+{
+    return [
+        'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)', '## Prima di tutto: ciò che si chiede ad altri'],
+        'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`', PASSO_DEL_REGISTRO],
+        // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
+        'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)', PASSO_DEL_REGISTRO],
+        'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`', PASSO_DEL_REGISTRO],
+        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»', PASSO_DEL_REGISTRO],
+    ];
+}
+
+it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4; ogni frase nel suo passo: sprint 27 · T5.5)', function (string $frase, string $passo) {
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+
+    expect(str_contains(suUnaRiga(passoDellaGuida($guida, $passo)), $frase))->toBe(true);
+})->with(frasiDellaGuidaSuInArrivo());
+
+// Sprint 27 · T5.5 (seconda lettura della PR #59, S4). Il titolo del caso qui sopra dice «nel passo del registro», e le frasi
+// si cercavano in tutta la guida: con l'errore pagato spostato sotto un altro passo restava verde. Ogni frase si cerca nel suo
+// passo, e lo dice questo caso: col capoverso dell'errore sotto il passo 9, nel passo 8 le sue frasi non si trovano più.
+
+it('le frasi dell\'errore pagato del registro si cercano nel solo passo 8 della guida: col capoverso spostato sotto il passo 9 la guida le ha ancora, e nel passo 8 non si trovano più; un passo va dal suo titolo al titolo dopo, e uno che la guida non ha è vuoto (sprint 27 · T5.5)', function () {
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $frasi = array_column(array_filter(frasiDellaGuidaSuInArrivo(), fn (array $riga): bool => $riga[1] === PASSO_DEL_REGISTRO), 0);
+    preg_match('/^\*\*Errore già pagato\*\*: una pagina senza sessione (?:[^\n]+\n)+/m', $guida, $capoverso);
+    $spostata = str_replace("\n## 9. La ricerca\n", "\n## 9. La ricerca\n\n".($capoverso[0] ?? ''), str_replace($capoverso[0] ?? '', '', $guida));
+    $trovate = fn (string $testo): array => array_map(fn (string $frase): bool => str_contains($testo, $frase), $frasi);
+    $nelPasso = fn (string $testo): string => suUnaRiga(passoDellaGuida($testo, PASSO_DEL_REGISTRO));
+
+    expect(count($frasi))->toBe(4)
+        ->and($trovate($nelPasso($guida)))->toBe([true, true, true, true])
+        // Spostato, non tolto: la guida intera le ha ancora tutte.
+        ->and($trovate(suUnaRiga($spostata)))->toBe([true, true, true, true])
+        ->and($trovate($nelPasso($spostata)))->toBe([false, false, false, false])
+        ->and(str_starts_with(passoDellaGuida($guida, PASSO_DEL_REGISTRO), PASSO_DEL_REGISTRO."\n"))->toBe(true)
+        ->and(substr_count(passoDellaGuida($guida, PASSO_DEL_REGISTRO), "\n## "))->toBe(0)
+        ->and(passoDellaGuida($guida, '## 8. Un passo che la guida non ha'))->toBe('');
+});
+
+// Sprint 27 · T5.4 (seconda lettura della PR #59, S3). README e guida elencano chi è in arrivo — «Bookings è in arrivo e non è
+// «Presto»», «in arrivo restano Bookings e i tre «Presto»», «e lo restano Bookings e i tre «Presto»» —, e i casi qui sopra
+// fissano quelle parole senza guardare il registro: il giorno che un prodotto esce per tutti le frasi diventano false e i casi
+// restano verdi. Questo controllo ricava i due elenchi dal registro e li cerca nelle tre frasi, là dove sono scritte.
+
+/**
+ * Che cosa, nel README e nella guida, non dice chi è in arrivo com'è nel registro dato: niente se le tre frasi tornano.
+ *
+ * @param  list<array<string, mixed>>  $registro
+ * @return list<string>
+ */
+function difettiDiChiEInArrivo(array $registro, string $readme, string $guida): array
+{
+    // Com'era fino allo sprint 26: le tre frasi scritte, senza guardare il registro.
+    $frasi = [
+        'README, «in arrivo e non «Presto»»' => [paragrafoDeiDueSiONo($readme), 'non `presto`: Bookings è in arrivo e non è «Presto»'],
+        'README, «in arrivo restano»' => [paragrafoDeiDueSiONo($readme), 'in arrivo restano Bookings e i tre «Presto»'],
+        'guida, «e lo restano»' => [suUnaRiga(passoDellaGuida($guida, PASSO_DEL_REGISTRO)), 'e lo restano Bookings e i tre «Presto»'],
+    ];
+
+    return array_values(array_map(
+        fn (string $dove): string => "{$dove}: la frase non c'è",
+        array_keys(array_filter($frasi, fn (array $frase): bool => ! str_contains($frase[0], $frase[1]))),
+    ));
+}
+
+it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; con Bookings fuori dall\'arrivo le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $registro = registroDeiProdotti();
+    // Il registro del pacchetto col primo prodotto in arrivo che non è «Presto» uscito per tutti (oggi Bookings)…
+    $uscito = array_column(array_filter($registro, fn (array $voce): bool => $voce['in_arrivo'] && ! $voce['presto']), 'id')[0] ?? null;
+    $conUnoUscito = array_map(fn (array $voce): array => $voce['id'] === $uscito ? [...$voce, 'in_arrivo' => false] : $voce, $registro);
+    // … e senza il primo dei «Presto» (oggi Report): gli altri prodotti restano com'erano.
+    $tolto = array_column(array_filter($registro, fn (array $voce): bool => $voce['presto']), 'id')[0] ?? null;
+    $conUnPrestoInMeno = array_values(array_filter($registro, fn (array $voce): bool => $voce['id'] !== $tolto));
+    $nonDice = fn (string $dove, string $delRegistro): string => "{$dove}: non dice ciò che dà il registro ({$delRegistro})";
+
+    expect([$uscito, $tolto])->toBe(['bookings', 'reports'])
+        ->and(difettiDiChiEInArrivo($registro, $readme, $guida))->toBe([])
+        ->and(difettiDiChiEInArrivo($conUnoUscito, $readme, $guida))->toBe([
+            $nonDice('README, «in arrivo e non «Presto»»', 'in arrivo e non «Presto»: nessuno; «Presto»: 3'),
+            $nonDice('README, «in arrivo restano»', 'in arrivo e non «Presto»: nessuno; «Presto»: 3'),
+            $nonDice('guida, «e lo restano»', 'in arrivo e non «Presto»: nessuno; «Presto»: 3'),
+        ])
+        ->and(difettiDiChiEInArrivo($conUnPrestoInMeno, $readme, $guida))->toBe([
+            $nonDice('README, «in arrivo restano»', 'in arrivo e non «Presto»: Bookings; «Presto»: 2'),
+            $nonDice('guida, «e lo restano»', 'in arrivo e non «Presto»: Bookings; «Presto»: 2'),
+        ]);
+});
 
 it('la guida non dice più che il passo del registro non ha un errore pagato, e né i test, né il README, né la guida dicono più che il CRM è in anteprima (sprint 26 · T8.4)', function () {
     // Le due frasi sono spezzate: intere, questo file le troverebbe in sé stesso.
@@ -4271,4 +4403,34 @@ it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un al
         ->and($classe->getProperty('voci')->isPrivate())->toBe(true)
         ->and($classe->isFinal())->toBe(true)
         ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
+});
+
+// Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
+// file di test: la scrive `registroGiaLetto()`, e si toglie in un posto solo, `tests/Pest.php`, dopo ogni caso di ogni file.
+// Prima la toglievano due `afterEach` e due `try/finally`, ognuno nel suo file: un altro file che la scriveva e non la toglieva
+// sporcava ricerca e notifiche di ogni file dopo, con rossi lontani dalla causa.
+
+it('la copia del registro si scrive e si azzera in un posto solo, `tests/Pest.php`: lì sta `registroGiaLetto()`, la sola a scrivere la proprietà di `Registro`, e lì la azzera il solo `afterEach`, dopo ogni caso di ogni file; nei file di test non c\'è né la scrittura né l\'azzeramento (sprint 27 · T5.2)', function () {
+    // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
+    $chiamate = ['set'.'Value(', 'registroGiaLetto('.'null)'];
+    $quante = fn (string $percorso): array => array_map(fn (string $chiamata): int => substr_count((string) file_get_contents($percorso), $chiamata), $chiamate);
+    $neiFile = [];
+    foreach (glob(__DIR__.'/*.php') ?: [] as $percorso) {
+        $neiFile[basename($percorso)] = $quante($percorso);
+    }
+
+    expect(array_key_exists('PacchettoTest.php', $neiFile))->toBe(true)
+        ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
+        ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => registroGiaLetto(null))->in('Feature');"))->toBe(1);
+});
+
+// L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di
+// `RegistroTest.php`, il file che gira dopo, trova la parte server senza una copia in mano.
+
+it('un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file: questo lo scrive, e il primo di `RegistroTest.php` trova quello del pacchetto (sprint 27 · T5.2)', function () {
+    $diProva = [...registroDeiProdotti(), ['id' => 'uat-lasciato-da-un-altro-file']];
+    registroGiaLetto($diProva);
+
+    expect(Registro::voci())->toBe($diProva);
 });

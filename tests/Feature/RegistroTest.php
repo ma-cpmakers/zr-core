@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\File;
 use Zeiras\Core\Http\NotificheDellaCornice;
+use Zeiras\Core\Registro;
 
 // Sprint 1 · T4 e T7 (voce #1255). Il registro dei prodotti di zr-core, resources/registro/prodotti.json: nell'ordine della linea
 // guida 10 del design system, Dashboard e i sei prodotti, ognuno con un id del design system, un'icona del set (`IconName`), un
@@ -271,6 +272,14 @@ function notificheSenzaTitolo(array $voci, array $lingue): array
 
     return $problemi;
 }
+
+// Sprint 27 · T5.2 (lettura della PR #59, R7). Questo è il primo caso del file, e gira dopo l'ultimo di `PacchettoTest.php`, che
+// scrive un registro di prova (la copia che `Registro` tiene per tutte le rotte) e non lo toglie: lo toglie `tests/Pest.php`,
+// dopo ogni caso di ogni file. Se restasse, la parte server avrebbe qui una copia in mano, con un prodotto che il pacchetto non ha.
+
+it('un registro di prova scritto dall\'ultimo caso di un altro file non arriva qui: la parte server non ha una copia in mano, e il registro che legge è quello del pacchetto (sprint 27 · T5.2)', function () {
+    expect([(new ReflectionProperty(Registro::class, 'voci'))->getValue() === null, Registro::voci() === registroDeiProdotti()])->toBe([true, true]);
+});
 
 it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodotti, con icone del set, toni, indirizzi della mappa e «Presto», senza nomi (T4.1, T7.3; sprint 6 · T5.2)', function () {
     $voci = registroDeiProdotti();
