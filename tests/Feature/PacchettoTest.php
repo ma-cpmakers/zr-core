@@ -2353,7 +2353,8 @@ it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CS
     preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
     preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
 
-    expect(array_slice($titoli[1], -3))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP'])
+    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo: i tre restano uno dopo l'altro.
+    expect(array_slice($titoli[1], -4))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Il precarico dei file d\'ingresso'])
         ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
         // La più stretta una volta, dove il README dice lo scarto; quella di tutti due: da sola, e nel test che un modulo ricopia.
         ->and($scritte[0])->toBe([CSP_PIU_STRETTA_NEL_README, CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
@@ -4643,4 +4644,39 @@ it('un caso che scrive un registro di prova e non lo toglie non lo lascia ai cas
     registroGiaLetto($diProva);
 
     expect(Registro::voci())->toBe($diProva);
+});
+
+// Sprint 28 · T2.6 (voce #1811): il precarico dei file d'ingresso è un middleware del pacchetto, `PrecaricoDegliIngressi`. Il
+// README ha la sua sezione, in fondo: come si registra nei due modi, che cosa scrive e perché (mai `modulepreload`, sempre
+// `crossorigin` su un modulo), che non dice niente della persona, il rischio accettato, e i numeri, che sono di zr-board. Non
+// lascia credere che parta da solo. La guida lo nomina dove il modulo registra i middleware, e la classe è nello zip del tag.
+it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come si registra, che cosa scrive, che cosa non dice della persona e di chi sono i numeri (sprint 28 · T2.6)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $frase))->toBe(true);
+})->with([
+    'da quando, e la classe' => ['Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`'],
+    'che cosa mette nell\'header' => ['scrive nell\'header `Link` i file che `@vite` ha messo nel documento: l\'ingresso, i pezzi che importa staticamente e i CSS, non i pezzi dinamici'],
+    'non parte da solo' => ['zr-core non lo registra da sé, e installare il pacchetto non precarica niente: lo registra il frontend, in uno dei due modi'],
+    'sul gruppo web' => ['$middleware->web(append: [\\Zeiras\\Core\\Http\\PrecaricoDegliIngressi::class]);'],
+    'sulle sole rotte' => ['->middleware(\\Zeiras\\Core\\Http\\PrecaricoDegliIngressi::class);'],
+    'niente da configurare' => ['`config/zr-core.php` non ha una chiave per lui: le rotte le dice dove lo agganci, i file li dice `@vite` nel documento, e il middleware non legge il manifest'],
+    'le due forme' => ['un CSS come `<url>; rel=preload; as=style`, un modulo come `<url>; rel=preload; as=script; crossorigin`'],
+    'mai modulepreload' => ['Mai `modulepreload`: Cloudflare in un 103 ripete solo `preload` e `preconnect`'],
+    'sempre crossorigin' => ['la richiesta di un modulo è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte'],
+    'dove non scrive' => ['Non sulla visita Inertia (la richiesta porta `X-Inertia`), su un redirect, su una pagina d\'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un JSON, un file o uno stream'],
+    'un Link di prima resta' => ['Un `Link` che la risposta porta già resta: il middleware aggiunge il suo accanto'],
+    'niente della persona' => ['L\'header dipende solo dalla build, è uguale per tutti e ripete ciò che il documento dice già: nessun dato, id o lingua della persona'],
+    'il rischio accettato' => ['Il rischio accettato è uno: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce già un indirizzo, che è stato aperto di recente'],
+    'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
+]);
+
+it('la guida nomina il precarico dove il modulo registra i middleware, e dice che non parte da solo; la classe è nello zip del tag, il suo test no (sprint 28 · T2.6)', function () {
+    preg_match('/^## 3\. Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', guidaDelModuloNuovo(), $delPasso);
+    $passo = suUnaRiga($delPasso[1] ?? '');
+
+    expect(str_contains($passo, 'Dalla `v1.18.0` puoi registrare anche il precarico dei file d\'ingresso, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`, sul gruppo `web` o sulle sole rotte che vuoi'))->toBe(true)
+        ->and(str_contains($passo, 'non parte da solo — README, «Il precarico dei file d\'ingresso»'))->toBe(true)
+        ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/PrecaricoTest.php');
 });
