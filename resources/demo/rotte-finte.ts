@@ -123,7 +123,8 @@ const notificheDiProva = [
                   letta: !daLeggere,
                   app: 'crm',
                   tipo: `com.zeiras.crm.${tipo}`,
-                  ...nonDetti,
+                  // Con `?chi=1` il CRM dice chi ha fatto, e di una pipeline anche il nome (sprint 31 · T1); le due note più sotto restano senza chi.
+                  ...detti('Giulia Bianchi', tipo.startsWith('pipeline.') ? 'Vendite' : null, null),
                   ids: (tipo === 'persona.assegnata' ? {} : (DI_UNA_NOTA[tipo] ?? { id: tipo.startsWith('pipeline.') ? 'uat-pipeline-1' : 'uat-persona-1' })) as Record<string, string>,
               })),
               { id: 'uat-c9', creata_il: fa(18 * 24 * 60), letta: true, app: 'crm', tipo: 'com.zeiras.crm.nota.creata', autore_nome: null, risorsa_nome: 'UAT nota senza contatto', per_me: null, ids: {} },
@@ -139,14 +140,14 @@ const notificheDiProva = [
         : []),
     // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
     // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
-    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`). Portano l'id che il loro percorso chiede
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`, che dà anche chi le ha assegnate). Portano l'id che il loro percorso chiede
     // (`DI_UN_TIPO_NUOVO`): quello dell'opportunità, del contatto o dell'azienda; un'attività nessuno, perché apre «Da fare».
     ...(opportunita
         ? [
               'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
               'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
-          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti(null, null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

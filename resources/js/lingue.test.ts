@@ -635,19 +635,41 @@ describe('rigaDellaNotifica', () => {
         ['com.zeiras.board.vista.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una vista'], en: [null, 'Giulia Bianchi deleted a view'], es: [null, 'Giulia Bianchi ha eliminado una vista'] }],
         ['board.scheda.assegnata', { it: ['Giulia Bianchi ti ha assegnato la scheda «Lancio corso»', 'Giulia Bianchi ti ha assegnato una scheda'], en: ['Giulia Bianchi assigned you the card “Lancio corso”', 'Giulia Bianchi assigned you a card'], es: ['Giulia Bianchi te ha asignado la tarjeta «Lancio corso»', 'Giulia Bianchi te ha asignado una tarjeta'] }],
         ['board.commento.menzione', { it: ['Giulia Bianchi ti ha menzionato in «Lancio corso»', 'Giulia Bianchi ti ha menzionato in un commento'], en: ['Giulia Bianchi mentioned you in “Lancio corso”', 'Giulia Bianchi mentioned you in a comment'], es: ['Giulia Bianchi te ha mencionado en «Lancio corso»', 'Giulia Bianchi te ha mencionado en un comentario'] }],
+        // Sprint 31 · T1 (voce #1866). I 18 tipi del CRM, con le parole di zr-crm: la sola frase con chi, tranne le due della pipeline.
+        ['com.zeiras.crm.persona.creata', { it: [null, 'Giulia Bianchi ha creato un contatto'], en: [null, 'Giulia Bianchi created a contact'], es: [null, 'Giulia Bianchi ha creado un contacto'] }],
+        ['com.zeiras.crm.persona.modificata', { it: [null, 'Giulia Bianchi ha modificato un contatto'], en: [null, 'Giulia Bianchi edited a contact'], es: [null, 'Giulia Bianchi ha modificado un contacto'] }],
+        ['com.zeiras.crm.organizzazione.creata', { it: [null, 'Giulia Bianchi ha creato un\'azienda'], en: [null, 'Giulia Bianchi created a company'], es: [null, 'Giulia Bianchi ha creado una empresa'] }],
+        ['com.zeiras.crm.organizzazione.modificata', { it: [null, 'Giulia Bianchi ha modificato un\'azienda'], en: [null, 'Giulia Bianchi edited a company'], es: [null, 'Giulia Bianchi ha modificado una empresa'] }],
+        ['com.zeiras.crm.trattativa.creata', { it: [null, 'Giulia Bianchi ha creato un\'opportunità'], en: [null, 'Giulia Bianchi created an opportunity'], es: [null, 'Giulia Bianchi ha creado una oportunidad'] }],
+        ['com.zeiras.crm.trattativa.modificata', { it: [null, 'Giulia Bianchi ha modificato un\'opportunità'], en: [null, 'Giulia Bianchi edited an opportunity'], es: [null, 'Giulia Bianchi ha modificado una oportunidad'] }],
+        ['com.zeiras.crm.attivita.creata', { it: [null, 'Giulia Bianchi ha creato un\'attività'], en: [null, 'Giulia Bianchi created an activity'], es: [null, 'Giulia Bianchi ha creado una actividad'] }],
+        ['com.zeiras.crm.attivita.modificata', { it: [null, 'Giulia Bianchi ha modificato un\'attività'], en: [null, 'Giulia Bianchi edited an activity'], es: [null, 'Giulia Bianchi ha modificado una actividad'] }],
+        ['com.zeiras.crm.attivita.eliminata', { it: [null, 'Giulia Bianchi ha eliminato un\'attività'], en: [null, 'Giulia Bianchi deleted an activity'], es: [null, 'Giulia Bianchi ha eliminado una actividad'] }],
+        ['com.zeiras.crm.nota.creata', { it: [null, 'Giulia Bianchi ha creato una nota'], en: [null, 'Giulia Bianchi created a note'], es: [null, 'Giulia Bianchi ha creado una nota'] }],
+        ['com.zeiras.crm.nota.modificata', { it: [null, 'Giulia Bianchi ha modificato una nota'], en: [null, 'Giulia Bianchi edited a note'], es: [null, 'Giulia Bianchi ha modificado una nota'] }],
+        ['com.zeiras.crm.nota.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una nota'], en: [null, 'Giulia Bianchi deleted a note'], es: [null, 'Giulia Bianchi ha eliminado una nota'] }],
+        ['com.zeiras.crm.pipeline.creata', { it: ['Giulia Bianchi ha creato la pipeline «Lancio corso»', 'Giulia Bianchi ha creato una pipeline'], en: ['Giulia Bianchi created the pipeline “Lancio corso”', 'Giulia Bianchi created a pipeline'], es: ['Giulia Bianchi ha creado la pipeline «Lancio corso»', 'Giulia Bianchi ha creado una pipeline'] }],
+        ['com.zeiras.crm.pipeline.modificata', { it: ['Giulia Bianchi ha modificato la pipeline «Lancio corso»', 'Giulia Bianchi ha modificato una pipeline'], en: ['Giulia Bianchi edited the pipeline “Lancio corso”', 'Giulia Bianchi edited a pipeline'], es: ['Giulia Bianchi ha modificado la pipeline «Lancio corso»', 'Giulia Bianchi ha modificado una pipeline'] }],
+        ['crm.persona.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un contatto'], en: [null, 'Giulia Bianchi assigned you a contact'], es: [null, 'Giulia Bianchi te ha asignado un contacto'] }],
+        ['crm.organizzazione.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'azienda'], en: [null, 'Giulia Bianchi assigned you a company'], es: [null, 'Giulia Bianchi te ha asignado una empresa'] }],
+        ['crm.trattativa.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'opportunità'], en: [null, 'Giulia Bianchi assigned you an opportunity'], es: [null, 'Giulia Bianchi te ha asignado una oportunidad'] }],
+        ['crm.attivita.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'attività'], en: [null, 'Giulia Bianchi assigned you an activity'], es: [null, 'Giulia Bianchi te ha asignado una actividad'] }],
     ];
     /** I testi e le frasi delle notifiche di ogni lingua, insieme: i due file che ha in resources/lingue. */
     const lingueDiPartenza: [Lingua, Record<string, string>][] = [['it', { ...italiano, ...frasiItaliane }], ['en', { ...inglese, ...frasiInglesi }], ['es', { ...spagnolo, ...frasiSpagnole }]];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
-    const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare'];
+    const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare', 'Vendite'];
 
-    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management e dei due «per me» ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi (sprint 29 · T2.1, T2.2, T2.4)', async (lingua) => {
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me» e delle due pipeline del CRM ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri sedici del CRM la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./index');
 
-        expect(frasi).toHaveLength(18);
+        expect(frasi).toHaveLength(36);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
+        // Del CRM solo la pipeline ha la frase col nome della cosa: il nome di un contatto è un dato personale, e degli altri il contratto non lo dà.
+        expect(frasi.filter(([tipo]) => /(^|\.)crm\./.test(tipo))).toHaveLength(18);
+        expect(frasi.flatMap(([tipo, perLingua]) => (/(^|\.)crm\./.test(tipo) && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.crm.pipeline.creata', 'com.zeiras.crm.pipeline.modificata']);
         for (const [tipo, perLingua] of frasi) {
             const [conCosa, soloChi] = [perLingua[lingua][0] === null ? null : coiNomiIsolati(perLingua[lingua][0], ...NOMI_DEI_CASI), coiNomiIsolati(perLingua[lingua][1], ...NOMI_DEI_CASI)];
             // Di una cosa eliminata il backoffice non dà il nome: se arrivasse, resta sotto, e non si legge due volte.
@@ -674,6 +696,13 @@ describe('rigaDellaNotifica', () => {
         expect(titolo('board.commento.menzione', 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ti ha menzionato in «Lancio corso»', ...NOMI_DEI_CASI) });
         expect(titolo('board.scheda.assegnata', 'en')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi assigned you the card “Lancio corso”', ...NOMI_DEI_CASI) });
         expect(titolo('board.commento.menzione', 'es')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi te ha mencionado en «Lancio corso»', ...NOMI_DEI_CASI) });
+        // Sprint 31 · T1.2: del CRM la pipeline dice anche che cosa; un contatto e un'opportunità assegnata, solo chi.
+        expect(titolo('com.zeiras.crm.pipeline.modificata', 'it', 'Vendite')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha modificato la pipeline «Vendite»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.crm.pipeline.modificata', 'en', 'Vendite')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi edited the pipeline “Vendite”', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.crm.pipeline.creata', 'es', 'Vendite')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creado la pipeline «Vendite»', ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.crm.persona.creata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato un contatto', ...NOMI_DEI_CASI) });
+        expect(titolo('crm.trattativa.assegnata', 'it', null)).toStrictEqual({ titolo: coiNomiIsolati("Giulia Bianchi ti ha assegnato un'opportunità", ...NOMI_DEI_CASI) });
+        expect(titolo('com.zeiras.crm.persona.modificata', 'en', null)).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi edited a contact', ...NOMI_DEI_CASI) });
         expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.lista.creata', autore_nome: '  Giulia Bianchi ', risorsa_nome: '\tDa fare ' }, 'it')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creato la lista «Da fare»', ...NOMI_DEI_CASI) });
         // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
         expect(titolo('com.zeiras.board.scheda.creata', 'es_ES')).toStrictEqual({ titolo: coiNomiIsolati('Giulia Bianchi ha creado la tarjeta «Lancio corso»', ...NOMI_DEI_CASI) });
@@ -696,12 +725,12 @@ describe('rigaDellaNotifica', () => {
         expect(rigaDellaNotifica({ tipo: 'com.zeiras.board.scheda.modificata', autore_nome: null, risorsa_nome: 'Lancio corso' }, 'it')).toStrictEqual({ titolo: 'Scheda modificata', sotto: 'Lancio corso' });
     });
 
-    it('un tipo senza frasi resta com\'è anche con chi: del CRM, del workspace, di un\'app (sotto il nome del prodotto), uno che zr-core non conosce, uno che non è un testo (sprint 29 · T2.5)', async () => {
+    it('un tipo senza frasi resta com\'è anche con chi: del workspace, di un\'app (sotto il nome del prodotto), uno che zr-core non conosce, uno che non è un testo (sprint 29 · T2.5)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./index');
         const conLeFrasi = new Set(frasi.map(([tipo]) => tipo));
         const senzaFrasi = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : [])).filter((tipo) => !conLeFrasi.has(tipo));
 
-        expect(senzaFrasi).toHaveLength(42 - 18);
+        expect(senzaFrasi).toHaveLength(42 - 36);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of senzaFrasi.filter((uno) => !uno.startsWith('com.zeiras.app.'))) {
                 expect([tipo, rigaDellaNotifica(diGiulia(tipo, 'UAT Rinnovo'), lingua)]).toStrictEqual([tipo, { titolo: file[`notificationTitle.${tipo}`], sotto: 'UAT Rinnovo' }]);
@@ -729,12 +758,12 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 32, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 52, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
         expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).sort());
-        expect(chiavi).toHaveLength(32);
+        expect(chiavi).toHaveLength(52);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
             expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);
