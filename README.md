@@ -875,7 +875,6 @@ anche l'opportunità del CRM (`crm.trattativa`), che a `pipeline` e `fase` aggiu
 e `persa`, coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa` («Vinta» e «Persa»). `aperta`, che il
 backoffice dà per un'opportunità aperta, non è fra i codici e non ha un testo: così un'opportunità aperta non mostra
 l'esito.
-
 Dalla `v1.20.0` `titoloDellaNotifica` e `rigaDellaNotifica` portano con sé le frasi delle notifiche di ogni lingua: restano
 sincrone, con gli stessi nomi dai due ingressi, e danno gli stessi testi del pannello. Un'app che le usa in una pagina sua
 ha le frasi nel pezzo di quella pagina; un'app che non le usa non le porta, e ha solo quelle che la cornice carica a
