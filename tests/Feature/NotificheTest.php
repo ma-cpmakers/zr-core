@@ -1564,6 +1564,12 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una scheda nuova, senza `com.zeiras.` davanti' => ['pm', 'board.scheda.creata'],
     'una scheda assegnata, in una notifica del CRM' => ['crm', 'board.scheda.assegnata'],
     'una scheda assegnata, in una notifica che non è di un\'app' => [null, 'board.scheda.assegnata'],
+    // Sprint 26 · T6: una menzione in un commento ha una destinazione solo col suo tipo intero, senza `com.zeiras.` davanti, e
+    // nella voce di Project Management.
+    'una menzione in un commento, con `com.zeiras.` davanti' => ['pm', 'com.zeiras.board.commento.menzione'],
+    'un commento, col solo pezzo del tipo della menzione' => ['pm', 'board.commento'],
+    'una menzione in un commento, in una notifica del CRM' => ['crm', 'board.commento.menzione'],
+    'una menzione in un commento, in una notifica che non è di un\'app' => [null, 'board.commento.menzione'],
     'una vista di una board' => ['pm', 'com.zeiras.board.vista.creata'],
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
@@ -2121,6 +2127,32 @@ it('GET /cornice/notifiche dà a una scheda nuova, modificata o assegnata il suo
         ->and(substr_count($corpo, 'aggiornata_il'))->toBe(0);
 });
 
+// Sprint 26 · T6 (voce #1773; parole e pagina di zr-board, nota 10846 del #95). La notifica a chi viene menzionato in un commento
+// porta nei `dati` l'id della scheda e quello del commento, mai il testo. Apre la scheda, `/c/{id}`: al browser va il solo
+// `id`, e `commento_id` resta qui.
+
+it('GET /cornice/notifiche dà a una menzione in un commento il solo `id` della scheda: `commento_id` resta qui, senza `id` gli `ids` sono vuoti, e lo stesso tipo con `com.zeiras.` davanti non ne ha; `idsDellaNotifica()` dà lo stesso (sprint 26 · T6.2)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n3', ['id' => 'uat-scheda-1', 'commento_id' => 'uat-commento-9'], 'board.commento.menzione', 'pm'),
+        notificaConDati('uat-n2', ['commento_id' => 'uat-commento-8'], 'board.commento.menzione', 'pm'),
+        notificaConDati('uat-n1', ['id' => 'uat-scheda-2', 'commento_id' => 'uat-commento-7'], 'com.zeiras.board.commento.menzione', 'pm'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-scheda-1'], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Due senza una destinazione: `ids` vuoto, ma un oggetto. Dell'id del commento, e della scheda che non si apre, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-scheda-2'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-commento'))->toBe(0)
+        ->and(substr_count($corpo, '_id'))->toBe(0);
+});
+
 it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, 'pm')], 'successivo' => null])]);
@@ -2130,7 +2162,7 @@ it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuo
     expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, $dati))->toBe([])
         ->and($risposta->json('data.0.ids'))->toBe([])
         ->and(substr_count((string) $risposta->getContent(), 'uat-fuori'))->toBe(0);
-})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata'])->with([
+})->with(['board.scheda.assegnata', 'com.zeiras.board.scheda.creata', 'com.zeiras.board.scheda.modificata', 'board.commento.menzione'])->with([
     'due punti' => [['id' => '..']],
     'con una barra' => [['id' => 'uat-fuori/x']],
     'con ../ davanti' => [['id' => '../uat-fuori']],

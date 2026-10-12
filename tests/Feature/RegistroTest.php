@@ -460,7 +460,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, 
 // del contratto e in quelli della notifica a chi viene assegnata la scheda, che non è un evento e arriva senza `com.zeiras.`
 // davanti. Una scheda eliminata non ha più una pagina, e gli altri tipi della board restano senza destinazione.
 
-it('nel registro le notifiche di Project Management che aprono la loro risorsa sono tre, tutte di una scheda — nuova, modificata, assegnata —, e aprono la pagina della scheda, `/c/{id}`: una scheda eliminata e gli altri tipi della board non hanno una destinazione, e quelle del CRM restano diciotto (sprint 24 · T3.2, T3.4, T3.5)', function () {
+it('nel registro le notifiche di Project Management che aprono la loro risorsa sono quattro — una scheda nuova, modificata, assegnata, e una menzione in un commento —, e aprono tutte la pagina della scheda, `/c/{id}`: una scheda eliminata e gli altri tipi della board non hanno una destinazione, e quelle del CRM restano diciotto (sprint 24 · T3.2, T3.4, T3.5; sprint 26 · T6.2)', function () {
     $voci = registroDeiProdotti();
 
     expect(problemiDelRegistro($voci))->toBe([])
@@ -470,6 +470,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'com.zeiras.board.scheda.creata', 'percorso' => '/c/{id}'],
             ['tipo' => 'com.zeiras.board.scheda.modificata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.scheda.assegnata', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
         ])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
         ->and($voci[2]['notifiche'] ?? [])->toHaveCount(18);

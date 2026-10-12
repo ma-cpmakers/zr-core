@@ -3497,7 +3497,7 @@ it('il README non dice più che i tipi con una destinazione sono nove, né che o
 // ora sono 41; dove si apre, e che una scheda eliminata non si apre; le righe del registro. `MODULO-NUOVO.md` la porta come
 // esempio di una notifica che non è un evento.
 
-it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che i titoli sono 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
+it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi viene assegnata una scheda, che con lei i titoli erano 41, che una scheda nuova, modificata o assegnata apre la sua pagina in zr-board e una eliminata no, e le tre righe del registro (sprint 24 · T3.5)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
@@ -3507,13 +3507,42 @@ it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi vien
 })->with([
     'il titolo' => ['punto', 'Dalla `v1.14.0` ha un titolo anche la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda»'],
     'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Come le quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la chiave del titolo è `notificationTitle.board.scheda.assegnata`'],
-    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
+    // Sprint 26 · T6: con la menzione in un commento i titoli sono 42, e i 41 passano al passato.
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli erano 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
     'il contratto la elenca dal 12/10/2026' => ['punto', 'Il contratto la elenca dal 12/10/2026: `app` `pm`, nei `dati` il solo `id` della scheda, e `risorsa_nome` è il titolo della scheda'],
     'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
     'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
     'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
     'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
 ]);
+
+// Sprint 26 · T6 (voce #1773). Dalla `v1.16.0` la campanella dà un titolo anche alla notifica a chi viene menzionato in un
+// commento, e un clic apre la scheda del commento. Il README lo dice dove dice la scheda assegnata: titolo, tipo e chiave nel
+// punto «Le notifiche», coi titoli che ora sono 42 e ciò che ne dice il contratto; dove si apre, e che l'id del commento non
+// entra nell'indirizzo; la quarta riga del registro. `MODULO-NUOVO.md` la porta accanto alla scheda assegnata.
+
+it('il README dice, dalla v1.16.0, il titolo, il tipo e la chiave della notifica a chi viene menzionato in un commento, che i titoli sono 42, che cosa ne dice il contratto, che un clic apre la scheda e non porta l\'id del commento, e la quarta riga del registro (sprint 26 · T6.3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
+    $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo' => ['punto', 'Dalla `v1.16.0` ha un titolo anche la notifica che Project Management manda a chi viene menzionato in un commento: «Ti hanno menzionato in un commento»'],
+    'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Non è un evento nemmeno lei: il suo `tipo` è `board.commento.menzione`, senza `com.zeiras.` davanti, e la chiave del titolo è `notificationTitle.board.commento.menzione`'],
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 42: i 36 tipi di evento del contratto, i cinque «assegnata» e la menzione'],
+    'che cosa ne dice il contratto' => ['punto', 'Anche lei è nel contratto dal 12/10/2026: `app` `pm`, nei `dati` l\'`id` della scheda e `commento_id`, l\'id del commento, mai il testo, e `risorsa_nome` è il titolo della scheda'],
+    'dove si apre' => ['punto', 'Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso indirizzo: l\'id è quello della scheda, e `commento_id` non entra nell\'indirizzo, perché Project Management non ha una pagina che porti dritto a un commento'],
+    'i tipi con una destinazione' => ['punto', 'non hanno una destinazione; dalla `v1.16.0` ne ha una anche una menzione in un commento'],
+    'la riga del registro' => ['readme', 'Dalla `v1.16.0` c\'è la quarta, una menzione in un commento (`board.commento.menzione`), con `/c/{id}` anche lei: l\'id è quello della scheda, e `commento_id`, che i `dati` portano, non è nel percorso'],
+]);
+
+it('`MODULO-NUOVO.md` porta la menzione in un commento accanto alla scheda assegnata: il tipo, la versione, il titolo e la pagina della scheda (sprint 26 · T6.3)', function () {
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($guida, 'Lo stesso per quella a chi viene menzionato in un commento (`board.commento.menzione`, dalla `v1.16.0`): il titolo, «Ti hanno menzionato in un commento», e la pagina della scheda, `/c/{id}`, perché un commento non ha una pagina sua'))->toBe(1);
+});
 
 it('il README non dice più che il contratto non elenca la notifica a chi viene assegnata una scheda: dal 12/10/2026 la elenca (sprint 24 · T5)', function () {
     $frase = 'non la elenca ancora';
@@ -3523,13 +3552,15 @@ it('il README non dice più che il contratto non elenca la notifica a chi viene 
         ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
 });
 
-it('il README non dice più che i titoli sono 40 né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5)', function () {
+it('il README non dice più che i titoli sono 40, né che sono 41, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
 
     expect(substr_count($readme, 'i titoli sono 40'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 40'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 41'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 41'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 42'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
