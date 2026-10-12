@@ -493,6 +493,13 @@ it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<pro
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
 
+it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<prodotto>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno (sprint 27 · T1.4)', function () {
+    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
+        ->and(valoriDelTipo('CodiceDelContesto', 'resources/js/registro.ts'))->toEqualCanonicalizing(codiciDelContesto())
+        // Il testo di un codice si chiede alle lingue con `searchContext.` davanti, come il nome da elenco con `searchSource.`.
+        ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->toContain('Record<`searchContext.${CodiceDelContesto}`, string>');
+});
+
 // Sprint 21 · T3 (voce #1641): da una notifica del CRM si apre la sua risorsa. Dove, lo dice il registro: parole e indirizzi sono
 // di zr-crm (11/10/2026). Un contatto ha la sua pagina; una pipeline apre le sue impostazioni; una nota non ha una pagina sua, e
 // si vede nella pagina della cosa più specifica a cui è attaccata — l'opportunità, poi il contatto, poi l'azienda (sprint 23 ·
