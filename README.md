@@ -461,13 +461,24 @@ cornice === null ? pagina : (
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
-  backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»); con
+  backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»), tranne
+  quando il nome è già nella frase del titolo (più sotto); con
   `autore_nome` ha, al posto dell'icona, l'avatar con le iniziali di chi ha fatto; e `per_me` dice la scheda: `true` in
   «Per me» e in «Tutte», `false` solo in «Tutte», `null` in tutte e due, perché `null` vuol dire che il backoffice non lo
   sa, non che la notifica è per altri. Un nome vuoto o di soli spazi non si mostra. Per una notifica su un'app (un tipo
   che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
   prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
-  registro non ha la seconda riga non c'è. Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
+  registro non ha la seconda riga non c'è.
+  Dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa, in una frase al posto del titolo
+  («Marta Rossi ha modificato la scheda «Lancio Q4»»). Per questo le lingue hanno due famiglie di chiavi in più:
+  `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo
+  `{who}` («Marta Rossi ha eliminato una scheda»). Le hanno i diciotto tipi di Project Management: tutti la seconda,
+  e la prima i quattordici che non sono una cosa eliminata. La frase si sceglie scendendo: con `autore_nome` e il
+  nome della cosa il titolo è la frase con chi e che cosa; con `autore_nome` e senza il nome, o per una cosa
+  eliminata, è la frase con solo chi; senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di
+  prima col nome sotto. Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c'è. La board
+  su cui è successo non compare: il contratto del 12/10/2026 non la dà.
+  Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
   caricamento fallisce, l'errore e «Riprova».
@@ -772,7 +783,14 @@ riferisce, ed è la funzione che usa il pannello. `notifica` è la notifica com'
 intorno; per una notifica su un'app (un tipo che comincia con `com.zeiras.app.`), dove `risorsa_nome` è il codice dell'app
 (`pm`), dà il nome del prodotto nella lingua, quello di `nomeDellaVoce`. Non dà niente (`undefined`) quando il nome non
 c'è — `null`, vuoto, di soli spazi, mancante, o che non è un testo — e quando il codice non è di un prodotto del
-registro: lì la riga non si mostra, e il codice mai. Dalla `v1.11.0` si importa anche
+registro: lì la riga non si mostra, e il codice mai.
+Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina
+sua: dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello, con la frase di chi ha fatto
+quando il tipo ce l'ha — vedi «Le notifiche», più sopra —, ed è la funzione che usa il pannello. Della notifica legge
+`tipo`, `autore_nome` e `risorsa_nome`; `sotto` manca quando sotto il titolo non c'è niente da scrivere.
+`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono: chi le usa insieme ha la riga di prima, senza le
+frasi.
+Dalla `v1.11.0` si importa anche
 `destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua: dà l'indirizzo che il
 pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello. `notifica` è la
 notifica di `GET /cornice/notifiche`: la funzione ne legge `app`, `tipo` e `ids`; `slug` è il workspace dell'elenco, cioè
