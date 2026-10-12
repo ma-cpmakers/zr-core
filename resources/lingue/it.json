@@ -48,6 +48,7 @@
     "acceptanceText": "Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.",
     "acceptanceAction": "Vai ai documenti",
     "acceptanceOff": "Non disponibile finché non accetti i documenti.",
+    "skipToContent": "Salta al contenuto",
     "notificationTitle": "Novità nel workspace",
     "notificationTitle.com.zeiras.app.modificata": "Un modulo è stato attivato o disattivato",
     "notificationTitle.com.zeiras.workspace.creato": "Il workspace è stato creato",
@@ -113,5 +114,7 @@
     "searchSource.crm.crm.trattativa": "opportunità",
     "searchContext.home.workspace.membro.ruolo.proprietario": "Proprietario",
     "searchContext.home.workspace.membro.ruolo.amministratore": "Amministratore",
-    "searchContext.home.workspace.membro.ruolo.membro": "Membro"
+    "searchContext.home.workspace.membro.ruolo.membro": "Membro",
+    "searchContext.crm.crm.trattativa.esito.vinta": "Vinta",
+    "searchContext.crm.crm.trattativa.esito.persa": "Persa"
 }

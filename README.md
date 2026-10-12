@@ -36,6 +36,13 @@ prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
+Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
+vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
+pulsante, il bordo di un campo), perché la classe non avrebbe effetto. Vale per le proprietà che il componente dichiara e per
+una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i layer della cascata, decidono specificità e
+ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
+zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
+
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia.
 
@@ -75,9 +82,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip |
 |---|---|---|
-| solo la cornice, dall'ingresso per le app | 58,8 KB | 17,5 KB |
-| la cornice e due componenti per nome | 62,0 KB | 18,6 KB |
-| la stessa cornice, dall'ingresso di sempre | 120,9 KB | 36,8 KB |
+| solo la cornice, dall'ingresso per le app | 59,9 KB | 17,8 KB |
+| la cornice e due componenti per nome | 63,1 KB | 18,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 122,0 KB | 37,1 KB |
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -233,6 +240,30 @@ suo messaggio, e l'errore (`BackofficeNonRisponde`, `ErroreApi`) lo lancia la pr
 se la chiami, senza chiamare `io.mostra` un'altra volta (una seconda rilegge). `GettoneRifiutato` invece passa anche da
 `Cornice::lingua()`: la sessione è finita, e il frontend lo tratta come per ogni altra chiamata.
 
+Se a quella lettura il backoffice ha risposto 429, il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`): dà
+l'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice), e
+`null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore.
+`Cornice::frenata()` non legge niente: guarda la lettura di `io.mostra` che `Cornice::lingua()` o `Cornice::dati()` hanno
+già fatto, e solo quella. Un 429 che `Cornice::dati()` prende da una delle altre sue tre letture (`/v1/app`,
+`/v1/io/aziende`, `/v1/io/workspace`) lo dà l'`ErroreApi` che `dati()` lancia, e `Cornice::frenata()` resta `null`. Il
+freno è lo stato, 429, con qualunque codice. Serve al modulo che dopo la riga chiamerebbe ancora `/v1`: dopo un 429 non
+si richiama, e il middleware risponde col suo 429 prima che parta un'altra chiamata.
+
+```php
+App::setLocale(Cornice::lingua() ?? config('app.locale'));
+
+$freno = Cornice::frenata();
+
+if ($freno !== null) {
+    return response('', 429, $freno->riprovaFra === null ? [] : ['Retry-After' => (string) $freno->riprovaFra]);
+}
+
+return $next($request);
+```
+
+Il freno vale per quella richiesta: la richiesta dopo non lo trova, finché una sua lettura non prende un altro 429.
+`Cornice::lingua()` e `Cornice::dati()` fanno ciò che facevano: la prima non lancia, la seconda lancia quell'`ErroreApi`.
+
 Quale lingua c'è nella sessione lo decide zr-auth, in due momenti. All'ingresso `Sessione::apri` e `Sessione::entra` mettono
 nella sessione la persona come la dà il backoffice, con la lingua del profilo com'è: vale dalla 0.12.4 alla 0.12.12. Dopo, a
 ogni lettura, `Sessione::aggiorna` cambia la lingua della sessione solo con una lingua del profilo che prende: fino alla
@@ -278,7 +309,7 @@ esce.
 | `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`: le notifiche della persona nel workspace dalla più recente, una pagina; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave (`{"id": "…"}` per un contatto, `{"persona_id": "…"}` per una nota legata al solo contatto): di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, nella voce della sua app (`{id}`, `{persona_id}`) —, e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64): gli altri id, il resto di `dati` e `soggetto` non arrivano al browser; dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`: la regola è `idsDellaNotifica`, più sotto); una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore, e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che chiede può essere rimasta su un altro workspace) |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}, segnata_il}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; dalla `v1.12.0` `segnata_il` è l'istante preso dopo la risposta del backoffice, nella forma di `aggiornati_il`: la cornice lo confronta con l'istante dell'elenco — un elenco letto fin lì può dare la notifica ancora da leggere —, e una risposta che non è un 200 non lo porta; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `POST /cornice/notifiche/letture` con `{fino_a, workspace}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
-| `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo, contesto}], workspace}`: ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell'ordine del backoffice, la prima pagina (oggi, col loro `tipo`: le schede `board.scheda`, i contatti `crm.persona`, le aziende `crm.organizzazione`, le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`); dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server; dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice (`proprietario`, `amministratore`, `membro`): l'email di un membro non esce mai; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che cerca può essere rimasta su un altro workspace); è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l'indirizzo di quella richiesta non porta query; se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo; il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi |
+| `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo, contesto}], workspace}`: ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell'ordine del backoffice, la prima pagina (oggi, col loro `tipo`: le schede `board.scheda`, i contatti `crm.persona`, le aziende `crm.organizzazione`, le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`); dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server; dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice (`proprietario`, `amministratore`, `membro`): l'email di un membro non esce mai; dalla `v1.18.0` di un'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com'è arrivato: quali esiti si mostrano lo sa la cornice; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che cerca può essere rimasta su un altro workspace); è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l'indirizzo di quella richiesta non porta query; se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo; il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`; un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
@@ -324,6 +355,17 @@ cornice === null ? pagina : (
 - **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese. Le non lette hanno due
   testi, uno per una sola e uno per ogni altro numero: una lingua con più forme di plurale (il polacco, l'arabo) oggi non
   entra con un file solo.
+- **«Salta al contenuto»** è il primo elemento della cornice da tastiera, dalla `v1.18.0`: un pulsante davanti alla barra
+  laterale e alla barra in alto, che non si vede finché non ha il fuoco. Col primo Tab compare in alto a sinistra, sopra
+  la cornice; Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell'`AppShell`, e il Tab dopo
+  va al primo elemento della pagina invece di rifare tutta la barra. C'è anche nello stato ridotto. Il modulo non deve fare
+  niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo. Il `main` è quello dell'`AppShell`, anche se il
+  frontend ne ha uno suo prima della cornice o intorno a lei. Per chi aggiorna cambiano due cose senza che tocchi niente:
+  `.zr-shell` non è più il primo elemento di ciò che la `Cornice` rende (prima c'è il `div` del pulsante), e dopo un salto
+  il `main` ha `tabindex="-1"` finché tiene il fuoco. Un test del modulo sul primo figlio della cornice, su `:first-child`
+  o sul primo elemento che prende il fuoco va riletto. È provvisorio: l'`AppShell` del design system
+  non ha ancora il suo, e la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i
+  token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
@@ -609,7 +651,10 @@ cornice === null ? pagina : (
   «Propietario», «Administrador», «Miembro»). Il backoffice dà un codice (`proprietario`, `amministratore`, `membro`), e la
   cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha
   solo il nome. L'email di un membro non esce mai: il backoffice non la dà, e di `contesto` la parte server lascia passare
-  il solo `ruolo`. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui id
+  il solo `ruolo`. Dalla `v1.18.0` un'opportunità chiusa mostra anche l'esito, per terzo: «Vendite · Proposta · Vinta», o
+  «… · Persa» (in inglese «Won» e «Lost», in spagnolo «Ganada» e «Perdida»). Dell'esito il backoffice dà il codice
+  (`aperta`, `vinta` o `persa`) e il registro ha i soli `vinta` e `persa`: un'opportunità aperta resta con pipeline e fase,
+  senza un terzo testo. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui id
   non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
   risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre
   su `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace
@@ -789,9 +834,13 @@ risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice 
 avere (per il `ruolo` di un membro `proprietario`, `amministratore`, `membro`). Di un codice si mostra il testo che ha
 nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo,
 che si mostra com'è arrivato (il ruolo di un contatto del CRM). Il testo di un codice sta nelle lingue con la chiave
-`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`. Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo
+`searchContext.<voce>.<tipo>.<chiave>.<codice>`. Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo
 (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli
-(`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`).
+(`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`). Dalla `v1.18.0` ha `codici`
+anche l'opportunità del CRM (`crm.trattativa`), che a `pipeline` e `fase` aggiunge la chiave `esito`: i codici sono `vinta`
+e `persa`, coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa` («Vinta» e «Persa»). `aperta`, che il
+backoffice dà per un'opportunità aperta, non è fra i codici e non ha un testo: così un'opportunità aperta non mostra
+l'esito.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il
@@ -1153,3 +1202,80 @@ Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.goog
 
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
 immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.
+
+## Il precarico dei file d'ingresso
+
+Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\Core\Http\PrecaricoDegliIngressi`, che sulla risposta intera di una
+pagina scrive nell'header `Link` i file che `@vite` ha messo nel documento: l'ingresso, i pezzi che importa staticamente e
+i CSS, non i pezzi dinamici. Il browser comincia a scaricarli quando arrivano le intestazioni, prima di leggere il
+documento. È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento (più sotto, «Che cosa dice di chi
+guarda»). zr-core non lo registra da sé, e installare il pacchetto non precarica niente: lo registra il frontend, in uno dei
+due modi. Sul gruppo `web`, per ogni pagina, nel suo
+`bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->web(append: [\Zeiras\Core\Http\PrecaricoDegliIngressi::class]);
+})
+```
+
+Oppure sulle sole rotte che vuole, nel file delle sue rotte:
+
+```php
+Route::get('b/{board}', [BoardController::class, 'mostra'])->middleware(\Zeiras\Core\Http\PrecaricoDegliIngressi::class);
+```
+
+Non c'è niente da configurare, e `config/zr-core.php` non ha una chiave per lui: le rotte le dice dove lo agganci, i file li
+dice `@vite` nel documento, e il middleware non legge il manifest.
+
+- **Che cosa scrive**: una voce per file, nell'ordine in cui `@vite` li ha scritti: un CSS come
+  `<url>; rel=preload; as=style`, un modulo come `<url>; rel=preload; as=script; crossorigin`. Mai `modulepreload`:
+  Cloudflare in un 103 ripete solo `preload` e `preconnect`. E sempre `crossorigin` su un modulo: la richiesta di un modulo
+  è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte. Un altro precarico di Vite (un font) non esce.
+  Degli attributi che Vite calcola il middleware guarda solo `as`: non copia `integrity` né il valore di `crossorigin`. Un
+  frontend con l'integrità dei file nel manifest, con `crossorigin="use-credentials"` o con `crossorigin` sui CSS non lo
+  registra: il precarico non combacerebbe col tag del documento, e il file scenderebbe due volte. Non c'è un tetto alle
+  voci: l'header cresce con ogni pezzo che l'ingresso importa staticamente.
+- **Con quale indirizzo**: mai con un host che viene dalla richiesta. Una voce è il solo percorso, `</build/assets/…>`,
+  che il browser risolve sull'origine della pagina; con `ASSET_URL` nel `.env` del frontend è l'indirizzo intero, che
+  comincia con quello. Di un indirizzo con l'host della richiesta (un frontend che ha rimesso il resolver di Laravel) il
+  middleware scrive il solo percorso, e un file con un altro host non esce. Non esce nemmeno un indirizzo con un
+  carattere di controllo, uno spazio, `<`, `>`, `"` o `\`: in un `Link` chiuderebbe la voce, o un browser ci leggerebbe
+  un altro host.
+- **Dove scrive**: solo su una risposta `200` che è un documento HTML. Non sulla visita Inertia (la richiesta porta
+  `X-Inertia`), su un redirect, su una pagina d'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un
+  JSON, un file o uno stream; e se `@vite` non ha scritto niente l'header non c'è. Un `Link` che la risposta porta già
+  resta: il middleware aggiunge il suo accanto. È per PHP-FPM, dove ogni richiesta parte da zero: in un processo che resta
+  vivo fra una richiesta e l'altra (Octane) `Vite` tiene i file della richiesta di prima, e una pagina senza `@vite`
+  porterebbe i suoi.
+- **Dove si registra**: in un posto solo. Fra i middleware globali e anche su un gruppo scriverebbe due righe uguali
+  (gruppo e rotta insieme no: Laravel toglie il doppione). E al posto di quello di Laravel,
+  `Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets`, non accanto: con tutti e due ogni file uscirebbe due
+  volte, come `modulepreload` e come `preload`.
+- **Che cosa dice di chi guarda**: col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua
+  della persona, e nessun host che venga dalla richiesta. Per Zeiras Early Hints su Cloudflare resta spento: zr-pm dichiara
+  che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente. Chi lo accende accetta un rischio, e lo
+  decide zr-pm: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce o indovina un indirizzo, che la pagina
+  esiste ed è stata aperta da poco — e lo slug di un workspace è il nome di un'azienda. Per questo un modulo con uno slug
+  o un id nel percorso registra il middleware sulle sole rotte che accetta di esporre.
+- **Quanto vale**: non è una misura di zr-core. I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a
+  freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati.
+
+### Gli indirizzi dei file della build
+
+Dalla `v1.18.0` il pacchetto registra un resolver di Vite (`Vite::createAssetPathsUsing`), per ogni frontend che lo
+installa e senza che faccia niente: `@vite` scrive i file della build col solo percorso, `/build/assets/…`, nel documento
+come nel `Link`. Prima Laravel li scriveva con la radice della richiesta — l'header `Host`, o `X-Forwarded-Host` se il
+frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli indirizzi della pagina. Con `ASSET_URL` nel
+`.env` l'indirizzo resta intero e comincia con quello: non viene dalla richiesta.
+
+- **`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da
+  `config('app.url')`.
+- **Un frontend in una sottocartella del dominio** imposta `ASSET_URL`: il percorso parte dalla radice del dominio.
+- **`ASSET_URL` va nel `.env`**: un'origine data a tempo d'esecuzione, con `URL::useAssetOrigin()` o
+  `URL::forceRootUrl()`, il resolver non la vede, e scrive il solo percorso.
+- **Un test del frontend** che confronta un indirizzo intero di un file della build (`http://localhost/build/…`) va
+  riletto: ora è il solo percorso.
+- **Un resolver del frontend** registrato nel `boot()` del suo `AppServiceProvider` parte dopo quello del pacchetto, e
+  vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`. Nel `register()` no: lì quello del pacchetto lo
+  sovrascrive.

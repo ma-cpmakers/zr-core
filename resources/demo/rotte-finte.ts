@@ -157,7 +157,10 @@ const risultatiDiProva = [
             { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
             { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
             { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
-            { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
+            // Un'opportunità aperta e una vinta, con l'`esito` che il backoffice dà a ogni opportunità: della prima la cornice
+            // mostra pipeline e fase, della seconda anche l'esito, nella lingua.
+            { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta', esito: 'aperta' } },
+            { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
         ]
         : []),
     // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il solo `ruolo`, e come codice: è ciò
@@ -254,7 +257,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // `workspace` è quello della «sessione», come lo dice la parte server dalla `v1.12.0`, mai uno della richiesta: se la
             // pagina di prova non lo dà manca, e per la cornice la ricerca è un errore.
             return json({
-                data: parola === 'ua'
+                // «ua» dà il risultato vecchio di una board, ma non dove nessun modulo è attivo: lì passa dal filtro come ogni parola.
+                data: parola === 'ua' && !senzaModuli
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
                     : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),

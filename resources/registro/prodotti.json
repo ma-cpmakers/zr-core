@@ -25,7 +25,7 @@
             "risorse": [
                 { "tipo": "crm.persona", "icona": "users", "percorso": "/contatti/{id}", "contenitore": false, "contesto": ["organizzazione", "ruolo"] },
                 { "tipo": "crm.organizzazione", "icona": "building", "percorso": "/aziende/{id}", "contenitore": false },
-                { "tipo": "crm.trattativa", "icona": "target", "percorso": "/opportunita/{id}", "contenitore": false, "contesto": ["pipeline", "fase"] }
+                { "tipo": "crm.trattativa", "icona": "target", "percorso": "/opportunita/{id}", "contenitore": false, "contesto": ["pipeline", "fase", "esito"], "codici": { "esito": ["vinta", "persa"] } }
             ],
             "notifiche": [
                 { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },

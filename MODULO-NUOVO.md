@@ -152,6 +152,14 @@ globali — README, «Le intestazioni di sicurezza». Se il frontend ha già una
 Poi scrivi il tuo test, coi cinque valori per intero — README, «Il test nel modulo» (zr-crm lo chiama `IntestazioniTest`,
 in `tests/Feature/`).
 
+Dalla `v1.18.0` puoi registrare anche il precarico dei file d'ingresso, `Zeiras\Core\Http\PrecaricoDegliIngressi`, sul
+gruppo `web` o sulle sole rotte che vuoi: scrive nell'header `Link` i file che `@vite` ha messo nel documento, e il browser
+comincia a scaricarli prima di leggere la pagina. Se nei tuoi indirizzi c'è uno slug o un id, lo registri sulle sole rotte
+che accetti di esporre. Installare zr-core non lo accende: non parte da solo — README,
+«Il precarico dei file d'ingresso». Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che
+tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli, e uno diverso lo registri nel `boot()` del
+tuo `AppServiceProvider` — README, «Gli indirizzi dei file della build».
+
 **Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP. Guarda la risposta della pagina,
 non quella di chi non è entrato: senza il cookie della sessione risponde un rimando — la partenza del passo 2, o la
 guardia —, e una classe del modulo rimasta più all'interno non si vede. Dalla scheda Rete del browser, o con
@@ -296,9 +304,10 @@ chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso de
 Nel registro stanno anche le risorse del tuo prodotto che la ricerca mostra (passo 9). Se una chiave di `contesto` di una
 risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa:
 nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice
-(`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
-codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi ha `codici` il
-membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`).
+(`searchContext.<voce>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
+codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi hanno `codici` il
+membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l'opportunità del
+CRM, per l'`esito` (`vinta`, `persa`: `aperta` non è un codice, e un'opportunità aperta non mostra l'esito).
 
 **Durante lo sviluppo** la cornice non si rompe, in nessuno dei due casi. Finché il registro installato non ha il tuo
 prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Moduli esteso, nessun

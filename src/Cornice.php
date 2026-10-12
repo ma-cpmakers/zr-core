@@ -167,6 +167,21 @@ final class Cornice
     }
 
     /**
+     * Il freno di questa richiesta: l'errore con cui il backoffice ha risposto 429 alla lettura di io.mostra che `lingua()` o
+     * `dati()` hanno fatto, o null. È per il modulo che dopo la riga chiamerebbe ancora /v1: dopo un 429 non si richiama, e
+     * risponde col suo 429, coi secondi di `Retry-After` che stanno in `riprovaFra` (null se il backoffice non li dice).
+     * Guarda la lettura tenuta sulla richiesta e non ne fa partire una: senza una lettura dà null, e la richiesta dopo non
+     * trova il freno di questa. Il freno è lo stato, 429, con qualunque codice e chiunque l'abbia dato; un altro errore
+     * tenuto (il 403 `accettazione_richiesta`, un 404, il backoffice che non risponde) non lo è.
+     */
+    public static function frenata(): ?ErroreApi
+    {
+        $esito = request()->attributes->get(self::LETTURA)['esito'] ?? null;
+
+        return $esito instanceof ErroreApi && $esito->stato === 429 ? $esito : null;
+    }
+
+    /**
      * La lettura di io.mostra di questa richiesta, una sola per `lingua()` e `dati()`: prende il segno, legge, dà la risposta a
      * `Sessione::aggiorna` e tiene fra gli attributi della richiesta di chi è (l'id della persona e il workspace della
      * sessione), il segno, l'esito (le non lette, o l'errore al loro posto) e se una `dati()` l'ha già usata. Della risposta

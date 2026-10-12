@@ -3590,6 +3590,56 @@ describe('la ricerca', () => {
         ]);
     });
 
+    // Sprint 28 · T1 (voce #1826): un'opportunità chiusa dice l'esito. Il backoffice dà `esito` come codice (`aperta`, `vinta`,
+    // `persa`), e il registro dà alla chiave i soli due codici di un'opportunità chiusa: `aperta` non è fra quelli, ed è così che
+    // un'opportunità aperta resta con pipeline e fase. Il testo di ogni codice è delle lingue, con le parole di zr-crm.
+    const opportunita = (contesto: Record<string, unknown>, id = '01k7d1t1') => ({ tipo: 'crm.trattativa', id, titolo: 'Rinnovo 2027', contesto });
+    /** Di ogni riga la seconda riga; `null` dove non c'è. */
+    const secondeRighe = () => righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null);
+
+    it.each<[lingua: string, vinta: string, persa: string]>([
+        ['it', 'Vinta', 'Persa'],
+        ['es', 'Ganada', 'Perdida'],
+        ['en', 'Won', 'Lost'],
+        // Una lingua che zr-core non ha: in inglese.
+        ['zz', 'Won', 'Lost'],
+    ])('con la lingua "%s", un\'opportunità chiusa mostra l\'esito nella lingua come terzo testo della seconda riga, dopo pipeline e fase: mai il codice del backoffice, mai il testo di un\'altra lingua (sprint 28 · T1.1)', async (lingua, vinta, persa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            opportunita({ pipeline: 'Vendite', fase: 'Proposta', esito: 'vinta' }, '01k7d1t1'),
+            opportunita({ pipeline: 'Vendite', fase: 'Proposta', esito: 'persa' }, '01k7d1t2'),
+        ])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([`Vendite · Proposta · ${vinta}`, `Vendite · Proposta · ${persa}`]);
+        // Nel pannello non si legge nessun codice.
+        const pannello = uno('.zr-search-panel')?.textContent ?? '';
+        expect(['vinta', 'persa'].filter((codice) => pannello.includes(codice))).toStrictEqual([]);
+    });
+
+    it.each<[caso: string, contesto: Record<string, unknown>, attesa: string | null]>([
+        ['aperta resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'aperta' }, 'Vendite · Proposta'],
+        ['aperta, senza pipeline e senza fase, non ha una seconda riga', { esito: 'aperta' }, null],
+        ['con un esito che il registro non ha resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'sospesa' }, 'Vendite · Proposta'],
+        ['col testo di un esito, e non il suo codice, resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 'Vinta' }, 'Vendite · Proposta'],
+        ['con l\'esito vuoto resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: '' }, 'Vendite · Proposta'],
+        ['con l\'esito `null` resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: null }, 'Vendite · Proposta'],
+        ['con un numero per esito resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta', esito: 1 }, 'Vendite · Proposta'],
+        ['senza esito resta con pipeline e fase', { pipeline: 'Vendite', fase: 'Proposta' }, 'Vendite · Proposta'],
+        ['vinta, senza pipeline e senza fase, ha il solo esito', { esito: 'vinta' }, 'Vinta'],
+        ['persa, con pipeline e fase `null`, ha il solo esito', { pipeline: null, fase: null, esito: 'persa' }, 'Persa'],
+        ['vinta, con la sola fase, ha fase ed esito', { pipeline: '', fase: 'Proposta', esito: ' vinta ' }, 'Proposta · Vinta'],
+    ])('un\'opportunità %s: `aperta` non è un codice del registro e non aggiunge niente, ciò che non è un codice non si mostra, e non resta un « · » appeso (sprint 28 · T1.2)', async (_caso, contesto, attesa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([opportunita(contesto)])));
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([attesa]);
+        // Ciò che l'`AppShell` riceve: senza testi la seconda riga manca, non è vuota.
+        expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([attesa]);
+    });
+
     it.each<[come: string, scegli: () => void]>([
         ['con un clic', () => righe()[0]?.click()],
         ['con Invio', () => uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))],
@@ -4800,5 +4850,211 @@ describe('chi non ha accettato i documenti legali', () => {
             expect(sottoIlCampo()).toStrictEqual(nessunRisultatoPer('ua'));
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
+    });
+});
+
+// Sprint 28 · T4 (voce #1828; `Decisione:` 11310 di zr-pm). Da tastiera il primo elemento della cornice è «Salta al
+// contenuto»: un pulsante del design system davanti all'`AppShell`, che non si vede finché non ha il fuoco e che porta il
+// fuoco al `main`. È provvisorio: l'`AppShell` non ne ha uno suo, e quando lo porta questo si toglie. In questo DOM il Tab non
+// c'è: l'ordine è quello del documento, e Invio e Spazio sono quelli di un `<button>` vero (li prova la UAT).
+describe('«Salta al contenuto»', () => {
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true };
+    const prendonoIlFuoco = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    /** Il contenitore del pulsante: il primo elemento che la `Cornice` scrive. */
+    const ilSalto = () => contenitore.firstElementChild as HTMLElement;
+    const pulsante = () => ilSalto().querySelector('button') as HTMLButtonElement;
+    const laPagina = (lingua = 'it', figli: ReactElement = <button type="button" id="della-pagina">Nuova scheda</button>, dellaCornice = dati) => (
+        <Cornice dati={{ ...dellaCornice, lingua }} onLogout={esciSenzaEffetto}>{figli}</Cornice>
+    );
+    const conIlFuoco = async (elemento: HTMLElement) => act(async () => elemento.focus());
+
+    it.each([
+        ['it', 'Salta al contenuto'],
+        ['en', 'Skip to content'],
+        ['es', 'Saltar al contenido'],
+        // Una lingua che zr-core non ha: l'inglese.
+        ['de', 'Skip to content'],
+    ])('con la lingua "%s" è il primo elemento che prende il fuoco, prima della barra laterale e della barra in alto, e dice «%s» (T4.1)', async (lingua, testo) => {
+        await mostra(laPagina(lingua));
+
+        const primo = contenitore.querySelector(prendonoIlFuoco);
+        expect(primo).toBe(pulsante());
+        expect(primo?.textContent).toBe(testo);
+        // Prima di tutto ciò che è dell'`AppShell`: la barra laterale, la barra in alto, il contenuto.
+        expect(['.zr-nav', '.zr-top', 'main'].map((selettore) => Boolean(ilSalto().compareDocumentPosition(uno(selettore) as Node) & Node.DOCUMENT_POSITION_FOLLOWING))).toStrictEqual([true, true, true]);
+        expect(ilSalto().contains(uno('main'))).toBe(false);
+    });
+
+    it('senza il fuoco non si vede: il contenitore ha la classe del design system che nasconde, e nessuno stile suo; è il `Button` del design system, secondario e piccolo (T4.2)', async () => {
+        await mostra(laPagina());
+
+        expect([ilSalto().className, ilSalto().getAttribute('style')]).toStrictEqual(['zr-visually-hidden', null]);
+        expect([pulsante().className, pulsante().type]).toStrictEqual(['zr-btn zr-btn-secondary zr-btn-sm', 'button']);
+    });
+
+    it('col fuoco si vede, in alto a sinistra sopra la cornice, coi soli token; quando il fuoco va altrove torna nascosto (T4.2)', async () => {
+        await mostra(laPagina());
+
+        await conIlFuoco(pulsante());
+        expect(document.activeElement).toBe(pulsante());
+        expect(ilSalto().className).toBe('');
+        const stile = ilSalto().style;
+        expect([stile.position, stile.top, stile.left, stile.zIndex]).toStrictEqual(['fixed', 'var(--space-2)', 'var(--space-2)', 'var(--z-toast)']);
+        // Nessun valore che non sia un token: una misura o un numero scritti a mano non ci sono.
+        expect(ilSalto().getAttribute('style')).not.toMatch(/\d(px|rem|em|%)|z-index:\s*\d/);
+
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect([ilSalto().className, ilSalto().getAttribute('style')]).toStrictEqual(['zr-visually-hidden', null]);
+    });
+
+    it.each<[caso: string, dellaCornice: DatiDellaCornice]>([
+        ['coi dati di sempre', dati],
+        ['nello stato ridotto', ridotti],
+    ])('%s un clic sul pulsante porta il fuoco al `main` dell\'`AppShell`, e ciò che viene dopo nel documento è della pagina, non della cornice; il pulsante torna nascosto (T4.3, T4.4)', async (_caso, dellaCornice) => {
+        await mostra(laPagina('it', undefined, dellaCornice));
+        const main = uno('main') as HTMLElement;
+        // Il `main` è dell'`AppShell`: prima del salto la cornice non gli ha scritto niente.
+        expect([main.getAttribute('tabindex'), main.id, main.getAttribute('style')]).toStrictEqual([null, '', null]);
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+
+        expect(document.activeElement).toBe(main);
+        expect([main.getAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual(['-1', '', null, 'zr-main']);
+        expect(ilSalto().className).toBe('zr-visually-hidden');
+        // Dal `main` il Tab va al primo elemento che prende il fuoco dopo di lui: è dentro il `main`, ed è della pagina.
+        const dopo = [...contenitore.querySelectorAll<HTMLElement>(prendonoIlFuoco)].find((elemento) => Boolean(main.compareDocumentPosition(elemento) & Node.DOCUMENT_POSITION_FOLLOWING));
+        expect([main.contains(dopo ?? null), dopo?.closest('.zr-nav, .zr-top') ?? null]).toStrictEqual([true, null]);
+        expect(main.contains(uno('#della-pagina'))).toBe(true);
+    });
+
+    it('il salto si rifà: ogni volta il `main` prende il fuoco col suo `tabindex`, e lo perde quando il fuoco va altrove (T4.3; lettura della PR #61, R4)', async () => {
+        await mostra(laPagina());
+
+        for (const _volta of [1, 2]) {
+            await conIlFuoco(pulsante());
+            // Il fuoco ha lasciato il `main`: l'attributo del salto di prima non c'è più.
+            expect(uno('main')?.hasAttribute('tabindex')).toBe(false);
+            await act(async () => pulsante().click());
+            expect(document.activeElement).toBe(uno('main'));
+            expect(uno('main')?.getAttribute('tabindex')).toBe('-1');
+        }
+    });
+
+    // Lettura della PR #61, R4. Col `tabindex` lasciato sul `main`, dopo un salto ogni clic su un punto della pagina che non
+    // prende il fuoco lo darebbe al `main`: il Tab dopo ripartirebbe dal primo elemento del contenuto e non dal punto del clic.
+    it('il `tabindex` sta sul `main` solo finché ha il fuoco: quando il fuoco passa a un elemento della pagina il `main` torna com\'era, senza attributi della cornice (lettura della PR #61, R4)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
+
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect([main.hasAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual([false, '', null, 'zr-main']);
+    });
+
+    // Seconda lettura della PR #61, N5. Il `blur` arriva al `main` anche quando è la finestra a perdere il fuoco, e lì il `main`
+    // resta l'elemento attivo: senza l'attributo, al ritorno non terrebbe più il fuoco, e il Tab dopo rifarebbe la barra.
+    it('un `blur` che arriva al `main` mentre è ancora l\'elemento attivo non toglie il `tabindex`; lo toglie quello di quando il fuoco passa altrove (seconda lettura della PR #61, N5)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        await act(async () => {
+            main.dispatchEvent(new FocusEvent('blur'));
+        });
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
+
+        // Il gestore non è andato via col primo `blur`.
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.hasAttribute('tabindex')).toBe(false);
+    });
+
+    it('quando il fuoco ha lasciato il `main` il gestore del salto non c\'è più: un `tabindex` che il modulo gli dà dopo resta (seconda lettura della PR #61, N5)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.hasAttribute('tabindex')).toBe(false);
+
+        main.setAttribute('tabindex', '0');
+        await conIlFuoco(main);
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('un `tabindex` che il `main` ha già non è della cornice: il salto non lo cambia e non lo toglie (lettura della PR #61, R4)', async () => {
+        await mostra(laPagina());
+        const main = uno('main') as HTMLElement;
+        main.setAttribute('tabindex', '0');
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '0']);
+
+        await conIlFuoco(uno('#della-pagina') as HTMLElement);
+        expect(main.getAttribute('tabindex')).toBe('0');
+    });
+
+    // Lettura della PR #61, R3. Il `main` è quello dell'`AppShell` accanto al pulsante, non il primo del documento: un
+    // frontend può avere un `main` suo, prima della cornice o intorno a lei.
+    it.each<[caso: string, metti: (delFrontend: HTMLElement) => void, togli: (delFrontend: HTMLElement) => void]>([
+        ['prima della cornice', (delFrontend) => document.body.prepend(delFrontend), (delFrontend) => delFrontend.remove()],
+        ['intorno alla cornice', (delFrontend) => { contenitore.replaceWith(delFrontend); delFrontend.append(contenitore); }, (delFrontend) => delFrontend.replaceWith(contenitore)],
+    ])('con un `main` del frontend %s il salto porta il fuoco al `main` dell\'`AppShell`, e a quello del frontend non scrive niente (lettura della PR #61, R3)', async (_caso, metti, togli) => {
+        const delFrontend = document.createElement('main');
+        metti(delFrontend);
+        try {
+            await mostra(laPagina());
+            const main = uno('main.zr-main') as HTMLElement;
+            // Il caso non è vuoto: il primo `main` del documento è quello del frontend.
+            expect(document.querySelector('main')).toBe(delFrontend);
+
+            await conIlFuoco(pulsante());
+            await act(async () => pulsante().click());
+
+            expect(document.activeElement).toBe(main);
+            expect([main.getAttribute('tabindex'), delFrontend.hasAttribute('tabindex')]).toStrictEqual(['-1', false]);
+        } finally {
+            togli(delFrontend);
+        }
+    });
+
+    it('senza un `AppShell` accanto al pulsante il salto non fa niente: non cerca un altro `main` nel documento (lettura della PR #61, R3)', async () => {
+        const delFrontend = document.createElement('main');
+        document.body.prepend(delFrontend);
+        try {
+            await mostra(laPagina());
+            uno('.zr-shell')?.classList.remove('zr-shell');
+
+            await conIlFuoco(pulsante());
+            await act(async () => pulsante().click());
+
+            expect(document.activeElement).toBe(pulsante());
+            expect([delFrontend.hasAttribute('tabindex'), uno('main.zr-main')?.hasAttribute('tabindex')]).toStrictEqual([false, false]);
+        } finally {
+            delFrontend.remove();
+        }
+    });
+
+    it('con una pagina senza niente che prende il fuoco il fuoco sta comunque sul `main` (T4.4)', async () => {
+        await mostra(laPagina('it', <p>Niente da fare qui.</p>, ridotti));
+
+        await conIlFuoco(pulsante());
+        await act(async () => pulsante().click());
+
+        expect(document.activeElement).toBe(uno('main'));
+        expect(uno('main')?.textContent).toContain('Niente da fare qui.');
+    });
+
+    it('la regione degli avvisi resta l\'ultimo elemento della cornice, com\'era (T4.1)', async () => {
+        await mostra(laPagina());
+
+        expect([contenitore.lastElementChild?.getAttribute('role'), contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['status', 'zr-visually-hidden', 3]);
     });
 });

@@ -321,7 +321,13 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and($voci[2]['risorse'])->toBe([
             ['tipo' => 'crm.persona', 'icona' => 'users', 'percorso' => '/contatti/{id}', 'contenitore' => false, 'contesto' => ['organizzazione', 'ruolo']],
             ['tipo' => 'crm.organizzazione', 'icona' => 'building', 'percorso' => '/aziende/{id}', 'contenitore' => false],
-            ['tipo' => 'crm.trattativa', 'icona' => 'target', 'percorso' => '/opportunita/{id}', 'contenitore' => false, 'contesto' => ['pipeline', 'fase']],
+            // Sprint 28 · T1.4 (voce #1826): un'opportunità chiusa dice l'esito. Il backoffice dà `esito` come codice (`aperta`,
+            // `vinta`, `persa`), e alla chiave il registro dà i soli due codici di un'opportunità chiusa: `aperta` non è fra
+            // quelli, ed è così che di un'opportunità aperta non si mostra.
+            [
+                'tipo' => 'crm.trattativa', 'icona' => 'target', 'percorso' => '/opportunita/{id}', 'contenitore' => false,
+                'contesto' => ['pipeline', 'fase', 'esito'], 'codici' => ['esito' => ['vinta', 'persa']],
+            ],
         ])
         // Sprint 27 · T1.1 (voce #1787): il membro del workspace, col tipo del contratto (ricerca.crea). Non è di un modulo: la
         // pagina che si apre è Impostazioni › Membri di app, e la risorsa sta nella voce della Dashboard, che ha quell'indirizzo.
@@ -336,11 +342,12 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ])
         // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno.
         ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm'])
-        // Solo il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è.
+        // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è. Dallo
+        // sprint 28 ha dei codici anche l'opportunità, per l'esito.
         ->and(array_keys(array_filter(array_merge(...array_map(
             fn (array $voce): array => array_column($voce['risorse'] ?? [], 'codici', 'tipo'),
             $voci,
-        )))))->toBe(['workspace.membro']);
+        )))))->toBe(['workspace.membro', 'crm.trattativa']);
 });
 
 it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole e diverse, e una chiave che una risorsa non ha (sprint 25 · T4.5)', function () {
@@ -359,6 +366,9 @@ it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole 
         'crm.crm.persona: «contesto» non è un elenco di chiavi, minuscole e diverse',
         'crm.crm.organizzazione: ha una chiave che non è tipo, icona, percorso, contenitore, contesto né codici',
         'crm.crm.trattativa: «contesto» non è un elenco di chiavi, minuscole e diverse',
+        // Dallo sprint 28 l'opportunità ha dei codici per `esito`: col «contesto» storpiato qui sopra la chiave non c'è più, e
+        // il controllo lo dice.
+        'crm.crm.trattativa: «codici» nomina «esito», che non è una chiave di «contesto»',
     ]);
 });
 
@@ -503,8 +513,11 @@ it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<pro
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
 
-it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<prodotto>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno (sprint 27 · T1.4)', function () {
-    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
+it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4)', function () {
+    expect(codiciDelContesto())->toBe([
+        'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
+        'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
+    ])
         ->and(valoriDelTipo('CodiceDelContesto', 'resources/js/registro.ts'))->toEqualCanonicalizing(codiciDelContesto())
         // Il testo di un codice si chiede alle lingue con `searchContext.` davanti, come il nome da elenco con `searchSource.`.
         ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->toContain('Record<`searchContext.${CodiceDelContesto}`, string>');

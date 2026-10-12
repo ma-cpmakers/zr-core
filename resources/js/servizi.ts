@@ -40,7 +40,8 @@ export interface RisultatoDellaRicerca {
      * I testi che il backoffice dà per riconoscerla (dalla `v1.15.0`): `board` e `lista` di una scheda, `organizzazione` e
      * `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità; dalla `v1.17.0` anche il `ruolo` di un membro del workspace,
      * che è un codice (`proprietario`, `amministratore`, `membro`) e non un testo da mostrare: la cornice mostra quello che il
-     * codice ha nella lingua. Dalla rotta arrivano le sole chiavi che il registro dà al
+     * codice ha nella lingua. Dalla `v1.18.0` anche l'`esito` di un'opportunità, un codice anche lui: `vinta` e `persa` la
+     * cornice li mostra nella lingua, `aperta` arriva e non si mostra. Dalla rotta arrivano le sole chiavi che il registro dà al
      * tipo (`risorse[].contesto`), coi soli testi non vuoti: mai un `null` fra i valori, e `null` tutto il contesto quando non
      * ne resta nessuno — sempre per un'azienda, una board e una cartella. Sono le stesse chiavi che fanno la seconda riga del
      * risultato. Il tipo ammette ancora un `null` fra i valori, e che `contesto` manchi: una parte server finta di prima della

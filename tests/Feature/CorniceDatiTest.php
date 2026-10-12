@@ -1335,3 +1335,149 @@ it('se un middleware del frontend chiama /v1 su una rotta della cornice senza pr
     expect($risposta->getStatusCode())->toBe(403)
         ->and(json_decode((string) $risposta->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]]);
 });
+
+// Sprint 28 · T3 (voce #1827). `Cornice::frenata()`: un modulo che ha messo la lingua con la riga sa se la lettura di io.mostra
+// di questa richiesta ha preso un 429, e risponde col suo 429 senza richiamare il backoffice. Guarda la lettura tenuta sulla
+// richiesta e non ne fa partire una; il freno si riconosce dallo stato, 429, non dal codice. Il 429 è `troppeRichieste()` di
+// RicercaTest.php.
+
+/**
+ * Due pagine di un modulo nel gruppo `web` che rispondono con ciò che `Cornice::frenata()` dà: la prima dopo la riga, messa
+ * in un middleware come in `paginaConLaRiga()`, la seconda senza nessuna lettura della cornice.
+ */
+function pagineDelFreno(): void
+{
+    Route::aliasMiddleware('la-riga', function ($richiesta, Closure $next) {
+        App::setLocale(Cornice::lingua() ?? 'nessuna');
+
+        return $next($richiesta);
+    });
+    $freno = fn () => ['frenata' => Cornice::frenata() !== null, 'riprova_fra' => Cornice::frenata()?->riprovaFra];
+    Route::middleware(['web', 'la-riga'])->get('w/{slug}/con-la-riga', $freno);
+    Route::middleware('web')->get('w/{slug}/senza-la-riga', $freno);
+}
+
+it('dopo una riga che ha preso un 429 da io.mostra Cornice::frenata() dà l\'errore di quella lettura, coi secondi di Retry-After o null se il backoffice non li dice, e non richiama il backoffice (sprint 28 · T3.1)', function (?string $riprovaFra, ?string $codice) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => troppeRichieste($riprovaFra, 429, $codice)]);
+
+    expect(Cornice::lingua())->toBe('en');
+    $frenata = Cornice::frenata();
+
+    expect($frenata)->toBeInstanceOf(ErroreApi::class)
+        ->and([$frenata->stato, $frenata->codice, $frenata->riprovaFra])->toBe([429, $codice, $riprovaFra === null ? null : (int) $riprovaFra])
+        // Chiesta due volte è lo stesso errore, quello nato nella lettura della riga.
+        ->and(Cornice::frenata())->toBe($frenata)
+        ->and(in_array('lingua', array_column($frenata->getTrace(), 'function'), true))->toBeTrue()
+        ->and(richiesteA('/v1/io'))->toHaveCount(1)
+        ->and(Http::recorded())->toHaveCount(1);
+})->with([
+    'con Retry-After' => ['30', 'troppe_richieste'],
+    'senza Retry-After' => [null, 'troppe_richieste'],
+    'un 429 con un altro codice' => ['12', 'uat_altro_freno'],
+    'un 429 senza codice' => [null, null],
+]);
+
+it('senza una lettura in questa richiesta Cornice::frenata() dà null e non legge lei: con la sessione in un workspace, con la sessione senza workspace e senza sessione il backoffice non è chiamato (sprint 28 · T3.2)', function (string $sessione) {
+    if ($sessione !== 'nessuna') {
+        sessioneAMano($sessione === 'in un workspace' ? marketing() : null);
+    }
+    $prima = session(Sessione::CHIAVE);
+    backoffice(['/v1/io' => troppeRichieste('30')]);
+
+    expect(Cornice::frenata())->toBeNull()
+        ->and(session(Sessione::CHIAVE))->toBe($prima)
+        ->and(Http::recorded())->toHaveCount(0);
+})->with(['in un workspace', 'senza workspace', 'nessuna']);
+
+it('dopo una lettura andata bene, o fallita per un altro motivo, Cornice::frenata() dà null e non richiama il backoffice: solo il 429 è un freno (sprint 28 · T3.2)', function (int $stato, mixed $corpo) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => match (true) {
+        $stato === 0 => Http::failedConnection(),
+        $stato === 200 => ioMostra(3),
+        $corpo === 'accettazione' => accettazioneRichiesta(),
+        is_string($corpo) => troppeRichieste('30', $stato, $corpo),
+        default => Http::response('', $stato),
+    }]);
+
+    expect(Cornice::lingua())->toBe('en')
+        ->and(Cornice::frenata())->toBeNull()
+        ->and(Http::recorded())->toHaveCount(1);
+})->with([
+    'andata bene' => [200, null],
+    'il 403 accettazione_richiesta' => [403, 'accettazione'],
+    'un 403 con un altro codice, e Retry-After' => [403, 'gettone_senza_workspace'],
+    'un 404 col codice del freno' => [404, 'troppe_richieste'],
+    'un 500 col codice del freno' => [500, 'troppe_richieste'],
+    'un 502 vuoto' => [502, null],
+    'la connessione cade' => [0, null],
+]);
+
+it('dopo una Cornice::dati() che per quel 429 ha lanciato Cornice::frenata() dà lo stesso errore, in tutti e due gli ordini; la riga dà la lingua della sessione e i dati lanciano, come prima (sprint 28 · T3.3)', function (bool $primaLaRiga) {
+    sessioneAMano(marketing());
+    $prima = session(Sessione::CHIAVE);
+    backoffice(['/v1/io' => troppeRichieste('7'), ...aziendeEWorkspace()]);
+
+    $lingua = $primaLaRiga ? Cornice::lingua() : null;
+    $frenataPrimaDeiDati = Cornice::frenata();
+
+    try {
+        Cornice::dati();
+        $lanciato = null;
+    } catch (ErroreApi $errore) {
+        $lanciato = $errore;
+    }
+
+    expect($lanciato)->toBeInstanceOf(ErroreApi::class)
+        ->and([$lanciato->stato, $lanciato->riprovaFra])->toBe([429, 7])
+        ->and(Cornice::frenata())->toBe($lanciato)
+        // Prima dei dati il freno c'è solo se una lettura c'è già stata: guardarlo non la fa partire.
+        ->and($frenataPrimaDeiDati)->toBe($primaLaRiga ? $lanciato : null)
+        ->and($lingua ?? Cornice::lingua())->toBe('en')
+        ->and(session(Sessione::CHIAVE))->toBe($prima)
+        ->and(Http::recorded())->toHaveCount(1);
+})->with(['prima la riga' => [true], 'prima i dati' => [false]]);
+
+it('il freno è della richiesta: la richiesta dopo, nello stesso processo, non lo trova e non chiama il backoffice per saperlo, finché una lettura non prende un altro 429 (sprint 28 · T3.4)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => Http::sequence()->pushResponse(troppeRichieste('30'))->pushResponse(troppeRichieste('5'))]);
+    pagineDelFreno();
+
+    $laPrima = $this->get('w/uat-marketing/con-la-riga')->assertOk();
+    $senzaLettura = $this->get('w/uat-marketing/senza-la-riga')->assertOk();
+    $laTerza = $this->get('w/uat-marketing/con-la-riga')->assertOk();
+
+    expect([$laPrima->json('frenata'), $senzaLettura->json('frenata'), $laTerza->json('frenata')])->toBe([true, false, true])
+        ->and([$laPrima->json('riprova_fra'), $senzaLettura->json('riprova_fra'), $laTerza->json('riprova_fra')])->toBe([30, null, 5])
+        // Due letture, quelle delle due righe: la richiesta di mezzo non ne ha fatte.
+        ->and(richiesteA('/v1/io'))->toHaveCount(2)
+        ->and(Http::recorded())->toHaveCount(2);
+});
+
+it('il middleware del README, riga per riga: dopo la riga, se la lettura ha preso un 429 il modulo risponde col suo 429, con Retry-After se il backoffice l\'ha detto, e la chiamata a /v1 del controller non parte; senza freno parte (sprint 28 · T3.5)', function (bool $frenato, ?string $riprovaFra) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => $frenato ? troppeRichieste($riprovaFra) : ioMostra(0), '/v1/board/board' => ['data' => [], 'successivo' => null]]);
+    Route::aliasMiddleware('la-riga-col-freno', function ($request, Closure $next) {
+        App::setLocale(Cornice::lingua() ?? config('app.locale'));
+
+        $freno = Cornice::frenata();
+
+        if ($freno !== null) {
+            return response('', 429, $freno->riprovaFra === null ? [] : ['Retry-After' => (string) $freno->riprovaFra]);
+        }
+
+        return $next($request);
+    });
+    Route::middleware(['web', 'la-riga-col-freno'])->get('w/{slug}/chiama-v1', fn () => ['chiamato' => Api::workspace()->get('/v1/board/board') !== []]);
+
+    $risposta = $this->get('w/uat-marketing/chiama-v1');
+
+    expect([$risposta->getStatusCode(), $risposta->headers->get('Retry-After')])->toBe($frenato ? [429, $riprovaFra] : [200, null])
+        ->and($risposta->getContent())->toBe($frenato ? '' : '{"chiamato":true}')
+        // Dopo il freno il backoffice non è più chiamato: resta la lettura della riga.
+        ->and(percorsiChiamati())->toBe($frenato ? ['/v1/io'] : ['/v1/io', '/v1/board/board']);
+})->with([
+    'frenato, con Retry-After' => [true, '30'],
+    'frenato, senza Retry-After' => [true, null],
+    'senza freno' => [false, null],
+]);

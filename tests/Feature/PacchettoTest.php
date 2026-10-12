@@ -2353,7 +2353,8 @@ it('nel README «Le intestazioni di sicurezza» sta fra «La favicon» e «La CS
     preg_match_all('/^### (.+)$/m', $sezione[1] ?? '', $sottotitoli);
     preg_match_all('/default-src \'[^"`\n]*/', $sezione[1] ?? '', $scritte);
 
-    expect(array_slice($titoli[1], -3))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP'])
+    // Dallo sprint 28 dopo «La CSP» c'è «Il precarico dei file d'ingresso», in fondo: i tre restano uno dopo l'altro.
+    expect(array_slice($titoli[1], -4))->toBe(['La favicon', 'Le intestazioni di sicurezza', 'La CSP', 'Il precarico dei file d\'ingresso'])
         ->and($sottotitoli[1])->toBe(['Le sorgenti di un modulo', 'Per una pagina sola', 'Il test nel modulo', 'La barra d\'avanzamento di Inertia', 'Che cosa resta al server web'])
         // La più stretta una volta, dove il README dice lo scarto; quella di tutti due: da sola, e nel test che un modulo ricopia.
         ->and($scritte[0])->toBe([CSP_PIU_STRETTA_NEL_README, CSP_DI_TUTTI_NEL_README, CSP_DI_TUTTI_NEL_README])
@@ -2527,6 +2528,8 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
 
 const PASSO_DEL_REGISTRO = '## 8. Il prodotto nel registro';
 
+const PASSO_DELLA_RICERCA = '## 9. La ricerca';
+
 /** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. Vuoto se non c'è. */
 function passoDellaGuida(string $guida, string $titolo): string
 {
@@ -2639,7 +2642,7 @@ function difettiDiChiEInArrivo(array $registro, string $readme, string $guida): 
     return $difetti;
 }
 
-it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; con Bookings fuori dall\'arrivo le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
+it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; col primo di loro uscito per tutti le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
     $registro = registroDeiProdotti();
@@ -2662,7 +2665,8 @@ it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in a
     // Prima i documenti col registro di oggi: se non tornano, il rosso dice quale frase. I due registri di prova valgono finché
     // nel registro un prodotto è in arrivo senza essere «Presto» e uno è «Presto»: chi sono, non conta.
     expect(difettiDiChiEInArrivo($registro, $readme, $guida))->toBe([])
-        ->and([$uscito, $tolto])->not->toContain(null)
+        // Sprint 28 · T5.5 (seconda lettura della PR #60, residuo di R4): il giorno che l'ultimo esce, il rosso dice che cosa fare.
+        ->and($uscito !== null && $tolto !== null)->toBe(true, 'Nel registro non c\'è più un prodotto in arrivo che non sia «Presto», o non c\'è più un «Presto»: i due registri di prova di questo caso (uno uscito per tutti, un «Presto» in meno) non si ricavano più. README e guida sono a posto, lo dice il controllo qui sopra: si riscrive questo caso, e con lui quello dopo, che ricava i documenti «di quel giorno» da quelli di oggi.')
         ->and(difettiDiChiEInArrivo($conUnoUscito, $readme, $guida))->toBe([
             $nonDice('README, «in arrivo e non «Presto»»', $conUnoUscito),
             $nonDice('README, «in arrivo restano»', $conUnoUscito),
@@ -2691,7 +2695,8 @@ it('README e guida possono dire che nessun prodotto è in arrivo senza essere «
     );
     $guidaDiQuelGiorno = (string) preg_replace('/e\s+lo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u', 'e lo restano i $1 «Presto»', $guida, -1, $nellaGuida);
 
-    expect([$nelReadme, $nellaGuida])->toBe([2, 1])
+    // Sprint 28 · T5.5 (residuo di R4): quel giorno i documenti sono già nella forma «nessuno», e qui non c'è più niente da sostituire.
+    expect([$nelReadme, $nellaGuida])->toBe([2, 1], 'README e guida non hanno più le tre frasi che nominano chi è in arrivo senza essere «Presto» (due nel README, una nella guida): se nel registro non ce n\'è più nessuno i documenti sono già quelli «di quel giorno», e questo caso si riscrive partendo da loro. Le frasi coi nomi non si rimettono.')
         ->and(difettiDiChiEInArrivo($senzaNessuno, $readmeDiQuelGiorno, $guidaDiQuelGiorno))->toBe([])
         ->and(count(difettiDiChiEInArrivo($senzaNessuno, $readme, $guida)))->toBe(3)
         ->and(count(difettiDiChiEInArrivo(registroDeiProdotti(), $readmeDiQuelGiorno, $guidaDiQuelGiorno)))->toBe(3);
@@ -3310,6 +3315,7 @@ function nomiDiAltriNellaGuida(): array
         'prependToPriorityList' => 'Laravel',
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
+        'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
 
@@ -3968,6 +3974,61 @@ it('il README non dice più, al presente, che il segnaposto della ricerca nomina
     'segnaposto e invito dove manca l\'elenco' => ['segnaposto e invito sono questi due'],
 ]);
 
+// Sprint 28 · T5.3 (seconda lettura della PR #60, S5). La guida diceva che il nome da elenco di un tipo lo nominano il segnaposto
+// e l'invito: dalla `v1.17.0` lo nomina il solo invito, e il passo «9. La ricerca» non ha più la frase di prima. La guardia guarda
+// quel passo, non tutta la guida. Il suo limite è quello di ogni guardia «non dice più», anche di quella del README qui sopra:
+// cerca le parole di prima, e una frase che dice lo stesso con altre parole non la vede. Quella la ferma chi rilegge.
+it('il passo «9. La ricerca» della guida non dice più che il segnaposto della ricerca nomina i tipi di un modulo (sprint 28 · T5.3)', function (string $diPrima) {
+    $passo = suUnaRiga(passoDellaGuida((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'), PASSO_DELLA_RICERCA));
+
+    expect($passo)->not->toBe('')
+        ->and(str_contains($passo, $diPrima))->toBe(false);
+})->with([
+    'lo nominano tutti e due' => ['che il segnaposto e l\'invito della ricerca nominano'],
+]);
+
+// Sprint 28 · T5.6 (voce #1829; `Decisione:` 11283 di zr-pm). Il CSS del design system sta fuori dai layer della cascata, e vince
+// su ogni classe di utilità di Tailwind, che sta in un layer: il README lo dice dove fa importare `bundle.css`, e dice che cosa
+// fa una pagina — non ritocca con una classe ciò che un componente già dà, e l'aspetto che manca lo chiede a zr-core. Non dice
+// mai di cambiare la cascata.
+
+/** Il capoverso «Il CSS» del README su una riga sola, da «**Il CSS**» a «**Il JS**», coi due `@import`. Vuoto se non c'è. */
+function capoversoDelCss(string $readme): string
+{
+    preg_match('/^\*\*Il CSS\*\*.*?(?=^\*\*Il JS\*\*)/ms', $readme, $capoverso);
+
+    return suUnaRiga($capoverso[0] ?? '');
+}
+
+it('il README dice, dove fa importare `bundle.css`, che il CSS del design system sta fuori dai layer e vince sulle classi di utilità di Tailwind, e che cosa fa una pagina (sprint 28 · T5.6)', function (string $frase) {
+    $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($css)->not->toBe('')
+        ->and(str_contains($css, $frase))->toBe(true);
+})->with([
+    'fuori dai layer' => ['Il CSS del design system sta fuori dai layer della cascata.'],
+    // Lettura della PR #61, R11: vince dove le utilità stanno in un layer, e il README dice quale Tailwind.
+    'con quale Tailwind vince' => ['Con Tailwind 4, che mette le sue classi di utilità in un layer, vince su ognuna di loro'],
+    'che cosa non fa una pagina' => ['una pagina non ritocca con una classe una proprietà che un componente già dà'],
+    'per che cosa vale' => ['Vale per le proprietà che il componente dichiara e per una classe senza il modificatore che forza (`!`)'],
+    'con Tailwind 3' => ['con Tailwind 3, che non usa i layer della cascata, decidono specificità e ordine'],
+    'a chi si chiede' => ['In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all\'agente di zr-core'],
+    'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/zeiras/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
+]);
+
+it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di forzare una proprietà (sprint 28 · T5.6)', function (string $vietata) {
+    $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($css)->not->toBe('')
+        ->and(str_contains($css, $vietata))->toBe(false);
+})->with([
+    'forzare una proprietà' => ['!important'],
+    'un layer per il design system, nell\'`@import`' => ['layer('],
+    'un layer dichiarato' => ['@layer'],
+    // Lettura della PR #61, R11: non vince su «ogni» classe di qualunque Tailwind.
+    'vince sempre' => ['per questo vince su ogni classe di utilità di Tailwind'],
+]);
+
 // Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
 // dal file. Uno spezzato da un a capo si copia in due pezzi, e nei test di un frontend non trova niente: ogni riga del punto
 // chiude gli accenti che apre.
@@ -3987,6 +4048,8 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     $testi = [
         'ricerca' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'),
         'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+        // Sprint 28 · T5.3 (seconda lettura della PR #60, S5): la frase su chi nomina il nome da elenco si cerca nel suo passo.
+        'passo 9' => suUnaRiga(passoDellaGuida((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'), PASSO_DELLA_RICERCA)),
     ];
 
     expect($testi[$dove])->not->toBe('')
@@ -4000,7 +4063,7 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
     'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
     'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
-    'la guida: chi nomina il nome da elenco' => ['guida', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
+    'la guida: chi nomina il nome da elenco' => ['passo 9', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
     'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
     'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
 ]);
@@ -4070,7 +4133,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
     'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che si mostra com\'è arrivato (il ruolo di un contatto del CRM)'],
-    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
     'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
 ]);
 
@@ -4116,6 +4179,61 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
+// Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
+// README lo dice nel punto «La ricerca», nella riga della rotta (di un'opportunità passa anche `esito`, com'è arrivato) e nel
+// capoverso delle risorse del registro (ha `codici` anche l'opportunità; `aperta` non è un codice).
+it('il README dice che dalla v1.18.0 un\'opportunità chiusa mostra l\'esito e una aperta no: nel punto «La ricerca», nella riga della rotta e nel capoverso delle risorse del registro (sprint 28 · T1.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'registro' => capoversoDelleRisorse($readme),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'la ricerca: l\'esito, per terzo' => ['ricerca', 'Dalla `v1.18.0` un\'opportunità chiusa mostra anche l\'esito, per terzo'],
+    'la ricerca: un\'opportunità aperta' => ['ricerca', 'un\'opportunità aperta resta con pipeline e fase, senza un terzo testo'],
+    'la ricerca: il codice e il registro' => ['ricerca', 'Dell\'esito il backoffice dà il codice (`aperta`, `vinta` o `persa`) e il registro ha i soli `vinta` e `persa`'],
+    'la riga: passa anche esito' => ['rotta', 'dalla `v1.18.0` di un\'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com\'è arrivato: quali esiti si mostrano lo sa la cornice'],
+    'il registro: i codici dell\'opportunità' => ['registro', 'Dalla `v1.18.0` ha `codici` anche l\'opportunità del CRM (`crm.trattativa`), che a `pipeline` e `fase` aggiunge la chiave `esito`'],
+    'il registro: i due testi' => ['registro', 'coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa`'],
+    'il registro: aperta non è un codice' => ['registro', '`aperta`, che il backoffice dà per un\'opportunità aperta, non è fra i codici e non ha un testo: così un\'opportunità aperta non mostra l\'esito'],
+]);
+
+it('gli esiti che README e guida dicono per un\'opportunità sono i codici del registro coi testi delle lingue, nell\'ordine del registro, e `aperta` non è fra quelli (sprint 28 · T1.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $davanti = 'crm.crm.trattativa.esito.';
+    $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
+    $fraAccenti = array_map(fn (string $codice): string => '`'.$codice.'`', $codici);
+    $nella = function (string $lingua) use ($codici, $davanti): array {
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        return array_map(fn (string $codice): string => $testi['searchContext.'.$davanti.$codice], $codici);
+    };
+    [$vinta, $persa] = $nella('it');
+
+    expect($codici)->toBe(['vinta', 'persa'])
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'per terzo: «Vendite · Proposta · '.$vinta.'», o «… · '.$persa.'» (in inglese «'.implode('» e «', $nella('en')).'», in spagnolo «'.implode('» e «', $nella('es')).'»)'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), 'i codici sono '.implode(' e ', $fraAccenti).', coi testi'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), '(«'.$vinta.'» e «'.$persa.'»)'))->toBe(true)
+        ->and(str_contains(suUnaRiga(guidaDelModuloNuovo()), 'per l\'`esito` ('.implode(', ', $fraAccenti).':'))->toBe(true);
+});
+
+// Lettura della PR #60, C1: la chiave del testo di un codice comincia con la voce del registro, e la voce `home` non è un
+// modulo. README e guida la scrivevano con `<prodotto>`.
+it('README e guida scrivono la chiave del testo di un codice con `<voce>` e non più con `<prodotto>`, e la guida non dice più il membro del workspace come la sola risorsa coi `codici` (sprint 28 · T1.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga(guidaDelModuloNuovo());
+
+    expect(str_contains($readme, 'searchContext.<prodotto>.'))->toBe(false)
+        ->and(str_contains($guida, 'searchContext.<prodotto>.'))->toBe(false)
+        ->and(substr_count($readme, '`searchContext.<voce>.<tipo>.<chiave>.<codice>`'))->toBe(1)
+        ->and(substr_count($guida, '`searchContext.<voce>.<tipo>.<chiave>.<codice>`'))->toBe(1)
+        ->and(str_contains($guida, 'Oggi ha `codici` il membro del workspace'))->toBe(false);
+});
+
 it('la guida dice nel passo del registro, e non altrove, come si dà a una risorsa una chiave di `contesto` che è un codice: `codici` nel registro e un testo per codice in ogni lingua; nel passo della ricerca nomina i membri e rimanda al passo del registro (sprint 27 · T3.3)', function (string $passo, string $frase) {
     $guida = guidaDelModuloNuovo();
     preg_match('/^## '.preg_quote($passo, '/').'$(.*?)(?=^## |\z)/ms', $guida, $delPasso);
@@ -4126,9 +4244,11 @@ it('la guida dice nel passo del registro, e non altrove, come si dà a una risor
         ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
 })->with([
     'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
-    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`)'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
     'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
-    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi ha `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`)'],
+    // Sprint 28 · T1.5: dalla `v1.18.0` li ha anche l'opportunità, e il membro non è più detto come la sola risorsa coi `codici`.
+    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi hanno `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l\'opportunità del CRM, per l\'`esito` (`vinta`, `persa`'],
+    'aperta non è un codice' => ['8. Il prodotto nel registro', '`aperta` non è un codice, e un\'opportunità aperta non mostra l\'esito'],
     'la ricerca trova anche i membri' => ['9. La ricerca', 'opportunità del CRM (dalla `v1.17.0` anche i membri del workspace, che non sono di un modulo)'],
     'il rimando dal passo della ricerca' => ['9. La ricerca', 'Una chiave di `contesto` che porta un codice vuole anche `codici` (passo 8)'],
 ]);
@@ -4541,10 +4661,171 @@ it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un al
         ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
 });
 
+// Sprint 28 · T3.5 (voce #1827): `Cornice::frenata()`. Il README lo dice dove dice la riga, in «La parte server»: che cosa dà,
+// che non legge, che il freno è lo stato e vale per quella richiesta; e mostra il middleware di un modulo che dopo la riga
+// risponde col suo 429. Quel middleware gira in `CorniceDatiTest.php`, riga per riga: lì si vede che dopo il freno il
+// backoffice non è più chiamato.
+
+it('il README dice, in «La parte server», `Cornice::frenata()`: da quale versione, che cosa dà, che non legge, che il freno è lo stato e vale per quella richiesta, e che la riga e i dati non cambiano (sprint 28 · T3.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $scambiate = conParteServerECorniceScambiate($readme);
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme($scambiate, 'La parte server'), $frase))->toBe(false);
+})->with([
+    'da quale versione' => ['il modulo lo sa da `Cornice::frenata()` (dalla `v1.18.0`)'],
+    'che cosa dà' => ['dà l\'`ErroreApi` di quella lettura, coi secondi di `Retry-After` in `riprovaFra` (`null` se il backoffice non li dice)'],
+    'null in ogni altro caso' => ['`null` in ogni altro caso — senza una lettura in quella richiesta, dopo una lettura andata bene, dopo un altro errore'],
+    // Lettura della PR #61, R5: il freno è quello di io.mostra; il 429 delle altre tre letture di `dati()` lo dà l'eccezione.
+    'non legge' => ['`Cornice::frenata()` non legge niente: guarda la lettura di `io.mostra` che `Cornice::lingua()` o `Cornice::dati()` hanno già fatto, e solo quella'],
+    'le altre tre letture' => ['Un 429 che `Cornice::dati()` prende da una delle altre sue tre letture (`/v1/app`, `/v1/io/aziende`, `/v1/io/workspace`) lo dà l\'`ErroreApi` che `dati()` lancia, e `Cornice::frenata()` resta `null`'],
+    'il freno è lo stato' => ['Il freno è lo stato, 429, con qualunque codice'],
+    'a chi serve' => ['dopo un 429 non si richiama, e il middleware risponde col suo 429 prima che parta un\'altra chiamata'],
+    'vale per quella richiesta' => ['Il freno vale per quella richiesta: la richiesta dopo non lo trova, finché una sua lettura non prende un altro 429'],
+    'la riga e i dati non cambiano' => ['`Cornice::lingua()` e `Cornice::dati()` fanno ciò che facevano: la prima non lancia, la seconda lancia quell\'`ErroreApi`'],
+]);
+
+it('l\'esempio del README con `Cornice::frenata()` è, riga per riga, il middleware che `CorniceDatiTest.php` fa girare: comincia dalla riga, risponde 429 e solo dopo passa la richiesta (sprint 28 · T3.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^## La parte server$.*?^```php\n((?:(?!^```).)*?Cornice::frenata\(\).*?)^```$/ms', $readme, $blocco);
+    $righe = array_values(array_filter(array_map('trim', explode("\n", $blocco[1] ?? '')), fn (string $riga): bool => $riga !== ''));
+    $delCaso = array_map('trim', explode("\n", (string) file_get_contents(__DIR__.'/CorniceDatiTest.php')));
+    $primo = array_search('$freno = Cornice::frenata();', $delCaso, true);
+    $girano = array_values(array_filter(array_slice($delCaso, (int) $primo - 2, 9), fn (string $riga): bool => $riga !== ''));
+
+    expect($righe)->toBe([
+        'App::setLocale(Cornice::lingua() ?? config(\'app.locale\'));',
+        '$freno = Cornice::frenata();',
+        'if ($freno !== null) {',
+        'return response(\'\', 429, $freno->riprovaFra === null ? [] : [\'Retry-After\' => (string) $freno->riprovaFra]);',
+        '}',
+        'return $next($request);',
+    ])
+        ->and($primo)->not->toBe(false)
+        ->and($girano)->toBe($righe);
+});
+
+// Sprint 28 · T4.6 (voce #1828; `Decisione:` 11310 di zr-pm): «Salta al contenuto» è il primo elemento della cornice. Il README
+// lo dice in un punto suo di «La cornice»: che c'è e da quando, che cosa fa, che il modulo non deve fare niente, e che è
+// provvisorio. È fatto coi pezzi del design system: nel pacchetto non nasce un foglio di stile, e la copia del design system
+// non cambia.
+
+it('il README dice, nel punto «Salta al contenuto» di «La cornice», che c\'è e da quando, che cosa fa, che il modulo non deve fare niente e che è provvisorio (sprint 28 · T4.6)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, '«Salta al contenuto»'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), '«Salta al contenuto»'))->toBe('');
+})->with([
+    'che c\'è, e da quando' => ['è il primo elemento della cornice da tastiera, dalla `v1.18.0`'],
+    'dove sta' => ['un pulsante davanti alla barra laterale e alla barra in alto, che non si vede finché non ha il fuoco'],
+    'dove compare' => ['Col primo Tab compare in alto a sinistra, sopra la cornice'],
+    'che cosa fa' => ['Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell\'`AppShell`'],
+    'il Tab dopo' => ['il Tab dopo va al primo elemento della pagina invece di rifare tutta la barra'],
+    'nello stato ridotto' => ['C\'è anche nello stato ridotto'],
+    'il modulo non deve fare niente' => ['Il modulo non deve fare niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo'],
+    // Lettura della PR #61, R3, R4 e R12.
+    'quale main' => ['Il `main` è quello dell\'`AppShell`, anche se il frontend ne ha uno suo prima della cornice o intorno a lei'],
+    'che cosa cambia per chi aggiorna' => ['`.zr-shell` non è più il primo elemento di ciò che la `Cornice` rende (prima c\'è il `div` del pulsante), e dopo un salto il `main` ha `tabindex="-1"` finché tiene il fuoco'],
+    'i test da rileggere' => ['Un test del modulo sul primo figlio della cornice, su `:first-child` o sul primo elemento che prende il fuoco va riletto'],
+    'è provvisorio' => ['È provvisorio: l\'`AppShell` del design system non ha ancora il suo'],
+    'coi pezzi del design system' => ['la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i token)'],
+    'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
+]);
+
+it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
+    $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
+    $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
+
+    expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/zeiras/bundle.css'])
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
+        // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
+        ->and(substr_count($cornice, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
+        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{\(\) => fuocoAlContenuto\(contenitore\.current\)\}>\{testo\}<\/Button>/', $cornice))->toBe(1)
+        ->and(substr_count($cornice, '<SaltaAlContenuto testo={t.skipToContent} />'))->toBe(1)
+        // Lettura della PR #61, R3: il `main` si cerca dal pulsante, non dal documento.
+        ->and(str_contains($cornice, "document.querySelector('main')"))->toBe(false);
+});
+
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
 // file di test: la scrive `registroGiaLetto()`, e si toglie in un posto solo, `tests/Pest.php`, dopo ogni caso di ogni file.
 // Prima la toglievano due `afterEach` e due `try/finally`, ognuno nel suo file: un altro file che la scriveva e non la toglieva
 // sporcava ricerca e notifiche di ogni file dopo, con rossi lontani dalla causa.
+// Sprint 28 · T2.6 (voce #1811): il precarico dei file d'ingresso è un middleware del pacchetto, `PrecaricoDegliIngressi`. Il
+// README ha la sua sezione, in fondo: come si registra nei due modi, che cosa scrive e perché (mai `modulepreload`, sempre
+// `crossorigin` su un modulo), che non dice niente della persona, il rischio accettato, e i numeri, che sono di zr-board. Non
+// lascia credere che parta da solo. La guida lo nomina dove il modulo registra i middleware, e la classe è nello zip del tag.
+it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come si registra, che cosa scrive, che cosa non dice della persona e di chi sono i numeri (sprint 28 · T2.6)', function (string $frase) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $frase))->toBe(true);
+})->with([
+    'da quando, e la classe' => ['Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`'],
+    'che cosa mette nell\'header' => ['scrive nell\'header `Link` i file che `@vite` ha messo nel documento: l\'ingresso, i pezzi che importa staticamente e i CSS, non i pezzi dinamici'],
+    'non parte da solo' => ['zr-core non lo registra da sé, e installare il pacchetto non precarica niente: lo registra il frontend, in uno dei due modi'],
+    'sul gruppo web' => ['$middleware->web(append: [\\Zeiras\\Core\\Http\\PrecaricoDegliIngressi::class]);'],
+    'sulle sole rotte' => ['->middleware(\\Zeiras\\Core\\Http\\PrecaricoDegliIngressi::class);'],
+    'niente da configurare' => ['`config/zr-core.php` non ha una chiave per lui: le rotte le dice dove lo agganci, i file li dice `@vite` nel documento, e il middleware non legge il manifest'],
+    'le due forme' => ['un CSS come `<url>; rel=preload; as=style`, un modulo come `<url>; rel=preload; as=script; crossorigin`'],
+    'mai modulepreload' => ['Mai `modulepreload`: Cloudflare in un 103 ripete solo `preload` e `preconnect`'],
+    'sempre crossorigin' => ['la richiesta di un modulo è CORS, e senza `crossorigin` il browser lo scaricherebbe due volte'],
+    'dove non scrive' => ['Non sulla visita Inertia (la richiesta porta `X-Inertia`), su un redirect, su una pagina d\'esito (`404`, `500`), su una risposta che dichiara un altro tipo, su un JSON, un file o uno stream'],
+    'un Link di prima resta' => ['Un `Link` che la risposta porta già resta: il middleware aggiunge il suo accanto'],
+    // Lettura della PR #61, R1, R2 e R6-R8 (`Decisione:` 11432 di zr-pm).
+    'niente della persona' => ['col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua della persona, e nessun host che venga dalla richiesta'],
+    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento'],
+    'di chi è la misura' => ['zr-pm dichiara che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente'],
+    'il rischio di chi accende Early Hints' => ['Chi lo accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce o indovina un indirizzo, che la pagina esiste ed è stata aperta da poco'],
+    'lo slug è un nome' => ['lo slug di un workspace è il nome di un\'azienda'],
+    'sulle sole rotte che accetta di esporre' => ['un modulo con uno slug o un id nel percorso registra il middleware sulle sole rotte che accetta di esporre'],
+    'con quale indirizzo' => ['mai con un host che viene dalla richiesta. Una voce è il solo percorso, `</build/assets/…>`, che il browser risolve sull\'origine della pagina; con `ASSET_URL` nel `.env` del frontend è l\'indirizzo intero, che comincia con quello'],
+    'un altro host non esce' => ['Di un indirizzo con l\'host della richiesta (un frontend che ha rimesso il resolver di Laravel) il middleware scrive il solo percorso, e un file con un altro host non esce'],
+    'gli attributi che non copia' => ['Degli attributi che Vite calcola il middleware guarda solo `as`: non copia `integrity` né il valore di `crossorigin`'],
+    'chi non lo registra' => ['Un frontend con l\'integrità dei file nel manifest, con `crossorigin="use-credentials"` o con `crossorigin` sui CSS non lo registra'],
+    'nessun tetto' => ['Non c\'è un tetto alle voci: l\'header cresce con ogni pezzo che l\'ingresso importa staticamente'],
+    'un processo che resta vivo' => ['È per PHP-FPM, dove ogni richiesta parte da zero: in un processo che resta vivo fra una richiesta e l\'altra (Octane) `Vite` tiene i file della richiesta di prima'],
+    'in un posto solo' => ['in un posto solo. Fra i middleware globali e anche su un gruppo scriverebbe due righe uguali'],
+    'al posto di quello di Laravel' => ['al posto di quello di Laravel, `Illuminate\\Http\\Middleware\\AddLinkHeadersForPreloadedAssets`, non accanto: con tutti e due ogni file uscirebbe due volte, come `modulepreload` e come `preload`'],
+    'il resolver, da quando' => ['Dalla `v1.18.0` il pacchetto registra un resolver di Vite (`Vite::createAssetPathsUsing`), per ogni frontend che lo installa e senza che faccia niente'],
+    'che cosa scrive il resolver' => ['`@vite` scrive i file della build col solo percorso, `/build/assets/…`, nel documento come nel `Link`'],
+    'com\'era prima' => ['Prima Laravel li scriveva con la radice della richiesta — l\'header `Host`, o `X-Forwarded-Host` se il frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli indirizzi della pagina'],
+    'con ASSET_URL' => ['Con `ASSET_URL` nel `.env` l\'indirizzo resta intero e comincia con quello: non viene dalla richiesta'],
+    'Vite::asset' => ['**`Vite::asset()`** dà anche lui il solo percorso: dove serve un indirizzo assoluto (una mail) lo si scrive da `config(\'app.url\')`'],
+    'in una sottocartella' => ['**Un frontend in una sottocartella del dominio** imposta `ASSET_URL`'],
+    // Seconda lettura della PR #61, N2-N4: ciò che cambia da solo in chi installa, e dove un resolver del frontend vince davvero.
+    'ASSET_URL nel .env' => ['**`ASSET_URL` va nel `.env`**: un\'origine data a tempo d\'esecuzione, con `URL::useAssetOrigin()` o `URL::forceRootUrl()`, il resolver non la vede, e scrive il solo percorso'],
+    'un test del frontend' => ['**Un test del frontend** che confronta un indirizzo intero di un file della build (`http://localhost/build/…`) va riletto: ora è il solo percorso'],
+    'un resolver del frontend vince' => ['**Un resolver del frontend** registrato nel `boot()` del suo `AppServiceProvider` parte dopo quello del pacchetto, e vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`'],
+    'nel register no' => ['Nel `register()` no: lì quello del pacchetto lo sovrascrive'],
+    'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
+]);
+
+it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né che Early Hints è acceso (lettura della PR #61, R1 e R2)', function (string $diPrima) {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
+
+    expect($sezione)->not->toBe('')
+        ->and(str_contains($sezione, $diPrima))->toBe(false);
+})->with([
+    'uguale per tutti' => ['dipende solo dalla build, è uguale per tutti'],
+    'solo chi conosce già un indirizzo' => ['a chi conosce già un indirizzo, che è stato aperto di recente'],
+    'Early Hints acceso' => ['Con Early Hints acceso sulla zona, Cloudflare li ripete in un 103 alla visita dopo'],
+    'con gli stessi indirizzi del documento' => ['nell\'ordine in cui `@vite` li ha scritti e con gli stessi indirizzi'],
+]);
+
+it('la guida nomina il precarico dove il modulo registra i middleware, e dice che non parte da solo; la classe è nello zip del tag, il suo test no (sprint 28 · T2.6)', function () {
+    preg_match('/^## 3\. Le intestazioni di sicurezza$(.*?)(?=^## |\z)/ms', guidaDelModuloNuovo(), $delPasso);
+    $passo = suUnaRiga($delPasso[1] ?? '');
+
+    expect(str_contains($passo, 'Dalla `v1.18.0` puoi registrare anche il precarico dei file d\'ingresso, `Zeiras\\Core\\Http\\PrecaricoDegliIngressi`, sul gruppo `web` o sulle sole rotte che vuoi'))->toBe(true)
+        ->and(str_contains($passo, 'non parte da solo — README, «Il precarico dei file d\'ingresso»'))->toBe(true)
+        // Lettura della PR #61, R1 e R2: le rotte da esporre, il resolver, e niente più Early Hints dato per acceso. Seconda
+        // lettura, N3: un resolver del frontend vince dal `boot()`.
+        ->and(str_contains($passo, 'Se nei tuoi indirizzi c\'è uno slug o un id, lo registri sulle sole rotte che accetti di esporre'))->toBe(true)
+        ->and(str_contains($passo, 'Dalla stessa versione `@vite` scrive i file della build col solo percorso, senza che tu faccia niente: se hai un resolver di Vite tuo che fa lo stesso, lo togli, e uno diverso lo registri nel `boot()` del tuo `AppServiceProvider` — README, «Gli indirizzi dei file della build»'))->toBe(true)
+        ->and(str_contains($passo, 'con Early Hints Cloudflare li manda prima della pagina'))->toBe(false)
+        ->and(fileDelloZipDiHead())->toContain('src/Http/PrecaricoDegliIngressi.php')->not->toContain('tests/Feature/IngressiPrecaricoTest.php');
+});
 
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
@@ -4561,18 +4842,25 @@ it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chia
     // ordine di nome e in un processo solo: così li lancia la CI).
     $file = array_map('basename', glob(__DIR__.'/*.php') ?: []);
     sort($file);
+    // Sprint 28 · T5.4 (seconda lettura della PR #60, residuo di R3): un caso si vede con `it(` o con `test(`, con `function`
+    // o con `fn`, a inizio riga o rientrato in un `describe`, e il rosso dice che cosa fare. Lettura della PR #61, R10: la
+    // regola non vede un titolo fra virgolette doppie, un titolo concatenato (`'a'.$b,`) né un caso di ordine superiore
+    // (`it('…')->…`, senza virgola), e prende per un caso una riga `it('…',` dentro una stringa del file: in `tests/Feature`
+    // oggi non ce ne sono, e chi ne scrive uno in coda a questo file o in testa a `RegistroTest.php` allarga la regola.
     $titoli = function (string $nome): array {
-        preg_match_all("/^it\\('(.*)', function/m", (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
+        preg_match_all('/^[ \t]*(?:it|test)\(\s*\'((?:[^\'\\\\]|\\\\.)*)\'\s*,/m', (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
 
         return $trovati[1];
     };
     $diQui = $titoli('PacchettoTest.php');
     $delFileDopo = $titoli('RegistroTest.php');
+    $ultimoDiQui = (string) end($diQui);
+    $primoDelFileDopo = $delFileDopo[0] ?? '';
 
     expect(array_key_exists('PacchettoTest.php', $neiFile))->toBe(true)
-        ->and($file[(int) array_search('PacchettoTest.php', $file, true) + 1] ?? null)->toBe('RegistroTest.php')
-        ->and(str_starts_with((string) end($diQui), 'un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file'))->toBe(true)
-        ->and(str_starts_with($delFileDopo[0] ?? '', 'un registro di prova scritto dall\\\'ultimo caso di un altro file non arriva qui'))->toBe(true)
+        ->and($file[(int) array_search('PacchettoTest.php', $file, true) + 1] ?? null)->toBe('RegistroTest.php', 'Il file che Pest gira subito dopo `PacchettoTest.php` non è più `RegistroTest.php`: il caso che trova il registro del pacchetto senza una copia in mano si sposta in testa al file che ora viene dopo, e questo legame si riscrive col suo nome.')
+        ->and(str_starts_with($ultimoDiQui, 'un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file'))->toBe(true, "L'ultimo caso di `PacchettoTest.php` dev'essere «un caso che scrive un registro di prova e non lo toglie…», e ora è «{$ultimoDiQui}»: un caso nuovo si scrive prima di quello, non in fondo al file.")
+        ->and(str_starts_with($primoDelFileDopo, 'un registro di prova scritto dall\\\'ultimo caso di un altro file non arriva qui'))->toBe(true, "Il primo caso di `RegistroTest.php` dev'essere «un registro di prova scritto dall'ultimo caso di un altro file non arriva qui…», e ora è «{$primoDelFileDopo}»: un caso nuovo si scrive dopo quello, non in testa al file.")
         ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
         ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => {$chiamate[1]})->in('Feature');"))->toBe(1);

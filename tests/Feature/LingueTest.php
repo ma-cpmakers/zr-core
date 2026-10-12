@@ -274,7 +274,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
-        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'skipToContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
@@ -589,6 +589,17 @@ it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre
     'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
 ]);
 
+// Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ne ha uno:
+// il testo è di zr-core, finché il design system non porta il suo.
+it('il testo di «Salta al contenuto» c\'è nelle tre lingue ed è di zr-core: l\'AppShell non ha una chiave con quel nome (sprint 28 · T4.1)', function () {
+    $lingue = lingueDellaCornice();
+
+    expect([$lingue['it']['skipToContent'] ?? null, $lingue['en']['skipToContent'] ?? null, $lingue['es']['skipToContent'] ?? null])
+        ->toBe(['Salta al contenuto', 'Skip to content', 'Saltar al contenido'])
+        ->and(chiaviDiAppShellLabels())->not->toContain('skipToContent')
+        ->and(problemiDelleLingue(array_map(fn (array $testi): array => array_diff_key($testi, ['skipToContent' => true]), $lingue)))->not->toBe([]);
+});
+
 it('nessuno dei quattro testi di chi non ha accettato nomina un documento o una versione, in nessuna lingua (sprint 24 · T2.4)', function () {
     $nominati = [];
     foreach (lingueDellaCornice() as $codice => $testi) {
@@ -767,19 +778,36 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
 
 // Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice
 // (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core, sotto
-// `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
+// `searchContext.<voce>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
 // codici, lo dice il registro (`risorse[].codici`), e le lingue hanno un testo per ognuno e per nessun altro.
-it('in ogni lingua i tre ruoli di un membro del workspace hanno il loro testo, quello della pagina dei membri, sotto il codice del registro (sprint 27 · T1.3)', function (string $codice, array $ruoli) {
+// Sprint 28 · T1.4 (voce #1826): dopo i tre ruoli, i due esiti di un'opportunità chiusa, con le parole che zr-crm usa per lo
+// stato di un'opportunità. `aperta` non è un codice del registro, e nessuna lingua le dà un testo.
+it('in ogni lingua i tre ruoli di un membro del workspace e i due esiti di un\'opportunità chiusa hanno il loro testo sotto il codice del registro; `aperta` non ne ha uno (sprint 27 · T1.3; sprint 28 · T1.4)', function (string $codice, array $attesi) {
     $testi = lingueDellaCornice()[$codice];
 
-    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
-        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($ruoli)
-        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(3);
+    expect(codiciDelContesto())->toBe([
+        'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
+        'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
+    ])
+        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($attesi)
+        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(5)
+        ->and(array_values(preg_grep('/^searchContext\..*\.aperta$/', array_keys($testi)) ?: []))->toBe([]);
 })->with([
-    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro']],
-    'inglese' => ['en', ['Owner', 'Admin', 'Member']],
-    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro']],
+    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
+    'inglese' => ['en', ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
+    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
 ]);
+
+it('il controllo trova l\'esito di un\'opportunità che manca in una lingua, e un testo per `aperta`, che non è un codice del registro (sprint 28 · T1.4)', function () {
+    $lingue = lingueDellaCornice();
+    unset($lingue['es']['searchContext.crm.crm.trattativa.esito.persa']);
+    $lingue['it']['searchContext.crm.crm.trattativa.esito.aperta'] = 'Aperta';
+
+    expect(problemiDelleLingue($lingue))->toBe([
+        'it: «searchContext.crm.crm.trattativa.esito.aperta» non è un testo della cornice',
+        'es: manca «searchContext.crm.crm.trattativa.esito.persa»',
+    ]);
+});
 
 it('il controllo trova il testo di un ruolo che manca in una lingua, e il testo di un codice che il registro non ha: un ruolo in più, o il ruolo di un contatto, che è un testo libero (sprint 27 · T1.3)', function () {
     $lingue = lingueDellaCornice();
