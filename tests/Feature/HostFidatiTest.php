@@ -1,9 +1,12 @@
 <?php
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -283,10 +286,11 @@ it('zr-core non lo registra da sé: col solo pacchetto una richiesta con un altr
         ->and(avvisiSugliHost())->toBe([]);
 });
 
-it('una richiesta con un host falso non apre una sessione e non lascia un cookie: il 400 non ha `Set-Cookie`, la pagina del gruppo `web` sì (sprint 29 · T1.2, condizione di zr-pm sulla registrazione in coda ai globali)', function () {
+it('una richiesta con un host falso non apre una sessione e non lascia un cookie: il 400 non ha `Set-Cookie`, la pagina con la sessione sì (sprint 29 · T1.2, condizione di zr-pm sulla registrazione in coda ai globali)', function () {
     moduloConIndirizzo();
     $giri = new ArrayObject(['controller' => 0]);
-    Route::middleware('web')->get('/prova/host', function () use ($giri) {
+    // I middleware di cookie e sessione del gruppo `web`, per nome e senza la guardia di zr-auth, che rimanderebbe all'accesso.
+    Route::middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class])->get('/prova/host', function () use ($giri) {
         $giri['controller']++;
         session(['uat' => 'una sessione aperta']);
 
