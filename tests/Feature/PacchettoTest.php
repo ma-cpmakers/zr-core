@@ -4842,6 +4842,7 @@ it('il README ha il punto «Gli host fidati», che dice come si registra, che co
     'l\'ordine delle due righe' => ['Le intestazioni con `prepend`, gli host con `append`, e non il contrario'],
     'perché in coda' => ['guarda l\'host che l\'app userebbe per scrivere i suoi indirizzi: l\'intestazione `Host`, oppure `X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato'],
     'il 400 con le intestazioni' => ['anche il `400` esce con le intestazioni di sicurezza'],
+    'niente sessione e niente cookie' => ['I middleware globali girano prima di quelli del gruppo `web`: una richiesta rifiutata non apre una sessione e non lascia un cookie'],
     'la seconda difesa' => ['È la seconda difesa: la prima è il server web, che per un nome che non è il suo non dovrebbe rispondere'],
     'che cosa risponde' => ['`400` col corpo fisso `Bad Request`, uguale per tutti, e il controller non gira. Dell\'host ricevuto non ripete niente, né nella risposta né nel log'],
     'prima si legge APP_URL' => ['**Prima di registrarlo** leggi quanto vale `APP_URL` in produzione: dev\'essere il nome pubblico del modulo, scritto per intero e con lo schema'],

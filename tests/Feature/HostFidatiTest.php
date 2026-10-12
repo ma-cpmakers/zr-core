@@ -283,6 +283,30 @@ it('zr-core non lo registra da sé: col solo pacchetto una richiesta con un altr
         ->and(avvisiSugliHost())->toBe([]);
 });
 
+it('una richiesta con un host falso non apre una sessione e non lascia un cookie: il 400 non ha `Set-Cookie`, la pagina del gruppo `web` sì (sprint 29 · T1.2, condizione di zr-pm sulla registrazione in coda ai globali)', function () {
+    moduloConIndirizzo();
+    $giri = new ArrayObject(['controller' => 0]);
+    Route::middleware('web')->get('/prova/host', function () use ($giri) {
+        $giri['controller']++;
+        session(['uat' => 'una sessione aperta']);
+
+        return 'la pagina del modulo';
+    });
+    registratiComeDiceIlReadme();
+
+    $passata = richiestaConHost(HOST_DEL_MODULO);
+    $rifiutata = richiestaConHost('evil.example');
+
+    // La prova che il caso vede un cookie quando c'è: la pagina giusta apre la sessione.
+    expect($passata->getStatusCode())->toBe(200)
+        ->and($passata->headers->getCookies())->not->toBe([])
+        ->and($rifiutata->getStatusCode())->toBe(400)
+        ->and($rifiutata->getContent())->toBe(CORPO_DEL_RIFIUTO)
+        ->and($rifiutata->headers->getCookies())->toBe([])
+        ->and($rifiutata->headers->has('Set-Cookie'))->toBeFalse()
+        ->and($giri['controller'])->toBe(1);
+});
+
 it('registrato come dice il README insieme a IntestazioniSicurezza, il 400 porta le intestazioni di sicurezza (sprint 29 · T1.9)', function () {
     moduloConIndirizzo();
     paginaCheConta();

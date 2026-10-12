@@ -1222,7 +1222,8 @@ Le intestazioni con `prepend`, gli host con `append`, e non il contrario. In cod
 proxy fidati di Laravel, e guarda l'host che l'app userebbe per scrivere i suoi indirizzi: l'intestazione `Host`, oppure
 `X-Forwarded-Host` se chi chiama è un proxy che il modulo ha dichiarato fidato. E gira dentro `IntestazioniSicurezza`: anche
 il `400` esce con le intestazioni di sicurezza. Registrato con `prepend` il `400` uscirebbe senza, e l'host detto da un
-proxy fidato non lo guarderebbe nessuno.
+proxy fidato non lo guarderebbe nessuno. I middleware globali girano prima di quelli del gruppo `web`: una richiesta
+rifiutata non apre una sessione e non lascia un cookie.
 
 - **A che cosa serve**: Laravel scrive i suoi indirizzi — un rimando, un collegamento in una mail — con l'host della
   richiesta. Chi chiama il server con un altro nome se li farebbe scrivere col suo. È la seconda difesa: la prima è il
