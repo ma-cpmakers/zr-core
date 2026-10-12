@@ -59,15 +59,69 @@ function testiItalianiDelDesignSystem(): array
     return $testi;
 }
 
-/** @return array<string, array<string, mixed>> ogni lingua di resources/lingue, per codice (il nome del file) */
+/**
+ * @param  string  $cartella  sotto resources/lingue: `''` per i testi, `'notifiche/'` per le frasi delle notifiche
+ * @return array<string, array<string, mixed>> i file di quella cartella, per codice (il nome del file)
+ */
+function fileDelleLingue(string $cartella): array
+{
+    $perCodice = [];
+    foreach (File::glob(__DIR__.'/../../resources/lingue/'.$cartella.'*.json') as $file) {
+        $perCodice[basename($file, '.json')] = json_decode(File::get($file), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    return $perCodice;
+}
+
+/**
+ * @return array<string, array<string, mixed>> ogni lingua di resources/lingue, per codice (il nome del file): i testi e, dallo
+ *                                             sprint 30, le frasi delle notifiche, che stanno in resources/lingue/notifiche in
+ *                                             un file con lo stesso nome. Che i due file non si pestino lo dice `problemiDeiDueFile`
+ */
 function lingueDellaCornice(): array
 {
+    $frasi = fileDelleLingue('notifiche/');
     $lingue = [];
-    foreach (File::glob(__DIR__.'/../../resources/lingue/*.json') as $file) {
-        $lingue[basename($file, '.json')] = json_decode(File::get($file), true, flags: JSON_THROW_ON_ERROR);
+    foreach (fileDelleLingue('') as $codice => $testi) {
+        $lingue[$codice] = [...$testi, ...($frasi[$codice] ?? [])];
     }
 
     return $lingue;
+}
+
+/**
+ * Cosa non torna fra i due file di ogni lingua (sprint 30 · T1.9): i testi della cornice stanno in resources/lingue, le frasi
+ * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` — in
+ * resources/lingue/notifiche, e la cornice le carica quando si apre la campanella. `notificationTitle` da solo è il titolo di
+ * ripiego e resta fra i testi: serve anche a chi le frasi non le ha ancora.
+ *
+ * @param  array<string, array<string, mixed>>  $testi  per codice
+ * @param  array<string, array<string, mixed>>  $frasi  per codice
+ * @return list<string>
+ */
+function problemiDeiDueFile(array $testi, array $frasi): array
+{
+    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notificationTitle(Who(What)?)?\../', $chiave) === 1;
+
+    $problemi = [];
+    foreach (array_diff(array_keys($testi), array_keys($frasi)) as $codice) {
+        $problemi[] = "$codice: non ha il file delle frasi";
+    }
+    foreach (array_diff(array_keys($frasi), array_keys($testi)) as $codice) {
+        $problemi[] = "$codice: non ha il file dei testi";
+    }
+    foreach ($testi as $codice => $delCodice) {
+        foreach (array_filter(array_map(strval(...), array_keys($delCodice)), $eUnaFrase) as $chiave) {
+            $problemi[] = "$codice: «{$chiave}» è una frase delle notifiche e sta fra i testi";
+        }
+    }
+    foreach ($frasi as $codice => $delCodice) {
+        foreach (array_filter(array_map(strval(...), array_keys($delCodice)), fn (string $chiave): bool => ! $eUnaFrase($chiave)) as $chiave) {
+            $problemi[] = "$codice: «{$chiave}» non è una frase delle notifiche e sta fra le frasi";
+        }
+    }
+
+    return $problemi;
 }
 
 /**
@@ -664,6 +718,40 @@ it('la notifica a chi viene menzionato in un commento ha il titolo della tabella
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.commento.menzione']);
 })->with(['it', 'en', 'es']);
+
+it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
+    $testi = fileDelleLingue('');
+    $frasi = fileDelleLingue('notifiche/');
+
+    expect(array_keys($testi))->toContain('it', 'es', 'en')
+        ->and(problemiDeiDueFile($testi, $frasi))->toBe([])
+        ->and(array_filter($frasi, fn (array $delCodice): bool => $delCodice === []))->toBe([])
+        ->and(array_filter($testi, fn (array $delCodice): bool => ! is_string($delCodice['notificationTitle'] ?? null)))->toBe([])
+        // Insieme, né un testo di meno né uno di più: è il controllo di sempre, sui due file di ogni lingua.
+        ->and(problemiDelleLingue(lingueDellaCornice()))->toBe([]);
+});
+
+it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
+    $testi = [
+        'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
+        'es' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novedades en el workspace'],
+        'en' => ['dashboard' => 'Dashboard', 'notificationTitle.com.zeiras.board.scheda.creata' => 'New card'],
+    ];
+    $frasi = [
+        'it' => ['notificationTitle.com.zeiras.board.scheda.creata' => 'Nuova scheda', 'notificationTitle' => 'Novità nel workspace'],
+        'en' => ['notificationTitleWhoWhat.com.zeiras.board.scheda.creata' => '{who} created the card “{what}”', 'unreadOne' => 'unread'],
+        'fr' => ['notificationTitle.com.zeiras.board.scheda.creata' => 'Nouvelle carte'],
+    ];
+
+    expect(problemiDeiDueFile($testi, $frasi))->toEqualCanonicalizing([
+        'es: non ha il file delle frasi',
+        'fr: non ha il file dei testi',
+        'it: «notificationTitleWho.board.scheda.assegnata» è una frase delle notifiche e sta fra i testi',
+        'en: «notificationTitle.com.zeiras.board.scheda.creata» è una frase delle notifiche e sta fra i testi',
+        'it: «notificationTitle» non è una frase delle notifiche e sta fra le frasi',
+        'en: «unreadOne» non è una frase delle notifiche e sta fra le frasi',
+    ]);
+});
 
 it('il controllo trova un tipo di notifica in più, uno in meno e il singolare delle non lette che manca (sprint 12 · T3.3)', function () {
     $lingue = lingueDellaCornice();

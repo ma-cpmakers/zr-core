@@ -2459,7 +2459,7 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
     'che cos\'è tipo' => ['`tipo` è il `tipo` della notifica, com\'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`)'],
     'che cos\'è lingua' => ['`lingua` è il codice della lingua della persona, e vale come per la cornice: `it-IT` è `it`'],
     'una lingua che zr-core non ha' => ['con una lingua che zr-core non ha il titolo è in inglese'],
-    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/en.json`)'],
+    'i tipi conosciuti sono le chiavi dell\'inglese' => ['I tipi che zr-core conosce sono le chiavi `notificationTitle.<tipo>` dell\'inglese (`resources/lingue/notifiche/en.json`)'],
     'il ripiego' => ['un tipo che non è fra quelle — nuovo nel contratto, vuoto, mancante, o che non è un testo — ha il titolo di ripiego della lingua («Novità nel workspace»)'],
     'mai il codice del tipo' => ['ha il titolo di ripiego della lingua («Novità nel workspace»), mai il codice del tipo'],
 ]);
@@ -4135,7 +4135,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il registro: le risorse' => ['registro', 'Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com\'è nel backoffice (`board.scheda`), l\'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno la seconda riga del risultato'],
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
-    'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che si mostra com\'è arrivato (il ruolo di un contatto del CRM)'],
+    'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che dalla `v1.20.0` si mostra pulito come i nomi nelle notifiche, senza i caratteri che cambiano la direzione del testo e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM)'],
     'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
     'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
 ]);
@@ -4166,9 +4166,8 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDelleNotifiche($readme);
     $titoli = [];
-    foreach (glob(__DIR__.'/../../resources/lingue/*.json') ?: [] as $file) {
-        $testi = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
-        $titoli[basename($file, '.json')] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
+    foreach (lingueDellaCornice() as $codice => $testi) {
+        $titoli[$codice] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
     }
 
     expect(str_contains($punto, 'uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal 12/10/2026 e che non genera notifiche (più sotto)'))->toBe(true)
@@ -4736,6 +4735,121 @@ it('il README dice, nel punto «Salta al contenuto» di «La cornice», che c\'�
     'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
 ]);
 
+// Sprint 30 · T3.5 (voce #1871): aprendo la campanella il fuoco entra nel pannello delle notifiche. È un rimedio della cornice a
+// ciò che l'`AppShell` non fa ancora: il README lo dice in un punto suo di «La cornice», con ciò che cambia per chi aggiorna, e
+// lo dice provvisorio.
+
+it('il README dice, nel punto «Il fuoco nel pannello delle notifiche» di «La cornice», da quando e che cosa fa, che il modulo non deve fare niente e che è provvisorio (sprint 30 · T3.5)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Il fuoco nel pannello delle notifiche'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), 'Il fuoco nel pannello delle notifiche'))->toBe('');
+})->with([
+    'da quando, e che cosa fa' => ['dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il fuoco della tastiera entra nel pannello, sulla linguetta scelta'],
+    // Review della PR #63, R17: dopo «Riprova» e «Segna tutte come lette» il pulsante premuto sparisce, e il fuoco non «resta dov'è».
+    'solo all\'apertura' => ['Il fuoco si sposta solo all\'apertura: quando arriva l\'elenco o cambiando linguetta resta dov\'è, e dopo «Riprova» o «Segna tutte come lette» la cornice non lo riporta sulla linguetta'],
+    'dopo un pulsante che sparisce' => ['Quei due pulsanti, premuti, spariscono — con l\'errore, o con l\'ultima non letta —, e dove va il fuoco allora lo decide il browser: di solito esce dal pannello, che resta aperto'],
+    // R14: solo il pannello dell'`AppShell`.
+    'solo il pannello della cornice' => ['Il pannello è quello che l\'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa classe non prende il fuoco'],
+    'Esc' => ['Esc chiude il pannello e riporta il fuoco sulla campanella, come prima'],
+    'nello stato ridotto' => ['Vale anche nello stato ridotto'],
+    'i test da rileggere' => ['Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda l\'elemento attivo va riletto'],
+    'è provvisorio' => ['È provvisorio: l\'`AppShell` del design system apre il pannello e lascia il fuoco sulla campanella'],
+    'senza toccare il componente' => ['la cornice lo sposta da sé, senza toccare il componente'],
+    'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
+    'a richiesta' => ['Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta'],
+    'se non arriva' => ['se non arriva, la campanella si apre come prima, col fuoco sul pulsante'],
+    // R8: l'evento di Vite per un pezzo che non arriva.
+    'l\'evento di Vite' => ['Se non arriva, l\'aiuto di Vite manda su `window` l\'evento `vite:preloadError`: un frontend che a quell\'evento ricarica la pagina la ricarica anche per questo pezzo'],
+]);
+
+// Sprint 30 · T4.8 (voce #1870): con un `Dialog` aperto, o un `DetailPanel` sotto 720 px, Tab resta dentro. È un altro rimedio
+// della cornice a ciò che i componenti non fanno ancora: il README lo dice in un punto suo di «La cornice», provvisorio, con
+// ciò che non copre.
+
+it('il README dice, nel punto «Tab dentro un dialogo aperto» di «La cornice», da quando e che cosa fa, che è provvisorio e che cosa non copre (sprint 30 · T4.8)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Tab dentro un dialogo aperto'), $frase))->toBe(true)
+        // Con «La parte server» e «La cornice» scambiate il punto è sotto l'altro titolo: non è più dove si legge della cornice.
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), 'Tab dentro un dialogo aperto'))->toBe('');
+})->with([
+    'da quando, e che cosa fa' => ['dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo'],
+    'il giro' => ['Tab dall\'ultimo elemento torna al primo, Maiusc+Tab dal primo va all\'ultimo, e se il fuoco è ancora fuori il primo Tab entra'],
+    'il pannello sotto 720 px' => ['Lo stesso per un `DetailPanel` sotto 720 px, dove è largo tutta la pagina; da 721 px in su Tab esce verso la pagina, come vuole la linea guida'],
+    'uno sopra l\'altro' => ['Con un dialogo sopra un pannello vale il dialogo'],
+    // Review della PR #63, R5: sotto 720 px il dialogo aperto da un pannello deve vedersi.
+    'il dialogo si vede' => ['Con un dialogo sopra un pannello vale il dialogo, e il dialogo si vede: sotto 720 px il CSS del design system mette il pannello un gradino sopra i dialoghi, e la cornice alza il velo di ogni `Dialog` aperto a `--z-dialog` + 2, sopra il pannello'],
+    // R10 e R12: un menu accanto al dialogo, e un elemento che tiene Tab per sé.
+    'anteprime e menu' => ['Le anteprime (`inline`) non trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene'],
+    // Seconda lettura della PR #63 (S5, S6, S16).
+    'un menu altrove' => ['un menu che sta altrove nella pagina, senza il fuoco, non cambia niente'],
+    'Tab coi modificatori' => ['né se Tab è premuto con Ctrl, Alt o Meta'],
+    'se il pezzo non arriva' => ['se non arriva, Tab fa il giro di prima, e sotto 720 px un `Dialog` aperto da un `DetailPanel` resta sotto il pannello'],
+    'il gradino è provvisorio' => ['Anche il gradino del velo è provvisorio'],
+    'Tab tenuto da un elemento' => ['non interviene nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`)'],
+    'il modulo non deve fare niente' => ['Il modulo non deve fare niente, e non scriva una trappola sua: sarebbero due'],
+    'è provvisorio' => ['È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono ancora il fuoco'],
+    'senza toccare i componenti' => ['la cornice lo fa da sé, senza toccare i componenti'],
+    'si toglie' => ['quando lo fanno loro questo si toglie, senza che il modulo cambi niente'],
+    'che cosa non copre' => ['Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e il primo campo in fuoco all\'apertura, che resta del modulo'],
+    'a richiesta' => ['Sta nello stesso pezzo a richiesta del punto sopra: se non arriva, Tab fa il giro di prima'],
+]);
+
+// Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
+// con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
+// la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
+
+it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le chiede, che cosa si vede se non arrivano e che cosa serve nei test di un frontend (sprint 30 · T1.10)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'lingua' => puntoDellaCornice($readme, 'La lingua'),
+        'notifiche' => puntoDellaCornice($readme, 'Le notifiche'),
+        'pesi' => suUnaRiga($readme),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'due file per lingua' => ['lingua', 'Dalla `v1.20.0` ogni lingua ha due file con lo stesso nome: i testi della cornice (`resources/lingue/<codice>.json`) e le frasi delle notifiche (`resources/lingue/notifiche/<codice>.json`)'],
+    'dove stanno' => ['notifiche', 'non stanno più nel JS d\'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua'],
+    'quando si chiedono' => ['notifiche', 'la cornice le chiede con `fetch` quando si apre la campanella, insieme all\'elenco: il file della lingua della persona e quello dell\'inglese, una volta sola'],
+    'da dove, e la CSP' => ['notifiche', 'la cornice li chiede da dove la pagina prende il JS: la CSP di tutti lo lascia fare (`connect-src \'self\'`)'],
+    'da un\'altra origine' => ['notifiche', 'un frontend che serve la build da un\'altra origine (`ASSET_URL`) scrive quell\'origine anche in `connect-src`, e da lì i file devono arrivare con CORS'],
+    'finché non arrivano' => ['notifiche', 'Finché non arrivano il pannello aspetta'],
+    'se non arrivano' => ['notifiche', 'se non arrivano — una risposta che non è 200, la rete che cade, dieci secondi senza risposta — mostra l\'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di titoli di ripiego'],
+    'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
+    'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
+    'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
+    // Seconda lettura della PR #63 (S1, S2, S8, S15).
+    'restano file' => ['notifiche', 'restano file anche se il frontend alza `build.assetsInlineLimit`'],
+    'in sviluppo' => ['notifiche', 'Lo stesso vale in sviluppo, se la pagina prende il JS dal server di Vite: è un\'altra origine'],
+    'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
+    'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
+    'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono'],
+]);
+
+it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+    $prove = (string) file_get_contents(__DIR__.'/../../resources/js/prove.ts');
+    $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts']);
+
+    expect($guida)->toContain('la cornice li chiede con `fetch` quando si apre la campanella: nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l\'errore di caricamento con «Riprova»')
+        // Seconda lettura della PR #63 (S10, S8): dove stanno i file, e chi rifà i moduli nei casi.
+        ->toContain('titoli e frasi delle notifiche stanno in un file loro per lingua (`vendor/zeiras/zr-core/resources/lingue/notifiche/`)')
+        ->toContain('Se un caso rifà i moduli (`vi.resetModules()`), la richiama dopo l\'import')
+        ->toContain('Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l\'errore al posto dell\'elenco')
+        ->toContain('Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice')
+        // La frase di prima, che per i test non era vera.
+        ->not->toContain('nel tuo modulo non cambia niente')
+        ->and(fileDelloZipDiHead())->toContain('resources/js/prove.ts')
+        ->and(substr_count($prove, 'export async function frasiInMemoria(): Promise<void>'))->toBe(1)
+        // Un commento può nominarlo: conta chi lo importa.
+        ->and(array_filter($ingressi, fn (string $codice): bool => preg_match('/(?:from|import\()\s*[\'"]\.\/prove[\'"]/', $codice) === 1))->toBe([]);
+});
+
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
@@ -4900,6 +5014,11 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
     'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
+    // Sprint 30 · T2.6 (voce #1875): le difese dei due nomi, e ciò che resta al backoffice.
+    'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
+    'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
+    'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuterà il backoffice alla scrittura'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],

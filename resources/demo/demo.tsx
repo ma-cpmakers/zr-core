@@ -5,6 +5,7 @@ import { StrictMode, useMemo, useState, type ComponentType, type ReactNode } fro
 import { createRoot } from 'react-dom/client';
 import type { CorniceProps, DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { lingue } from '../js/lingue';
+import { Button, DetailPanel, Dialog } from '../js/zeiras/componenti';
 import { registro } from '../js/registro';
 import { rotteFinte } from './rotte-finte';
 
@@ -74,6 +75,32 @@ const propsScritteUndefined = {
 } satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;
 const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined, accettazione_richiesta: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
 
+/**
+ * Con `?rimedi=1`: un `Dialog` e un `DetailPanel` da aprire, per provare coi tasti veri che Tab resta dentro (il dialogo
+ * sempre, il pannello sotto 720 px). Il dialogo si apre anche da dentro il pannello: uno sopra l'altro.
+ */
+function ProvaDeiRimedi() {
+    const [dialogo, setDialogo] = useState(false);
+    const [pannello, setPannello] = useState(false);
+    const apriIlDialogo = <Button variant="secondary" onClick={() => setDialogo(true)}>UAT apri il dialogo</Button>;
+
+    return (
+        <div id="uat-rimedi" className="zr-stack">
+            <p>{apriIlDialogo} <Button variant="secondary" onClick={() => setPannello(true)}>UAT apri il pannello</Button> <a href="#uat-dopo" id="uat-dopo">UAT dopo</a></p>
+            {pannello ? (
+                <DetailPanel label="UAT scheda" head="UAT Lancio corso" onClose={() => setPannello(false)} foot={<Button variant="secondary">UAT commenta</Button>}>
+                    <p><input aria-label="UAT titolo" defaultValue="UAT Lancio corso" /></p>
+                    <p>{apriIlDialogo}</p>
+                </DetailPanel>
+            ) : null}
+            <Dialog open={dialogo} title="UAT nuova scheda" onClose={() => setDialogo(false)} footer={<><Button variant="secondary" onClick={() => setDialogo(false)}>UAT annulla</Button> <Button onClick={() => setDialogo(false)}>UAT salva</Button></>}>
+                <p><input aria-label="UAT nome" /></p>
+                <p><Button variant="ghost" disabled>UAT spento</Button></p>
+            </Dialog>
+        </div>
+    );
+}
+
 function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inFondo?: ReactNode }) {
     const scelti = new URLSearchParams(window.location.search);
     const [lingua, setLingua] = useState(scelti.get('lingua') ?? 'it');
@@ -132,6 +159,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
                 </label>
             </form>
             {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {scelti.has('rimedi') ? <ProvaDeiRimedi /> : null}
             {inFondo}
         </Cornice>
     );

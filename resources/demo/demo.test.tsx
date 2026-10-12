@@ -41,6 +41,10 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         await act(async () => {
             await import('./index');
         });
+        // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: qui sono già arrivate, come a una seconda apertura
+        // (in un browser sono un file a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
+        const { frasiInMemoria } = await import('../js/prove');
+        await frasiInMemoria();
     }
 
     function uno(selettore: string): HTMLElement | null {
@@ -141,9 +145,9 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     // Sprint 29 · T3 (voce #1865): è ciò che la riga 3 della UAT guarda in un browser. Con `?frasi=1` il pannello ha tre notifiche
     // di Project Management: la prima dice chi e che cosa in una riga sola, la seconda solo chi, la terza il titolo col nome sotto.
     it.each([
-        ['?frasi=1', [['Marta Rossi ha modificato la scheda «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminato una scheda', null], ['Scheda modificata', 'UAT Rivedere il piano editoriale']]],
-        ['?frasi=1&lingua=en', [['Marta Rossi changed the card “UAT Preparare il lancio”', null], ['Bruno Neri deleted a card', null], ['Card changed', 'UAT Rivedere il piano editoriale']]],
-        ['?frasi=1&lingua=es', [['Marta Rossi ha modificado la tarjeta «UAT Preparare il lancio»', null], ['Bruno Neri ha eliminado una tarjeta', null], ['Tarjeta modificada', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1', [['\u{2068}Marta Rossi\u{2069} ha modificato la scheda «\u{2068}UAT Preparare il lancio\u{2069}»', null], ['\u{2068}Bruno Neri\u{2069} ha eliminato una scheda', null], ['Scheda modificata', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=en', [['\u{2068}Marta Rossi\u{2069} changed the card “\u{2068}UAT Preparare il lancio\u{2069}”', null], ['\u{2068}Bruno Neri\u{2069} deleted a card', null], ['Card changed', 'UAT Rivedere il piano editoriale']]],
+        ['?frasi=1&lingua=es', [['\u{2068}Marta Rossi\u{2069} ha modificado la tarjeta «\u{2068}UAT Preparare il lancio\u{2069}»', null], ['\u{2068}Bruno Neri\u{2069} ha eliminado una tarjeta', null], ['Tarjeta modificada', 'UAT Rivedere il piano editoriale']]],
     ])('con «%s», aperta la campanella, tre righe di Project Management: chi e che cosa senza riga di sotto, solo chi, e senza chi il titolo col nome sotto (sprint 29 · T3.1)', async (query, attese) => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         try {
@@ -205,5 +209,30 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         await act(async () => uno('.zr-search input')?.focus());
         expect(uno('.zr-search-note')?.textContent).toBe(invito);
         expect(inArrivo().includes('CRM')).toBe(crmInArrivo);
+    });
+
+    it('con «?rimedi=1» la pagina ha un dialogo e un pannello di dettaglio da aprire, e il dialogo si apre anche da dentro il pannello (sprint 30 · T4)', async () => {
+        await apri('?rimedi=1');
+        const pulsante = (testo: string, dentro = '#uat-rimedi') => [...document.querySelectorAll<HTMLElement>(`#pagina ${dentro} button`)].find((uno) => uno.textContent === testo) ?? null;
+        expect([uno('.zr-detail'), uno('.zr-scrim')]).toStrictEqual([null, null]);
+
+        await clic(pulsante('UAT apri il pannello'));
+        expect(uno('.zr-detail [aria-label="UAT titolo"]')).not.toBeNull();
+        expect(uno('.zr-scrim')).toBeNull();
+
+        await clic(pulsante('UAT apri il dialogo', '.zr-detail'));
+        expect(uno('.zr-scrim:not(.is-inline) > .zr-dialog [aria-label="UAT nome"]')).not.toBeNull();
+        // Tutti e due aperti, uno sopra l'altro: è la prova di T4.4.
+        expect(uno('.zr-detail')).not.toBeNull();
+
+        await clic(pulsante('UAT annulla', '.zr-dialog'));
+        expect(uno('.zr-scrim')).toBeNull();
+        expect(uno('.zr-detail')).not.toBeNull();
+    });
+
+    it.each([[''], ['?prodotto=pm']])('con «%s» la prova dei rimedi non c\'è (sprint 30 · T4)', async (query) => {
+        await apri(query);
+        expect(uno('.zr-shell')).not.toBeNull();
+        expect(uno('#uat-rimedi')).toBeNull();
     });
 });

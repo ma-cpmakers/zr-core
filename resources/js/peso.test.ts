@@ -30,8 +30,32 @@ const DAL_BUNDLE = ['resources/js/zeiras/react-globale.ts', 'resources/zeiras/bu
 const DAL_MODULO = ['resources/js/zeiras/index.ts'];
 const MEZZO_KB = 512;
 
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno più nel JS d'ingresso: la cornice le chiede con `fetch` quando
+// si apre la campanella, un file `.json` per lingua. Una frase per lingua, com'è scritta nel suo file: la stessa notifica, la cartella creata.
+const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha creado la carpeta' };
+/**
+ * Il tetto sul JS d'ingresso dell'app che prende solo la cornice, con gzip: prima dello sprint 30 pesava 18,8 KB. Il refining
+ * diceva 17,5: la misura è 17,9, perché con il primo `import()` di un'app Vite mette nel JS d'ingresso il suo aiuto per i pezzi
+ * a richiesta (circa 0,7 KB con gzip, da solo), che un'app con le pagine a richiesta ha già. Il tetto è la misura, a 18.
+ * Con le difese dei due nomi (T2) la misura è 18,0: il tetto resta dov'è (decisione di zr-pm del 12/10/2026), e ciò che non
+ * ci sta non entra nel JS d'ingresso.
+ *
+ * Una sola eccezione, di 32 byte (zr-pm, 12/10/2026, nota 11697 del progetto): i rimedi provvisori di tastiera, voci #1871
+ * (il fuoco nel pannello delle notifiche) e #1870 (Tab dentro un dialogo aperto). Stanno in un pezzo a richiesta, e nel JS
+ * d'ingresso c'è solo la riga che lo chiede. Il tetto torna a 18 KB quando i rimedi escono, perché il design system porta
+ * i suoi, o con la prossima versione maggiore.
+ */
+const TETTO_DELL_INGRESSO = 18 * 1024 + 32;
+/** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
+const DEI_RIMEDI = 'MutationObserver';
+
 interface Costruito {
+    /** Il JS d'ingresso: ciò che la pagina scarica subito, coi pezzi che l'ingresso importa in modo statico. */
     js: string;
+    /** Ciò che si scarica a richiesta: i pezzi, uno per `import()`, e i file delle frasi, che la cornice chiede con `fetch`. */
+    aRichiesta: string[];
+    /** I nomi dei file delle frasi nella build. */
+    fileDelleFrasi: string[];
     esporta: string[];
 }
 
@@ -42,14 +66,21 @@ const inKb = (byte: number) => byte / 1024;
 const scritture = (js: string, globale: string) => [...js.matchAll(new RegExp(`window\\.${globale}\\s*=(?!=)`, 'g'))].length;
 
 function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
-    const pezzi = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : [])).filter((pezzo) => pezzo.type === 'chunk');
+    const uscite = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : []));
+    const pezzi = uscite.filter((uscita) => uscita.type === 'chunk');
+    const frasi = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
 
-    return { js: pezzi.map((pezzo) => pezzo.code).join('\n'), esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort() };
+    return {
+        js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
+        aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map((uscita) => (typeof uscita.source === 'string' ? uscita.source : Buffer.from(uscita.source).toString()))],
+        fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
+        esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
+    };
 }
 
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
-async function app(file: string): Promise<Costruito> {
-    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
+async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}): Promise<Costruito> {
+    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
 }
 
 /** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
@@ -78,7 +109,10 @@ function nomiNelTesto(file: string): string[] {
         .sort();
 }
 
-/** La riga della tabella dei pesi del README che comincia con quel nome: i due numeri, in KB, senza e con gzip. */
+/**
+ * La riga della tabella dei pesi del README che comincia con quel nome: i quattro numeri, in KB, senza e con gzip, del JS
+ * d'ingresso e poi dei pezzi a richiesta.
+ */
 function pesiNelReadme(nome: string): number[] {
     const riga = readFileSync(delRepo('README.md'), 'utf8').split('\n').find((questa) => questa.startsWith(`| ${nome} |`)) ?? '';
 
@@ -86,6 +120,7 @@ function pesiNelReadme(nome: string): number[] {
 }
 
 let soloCornice: Costruito;
+let conIlLimiteAlto: Costruito;
 let perNome: Costruito;
 let diSempre: Costruito;
 let ingressoPerLeApp: Costruito;
@@ -98,6 +133,7 @@ let dalModulo: Costruito;
 beforeAll(async () => {
     vi.stubEnv('NODE_ENV', 'production');
     soloCornice = await app('resources/demo/peso/cornice.ts');
+    conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
     ingressoPerLeApp = await ingresso('resources/js/app.ts');
@@ -136,6 +172,55 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     it('pesa più della sola cornice e, con gzip, al più il 70% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(perNome.js)).toBeGreaterThan(gzip(soloCornice.js));
         expect(gzip(perNome.js)).toBeLessThanOrEqual(0.7 * gzip(diSempre.js));
+    });
+});
+
+describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a richiesta, uno per lingua (sprint 30 · T1.1, T1.2, T1.8)', () => {
+    const app = [
+        ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
+        ['la cornice e due componenti per nome', () => perNome],
+        ['la stessa cornice, dall\'ingresso di sempre', () => diSempre],
+    ] as const;
+
+    it.each(app)('«%s»: nel JS d\'ingresso nessuna frase, di nessuna lingua', (_nome, costruita) => {
+        expect(Object.values(FRASI).filter((frase) => costruita().js.includes(frase))).toStrictEqual([]);
+    });
+
+    // Un file di dati, non un modulo: la cornice lo chiede con `fetch`, e «Riprova» lo può richiedere (in Chrome un `import()`
+    // fallito resta fallito finché la pagina non si ricarica: UAT dello sprint 30). Il nome porta l'impronta del contenuto: una
+    // build nuova con frasi nuove ha un altro nome, e la cache di un browser non dà mai le frasi di prima.
+    it.each(app)('«%s»: i file delle frasi sono tre `.json`, uno per lingua, con l\'impronta della build nel nome', (_nome, costruita) => {
+        expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
+    });
+
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; il quarto è il pezzo dei rimedi di tastiera, senza frasi', (_nome, costruita) => {
+        const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
+
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], ['en'], ['es'], ['it']]);
+    });
+
+    it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
+        expect(costruita().js).not.toContain(DEI_RIMEDI);
+        expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
+    });
+
+    it('in un frontend che alza `build.assetsInlineLimit` i file delle frasi restano file: come `data:` nel JS la CSP di tutti (`connect-src \'self\'`) fermerebbe la richiesta (sprint 30 · T1)', () => {
+        expect(conIlLimiteAlto.fileDelleFrasi).toHaveLength(3);
+        expect(conIlLimiteAlto.js).not.toContain('data:application/json');
+    });
+
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB e 32 byte: i 32 sono dei rimedi provvisori di tastiera', () => {
+        expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
+        expect(TETTO_DELL_INGRESSO).toBe(18_464);
+    });
+
+    // Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente: il pezzo che importa
+    // `rigaDellaNotifica` porta le frasi di ogni lingua. I due ingressi del pacchetto la esportano, e costruiti da soli le hanno.
+    it.each([
+        ['per le app', () => ingressoPerLeApp],
+        ['di sempre', () => ingressoDiSempre],
+    ])('l\'ingresso %s, che esporta le funzioni per chi mostra le notifiche in una pagina sua, porta le frasi di ogni lingua', (_nome, costruito) => {
+        expect(Object.values(FRASI).filter((frase) => !costruito().js.includes(frase))).toStrictEqual([]);
     });
 });
 
@@ -186,10 +271,14 @@ describe('i pesi che il README dice sono quelli misurati qui, e la sua ricetta d
         ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
         ['la cornice e due componenti per nome', () => perNome],
         ['la stessa cornice, dall\'ingresso di sempre', () => diSempre],
-    ])('«%s»: i due numeri della sua riga, in KB, senza e con gzip', (nome, misurato) => {
-        const [intero, compresso] = pesiNelReadme(nome);
+    ])('«%s»: i quattro numeri della sua riga, in KB, senza e con gzip: il JS d\'ingresso e i pezzi a richiesta (sprint 30 · T1.10)', (nome, misurato) => {
+        const [intero, compresso, aRichiesta, aRichiestaCompressi, ...altri] = pesiNelReadme(nome);
+        const pezzi = misurato().aRichiesta;
 
         expect(intero).toBeCloseTo(inKb(Buffer.byteLength(misurato().js)), 0);
         expect(compresso).toBeCloseTo(inKb(gzip(misurato().js)), 0);
+        expect(aRichiesta).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + Buffer.byteLength(pezzo), 0)), 0);
+        expect(aRichiestaCompressi).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + gzip(pezzo), 0)), 0);
+        expect(altri).toStrictEqual([]);
     });
 });

@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
-import { testi, testiDellaRicerca } from './lingue';
+import frasiInglesi from '../lingue/notifiche/en.json';
+import frasiSpagnole from '../lingue/notifiche/es.json';
+import frasiItaliane from '../lingue/notifiche/it.json';
+import * as delleLingue from './lingue';
+import { frasiARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
@@ -955,7 +959,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelectorAll('.zr-avatar, .zr-iconbox').length)).toStrictEqual(Array(9).fill(1));
         // Il nome di chi l'ha fatto sta nell'avatar e, dallo sprint 29, nel titolo (una frase con solo chi: qui il nome della
         // cosa non c'è); non al posto del nome della cosa, e un valore che non è un nome non entra da nessuna parte.
-        expect(titoli()).toStrictEqual(['Marta Rossi ha creato una cartella', ...Array(4).fill('Nuova cartella'), 'Bruno ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
+        expect(titoli()).toStrictEqual(['\u{2068}Marta Rossi\u{2069} ha creato una cartella', ...Array(4).fill('Nuova cartella'), '\u{2068}Bruno\u{2069} ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
         expect(secondeRighe()).toStrictEqual(Array(9).fill(null));
         expect(uno('.zr-notif-list')?.textContent?.match(/Marta|Bruno/g)).toStrictEqual(['Marta', 'Bruno']);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
@@ -983,10 +987,10 @@ describe('il pannello delle notifiche', () => {
         const t = testi('it');
 
         expect(titoli()).toStrictEqual([
-            'Giulia Bianchi ha modificato la scheda «Lancio corso»', 'Giulia Bianchi ha modificato una scheda', 'Giulia Bianchi ha modificato una scheda',
-            'Giulia Bianchi ha eliminato una scheda',
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
+            '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            t['notificationTitle.crm.trattativa.assegnata'], t['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
+            frasiItaliane['notificationTitle.crm.trattativa.assegnata'], frasiItaliane['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
         ]);
         expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', 'Project Management', 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
@@ -996,8 +1000,8 @@ describe('il pannello delle notifiche', () => {
     });
 
     it.each([
-        ['en', 'Giulia Bianchi changed the card “Lancio corso”', 'Giulia Bianchi deleted a card'],
-        ['es', 'Giulia Bianchi ha modificado la tarjeta «Lancio corso»', 'Giulia Bianchi ha eliminado una tarjeta'],
+        ['en', '\u{2068}Giulia Bianchi\u{2069} changed the card “\u{2068}Lancio corso\u{2069}”', '\u{2068}Giulia Bianchi\u{2069} deleted a card'],
+        ['es', '\u{2068}Giulia Bianchi\u{2069} ha modificado la tarjeta «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha eliminado una tarjeta'],
     ])('con la lingua "%s" il pannello ha la frase di quella lingua (sprint 29 · T2.1)', async (lingua, conCosa, soloChi) => {
         vi.stubGlobal('fetch', rotte([
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
@@ -1015,9 +1019,35 @@ describe('il pannello delle notifiche', () => {
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Ada {what} $&', risorsa_nome: 'Piano {who} <b>B</b>' }),
         ]);
 
-        expect(titoli()).toStrictEqual(['Ada {what} $& ha modificato la scheda «Piano {who} <b>B</b>»']);
+        expect(titoli()).toStrictEqual(['\u{2068}Ada {what} $&\u{2069} ha modificato la scheda «\u{2068}Piano {who} <b>B</b>\u{2069}»']);
         expect(secondeRighe()).toStrictEqual([null]);
         expect(uno('.zr-notif-list')?.querySelector('b')).toBeNull();
+    });
+
+    // Sprint 30 · T2 (voce #1875). I caratteri sono scritti col loro codice, mai incollati.
+    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, intero, e l\'avatar dice lo stesso nome pulito (sprint 30 · T2.1, T2.2, T2.3)', async () => {
+        const lungo = `Maria ${'Addolorata '.repeat(6)}De Rossi`;
+        await apriSu([
+            conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia\u{202E} Bianchi', risorsa_nome: '\u{202E}Lancio\ncorso' }),
+            conInPiu('uat-n62', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: `${lungo}\u{200F}`, risorsa_nome: null }),
+            conInPiu('uat-n63', { tipo: 'com.zeiras.board.scheda.eliminata', autore_nome: '\tAda\r\nNeri ', risorsa_nome: 'Piano\u{2066} B' }),
+            // Un nome che pulito è vuoto è un nome che manca: il titolo di prima, l'icona di prima.
+            conInPiu('uat-n64', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: '\u{202E}\n\u{2069}', risorsa_nome: 'Lancio corso' }),
+        ]);
+        const avatar = (voce: HTMLElement) => voce.querySelector('.zr-avatar');
+
+        expect(lungo).toHaveLength(80);
+        expect(titoli()).toStrictEqual([
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»',
+            `\u{2068}${lungo}\u{2069} ha modificato una scheda`,
+            '\u{2068}Ada Neri\u{2069} ha eliminato una scheda',
+            'Scheda modificata',
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, 'Piano B', 'Lancio corso']);
+        expect(voci().map((voce) => avatar(voce)?.getAttribute('aria-label') ?? null)).toStrictEqual(['Giulia Bianchi', lungo, 'Ada Neri', null]);
+        // In tutto il pannello i soli caratteri di direzione sono le tre coppie che isolano i nomi nelle frasi.
+        expect(uno('.zr-notif-list')?.textContent?.match(/[\u{061C}\u{200E}\u{200F}\u{202A}-\u{202E}\u{2066}-\u{2069}]/gu)).toStrictEqual(['\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}']);
+        expect(uno('.zr-notif-list')?.innerHTML).not.toMatch(/[\u{0000}-\u{001F}\u{007F}-\u{009F}\u{2028}\u{2029}]/u);
     });
 
     it('`per_me` dice in quale scheda sta una notifica: `true` in «Per me» e in «Tutte», `false` solo in «Tutte»; `null`, senza la chiave o con un valore che non è un booleano, in tutte e due, come prima (sprint 20 · T1.3)', async () => {
@@ -5121,5 +5151,744 @@ describe('«Salta al contenuto»', () => {
         await mostra(laPagina());
 
         expect([contenitore.lastElementChild?.getAttribute('role'), contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['status', 'zr-visually-hidden', 3]);
+    });
+});
+
+// Sprint 30 · T1 (voce #1875). Le frasi delle notifiche non stanno nel JS d'ingresso: la cornice le chiede con l'elenco, quando
+// si apre la campanella, per la lingua dei dati e per l'inglese di ripiego. Negli altri casi di questo file sono già in memoria
+// (tests/js/frasi-in-memoria.ts); qui la cornice ha un caricatore del caso, vuoto all'inizio, che dice che cosa gli è stato
+// chiesto e che il caso può fermare o rompere, file per file.
+describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint 30 · T1)', () => {
+    const elenco = [{ id: 'uat-n81', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }];
+    const inItaliano = '\u{2068}Giulia Bianchi\u{2069} ha creato la cartella «\u{2068}Lancio corso\u{2069}»';
+    const inSpagnolo = '\u{2068}Giulia Bianchi\u{2069} ha creado la carpeta «\u{2068}Lancio corso\u{2069}»';
+    const titoli = () => tutti('.zr-notif-list .zr-notif-title').map((titolo) => titolo.textContent);
+    const errore = () => uno('.zr-notif [role="alert"]');
+    const inAttesa = () => uno('.zr-notif [role="status"]') !== null;
+    const inSpagnoloNeiDati = { ...dati, lingua: 'es' };
+
+    /** Il caricatore del caso al posto di quello della cornice: i file chiesti, quelli che non arrivano e quelli fermi. */
+    function caricatore() {
+        const chiesti: string[] = [];
+        const rotti = new Set<string>();
+        const fermi = new Map<string, () => void>();
+        const file = (codice: string, frasi: FrasiDelleNotifiche) => async (): Promise<FrasiDelleNotifiche> => {
+            chiesti.push(codice);
+            if (fermi.has(codice)) {
+                await new Promise<void>((via) => fermi.set(codice, via));
+            }
+            if (rotti.has(codice)) {
+                throw new TypeError('Failed to fetch dynamically imported module');
+            }
+
+            return frasi;
+        };
+        const delCaso = frasiARichiesta({
+            '../lingue/notifiche/en.json': file('en', frasiInglesi),
+            '../lingue/notifiche/es.json': file('es', frasiSpagnole),
+            '../lingue/notifiche/it.json': file('it', frasiItaliane),
+        }, file('en', frasiInglesi));
+        vi.spyOn(delleLingue, 'caricaFrasi').mockImplementation(delCaso.carica);
+        vi.spyOn(delleLingue, 'frasiPronte').mockImplementation(delCaso.pronte);
+
+        return {
+            chiesti,
+            rotti,
+            ferma: (codice: string) => fermi.set(codice, () => {}),
+            lascia: async (codice: string) => {
+                const via = fermi.get(codice);
+                fermi.delete(codice);
+                await act(async () => {
+                    via?.();
+                    await prossimoGiro();
+                });
+            },
+        };
+    }
+    const conLElenco = () => {
+        const fetchFinto = vi.fn(async () => risposta({ data: elenco }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        return fetchFinto;
+    };
+
+    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura partono quello della lingua dei dati e quello dell\'inglese, non lo spagnolo, e il titolo è la frase di sempre (T1.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(frasi.chiesti).toStrictEqual([]);
+
+        await clic(uno('.zr-bell'));
+
+        expect([...new Set(frasi.chiesti)].sort()).toStrictEqual(['en', 'it']);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('finché le frasi non arrivano il pannello aspetta, anche con l\'elenco già arrivato: nessun titolo di ripiego; poi mostra l\'elenco (T1.5)', async () => {
+        const frasi = caricatore();
+        frasi.ferma('it');
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(inAttesa()).toBe(true);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        await frasi.lascia('it');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it.each(['it', 'en'])('se il file «%s» non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5)', async (rotto) => {
+        const frasi = caricatore();
+        frasi.rotti.add(rotto);
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(errore()?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+        // Non è un `403 accettazione_richiesta`: niente avviso sopra la pagina, e la campanella ha ancora il suo numero.
+        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        expect(fetchFinto).toHaveBeenCalledOnce();
+
+        frasi.rotti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain(rotto);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('alla seconda apertura l\'elenco si richiede e le frasi no: restano in memoria (T1.6)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const allaPrima = [...frasi.chiesti];
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif-list')).toBeNull();
+        await clic(uno('.zr-bell'));
+
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti).toStrictEqual(allaPrima);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('cambiando la lingua dei dati con l\'elenco in pagina i titoli passano alla lingua nuova senza riaprire il pannello, e finché le frasi nuove non arrivano non resta un titolo nella lingua di prima (T1.7)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(titoli()).toStrictEqual([inItaliano]);
+
+        frasi.ferma('es');
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        expect(frasi.chiesti).toContain('es');
+        expect(titoli()).toStrictEqual([]);
+        expect(inAttesa()).toBe(true);
+
+        await frasi.lascia('es');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+        // L'elenco è quello di prima: nessun'altra richiesta alla parte server.
+        expect(fetchFinto).toHaveBeenCalledOnce();
+
+        // Tornando alla lingua di prima le sue frasi ci sono già: il titolo cambia nello stesso disegno.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se al cambio di lingua le frasi nuove non arrivano il pannello mostra l\'errore, e «Riprova» lo ricarica nella lingua nuova (T1.5, T1.7)', async () => {
+        const frasi = caricatore();
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        frasi.rotti.add('es');
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(errore()?.querySelector('p')?.textContent).toBe(testi('es').notificationsError);
+        expect(titoli()).toStrictEqual([]);
+
+        frasi.rotti.clear();
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+});
+
+describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (sprint 30 · T3)', () => {
+    const elenco = [
+        { id: 'uat-n91', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' },
+        { id: 'uat-n90', creata_il: '2026-10-05T12:00:00Z', letta: true, app: null },
+    ];
+    const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true };
+    const campanella = () => uno('.zr-bell') as HTMLButtonElement;
+    const linguette = () => tutti('.zr-notif .zr-notif-tabs [role="tab"]');
+    const scelta = () => uno('.zr-notif .zr-notif-tabs [role="tab"][aria-selected="true"]');
+    const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
+    const conIlFuoco = async (elemento: HTMLElement | null) => act(async () => elemento?.focus());
+    const tasto = async (key: string) => act(async () => {
+        document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        await prossimoGiro();
+    });
+    const rotte = (notifiche: () => Promise<Response> | Response) => vi.fn(async (indirizzo: string) => (
+        indirizzo === '/cornice/notifiche' ? notifiche() : risposta({ data: { fino_a: '2026-10-06T11:55:00.000000Z', altre: false } })
+    ));
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async (dellaCornice: DatiDellaCornice = { ...dati, non_lette: 3 }) => {
+        await mostra(<Cornice dati={dellaCornice} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    /** Come il clic di una persona: il pulsante prende il fuoco, poi il clic. */
+    const apri = async () => {
+        await conIlFuoco(campanella());
+        await clic(campanella());
+    };
+
+    it('aperta la campanella, l\'elemento attivo è la linguetta scelta del pannello, «Per me»: non la campanella, non «Segna tutte come lette» (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+
+        await apri();
+
+        expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
+        expect(scelta()?.textContent).toBe('Per me');
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('il fuoco è nel pannello già mentre l\'elenco si carica, e con l\'errore del caricamento (T3.1)', async () => {
+        const lento = inAttesa();
+        vi.stubGlobal('fetch', rotte(() => lento.promessa));
+        await laCornice();
+
+        await apri();
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+
+        await lento.arriva(risposta({}, 500));
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('vale nella cornice ridotta, dove il pannello dice solo perché è spento e la cornice non chiede niente (T3.2)', async () => {
+        const fetchFinto = rotte(() => risposta({ data: elenco }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await laCornice(ridotti);
+
+        await apri();
+
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testi('it').acceptanceOff);
+        expect(fetchFinto).not.toHaveBeenCalled();
+        expect(scelta()).not.toBeNull();
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('quando arriva l\'elenco il fuoco resta dov\'è: non torna sulla linguetta scelta (T3.3)', async () => {
+        const lento = inAttesa();
+        vi.stubGlobal('fetch', rotte(() => lento.promessa));
+        await laCornice();
+        await apri();
+        const [, tutte] = linguette();
+        await conIlFuoco(tutte ?? null);
+
+        await lento.arriva(risposta({ data: elenco }));
+
+        expect(tutti('.zr-notif-list .zr-notif-title')).toHaveLength(2);
+        expect(tutte?.getAttribute('aria-selected')).toBe('false');
+        expect(document.activeElement).toBe(tutte);
+    });
+
+    it('dopo «Riprova» e dopo «Segna tutte come lette» il fuoco non torna sulla linguetta scelta (T3.3)', async () => {
+        const fetchFinto = rotte(() => risposta({ data: elenco })).mockImplementationOnce(async () => risposta({}, 500));
+        vi.stubGlobal('fetch', fetchFinto);
+        await laCornice();
+        await apri();
+        const riprova = uno('.zr-notif [role="alert"] button');
+        await conIlFuoco(riprova);
+
+        await clic(riprova);
+        expect(tutti('.zr-notif-list .zr-notif-title')).toHaveLength(2);
+        expect(document.activeElement).not.toBe(scelta());
+
+        const pulsante = segnaTutte();
+        await conIlFuoco(pulsante);
+        await clic(pulsante);
+        expect(fetchFinto).toHaveBeenCalledTimes(3);
+        expect(scelta()).not.toBeNull();
+        expect(document.activeElement).not.toBe(scelta());
+    });
+
+    it('cambiando linguetta il fuoco resta sulla linguetta premuta (T3.3)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+        await apri();
+        const [perMe, tutte] = linguette();
+
+        await conIlFuoco(tutte ?? null);
+        await clic(tutte ?? null);
+        expect(scelta()).toBe(tutte);
+        expect(document.activeElement).toBe(tutte);
+
+        // Il fuoco altrove nel pannello, poi di nuovo «Per me» scelta col clic: il fuoco non si sposta da sé.
+        await conIlFuoco(tutte ?? null);
+        await act(async () => perMe?.click());
+        expect(scelta()).toBe(perMe);
+        expect(document.activeElement).toBe(tutte);
+    });
+
+    it('Esc chiude il pannello e il fuoco è sulla campanella; richiudendo col clic sulla campanella il fuoco resta sulla campanella (T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        await tasto('Escape');
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(campanella());
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        await apri();
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(campanella());
+
+        // Riaperta, il fuoco entra di nuovo: vale a ogni apertura, non solo alla prima.
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+    });
+
+    it('il fuoco entra solo nel pannello che scrive l\'`AppShell` accanto alla campanella: un elemento della pagina con la stessa classe e le sue linguette non lo prende (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        const Pagina = ({ aperto }: { aperto: boolean }) => (
+            <Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}>
+                <button type="button" id="della-pagina">Della pagina</button>
+                {aperto ? <div className="zr-notif"><div className="zr-notif-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" id="non-sua">Tutte</button></div></div> : null}
+            </Cornice>
+        );
+        await mostra(<Pagina aperto={false} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conIlFuoco(uno('#della-pagina'));
+
+        await mostra(<Pagina aperto />);
+        expect(uno('#non-sua')).not.toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+
+        // Quello della cornice sì, anche con l'altro in pagina.
+        await apri();
+        expect(document.activeElement).toBe(uno('.zr-top-actions > .zr-notif [role="tab"][aria-selected="true"]'));
+    });
+
+    it('fuori dalla cornice non si tocca niente: un pannello accanto a una barra con le stesse classi, ma non dentro la cornice, non prende il fuoco (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conIlFuoco(uno('#della-pagina'));
+
+        const barra = document.createElement('div');
+        barra.className = 'zr-top-actions';
+        const pannello = document.createElement('div');
+        pannello.className = 'zr-notif';
+        pannello.innerHTML = '<div class="zr-notif-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" id="altrove">Tutte</button></div>';
+        document.body.append(barra);
+        await act(async () => {
+            barra.append(pannello);
+        });
+
+        expect(barra.closest('.zr-shell')).toBeNull();
+        expect(document.getElementById('altrove')).not.toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+        barra.remove();
+    });
+});
+
+describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
+    const { Dialog, DetailPanel, Menu } = componenti;
+    const senzaEffetto = () => {};
+    /** La larghezza della pagina come la legge il CSS del design system: sotto 720 px il pannello di dettaglio è a tutta pagina. */
+    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
+    /** La pagina dentro la cornice, coi rimedi di tastiera già arrivati. */
+    const laPagina = async (figli: ReactElement) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{figli}</Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const conIlFuoco = async (elemento: HTMLElement | null) => {
+        expect(elemento).not.toBeNull();
+        await act(async () => elemento?.focus());
+    };
+    /** Un tasto premuto sull'elemento attivo: dice se qualcuno ha fermato ciò che il browser avrebbe fatto. */
+    const premi = async (key: string, shiftKey = false) => {
+        const tasto = new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true });
+        await act(async () => {
+            (document.activeElement ?? document.body).dispatchEvent(tasto);
+        });
+
+        return tasto.defaultPrevented;
+    };
+    const dietro = () => uno('#dietro');
+    const ilDialogo = (figli: ReactElement, inline = false) => (
+        <>
+            <button type="button" id="dietro">Dietro il dialogo</button>
+            <Dialog open inline={inline} title="Nuova scheda" onClose={senzaEffetto} footer={<button type="button" id="salva">Salva</button>}>{figli}</Dialog>
+            <button type="button" id="dopo">Dopo il dialogo</button>
+        </>
+    );
+    const ilPannello = (inline = false, sopra: ReactElement | null = null) => (
+        <>
+            <button type="button" id="dietro">Dietro il pannello</button>
+            <DetailPanel inline={inline} label="Scheda" head="Lancio corso" onClose={senzaEffetto} foot={<button type="button" id="commenta">Commenta</button>}>
+                <input id="titolo" defaultValue="Lancio corso" />
+            </DetailPanel>
+            {sopra}
+        </>
+    );
+    const chiudi = () => uno('.zr-dialog .zr-dialog-head button');
+
+    it('con un `Dialog` aperto, Tab dall\'ultimo elemento porta al primo del dialogo e Maiusc+Tab dal primo all\'ultimo; nel mezzo il Tab è del browser (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        await conIlFuoco(uno('#nome'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#nome'));
+    });
+
+    it('se il fuoco è ancora fuori dal dialogo, sul pulsante che l\'ha aperto o sulla pagina, il primo Tab entra sul primo elemento e Maiusc+Tab sull\'ultimo (T4.2)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        // Nessun elemento attivo: il tasto arriva dal `body`.
+        await act(async () => (document.activeElement as HTMLElement | null)?.blur());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('con un `DetailPanel` aperto sotto 720 px vale lo stesso; da 721 px in su Tab esce verso la pagina (T4.3)', async () => {
+        largaAlPiu720(true);
+        await laPagina(ilPannello());
+        const [indietro] = tutti('.zr-detail button');
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(indietro);
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        // Il pannello stesso prende il fuoco quando si apre, e non è una fermata: da lì Maiusc+Tab non esce.
+        await conIlFuoco(uno('.zr-detail'));
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(indietro);
+
+        largaAlPiu720(false);
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(false);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        await conIlFuoco(dietro());
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(dietro());
+    });
+
+    it('con un `Dialog` aperto sopra un `DetailPanel` il fuoco resta nel dialogo, a ogni larghezza (T4.4)', async () => {
+        largaAlPiu720(true);
+        await laPagina(ilPannello(false, <Dialog open title="Elimina la scheda" onClose={senzaEffetto} footer={<button type="button" id="elimina">Elimina</button>}>Sicuro?</Dialog>));
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        await conIlFuoco(uno('#elimina'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        largaAlPiu720(false);
+        await conIlFuoco(uno('#titolo'));
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#elimina'));
+    });
+
+    it('le anteprime (`inline`) non trattengono niente, e senza dialoghi aperti Tab fa il suo giro in tutta la pagina, cornice compresa (T4.5)', async () => {
+        largaAlPiu720(true);
+        await laPagina(<>{ilDialogo(<input id="nome" />, true)}{ilPannello(true)}</>);
+
+        for (const elemento of [uno('#salva'), chiudi(), uno('#commenta'), tutti('#dietro')[0] ?? null, uno('.zr-bell'), uno('.zr-nav a, .zr-nav button')]) {
+            await conIlFuoco(elemento);
+            expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+            expect(document.activeElement).toBe(elemento);
+        }
+
+        await laPagina(<button type="button" id="dietro">Solo la pagina</button>);
+        await conIlFuoco(dietro());
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(dietro());
+    });
+
+    it('con un `Menu` aperto dentro il dialogo il gestore non interviene, e degli altri tasti non ferma niente: Esc resta dei componenti (T4.6)', async () => {
+        largaAlPiu720(false);
+        const [dialogoChiuso, menuChiuso] = [vi.fn(), vi.fn()];
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>
+            <Dialog open title="Nuova scheda" onClose={dialogoChiuso} footer={<button type="button" id="salva">Salva</button>}>
+                <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />
+            </Dialog>
+        </Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        expect(uno('.zr-dialog .zr-menu[role="menu"]')).not.toBeNull();
+
+        await conIlFuoco(uno('#salva'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        // Esc chiude prima il menu, come prima: il dialogo resta aperto.
+        expect(await premi('Escape')).toBe(false);
+        expect([menuChiuso.mock.calls.length, dialogoChiuso.mock.calls.length]).toStrictEqual([1, 0]);
+    });
+
+    it('un elemento spento, nascosto o con `tabindex="-1"` non conta come primo o ultimo, e di un gruppo di scelte conta quella scelta (T4.7)', async () => {
+        largaAlPiu720(false);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Sposta la scheda" footer={<>
+                <button type="button" id="ultimo">Sposta</button>
+                <button type="button" disabled>Spento</button>
+                <button type="button" hidden>Con hidden</button>
+                <span hidden><button type="button">Dentro un elemento con hidden</button></span>
+                <span style={{ display: 'none' }}><button type="button">Dentro un elemento non mostrato</button></span>
+                <button type="button" style={{ visibility: 'hidden' }}>Invisibile</button>
+                <button type="button" tabIndex={-1}>Fuori dal giro</button>
+                <input type="hidden" defaultValue="x" />
+            </>}>
+                <button type="button" tabIndex={-1} id="fuori-dal-giro">Fuori dal giro, per primo</button>
+                <label><input type="radio" name="lista" id="non-scelta" />Da fare</label>
+                <label><input type="radio" name="lista" id="prima-scelta" defaultChecked />Fatto</label>
+            </Dialog>
+        </Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await conIlFuoco(uno('#ultimo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#prima-scelta'));
+
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#ultimo'));
+
+        // Dal fondo del giro, su un elemento che non è una fermata: Tab non esce.
+        await conIlFuoco(tutti('.zr-dialog-foot [tabindex="-1"]')[0] ?? null);
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#prima-scelta'));
+    });
+
+    it('vale nelle pagine dentro la cornice: senza una cornice in pagina un dialogo aperto non trattiene niente (T4.8)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<button type="button" id="dietro">Una pagina</button>);
+
+        await mostra(ilDialogo(<input id="nome" />));
+        expect(uno('.zr-shell')).toBeNull();
+        await conIlFuoco(uno('#salva'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#salva'));
+    });
+
+    it('dove `matchMedia` non c\'è Tab non lancia errori: un pannello di dettaglio non trattiene niente, un dialogo sì (T4.3)', async () => {
+        vi.stubGlobal('matchMedia', undefined);
+        const errori = vi.fn();
+        window.addEventListener('error', errori);
+        await laPagina(ilPannello());
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(false);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        expect(errori).not.toHaveBeenCalled();
+        window.removeEventListener('error', errori);
+
+        await laPagina(ilDialogo(<input id="nome" />));
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('un `Menu` aperto fuori dal dialogo, accanto, conta come uno dentro: il gestore non interviene e il fuoco resta nel menu (T4.6)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+        </>);
+        const voce = uno('.zr-menu [role="menuitem"]');
+        expect(uno('.zr-dialog .zr-menu')).toBeNull();
+
+        await conIlFuoco(voce);
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(voce);
+    });
+
+    it('un `Menu` che sta altrove nella pagina, senza il fuoco, non spegne niente: Tab resta nel dialogo e da fuori entra (T4.6)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+        </>);
+        expect(uno('.zr-dialog .zr-menu')).toBeNull();
+        expect(uno('.zr-menu')).not.toBeNull();
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('Tab con Ctrl, Alt o Meta non è il giro del fuoco: il gestore non lo tocca (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+        await conIlFuoco(uno('#salva'));
+
+        for (const modificatore of ['ctrlKey', 'altKey', 'metaKey'] as const) {
+            const tasto = new KeyboardEvent('keydown', { key: 'Tab', [modificatore]: true, bubbles: true, cancelable: true });
+            await act(async () => {
+                uno('#salva')?.dispatchEvent(tasto);
+            });
+            expect(tasto.defaultPrevented).toBe(false);
+            expect(document.activeElement).toBe(uno('#salva'));
+        }
+    });
+
+    it('se un campo del dialogo tiene Tab per sé il gestore non sposta il fuoco (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+        uno('#salva')?.addEventListener('keydown', (tasto) => tasto.preventDefault());
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+    });
+
+    it('una scelta senza nome è un gruppo a sé, e una con lo stesso nome dentro un altro form non è del suo gruppo: tutte e due sono fermate (T4.7)', async () => {
+        largaAlPiu720(false);
+        const pagina = (ultime: ReactElement) => (
+            <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<><button type="button" id="sposta">Sposta</button>{ultime}</>}>
+                <input id="nome" />
+            </Dialog>
+        );
+        await laPagina(pagina(<><input type="radio" id="scelta-senza-nome" defaultChecked /><input type="radio" id="senza-nome" /></>));
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#senza-nome'));
+
+        await laPagina(pagina(<><form><input type="radio" name="lista" id="di-un-form" defaultChecked /></form><input type="radio" name="lista" id="fuori-dal-form" /></>));
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#fuori-dal-form'));
+    });
+
+    it('senza niente su cui fermarsi Tab non esce lo stesso: il fuoco è offerto al dialogo (T4.7)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro il dialogo</button>
+            <Dialog open title="Attendi"><p>Solo testo</p></Dialog>
+        </>);
+        expect(tutti('.zr-dialog button, .zr-dialog input, .zr-dialog a')).toHaveLength(0);
+        const alDialogo = vi.spyOn(uno('.zr-dialog') as HTMLElement, 'focus');
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(alDialogo).toHaveBeenCalledTimes(1);
+    });
+
+    describe('il velo di un dialogo sta un gradino sopra il pannello di dettaglio (T4.4)', () => {
+        const SOPRA_IL_PANNELLO = 'calc(var(--z-dialog) + 2)';
+        const gradino = (selettore = '.zr-scrim') => uno(selettore)?.style.getPropertyValue('z-index');
+        const Pagina = ({ aperto }: { aperto: boolean }) => (
+            <Cornice dati={dati} onLogout={esciSenzaEffetto}>
+                {ilPannello(false, <Dialog open={aperto} title="Elimina la scheda" onClose={senzaEffetto}><p>Sicuro?</p></Dialog>)}
+            </Cornice>
+        );
+
+        it('un `Dialog` che si apre dentro la cornice, sopra un `DetailPanel` o da solo, ha il velo a `--z-dialog` + 2, col token del design system', async () => {
+            largaAlPiu720(true);
+            await mostra(<Pagina aperto={false} />);
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            expect(uno('.zr-scrim')).toBeNull();
+
+            await mostra(<Pagina aperto />);
+            expect(gradino()).toBe(SOPRA_IL_PANNELLO);
+            // Il pannello resta dov'è: è il dialogo a salire.
+            expect(uno('.zr-detail')?.style.getPropertyValue('z-index')).toBe('');
+        });
+
+        it('un velo senza un dialogo dentro non è di un `Dialog`: resta com\'è', async () => {
+            largaAlPiu720(true);
+            await laPagina(<p>La pagina</p>);
+            const velo = document.createElement('div');
+            velo.className = 'zr-scrim';
+            velo.id = 'del-modulo';
+            await act(async () => {
+                uno('.zr-shell')?.append(velo);
+            });
+
+            expect(uno('.zr-shell #del-modulo')).not.toBeNull();
+            expect(gradino('#del-modulo')).toBe('');
+        });
+
+        it('vale per ogni dialogo di una pagina che entra già coi dialoghi aperti', async () => {
+            largaAlPiu720(false);
+            await laPagina(<button type="button" id="dietro">Una pagina</button>);
+
+            await laPagina(<section>
+                <Dialog open title="Primo" onClose={senzaEffetto}><p>Uno</p></Dialog>
+                <Dialog open title="Secondo" onClose={senzaEffetto}><p>Due</p></Dialog>
+            </section>);
+            expect(tutti('.zr-scrim').map((velo) => velo.style.getPropertyValue('z-index'))).toStrictEqual([SOPRA_IL_PANNELLO, SOPRA_IL_PANNELLO]);
+        });
+
+        it('un\'anteprima (`inline`) resta com\'è, e senza una cornice in pagina nessun velo si tocca', async () => {
+            largaAlPiu720(false);
+            await laPagina(<button type="button" id="dietro">Una pagina</button>);
+            await laPagina(ilDialogo(<input id="nome" />, true));
+            expect(uno('.zr-scrim.is-inline')).not.toBeNull();
+            expect(gradino()).toBe('');
+
+            await mostra(<button type="button" id="dietro">Senza cornice</button>);
+            await mostra(ilDialogo(<input id="nome" />));
+            expect(uno('.zr-shell')).toBeNull();
+            expect(gradino()).toBe('');
+        });
     });
 });
