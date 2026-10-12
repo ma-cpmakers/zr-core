@@ -12,7 +12,9 @@
 // col titolo di ripiego, e due note che non hanno dove andare (la riga sotto il titolo dice quale: «UAT nota senza contatto»,
 // «UAT nota con un id malfatto»), e in fondo due di un'azienda, una creata e una modificata; senza `?crm`, l'elenco è quello di
 // prima. Con `?viste=1` in fondo all'elenco ci sono tre notifiche delle viste salvate di una board (creata, modificata,
-// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Con `?opportunita=1` in fondo all'elenco ci
+// eliminata), di Project Management, lette: nel registro non hanno una destinazione. Con `?frasi=1` fra quelle di oggi e quella
+// di ieri ci sono tre notifiche di Project Management, lette: una dice chi e che cosa, una solo chi, una solo il nome della
+// scheda. Con `?opportunita=1` in fondo all'elenco ci
 // sono le nove notifiche dei tipi nuovi del CRM, lette: i cinque eventi di opportunità e attività, poi le quattro che il CRM manda a
 // chi diventa responsabile, col tipo com'è nel backoffice, senza `com.zeiras.` davanti (`crm.persona.assegnata`); zr-core conosce
 // tutti e nove i tipi, e ognuno apre la sua pagina nel CRM: l'opportunità, il contatto, l'azienda, e «Da fare» per un'attività.
@@ -54,6 +56,8 @@ const opportunita = new URLSearchParams(window.location.search).has('opportunita
 // scheda, da leggere, e in fondo una scheda eliminata, letta: la prima apre la scheda, la seconda non ha una destinazione.
 // Dallo sprint 26 (T6), subito dopo la prima, c'è la notifica a chi viene menzionato in un commento, da leggere: apre la sua scheda.
 const schede = new URLSearchParams(window.location.search).has('schede');
+// Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
+const frasi = new URLSearchParams(window.location.search).has('frasi');
 
 /**
  * Gli `ids` delle tre note di `?crm=1`, come li dà la parte server: i soli del percorso che si apre. La prima è legata a
@@ -92,6 +96,16 @@ const notificheDiProva = [
     // Dallo sprint 24 una scheda nuova porta il suo id, come dalla parte server: un clic apre la scheda.
     { id: 'uat-4', creata_il: fa(5), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', ...detti('Marta Rossi', 'UAT Scrivere il brief del lancio', true), ids: { id: 'uat-scheda-1' } as Record<string, string> },
     { id: 'uat-3', creata_il: fa(3 * 60), letta: false, app: 'crm', tipo: 'com.zeiras.crm.contatto.creato', ...detti('Bruno Neri', null, false), ids: {} },
+    // Solo con `?frasi=1`, fra quelle di oggi e quella di ieri, lette: le tre righe di una notifica di Project Management. La prima
+    // porta chi ha fatto e il nome della scheda, e il pannello la scrive in una frase sola; la seconda solo chi (una scheda
+    // eliminata: il nome non c'è); la terza solo il nome, e resta col titolo del tipo e il nome sotto. Le persone sono inventate.
+    ...(frasi
+        ? [
+              { id: 'uat-f1', creata_il: fa(4 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Preparare il lancio', per_me: null, ids: { id: 'uat-scheda-2' } as Record<string, string> },
+              { id: 'uat-f2', creata_il: fa(5 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', autore_nome: 'Bruno Neri', risorsa_nome: null, per_me: null, ids: {} as Record<string, string> },
+              { id: 'uat-f3', creata_il: fa(6 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.modificata', autore_nome: null, risorsa_nome: 'UAT Rivedere il piano editoriale', per_me: null, ids: { id: 'uat-scheda-3' } as Record<string, string> },
+          ]
+        : []),
     { id: 'uat-2', creata_il: ieri.toISOString(), letta: true, app: 'uat-ignota', ...nonDetti, ids: {} },
     // Solo con `?chi=1`, una notifica su un'app: lì il backoffice dà il codice dell'app (`pm`), e il pannello ne mostra il nome.
     ...(chi ? [{ id: 'uat-0', creata_il: fa(3 * 24 * 60), letta: true, app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Marta Rossi', risorsa_nome: 'pm', per_me: null, ids: {} }] : []),
