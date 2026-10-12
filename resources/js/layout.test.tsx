@@ -2,7 +2,6 @@ import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
-import { testi } from './lingue';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
 // layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
@@ -245,7 +244,7 @@ describe('LayoutDellaCornice', () => {
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(segnaposto()).toBe('Cerca board e cartelle…');
+        expect(segnaposto()).toBe('Cerca schede, board, cartelle…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
         await visita(inSpagnolo, <PaginaB key="2" />);
@@ -257,7 +256,7 @@ describe('LayoutDellaCornice', () => {
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
-        expect(segnaposto()).toBe('Busca tableros y carpetas…');
+        expect(segnaposto()).toBe('Busca tarjetas, tableros, carpetas…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);
@@ -380,7 +379,8 @@ describe('LayoutDellaCornice', () => {
             </LayoutDellaCornice>,
         );
         expect(uno('.zr-shell')?.className).toBe('zr-shell');
-        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(testi('it').searchPlaceholder);
+        // Il segnaposto resta quello della cornice, con le fonti del workspace dei dati (sprint 25 · T4.3).
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca schede, board, cartelle…');
     });
 });
 

@@ -9,10 +9,10 @@ import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDe
 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
- * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>` e il titolo di ogni tipo di notifica per
- * `notificationTitle.<tipo>`.
+ * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>`, il nome da elenco della stessa risorsa,
+ * minuscolo, per `searchSource.<prodotto>.<tipo>` e il titolo di ogni tipo di notifica per `notificationTitle.<tipo>`.
  */
-export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & {
+export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & Record<`searchSource.${TipoDiRisorsa}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Moduli. */
@@ -52,6 +52,17 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
      * `searchError`), su una copia.
      */
     acceptanceOff: string;
+    /**
+     * Il segnaposto del campo di ricerca quando la ricerca ha delle fonti nel workspace: `{sources}` è il posto dei loro nomi da
+     * elenco, al più tre. `searchPlaceholder`, che è dell'`AppShell`, è quello senza fonti: quale vale lo decide la cornice,
+     * come per `unreadOne` (`testiDellaRicerca`; README, «La ricerca»).
+     */
+    searchPlaceholderSources: string;
+    /**
+     * L'invito sotto il campo, prima di due caratteri, quando la ricerca ha delle fonti: `{sources}` è il posto dei nomi di
+     * tutte. `searchHint`, che è dell'`AppShell`, è quello senza fonti.
+     */
+    searchHintSources: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
     /**
@@ -132,6 +143,36 @@ export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string)
     const t = testi(lingua);
 
     return voce.id === 'home' ? t.dashboard : t[voce.id];
+}
+
+/** Il posto dei nomi delle fonti nei due testi della ricerca che le nominano (`searchPlaceholderSources`, `searchHintSources`). */
+const POSTO_DELLE_FONTI = '{sources}';
+/** Quante fonti nomina, al più, il segnaposto del campo di ricerca: il campo è stretto, e i puntini dicono che ce ne sono altre. */
+const FONTI_NEL_SEGNAPOSTO = 3;
+
+/**
+ * Il segnaposto del campo di ricerca e l'invito che si legge prima di due caratteri, in una lingua, per le fonti della ricerca
+ * in un workspace (`fontiDellaRicerca`): i due testi dell'`AppShell` che la cornice compone. Ogni fonte ha nella lingua il suo
+ * nome da elenco (`searchSource.<prodotto>.<tipo>`). L'invito le nomina tutte, unite come la lingua unisce un elenco, con la sua
+ * congiunzione («schede, board e cartelle»); il segnaposto le prime tre, col separatore dello stesso elenco e senza
+ * congiunzione («schede, board, cartelle»). Senza fonti sono i due testi della lingua che non ne nominano nessuna. L'elenco lo
+ * scrive `Intl` nella lingua dei testi, mai in quella del browser.
+ */
+export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
+    const t = testi(lingua);
+    const [prima] = fonti;
+    if (prima === undefined) {
+        return { searchPlaceholder: t.searchPlaceholder, searchHint: t.searchHint };
+    }
+    const nomi = fonti.map((fonte) => t[`searchSource.${fonte}`]);
+    const elenco = new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' });
+    // Il separatore di un elenco nella lingua, senza la congiunzione: in un elenco di tre voci, quello fra le prime due.
+    const separatore = elenco.formatToParts(Array<string>(3).fill(t[`searchSource.${prima}`])).find((parte) => parte.type === 'literal')?.value ?? '';
+
+    return {
+        searchPlaceholder: t.searchPlaceholderSources.replace(POSTO_DELLE_FONTI, () => nomi.slice(0, FONTI_NEL_SEGNAPOSTO).join(separatore)),
+        searchHint: t.searchHintSources.replace(POSTO_DELLE_FONTI, () => elenco.format(nomi)),
+    };
 }
 
 /**

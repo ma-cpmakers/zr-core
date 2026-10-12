@@ -1,9 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
+import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaRicerca, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
-import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
+import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
@@ -247,10 +247,33 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     return scelta;
 }
 
+/** Ciò che unisce due testi in una riga, come nel design system. */
+const FRA_DUE_TESTI = ' · ';
+
 /**
- * Un risultato della ricerca nella cornice. Il contratto dà solo tipo, id e titolo: il prodotto è quello che nel registro ha
- * quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il gruppo è il nome del tipo
- * nella lingua dei testi, nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
+ * La seconda riga di un risultato della ricerca: i testi di `contesto` che il registro dice per il suo tipo (`chiavi`), nel
+ * loro ordine e senza gli spazi intorno, uniti da « · ». Solo quelli che ci sono: `contesto` arriva dal backoffice, e una
+ * chiave può mancare, essere `null`, vuota o non essere un testo — allora non conta, e non lascia un « · » appeso. Niente
+ * (`undefined`) senza testi, senza `contesto`, o per un tipo che nel registro non ha chiavi.
+ */
+function secondaRiga(contesto: unknown, chiavi: readonly string[] | undefined): string | undefined {
+    if (typeof contesto !== 'object' || contesto === null || chiavi === undefined) {
+        return undefined;
+    }
+    const presenti = chiavi.flatMap((chiave) => {
+        const testo: unknown = Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined;
+
+        return typeof testo === 'string' && testo.trim() !== '' ? [testo.trim()] : [];
+    });
+
+    return presenti.length === 0 ? undefined : presenti.join(FRA_DUE_TESTI);
+}
+
+/**
+ * Un risultato della ricerca nella cornice. Il contratto dà tipo, id, titolo e, dalla `v1.15.0`, `contesto`: il prodotto è
+ * quello che nel registro ha quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il
+ * gruppo è il nome del tipo nella lingua dei testi, la seconda riga i testi di `contesto` che il registro dice per il tipo
+ * (`secondaRiga`), nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
  * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
  * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato. E non si mostra un risultato il cui id non
  * ha la forma di un id: arriva dal backoffice, e in un indirizzo non entra com'è (`encodeURIComponent` non tocca i punti, e
@@ -270,6 +293,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title: risultato.titolo,
+        subtitle: secondaRiga(risultato.contesto, risorsa.contesto),
         group: t[tipo],
         product: nomeDellaVoce(delProdotto, lingua),
         icon: risorsa.icona,
@@ -394,6 +418,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
     };
     const t = testi(dati.lingua);
+    // I due testi della ricerca che dicono che cosa si può cercare: le fonti sono i tipi di risorsa dei moduli attivi nel
+    // workspace dei dati. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando i dati li
+    // dicono ancora attivi.
+    const fonti = ridotta ? [] : fontiDellaRicerca(dati.prodotti);
+    // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
+    const quali = fonti.join();
+    const dellaRicerca = useMemo(() => testiDellaRicerca(dati.lingua, fonti), [dati.lingua, quali]);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
     const prodotti = {
@@ -766,12 +797,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
             // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
-            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. A chi non ha
+            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
+            // copia il segnaposto e l'invito della ricerca, che dicono le fonti del workspace (`dellaRicerca`). A chi non ha
             // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
             // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
             labels={ridotta
-                ? { ...t, notificationsError: t.acceptanceOff, searchHint: t.acceptanceOff, searchError: t.acceptanceOff }
-                : unaSola || sulPulsante !== t.markAllRead ? { ...t, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante } : t}
+                ? { ...t, ...dellaRicerca, notificationsError: t.acceptanceOff, searchHint: t.acceptanceOff, searchError: t.acceptanceOff }
+                : { ...t, ...dellaRicerca, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
         />

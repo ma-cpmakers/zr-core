@@ -500,9 +500,28 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
 
     it('POST /cornice/ricerca dà i risultati d\'esempio che hanno nel titolo la parola del corpo, in ordine di titolo, e il workspace della «sessione» (sprint 18 · T1.7; sprint 22 · T6.5)', async () => {
         expect(await rispostaDi('/cornice/ricerca', cerca('marketing'))).toStrictEqual({ stato: 200, corpo: { data: [
-            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing' },
-            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing', contesto: null },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
         ], workspace: 'uat-marketing' } });
+    });
+
+    // Sprint 25 · T4 (voce #1639): i risultati d'esempio sono quelli di ricerca.crea. Per prime le fonti nuove — schede,
+    // contatti, aziende, opportunità —, poi board e cartelle in ordine di titolo; ogni risultato porta `contesto`, i testi per
+    // riconoscerlo o `null`, e un contatto può non avere né azienda né ruolo.
+    it('cercando «uat» la ricerca finta dà schede, contatti, aziende e opportunità per primi, poi board e cartelle in ordine di titolo, ognuno col suo `contesto`; in fondo i due tipi che il registro non ha (sprint 25 · T4.1, T4.2)', async () => {
+        expect((await rispostaDi('/cornice/ricerca', cerca('uat'))).corpo.data).toStrictEqual([
+            { tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } },
+            { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
+            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+            { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
+            { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
+            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
+            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
+            { tipo: 'board.cartelle', id: 'uat-3', titolo: 'UAT Marketing', contesto: null },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
+            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio', contesto: null },
+            { tipo: 'uat-ignoto', id: 'uat-9', titolo: 'UAT tipo ignoto', contesto: null },
+        ]);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([
@@ -513,21 +532,22 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         const richiesta = { method: 'POST', body: JSON.stringify({ q: 'report', workspace: 'uat-della-richiesta' }) };
 
         expect(await rispostaDi('/cornice/ricerca?workspace=uat-dell-indirizzo', richiesta, '', () => slug)).toStrictEqual({ stato: 200, corpo: { data: [
-            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing' },
+            { tipo: 'board.board', id: 'uat-14', titolo: 'UAT Report marketing', contesto: null },
         ], ...atteso } });
     });
 
     // Sprint 24 · T4 (voce #1754): con `?id_malfatto=1` fra i risultati d'esempio c'è una board in più, con l'id `..`. La
     // cornice non la mostra: gli altri risultati della stessa parola sì.
     it.each<[string, string, Record<string, unknown>[]]>([
-        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto' }]],
+        ['con `?id_malfatto=1` fra i risultati d\'esempio c\'è una board con l\'id `..`, al suo posto nell\'ordine dei titoli', '?id_malfatto=1', [{ tipo: 'board.board', id: '..', titolo: 'UAT Lancio Q9, id malfatto', contesto: null }]],
         ['senza `?id_malfatto` i risultati d\'esempio sono quelli di prima', '', []],
     ])('%s (sprint 24 · T4.2)', async (_caso, query, inPiu) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('lancio'), query)).corpo.data).toStrictEqual([
-            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1' },
-            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4' },
+            { tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } },
+            { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
+            { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
             ...inPiu,
-            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio' },
+            { tipo: 'board.schede', id: 'uat-77', titolo: 'UAT Scrivere il brief del lancio', contesto: null },
         ]);
     });
 

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
-import { testi } from './lingue';
+import { testi, testiDellaRicerca } from './lingue';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
 
@@ -21,6 +21,8 @@ const dati: DatiDellaCornice = {
     workspace: { nome: 'Marketing', slug: 'acme-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'attivo', reports: 'attivo' },
 };
+/** Le fonti della ricerca coi dati qui sopra: dei moduli attivi, solo Project Management ha risorse nel registro. */
+const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle'] as const;
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /**
@@ -202,7 +204,7 @@ describe('la Cornice', () => {
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
         const appShell = vi.spyOn(componenti, 'AppShell');
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
-        expect(appShell.mock.lastCall?.[0].labels).toStrictEqual(testi(lingua));
+        expect(appShell.mock.lastCall?.[0].labels).toStrictEqual({ ...testi(lingua), ...testiDellaRicerca(lingua, fontiDeiDati) });
         expect([...(uno('.zr-nav .zr-nav-group')?.querySelectorAll('a.zr-nav-item .zr-nav-label') ?? [])].map((voce) => voce.textContent)).toStrictEqual(nomi);
         expect(uno('.zr-nav .zr-nav-group .zr-nav-title')?.textContent).toBe(menu);
 
@@ -214,15 +216,29 @@ describe('la Cornice', () => {
         expect(tutti('.zr-product-menu a.zr-nav-item .zr-nav-label').map((voce) => voce.textContent)).toStrictEqual(nomi);
     });
 
-    it.each([
-        ['it', 'Cerca board e cartelle: scrivi almeno 2 caratteri.'],
-        ['en', 'Search boards and folders: type at least 2 characters.'],
-        ['es', 'Busca tableros y carpetas: escribe al menos 2 caracteres.'],
-    ])('con la lingua "%s", nella ricerca prima di due caratteri si legge l\'aiuto che dice board e cartelle, ciò che la ricerca trova oggi: anche in italiano, dove l\'`AppShell` da sola direbbe ancora «in tutti i prodotti» (sprint 21 · T1.3; sprint 22 · T8.2)', async (lingua, aiuto) => {
-        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+    // Sprint 25 · T4 (voce #1639): il segnaposto del campo e l'invito che si legge prima di due caratteri dicono le fonti della
+    // ricerca nel workspace, cioè i tipi di risorsa dei moduli attivi lì: il segnaposto ne nomina al più tre, l'invito tutte.
+    // Un modulo solo disponibile, in arrivo o senza risorse nel registro non dà fonti, e senza fonti restano i due testi corti.
+    it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board e cartelle: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca schede, board, cartelle…', 'Cerca schede, board, cartelle, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca contatti, aziende, opportunità…', 'Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['it', {}, 'Cerca…', 'Scrivi almeno 2 caratteri.'],
+        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca tarjetas, tableros, carpetas…', 'Busca tarjetas, tableros, carpetas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
+        ['es', {}, 'Busca…', 'Escribe al menos 2 caracteres.'],
+        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search cards, boards, folders…', 'Search cards, boards, folders, contacts, companies, and opportunities: type at least 2 characters.'],
+        ['en', {}, 'Search…', 'Type at least 2 characters.'],
+        // Una lingua che zr-core non ha: in inglese.
+        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search cards, boards, folders…', 'Search cards, boards, and folders: type at least 2 characters.'],
+    ])('con la lingua "%s" e i moduli %j, il segnaposto del campo di ricerca e l\'invito prima di due caratteri nominano le fonti dei moduli attivi nel workspace, e solo quelle: mai il testo fisso di prima, né quello dell\'`AppShell` (sprint 25 · T4.3)', async (lingua, prodotti, segnaposto, invito) => {
+        await mostra(<Cornice dati={{ ...dati, lingua, prodotti }} onLogout={esciSenzaEffetto} />);
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
         await act(async () => uno('.zr-search input')?.focus());
 
-        expect(uno('.zr-search-note')?.textContent).toBe(aiuto);
+        expect(uno('.zr-search-note')?.textContent).toBe(invito);
     });
 
     it('l\'ingresso del pacchetto esporta il registro e nomeDellaVoce, per chi mostra i prodotti fuori dalla cornice (T7.2)', async () => {
@@ -264,7 +280,8 @@ describe('la Cornice', () => {
     });
 
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
-        const attesi = testi(lingua);
+        // I due testi della ricerca sono quelli delle fonti del workspace (sprint 25 · T4.3): gli altri, quelli della lingua.
+        const attesi = { ...testi(lingua), ...testiDellaRicerca(lingua, fontiDeiDati) };
         const appShell = vi.spyOn(componenti, 'AppShell');
         // Con `piano`: la voce «Piano» è spenta di default (sprint 15 · T1), e il suo testo si legge solo col menu intero.
         await mostra(<Cornice dati={{ ...dati, lingua, aziende, non_lette: 7 }} onLogout={esciSenzaEffetto} crumbs={percorso} create={[{ label: 'Board', icon: 'board' }]} piano />);
@@ -3104,12 +3121,13 @@ describe('il pannello delle notifiche', () => {
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso POST /cornice/ricerca: una richiesta sola in volo, i risultati
 // raggruppati per tipo dal registro, gli stati. Sprint 5 · T4 (voce #1257): un risultato è `{tipo, id, titolo}`, come in
 // ricerca.elenca; di che prodotto è lo dice il registro, dal tipo. Sprint 18 · T1 (voce #1638): la parola cercata sta nel corpo
-// della richiesta, mai nel suo indirizzo.
+// della richiesta, mai nel suo indirizzo. Sprint 25 · T4 (voce #1639): un risultato porta anche `contesto`, come in ricerca.crea,
+// e la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga.
 describe('la ricerca', () => {
     /**
      * I risultati come li dà POST /cornice/ricerca, nell'ordine del backoffice (per titolo): i tipi mescolati (l'`AppShell` apre
-     * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e le schede,
-     * che la ricerca del backoffice ancora non cerca) e un risultato con un `app` che non è il suo prodotto: non conta.
+     * un gruppo a ogni cambio di gruppo), lo stesso id in due tipi, due tipi che il registro non ha (uno mai visto, e uno che
+     * somiglia a quello delle schede, `board.scheda`, senza esserlo) e un risultato con un `app` che non è il suo prodotto: non conta.
      */
     const risultatiDelServer = [
         { tipo: 'board.board', id: '01k6w2d5f7h9k1n3q5s7v9x1z3', titolo: 'Lancio Q4' },
@@ -3250,6 +3268,106 @@ describe('la ricerca', () => {
         });
         expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
         expect(uno('.zr-search-panel')).toBeNull();
+    });
+
+    /**
+     * Una risposta coi sei tipi di `ricerca.crea` (dalla `v1.15.0`), mescolati perché l'ordine dei gruppi non sia quello del
+     * registro: ogni risultato col suo `contesto`, i testi che il backoffice dà per riconoscerlo — `null`, o un oggetto coi
+     * due testi, con uno solo o con nessuno. In mezzo, un contatto con l'id fuori forma e un tipo che il registro non ha: non
+     * si mostrano.
+     */
+    const diOgniTipo = [
+        { tipo: 'crm.persona', id: '01k7b1p1', titolo: 'Grace Hopper', contesto: { organizzazione: 'Acme Srl', ruolo: 'CTO' } },
+        { tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', contesto: { board: 'Lancio Q4', lista: 'Da fare' } },
+        { tipo: 'crm.persona', id: '..', titolo: 'Contatto fuori forma', contesto: { organizzazione: 'Acme Srl', ruolo: null } },
+        { tipo: 'crm.organizzazione', id: '01k7b1o1', titolo: 'Acme Srl', contesto: null },
+        { tipo: 'crm.trattativa', id: '01k7b1t1', titolo: 'Rinnovo 2027', contesto: { pipeline: 'Vendite', fase: 'Proposta' } },
+        { tipo: 'crm.attivita', id: '01k7b1a1', titolo: 'Richiamare Grace', contesto: null },
+        { tipo: 'board.board', id: '01k7b1b1', titolo: 'Lancio Q4', contesto: null },
+        { tipo: 'crm.persona', id: '01k7b1p2', titolo: 'Alan Turing', contesto: { organizzazione: null, ruolo: 'Consulente' } },
+        { tipo: 'board.cartelle', id: '01k7b1c1', titolo: 'Marketing', contesto: null },
+        { tipo: 'board.scheda', id: '01k7b1s2', titolo: 'Brief del lancio', contesto: { board: 'Lancio Q4', lista: null } },
+        { tipo: 'crm.persona', id: '01k7b1p3', titolo: 'Ada Byron', contesto: { organizzazione: null, ruolo: null } },
+    ];
+
+    it.each<[lingua: string, gruppi: string[], pm: string, crm: string]>([
+        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Cartelle'], 'Project Management', 'CRM'],
+        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Carpetas'], 'Gestión de proyectos', 'CRM'],
+        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Folders'], 'Project Management', 'CRM'],
+    ])('con la lingua "%s", schede, contatti, aziende e opportunità stanno ognuno nel suo gruppo, con la seconda riga fatta dei testi di `contesto` che ci sono, il nome e il tono del loro modulo e l\'icona del tipo; i gruppi nell\'ordine del primo risultato di ognuno e dentro un gruppo l\'ordine del backoffice; un tipo che il registro non ha e un id fuori forma non compaiono (sprint 25 · T4.1, T4.2)', async (lingua, gruppi, pm, crm) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo)));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(tutti('.zr-search-panel .zr-search-group').map((gruppo) => gruppo.textContent)).toStrictEqual(gruppi);
+        expect(righe().map((riga) => [riga.querySelector('.zr-search-title')?.textContent, riga.querySelector('.zr-search-sub')?.textContent ?? null, riga.querySelector('.zr-search-product')?.textContent])).toStrictEqual([
+            ['Grace Hopper', 'Acme Srl · CTO', crm],
+            ['Alan Turing', 'Consulente', crm],
+            ['Ada Byron', null, crm],
+            ['Scrivere il brief', 'Lancio Q4 · Da fare', pm],
+            ['Brief del lancio', 'Lancio Q4', pm],
+            ['Acme Srl', null, crm],
+            ['Rinnovo 2027', 'Vendite · Proposta', crm],
+            ['Lancio Q4', null, pm],
+            ['Marketing', null, pm],
+        ]);
+        expect(righe().map((riga) => [...(riga.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'))))
+            .toStrictEqual(['zr-label-sky', 'zr-label-sky', 'zr-label-sky', 'zr-label-pine', 'zr-label-pine', 'zr-label-sky', 'zr-label-sky', 'zr-label-pine', 'zr-label-pine']);
+        expect(righe().map((riga) => riga.querySelector('.zr-iconbox path')?.getAttribute('d')))
+            .toStrictEqual((['users', 'users', 'users', 'file', 'file', 'building', 'target', 'board', 'folder'] as const).map((icona) => tracciatoDi(icona)));
+    });
+
+    it.each([
+        ['Scrivere il brief', 'https://board.zeiras.com/w/zeta-ricerca/c/01k7b1s1'],
+        ['Grace Hopper', 'https://crm.zeiras.com/w/zeta-ricerca/contatti/01k7b1p1'],
+        ['Acme Srl', 'https://crm.zeiras.com/w/zeta-ricerca/aziende/01k7b1o1'],
+        ['Rinnovo 2027', 'https://crm.zeiras.com/w/zeta-ricerca/opportunita/01k7b1t1'],
+    ])('scegliere «%s» apre la sua pagina nel modulo che ha quel tipo nel registro, nel workspace che la risposta dice e non in quello della pagina (sprint 25 · T4.1)', async (titolo, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo, 'zeta-ricerca')));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        const scelto = righe().find((riga) => riga.querySelector('.zr-search-title')?.textContent === titolo);
+        expect(scelto).toBeDefined();
+        await act(async () => {
+            scelto?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it.each<[caso: string, contesto: unknown, secondaRiga: string | null]>([
+        ['che manca, come in una risposta finta di prima della `v1.15.0`', undefined, null],
+        ['`null`', null, null],
+        ['senza le chiavi del tipo', {}, null],
+        ['coi due testi', { board: 'Lancio Q4', lista: 'Da fare' }, 'Lancio Q4 · Da fare'],
+        ['col solo secondo testo', { board: null, lista: 'Da fare' }, 'Da fare'],
+        ['con un testo vuoto e uno di soli spazi', { board: '', lista: '  ' }, null],
+        ['coi testi con gli spazi intorno', { board: ' Lancio Q4 ', lista: 'Da fare\n' }, 'Lancio Q4 · Da fare'],
+        ['con valori che non sono testi', { board: 12, lista: { nome: 'Da fare' } }, null],
+        ['con le chiavi di un altro tipo', { organizzazione: 'Acme Srl', ruolo: 'CTO', pipeline: 'Vendite' }, null],
+        ['che è un testo', 'Lancio Q4', null],
+        ['che è un elenco', ['Lancio Q4', 'Da fare'], null],
+    ])('la seconda riga di una scheda con un `contesto` %s: solo i testi che ci sono, nell\'ordine del registro, mai `null`, `undefined` o un « · » appeso (sprint 25 · T4.1)', async (_caso, contesto, secondaRiga) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo: 'board.scheda', id: '01k7b1s1', titolo: 'Scrivere il brief', ...(contesto === undefined ? {} : { contesto }) }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('brief');
+        expect(titoli()).toStrictEqual(['Scrivere il brief']);
+        expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent ?? null).toBe(secondaRiga);
+    });
+
+    it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.board', id: '01k7b1b1', titolo: 'Lancio Q4', contesto: { board: 'Lancio Q4', lista: 'Da fare' } },
+            { tipo: 'board.cartelle', id: '01k7b1c1', titolo: 'Marketing', contesto: { organizzazione: 'Acme Srl' } },
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Lancio Q4', 'Marketing']);
+        expect(tutti('.zr-search-panel .zr-search-sub')).toHaveLength(0);
     });
 
     it('due cartelle si aprono sulla stessa pagina del workspace e restano due risultati (sprint 6 · T5.1)', async () => {
@@ -3734,6 +3852,17 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(['onNotificationsOpen', 'onRetryNotifications', 'onMarkAllRead', 'onAllNotifications', 'onOpenNotification', 'onSearch'].filter((nome) => nome in props)).toStrictEqual([]);
         expect([props.notifications, props.unreadCount, props.notificationsState, props.searchResults, props.searchState]).toStrictEqual([[], 0, 'error', [], 'error']);
         expect([props.labels?.notificationsError, props.labels?.searchHint, props.labels?.searchError]).toStrictEqual([spenta, spenta, spenta]);
+    });
+
+    // Sprint 25 · T4 (voce #1639): nello stato ridotto i due testi della ricerca non nominano nessuna fonte, nemmeno coi dati che
+    // dicono ancora un modulo attivo (lo stato ridotto lo ha detto una rotta, o i dati li ha ritoccati un frontend): il
+    // segnaposto è quello senza fonti, e l'invito resta la frase dell'accettazione.
+    it('a chi non ha accettato i documenti legali il segnaposto della ricerca non nomina nessuna fonte, nemmeno coi dati che dicono un modulo attivo, e l\'invito resta la frase dell\'accettazione (sprint 25 · T4.3)', async () => {
+        await mostra(<Cornice dati={{ ...dati, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca…');
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(uno('.zr-search-note')?.textContent).toBe('Non disponibile finché non accetti i documenti.');
     });
 
     it.each([

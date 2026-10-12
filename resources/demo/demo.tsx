@@ -23,7 +23,8 @@ import { rotteFinte } from './rotte-finte';
 // scrivono in console; con `?crm=1` (le notifiche del CRM, rotte-finte.ts), `?viste=1` (quelle delle viste di una board),
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
 // assegnata e una eliminata, di Project Management) l'ultimo si legge anche in pagina, sotto le scelte.
-// Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire. Non entra nel pacchetto.
+// Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
+// nomina anche le sue fonti (contatti, aziende, opportunità). Non entra nel pacchetto.
 // La cornice gliela dà chi la monta (`avvia`, in fondo): index.tsx, per index.html, quella dell'ingresso di sempre; app.tsx,
 // per app.html, quella dell'ingresso per le app, e sotto le scelte scrive se `window.Zeiras` c'è.
 
@@ -72,6 +73,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     const aziende = aziendeDiProva[scelti.get('aziende') ?? 'due'];
     const nonLette = Number(scelti.get('non_lette') ?? 7);
     const senzaCrm = scelti.has('senza_crm');
+    const crmAttivo = scelti.has('crm_attivo');
     // Con `?accettazione=1` i dati sono quelli di chi non ha accettato i documenti legali in vigore, come li dà la parte server
     // dalla `v1.14.0`: nessun modulo, nessuna azienda, zero non lette, e `accettazione_richiesta: true` in fondo. Con
     // `?accettazione=dopo` i dati sono quelli di sempre, e lo dicono le rotte finte (rotte-finte.ts).
@@ -79,12 +81,12 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     // Gli stessi dati finché non cambiano, come da una parte server: ridati a ogni disegno, la cornice li prenderebbe per dati
     // nuovi, e dopo «Segna tutte come lette» un clic che naviga rimetterebbe il numero sulla campanella.
     const dati = useMemo(() => {
-        const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : datiDiProva.prodotti;
+        const prodotti: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : crmAttivo ? { ...datiDiProva.prodotti, crm: 'attivo' } : datiDiProva.prodotti;
 
         const ridotti = daAccettare ? { prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
-    }, [senzaCrm, lingua, aziende, nonLette, daAccettare]);
+    }, [senzaCrm, crmAttivo, lingua, aziende, nonLette, daAccettare]);
     // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1` o `?schede=1`, così le
     // altre pagine restano com'erano.
     const [aperto, setAperto] = useState<string>();

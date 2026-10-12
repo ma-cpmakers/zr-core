@@ -32,10 +32,17 @@ export interface NotificaDellaCornice {
 
 /** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */
 export interface RisultatoDellaRicerca {
-    /** Il tipo della risorsa nel backoffice (`board.board`, `board.cartelle`): di che prodotto è, e come si mostra, lo dice il registro. */
+    /** Il tipo della risorsa nel backoffice (`board.scheda`, `crm.persona`): di che prodotto è, e come si mostra, lo dice il registro. */
     tipo: string;
     id: string;
     titolo: string;
+    /**
+     * I testi che il backoffice dà per riconoscerla, con le sue chiavi (dalla `v1.15.0`): `board` e `lista` di una scheda,
+     * `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità, ognuno un testo o `null`; `null` per
+     * un'azienda, una board e una cartella. Quali fanno la seconda riga del risultato lo dice il registro. Facoltativo: una parte
+     * server finta di prima della `v1.15.0` non lo dà, e vale come `null`.
+     */
+    contesto?: Record<string, string | null> | null | undefined;
 }
 
 /**

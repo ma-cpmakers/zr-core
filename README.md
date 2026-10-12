@@ -73,9 +73,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip |
 |---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 16,4 KB |
-| la cornice e due componenti per nome | 57,5 KB | 17,6 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 35,7 KB |
+| solo la cornice, dall'ingresso per le app | 56,9 KB | 17,0 KB |
+| la cornice e due componenti per nome | 60,2 KB | 18,2 KB |
+| la stessa cornice, dall'ingresso di sempre | 119,1 KB | 36,3 KB |
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -563,32 +563,54 @@ cornice === null ? pagina : (
   query. Per i test di un frontend che passa alla `v1.15.0` cambiano due cose: un backoffice finto che risponde alla ricerca
   la riceve come `POST /v1/ricerca` con la parola nel corpo (`{q}`), non più come GET con `q` nell'indirizzo (il
   `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`); e ogni risultato di `POST /cornice/ricerca` ha
-  `contesto`, che un caso che confronta la risposta intera aggiunge. Una parola nuova annulla la richiesta di prima, e una
-  risposta arrivata tardi non sostituisce mai quella dell'ultima parola. Un risultato porta tipo, id e titolo e, dalla
-  `v1.15.0`, il `contesto`: di che prodotto è lo dice il registro, dal tipo (oggi board e cartelle, di Project
-  Management). I risultati stanno raggruppati per tipo, col nome del tipo nella lingua, il nome e il tono del prodotto e
-  l'icona del tipo; un tipo che il registro non ha non si mostra. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui
-  id non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
-  risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre su
-  `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace dove
-  stanno le cartelle, `https://board.zeiras.com/w/<slug>`. Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice
-  (`workspace`), che non è sempre quello dei dati della pagina: la sessione ha un workspace solo, e con due schede su due
-  workspace la scheda rimasta indietro cerca in quello in cui la persona è entrata per ultimo; fino alla `v1.11.0` apriva
-  quei risultati nel proprio, dove non ci sono. Una risposta senza `workspace`, o con un `workspace` che non è un testo o è
-  vuoto, è un errore della ricerca: senza non c'è un indirizzo sicuro, e la cornice non ripiega sul workspace della
-  pagina. Così risponde anche una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si
-  aggiunge `workspace`, con lo slug dei dati della pagina (si trovano cercando `cornice/ricerca` nei test del frontend).
-  Dalla `v1.13.0` è un errore della ricerca anche un `workspace` che non ha la forma di uno slug — minuscole e cifre, a
-  pezzi uniti da un trattino, la stessa che vale per una notifica —: con `..` l'indirizzo di un risultato sarebbe un
-  altro. Una parte server finta che risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta. Se
-  la rotta fallisce, l'errore della ricerca, mai «Nessun risultato». Dalla `v1.12.0` il segnaposto del campo e l'aiuto
-  che si legge prima di due caratteri dicono ciò che la ricerca trova oggi, board e cartelle: «Cerca board e cartelle…»
-  e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e «Search boards and
-  folders: type at least 2 characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y carpetas:
-  escribe al menos 2 caracteres.»). Prima erano «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi
-  almeno 2 caratteri.»: un frontend che li ha nei suoi test li trova cercando `Cerca progetti` e `tutti i moduli` (in
-  inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`). Tornano
-  larghi, una fonte alla volta, quando la ricerca del backoffice trova altro.
+  `contesto`, che un caso che confronta la risposta intera aggiunge. Cambiano anche il segnaposto e l'invito del campo, che non sono più i due
+  testi fissi di prima (più sotto). Una parola nuova annulla la richiesta di prima, e una risposta arrivata tardi non
+  sostituisce mai quella dell'ultima parola. Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
+  prodotto è lo dice il registro, dal tipo. Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede
+  (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le
+  aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`). Fino alla `v1.14.0` mostrava solo board e cartelle. I
+  risultati stanno raggruppati per tipo, col nome del tipo nella lingua (Schede, Board, Cartelle, Contatti, Aziende,
+  Opportunità), il nome e il tono del prodotto e l'icona del tipo; i gruppi escono nell'ordine del backoffice, quello del
+  primo risultato di ognuno, e dentro un gruppo i risultati nel suo ordine. Sotto il titolo sta la seconda riga: i testi di
+  `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un
+  contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e una cartella non hanno una
+  seconda riga; un tipo che il registro non ha non si mostra. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui id
+  non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
+  risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre
+  su `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace
+  dove stanno le cartelle, `https://board.zeiras.com/w/<slug>`; una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un
+  contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`,
+  un'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`: gli stessi percorsi che aprono le notifiche. Nel CRM
+  le aziende e le opportunità stanno dietro una voce che un workspace può spegnere: se è spenta la pagina di quel risultato
+  risponde 404, ed è una risposta del CRM. Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non
+  è sempre quello dei dati della pagina: la sessione ha un workspace solo, e con due schede su due workspace la scheda
+  rimasta indietro cerca in quello in cui la persona è entrata per ultimo; fino alla `v1.11.0` apriva quei risultati nel
+  proprio, dove non ci sono. Una risposta senza `workspace`, o con un `workspace` che non è un testo o è vuoto, è un errore
+  della ricerca: senza non c'è un indirizzo sicuro, e la cornice non ripiega sul workspace della pagina. Così risponde anche
+  una parte server finta, nei test di un frontend, che dà i risultati senza `workspace`: le si aggiunge `workspace`, con lo
+  slug dei dati della pagina (si trovano cercando `cornice/ricerca` nei test del frontend). Dalla `v1.13.0` è un errore
+  della ricerca anche un `workspace` che non ha la forma di uno slug — minuscole e cifre, a pezzi uniti da un trattino, la
+  stessa che vale per una notifica —: con `..` l'indirizzo di un risultato sarebbe un altro. Una parte server finta che
+  risponde con uno slug fuori forma (`Acme`, `acme_marketing`) va corretta. Se la rotta fallisce, l'errore della ricerca,
+  mai «Nessun risultato». Dalla `v1.15.0` il segnaposto del campo e l'invito che si legge prima di due caratteri dicono le
+  fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell'ordine del registro, ognuno col
+  nome da elenco che ha nella lingua (`searchSource.<prodotto>.<tipo>`: «schede», «board», «cartelle», «contatti»,
+  «aziende», «opportunità»). Il segnaposto ne nomina al più tre, l'invito tutte, unite come la lingua unisce un elenco
+  (`Intl.ListFormat`). Con Project Management attivo e il CRM no: «Cerca schede, board, cartelle…» e «Cerca schede, board e
+  cartelle: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, folders…» e «Search cards, boards, and folders:
+  type at least 2 characters.», in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas:
+  escribe al menos 2 caracteres.»); col CRM attivo l'invito nomina anche contatti, aziende e opportunità, e il segnaposto
+  resta alle prime tre. Un modulo `disponibile` o in arrivo non dà fonti. Senza fonti, e per chi non ha accettato
+  i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l'invito è «Scrivi
+  almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»). I due testi li compone la cornice
+  dai testi delle lingue: `searchPlaceholderSources` e `searchHintSources` hanno il posto dell'elenco, `{sources}`, e
+  `searchPlaceholder` e `searchHint` sono quelli senza fonti. Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca
+  board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e
+  «Search boards and folders: type at least 2 characters.», in spagnolo «Busca tableros y carpetas…» e «Busca tableros y
+  carpetas: escribe al menos 2 caracteres.»); prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli:
+  scrivi almeno 2 caratteri.». Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards
+  and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in
+  inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`).
 - **Il menu del profilo** ha Profilo, Impostazioni, Azienda e, dopo una linea, Esci: le prime tre aprono le loro pagine su
   app.zeiras.com (`/impostazioni/profilo`, `/impostazioni/preferenze`, `/azienda`), «Esci» chiama `onLogout`. La voce
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con

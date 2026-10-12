@@ -308,12 +308,14 @@ legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il b
 ## 9. La ricerca
 
 Per la ricerca che c'è non scrivi niente: è della cornice, che chiede `POST /cornice/ricerca` —
-README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Ma oggi la ricerca
-trova solo board e cartelle di Project Management: perché trovi **le tue** risorse servono due cose, tutte e due da
-chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel registro (`risorse`: il tipo come lo dà il
-backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore) e il nome del suo gruppo in ogni lingua: un
-risultato di un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua ricerca (`/v1/ricerca`) dia quel
-tipo.
+README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Dalla `v1.15.0` la
+ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM: perché trovi
+**le tue** risorse servono due cose, tutte e due da chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel
+registro (`risorse`: il tipo come lo dà il backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e, se
+il backoffice dà dei testi per riconoscerla, le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi
+in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che il segnaposto e l'invito della ricerca nominano
+dove il tuo modulo è attivo. Un risultato di un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
+ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
 
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo
 che la ricerca funziona. Che trovi le tue cose lo prova il titolo di una tua risorsa: compare sotto il nome del suo tipo,
