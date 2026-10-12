@@ -1140,6 +1140,19 @@ function percorsiChiamati(): array
     return Http::recorded()->map(fn (array $coppia) => (string) parse_url($coppia[0]->url(), PHP_URL_PATH))->values()->all();
 }
 
+// Seconda lettura della PR #52, S7 (sprint 25 · T5.5). `assertExactJson` decodifica e ricodifica, e non distingue una lista vuota
+// da un oggetto vuoto: che al browser `prodotti` arrivi come `[]`, come dice il README, lo dice solo il testo della risposta.
+it('nei dati ridotti `prodotti` e `aziende` arrivano al browser come liste vuote: nel testo della risposta c\'è "prodotti":[] e non "prodotti":{} (sprint 25 · T5.5)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/app' => accettazioneRichiesta()]);
+
+    $testo = (string) $this->get('w/uat-marketing/cornice')->assertOk()->getContent();
+
+    expect(str_contains($testo, '"prodotti":[]'))->toBe(true)
+        ->and(str_contains($testo, '"aziende":[]'))->toBe(true)
+        ->and(str_contains($testo, '"prodotti":{}'))->toBe(false);
+});
+
 it('con app.elenca che risponde 403 accettazione_richiesta la pagina ha i dati della cornice lo stesso: lingua, persona e workspace della sessione, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; aziende e workspace non li chiede (sprint 24 · T1.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
@@ -1256,10 +1269,61 @@ it('una chiamata del frontend a /v1 davanti al 403 accettazione_richiesta: da zr
     $allaVisita = $errore->render(RichiestaDelBrowser::create($pagina));
     $aInertia = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_X_INERTIA' => 'true']));
     $alJson = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_ACCEPT' => 'application/json']));
+    // Seconda lettura della PR #52, S10 (sprint 25 · T5.6): la quarta forma. Sulla pagina dell'accettazione stessa — l'host e il
+    // percorso di `zr-auth.accettazione`, con o senza la lingua davanti — risponde 403 anche a una visita e a una visita di
+    // Inertia: un rimando la manderebbe a sé stessa. È la pagina di zr-home.
+    $sullaPagina = array_map(
+        fn (array $caso): array => [($risposta = $errore->render(RichiestaDelBrowser::create($caso[0], server: $caso[1])))->getStatusCode(), $risposta->headers->has('Location'), $risposta->headers->has('X-Inertia-Location'), json_decode((string) $risposta->getContent(), true)['codice'] ?? null],
+        [
+            ['https://app.zeiras.com/legale/accetta', []],
+            ['https://app.zeiras.com/legale/accetta?ritorno='.rawurlencode($pagina), ['HTTP_X_INERTIA' => 'true']],
+            ['https://app.zeiras.com/it/legale/accetta', []],
+            ['https://app.zeiras.com/it/legale/accetta', ['HTTP_X_INERTIA' => 'true']],
+        ],
+    );
+    // Solo lì: un altro percorso dello stesso host, e lo stesso percorso su un altro host, sono visite come le altre.
+    $altrove = array_map(
+        fn (string $indirizzo): int => $errore->render(RichiestaDelBrowser::create($indirizzo))->getStatusCode(),
+        ['https://app.zeiras.com/legale/accetta/altro', 'https://board.zeiras.com/legale/accetta'],
+    );
 
     expect($errore)->toBeInstanceOf($classe)
         ->and([$allaVisita->getStatusCode(), $allaVisita->headers->get('Location')])->toBe([302, $verso])
         ->and([$aInertia->getStatusCode(), $aInertia->headers->get('X-Inertia-Location'), $aInertia->headers->has('Location')])->toBe([409, $verso, false])
         ->and([$alJson->getStatusCode(), $alJson->headers->has('Location'), $alJson->headers->has('X-Inertia-Location')])->toBe([403, false, false])
-        ->and(json_decode((string) $alJson->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]]);
+        ->and(json_decode((string) $alJson->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]])
+        ->and($sullaPagina)->toBe(array_fill(0, 4, [403, false, false, 'accettazione_richiesta']))
+        ->and($altrove)->toBe([302, 302]);
+});
+
+// Seconda lettura della PR #52, S2 (sprint 25 · T5.2). Il README dice che cosa arriva al browser se un middleware del frontend
+// chiama /v1 anche su una rotta della cornice senza prendere quel 403: la risposta non è più quella della rotta, è quella di
+// zr-auth. È un'altra frase su zr-auth, e questo caso la guarda nel giro che la installa: dalla 0.12.17 è il 403 di
+// `AccettazioneRichiesta`, con `codice` e `mancanti`, che la cornice riconosce dal `codice`; con una patch più vecchia
+// l'ErroreApi non ha una risposta sua, ed è un 500 — nel browser l'errore di sempre, con «Riprova».
+it('se un middleware del frontend chiama /v1 su una rotta della cornice senza prendere il 403 accettazione_richiesta, al browser non arriva la risposta della rotta: da zr-auth 0.12.17 il 403 di zr-auth con `codice` e `mancanti`, con una patch più vecchia un 500 (sprint 25 · T5.2)', function () {
+    sessioneAMano(marketing());
+    Http::fake(['*' => accettazioneRichiesta()]);
+    // Un middleware scritto qui entra nel gruppo `web` per nome, dopo la sessione e prima della rotta, come quello di un frontend.
+    Route::aliasMiddleware('chiama-v1', function ($richiesta, Closure $next) {
+        Api::workspace()->get('/v1/board/board');
+
+        return $next($richiesta);
+    });
+    Route::pushMiddlewareToGroup('web', 'chiama-v1');
+
+    $risposta = $this->getJson('cornice/notifiche');
+
+    // Una chiamata sola, quella del middleware: la rotta non è partita, e la sua risposta — `{"errore": …}` — non c'è.
+    Http::assertSentCount(1);
+    expect($risposta->getContent())->not->toBe('{"errore":"accettazione_richiesta"}');
+
+    if (! zrAuthRispondeDaSeAQuel403()) {
+        expect($risposta->getStatusCode())->toBe(500);
+
+        return;
+    }
+
+    expect($risposta->getStatusCode())->toBe(403)
+        ->and(json_decode((string) $risposta->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]]);
 });
