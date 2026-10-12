@@ -133,15 +133,16 @@ let caricamenti = 0;
 // Come nei dati di prova (demo.tsx): con `?crm_attivo=1` il CRM è attivo nel workspace, a meno di `?senza_crm=1`.
 const crmAttivo = new URLSearchParams(window.location.search).has('crm_attivo') && !new URLSearchParams(window.location.search).has('senza_crm');
 const risultatiDiProva = [
-    // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che il
-    // backoffice dà per riconoscerla. Un contatto può non avere né azienda né ruolo; un'azienda ha `null`. Stanno dietro un
-    // parametro: la scheda solo con `?schede=1`; contatti, aziende e opportunità solo col CRM attivo (`?crm_attivo=1`), come il
-    // backoffice, che una fonte la dà solo se il suo prodotto è attivo nel workspace.
+    // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che la
+    // rotta vera lascia uscire: le chiavi che il registro dà al tipo, coi soli testi. Un contatto può non avere né azienda né
+    // ruolo, e allora ha `null`, come un'azienda: mai un `null` fra i valori. Stanno dietro un parametro: la scheda solo con
+    // `?schede=1`; contatti, aziende e opportunità solo col CRM attivo (`?crm_attivo=1`), come il backoffice, che una fonte la
+    // dà solo se il suo prodotto è attivo nel workspace.
     ...(schede ? [{ tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } }] : []),
     ...(crmAttivo
         ? [
             { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
-            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+            { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
             { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
             { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
         ]

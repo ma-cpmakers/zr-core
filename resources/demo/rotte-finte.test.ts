@@ -515,7 +515,7 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     const scheda = { tipo: 'board.scheda', id: 'uat-s1', titolo: 'UAT Preparare il lancio', contesto: { board: 'UAT Lancio Q4', lista: 'UAT Da fare' } };
     const delCrm = [
         { tipo: 'crm.persona', id: 'uat-p1', titolo: 'UAT Grace Hopper', contesto: { organizzazione: 'UAT Acme', ruolo: 'UAT Responsabile acquisti' } },
-        { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: { organizzazione: null, ruolo: null } },
+        { tipo: 'crm.persona', id: 'uat-p2', titolo: 'UAT Alan Turing', contesto: null },
         { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
         { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
     ];
@@ -537,6 +537,28 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ['con `?senza_crm=1` i risultati del CRM non ci sono', '?schede=1&senza_crm=1', [scheda, ...diPrima]],
     ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13)', async (_caso, query, attesi) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
+    });
+
+    // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
+    // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
+    // non dà altre forme: un contatto senza azienda né ruolo ha `null`.
+    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null` (sprint 26 · T1.3)', async () => {
+        const { registro } = await import('../js/registro');
+        const chiaviDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo)?.contesto ?? [];
+        const risultati = (await rispostaDi('/cornice/ricerca', cerca('uat'), '?schede=1&crm_attivo=1')).corpo.data as { tipo: unknown; id: unknown; contesto: Record<string, unknown> | null }[];
+        const fuoriForma = risultati.filter(({ tipo, contesto }) => {
+            if (contesto === null) {
+                return false;
+            }
+            const voci = Object.entries(contesto);
+
+            return voci.length === 0 || voci.some(([chiave, valore]) => !chiaviDi(tipo).includes(chiave) || typeof valore !== 'string' || valore === '');
+        });
+
+        expect(fuoriForma.map(({ id }) => id)).toStrictEqual([]);
+        expect(risultati.find(({ id }) => id === 'uat-p2')?.contesto).toBeNull();
+        // Il controllo non è vuoto: fra i risultati ce ne sono col contesto, e sono quelli di una scheda, di un contatto e di un'opportunità.
+        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1']);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([

@@ -32,7 +32,9 @@ export interface RisorsaDelProdotto {
     contenitore: boolean;
     /**
      * Le chiavi di `contesto` — i testi che il backoffice dà con un risultato per riconoscerlo — che fanno la sua seconda riga,
-     * nell'ordine in cui si leggono: `board` e `lista` di una scheda. Senza, il tipo non ha una seconda riga.
+     * nell'ordine in cui si leggono: `board` e `lista` di una scheda. Senza, il tipo non ha una seconda riga. Sono anche le
+     * sole chiavi che la parte server lascia uscire da `POST /cornice/ricerca`: chi ne aggiunge una qui per la seconda riga
+     * apre anche quell'uscita.
      */
     contesto?: string[];
 }

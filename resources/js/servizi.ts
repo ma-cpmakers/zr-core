@@ -37,10 +37,12 @@ export interface RisultatoDellaRicerca {
     id: string;
     titolo: string;
     /**
-     * I testi che il backoffice dà per riconoscerla, con le sue chiavi (dalla `v1.15.0`): `board` e `lista` di una scheda,
-     * `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità, ognuno un testo o `null`; `null` per
-     * un'azienda, una board e una cartella. Quali fanno la seconda riga del risultato lo dice il registro. Facoltativo: una parte
-     * server finta di prima della `v1.15.0` non lo dà, e vale come `null`.
+     * I testi che il backoffice dà per riconoscerla (dalla `v1.15.0`): `board` e `lista` di una scheda, `organizzazione` e
+     * `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità. Dalla rotta arrivano le sole chiavi che il registro dà al
+     * tipo (`risorse[].contesto`), coi soli testi non vuoti: mai un `null` fra i valori, e `null` tutto il contesto quando non
+     * ne resta nessuno — sempre per un'azienda, una board e una cartella. Sono le stesse chiavi che fanno la seconda riga del
+     * risultato. Il tipo ammette ancora un `null` fra i valori, e che `contesto` manchi: una parte server finta di prima della
+     * `v1.15.0` non lo dà, e vale come `null`.
      */
     contesto?: Record<string, string | null> | null | undefined;
 }

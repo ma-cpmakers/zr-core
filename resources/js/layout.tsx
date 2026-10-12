@@ -74,8 +74,8 @@ function CorniceMontata({ children, ...dellaCornice }: CorniceProps) {
     });
 
     // Nessun elemento intorno: `.zr-shell` è una griglia alta quanto la finestra, e la pagina resta figlia di `main.zr-main` —
-    // tranne nello stato ridotto di chi non ha accettato i documenti legali, dove la cornice la mette in un contenitore sotto
-    // l'avviso.
+    // o di `div.zr-main-body`, se ha il percorso —, anche nello stato ridotto di chi non ha accettato i documenti legali: dalla
+    // `v1.15.0` lì la cornice le mette l'avviso subito prima, e la pagina resta nello stesso posto.
     // Ciò che ha dato la pagina va dopo le props del layout: finché è montata, vince lei.
     return (
         <ContestoDellaCornice value={daLaPagina}>
