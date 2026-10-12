@@ -82,16 +82,16 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 19,4 KB | 2,7 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 19,4 KB | 2,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 19,4 KB | 2,7 KB |
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 20,6 KB | 3,3 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,1 KB | 20,6 KB | 3,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 20,6 KB | 3,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre pezzi, uno per lingua (circa 0,85 KB l'uno con gzip), che la cornice chiede quando si apre
 la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello dell'inglese. Prima stavano nel
 JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto pezzo a richiesta sono i rimedi
-provvisori di tastiera (circa 0,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel pannello delle
-notifiche», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
+provvisori di tastiera (circa 0,8 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel pannello delle
+notifiche» e «Tab dentro un dialogo aperto», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -383,8 +383,18 @@ cornice === null ? pagina : (
   ridotto. Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda l'elemento attivo va
   riletto. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla campanella, e la cornice
   lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi
-  niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa 0,2 KB con gzip), fuori dal
-  JS d'ingresso: se non arriva, la campanella si apre come prima, col fuoco sul pulsante.
+  niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa 0,8 KB con gzip, con quello
+  del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima, col fuoco sul pulsante.
+- **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
+  dall'ultimo elemento torna al primo, Maiusc+Tab dal primo va all'ultimo, e se il fuoco è ancora fuori il primo Tab
+  entra. Lo stesso per un `DetailPanel` sotto 720 px, dove è largo tutta la pagina; da 721 px in su Tab esce verso la
+  pagina, come vuole la linea guida. Con un dialogo sopra un pannello vale il dialogo. Le anteprime (`inline`) non
+  trattengono niente, e con un `Menu` aperto dentro il dialogo la cornice non interviene. Il modulo non deve fare niente,
+  e non scriva una trappola sua: sarebbero due. È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
+  ancora il fuoco, e la cornice lo fa da sé, senza toccare i componenti; quando lo fanno loro questo si toglie, senza che
+  il modulo cambi niente. Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e
+  il primo campo in fuoco all'apertura, che resta del modulo. Sta nello stesso pezzo a richiesta del punto sopra: se non
+  arriva, Tab fa il giro di prima.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non

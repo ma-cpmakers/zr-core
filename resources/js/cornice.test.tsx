@@ -5468,3 +5468,211 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(scelta());
     });
 });
+
+describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
+    const { Dialog, DetailPanel, Menu } = componenti;
+    const senzaEffetto = () => {};
+    /** La larghezza della pagina come la legge il CSS del design system: sotto 720 px il pannello di dettaglio è a tutta pagina. */
+    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
+    /** La pagina dentro la cornice, coi rimedi di tastiera già arrivati. */
+    const laPagina = async (figli: ReactElement) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{figli}</Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const conIlFuoco = async (elemento: HTMLElement | null) => {
+        expect(elemento).not.toBeNull();
+        await act(async () => elemento?.focus());
+    };
+    /** Un tasto premuto sull'elemento attivo: dice se qualcuno ha fermato ciò che il browser avrebbe fatto. */
+    const premi = async (key: string, shiftKey = false) => {
+        const tasto = new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true });
+        await act(async () => {
+            (document.activeElement ?? document.body).dispatchEvent(tasto);
+        });
+
+        return tasto.defaultPrevented;
+    };
+    const dietro = () => uno('#dietro');
+    const ilDialogo = (figli: ReactElement, inline = false) => (
+        <>
+            <button type="button" id="dietro">Dietro il dialogo</button>
+            <Dialog open inline={inline} title="Nuova scheda" onClose={senzaEffetto} footer={<button type="button" id="salva">Salva</button>}>{figli}</Dialog>
+            <button type="button" id="dopo">Dopo il dialogo</button>
+        </>
+    );
+    const ilPannello = (inline = false, sopra: ReactElement | null = null) => (
+        <>
+            <button type="button" id="dietro">Dietro il pannello</button>
+            <DetailPanel inline={inline} label="Scheda" head="Lancio corso" onClose={senzaEffetto} foot={<button type="button" id="commenta">Commenta</button>}>
+                <input id="titolo" defaultValue="Lancio corso" />
+            </DetailPanel>
+            {sopra}
+        </>
+    );
+    const chiudi = () => uno('.zr-dialog .zr-dialog-head button');
+
+    it('con un `Dialog` aperto, Tab dall\'ultimo elemento porta al primo del dialogo e Maiusc+Tab dal primo all\'ultimo; nel mezzo il Tab è del browser (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        await conIlFuoco(uno('#nome'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#nome'));
+    });
+
+    it('se il fuoco è ancora fuori dal dialogo, sul pulsante che l\'ha aperto o sulla pagina, il primo Tab entra sul primo elemento e Maiusc+Tab sull\'ultimo (T4.2)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        // Nessun elemento attivo: il tasto arriva dal `body`.
+        await act(async () => (document.activeElement as HTMLElement | null)?.blur());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('con un `DetailPanel` aperto sotto 720 px vale lo stesso; da 721 px in su Tab esce verso la pagina (T4.3)', async () => {
+        largaAlPiu720(true);
+        await laPagina(ilPannello());
+        const [indietro] = tutti('.zr-detail button');
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(indietro);
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        // Il pannello stesso prende il fuoco quando si apre, e non è una fermata: da lì Maiusc+Tab non esce.
+        await conIlFuoco(uno('.zr-detail'));
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(indietro);
+
+        largaAlPiu720(false);
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(false);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        await conIlFuoco(dietro());
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(dietro());
+    });
+
+    it('con un `Dialog` aperto sopra un `DetailPanel` il fuoco resta nel dialogo, a ogni larghezza (T4.4)', async () => {
+        largaAlPiu720(true);
+        await laPagina(ilPannello(false, <Dialog open title="Elimina la scheda" onClose={senzaEffetto} footer={<button type="button" id="elimina">Elimina</button>}>Sicuro?</Dialog>));
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        await conIlFuoco(uno('#elimina'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+
+        largaAlPiu720(false);
+        await conIlFuoco(uno('#titolo'));
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#elimina'));
+    });
+
+    it('le anteprime (`inline`) non trattengono niente, e senza dialoghi aperti Tab fa il suo giro in tutta la pagina, cornice compresa (T4.5)', async () => {
+        largaAlPiu720(true);
+        await laPagina(<>{ilDialogo(<input id="nome" />, true)}{ilPannello(true)}</>);
+
+        for (const elemento of [uno('#salva'), chiudi(), uno('#commenta'), tutti('#dietro')[0] ?? null, uno('.zr-bell'), uno('.zr-nav a, .zr-nav button')]) {
+            await conIlFuoco(elemento);
+            expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+            expect(document.activeElement).toBe(elemento);
+        }
+
+        await laPagina(<button type="button" id="dietro">Solo la pagina</button>);
+        await conIlFuoco(dietro());
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(dietro());
+    });
+
+    it('con un `Menu` aperto dentro il dialogo il gestore non interviene, e degli altri tasti non ferma niente: Esc resta dei componenti (T4.6)', async () => {
+        largaAlPiu720(false);
+        const [dialogoChiuso, menuChiuso] = [vi.fn(), vi.fn()];
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>
+            <Dialog open title="Nuova scheda" onClose={dialogoChiuso} footer={<button type="button" id="salva">Salva</button>}>
+                <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />
+            </Dialog>
+        </Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        expect(uno('.zr-dialog .zr-menu[role="menu"]')).not.toBeNull();
+
+        await conIlFuoco(uno('#salva'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#salva'));
+
+        // Esc chiude prima il menu, come prima: il dialogo resta aperto.
+        expect(await premi('Escape')).toBe(false);
+        expect([menuChiuso.mock.calls.length, dialogoChiuso.mock.calls.length]).toStrictEqual([1, 0]);
+    });
+
+    it('un elemento spento, nascosto o con `tabindex="-1"` non conta come primo o ultimo, e di un gruppo di scelte conta quella scelta (T4.7)', async () => {
+        largaAlPiu720(false);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Sposta la scheda" footer={<>
+                <button type="button" id="ultimo">Sposta</button>
+                <button type="button" disabled>Spento</button>
+                <button type="button" hidden>Con hidden</button>
+                <span hidden><button type="button">Dentro un elemento con hidden</button></span>
+                <span style={{ display: 'none' }}><button type="button">Dentro un elemento non mostrato</button></span>
+                <button type="button" style={{ visibility: 'hidden' }}>Invisibile</button>
+                <button type="button" tabIndex={-1}>Fuori dal giro</button>
+                <input type="hidden" defaultValue="x" />
+            </>}>
+                <button type="button" tabIndex={-1} id="fuori-dal-giro">Fuori dal giro, per primo</button>
+                <label><input type="radio" name="lista" id="non-scelta" />Da fare</label>
+                <label><input type="radio" name="lista" id="prima-scelta" defaultChecked />Fatto</label>
+            </Dialog>
+        </Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await conIlFuoco(uno('#ultimo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#prima-scelta'));
+
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#ultimo'));
+
+        // Dal fondo del giro, su un elemento che non è una fermata: Tab non esce.
+        await conIlFuoco(tutti('.zr-dialog-foot [tabindex="-1"]')[0] ?? null);
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#prima-scelta'));
+    });
+
+    it('vale nelle pagine dentro la cornice: senza una cornice in pagina un dialogo aperto non trattiene niente (T4.8)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<button type="button" id="dietro">Una pagina</button>);
+
+        await mostra(ilDialogo(<input id="nome" />));
+        expect(uno('.zr-shell')).toBeNull();
+        await conIlFuoco(uno('#salva'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#salva'));
+    });
+});
