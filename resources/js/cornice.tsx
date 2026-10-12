@@ -700,8 +700,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
     // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
     // un errore della ricerca, perché non c'è una pagina di ripiego: mai i risultati aperti nel workspace della pagina a tentoni.
-    // Lo stato è un'unione: dei risultati stanno sempre col loro workspace. `undefined` finché non si è cercato niente: per
-    // l'`AppShell` è una ricerca pronta, senza risultati.
+    // Lo stato è un'unione: dei risultati stanno sempre col loro workspace. `undefined` finché non si è cercato niente, e di
+    // nuovo dopo lo stato ridotto, che la dimentica: per l'`AppShell` è una ricerca pronta, senza risultati.
     const [ricerca, setRicerca] = useState<StatoDellaRicerca>();
     const ricercaInVolo = useRef<AbortController>(undefined);
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel

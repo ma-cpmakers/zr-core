@@ -3785,7 +3785,9 @@ describe('la ricerca', () => {
             // Il tetto: un valore sbagliato del backoffice non spegne la ricerca per un'ora.
             ['`Retry-After: 3600`: a 59,999 secondi la parola non parte', '3600', 59_999, false],
             ['`Retry-After: 3600`: il freno è di 60 secondi, e a 60 la parola parte', '3600', 60_000, true],
-            ['`Retry-After` con più cifre di quante un numero ne tenga: il freno è di 60 secondi', '9'.repeat(400), 60_000, true],
+            // Lettura della PR #59, R9: la riga di prima, da sola, resta verde anche se quel valore non frenasse affatto.
+            ['`Retry-After` con più cifre di quante un numero ne tenga: a 59,999 secondi la parola non parte', '9'.repeat(400), 59_999, false],
+            ['`Retry-After` con più cifre di quante un numero ne tenga: il freno è di 60 secondi, e a 60 la parola parte', '9'.repeat(400), 60_000, true],
         ])('il freno dura i secondi di `Retry-After`, al più 60, dal momento del 429 — %s (sprint 26 · T4.2)', async (_caso, riprovaFra, dopo, parte) => {
             const fetchFinto = primaPoiTrova(frenata(riprovaFra));
             vi.stubGlobal('fetch', fetchFinto);
@@ -4513,14 +4515,20 @@ describe('chi non ha accettato i documenti legali', () => {
             errore: uno('.zr-search-panel [role="alert"]')?.textContent ?? null,
         });
         const prontaEVuota = { risultati: [], staCercando: null, errore: null };
+        // Lettura della PR #59, R4. Con la ricerca pronta e vuota e una parola rimasta nel campo, sotto il campo l'`AppShell` scrive
+        // «Nessun risultato» per quella parola, che la cornice non ha cercato: lo dice il README, ed è chiesto al design system
+        // (un campo che si svuota). Il giorno che cambia, questi casi sono rossi e la frase del README si riscrive.
+        const nessunRisultatoPer = (parola: string) => [`Nessun risultato per «${parola}»Prova con un'altra parola o controlla di essere nel workspace giusto.`];
+        /** Ciò che si legge sotto il campo quando non ci sono righe di risultati. */
+        const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
         const trovato = (parola: unknown) => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: `Risultato di «${String(parola)}»` }], workspace: 'acme-marketing' });
         const parolaDi = (opzioni?: RequestInit) => (JSON.parse(String(opzioni?.body)) as { q?: unknown }).q;
 
-        it.each<[string, DatiDellaCornice, { risultati: string[]; staCercando: string | null; errore: string | null }, unknown[]]>([
-            ['arrivano i dati ridotti: tornata quella di sempre, la ricerca è pronta e vuota, e la parola nuova non è partita', ridotti, prontaEVuota, ['ua']],
+        it.each<[string, DatiDellaCornice, { risultati: string[]; staCercando: string | null; errore: string | null }, unknown[], string[]]>([
+            ['arrivano i dati ridotti: tornata quella di sempre, la ricerca è pronta e vuota, e la parola nuova non è partita', ridotti, prontaEVuota, ['ua'], nessunRisultatoPer('uat')],
             // Il controllo vede ciò che cerca: con altri dati di sempre, dopo gli stessi tasti, la parola nuova parte e si vedono i suoi risultati.
-            ['arrivano altri dati di sempre: la parola nuova parte, e i risultati sono i suoi', { ...diSempre, aggiornati_il: '2026-10-11T22:00:03.000001Z' }, { ...prontaEVuota, risultati: ['Risultato di «uat»'] }, ['ua', 'uat']],
-        ])('coi risultati di una parola in pagina, fra il tasto di un\'altra e i 300 ms %s (sprint 26 · T4.1)', async (_caso, arrivati, attesa, parole) => {
+            ['arrivano altri dati di sempre: la parola nuova parte, e i risultati sono i suoi', { ...diSempre, aggiornati_il: '2026-10-11T22:00:03.000001Z' }, { ...prontaEVuota, risultati: ['Risultato di «uat»'] }, ['ua', 'uat'], []],
+        ])('coi risultati di una parola in pagina, fra il tasto di un\'altra e i 300 ms %s (sprint 26 · T4.1)', async (_caso, arrivati, attesa, parole, sotto) => {
             const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => trovato(parolaDi(opzioni)));
             vi.stubGlobal('fetch', fetchFinto);
             await mostra(laPagina(diSempre));
@@ -4535,6 +4543,7 @@ describe('chi non ha accettato i documenti legali', () => {
             expect(cornice()).not.toStrictEqual(ridotta);
             expect(fetchFinto.mock.calls.map(([, opzioni]) => parolaDi(opzioni))).toStrictEqual(parole);
             expect(laRicerca()).toStrictEqual(attesa);
+            expect(sottoIlCampo()).toStrictEqual(sotto);
         });
 
         it.each<[string, boolean]>([
@@ -4567,6 +4576,7 @@ describe('chi non ha accettato i documenti legali', () => {
 
             expect(cornice()).not.toStrictEqual(ridotta);
             expect(laRicerca()).toStrictEqual(prontaEVuota);
+            expect(sottoIlCampo()).toStrictEqual(nessunRisultatoPer('ua'));
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
     });
