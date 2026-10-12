@@ -3,6 +3,7 @@
 use Composer\InstalledVersions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
+use Illuminate\Http\Request as RichiestaDelBrowser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
+use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
@@ -1214,3 +1216,50 @@ it('ogni altra risposta resta l\'errore che era: un 403 con un altro codice o se
     'da io.aziende.elenca' => ['/v1/io/aziende'],
     'da io.workspace.elenca' => ['/v1/io/workspace'],
 ]);
+
+// Sprint 24 · T5 (lettura della PR #52, R3). Il README dice che cosa succede alle chiamate del frontend a /v1 davanti a quel
+// 403: lì la cornice non c'entra, risponde zr-auth. È una frase su un'altra libreria: nomina la classe, e questo caso la
+// guarda nel giro che la installa. Dalla 0.12.17 l'errore è `AccettazioneRichiesta`, che non presa risponde in tre forme; con
+// una patch più vecchia — il vincolo le accetta — la classe non c'è, e quel 403 è un ErroreApi come gli altri.
+
+/** Dalla 0.12.17 zr-auth dà a quel 403 un'eccezione sua, che risponde da sé: la versione installata dice che cosa aspettarsi. */
+function zrAuthRispondeDaSeAQuel403(): bool
+{
+    return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.17', '>=');
+}
+
+it('una chiamata del frontend a /v1 davanti al 403 accettazione_richiesta: da zr-auth 0.12.17 è `AccettazioneRichiesta`, che non presa rimanda una visita alla pagina dell\'accettazione (302), a una visita di Inertia risponde 409 con `X-Inertia-Location`, e a una richiesta JSON 403 con `codice` e `mancanti`, senza rimando; con una patch più vecchia è un ErroreApi senza risposta sua (sprint 24 · T5, R3)', function () {
+    sessioneAMano(marketing());
+    Http::fake(['*' => accettazioneRichiesta()]);
+    config()->set('zr-auth.accettazione', 'https://app.zeiras.com/legale/accetta');
+    $classe = 'Zeiras\\Auth\\Errori\\AccettazioneRichiesta';
+
+    $errore = null;
+    try {
+        Api::workspace()->get('/v1/board/board');
+    } catch (ErroreApi $lanciato) {
+        $errore = $lanciato;
+    }
+
+    expect($errore)->toBeInstanceOf(ErroreApi::class)
+        ->and([$errore?->stato, $errore?->codice])->toBe([403, 'accettazione_richiesta']);
+
+    if (! zrAuthRispondeDaSeAQuel403()) {
+        expect(class_exists($classe))->toBe(false)
+            ->and(method_exists($errore, 'render'))->toBe(false);
+
+        return;
+    }
+
+    $pagina = 'https://board.zeiras.com/w/uat-marketing/b/01k6?vista=lista';
+    $verso = 'https://app.zeiras.com/legale/accetta?ritorno='.rawurlencode($pagina);
+    $allaVisita = $errore->render(RichiestaDelBrowser::create($pagina));
+    $aInertia = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_X_INERTIA' => 'true']));
+    $alJson = $errore->render(RichiestaDelBrowser::create($pagina, server: ['HTTP_ACCEPT' => 'application/json']));
+
+    expect($errore)->toBeInstanceOf($classe)
+        ->and([$allaVisita->getStatusCode(), $allaVisita->headers->get('Location')])->toBe([302, $verso])
+        ->and([$aInertia->getStatusCode(), $aInertia->headers->get('X-Inertia-Location'), $aInertia->headers->has('Location')])->toBe([409, $verso, false])
+        ->and([$alJson->getStatusCode(), $alJson->headers->has('Location'), $alJson->headers->has('X-Inertia-Location')])->toBe([403, false, false])
+        ->and(json_decode((string) $alJson->getContent(), true))->toBe(['codice' => 'accettazione_richiesta', 'mancanti' => [['documento' => 'segno-del-documento', 'versione' => 'segno-della-versione']]]);
+});

@@ -3560,8 +3560,17 @@ it('il README dice, al punto «Chi non ha accettato i documenti legali» di «La
     'che cosa la cornice non fa' => ['la cornice non mostra testi legali, non dice quali documenti mancano e non fa accettare niente'],
     'i dati così come sono' => ['dà i dati alla cornice così come sono'],
     'non è «Presto»' => ['non legge `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`)'],
-    'il rimando è di zr-auth' => ['lascia a zr-auth il rimando dalle proprie chiamate a `/v1`'],
+    // Lettura della PR #52, R3: il rimando di zr-auth è delle visite, non di ogni chiamata.
+    'il rimando è di zr-auth, per le visite' => ['lascia a zr-auth il rimando dalle proprie visite che chiamano `/v1` (a una richiesta JSON zr-auth risponde 403 senza rimando, e lì decide il frontend: «La parte server»)'],
     'le voci del modulo e il «+»' => ['se a chi non ha accettato non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`)'],
+    // Lettura della PR #52: R1, R6, R2, R10, e di chi è il ritorno.
+    'finché i dati non sono più recenti (R1)' => ['finché i dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non più avanti, anche se il frontend li ricrea a ogni disegno o li ritocca nel browser'],
+    'i dati senza segno (R1)' => ['dati senza segno valgono solo finché sono lo stesso oggetto'],
+    'la voce attiva (R6)' => ['Su una pagina di un modulo che non dà `active` nessuna voce della barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com'],
+    'il contenitore (R2)' => ['Avviso e pagina stanno in un contenitore (`div.zr-stack`), e la pagina in un `div` suo: lì non è figlia diretta di `main.zr-main`'],
+    'la pagina si rimonta (R2)' => ['quando lo stato arriva dal 403 di una rotta, o se ne va, la pagina si rimonta — stato locale, fuoco e scorrimento ripartono, e i suoi effetti si rilanciano'],
+    'nessun middleware sulle rotte della cornice (R10)' => ['sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403'],
+    'di chi è il ritorno' => ['Il `ritorno` è una richiesta: dove la persona torna dopo l\'accettazione lo decide zr-home'],
 ]);
 
 it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
@@ -3570,15 +3579,42 @@ it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi
     expect($parteServer)->not->toBe('')
         ->and(str_contains($parteServer, $frase))->toBe(true);
 })->with([
-    'la riga della tabella' => ['| gli stessi dati, ridotti: `prodotti` `{}`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`'],
+    // Lettura della PR #52, R5: `prodotti` vuoto è la lista che il server dà, `[]`.
+    'la riga della tabella' => ['| gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`'],
+    'la forma di `prodotti` (R5)' => ['Lì `prodotti` è una lista vuota, e al browser arriva `[]` e non `{}`: un frontend che valida la forma dei dati la ammette'],
     'non lancia' => ['Per la cornice non è un guasto: `Cornice::dati()` non lancia e dà i dati ridotti'],
     'mai a false' => ['La chiave c\'è solo lì, mai a `false`'],
     'non è «Presto»' => ['Con quella chiave `prodotti` vuoto non vuol dire «Presto»'],
     'chi legge i dati da sé' => ['guarda `accettazione_richiesta` prima di `prodotti`'],
     'stato e codice' => ['un 403 con un altro codice resta l\'`ErroreApi` che era'],
     'i documenti mancanti' => ['Quali documenti mancano la parte server non lo dà al browser'],
-    'le chiamate del frontend' => ['da zr-auth `v0.12.17`, se nessuno lo cattura, zr-auth manda la persona alla pagina dell\'accettazione da sé, e il frontend non scrive un rimando suo'],
+    // Lettura della PR #52, R3: la classe di zr-auth, le sue tre forme, e le patch che non la hanno.
+    'le chiamate del frontend: la classe' => ['Da zr-auth `v0.12.17` quel 403 è l\'eccezione `Zeiras\\Auth\\Errori\\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in tre forme'],
+    'le chiamate del frontend: le tre forme' => ['a una visita un rimando alla pagina dell\'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un 403 con `codice` e `mancanti`, senza rimando'],
+    'le chiamate del frontend: chi decide' => ['lì la persona resta dov\'è, e che cosa mostrarle lo decide il frontend. Per le visite il frontend non scrive un rimando suo'],
     'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
+    // Lettura della PR #52, R10.
+    'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth, coi `mancanti`'],
+    'la cornice riconosce anche quella' => ['La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto'],
+]);
+
+it('il README dice che con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un ErroreApi e nessuno rimanda, col vincolo che composer.json ha oggi: quando il vincolo sale, la frase si riguarda (sprint 24 · T5; lettura della PR #52, R3)', function () {
+    $vincolo = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true)['require']['zeiras/zr-auth'];
+    $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+
+    expect($parteServer)->not->toBe('')
+        ->and(str_contains($parteServer, "Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un `ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core (`{$vincolo}`) la ammette, e un frontend che vuole il rimando chiede zr-auth `^0.12.17` nel proprio `composer.json`"))->toBe(true);
+});
+
+it('il README non dice più che zr-auth rimanda da ogni chiamata, che `prodotti` ridotto è `{}`, né che lo stato ridotto vale finché la cornice ha quei dati (sprint 24 · T5; lettura della PR #52, R1, R3, R5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        // Il controllo vede ciò che cerca: la frase, a capo com'era nel README, su una riga è quella.
+        ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
+})->with([
+    'il rimando da ogni chiamata (R3)' => ['zr-auth manda la persona alla pagina dell\'accettazione da sé, e il frontend non scrive un rimando suo'],
+    'il rimando dalle chiamate, al punto di «La cornice» (R3)' => ['lascia a zr-auth il rimando dalle proprie chiamate a `/v1`;'],
+    '`prodotti` come oggetto (R5)' => ['ridotti: `prodotti` `{}`'],
+    'finché ha quei dati (R1)' => ['finché la cornice ha quei dati'],
 ]);
 
 it('ciò che il README e la guida dicono di chi non ha accettato non nomina un documento, e non dice che la cornice fa accettare (sprint 24 · T2.7)', function () {
@@ -3605,7 +3641,12 @@ it('la guida del modulo nuovo ha la riga su chi non ha accettato i documenti leg
 })->with([
     'che cosa dà la parte server' => ['`Cornice::dati()` non lancia e dà i dati ridotti, con `accettazione_richiesta: true`'],
     'di chi è la pagina' => ['un avviso che porta alla pagina dell\'accettazione, che è di zr-home'],
-    'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» e non scrivi un rimando tuo'],
-    'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`'],
+    // Lettura della PR #52, R3 e R5: il rimando è delle visite, e `prodotti` vuoto è una lista.
+    'che cosa fa il modulo' => ['Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le visite non scrivi un rimando tuo'],
+    'il rimando è di zr-auth' => ['dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l\'eccezione `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia'],
+    'a una richiesta JSON decide il modulo' => ['A una tua richiesta JSON zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare'],
+    'le patch più vecchie' => ['Con una patch più vecchia quel 403 resta un `ErroreApi`: chiedi zr-auth `^0.12.17`'],
+    'nessun middleware sulle rotte della cornice' => ['Sulle rotte `/cornice/*` non mettere un middleware che chiama `/v1` senza prendere quel 403'],
+    'la pagina si rimonta' => ['Nello stato ridotto la tua pagina sta in un contenitore sotto l\'avviso, e si rimonta quando lo stato arriva dal 403 di una rotta o se ne va'],
     'dove lo dice il README' => ['README, «La cornice», al punto «Chi non ha accettato i documenti legali»'],
 ]);

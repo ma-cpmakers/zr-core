@@ -484,7 +484,9 @@ it('la notifica a chi viene assegnata una scheda ha il titolo della tabella nell
     expect(array_keys($tabella))->toBe(['board.scheda.assegnata'])
         ->and($titolo)->toBe($tabella['board.scheda.assegnata'][$codice])
         ->and(array_key_exists('notificationTitle.com.zeiras.board.scheda.assegnata', $testi))->toBe(false)
-        ->and(tipiDiNotificaDelContratto())->not->toContain('board.scheda.assegnata', 'com.zeiras.board.scheda.assegnata')
+        // Una parola per ogni `not->toContain`: con due si ferma alla prima che manca, e una sola nel contratto passerebbe.
+        ->and(tipiDiNotificaDelContratto())->not->toContain('board.scheda.assegnata')
+        ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.board.scheda.assegnata')
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.scheda.assegnata']);
 })->with(['it', 'en', 'es']);
