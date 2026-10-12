@@ -346,6 +346,13 @@ cornice === null ? pagina : (
 - **La lingua** è quella dei dati: `it-IT` vale `it`, e una lingua che zr-core non ha è inglese. Le non lette hanno due
   testi, uno per una sola e uno per ogni altro numero: una lingua con più forme di plurale (il polacco, l'arabo) oggi non
   entra con un file solo.
+- **«Salta al contenuto»** è il primo elemento della cornice da tastiera, dalla `v1.18.0`: un pulsante davanti alla barra
+  laterale e alla barra in alto, che non si vede finché non ha il fuoco. Col primo Tab compare in alto a sinistra, sopra
+  la cornice; Invio, Spazio o un clic portano il fuoco al contenuto della pagina, il `main` dell'`AppShell`, e il Tab dopo
+  va al primo elemento della pagina invece di rifare tutta la barra. C'è anche nello stato ridotto. Il modulo non deve fare
+  niente: non gli serve un `id` sul suo contenuto, e non ne scriva uno suo. È provvisorio: l'`AppShell` del design system
+  non ha ancora il suo, e la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i
+  token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
   porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
