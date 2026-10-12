@@ -4,10 +4,12 @@ use Composer\InstalledVersions;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Process\Process;
 use Zeiras\Auth\Testing\BackofficeFinto;
+use Zeiras\Auth\Testing\Finto\RichiestaSconosciuta;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\IntestazioniSicurezza;
 use Zeiras\Core\Http\NotificheDellaCornice;
@@ -1666,18 +1668,27 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
 ]);
 
-// Lettura della PR #56, R12: la frase del README sul finto di zr-auth si guarda nel giro che lo installa. Il finto dichiara le
-// rotte che conosce in una tabella (metodo, percorso, nome): quella di ricerca.crea c'è dalla `v0.12.18`. Un giro della CI
-// installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il confronto è con la versione installata.
-it('il `BackofficeFinto` di zr-auth conosce ricerca.crea (`POST /v1/ricerca`) dalla `v0.12.18`, come dice il README, e prima no: guardato nella zr-auth installata (sprint 25 · T6, R12)', function () {
-    $finto = (string) file_get_contents((string) (new ReflectionClass(BackofficeFinto::class))->getFileName());
+// Letture della PR #56, R12 e N4: che cosa il finto di zr-auth sa della ricerca si guarda nel giro che lo installa, con una
+// chiamata al finto e non nel suo sorgente: una patch che riscrive la tabella delle sue rotte senza cambiare comportamento non
+// deve far rosso un giro. A una chiamata che non conosce il finto lancia `RichiestaSconosciuta`; a una che conosce risponde, qui
+// `401`, perché parte senza gettone. Un giro della CI installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il
+// caso prova questi due punti. Da quale versione il finto risponde lo dice il README, letto nei tag di zr-auth: qui non si prova.
+it('il `BackofficeFinto` della zr-auth installata non conosce ricerca.crea (`POST /v1/ricerca`) nel giro con la patch più bassa che il vincolo accetta, e le risponde nell\'altro, quello con l\'ultima: lo dice una chiamata al finto (sprint 26 · T2.2)', function () {
+    $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
+    $piuBasse = array_values(minimiDiZrAuthIn($composer['require']['zeiras/zr-auth']));
     $installata = ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v');
-    $dallaV01218 = fn (string $versione): bool => version_compare($versione, '0.12.18', '>=');
+    BackofficeFinto::attiva();
+
+    $risposta = null;
+    try {
+        $risposta = Http::post(rtrim((string) config('zr-auth.api'), '/').'/v1/ricerca', ['q' => 'uat'])->status();
+    } catch (RichiestaSconosciuta) {
+        // Il finto non ha la rotta: nessuna risposta.
+    }
 
     expect($installata)->toMatch('/^\d+\.\d+\.\d+$/')
-        ->and(str_contains($finto, "['POST', '#^/v1/ricerca$#', 'ricerca.crea']"))->toBe($dallaV01218($installata))
-        // Il confronto nei due versi.
-        ->and([$dallaV01218('0.12.4'), $dallaV01218('0.12.17'), $dallaV01218('0.12.18'), $dallaV01218('0.12.20'), $dallaV01218('0.13.0')])->toBe([false, false, true, true, true]);
+        ->and($piuBasse)->not->toBe([])
+        ->and($risposta)->toBe(in_array($installata, $piuBasse, true) ? null : 401);
 });
 
 it('né il README né i file che si installano dicono più che al backoffice la parola va nell\'indirizzo, e la parte server nomina ricerca.crea (sprint 25 · T3.5)', function (string $file, string $frase, bool $ceLHa) {
@@ -1871,12 +1882,74 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
     'la CSP non cambia' => ['la CSP non cambia'],
 ]);
 
+/**
+ * Che cosa non va, in ci.yml, nel passo che lancia quel comando: niente se il passo è sano. Un passo sano è un passo vero del
+ * job, non un commento; viene dopo `npm ci`; la sua riga `run:` è il solo comando, senza una coda che ne copra l'uscita
+ * (`|| true`); non ha `continue-on-error` né `if:`. Letture della PR #56, R4: cercare la stringa del comando in ci.yml non basta,
+ * perché resta lì anche in un passo spento.
+ *
+ * @return list<string>
+ */
+function difettiDelPassoCheLancia(string $comando, string $ci): array
+{
+    // Una riga di commento non è un passo, e nemmeno un suo pezzo.
+    $senzaCommenti = (string) preg_replace('/^\s*#.*\n/m', '', $ci);
+    // Un passo va dalla sua riga `      - ` alla riga prima del passo dopo: le sue righe hanno almeno otto spazi, o sono vuote.
+    preg_match_all('/^ {6}- .*\n(?:(?: {8}.*)?\n)*/m', $senzaCommenti, $passi);
+    $delComando = array_values(array_filter($passi[0], fn (string $passo) => str_contains($passo, $comando)));
+
+    if (count($delComando) !== 1) {
+        return ["i passi che lanciano «{$comando}» sono ".count($delComando).', non uno'];
+    }
+
+    $difetti = [];
+    if (preg_match('/^ {8}run: '.preg_quote($comando, '/').'\n/m', $delComando[0]) !== 1) {
+        $difetti[] = 'la riga `run:` non è il solo comando';
+    }
+    foreach (['continue-on-error', 'if'] as $chiave) {
+        if (preg_match('/^ {6}(?:- | {2})'.$chiave.':/m', $delComando[0]) === 1) {
+            $difetti[] = "il passo ha `{$chiave}:`";
+        }
+    }
+    $npmCi = strpos($senzaCommenti, "\n          npm ci\n");
+    if ($npmCi === false || strpos($senzaCommenti, $delComando[0]) < $npmCi) {
+        $difetti[] = 'il passo non viene dopo `npm ci`';
+    }
+
+    return $difetti;
+}
+
+it('in ci.yml il passo che rigenera e confronta è sano: un passo vero, dopo npm ci, con la riga `run:` che è il solo comando, senza `continue-on-error` né `if:`; lo stesso file col passo commentato, con `continue-on-error`, con `|| true` in coda, con un `if:` o senza npm ci prima non lo è (sprint 26 · T2.4)', function (string $comando) {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $riga = "        run: {$comando}\n";
+    $forme = [
+        'commentato' => (string) preg_replace('/^ {6}(- name: [^\n]*\n) {8}(run: '.preg_quote($comando, '/').'\n)/m', '      # $1      #   $2', $ci),
+        'con continue-on-error' => str_replace($riga, $riga."        continue-on-error: true\n", $ci),
+        'con || true in coda' => str_replace($riga, "        run: {$comando} || true\n", $ci),
+        'con un if' => str_replace($riga, "        if: false\n".$riga, $ci),
+        'senza npm ci prima' => str_replace("\n          npm ci\n", "\n", $ci),
+    ];
+
+    expect(substr_count($ci, $riga))->toBe(1)
+        ->and(difettiDelPassoCheLancia($comando, $ci))->toBe([])
+        // Ogni forma è un file diverso da quello vero: una forma rimasta uguale direbbe «sano» qui sotto.
+        ->and(array_map(fn (string $testo) => difettiDelPassoCheLancia($comando, $testo), $forme))->toBe([
+            'commentato' => ["i passi che lanciano «{$comando}» sono 0, non uno"],
+            'con continue-on-error' => ['il passo ha `continue-on-error:`'],
+            'con || true in coda' => ['la riga `run:` non è il solo comando'],
+            'con un if' => ['il passo ha `if:`'],
+            'senza npm ci prima' => ['il passo non viene dopo `npm ci`'],
+        ]);
+})->with([
+    'la favicon' => ['npm run favicon -- --controlla'],
+    'i componenti del design system' => ['npm run componenti -- --controlla'],
+]);
+
 it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
 
-    expect(substr_count($ci, 'npm run favicon -- --controlla'))->toBe(1)
-        ->and(strpos($ci, 'npm run favicon -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+    expect(difettiDelPassoCheLancia('npm run favicon -- --controlla', $ci))->toBe([])
         ->and($package['scripts']['favicon'] ?? null)->toBe('node scripts/favicon.mjs')
         ->and($package['devDependencies']['@resvg/resvg-js'] ?? null)->toBe('2.6.2')
         ->and(array_keys($package['peerDependencies']))->toBe(['react', 'react-dom'])
@@ -1887,8 +1960,7 @@ it('la CI rigenera in memoria il modulo dei componenti del design system e lo co
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
 
-    expect(substr_count($ci, 'npm run componenti -- --controlla'))->toBe(1)
-        ->and(strpos($ci, 'npm run componenti -- --controlla'))->toBeGreaterThan((int) strpos($ci, 'npm ci'))
+    expect(difettiDelPassoCheLancia('npm run componenti -- --controlla', $ci))->toBe([])
         ->and($package['scripts']['componenti'] ?? null)->toBe('node scripts/componenti.mjs');
 });
 
