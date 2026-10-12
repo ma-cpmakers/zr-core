@@ -153,10 +153,10 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
 }
 
 /**
- * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice (per titolo): POST /cornice/ricerca. La parola
- * sta nel corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi
- * del browser (dal server del modulo al backoffice ci sta ancora, finché il backoffice non dà un metodo col termine nel
- * corpo). `segnale` annulla la richiesta. Coi risultati, il workspace di cui sono, come lo dice la parte server (dalla
+ * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice: POST /cornice/ricerca. La parola sta nel
+ * corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi del
+ * browser (dalla `v1.15.0` sta nel corpo anche dal server del modulo al backoffice). `segnale` annulla la richiesta. Coi
+ * risultati, il workspace di cui sono, come lo dice la parte server (dalla
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
  * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
  * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro.
