@@ -240,8 +240,13 @@ zr-auth sta sul finto HTTP di Laravel, e le richieste partite si leggono da lì.
 
 **Chi non ha accettato i documenti legali** in vigore, dalla `v1.14.0`: `Cornice::dati()` non lancia e dà i dati ridotti,
 con `accettazione_richiesta: true`; la cornice esce ridotta, con un avviso che porta alla pagina dell'accettazione, che è
-di zr-home. Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» e non scrivi un rimando tuo: dalle tue
-chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17` — README, «La cornice», al punto «Chi non ha accettato i documenti
+di zr-home. Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le
+visite non scrivi un rimando tuo: dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l'eccezione
+`AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia. A una tua richiesta JSON
+zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Con una patch più vecchia
+quel 403 resta un `ErroreApi`: chiedi zr-auth `^0.12.17`. Sulle rotte `/cornice/*` non mettere un middleware che chiama
+`/v1` senza prendere quel 403. Nello stato ridotto la tua pagina sta in un contenitore sotto l'avviso, e si rimonta quando
+lo stato arriva dal 403 di una rotta o se ne va — README, «La cornice», al punto «Chi non ha accettato i documenti
 legali».
 
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un

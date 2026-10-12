@@ -141,8 +141,9 @@ final class Cornice
      * sessione, e il backoffice non si chiama. Costa una lettura, io.mostra, e in una richiesta in cui c'è anche `dati()`
      * nessuna in più: è la stessa (vedi `lettura()`). Se il backoffice non risponde non lancia, perché la lingua di una
      * pagina non diventi un 500: dà la lingua che la sessione ha, lascia un avviso nel log, e l'errore lo lancia `dati()`,
-     * se in quella richiesta c'è. GettoneRifiutato passa: la sessione è finita, e lo tratta il frontend come da ogni altra
-     * chiamata.
+     * se in quella richiesta c'è. Davanti al 403 `accettazione_richiesta` dà la lingua della sessione allo stesso modo, ma
+     * senza avviso, e `dati()` non lancia: non è un guasto, e i dati escono ridotti. GettoneRifiutato passa: la sessione è
+     * finita, e lo tratta il frontend come da ogni altra chiamata.
      */
     public static function lingua(): ?string
     {
@@ -177,7 +178,7 @@ final class Cornice
      * che la lettura si tenesse, e i suoi dati hanno un altro segno. Si tengono anche BackofficeNonRisponde ed ErroreApi,
      * perché una lettura fallita non riparta nella stessa richiesta; GettoneRifiutato non si prende, e non si tiene niente.
      * L'errore preso per `lingua()`, che non lo lancia, va nel log come avviso: in una richiesta senza `dati()` non ne
-     * resterebbe traccia.
+     * resterebbe traccia. Il 403 `accettazione_richiesta` no: non è un guasto, e non lascia un avviso.
      *
      * @param  array<string, mixed>  $utente  la persona della sessione
      * @param  array<string, mixed>  $workspace  il workspace della sessione

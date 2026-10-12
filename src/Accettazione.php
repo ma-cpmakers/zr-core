@@ -14,6 +14,9 @@ use Zeiras\Auth\Errori\ErroreApi;
  * Si riconosce dallo stato e dal codice insieme, mai dalla classe dell'errore: fra le versioni di zr-auth che il vincolo del
  * pacchetto accetta ce ne sono senza una classe per questo 403. Un 403 con un altro codice, o senza codice, e quel codice con
  * un altro stato restano l'errore che erano.
+ *
+ * @internal È della parte server di zr-core e non fa parte di ciò che il pacchetto promette a chi lo installa: un frontend
+ * guarda `accettazione_richiesta` nei dati della cornice, o lo stato e il codice dell'`ErroreApi` delle proprie chiamate.
  */
 final class Accettazione
 {

@@ -94,7 +94,7 @@ public function share(Request $request): array
 | `Cornice::dati()` dà | quando |
 |---|---|
 | `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
-| gli stessi dati, ridotti: `prodotti` `{}`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
+| gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
@@ -132,14 +132,20 @@ il backoffice le apre solo `io.mostra`, i documenti, l'accettazione e l'uscita, 
 `accettazione_richiesta`. Per la cornice non è un guasto: `Cornice::dati()` non lancia e dà i dati ridotti — lingua,
 persona e workspace della sessione, `prodotti` e `aziende` vuoti, `non_lette` 0, il segno — con in più
 `accettazione_richiesta: true`. La chiave c'è solo lì, mai a `false`: i dati di chi ha accettato sono quelli di sempre.
+Lì `prodotti` è una lista vuota, e al browser arriva `[]` e non `{}`: un frontend che valida la forma dei dati la ammette.
 Dopo quel 403 `Cornice::dati()` non chiama più il backoffice. Il frontend dà i dati alla cornice così come sono, e la
 pagina esce con la cornice ridotta (vedi «La cornice», al punto «Chi non ha accettato i documenti legali»). Con quella
 chiave `prodotti` vuoto non vuol dire «Presto»: vuol dire che il backoffice non li ha dati, e un frontend che legge i
 dati da sé (le schede dei moduli nella Dashboard) guarda `accettazione_richiesta` prima di `prodotti`. Quel 403 si
 riconosce dallo stato e dal codice insieme: un 403 con un altro codice resta l'`ErroreApi` che era. Quali documenti
 mancano la parte server non lo dà al browser: lo sa la pagina dell'accettazione, che è di zr-home. Le chiamate del
-frontend a `/v1` ricevono lo stesso 403, e lì la cornice non c'entra: da zr-auth `v0.12.17`, se nessuno lo cattura,
-zr-auth manda la persona alla pagina dell'accettazione da sé, e il frontend non scrive un rimando suo.
+frontend a `/v1` ricevono lo stesso 403, e lì la cornice non c'entra. Da zr-auth `v0.12.17` quel 403 è l'eccezione
+`Zeiras\Auth\Errori\AccettazioneRichiesta`, che se nessuno la cattura risponde da sé, in tre forme: a una visita un rimando
+alla pagina dell'accettazione (302), a una visita di Inertia un 409 con `X-Inertia-Location`, e a una richiesta JSON un
+403 con `codice` e `mancanti`, senza rimando — lì la persona resta dov'è, e che cosa mostrarle lo decide il frontend. Per
+le visite il frontend non scrive un rimando suo. Con una patch di zr-auth più vecchia della `v0.12.17` quel 403 resta un
+`ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core (`^0.12.4`) la ammette, e un frontend che vuole il
+rimando chiede zr-auth `^0.12.17` nel proprio `composer.json`.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
@@ -236,7 +242,9 @@ guardia.
 Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le quattro rotte rispondono 403
 `{errore: "accettazione_richiesta"}`, col solo codice: titolo, dettaglio e documenti mancanti del backoffice restano
 nella parte server. La cornice lo riconosce e passa allo stato ridotto (vedi «La cornice», al punto «Chi non ha accettato
-i documenti legali»); ogni altro errore del backoffice resta quello di prima.
+i documenti legali»); ogni altro errore del backoffice resta quello di prima. Su quelle rotte nessun middleware del
+frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di
+zr-auth, coi `mancanti`. La cornice la riconosce lo stesso, dal `codice`, e passa allo stato ridotto.
 
 ## La cornice
 
@@ -544,20 +552,29 @@ cornice === null ? pagina : (
   la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
   (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
 - **Chi non ha accettato i documenti legali** in vigore vede la cornice ridotta, dalla `v1.14.0`: coi dati che portano
-  `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta` (finché la
-  cornice ha quei dati: con dati letti dopo che non lo dicono torna quella di sempre). Nel menu Moduli c'è solo la
-  Dashboard, e il pulsante del modulo aperto non c'è. La campanella non ha numero, e il suo pannello dice «Non disponibile
+  `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta` (finché i
+  dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non
+  più avanti, anche se il frontend li ricrea a ogni disegno o li ritocca nel browser; con dati letti dopo che non lo dicono
+  torna quella di sempre; dati senza segno valgono solo finché sono lo stesso oggetto). Nel menu Moduli c'è solo la
+  Dashboard, e il pulsante del modulo aperto non c'è. Su una pagina di un modulo che non dà `active` nessuna voce della
+  barra è segnata: la Dashboard resta segnata solo sulle pagine di app.zeiras.com. La campanella non ha numero, e il suo pannello dice «Non disponibile
   finché non accetti i documenti.», senza notifiche e senza «Segna tutte come lette», «Riprova» e «Vedi tutte»; la ricerca
   dice la stessa frase sotto il campo e non dà risultati. In quello stato la cornice non chiama nessuna delle sue rotte.
   Sopra il contenuto della pagina, che resta, c'è un avviso («Ci sono documenti da accettare») col pulsante «Vai ai
   documenti», che porta a `https://app.zeiras.com/legale/accetta?ritorno=<indirizzo della pagina>`: l'indirizzo è quello
   in cui la persona è al clic, e va nel `ritorno` solo se comincia con `https://` e non supera i 2000 caratteri (senza
-  `ritorno`, dopo l'accettazione zr-home porta alla Dashboard). La pagina dell'accettazione è di zr-home e sta fuori dalla
+  `ritorno`, dopo l'accettazione zr-home porta alla Dashboard). Il `ritorno` è una richiesta: dove la persona torna dopo
+  l'accettazione lo decide zr-home. La pagina dell'accettazione è di zr-home e sta fuori dalla
   cornice: la cornice non mostra testi legali, non dice quali documenti mancano e non fa accettare niente. Il menu del
   profilo resta intero, ed «Esci» funziona. Che cosa fa il frontend: dà i dati alla cornice così come sono; non legge
-  `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`); lascia a zr-auth il rimando dalle proprie chiamate a
-  `/v1`; e se a chi non ha accettato non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`): la
-  cornice li mostra come la pagina li dà. In quello stato `flush` non vale: l'avviso sta nel margine della pagina. I
+  `prodotti` vuoto come «Presto» (guarda `accettazione_richiesta`); lascia a zr-auth il rimando dalle proprie visite che
+  chiamano `/v1` (a una richiesta JSON zr-auth risponde 403 senza rimando, e lì decide il frontend: «La parte server»);
+  sulle rotte `/cornice/*` non mette un middleware che chiama `/v1` senza prendere quel 403; e se a chi non ha accettato
+  non vuole mostrare le voci del modulo e il «+», non li dà (`nav`, `create`): la cornice li mostra come la pagina li dà.
+  In quello stato `flush` non vale: l'avviso sta nel margine della pagina. Avviso e pagina stanno in un contenitore
+  (`div.zr-stack`), e la pagina in un `div` suo: lì non è figlia diretta di `main.zr-main`, e quando lo stato arriva dal
+  403 di una rotta, o se ne va, la pagina si rimonta — stato locale, fuoco e scorrimento ripartono, e i suoi effetti si
+  rilanciano. I
   quattro testi sono di zr-core, nelle tre lingue (`acceptanceTitle`, `acceptanceText`, `acceptanceAction`,
   `acceptanceOff`). Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».
