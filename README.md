@@ -613,7 +613,10 @@ cornice === null ? pagina : (
   escribe al menos 2 caracteres.»); col CRM attivo l'invito nomina anche contatti, aziende e opportunità, e il segnaposto
   resta alle prime tre. Un modulo `disponibile` o in arrivo non dà fonti. Senza fonti, e per chi non ha accettato
   i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l'invito è «Scrivi
-  almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»). I due testi li compone la cornice
+  almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»). L'elenco delle fonti vuole
+  `Intl.ListFormat` nel browser: dove manca, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono
+  questi due, quelli senza fonti, quante che siano le fonti; nella `v1.15.0`, con almeno una fonte, lì il disegno della
+  cornice lanciava un errore. I due testi li compone la cornice
   dai testi delle lingue: `searchPlaceholderSources` e `searchHintSources` hanno il posto dell'elenco, `{sources}`, e
   `searchPlaceholder` e `searchHint` sono quelli senza fonti. Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca
   board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search boards and folders…» e
