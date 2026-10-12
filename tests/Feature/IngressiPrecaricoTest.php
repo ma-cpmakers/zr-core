@@ -18,6 +18,8 @@ use Zeiras\Core\Http\PrecaricoDegliIngressi;
 
 const CARTELLA_DEL_PRECARICO = 'build-precarico-zr-core';
 const INGRESSO_DEL_PRECARICO = 'resources/js/app.tsx';
+/** Il workspace della sessione, per le rotte del gruppo `web`, che hanno la guardia di zr-auth. */
+const WORKSPACE_DEL_PRECARICO = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
 beforeEach(function () {
     File::ensureDirectoryExists(public_path(CARTELLA_DEL_PRECARICO));
@@ -183,7 +185,7 @@ it('un `Link` che la risposta porta già resta com\'è: il middleware aggiunge i
 
 it('un altro precarico di Vite (un font, `as="font"`) non esce, né come script né come stile: escono solo CSS e moduli (sprint 28 · T2.4)', function () {
     // Il precarico di un font, come lo darebbe un plugin: Vite lo tiene fra i suoi con `as="font"`.
-    Vite::usePreloadTagAttributes(fn (string $src, string $url): array => str_contains($url, 'fornitori-') ? ['rel' => 'preload', 'as' => 'font'] : []);
+    Vite::usePreloadTagAttributes(fn ($src, $url): array => str_contains((string) $url, 'fornitori-') ? ['rel' => 'preload', 'as' => 'font'] : []);
     Route::get('/prova/precarico', fn () => documentoConVite())->middleware(PrecaricoDegliIngressi::class);
 
     $risposta = $this->get('/prova/precarico')->assertOk();
@@ -199,8 +201,10 @@ it('un altro precarico di Vite (un font, `as="font"`) non esce, né come script 
 // T2.5
 
 it('zr-core non registra il precarico da sé: col solo provider una pagina 200 HTML con `@vite` non ha `Link`, nel gruppo `web` come fuori; e `config/zr-core.php` non ha una chiave per lui (sprint 28 · T2.5)', function () {
+    // Nel gruppo `web` c'è la guardia di zr-auth: la pagina è di una persona entrata.
+    sessioneAMano(WORKSPACE_DEL_PRECARICO);
     Route::get('/prova/precarico', fn () => documentoConVite());
-    Route::get('/prova/precarico-web', fn () => documentoConVite())->middleware('web');
+    Route::get('/w/uat-marketing/precarico', fn () => documentoConVite())->middleware('web');
     $kernel = app(HttpKernel::class);
     $delleRotte = collect(Route::getRoutes()->getRoutes())->flatMap(fn ($rotta) => $rotta->gatherMiddleware())->all();
 
@@ -208,17 +212,18 @@ it('zr-core non registra il precarico da sé: col solo provider una pagina 200 H
         ->and(Arr::flatten($kernel->getMiddlewareGroups()))->not->toContain(PrecaricoDegliIngressi::class)
         ->and($delleRotte)->not->toContain(PrecaricoDegliIngressi::class)
         ->and($this->get('/prova/precarico')->assertOk()->headers->has('Link'))->toBeFalse()
-        ->and($this->get('/prova/precarico-web')->assertOk()->headers->has('Link'))->toBeFalse()
+        ->and($this->get('/w/uat-marketing/precarico')->assertOk()->headers->has('Link'))->toBeFalse()
         // Le rotte le dice dove il frontend lo aggancia, i file li dice `@vite`: niente da configurare.
         ->and(array_keys((array) config('zr-core')))->toBe(['csp', 'csp_pagine'])
         ->and(array_keys(require __DIR__.'/../../config/zr-core.php'))->toBe(['csp', 'csp_pagine']);
 });
 
 it('il frontend lo registra sul gruppo `web`, e da lì ogni pagina intera del gruppo ha il `Link`; una rotta fuori dal gruppo no (sprint 28 · T2.5)', function () {
+    sessioneAMano(WORKSPACE_DEL_PRECARICO);
     Route::pushMiddlewareToGroup('web', PrecaricoDegliIngressi::class);
-    Route::get('/prova/precarico-web', fn () => documentoConVite())->middleware('web');
+    Route::get('/w/uat-marketing/precarico', fn () => documentoConVite())->middleware('web');
     Route::get('/prova/precarico', fn () => documentoConVite());
 
-    expect(vociDelPrecarico($this->get('/prova/precarico-web')->assertOk()->headers->get('Link')))->toHaveCount(3)
+    expect(vociDelPrecarico($this->get('/w/uat-marketing/precarico')->assertOk()->headers->get('Link')))->toHaveCount(3)
         ->and($this->get('/prova/precarico')->assertOk()->headers->has('Link'))->toBeFalse();
 });

@@ -154,8 +154,8 @@ in `tests/Feature/`).
 
 Dalla `v1.18.0` puoi registrare anche il precarico dei file d'ingresso, `Zeiras\Core\Http\PrecaricoDegliIngressi`, sul
 gruppo `web` o sulle sole rotte che vuoi: scrive nell'header `Link` i file che `@vite` ha messo nel documento, e con Early
-Hints Cloudflare li manda prima della pagina. Installare zr-core non lo accende: non parte da solo — README, «Il precarico
-dei file d'ingresso».
+Hints Cloudflare li manda prima della pagina. Installare zr-core non lo accende: non parte da solo — README,
+«Il precarico dei file d'ingresso».
 
 **Prova**: il tuo test è verde; sul sito vero una tua pagina risponde con una sola CSP. Guarda la risposta della pagina,
 non quella di chi non è entrato: senza il cookie della sessione risponde un rimando — la partenza del passo 2, o la
