@@ -3338,12 +3338,20 @@ it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi vien
     'il titolo' => ['punto', 'Dalla `v1.14.0` ha un titolo anche la notifica che Project Management manda a chi viene assegnata una scheda: «Ti è stata assegnata una scheda»'],
     'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Come le quattro del CRM non è un evento: il suo `tipo` arriva senza `com.zeiras.` davanti (`board.scheda.assegnata`), e la chiave del titolo è `notificationTitle.board.scheda.assegnata`'],
     'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 41: i 36 tipi di evento del contratto e i cinque «assegnata»'],
-    'il contratto non la elenca ancora' => ['punto', 'Il contratto pubblicato l\'11/10/2026 non la elenca ancora: titolo e destinazione sono pronti per quando il backoffice la manderà'],
+    'il contratto la elenca dal 12/10/2026' => ['punto', 'Il contratto la elenca dal 12/10/2026: `app` `pm`, nei `dati` il solo `id` della scheda, e `risorsa_nome` è il titolo della scheda'],
     'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
     'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
     'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
     'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
 ]);
+
+it('il README non dice più che il contratto non elenca la notifica a chi viene assegnata una scheda: dal 12/10/2026 la elenca (sprint 24 · T5)', function () {
+    $frase = 'non la elenca ancora';
+
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        // Il controllo vede ciò che cerca: la frase, a capo com'era nel README, su una riga è quella.
+        ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
+});
 
 it('il README non dice più che i titoli sono 40 né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
