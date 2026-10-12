@@ -289,6 +289,8 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
  * backoffice non dà il nome. Dallo sprint 31 (T1) anche i 18 tipi del CRM, con le parole di zr-crm: hanno la sola frase con chi
  * — il nome di un contatto è un dato personale, e delle altre cose il contratto non dà il nome —, tranne le due della pipeline.
+ * Con T2 anche i cinque del workspace e `com.zeiras.app.modificata`, con le parole di zr-home: ogni tipo che ha un titolo ha la
+ * frase con solo chi. Di un membro il contratto non dà il nome; di un modulo dà il codice, e la cornice ne scrive il nome.
  * La tabella è scritta qui, non letta dai file delle lingue.
  *
  * @return array<string, array{chiECosa: array{it: string, en: string, es: string}|null, chi: array{it: string, en: string, es: string}}>
@@ -439,6 +441,30 @@ function frasiDelleNotificheConChi(): array
         'crm.attivita.assegnata' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who} ti ha assegnato un\'attività', 'en' => '{who} assigned you an activity', 'es' => '{who} te ha asignado una actividad'],
+        ],
+        'com.zeiras.workspace.creato' => [
+            'chiECosa' => ['it' => '{who} ha creato il workspace «{what}»', 'en' => '{who} created the workspace “{what}”', 'es' => '{who} ha creado el workspace «{what}»'],
+            'chi' => ['it' => '{who} ha creato il workspace', 'en' => '{who} created the workspace', 'es' => '{who} ha creado el workspace'],
+        ],
+        'com.zeiras.workspace.modificato' => [
+            'chiECosa' => ['it' => '{who} ha modificato il workspace «{what}»', 'en' => '{who} changed the workspace “{what}”', 'es' => '{who} ha modificado el workspace «{what}»'],
+            'chi' => ['it' => '{who} ha modificato il workspace', 'en' => '{who} changed the workspace', 'es' => '{who} ha modificado el workspace'],
+        ],
+        'com.zeiras.workspace.membro.creato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} è ora nel workspace', 'en' => '{who} joined the workspace', 'es' => '{who} ya está en el workspace'],
+        ],
+        'com.zeiras.workspace.membro.modificato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha cambiato il ruolo di un membro', 'en' => '{who} changed a member\'s role', 'es' => '{who} ha cambiado el rol de un miembro'],
+        ],
+        'com.zeiras.workspace.membro.eliminato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha tolto una persona dal workspace', 'en' => '{who} removed someone from the workspace', 'es' => '{who} ha quitado a una persona del workspace'],
+        ],
+        'com.zeiras.app.modificata' => [
+            'chiECosa' => ['it' => '{who} ha attivato o disattivato il modulo «{what}»', 'en' => '{who} turned the module “{what}” on or off', 'es' => '{who} ha activado o desactivado el módulo «{what}»'],
+            'chi' => ['it' => '{who} ha attivato o disattivato un modulo', 'en' => '{who} turned a module on or off', 'es' => '{who} ha activado o desactivado un módulo'],
         ],
     ];
 }
@@ -1179,7 +1205,7 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('le notifiche di Project Management e del CRM hanno in ogni lingua la frase con solo chi, e dove il nome della cosa si può dire quella con chi e che cosa: 52 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e diciannove anche quella con chi e che cosa: 61 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1191,9 +1217,16 @@ it('le notifiche di Project Management e del CRM hanno in ogni lingua la frase c
     $delleFrasi = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWho'), ARRAY_FILTER_USE_KEY);
     ksort($attese);
     ksort($delleFrasi);
+    $conLeFrasi = array_keys(frasiDelleNotificheConChi());
+    $conUnTitolo = array_values(array_unique(tipiDiNotificaConUnTitolo()));
+    sort($conLeFrasi);
+    sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(52)
-        ->and(array_keys(frasiDelleNotificheConChi()))->each->toBeIn(tipiDiNotificaConUnTitolo())
+    expect($attese)->toHaveCount(61)
+        // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
+        ->and($conLeFrasi)->toBe($conUnTitolo)
+        ->and($conLeFrasi)->toHaveCount(42)
+        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(19)
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);

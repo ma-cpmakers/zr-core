@@ -5007,10 +5007,13 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
 })->with([
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
-    'i tipi che le hanno' => ['notifiche', 'Le hanno i diciotto tipi di Project Management: tutti la seconda, e la prima i quattordici che non sono una cosa eliminata'],
+    // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima diciannove: i quattordici di Project Management che non sono una cosa eliminata, le due pipeline del CRM, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'perché gli altri no' => ['notifiche', 'Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline (il nome di un contatto è un dato personale)'],
+    'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
-    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per una cosa eliminata, è la frase con solo chi'],
-    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di prima col nome sotto'],
+    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
+    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto'],
     'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
     'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
@@ -5024,6 +5027,23 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
     'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
     'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
+    'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
+]);
+
+// Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
+// Management.
+it('README e guida non dicono più che le frasi con chi le hanno solo le notifiche di Project Management (sprint 31 · T2.4)', function (string $dove, string $frase) {
+    $testi = [
+        'notifiche' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Le notifiche'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(false);
+})->with([
+    'solo i diciotto tipi' => ['notifiche', 'Le hanno i diciotto tipi di Project Management'],
+    'una notifica di Project Management' => ['notifiche', 'una notifica di Project Management dice chi ha fatto che cosa'],
+    'la guida: oggi solo Project Management' => ['guida', 'oggi lo fanno quelle di Project Management'],
 ]);
 
 // Sprint 29 · T4 (review della PR #62, R2, R5, R6): quattro frasi che il README diceva e che non erano vere.
