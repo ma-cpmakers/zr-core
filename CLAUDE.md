@@ -16,9 +16,11 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 - **I componenti React della cornice**: `AppShell` (sidebar, menu Moduli esteso o chiuso, topbar, percorso), il
   selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
   «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano.
-- **Il design system intero nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua).
-  Il `bundle.js` del design system legge `window.React` e scrive `window.Zeiras` intero: due copie nella stessa app si
-  sovrascrivono, e `window.React` va scritto da un modulo importato **prima** del bundle. I font arrivano da Google
+- **Il design system nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua). I
+  componenti sono un modulo ES generato dal `bundle.js` del design system (`resources/js/zeiras/componenti.js`, vedi «Stack
+  e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
+  system intero, e lo scrive in `window.Zeiras`, con `window.React`; quello per le app (`resources/js/app`, dalla `v1.15.0`)
+  dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. I font arrivano da Google
   Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
   `font-src https://fonts.gstatic.com`.
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il

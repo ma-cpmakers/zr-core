@@ -36,12 +36,51 @@ prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
-**Il JS**: i componenti si importano dall'ingresso del pacchetto, che scrive `window.React` prima di caricare il design
-system. React lo porta il frontend: il pacchetto non ne ha una copia.
+**Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
+una copia.
 
-```ts
-import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
-```
+- **L'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi
+  dell'ingresso di sempre tranne `Zeiras`. I componenti del design system si prendono per nome dal loro modulo,
+  `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l'app usa: i componenti della cornice, più
+  quelli delle sue pagine.
+
+  ```ts
+  import { Cornice, type DatiDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app';
+  import * as Zeiras from '../../vendor/zeiras/zr-core/resources/js/zeiras/componenti';
+  ```
+
+  Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.
+
+- **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
+  `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
+  una riga.
+
+  ```ts
+  import { Zeiras } from '../../vendor/zeiras/zr-core/resources/js';
+  ```
+
+**Il passaggio** all'ingresso per le app, in ogni file che importa da zr-core, sono due righe: `import * as Zeiras from
+'…/resources/js/zeiras/componenti'` al posto di `import { Zeiras } from '…/resources/js'` (`Zeiras.Button` resta
+`Zeiras.Button`), e gli altri nomi da `…/resources/js/app` al posto di `…/resources/js`. I due ingressi non si mescolano
+nella stessa app: basta un file che importa ancora dall'ingresso di sempre perché nella build torni il design system
+intero. Non si rompe niente (i componenti sono gli stessi oggetti, in una copia sola), ma il peso torna quello di prima. Chi
+nei suoi test spia un componente della cornice sull'oggetto `Zeiras` (`vi.spyOn(Zeiras, 'AppShell')`) dalla `v1.15.0` spia il
+modulo dei componenti (`import * as componenti from '…/resources/js/zeiras/componenti'`, poi `vi.spyOn(componenti,
+'AppShell')`), da qualunque ingresso: è da lì che la cornice li prende.
+
+**Quanto pesa**, su tre app di prova che montano la cornice, costruite da Vite minificate e con React fuori (la CI di
+zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione):
+
+| App di prova | JS | con gzip |
+|---|---|---|
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 16,4 KB |
+| la cornice e due componenti per nome | 57,5 KB | 17,6 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 35,7 KB |
+
+I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
+`find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
+completo lo dice `grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l`: risponde 0
+dall'ingresso per le app, 1 finché un file importa dall'ingresso di sempre.
 
 **I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
 pacchetto. Vogliono `target` ES2022 o più recente, con la sua libreria (dalla `v1.9.0`). Reggono `strict`, `noUnusedLocals` e

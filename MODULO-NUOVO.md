@@ -72,16 +72,21 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
 
 Poi `composer require "zeiras/zr-core:^1.10.1"`, o con l'ultima versione con tag al posto di quella (questa guida c'è
 dalla `v1.10.1`). zr-auth lo richiede zr-core, e Composer lo installa con lui. Poi i due `@import` del CSS nell'ordine
-dato, l'import dei componenti dall'ingresso del pacchetto e, nel tuo `tsconfig`, `target` ES2022 o più recente:
-README, «Come si installa in un frontend». La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
+dato, gli import del JS e, nel tuo `tsconfig`, `target` ES2022 o più recente: README, «Come si installa in un frontend».
+Un modulo che nasce parte dall'ingresso per le app (dalla `v1.15.0`): la cornice da
+`vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da
+`vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi. La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
 file statici: README, «La favicon». Il design system nella build è quello di zr-core: non ne tieni una copia tua.
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
-la build passano; nella build il design system c'è una volta sola:
-`grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 1.
+la build passano; nella build il design system non entra intero:
+`grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l` risponde 0 (dall'ingresso di
+sempre, dove `Zeiras` è il design system intero, risponde 1).
 
 **Errore già pagato**: Composer non eredita i repository di un pacchetto, e senza quello di zr-auth nel tuo `composer.json`
 zr-core non si installa. Una seconda copia del design system accanto a quella del pacchetto si sovrascrive con la prima.
+I due ingressi non si mescolano: un file che importa ancora dall'ingresso di sempre riporta nella build il design system
+intero.
 Con un `target` più vecchio di ES2022 `tsc --noEmit` si ferma sui sorgenti del pacchetto, non sui tuoi.
 
 ## 2. L'ingresso, la sessione, l'uscita
@@ -323,7 +328,10 @@ non trova la rotta.
 **Scrivi** `docs/zr-design-system.md`, il registro del tuo allineamento — la forma (il tag, e una riga per file con lo
 sha256 e dove lo usi) la dà la skill `zr-design-system` —, e un test che confronta gli sha256 dei file del design system
 che la tua build usa (`vendor/zeiras/zr-core/resources/zeiras/`: `bundle.js`, `bundle.css`, `index.d.ts`, `tokens.json`)
-con quelli scritti lì. Un modello (zr-crm lo chiama `RiallineamentoDesignTest`, in `tests/Feature/`):
+con quelli scritti lì. Dalla `v1.15.0` i componenti nella build vengono da
+`vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, che zr-core genera da `bundle.js` e confronta nella sua CI a
+ogni giro: lo sha256 di `bundle.js` resta il segno che il design system è cambiato. Un modello (zr-crm lo chiama
+`RiallineamentoDesignTest`, in `tests/Feature/`):
 
 ```php
 it('il documento dell\'allineamento ha gli sha256 dei file del design system installati', function () {

@@ -1,9 +1,9 @@
 // Il CSS nell'ordine del README: prima il design system (il suo @import dei font è la prima regola), poi i token.
 import '../zeiras/bundle.css';
 import '../css/zeiras-token.css';
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Cornice, type CorniceProps, type DatiDellaCornice, type GruppoDiVoci } from '../js/cornice';
+import type { CorniceProps, DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { lingue } from '../js/lingue';
 import { registro } from '../js/registro';
 import { rotteFinte } from './rotte-finte';
@@ -24,6 +24,8 @@ import { rotteFinte } from './rotte-finte';
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
 // assegnata e una eliminata, di Project Management) l'ultimo si legge anche in pagina, sotto le scelte.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire. Non entra nel pacchetto.
+// La cornice gliela dà chi la monta (`avvia`, in fondo): index.tsx, per index.html, quella dell'ingresso di sempre; app.tsx,
+// per app.html, quella dell'ingresso per le app, e sotto le scelte scrive se `window.Zeiras` c'è.
 
 const datiDiProva: DatiDellaCornice = {
     lingua: 'it',
@@ -63,7 +65,7 @@ const propsScritteUndefined = {
 } satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;
 const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined, accettazione_richiesta: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
 
-function Prova() {
+function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inFondo?: ReactNode }) {
     const scelti = new URLSearchParams(window.location.search);
     const [lingua, setLingua] = useState(scelti.get('lingua') ?? 'it');
     const [prodotto, setProdotto] = useState(scelti.get('prodotto') ?? '');
@@ -118,6 +120,7 @@ function Prova() {
                 </label>
             </form>
             {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {inFondo}
         </Cornice>
     );
 }
@@ -130,4 +133,7 @@ function Prova() {
 const sessione = new URLSearchParams(window.location.search).get('sessione');
 rotteFinte(() => (sessione === null ? datiDiProva.workspace.slug : sessione === '' ? undefined : sessione));
 
-createRoot(document.getElementById('pagina')!).render(<StrictMode><Prova /></StrictMode>);
+/** Monta la pagina di prova con quella cornice; `inFondo` è ciò che la pagina scrive sotto le scelte. */
+export function avvia(Cornice: ComponentType<CorniceProps>, inFondo?: ReactNode): void {
+    createRoot(document.getElementById('pagina')!).render(<StrictMode><Prova Cornice={Cornice} inFondo={inFondo} /></StrictMode>);
+}
