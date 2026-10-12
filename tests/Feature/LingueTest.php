@@ -233,7 +233,8 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
  * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
  * Il segnaposto e l'invito della ricerca non promettono ciò che la ricerca non trova (zr-pm, note 10255 e 10288 del progetto;
- * sprint 22 · T8): dallo sprint 25 (T4) la cornice li compone dalle fonti del workspace, e questi due sono quelli senza fonti.
+ * sprint 22 · T8): dallo sprint 25 (T4) l'invito lo compone la cornice dalle fonti del workspace, dallo sprint 27 (T7) il
+ * segnaposto è uno solo e non le nomina, e questi due sono quelli senza fonti.
  * Il design system ha ancora due testi fissi, che dicono progetti, schede e contatti in ogni workspace.
  *
  * @return array<string, string>
@@ -722,15 +723,17 @@ it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prim
 // Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto), riscritto nello sprint 25 · T4 (voce #1639). Il
 // segnaposto del campo di ricerca e l'invito sotto il campo li compone la cornice dalle fonti del workspace: le lingue danno i
 // due testi senza fonti, i due col posto dell'elenco (`{sources}`) e, per ogni tipo di risorsa del registro, il nome da elenco.
+// Sprint 27 · T7 (voce #1810): il segnaposto è uno solo in ogni workspace e in ogni modulo, e non nomina più le fonti: la sua
+// chiave resta, senza il posto dell'elenco, che ha il solo invito.
 
-it('nelle tre lingue ci sono i due testi della ricerca senza fonti e i due col posto dell\'elenco (sprint 25 · T4.3)', function (string $chiave, array $attesi) {
+it('nelle tre lingue ci sono i due testi della ricerca senza fonti, il segnaposto unico e l\'invito col posto dell\'elenco (sprint 25 · T4.3; sprint 27 · T7.1, T7.5)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null])->toBe($attesi);
 })->with([
     'il segnaposto senza fonti' => ['searchPlaceholder', ['Cerca…', 'Search…', 'Busca…']],
     'l\'invito senza fonti' => ['searchHint', ['Scrivi almeno 2 caratteri.', 'Type at least 2 characters.', 'Escribe al menos 2 caracteres.']],
-    'il segnaposto con le fonti' => ['searchPlaceholderSources', ['Cerca {sources}…', 'Search {sources}…', 'Busca {sources}…']],
+    'il segnaposto unico, di una ricerca che ha delle fonti' => ['searchPlaceholderSources', ['Cerca nel workspace…', 'Search the workspace…', 'Busca en el workspace…']],
     'l\'invito con le fonti' => ['searchHintSources', [
         'Cerca {sources}: scrivi almeno 2 caratteri.',
         'Search {sources}: type at least 2 characters.',
@@ -738,7 +741,7 @@ it('nelle tre lingue ci sono i due testi della ricerca senza fonti e i due col p
     ]],
 ]);
 
-it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il nome da elenco, minuscolo; i quattro testi della ricerca non nominano nessuna fonte, i due con le fonti hanno una volta sola il posto dell\'elenco, e i puntini dei segnaposto sono il carattere «…» (sprint 25 · T4.3, T4.5)', function (string $codice, array $gruppi, array $daElenco) {
+it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il nome da elenco, minuscolo; i quattro testi della ricerca non nominano nessuna fonte, l\'invito con le fonti ha una volta sola il posto dell\'elenco e gli altri tre non lo hanno, e i puntini dei segnaposto sono il carattere «…» (sprint 25 · T4.3, T4.5; sprint 27 · T7.5)', function (string $codice, array $gruppi, array $daElenco) {
     $testi = lingueDellaCornice()[$codice];
     $tipi = tipiDiRisorsa();
     $iQuattro = mb_strtolower(implode(' ', array_map(fn (string $chiave): string => (string) ($testi[$chiave] ?? ''), ['searchPlaceholder', 'searchHint', 'searchPlaceholderSources', 'searchHintSources'])));
@@ -748,8 +751,8 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
         ->and(array_map(fn (string $tipo) => $testi["searchSource.$tipo"] ?? null, $tipi))->toBe($daElenco)
         ->and(array_map('mb_strtolower', $daElenco))->toBe($daElenco)
         ->and(array_values(array_filter($daElenco, fn (string $nome): bool => str_contains($iQuattro, $nome))))->toBe([])
-        ->and([substr_count((string) ($testi['searchPlaceholderSources'] ?? ''), '{sources}'), substr_count((string) ($testi['searchHintSources'] ?? ''), '{sources}')])->toBe([1, 1])
-        ->and(substr_count($testi['searchPlaceholder'].$testi['searchHint'], '{'))->toBe(0)
+        ->and([substr_count((string) ($testi['searchPlaceholderSources'] ?? ''), '{sources}'), substr_count((string) ($testi['searchHintSources'] ?? ''), '{sources}')])->toBe([0, 1])
+        ->and(substr_count($testi['searchPlaceholder'].$testi['searchHint'].$testi['searchPlaceholderSources'], '{'))->toBe(0)
         ->and(array_map(fn (string $testo): string => mb_substr($testo, -1), $segnaposto))->toBe(['…', '…'])
         ->and(substr_count(implode('', $segnaposto), '.'))->toBe(0);
 })->with([

@@ -1978,7 +1978,7 @@ function comandiCheRigeneranoEConfrontano(): array
 // o su tutto il file — che dà quello `shell:` a ogni passo, il passo che rigenera e confronta può fallire e la CI resta verde.
 // Il controllo guarda anche lì, e un job che non riconosce non lo dà per sano.
 
-it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: lo stesso file con `continue-on-error` o con un `if:` sul job del passo, con uno `shell:` sul passo, con un `defaults:` sul job o sul file, o col job che non si trova non è sano (sprint 27 · T5.1)', function (string $comando) {
+it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: lo stesso file con `continue-on-error`, con un `if:` o con un `needs:` sul job del passo, anche scritti fra virgolette, con uno `shell:` sul passo, con un `defaults:` sul job o sul file, o col job che non si trova non è sano (sprint 27 · T5.1; lettura della PR #60, R5)', function (string $comando) {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
     $riga = "        run: {$comando}\n";
     $job = "    runs-on: ubuntu-latest\n";
@@ -1990,6 +1990,11 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
         'con shell sul passo' => str_replace($riga, $riga.'        '.$shell, $ci),
         'con defaults sul job' => str_replace($job, $job."    defaults:\n      run:\n        ".$shell, $ci),
         'con defaults sul file' => str_replace("\njobs:\n", "\ndefaults:\n  run:\n    ".$shell."\njobs:\n", $ci),
+        // Lettura della PR #60, R5. Un job dietro un altro job è saltato quando quello è saltato, e il passo non gira.
+        'con needs sul job' => str_replace($job, "    needs: [prima]\n".$job, $ci),
+        // Una chiave scritta fra virgolette o fra apici è la stessa chiave.
+        'con un if fra virgolette sul job' => str_replace($job, "    \"if\": false\n".$job, $ci),
+        'con continue-on-error fra apici sul passo' => str_replace($riga, $riga."        'continue-on-error': true\n", $ci),
         // Tre spazi davanti al nome del job: per YAML è lo stesso file, ma il controllo non sa più qual è il job del passo.
         'col job che non si trova' => str_replace("\n  ci:\n", "\n   ci:\n", $ci),
     ];
@@ -2002,6 +2007,9 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
             'con shell sul passo' => ['il passo ha `shell:`'],
             'con defaults sul job' => ['il job del passo ha `defaults:`'],
             'con defaults sul file' => ['il file ha `defaults:`'],
+            'con needs sul job' => ['il job del passo ha `needs:`'],
+            'con un if fra virgolette sul job' => ['il job del passo ha `if:`'],
+            'con continue-on-error fra apici sul passo' => ['il passo ha `continue-on-error:`'],
             'col job che non si trova' => ['il job del passo non si trova'],
         ]);
 })->with(comandiCheRigeneranoEConfrontano());
@@ -2636,6 +2644,29 @@ it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in a
             $nonDice('README, «in arrivo restano»', 'in arrivo e non «Presto»: Bookings; «Presto»: 2'),
             $nonDice('guida, «e lo restano»', 'in arrivo e non «Presto»: Bookings; «Presto»: 2'),
         ]);
+});
+
+// Lettura della PR #60, R4. Il giorno che l'ultimo prodotto in arrivo esce per tutti, README e guida devono poterlo dire: la
+// frase che li nomina non c'è più, e le altre due contano i soli «Presto». Il controllo conosce anche quella forma: prima, con
+// un registro così, le tre frasi non si potevano più scrivere in un modo che tornasse.
+it('README e guida possono dire che nessun prodotto è in arrivo senza essere «Presto»: con un registro così il controllo accetta i documenti senza la frase che li nomina e con le due che contano i soli «Presto», e non quelli di oggi; col registro di oggi non accetta quei documenti (lettura della PR #60, R4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $senzaNessuno = array_map(fn (array $voce): array => $voce['presto'] ? $voce : [...$voce, 'in_arrivo' => false], registroDeiProdotti());
+    // I documenti di quel giorno, ricavati da quelli di oggi: le tre frasi, senza i nomi.
+    $readmeDiQuelGiorno = (string) preg_replace(
+        ['/non\s+`presto`:\s+[^.;]+?\s+(?:è|sono)\s+in\s+arrivo\s+e\s+non\s+(?:è|sono)\s+«Presto»/u', '/in\s+arrivo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u'],
+        ['non `presto`: oggi nessuno', 'in arrivo restano i $1 «Presto»'],
+        $readme,
+        -1,
+        $nelReadme,
+    );
+    $guidaDiQuelGiorno = (string) preg_replace('/e\s+lo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u', 'e lo restano i $1 «Presto»', $guida, -1, $nellaGuida);
+
+    expect([$nelReadme, $nellaGuida])->toBe([2, 1])
+        ->and(difettiDiChiEInArrivo($senzaNessuno, $readmeDiQuelGiorno, $guidaDiQuelGiorno))->toBe([])
+        ->and(count(difettiDiChiEInArrivo($senzaNessuno, $readme, $guida)))->toBe(3)
+        ->and(count(difettiDiChiEInArrivo(registroDeiProdotti(), $readmeDiQuelGiorno, $guidaDiQuelGiorno)))->toBe(3);
 });
 
 it('la guida non dice più che il passo del registro non ha un errore pagato, e le due forme scritte dell\'anteprima del CRM non stanno in `tests/`, nel README e nella guida (sprint 26 · T8.4; il titolo: sprint 27 · T5.5)', function () {
@@ -3859,32 +3890,54 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
 // Management attivo, quelli senza fonti, quelli fissi di prima e come un frontend li trova nei suoi test —, e nel punto «Il
 // menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
 
-it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dicono le fonti del workspace: nel punto «La ricerca» come si compongono, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
+it('il README dice che dalla v1.17.0 il segnaposto della ricerca è uno solo e che l\'invito dice le fonti del workspace: nel punto «La ricerca» come si compone, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
-    'quante ne nominano' => ['ricerca', 'Il segnaposto ne nomina al più tre, l\'invito tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` l\'invito dice le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
+    // Sprint 27 · T7 (voce #1810): dalla `v1.17.0` il segnaposto è uno solo, uguale in ogni workspace e in ogni modulo, e non
+    // nomina le fonti: le dice l'invito.
+    'il segnaposto unico' => ['ricerca', 'Dalla `v1.17.0` il segnaposto del campo è uno solo, uguale in ogni workspace e in ogni modulo: «Cerca nel workspace…» (in inglese «Search the workspace…», in spagnolo «Busca en el workspace…»)'],
+    'chi dice le fonti' => ['ricerca', 'Non nomina le fonti: che cosa si può cercare lo dice l\'invito che si legge prima di due caratteri'],
+    'quante ne nominano' => ['ricerca', 'L\'invito le nomina tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
     // Sprint 27 · T3: dalla `v1.17.0` i membri del workspace sono una fonte, nominata per ultima: l'invito finisce con loro, e i
     // due testi senza fonti non sono più quelli di un workspace senza moduli attivi.
-    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, folders, and members: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»'],
+    'l\'invito in italiano' => ['ricerca', 'Con Project Management attivo e il CRM no: «Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders, and members: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»'],
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
     'senza fonti' => ['ricerca', 'I due testi senza fonti sono «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»)'],
     // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
     // Lettura della PR #59, R1: vale per un browser che ha il resto di ciò che i sorgenti usano; dove manca anche quello, no.
-    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
+    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e l\'invito è quello senza fonti, quante che siano le fonti'],
+    'il segnaposto dove il browser non ha l\'elenco' => ['ricerca', 'dalla `v1.17.0` il segnaposto lì è quello unico, come ovunque (nella `v1.16.0` era «Cerca…»)'],
     'e dove manca anche il resto' => ['ricerca', 'Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser così lo aggiunge il frontend'],
     'e nella versione di prima' => ['ricerca', 'nella `v1.15.0`, con almeno una fonte, lì il disegno della cornice lanciava un errore'],
-    'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
+    'le chiavi delle lingue' => ['ricerca', '`searchHintSources` ha il posto dell\'elenco, `{sources}`; `searchPlaceholderSources` è il segnaposto unico e dalla `v1.17.0` non lo ha più (la chiave resta); `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
     'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
     'e quelli di prima ancora' => ['ricerca', 'prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
     'come trovarli nei test di un frontend' => ['ricerca', 'Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
     'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
+]);
+
+// Sprint 27 · T7 (voce #1810): dalla `v1.17.0` il segnaposto è uno solo e non nomina le fonti. Che una volta le nominava il
+// README lo dice al passato, per chi aggiorna: le frasi che lo dicevano al presente non ci sono più, e nemmeno il segnaposto di
+// un workspace senza moduli, che non è uscito in nessuna versione.
+it('il README non dice più, al presente, che il segnaposto della ricerca nomina le fonti (sprint 27 · T7.4)', function (string $diPrima) {
+    $ricerca = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca');
+
+    expect($ricerca)->not->toBe('')
+        ->and(str_contains($ricerca, $diPrima))->toBe(false);
+})->with([
+    'resta alle prime tre' => ['il segnaposto resta alle prime tre'],
+    'ne nomina al più tre' => ['Il segnaposto ne nomina al più tre'],
+    'i due testi dicono le fonti' => ['il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti'],
+    'il segnaposto di un workspace senza moduli' => ['«Cerca membri…»'],
+    'il segnaposto con le fonti, in inglese' => ['«Search cards, boards, folders…» e'],
+    'segnaposto e invito dove manca l\'elenco' => ['segnaposto e invito sono questi due'],
 ]);
 
 // Sprint 25 · T4 (voce #1639): la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga. Il README
@@ -3908,6 +3961,7 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
     'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
     'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
+    'la guida: chi nomina il nome da elenco' => ['guida', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
     'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
     'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
 ]);
@@ -3961,10 +4015,13 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'mai l\'email' => ['ricerca', 'L\'email di un membro non esce mai: il backoffice non la dà, e di `contesto` la parte server lascia passare il solo `ruolo`'],
     'dove si apre' => ['ricerca', 'Dalla `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri'],
     'la fonte, per ultima' => ['ricerca', 'Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`: «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi'],
-    'col CRM attivo' => ['ricerca', 'col CRM attivo l\'invito nomina anche contatti, aziende e opportunità, prima dei membri, e il segnaposto resta alle prime tre'],
-    'senza moduli attivi' => ['ricerca', 'Senza moduli attivi restano i membri: «Cerca membri…» e «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members…» e «Search members: type at least 2 characters.», in spagnolo «Busca miembros…» e «Busca miembros: escribe al menos 2 caracteres.»)'],
-    'l\'invito di prima' => ['ricerca', 'Dalla `v1.15.0` alla `v1.16.0` i membri non erano una fonte: con Project Management attivo e il CRM no l\'invito era «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, and folders: type at least 2 characters.», in spagnolo «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»), e senza moduli attivi il campo aveva i due testi senza fonti'],
-    'come trovarlo nei test di un frontend' => ['ricerca', 'un frontend che ha l\'invito nei suoi test lo trova cercando `e cartelle:` (in inglese `and folders:`, in spagnolo `y carpetas:`)'],
+    'col CRM attivo' => ['ricerca', 'col CRM attivo l\'invito nomina anche contatti, aziende e opportunità, prima dei membri. Un modulo `disponibile` o in arrivo non dà fonti'],
+    'senza moduli attivi' => ['ricerca', 'Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least 2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»)'],
+    'i due testi di prima' => ['ricerca', 'Dalla `v1.15.0` alla `v1.16.0` anche il segnaposto nominava le fonti, al più tre, e i membri non erano una fonte'],
+    'nei test di un frontend: Project Management attivo e il CRM no' => ['ricerca', 'con Project Management attivo e il CRM no il segnaposto era «Cerca schede, board, cartelle…» e l\'invito «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (cerca `cartelle…` e `e cartelle:`; in inglese `folders…` e `and folders:`, in spagnolo `carpetas…` e `y carpetas:`)'],
+    'nei test di un frontend: tutti e due attivi' => ['ricerca', 'con tutti e due attivi il segnaposto era lo stesso e l\'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `e opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`)'],
+    'nei test di un frontend: il solo CRM attivo' => ['ricerca', 'col solo CRM attivo il segnaposto era «Cerca contatti, aziende, opportunità…» (cerca `opportunità…`; in inglese `opportunities…`, in spagnolo `oportunidades…`)'],
+    'nei test di un frontend: nessun modulo attivo' => ['ricerca', 'senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.»'],
     'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
     'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
     'la riga: il solo ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice'],
