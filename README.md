@@ -386,10 +386,12 @@ cornice === null ? pagina : (
   con l'ultima non letta —, e dove va il fuoco allora lo decide il browser: di solito esce dal pannello, che resta aperto.
   Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Dalla `v1.21.0` il fuoco torna sulla campanella
   anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS): prima
-  restava alla pagina. A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie. Vale anche
+  restava alla pagina. In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
+  chiudono il pannello ed escono dal documento col fuoco.
+  A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie. Vale anche
   nello stato ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
   classe non prende il fuoco. Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda
-  l'elemento attivo va riletto. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
+  l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
   1,1 KB con gzip, con quello del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
@@ -406,7 +408,7 @@ cornice === null ? pagina : (
   nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
-  `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre; un `iframe`, e un `video` o un `audio` coi
+  `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
   comandi, contano dove il browser li mette nel giro del Tab. Il modulo non deve fare niente,
   e non scriva una trappola sua: sarebbero due. È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
   ancora il fuoco, e la cornice lo fa da sé, senza toccare i componenti; quando lo fanno loro questo si toglie, senza che
@@ -414,7 +416,9 @@ cornice === null ? pagina : (
   il primo campo in fuoco all'apertura, che resta del modulo. Restano fuori anche tre casi: da dentro un `iframe` i
   tasti sono della sua pagina, e Tab dall'ultimo suo elemento esce dal dialogo (il Tab dopo rientra); gli elementi dentro
   uno shadow DOM non si contano; un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l'ordine del
-  documento. Sta nello stesso pezzo a richiesta del punto sopra: se non
+  documento. E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata
+  sola, e quando è l'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono.
+  Sta nello stesso pezzo a richiesta del punto sopra: se non
   arriva, Tab fa il giro di prima, e sotto 720 px un `Dialog` aperto da un `DetailPanel` resta sotto il pannello. Anche il
   gradino del velo è provvisorio: è uno stile che la cornice scrive sull'elemento, perché il pacchetto non porta un CSS
   suo, e si toglie quando il design system mette i dialoghi sopra il pannello.
@@ -520,7 +524,8 @@ cornice === null ? pagina : (
   sa, non che la notifica è per altri. Un nome vuoto o di soli spazi non si mostra. Per una notifica su un'app (un tipo
   che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
   prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
-  registro non ha la seconda riga non c'è.
+  registro non ha la seconda riga non c'è. Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del
+  prodotto sta nella frase del titolo e la seconda riga non c'è (più sotto).
   Dalla `v1.20.0` le frasi delle notifiche — il titolo di ogni tipo e le due famiglie qui sotto — non stanno più nel JS
   d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
   chiede con `fetch` quando si apre la campanella, insieme all'elenco: il file della lingua della persona e quello

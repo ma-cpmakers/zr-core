@@ -18,7 +18,7 @@ export async function frasiInMemoria(): Promise<void> {
     const perIndirizzo = new Map(Object.entries(indirizziDelleFrasi).map(([percorso, indirizzo]) => [indirizzo, file[percorso]]));
     const diPrima = globalThis.fetch;
 
-    globalThis.fetch = (richiesta, opzioni) => (perIndirizzo.has(String(richiesta)) ? Promise.resolve(Response.json(perIndirizzo.get(String(richiesta)) ?? {})) : diPrima(richiesta, opzioni));
+    globalThis.fetch = (richiesta, opzioni) => (perIndirizzo.has(String(richiesta)) ? Promise.resolve(Response.json(perIndirizzo.get(String(richiesta)))) : diPrima(richiesta, opzioni));
     try {
         // La lingua vuota è una che zr-core non ha: le sue frasi sono quelle dell'inglese.
         await Promise.all([...lingue, ''].map((lingua) => caricaFrasi(lingua)));

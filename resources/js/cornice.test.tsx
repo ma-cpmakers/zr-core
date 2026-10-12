@@ -5986,6 +5986,29 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(uno('#annidato'));
     });
 
+    it('ciò che sta dentro il `summary` di un `<details>` chiuso si vede, ed è una fermata: un collegamento nel titolo si raggiunge (sprint 31 · T3.2, rilievo R2 della PR #64)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<>
+                <button type="button" id="ultimo">Sposta</button>
+                <details>
+                    <summary tabIndex={0} id="apre">Altro <a href="https://example.com/aiuto" id="nel-titolo">Che cosa vuol dire</a></summary>
+                    <a href="https://example.com/dentro">Nel dettaglio chiuso</a>
+                </details>
+            </>}><p>Dove?</p></Dialog>
+        </>);
+
+        // Dal titolo il Tab è del browser, che va sul collegamento nel titolo; da lì non c'è altro, e torna al primo.
+        await conIlFuoco(uno('#apre'));
+        expect(await premi('Tab')).toBe(false);
+        await conIlFuoco(uno('#nel-titolo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#nel-titolo'));
+    });
+
     it.each([
         ['un `iframe`', <iframe title="Anteprima" id="in-fondo" />],
         ['un `video` coi comandi', <video controls id="in-fondo" />],

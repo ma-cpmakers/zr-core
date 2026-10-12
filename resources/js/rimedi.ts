@@ -37,11 +37,11 @@ const PRENDONO_IL_FUOCO = 'a[href], button, input, select, textarea, summary, if
 
 /**
  * Non mostrato: lui o un elemento che lo contiene ha `hidden` o `display: none`, o è invisibile; o sta in un `<details>`
- * chiuso, di cui si vede solo il `summary` che lo apre (il primo).
+ * chiuso, di cui si vede solo il `summary` che lo apre (il primo), con ciò che ha dentro.
  */
 function nascosto(elemento: HTMLElement): boolean {
     for (let su: HTMLElement | null = elemento, sotto: HTMLElement | null = null; su !== null; sotto = su, su = su.parentElement) {
-        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto !== null && su.matches('details:not([open])') && !(sotto === elemento && sotto.matches('summary:first-of-type')))) {
+        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto !== null && su.matches('details:not([open])') && !sotto.matches('summary:first-of-type'))) {
             return true;
         }
     }
