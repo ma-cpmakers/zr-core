@@ -95,7 +95,7 @@ export type FrasiDelleNotifiche = {
      * del nome di chi e `{what}` al posto del nome della cosa (`rigaConLeFrasi`). La ha chi ha anche il titolo.
      */
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
-    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per una cosa eliminata. */
+    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
 };
 
@@ -374,10 +374,10 @@ export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, ling
 
 /**
  * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
- * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — oggi le notifiche di Project Management — il titolo è la
+ * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
  * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
- * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (una
- * cosa eliminata). In ogni altro caso — senza chi, o per un tipo senza frasi — è la riga di prima: `titoloConLeFrasi`, e sotto
+ * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase (il
+ * backoffice non ne dà il nome). In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
  * `risorsaDellaNotifica`. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
  * isolati (`fraseConINomi`). È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
  * stessi testi a chi mostra le notifiche in una pagina sua.

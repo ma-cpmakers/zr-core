@@ -146,3 +146,62 @@ describe('`frasiInMemoria`, per i test di chi installa il pacchetto (sprint 30 �
         expect(globalThis.fetch).toBe(fetchFinto);
     });
 });
+
+// Sprint 31 · T4 (voce #1908; review della PR #63, R18 e S8). Le frasi vere dal caricatore vero, e `frasiInMemoria` che non
+// risponde al posto di altri.
+describe('le frasi dei file del pacchetto, dal caricatore vero (sprint 31 · T4)', () => {
+    const FILE: Record<string, unknown> = { it: frasiItaliane, es: frasiSpagnole, en: frasiInglesi };
+    /** Serve i file del pacchetto col nome che l'indirizzo dice: come la cornice abbina un file a una lingua non lo sa. */
+    const serveIFile = () => vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => {
+        const [, nome = ''] = /\/(\w+)\.json(?:\?|$)/.exec(indirizzo) ?? [];
+
+        return nome in FILE ? risposta(FILE[nome]) : risposta({}, 404);
+    });
+
+    it.each([
+        ['it', frasiItaliane],
+        ['es', frasiSpagnole],
+        ['en', frasiInglesi],
+        ['zz', frasiInglesi],
+    ])('con la lingua "%s" le frasi che carica la cornice sono quelle dei file del pacchetto: il file della lingua sopra quello dell\'inglese (T4.1)', async (lingua, file) => {
+        const fetchDiProva = serveIFile();
+        vi.stubGlobal('fetch', fetchDiProva);
+        const { caricaFrasi, frasiPronte } = await import('./lingue');
+        expect(frasiPronte(lingua)).toBeUndefined();
+
+        await expect(caricaFrasi(lingua)).resolves.toStrictEqual({ ...frasiInglesi, ...file });
+        expect(fetchDiProva).toHaveBeenCalled();
+        expect(frasiPronte(lingua)).toStrictEqual({ ...frasiInglesi, ...file });
+    });
+
+    it('mentre `frasiInMemoria` carica, una richiesta a un indirizzo che non è di un file delle frasi passa al `fetch` di prima, con le sue opzioni (T4.3)', async () => {
+        const delModulo = risposta({ data: [] });
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => delModulo);
+        vi.stubGlobal('fetch', fetchFinto);
+        const { frasiInMemoria } = await import('./prove');
+        const opzioni = { headers: { Accept: 'application/json' } };
+
+        const inMemoria = frasiInMemoria();
+        expect(globalThis.fetch).not.toBe(fetchFinto);
+        const altra = globalThis.fetch('/cornice/notifiche', opzioni);
+        await inMemoria;
+
+        expect(await altra).toBe(delModulo);
+        expect(fetchFinto.mock.calls).toStrictEqual([['/cornice/notifiche', opzioni]]);
+        expect(globalThis.fetch).toBe(fetchFinto);
+    });
+
+    it('chi rifà i moduli richiama `frasiInMemoria` presa con un import nuovo: quella importata prima mette le frasi nel modulo di prima (T4.4)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({}, 500)));
+        const { frasiInMemoria: diPrima } = await import('./prove');
+        vi.resetModules();
+        const { frasiPronte } = await import('./lingue');
+
+        await diPrima();
+        expect(frasiPronte('it')).toBeUndefined();
+
+        const { frasiInMemoria } = await import('./prove');
+        await frasiInMemoria();
+        expect(frasiPronte('it')).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
+    });
+});

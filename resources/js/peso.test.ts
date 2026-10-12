@@ -214,6 +214,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(TETTO_DELL_INGRESSO).toBe(18_464);
     });
 
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,2 KB (sprint 31 · T3.7)', () => {
+        const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
+
+        expect(rimedi).not.toBe('');
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_228);
+    });
+
     // Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente: il pezzo che importa
     // `rigaDellaNotifica` porta le frasi di ogni lingua. I due ingressi del pacchetto la esportano, e costruiti da soli le hanno.
     it.each([

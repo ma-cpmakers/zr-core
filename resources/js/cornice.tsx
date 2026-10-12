@@ -209,8 +209,8 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
 
 /**
  * Una notifica della parte server nel pannello: il titolo e l'ora, nella lingua dei testi. Il titolo e la riga di sotto li dà
- * `rigaConLeFrasi`, con le frasi di quella lingua: per una notifica di Project Management con chi ha fatto, una frase con chi e
- * che cosa. Di che
+ * `rigaConLeFrasi`, con le frasi di quella lingua: per una notifica con chi ha fatto, una frase con chi e, dove il backoffice ne dà
+ * il nome, che cosa. Di che
  * prodotto è lo dice `app`, se è il codice di un prodotto del registro: il nome viene dalle lingue, icona e tono dal registro,
  * anche per un prodotto «Presto» o non attivo nel workspace. Ogni altro `app` — `null`, un codice che il registro non ha, la
  * Dashboard — non porta prodotto: la campanella e il tono neutro del design system, mai il codice. Quando il backoffice li

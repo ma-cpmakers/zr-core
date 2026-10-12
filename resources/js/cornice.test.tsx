@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, Fragment, useEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
@@ -979,7 +981,7 @@ describe('il pannello delle notifiche', () => {
             modificata('uat-n66', { autore_nome: '  ', risorsa_nome: 'Lancio corso' }),
             modificata('uat-n67', { risorsa_nome: 'Lancio corso' }),
             modificata('uat-n68', { autore_nome: { nome: 'UAT oggetto' }, risorsa_nome: 'Lancio corso' }),
-            // Un tipo senza frasi: del CRM, di un'app, uno che zr-core non conosce.
+            // Un tipo con la sola frase con chi (del CRM, sprint 31 · T1): il nome della cosa, se arriva, resta sotto. Poi un modulo, col suo nome nella frase al posto del codice (T2), e un tipo che zr-core non conosce, senza frasi.
             conInPiu('uat-n69', { app: 'crm', tipo: 'crm.trattativa.assegnata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Rinnovo' }),
             conInPiu('uat-n70', { app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
             conInPiu('uat-n71', { tipo: 'com.zeiras.board.scheda.spostata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
@@ -990,13 +992,62 @@ describe('il pannello delle notifiche', () => {
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
             '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            frasiItaliane['notificationTitle.crm.trattativa.assegnata'], frasiItaliane['notificationTitle.com.zeiras.app.modificata'], t.notificationTitle,
+            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', t.notificationTitle,
         ]);
-        expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', 'Project Management', 'Lancio corso']);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', null, 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
         expect(voci()[0].textContent?.split('Lancio corso')).toHaveLength(2);
         expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual(['GB', 'GB', 'GB', 'GB', null, null, null, null, 'GB', 'GB', 'GB']);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»|UAT oggetto/);
+    });
+
+    // Sprint 31 · T1 (voce #1866). Anche le notifiche del CRM dicono chi ha fatto: la pipeline col suo nome nella frase, le altre
+    // con solo chi. Senza chi — lo ha fatto il sistema, o la persona non è più nel workspace — resta il titolo di prima.
+    it('una notifica del CRM con chi ha per titolo la frase: la pipeline col suo nome e senza seconda riga, un contatto e un\'opportunità assegnata con solo chi; senza chi resta il titolo di prima (sprint 31 · T1.2, T1.3)', async () => {
+        const delCrm = (id: string, tipo: string, inPiu: Record<string, unknown>) => conInPiu(id, { app: 'crm', tipo, ...inPiu });
+        await apriSu([
+            delCrm('uat-n81', 'com.zeiras.crm.pipeline.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'Vendite' }),
+            delCrm('uat-n82', 'com.zeiras.crm.persona.creata', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            delCrm('uat-n83', 'crm.trattativa.assegnata', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            // Senza chi: il titolo di prima, e il nome della pipeline sotto.
+            delCrm('uat-n84', 'com.zeiras.crm.pipeline.modificata', { autore_nome: null, risorsa_nome: 'Vendite' }),
+            delCrm('uat-n85', 'com.zeiras.crm.persona.creata', { autore_nome: '  ', risorsa_nome: null }),
+            delCrm('uat-n86', 'crm.trattativa.assegnata', { risorsa_nome: null }),
+        ]);
+
+        expect(titoli()).toStrictEqual([
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato la pipeline «\u{2068}Vendite\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha creato un contatto', "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità",
+            'Pipeline modificata', 'Nuovo contatto', "Ti è stata assegnata un'opportunità",
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, 'Vendite', null, null]);
+        expect(voci()[0].textContent?.split('Vendite')).toHaveLength(2);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»/);
+    });
+
+    // Sprint 31 · T2 (voce #1866). Anche le notifiche del workspace e dei moduli dicono chi ha fatto: di un modulo la frase porta
+    // il nome, non il codice; per il contratto chi ha fatto, quando una persona entra, è la persona entrata.
+    it('una notifica del workspace o di un modulo con chi ha per titolo la frase: il modulo col suo nome e mai col codice, la persona entrata, il membro tolto, il ruolo cambiato; senza chi resta il titolo di prima (sprint 31 · T2.2, T2.3)', async () => {
+        const diTutti = (id: string, tipo: string, inPiu: Record<string, unknown>) => conInPiu(id, { app: null, tipo, ...inPiu });
+        await apriSu([
+            diTutti('uat-n91', 'com.zeiras.app.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
+            diTutti('uat-n92', 'com.zeiras.app.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'uat-modulo-che-non-c-e' }),
+            diTutti('uat-n93', 'com.zeiras.workspace.membro.creato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n94', 'com.zeiras.workspace.membro.eliminato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n95', 'com.zeiras.workspace.membro.modificato', { autore_nome: 'Giulia Bianchi', risorsa_nome: null }),
+            diTutti('uat-n96', 'com.zeiras.workspace.modificato', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Marketing' }),
+            // Senza chi: il titolo di prima, e sotto il nome del modulo.
+            diTutti('uat-n97', 'com.zeiras.app.modificata', { autore_nome: null, risorsa_nome: 'pm' }),
+            diTutti('uat-n98', 'com.zeiras.workspace.membro.creato', { risorsa_nome: null }),
+        ]);
+
+        expect(titoli()).toStrictEqual([
+            '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo',
+            '\u{2068}Giulia Bianchi\u{2069} è ora nel workspace', '\u{2068}Giulia Bianchi\u{2069} ha tolto una persona dal workspace', '\u{2068}Giulia Bianchi\u{2069} ha cambiato il ruolo di un membro',
+            '\u{2068}Giulia Bianchi\u{2069} ha modificato il workspace «\u{2068}UAT Marketing\u{2069}»',
+            frasiItaliane['notificationTitle.com.zeiras.app.modificata'], frasiItaliane['notificationTitle.com.zeiras.workspace.membro.creato'],
+        ]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, null, null, 'Project Management', null]);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»|\bpm\b|uat-modulo/);
     });
 
     it.each([
@@ -5468,6 +5519,33 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(scelta());
     });
 
+    it('chiudendo la campanella col clic dove il clic non dà il fuoco al pulsante (Safari, Firefox su macOS) il fuoco torna sulla campanella, e non resta sulla pagina (sprint 31 · T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await laCornice();
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        // Il clic senza il fuoco: il pannello esce dal documento con dentro l'elemento attivo.
+        await clic(campanella());
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(campanella());
+    });
+
+    it('il fuoco non si toglie a un elemento della pagina che lo ha preso: chiuso il pannello resta sul campo cliccato fuori (sprint 31 · T3.4)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><input id="della-pagina" /></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        await conIlFuoco(uno('#della-pagina'));
+        await clic(campanella());
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+    });
+
     it('il fuoco entra solo nel pannello che scrive l\'`AppShell` accanto alla campanella: un elemento della pagina con la stessa classe e le sue linguette non lo prende (T3.1)', async () => {
         vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
         const Pagina = ({ aperto }: { aperto: boolean }) => (
@@ -5828,6 +5906,180 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         await conIlFuoco(dietro());
         expect(await premi('Tab')).toBe(true);
         expect(alDialogo).toHaveBeenCalledTimes(1);
+    });
+
+    it('con un `Dialog` che non ha niente su cui fermarsi Tab porta il fuoco sul dialogo, che ora lo può prendere: Invio non preme più il pulsante dietro (sprint 31 · T3.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro il dialogo</button>
+            <Dialog open title="Attendi"><p>Solo testo</p></Dialog>
+        </>);
+        const dialogo = uno('.zr-dialog') as HTMLElement;
+        // Il design system non dà un `tabindex` al dialogo, e in un browser `focus()` da solo non fa niente (happy-dom dà il
+        // fuoco a tutto): conta il `tabindex` che il dialogo ha quando il fuoco gli è offerto.
+        expect(dialogo.hasAttribute('tabindex')).toBe(false);
+        const alMomento: (string | null)[] = [];
+        const offerto = dialogo.focus.bind(dialogo);
+        vi.spyOn(dialogo, 'focus').mockImplementation(() => {
+            alMomento.push(dialogo.getAttribute('tabindex'));
+            offerto();
+        });
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(alMomento).toStrictEqual(['-1']);
+        expect(document.activeElement).toBe(dialogo);
+    });
+
+    it('ciò che sta in un elemento `inert`, o in un `<details>` chiuso, non è una fermata: quando è l\'ultima cosa del dialogo, Tab dall\'ultima fermata vera torna alla prima (sprint 31 · T3.2)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<>
+                <button type="button" id="ultimo">Sposta</button>
+                <div inert><button type="button">Dentro un elemento inerte</button></div>
+                <details><a href="https://example.com/aiuto">In un dettaglio chiuso, senza un titolo suo</a></details>
+            </>}><p>Dove?</p></Dialog>
+        </>);
+
+        await conIlFuoco(uno('#ultimo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#ultimo'));
+    });
+
+    it('di un `<details>` chiuso resta una fermata il `summary` che lo apre, e solo quello; in uno aperto lo è tutto (sprint 31 · T3.2)', async () => {
+        largaAlPiu720(false);
+        // happy-dom non mette il `summary` nel giro del Tab come fa un browser: qui lo dice il `tabIndex`.
+        const pagina = (aperto: boolean) => (
+            <>
+                <button type="button" id="dietro">Dietro</button>
+                <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<>
+                    <button type="button" id="ultimo">Sposta</button>
+                    <details open={aperto}>
+                        <summary tabIndex={0} id="apre">Altro</summary>
+                        <button type="button" id="nel-dettaglio">Nel dettaglio</button>
+                        <summary tabIndex={0}>Un secondo titolo, che non apre niente</summary>
+                        <details><summary tabIndex={0} id="annidato">Un dettaglio dentro il dettaglio</summary></details>
+                    </details>
+                </>}><p>Dove?</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(false));
+
+        // Dall'ultimo pulsante il Tab è del browser, che va sul titolo; dal titolo non c'è altro, e torna al primo.
+        await conIlFuoco(uno('#ultimo'));
+        expect(await premi('Tab')).toBe(false);
+        await conIlFuoco(uno('#apre'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#apre'));
+
+        // Aperto, ciò che contiene si raggiunge: l'ultima fermata è il titolo del dettaglio annidato, che è chiuso.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{pagina(true)}</Cornice>);
+        await conIlFuoco(uno('#apre'));
+        expect(await premi('Tab')).toBe(false);
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#annidato'));
+    });
+
+    it('ciò che sta dentro il `summary` di un `<details>` chiuso si vede, ed è una fermata: un collegamento nel titolo si raggiunge (sprint 31 · T3.2, rilievo R2 della PR #64)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<>
+                <button type="button" id="ultimo">Sposta</button>
+                <details>
+                    <summary tabIndex={0} id="apre">Altro <a href="https://example.com/aiuto" id="nel-titolo">Che cosa vuol dire</a></summary>
+                    <a href="https://example.com/dentro">Nel dettaglio chiuso</a>
+                </details>
+            </>}><p>Dove?</p></Dialog>
+        </>);
+
+        // Dal titolo il Tab è del browser, che va sul collegamento nel titolo; da lì non c'è altro, e torna al primo.
+        await conIlFuoco(uno('#apre'));
+        expect(await premi('Tab')).toBe(false);
+        await conIlFuoco(uno('#nel-titolo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#nel-titolo'));
+    });
+
+    it.each([
+        ['un `iframe`', <iframe title="Anteprima" id="in-fondo" />],
+        ['un `video` coi comandi', <video controls id="in-fondo" />],
+        // happy-dom dà `display: none` a ogni `audio`; un browser solo a quello senza comandi: qui lo dice lo stile.
+        ['un `audio` coi comandi', <audio controls id="in-fondo" style={{ display: 'inline-block' }} />],
+    ])('%s dentro il dialogo è una fermata: quando è l\'ultima cosa, con Tab si raggiunge (sprint 31 · T3.3)', async (_nome, inFondo) => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro</button>
+            <Dialog open title="Anteprima" onClose={senzaEffetto}>
+                <button type="button" id="prima">Scarica</button>
+                {inFondo}
+            </Dialog>
+        </>);
+        expect(uno('#in-fondo')?.tabIndex).toBe(0);
+
+        // Dal pulsante che lo precede il Tab è del browser: dopo c'è ancora una fermata.
+        await conIlFuoco(uno('#prima'));
+        expect(await premi('Tab')).toBe(false);
+        await conIlFuoco(uno('#in-fondo'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#in-fondo'));
+    });
+
+    it('la larghezza sotto cui il pannello di dettaglio trattiene il fuoco è quella a cui il CSS del design system lo fa largo tutta la pagina (sprint 31 · T3.5)', async () => {
+        const css = readFileSync(resolve(process.cwd(), 'resources/zeiras/bundle.css'), 'utf8');
+        const [, delCss] = /@media ([^{]+?)\s*\{\s*\.zr-detail:not\(\.is-inline\) \{[^}]*\bwidth: 100%/.exec(css) ?? [];
+        expect(delCss).toMatch(/^\(max-width: \d+px\)$/);
+        // La pagina è stretta solo per la domanda che fa il CSS: se il design system sposta la soglia, i rimedi chiedono
+        // un'altra larghezza e il pannello non trattiene più.
+        const domande: string[] = [];
+        vi.stubGlobal('matchMedia', (domanda: string) => {
+            domande.push(domanda);
+
+            return { matches: domanda === delCss };
+        });
+        await laPagina(ilPannello());
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(tutti('.zr-detail button')[0]);
+        expect(domande).toContain(delCss);
+    });
+
+    it('in una pagina senza la cornice, per un gruppo di nodi aggiunti i rimedi cercano la cornice una volta sola e non guardano dentro i nodi; con la cornice ogni nodo si guarda una volta (sprint 31 · T3.6)', async () => {
+        await laPagina(<p>Una pagina</p>);
+        const cento = () => Array.from({ length: 100 }, () => document.createElement('div'));
+        const aggiunti = async (nodi: HTMLElement[], dove: HTMLElement) => {
+            const guardati = nodi.map((nodo) => vi.spyOn(nodo, 'querySelectorAll'));
+            const cercata = vi.spyOn(document, 'querySelector');
+            await act(async () => {
+                dove.append(...nodi);
+                await prossimoGiro();
+            });
+            const volte = cercata.mock.calls.filter(([selettore]) => selettore === '.zr-shell').length;
+            cercata.mockRestore();
+
+            return { volte, guardati: guardati.map((spia) => spia.mock.calls.length) };
+        };
+
+        const conLaCornice = await aggiunti(cento(), uno('.zr-main') as HTMLElement);
+        expect(conLaCornice.volte).toBe(1);
+        expect(new Set(conLaCornice.guardati)).toStrictEqual(new Set([1]));
+
+        await mostra(<p>Senza cornice</p>);
+        expect(uno('.zr-shell')).toBeNull();
+        const senza = await aggiunti(cento(), contenitore);
+        expect(senza.volte).toBe(1);
+        expect(new Set(senza.guardati)).toStrictEqual(new Set([0]));
     });
 
     describe('il velo di un dialogo sta un gradino sopra il pannello di dettaglio (T4.4)', () => {

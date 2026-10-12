@@ -4797,6 +4797,28 @@ it('il README dice, nel punto «Tab dentro un dialogo aperto» di «La cornice»
     'a richiesta' => ['Sta nello stesso pezzo a richiesta del punto sopra: se non arriva, Tab fa il giro di prima'],
 ]);
 
+// Sprint 31 · T3.7 (voce #1907): i casi che i due rimedi di tastiera non chiudevano (review della PR #63: R11, R13, R14, R19, S11
+// e S13). Il README li dice nei due punti dei rimedi, da quando, e dice quelli che restano fuori.
+
+it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i casi chiusi dalla `v1.21.0` e quelli che restano fuori (sprint 31 · T3.7)', function (string $punto, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, $punto), $frase))->toBe(true);
+})->with([
+    'la campanella chiusa col clic' => ['Il fuoco nel pannello delle notifiche', 'Dalla `v1.21.0` il fuoco torna sulla campanella anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS)'],
+    'il fuoco non si toglie' => ['Il fuoco nel pannello delle notifiche', 'A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie'],
+    'un dialogo senza fermate' => ['Tab dentro un dialogo aperto', 'Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al primo Tab, e Invio non preme più il pulsante della pagina dietro'],
+    'inerti e dettagli chiusi' => ['Tab dentro un dialogo aperto', 'ciò che sta dentro un elemento `inert`, o dentro un `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre'],
+    'iframe, video e audio' => ['Tab dentro un dialogo aperto', 'un `iframe`, e un `video` o un `audio` coi comandi, contano dove il browser li mette nel giro del Tab'],
+    'resta fuori: dentro un iframe' => ['Tab dentro un dialogo aperto', 'Restano fuori anche tre casi: da dentro un `iframe` i tasti sono della sua pagina, e Tab dall\'ultimo suo elemento esce dal dialogo (il Tab dopo rientra)'],
+    'resta fuori: lo shadow DOM' => ['Tab dentro un dialogo aperto', 'gli elementi dentro uno shadow DOM non si contano'],
+    'resta fuori: un tabindex positivo' => ['Tab dentro un dialogo aperto', 'un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l\'ordine del documento'],
+    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video, il fuoco dopo il clic su una notifica.
+    'il summary con ciò che ha dentro' => ['Tab dentro un dialogo aperto', 'tranne il `summary` che lo apre, con ciò che ha dentro'],
+    'resta fuori: i comandi di un video' => ['Tab dentro un dialogo aperto', 'E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata sola, e quando è l\'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono'],
+    'dopo il clic su una notifica' => ['Il fuoco nel pannello delle notifiche', 'In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello'],
+]);
+
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
@@ -4849,6 +4871,20 @@ it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetc
         // Un commento può nominarlo: conta chi lo importa.
         ->and(array_filter($ingressi, fn (string $codice): bool => preg_match('/(?:from|import\()\s*[\'"]\.\/prove[\'"]/', $codice) === 1))->toBe([]);
 });
+
+// Sprint 31 · T4.4 (voce #1908; review della PR #63, S8 e S9): chi rifà i moduli nei casi prende anche `frasiInMemoria` con un
+// import nuovo, e mentre carica lei risponde solo per i file delle frasi. README e guida lo dicono con le stesse parole e lo
+// stesso esempio.
+
+it('README e guida dicono a chi rifà i moduli nei casi che `frasiInMemoria` si prende con un import nuovo, con l\'esempio, e che le altre richieste passano al `fetch` che c\'era (sprint 31 · T4.4)', function (string $frase) {
+    foreach (['README.md', 'MODULO-NUOVO.md'] as $documento) {
+        expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$documento)), $frase))->toBe(true, $documento);
+    }
+})->with([
+    'un import nuovo' => ['Anche `frasiInMemoria` si prende con un import nuovo, dopo `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima'],
+    'l\'esempio' => ['In un caso, dopo `vi.resetModules()`: `const { frasiInMemoria } = await import(\'../../vendor/zeiras/zr-core/resources/js/prove\'); await frasiInMemoria();`'],
+    'le altre richieste' => ['Mentre carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c\'era'],
+]);
 
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
@@ -5007,10 +5043,13 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
 })->with([
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
-    'i tipi che le hanno' => ['notifiche', 'Le hanno i diciotto tipi di Project Management: tutti la seconda, e la prima i quattordici che non sono una cosa eliminata'],
+    // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima diciannove: i quattordici di Project Management che non sono una cosa eliminata, le due pipeline del CRM, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'perché gli altri no' => ['notifiche', 'Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline (il nome di un contatto è un dato personale)'],
+    'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
-    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per una cosa eliminata, è la frase con solo chi'],
-    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di prima col nome sotto'],
+    'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
+    'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto'],
     'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
     'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
@@ -5024,6 +5063,26 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
     'la guida: chi chiede le frasi, e come' => ['guida', 'un modulo che vuole le sue frasi le chiede all\'agente di zr-core coi suoi testi nelle tre lingue'],
     'la guida: le due chiavi' => ['guida', '(chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi (`notificationTitleWho.<tipo>`)'],
+    'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
+    // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
+    'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline: il nome di un contatto è un dato personale)'],
+]);
+
+// Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
+// Management.
+it('README e guida non dicono più che le frasi con chi le hanno solo le notifiche di Project Management (sprint 31 · T2.4)', function (string $dove, string $frase) {
+    $testi = [
+        'notifiche' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Le notifiche'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(false);
+})->with([
+    'solo i diciotto tipi' => ['notifiche', 'Le hanno i diciotto tipi di Project Management'],
+    'una notifica di Project Management' => ['notifiche', 'una notifica di Project Management dice chi ha fatto che cosa'],
+    'la guida: oggi solo Project Management' => ['guida', 'oggi lo fanno quelle di Project Management'],
 ]);
 
 // Sprint 29 · T4 (review della PR #62, R2, R5, R6): quattro frasi che il README diceva e che non erano vere.

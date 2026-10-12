@@ -82,15 +82,15 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 20,9 KB | 3,3 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 20,9 KB | 3,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 20,9 KB | 3,3 KB |
+| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 29,1 KB | 4,1 KB |
+| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 29,1 KB | 4,1 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 29,1 KB | 4,1 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
-notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 0,8 KB l'uno con gzip), che la cornice chiede con
+notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,1 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026, e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
@@ -384,13 +384,17 @@ cornice === null ? pagina : (
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna
   tutte come lette» la cornice non lo riporta sulla linguetta. Quei due pulsanti, premuti, spariscono — con l'errore, o
   con l'ultima non letta —, e dove va il fuoco allora lo decide il browser: di solito esce dal pannello, che resta aperto.
-  Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Vale anche nello stato
-  ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
+  Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Dalla `v1.21.0` il fuoco torna sulla campanella
+  anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS): prima
+  restava alla pagina. In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
+  chiudono il pannello ed escono dal documento col fuoco.
+  A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie. Vale anche
+  nello stato ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
   classe non prende il fuoco. Il modulo non deve fare niente; un test del modulo che apre la campanella e poi guarda
-  l'elemento attivo va riletto. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
+  l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
-  1 KB con gzip, con quello del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
+  1,1 KB con gzip, con quello del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
   a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
@@ -401,11 +405,20 @@ cornice === null ? pagina : (
   a `--z-dialog` + 2, sopra il pannello. Le anteprime (`inline`) non
   trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene (un menu che sta
   altrove nella pagina, senza il fuoco, non cambia niente); non interviene
-  nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta. Il modulo non deve fare niente,
+  nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
+  Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
+  primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
+  `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
+  comandi, contano dove il browser li mette nel giro del Tab. Il modulo non deve fare niente,
   e non scriva una trappola sua: sarebbero due. È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
   ancora il fuoco, e la cornice lo fa da sé, senza toccare i componenti; quando lo fanno loro questo si toglie, senza che
   il modulo cambi niente. Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e
-  il primo campo in fuoco all'apertura, che resta del modulo. Sta nello stesso pezzo a richiesta del punto sopra: se non
+  il primo campo in fuoco all'apertura, che resta del modulo. Restano fuori anche tre casi: da dentro un `iframe` i
+  tasti sono della sua pagina, e Tab dall'ultimo suo elemento esce dal dialogo (il Tab dopo rientra); gli elementi dentro
+  uno shadow DOM non si contano; un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l'ordine del
+  documento. E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata
+  sola, e quando è l'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono.
+  Sta nello stesso pezzo a richiesta del punto sopra: se non
   arriva, Tab fa il giro di prima, e sotto 720 px un `Dialog` aperto da un `DetailPanel` resta sotto il pannello. Anche il
   gradino del velo è provvisorio: è uno stile che la cornice scrive sull'elemento, perché il pacchetto non porta un CSS
   suo, e si toglie quando il design system mette i dialoghi sopra il pannello.
@@ -511,7 +524,8 @@ cornice === null ? pagina : (
   sa, non che la notifica è per altri. Un nome vuoto o di soli spazi non si mostra. Per una notifica su un'app (un tipo
   che comincia con `com.zeiras.app.`) `risorsa_nome` è il codice dell'app (`pm`), e la seconda riga porta il nome del
   prodotto, dal registro e nella lingua della persona («Project Management»), mai il codice: con un codice che il
-  registro non ha la seconda riga non c'è.
+  registro non ha la seconda riga non c'è. Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del
+  prodotto sta nella frase del titolo e la seconda riga non c'è (più sotto).
   Dalla `v1.20.0` le frasi delle notifiche — il titolo di ogni tipo e le due famiglie qui sotto — non stanno più nel JS
   d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
   chiede con `fetch` quando si apre la campanella, insieme all'elenco: il file della lingua della persona e quello
@@ -531,16 +545,27 @@ cornice === null ? pagina : (
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, come a una seconda
   apertura. `prove` è per i test: non è un ingresso per le pagine. Un caso che rifà i moduli (`vi.resetModules()`)
   la richiama dopo aver importato di nuovo la cornice: le frasi stanno in memoria nel modulo delle lingue, e un modulo
-  rifatto riparte senza.
-  Dalla `v1.19.0` una notifica di Project Management dice chi ha fatto che cosa, in una frase al posto del titolo
-  («Marta Rossi ha modificato la scheda «Lancio Q4»»). Per questo le lingue hanno due famiglie di chiavi in più:
-  `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo
-  `{who}` («Marta Rossi ha eliminato una scheda»). Le hanno i diciotto tipi di Project Management: tutti la seconda,
-  e la prima i quattordici che non sono una cosa eliminata. La frase si sceglie scendendo: con `autore_nome` e il
-  nome della cosa il titolo è la frase con chi e che cosa; con `autore_nome` e senza il nome, o per una cosa
-  eliminata, è la frase con solo chi; senza `autore_nome`, o per un tipo che non ha le frasi, resta il titolo di
-  prima col nome sotto. Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c'è. La board
-  su cui è successo non compare: il contratto del 12/10/2026 non la dà.
+  rifatto riparte senza. Anche `frasiInMemoria` si prende con un import nuovo, dopo `vi.resetModules()`: quella importata
+  in cima al file mette le frasi nel modulo di prima. In un caso, dopo `vi.resetModules()`:
+  `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();`
+  Mentre carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era (dalla `v1.21.0`;
+  prima a ogni indirizzo rispondeva lei, con un oggetto vuoto).
+  Una notifica dice chi ha fatto che cosa, in una frase al posto del titolo («Marta Rossi ha modificato la scheda
+  «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
+  `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
+  segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
+  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima diciannove: i quattordici di
+  Project Management che non sono una cosa eliminata, le due pipeline del CRM, il workspace creato e modificato, e il
+  modulo attivato o disattivato. Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa
+  eliminata, un membro del workspace, e del CRM tutto tranne la pipeline (il nome di un contatto è un dato
+  personale). Per un modulo c'è una differenza: di un modulo il backoffice dà il codice (`pm`), e nella frase c'è il
+  nome nella lingua della persona; con un codice che il registro non ha resta la frase con solo chi. E quando una
+  persona entra nel workspace chi ha fatto, per il contratto, è lei: la frase è «Marta Rossi è ora nel workspace».
+  La frase si sceglie scendendo: con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa; con
+  `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi; senza `autore_nome`, o
+  per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto. Il nome della cosa sta una volta
+  sola: quando è nella frase la seconda riga non c'è. La board su cui è successo non compare: il contratto del
+  12/10/2026 non la dà.
   Dalla `v1.20.0` i due nomi, che ha scritto una persona, sono difesi prima di entrare in pagina. Restano testo: mai
   HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando. Sono puliti: senza i caratteri che cambiano
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
