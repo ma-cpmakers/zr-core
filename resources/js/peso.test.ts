@@ -52,8 +52,10 @@ const DEI_RIMEDI = 'MutationObserver';
 interface Costruito {
     /** Il JS d'ingresso: ciò che la pagina scarica subito, coi pezzi che l'ingresso importa in modo statico. */
     js: string;
-    /** I pezzi che si scaricano a richiesta, uno per `import()`. */
+    /** Ciò che si scarica a richiesta: i pezzi, uno per `import()`, e i file delle frasi, che la cornice chiede con `fetch`. */
     aRichiesta: string[];
+    /** I nomi dei file delle frasi nella build. */
+    fileDelleFrasi: string[];
     esporta: string[];
 }
 
@@ -64,11 +66,14 @@ const inKb = (byte: number) => byte / 1024;
 const scritture = (js: string, globale: string) => [...js.matchAll(new RegExp(`window\\.${globale}\\s*=(?!=)`, 'g'))].length;
 
 function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
-    const pezzi = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : [])).filter((pezzo) => pezzo.type === 'chunk');
+    const uscite = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : []));
+    const pezzi = uscite.filter((uscita) => uscita.type === 'chunk');
+    const frasi = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
 
     return {
         js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
-        aRichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
+        aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map((uscita) => (typeof uscita.source === 'string' ? uscita.source : Buffer.from(uscita.source).toString()))],
+        fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
     };
 }
@@ -168,7 +173,7 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     });
 });
 
-describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono pezzi a richiesta, uno per lingua (sprint 30 · T1.1, T1.2, T1.8)', () => {
+describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a richiesta, uno per lingua (sprint 30 · T1.1, T1.2, T1.8)', () => {
     const app = [
         ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
         ['la cornice e due componenti per nome', () => perNome],
@@ -179,7 +184,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono pezzi a r
         expect(Object.values(FRASI).filter((frase) => costruita().js.includes(frase))).toStrictEqual([]);
     });
 
-    it.each(app)('«%s»: tre pezzi a richiesta con le frasi, ognuno di una lingua sola; il quarto è dei rimedi di tastiera, senza frasi', (_nome, costruita) => {
+    // Un file di dati, non un modulo: la cornice lo chiede con `fetch`, e «Riprova» lo può richiedere (in Chrome un `import()`
+    // fallito resta fallito finché la pagina non si ricarica: UAT dello sprint 30). Il nome porta l'impronta del contenuto: una
+    // build nuova con frasi nuove ha un altro nome, e la cache di un browser non dà mai le frasi di prima.
+    it.each(app)('«%s»: i file delle frasi sono tre `.json`, uno per lingua, con l\'impronta della build nel nome', (_nome, costruita) => {
+        expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
+    });
+
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; il quarto è il pezzo dei rimedi di tastiera, senza frasi', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
         expect(lingueDeiPezzi.sort()).toStrictEqual([[], ['en'], ['es'], ['it']]);

@@ -118,8 +118,8 @@ async function avvia({ conLayout, letture }: { conLayout: boolean; letture: Dati
     const { createRoot } = await import('react-dom/client');
     const { Cornice, LayoutDellaCornice } = await import('./index');
     // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: come nei casi degli altri file, sono già arrivate.
-    const { caricaFrasi } = await import('./lingue');
-    await Promise.all(['it', 'es', 'en', ''].map((lingua) => caricaFrasi(lingua)));
+    const { frasiInMemoria } = await import('./prove');
+    await frasiInMemoria();
     act = react.act;
 
     const [prima, ...coda] = letture;
@@ -340,8 +340,8 @@ describe('la cornice sotto Inertia vera non torna a dati più vecchi', () => {
         const { createRoot } = await import('react-dom/client');
         const { LayoutDellaCornice } = await import('./index');
         // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: come nei casi degli altri file, sono già arrivate.
-        const { caricaFrasi } = await import('./lingue');
-        await Promise.all(['it', 'es', 'en', ''].map((lingua) => caricaFrasi(lingua)));
+        const { frasiInMemoria } = await import('./prove');
+        await frasiInMemoria();
         act = react.act;
 
         /** L'orologio della parte server: l'istante dell'ultima cosa che ha letto o segnato. */

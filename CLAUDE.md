@@ -26,7 +26,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.
-- **Le traduzioni della cornice**: un file per lingua — italiano, spagnolo, inglese per partire, e le lingue si devono
+- **Le traduzioni della cornice**: due file per lingua, i testi della cornice e le frasi delle notifiche (che la cornice
+  chiede con `fetch` quando si apre la campanella) — italiano, spagnolo, inglese per partire, e le lingue si devono
   poter aggiungere; se un testo manca si mostra l'inglese. Nessun testo scritto nel codice.
 - **La parte server**: ciò che serve al frontend per dare alla cornice i dati della persona — chi è, la sua lingua, le
   sue aziende e i suoi workspace (con lo slug), i prodotti attivi nel workspace, il numero di notifiche. Si leggono
@@ -87,6 +88,9 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
   numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
   build fatte nel caso, mai con un numero scritto a mano.
+- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 18.464 byte con gzip, cioè 18 KB più
+  32 byte per i rimedi provvisori di tastiera (`resources/js/rimedi.ts`, un pezzo a richiesta). Torna a 18 KB quando i rimedi
+  escono. Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 

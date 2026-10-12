@@ -6,8 +6,8 @@ import { frasiDiOgniLingua, rigaConLeFrasi, titoloConLeFrasi, type FrasiDelleNot
 // cornice non passa da questo modulo e le sue le carica quando si apre la campanella (`caricaFrasi`), così un'app che non usa
 // queste funzioni non porta le frasi nel JS d'ingresso. Alla radice del modulo non succede niente: le lingue si compongono
 // alla prima chiamata, e la build toglie il modulo intero a chi non lo usa. I file sono gli stessi che carica la cornice, ma
-// lei li importa come testo (`?raw`): per la build sono moduli diversi da questi, e restano pezzi a richiesta anche se un
-// ingresso riesporta queste funzioni.
+// lei ne ha solo l'indirizzo e li chiede con `fetch`: per la build quelli sono file a sé, e restano fuori dal JS d'ingresso
+// anche se un ingresso riesporta queste funzioni.
 
 const file = import.meta.glob<FrasiDelleNotifiche>('../lingue/notifiche/*.json', { eager: true, import: 'default' });
 let diOgniLingua: ((lingua: string) => Readonly<FrasiDelleNotifiche>) | undefined;

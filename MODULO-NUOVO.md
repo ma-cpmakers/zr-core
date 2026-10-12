@@ -57,8 +57,11 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca — README, «La cornice», al punto «Le
   notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
-  (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li carica quando si apre la campanella: nel tuo
-  modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con «Riprova».
+  (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li chiede con `fetch` quando si apre la campanella:
+  nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
+  «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto
+  dell'elenco. Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
+  che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o

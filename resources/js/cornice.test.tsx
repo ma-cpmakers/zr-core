@@ -5467,6 +5467,29 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         await apri();
         expect(document.activeElement).toBe(scelta());
     });
+
+    it('il fuoco entra solo nel pannello che scrive l\'`AppShell` accanto alla campanella: un elemento della pagina con la stessa classe e le sue linguette non lo prende (T3.1)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        const Pagina = ({ aperto }: { aperto: boolean }) => (
+            <Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}>
+                <button type="button" id="della-pagina">Della pagina</button>
+                {aperto ? <div className="zr-notif"><div className="zr-notif-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" id="non-sua">Tutte</button></div></div> : null}
+            </Cornice>
+        );
+        await mostra(<Pagina aperto={false} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conIlFuoco(uno('#della-pagina'));
+
+        await mostra(<Pagina aperto />);
+        expect(uno('#non-sua')).not.toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+
+        // Quello della cornice sì, anche con l'altro in pagina.
+        await apri();
+        expect(document.activeElement).toBe(uno('.zr-top-actions > .zr-notif [role="tab"][aria-selected="true"]'));
+    });
 });
 
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
@@ -5674,5 +5697,127 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         await conIlFuoco(uno('#salva'));
         expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
         expect(document.activeElement).toBe(uno('#salva'));
+    });
+
+    it('dove `matchMedia` non c\'è Tab non lancia errori: un pannello di dettaglio non trattiene niente, un dialogo sì (T4.3)', async () => {
+        vi.stubGlobal('matchMedia', undefined);
+        const errori = vi.fn();
+        window.addEventListener('error', errori);
+        await laPagina(ilPannello());
+
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(false);
+        expect(document.activeElement).toBe(uno('#commenta'));
+        expect(errori).not.toHaveBeenCalled();
+        window.removeEventListener('error', errori);
+
+        await laPagina(ilDialogo(<input id="nome" />));
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('un `Menu` aperto fuori dal dialogo, accanto, conta come uno dentro: il gestore non interviene e il fuoco resta nel menu (T4.6)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+        </>);
+        const voce = uno('.zr-menu [role="menuitem"]');
+        expect(uno('.zr-dialog .zr-menu')).toBeNull();
+
+        await conIlFuoco(voce);
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(voce);
+    });
+
+    it('se un campo del dialogo tiene Tab per sé il gestore non sposta il fuoco (T4.1)', async () => {
+        largaAlPiu720(false);
+        await laPagina(ilDialogo(<input id="nome" />));
+        uno('#salva')?.addEventListener('keydown', (tasto) => tasto.preventDefault());
+
+        await conIlFuoco(uno('#salva'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(uno('#salva'));
+    });
+
+    it('una scelta senza nome è un gruppo a sé, e una con lo stesso nome dentro un altro form non è del suo gruppo: tutte e due sono fermate (T4.7)', async () => {
+        largaAlPiu720(false);
+        const pagina = (ultime: ReactElement) => (
+            <Dialog open title="Sposta la scheda" onClose={senzaEffetto} footer={<><button type="button" id="sposta">Sposta</button>{ultime}</>}>
+                <input id="nome" />
+            </Dialog>
+        );
+        await laPagina(pagina(<><input type="radio" id="scelta-senza-nome" defaultChecked /><input type="radio" id="senza-nome" /></>));
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#senza-nome'));
+
+        await laPagina(pagina(<><form><input type="radio" name="lista" id="di-un-form" defaultChecked /></form><input type="radio" name="lista" id="fuori-dal-form" /></>));
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab', true)).toBe(true);
+        expect(document.activeElement).toBe(uno('#fuori-dal-form'));
+    });
+
+    it('senza niente su cui fermarsi Tab non esce lo stesso: il fuoco è offerto al dialogo (T4.7)', async () => {
+        largaAlPiu720(false);
+        await laPagina(<>
+            <button type="button" id="dietro">Dietro il dialogo</button>
+            <Dialog open title="Attendi"><p>Solo testo</p></Dialog>
+        </>);
+        expect(tutti('.zr-dialog button, .zr-dialog input, .zr-dialog a')).toHaveLength(0);
+        const alDialogo = vi.spyOn(uno('.zr-dialog') as HTMLElement, 'focus');
+
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        expect(alDialogo).toHaveBeenCalledTimes(1);
+    });
+
+    describe('il velo di un dialogo sta un gradino sopra il pannello di dettaglio (T4.4)', () => {
+        const SOPRA_IL_PANNELLO = 'calc(var(--z-dialog) + 2)';
+        const gradino = (selettore = '.zr-scrim') => uno(selettore)?.style.getPropertyValue('z-index');
+        const Pagina = ({ aperto }: { aperto: boolean }) => (
+            <Cornice dati={dati} onLogout={esciSenzaEffetto}>
+                {ilPannello(false, <Dialog open={aperto} title="Elimina la scheda" onClose={senzaEffetto}><p>Sicuro?</p></Dialog>)}
+            </Cornice>
+        );
+
+        it('un `Dialog` che si apre dentro la cornice, sopra un `DetailPanel` o da solo, ha il velo a `--z-dialog` + 2, col token del design system', async () => {
+            largaAlPiu720(true);
+            await mostra(<Pagina aperto={false} />);
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            expect(uno('.zr-scrim')).toBeNull();
+
+            await mostra(<Pagina aperto />);
+            expect(gradino()).toBe(SOPRA_IL_PANNELLO);
+            // Il pannello resta dov'è: è il dialogo a salire.
+            expect(uno('.zr-detail')?.style.getPropertyValue('z-index')).toBe('');
+        });
+
+        it('vale per ogni dialogo di una pagina che entra già coi dialoghi aperti', async () => {
+            largaAlPiu720(false);
+            await laPagina(<button type="button" id="dietro">Una pagina</button>);
+
+            await laPagina(<section>
+                <Dialog open title="Primo" onClose={senzaEffetto}><p>Uno</p></Dialog>
+                <Dialog open title="Secondo" onClose={senzaEffetto}><p>Due</p></Dialog>
+            </section>);
+            expect(tutti('.zr-scrim').map((velo) => velo.style.getPropertyValue('z-index'))).toStrictEqual([SOPRA_IL_PANNELLO, SOPRA_IL_PANNELLO]);
+        });
+
+        it('un\'anteprima (`inline`) resta com\'è, e senza una cornice in pagina nessun velo si tocca', async () => {
+            largaAlPiu720(false);
+            await laPagina(<button type="button" id="dietro">Una pagina</button>);
+            await laPagina(ilDialogo(<input id="nome" />, true));
+            expect(uno('.zr-scrim.is-inline')).not.toBeNull();
+            expect(gradino()).toBe('');
+
+            await mostra(<button type="button" id="dietro">Senza cornice</button>);
+            await mostra(ilDialogo(<input id="nome" />));
+            expect(uno('.zr-shell')).toBeNull();
+            expect(gradino()).toBe('');
+        });
     });
 });

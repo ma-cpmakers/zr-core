@@ -9,10 +9,11 @@
  * Aprendo la campanella il fuoco entra nel pannello delle notifiche, sulla linguetta scelta: c'è sempre — mentre l'elenco
  * si carica, con l'errore, a elenco vuoto — e non fa niente da sola. L'`AppShell` scrive il pannello solo da aperto: il
  * fuoco si sposta quando il pannello entra nel documento, e mai dopo, qualunque cosa cambi dentro. Non passa dai
- * gestori della campanella, che a chi non ha accettato i documenti legali non arrivano.
+ * gestori della campanella, che a chi non ha accettato i documenti legali non arrivano. Il pannello è quello che l'`AppShell`
+ * scrive accanto alla campanella: un elemento della pagina con la stessa classe non è suo.
  */
 function fuocoNelPannelloDelleNotifiche(aggiunto: Node): void {
-    if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-notif')) {
+    if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-shell .zr-top-actions > .zr-notif')) {
         aggiunto.querySelector<HTMLElement>('.zr-notif-tabs [role="tab"][aria-selected="true"]')?.focus();
     }
 }
@@ -49,7 +50,8 @@ function eUnaFermata(elemento: HTMLElement): boolean {
 /**
  * Chi trattiene il fuoco adesso: l'ultimo `Dialog` aperto, che sta sopra a tutto; senza, l'ultimo `DetailPanel`, ma solo
  * sotto la larghezza a cui il CSS del design system lo fa largo tutta la pagina (da lì in su Tab esce verso la pagina, come
- * vuole la linea guida). Le anteprime (`is-inline`) non trattengono niente, e senza una cornice in pagina nessuno.
+ * vuole la linea guida). Le anteprime (`is-inline`) non trattengono niente, e senza una cornice in pagina nessuno. Dove la
+ * larghezza non si può chiedere (`matchMedia` manca) il pannello non trattiene.
  */
 function chiTrattieneIlFuoco(): HTMLElement | null {
     if (document.querySelector('.zr-shell') === null) {
@@ -58,18 +60,20 @@ function chiTrattieneIlFuoco(): HTMLElement | null {
     const aperti = (selettore: string): HTMLElement | null => [...document.querySelectorAll<HTMLElement>(selettore)].pop() ?? null;
 
     return aperti('.zr-scrim:not(.is-inline) > .zr-dialog')
-        ?? (matchMedia('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
+        ?? (typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
 }
 
 /**
  * Con un `Dialog` aperto, o un `DetailPanel` a tutta pagina, Tab resta dentro: dall'ultima fermata torna alla prima, dalla
  * prima all'ultima con Maiusc, e da fuori entra. Nel mezzo il Tab resta del browser, e degli altri tasti non si tocca niente.
- * Con un `Menu` aperto dentro, che ha le sue frecce e il suo Esc, il gestore non interviene.
+ * Con un `Menu` aperto, che ha le sue frecce e il suo Esc, il gestore non interviene: si guarda tutto il documento, come fa
+ * il design system, perché un menu può stare accanto al dialogo e non dentro. E se qualcuno ha già tenuto il Tab per sé — un
+ * campo che ci accetta un suggerimento — il fuoco non si sposta.
  */
 function tabRestaDentro(tasto: KeyboardEvent): void {
-    const dentro = tasto.key === 'Tab' ? chiTrattieneIlFuoco() : null;
+    const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented ? chiTrattieneIlFuoco() : null;
 
-    if (dentro === null || dentro.querySelector('.zr-menu') !== null) {
+    if (dentro === null || document.querySelector('.zr-menu') !== null) {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
@@ -90,12 +94,31 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
     }
 }
 
+/** Il velo di un `Dialog` che non è un'anteprima. */
+const VELO = '.zr-scrim:not(.is-inline)';
+
+/**
+ * Sotto 720 px un `DetailPanel` è largo tutta la pagina, e il CSS del design system lo mette un gradino sopra i dialoghi
+ * (`--z-dialog` + 1): un `Dialog` aperto da dentro il pannello — una conferma — resta sotto, e non si vede. Quando il velo
+ * di un dialogo entra nel documento sale di un gradino sopra il pannello, col token del design system. Vale a ogni
+ * larghezza: sopra i 720 px il dialogo sta già sopra, e non cambia niente. Senza una cornice in pagina non fa niente.
+ */
+function dialogoSopraIlPannello(aggiunto: Node): void {
+    if (aggiunto instanceof HTMLElement && document.querySelector('.zr-shell') !== null) {
+        (aggiunto.matches(VELO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(VELO)).forEach((velo) => velo.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)'));
+    }
+}
+
 document.addEventListener('keydown', tabRestaDentro);
 
 new MutationObserver((cambi) => {
     for (const cambio of cambi) {
         cambio.addedNodes.forEach(fuocoNelPannelloDelleNotifiche);
+        cambio.addedNodes.forEach(dialogoSopraIlPannello);
     }
 }).observe(document, { childList: true, subtree: true });
+
+// Un dialogo già aperto quando il modulo arriva.
+dialogoSopraIlPannello(document.body);
 
 export {};

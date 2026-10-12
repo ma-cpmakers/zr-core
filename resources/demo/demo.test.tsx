@@ -42,9 +42,9 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
             await import('./index');
         });
         // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: qui sono già arrivate, come a una seconda apertura
-        // (in un browser sono un pezzo a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
-        const { caricaFrasi } = await import('../js/lingue');
-        await Promise.all(['it', 'es', 'en', ''].map((lingua) => caricaFrasi(lingua)));
+        // (in un browser sono un file a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
+        const { frasiInMemoria } = await import('../js/prove');
+        await frasiInMemoria();
     }
 
     function uno(selettore: string): HTMLElement | null {
@@ -209,5 +209,30 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         await act(async () => uno('.zr-search input')?.focus());
         expect(uno('.zr-search-note')?.textContent).toBe(invito);
         expect(inArrivo().includes('CRM')).toBe(crmInArrivo);
+    });
+
+    it('con «?rimedi=1» la pagina ha un dialogo e un pannello di dettaglio da aprire, e il dialogo si apre anche da dentro il pannello (sprint 30 · T4)', async () => {
+        await apri('?rimedi=1');
+        const pulsante = (testo: string, dentro = '#uat-rimedi') => [...document.querySelectorAll<HTMLElement>(`#pagina ${dentro} button`)].find((uno) => uno.textContent === testo) ?? null;
+        expect([uno('.zr-detail'), uno('.zr-scrim')]).toStrictEqual([null, null]);
+
+        await clic(pulsante('UAT apri il pannello'));
+        expect(uno('.zr-detail [aria-label="UAT titolo"]')).not.toBeNull();
+        expect(uno('.zr-scrim')).toBeNull();
+
+        await clic(pulsante('UAT apri il dialogo', '.zr-detail'));
+        expect(uno('.zr-scrim:not(.is-inline) > .zr-dialog [aria-label="UAT nome"]')).not.toBeNull();
+        // Tutti e due aperti, uno sopra l'altro: è la prova di T4.4.
+        expect(uno('.zr-detail')).not.toBeNull();
+
+        await clic(pulsante('UAT annulla', '.zr-dialog'));
+        expect(uno('.zr-scrim')).toBeNull();
+        expect(uno('.zr-detail')).not.toBeNull();
+    });
+
+    it.each([[''], ['?prodotto=pm']])('con «%s» la prova dei rimedi non c\'è (sprint 30 · T4)', async (query) => {
+        await apri(query);
+        expect(uno('.zr-shell')).not.toBeNull();
+        expect(uno('#uat-rimedi')).toBeNull();
     });
 });

@@ -348,15 +348,20 @@ export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNot
     };
 }
 
-// I file delle frasi, a richiesta. Si importano come testo (`?raw`) e non come JSON: `./frasi` importa gli stessi file per
-// intero, e un ingresso del pacchetto lo riesporta; se la cornice chiedesse lo stesso modulo la build lo metterebbe nel JS
-// d'ingresso, dove sta chi lo importa in modo statico, anche in un'app che quelle funzioni non le usa. Come testo è un altro
-// modulo, e resta un pezzo a sé.
-const testoDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?raw', import: 'default' });
-const lette = (percorso: string) => async (): Promise<FrasiDelleNotifiche> => JSON.parse((await testoDelleFrasi[percorso]?.()) ?? '{}') as FrasiDelleNotifiche;
+// I file delle frasi, a richiesta. La cornice ne ha solo l'indirizzo (`?url`: un file `.json` della build, con la sua impronta
+// nel nome) e li chiede con `fetch`, non con `import()`: in Chrome un `import()` che non arriva resta fallito finché la pagina
+// non si ricarica, e «Riprova» non lo richiederebbe mai (UAT dello sprint 30, T1.5). `./frasi` importa gli stessi file per
+// intero, come moduli: per la build sono un'altra cosa, e questi restano fuori dal JS d'ingresso anche se un ingresso
+// riesporta quelle funzioni. Una richiesta che non risponde entro `ATTESA_DELLE_FRASI` è un errore come un'altra.
+const ATTESA_DELLE_FRASI = 10_000;
+/** L'indirizzo di ogni file delle frasi, per percorso (`'../lingue/notifiche/it.json'`). Esportato per `./prove`. */
+export const indirizziDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?url', import: 'default', eager: true });
+
+const lette = (percorso: string) => (): Promise<FrasiDelleNotifiche> =>
+    fetch(indirizziDelleFrasi[percorso] as string, { signal: AbortSignal.timeout(ATTESA_DELLE_FRASI) }).then((risposta) => (risposta.ok ? (risposta.json() as Promise<FrasiDelleNotifiche>) : Promise.reject()));
 
 export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
-    Object.fromEntries(Object.keys(testoDelleFrasi).map((percorso) => [percorso, lette(percorso)])),
+    Object.fromEntries(Object.keys(indirizziDelleFrasi).map((percorso) => [percorso, lette(percorso)])),
     lette('../lingue/notifiche/en.json'),
 );
 
