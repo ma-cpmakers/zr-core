@@ -41,7 +41,7 @@ final class PrecaricoDegliIngressi
             if (in_array('as="style"', $attributi, true)) {
                 $voci[] = '<'.$url.'>; rel=preload; as=style';
             } elseif (in_array('as="script"', $attributi, true)) {
-                $voci[] = '<'.$url.'>; rel=preload; as=script';
+                $voci[] = '<'.$url.'>; rel=preload; as=script; crossorigin';
             }
         }
         // Un `Link` che la risposta porta già resta: questo gli si aggiunge accanto.
