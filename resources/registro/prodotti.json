@@ -1,6 +1,11 @@
 {
     "prodotti": [
-        { "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false, "in_arrivo": false },
+        {
+            "id": "home", "icona": "grid", "indirizzo": "https://app.zeiras.com", "presto": false, "in_arrivo": false,
+            "risorse": [
+                { "tipo": "workspace.membro", "icona": "user", "percorso": "/impostazioni/membri/{id}", "contenitore": false, "contesto": ["ruolo"], "codici": { "ruolo": ["proprietario", "amministratore", "membro"] } }
+            ]
+        },
         {
             "id": "pm", "icona": "board", "tono": "pine", "indirizzo": "https://board.zeiras.com", "presto": false, "in_arrivo": false,
             "risorse": [

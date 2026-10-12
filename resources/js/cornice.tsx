@@ -3,7 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { linguaDeiTesti, nomeDellaVoce, risorsaDellaNotifica, testi, testiDellaRicerca, titoloDellaNotifica, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
-import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto, type TipoDiRisorsa } from './registro';
+import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
@@ -117,8 +117,11 @@ function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
     return id;
 }
 
-/** Di che prodotto è ogni tipo di risorsa del registro, e come si mostra: un tipo sta in un prodotto solo. */
-const risorsePerTipo = new Map(registro.flatMap((delProdotto) => (delProdotto.risorse ?? []).map((risorsa) => [risorsa.tipo, { delProdotto, risorsa }] as const)));
+/**
+ * Di che voce del registro è ogni tipo di risorsa, e come si mostra: un tipo sta in una voce sola. La voce è un prodotto, o la
+ * Dashboard per ciò che non è di un modulo (il membro del workspace).
+ */
+const risorsePerTipo = new Map(registro.flatMap((dellaVoce) => (dellaVoce.risorse ?? []).map((risorsa) => [risorsa.tipo, { dellaVoce, risorsa }] as const)));
 
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
@@ -264,34 +267,47 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
 const FRA_DUE_TESTI = ' · ';
 
 /**
- * La seconda riga di un risultato della ricerca: i testi di `contesto` che il registro dice per il suo tipo (`chiavi`), nel
- * loro ordine e senza gli spazi intorno, uniti da « · ». Solo quelli che ci sono: `contesto` arriva dal backoffice, e una
- * chiave può mancare, essere `null`, vuota o non essere un testo — allora non conta, e non lascia un « · » appeso. Niente
- * (`undefined`) senza testi, senza `contesto`, o per un tipo che nel registro non ha chiavi.
+ * La seconda riga di un risultato della ricerca: i testi di `contesto` che il registro dice per il suo tipo (le chiavi di
+ * `risorsa.contesto`), nel loro ordine e senza gli spazi intorno, uniti da « · ». Solo quelli che ci sono: `contesto` arriva dal
+ * backoffice, e una chiave può mancare, essere `null`, vuota o non essere un testo — allora non conta, e non lascia un « · »
+ * appeso. Dove il registro dice che una chiave porta un codice (`risorsa.codici`: il ruolo di un membro del workspace) si legge
+ * il testo che quel codice ha nella lingua (`t`), mai il codice: un valore che non è uno di quei codici non conta. Una chiave
+ * senza codici porta un testo, e si mostra com'è arrivato (il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
+ * senza `contesto`, o per un tipo che nel registro non ha chiavi.
  */
-function secondaRiga(contesto: unknown, chiavi: readonly string[] | undefined): string | undefined {
+function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDelProdotto, t: TestiDellaCornice): string | undefined {
+    const chiavi = risorsa.contesto;
     if (typeof contesto !== 'object' || contesto === null || chiavi === undefined) {
         return undefined;
     }
     const presenti = chiavi.flatMap((chiave) => {
-        const testo: unknown = Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined;
+        const testo = testoDaMostrare(Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined);
+        if (testo === undefined) {
+            return [];
+        }
+        // I codici di una chiave sono solo quelli che il registro le dà: non una proprietà che ogni oggetto eredita.
+        const codici = risorsa.codici !== undefined && Object.hasOwn(risorsa.codici, chiave) ? risorsa.codici[chiave] : undefined;
+        if (codici === undefined) {
+            return [testo];
+        }
 
-        return typeof testo === 'string' && testo.trim() !== '' ? [testo.trim()] : [];
+        return codici.includes(testo) ? [t[`searchContext.${tipo}.${chiave}.${testo}` as `searchContext.${CodiceDelContesto}`]] : [];
     });
 
     return presenti.length === 0 ? undefined : presenti.join(FRA_DUE_TESTI);
 }
 
 /**
- * Un risultato della ricerca nella cornice. Il contratto dà tipo, id, titolo e, dalla `v1.15.0`, `contesto`: il prodotto è
- * quello che nel registro ha quel tipo fra le sue risorse (un tipo sta in un prodotto solo), mai un campo della risposta. Il
+ * Un risultato della ricerca nella cornice. Il contratto dà tipo, id, titolo e, dalla `v1.15.0`, `contesto`: la voce è
+ * quella che nel registro ha quel tipo fra le sue risorse (un tipo sta in una voce sola), mai un campo della risposta. Il
  * gruppo è il nome del tipo nella lingua dei testi, la seconda riga i testi di `contesto` che il registro dice per il tipo
- * (`secondaRiga`), nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello del prodotto nel workspace dei
+ * (`secondaRiga`), nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello della voce nel workspace dei
  * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
- * tipo. Un tipo che il registro non ha non si mostra: mai un indirizzo inventato. E non si mostra un risultato il cui id non
- * ha la forma di un id: arriva dal backoffice, e in un indirizzo non entra com'è (`encodeURIComponent` non tocca i punti, e
- * `..` ne farebbe un altro). La forma si guarda solo di un testo: `RegExp.test` converte ciò che riceve, e un id che manca,
- * `null` o un numero passerebbe come «undefined», «null», «12».
+ * tipo. Un membro del workspace è della voce della Dashboard, che non è un prodotto: non ha un nome a destra né un tono, come
+ * una notifica che non è di un prodotto, e si apre in app. Un tipo che il registro non ha non si mostra: mai un indirizzo
+ * inventato. E non si mostra un risultato il cui id non ha la forma di un id: arriva dal backoffice, e in un indirizzo non
+ * entra com'è (`encodeURIComponent` non tocca i punti, e `..` ne farebbe un altro). La forma si guarda solo di un testo:
+ * `RegExp.test` converte ciò che riceve, e un id che manca, `null` o un numero passerebbe come «undefined», «null», «12».
  */
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
@@ -299,20 +315,21 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         return undefined;
     }
-    const { delProdotto, risorsa } = trovata;
-    const tipo = `${delProdotto.id}.${risorsa.tipo}` as TipoDiRisorsa;
+    const { dellaVoce, risorsa } = trovata;
+    const tipo = `${dellaVoce.id}.${risorsa.tipo}` as TipoDiRisorsa;
+    const delProdotto = prodottoDelRegistro(dellaVoce.id);
 
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title: risultato.titolo,
-        subtitle: secondaRiga(risultato.contesto, risorsa.contesto),
+        subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
         group: t[tipo],
-        product: nomeDellaVoce(delProdotto, lingua),
+        product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: risorsa.icona,
-        tone: delProdotto.tono,
+        tone: dellaVoce.tono,
         container: risorsa.contenitore,
-        href: nelWorkspace(delProdotto.indirizzo, slug) + risorsa.percorso.replace('{id}', () => encodeURIComponent(id)),
+        href: nelWorkspace(dellaVoce.indirizzo, slug) + risorsa.percorso.replace('{id}', () => encodeURIComponent(id)),
     });
 }
 
@@ -443,9 +460,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
     };
     const t = testi(dati.lingua);
-    // I due testi della ricerca che dicono che cosa si può cercare: le fonti sono i tipi di risorsa dei moduli attivi nel
-    // workspace dei dati. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando i dati li
-    // dicono ancora attivi.
+    // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
+    // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
+    // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
+    // i dati li dicono ancora attivi.
     const fonti = ridotta ? [] : fontiDellaRicerca(dati.prodotti);
     // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
     const quali = fonti.join();
@@ -695,7 +713,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const adesso = new Date();
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
-    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Alla
+    // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Fa
+    // eccezione il 429: il freno vale per ogni parola, e anche quello di una richiesta che non è più l'ultima annulla quella in
+    // volo e mette l'errore al posto dei suoi risultati (più sotto). Alla
     // parte server vanno i primi 100 caratteri (code point, come `mb_strlen`): oltre risponderebbe 422, e sarebbe un errore.
     // Coi risultati, il workspace di cui sono (`workspace`), come lo dice la parte server: quello della sessione, che non è
     // sempre quello dei dati della pagina (due schede su due workspace). Un risultato si apre lì; una risposta che non lo dice è
@@ -723,12 +743,26 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         setRicerca(undefined);
     }
     // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
-    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato resta
-    // l'errore: una parola battuta nel frattempo non mostra il caricamento. Allo scadere non parte niente da solo: parte la
-    // prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna indietro.
+    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
+    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo non mostra il caricamento, e nemmeno «Nessun
+    // risultato» per una parola che non è partita (dopo lo stato ridotto, che la ricerca la dimentica). Il freno è della
+    // persona, non di una richiesta: vale anche quando il 429 è di una richiesta che non è più l'ultima, e allora quella in
+    // volo è annullata e non è più di nessuno, così la sua risposta non entra nello stato. Allo scadere non parte niente da
+    // solo: parte la prima parola scritta dopo. L'istante è dell'orologio della pagina (`performance.now()`), che non torna
+    // indietro. Nello stato ridotto l'errore non resta: la cornice dimentica la ricerca, qui sopra.
     const frenataFinoA = useRef(0);
+    const nelFreno = () => {
+        ricercaInVolo.current?.abort();
+        ricercaInVolo.current = undefined;
+        setRicerca({ stato: 'error' });
+    };
     const cercaParola = (parola: string) => {
-        if (ridottaAdesso.current || performance.now() < frenataFinoA.current) {
+        if (ridottaAdesso.current) {
+            return;
+        }
+        if (performance.now() < frenataFinoA.current) {
+            nelFreno();
+
             return;
         }
         ricercaInVolo.current?.abort();
@@ -745,8 +779,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 seDaAccettare(errore);
                 if (errore instanceof TroppeRichieste) {
                     frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
-                }
-                if (ricercaInVolo.current === questa) {
+                    nelFreno();
+                } else if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'error' });
                 }
             },
@@ -860,7 +894,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
             // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
-            // copia il segnaposto e l'invito della ricerca, che dicono le fonti del workspace (`dellaRicerca`). A chi non ha
+            // copia il segnaposto della ricerca e l'invito, che dice le fonti del workspace (`dellaRicerca`). A chi non ha
             // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
             // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
             labels={ridotta

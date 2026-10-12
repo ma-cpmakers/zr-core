@@ -72,7 +72,9 @@ function lingueDellaCornice(): array
 
 /**
  * I tipi di evento del contratto pubblicato di `/v1`, scritti qui dal contratto: una notifica porta in `tipo` quello dell'evento
- * che l'ha generata. Un tipo nuovo del contratto entra qui e nelle lingue insieme, con una versione nuova di zr-core.
+ * che l'ha generata. Un tipo nuovo del contratto entra qui e nelle lingue insieme, con una versione nuova di zr-core: tranne
+ * un tipo che non genera notifiche, che qui non sta e non ha un titolo. Dal 12/10/2026 il contratto ne ha uno,
+ * `com.zeiras.crm.persona.anonimizzata`: i tipi di evento del contratto sono 37, e qui ce ne sono 36.
  *
  * @return list<string>
  */
@@ -233,7 +235,8 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * dice ancora «Prodotti» nel menu di partenza e nel testo d'aiuto della ricerca. Quando un riallineamento porta il testo nuovo,
  * la riga qui non serve più: il caso «l'italiano si scosta dal design system solo dove…» diventa rosso, e la si toglie.
  * Il segnaposto e l'invito della ricerca non promettono ciò che la ricerca non trova (zr-pm, note 10255 e 10288 del progetto;
- * sprint 22 · T8): dallo sprint 25 (T4) la cornice li compone dalle fonti del workspace, e questi due sono quelli senza fonti.
+ * sprint 22 · T8): dallo sprint 25 (T4) l'invito lo compone la cornice dalle fonti del workspace, dallo sprint 27 (T7) il
+ * segnaposto è uno solo e non le nomina, e questi due sono quelli senza fonti.
  * Il design system ha ancora due testi fissi, che dicono progetti, schede e contatti in ogni workspace.
  *
  * @return array<string, string>
@@ -272,10 +275,13 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
         'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff',
-        // Sprint 25 · T4: i due testi della ricerca che nominano le fonti, e il nome da elenco di ogni tipo di risorsa.
+        // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
+        // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
         ...chiaviDeiTitoliDelleNotifiche(), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
+        // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
+        ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
     ];
 
     $problemi = [];
@@ -383,6 +389,7 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
             'automations' => 'Automazioni', 'content' => 'Contenuti',
         ])
         ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
+            'home.workspace.membro' => 'Membri',
             'pm.board.scheda' => 'Schede', 'pm.board.board' => 'Board', 'pm.board.cartelle' => 'Cartelle',
             'crm.crm.persona' => 'Contatti', 'crm.crm.organizzazione' => 'Aziende', 'crm.crm.trattativa' => 'Opportunità',
         ]);
@@ -420,7 +427,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 42 tipi di notifica, i 36 tipi di evento del contratto più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 42 tipi di notifica, 36 dei 37 tipi di evento del contratto (quello che non genera notifiche non ha un titolo) più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
@@ -719,15 +726,17 @@ it('nelle tre lingue il testo ha la parola «moduli» al posto di quella di prim
 // Sprint 22 · T8 (voce #1728; zr-pm, note 10255 e 10288 del progetto), riscritto nello sprint 25 · T4 (voce #1639). Il
 // segnaposto del campo di ricerca e l'invito sotto il campo li compone la cornice dalle fonti del workspace: le lingue danno i
 // due testi senza fonti, i due col posto dell'elenco (`{sources}`) e, per ogni tipo di risorsa del registro, il nome da elenco.
+// Sprint 27 · T7 (voce #1810): il segnaposto è uno solo in ogni workspace e in ogni modulo, e non nomina più le fonti: la sua
+// chiave resta, senza il posto dell'elenco, che ha il solo invito.
 
-it('nelle tre lingue ci sono i due testi della ricerca senza fonti e i due col posto dell\'elenco (sprint 25 · T4.3)', function (string $chiave, array $attesi) {
+it('nelle tre lingue ci sono i due testi della ricerca senza fonti, il segnaposto unico e l\'invito col posto dell\'elenco (sprint 25 · T4.3; sprint 27 · T7.1, T7.5)', function (string $chiave, array $attesi) {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null])->toBe($attesi);
 })->with([
     'il segnaposto senza fonti' => ['searchPlaceholder', ['Cerca…', 'Search…', 'Busca…']],
     'l\'invito senza fonti' => ['searchHint', ['Scrivi almeno 2 caratteri.', 'Type at least 2 characters.', 'Escribe al menos 2 caracteres.']],
-    'il segnaposto con le fonti' => ['searchPlaceholderSources', ['Cerca {sources}…', 'Search {sources}…', 'Busca {sources}…']],
+    'il segnaposto unico, di una ricerca che ha delle fonti' => ['searchPlaceholderSources', ['Cerca nel workspace…', 'Search the workspace…', 'Busca en el workspace…']],
     'l\'invito con le fonti' => ['searchHintSources', [
         'Cerca {sources}: scrivi almeno 2 caratteri.',
         'Search {sources}: type at least 2 characters.',
@@ -735,7 +744,7 @@ it('nelle tre lingue ci sono i due testi della ricerca senza fonti e i due col p
     ]],
 ]);
 
-it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il nome da elenco, minuscolo; i quattro testi della ricerca non nominano nessuna fonte, i due con le fonti hanno una volta sola il posto dell\'elenco, e i puntini dei segnaposto sono il carattere «…» (sprint 25 · T4.3, T4.5)', function (string $codice, array $gruppi, array $daElenco) {
+it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il nome da elenco, minuscolo; i quattro testi della ricerca non nominano nessuna fonte, l\'invito con le fonti ha una volta sola il posto dell\'elenco e gli altri tre non lo hanno, e i puntini dei segnaposto sono il carattere «…» (sprint 25 · T4.3, T4.5; sprint 27 · T7.5)', function (string $codice, array $gruppi, array $daElenco) {
     $testi = lingueDellaCornice()[$codice];
     $tipi = tipiDiRisorsa();
     $iQuattro = mb_strtolower(implode(' ', array_map(fn (string $chiave): string => (string) ($testi[$chiave] ?? ''), ['searchPlaceholder', 'searchHint', 'searchPlaceholderSources', 'searchHintSources'])));
@@ -745,15 +754,45 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
         ->and(array_map(fn (string $tipo) => $testi["searchSource.$tipo"] ?? null, $tipi))->toBe($daElenco)
         ->and(array_map('mb_strtolower', $daElenco))->toBe($daElenco)
         ->and(array_values(array_filter($daElenco, fn (string $nome): bool => str_contains($iQuattro, $nome))))->toBe([])
-        ->and([substr_count((string) ($testi['searchPlaceholderSources'] ?? ''), '{sources}'), substr_count((string) ($testi['searchHintSources'] ?? ''), '{sources}')])->toBe([1, 1])
-        ->and(substr_count($testi['searchPlaceholder'].$testi['searchHint'], '{'))->toBe(0)
+        ->and([substr_count((string) ($testi['searchPlaceholderSources'] ?? ''), '{sources}'), substr_count((string) ($testi['searchHintSources'] ?? ''), '{sources}')])->toBe([0, 1])
+        ->and(substr_count($testi['searchPlaceholder'].$testi['searchHint'].$testi['searchPlaceholderSources'], '{'))->toBe(0)
         ->and(array_map(fn (string $testo): string => mb_substr($testo, -1), $segnaposto))->toBe(['…', '…'])
         ->and(substr_count(implode('', $segnaposto), '.'))->toBe(0);
 })->with([
-    'italiano' => ['it', ['Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
-    'inglese' => ['en', ['Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
-    'spagnolo' => ['es', ['Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
+    // Dallo sprint 27 il primo è il membro del workspace, che nel registro sta nella voce della Dashboard (T1.3).
+    'italiano' => ['it', ['Membri', 'Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
+    'inglese' => ['en', ['Members', 'Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
+    'spagnolo' => ['es', ['Miembros', 'Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
 ]);
+
+// Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice
+// (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core, sotto
+// `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
+// codici, lo dice il registro (`risorse[].codici`), e le lingue hanno un testo per ognuno e per nessun altro.
+it('in ogni lingua i tre ruoli di un membro del workspace hanno il loro testo, quello della pagina dei membri, sotto il codice del registro (sprint 27 · T1.3)', function (string $codice, array $ruoli) {
+    $testi = lingueDellaCornice()[$codice];
+
+    expect(codiciDelContesto())->toBe(['home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro'])
+        ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($ruoli)
+        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(3);
+})->with([
+    'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro']],
+    'inglese' => ['en', ['Owner', 'Admin', 'Member']],
+    'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro']],
+]);
+
+it('il controllo trova il testo di un ruolo che manca in una lingua, e il testo di un codice che il registro non ha: un ruolo in più, o il ruolo di un contatto, che è un testo libero (sprint 27 · T1.3)', function () {
+    $lingue = lingueDellaCornice();
+    unset($lingue['es']['searchContext.home.workspace.membro.ruolo.amministratore']);
+    $lingue['en']['searchContext.home.workspace.membro.ruolo.ospite'] = 'Guest';
+    $lingue['it']['searchContext.crm.crm.persona.ruolo.direttore'] = 'Direttore';
+
+    expect(problemiDelleLingue($lingue))->toBe([
+        'it: «searchContext.crm.crm.persona.ruolo.direttore» non è un testo della cornice',
+        'es: manca «searchContext.home.workspace.membro.ruolo.amministratore»',
+        'en: «searchContext.home.workspace.membro.ruolo.ospite» non è un testo della cornice',
+    ]);
+});
 
 it('il controllo trova un tipo di risorsa senza il nome da elenco, un testo della ricerca che manca e un nome da elenco di un tipo che il registro non ha (sprint 25 · T4.5)', function () {
     $lingue = lingueDellaCornice();

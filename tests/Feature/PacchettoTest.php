@@ -1539,10 +1539,16 @@ it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (
  */
 function puntoDellaCornice(string $readme, string $grassetto): string
 {
+    return suUnaRiga(puntoDellaCorniceNelFile($readme, $grassetto));
+}
+
+/** Lo stesso punto com'è nel file, coi suoi a capo: per ciò che dipende da dove una riga finisce. Vuoto se non c'è. */
+function puntoDellaCorniceNelFile(string $readme, string $grassetto): string
+{
     preg_match('/^## La cornice$(.*?)(?=^#{2,3} |\z)/ms', $readme, $paragrafo);
     preg_match('/^- \*\*'.preg_quote($grassetto, '/').'\*\*.*?(?=^- |^$|\z)/ms', $paragrafo[1] ?? '', $punto);
 
-    return suUnaRiga($punto[0] ?? '');
+    return $punto[0] ?? '';
 }
 
 it('il README dice, nel punto «La voce attiva» di «La cornice», che nessuna voce attiva si dice con active={null} (sprint 12 · T5.6)', function () {
@@ -1671,6 +1677,9 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     'il punto: il finto di zr-auth' => ['ricerca', 'il `BackofficeFinto` di zr-auth risponde alla ricerca dalla `v0.12.18`'],
     'il punto: il contesto in una risposta confrontata intera' => ['ricerca', 'ogni risultato di `POST /cornice/ricerca` ha `contesto`, che un caso che confronta la risposta intera aggiunge'],
     'il punto: che cosa porta un risultato' => ['ricerca', 'Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`'],
+    // Seconda lettura della PR #60, R8: «una risposta arrivata tardi non sostituisce mai» ha un'eccezione, il 429 del freno.
+    'il punto: il 429 fa eccezione' => ['ricerca', 'e una risposta arrivata tardi non sostituisce mai quella dell\'ultima parola. Fa eccezione il `429` del freno, che è della persona e non di una richiesta: dalla `v1.17.0` anche quello di una richiesta che non è più l\'ultima annulla la ricerca in volo e mette l\'errore al posto dei suoi risultati (nella `v1.16.0` armava il freno senza mostrare l\'errore)'],
+    'il punto: dove si dà il caso' => ['ricerca', 'In un browser una richiesta annullata non risponde, e il caso non si dà; si dà nei test di un frontend, con una `fetch` finta che non guarda l\'annullo'],
 ]);
 
 // Letture della PR #56, R12 e N4: che cosa il finto di zr-auth sa della ricerca si guarda nel giro che lo installa, con una
@@ -1891,7 +1900,10 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
  * Che cosa non va, in ci.yml, nel passo che lancia quel comando: niente se il passo è sano. Un passo sano è un passo vero del
  * job, non un commento; viene dopo `npm ci`; la sua riga `run:` è il solo comando, senza una coda che ne copra l'uscita
  * (`|| true`); non ha `continue-on-error` né `if:`. Letture della PR #56, R4: cercare la stringa del comando in ci.yml non basta,
- * perché resta lì anche in un passo spento.
+ * perché resta lì anche in un passo spento. Lettura della PR #59, R5: un passo sano non ha nemmeno uno `shell:` suo, e sta in
+ * un job che ferma la CI — senza `continue-on-error`, `if:` né `defaults:` —, in un file senza `defaults:`; un job che il
+ * controllo non riconosce non è sano. Lettura della PR #60, R5: nemmeno un job dietro un altro (`needs:`), che è saltato
+ * quando quello è saltato; e una chiave scritta fra virgolette o fra apici è la stessa chiave.
  *
  * @return list<string>
  */
@@ -1911,10 +1923,25 @@ function difettiDelPassoCheLancia(string $comando, string $ci): array
     if (preg_match('/^ {8}run: '.preg_quote($comando, '/').'\n/m', $delComando[0]) !== 1) {
         $difetti[] = 'la riga `run:` non è il solo comando';
     }
-    foreach (['continue-on-error', 'if'] as $chiave) {
-        if (preg_match('/^ {6}(?:- | {2})'.$chiave.':/m', $delComando[0]) === 1) {
+    foreach (['continue-on-error', 'if', 'shell'] as $chiave) {
+        if (preg_match('/^ {6}(?:- | {2})["\']?'.$chiave.'["\']?:/m', $delComando[0]) === 1) {
             $difetti[] = "il passo ha `{$chiave}:`";
         }
+    }
+    // Un job va dalla riga del suo nome, a due spazi, alla riga prima del job dopo: le sue righe hanno almeno quattro spazi, o
+    // sono vuote. Quello del passo è il solo che lo contiene, e le sue chiavi stanno a quattro spazi.
+    preg_match_all('/^ {2}\S.*\n(?:(?: {4}.*)?\n)*/m', $senzaCommenti, $job);
+    $delPasso = array_values(array_filter($job[0], fn (string $blocco) => str_contains($blocco, $delComando[0])));
+    if (count($delPasso) !== 1) {
+        $difetti[] = 'il job del passo non si trova';
+    }
+    foreach (['continue-on-error', 'if', 'defaults', 'needs'] as $chiave) {
+        if (preg_match('/^ {4}["\']?'.$chiave.'["\']?:/m', $delPasso[0] ?? '') === 1) {
+            $difetti[] = "il job del passo ha `{$chiave}:`";
+        }
+    }
+    if (preg_match('/^["\']?defaults["\']?:/m', $senzaCommenti) === 1) {
+        $difetti[] = 'il file ha `defaults:`';
     }
     $npmCi = strpos($senzaCommenti, "\n          npm ci\n");
     if ($npmCi === false || strpos($senzaCommenti, $delComando[0]) < $npmCi) {
@@ -1945,10 +1972,57 @@ it('in ci.yml il passo che rigenera e confronta è sano: un passo vero, dopo npm
             'con un if' => ['il passo ha `if:`'],
             'senza npm ci prima' => ['il passo non viene dopo `npm ci`'],
         ]);
-})->with([
-    'la favicon' => ['npm run favicon -- --controlla'],
-    'i componenti del design system' => ['npm run componenti -- --controlla'],
-]);
+})->with(comandiCheRigeneranoEConfrontano());
+
+/** @return array<string, array{string}> i comandi con cui la CI rigenera un file e lo confronta, ognuno in un passo suo: le righe di un dataset */
+function comandiCheRigeneranoEConfrontano(): array
+{
+    return [
+        'la favicon' => ['npm run favicon -- --controlla'],
+        'i componenti del design system' => ['npm run componenti -- --controlla'],
+    ];
+}
+
+// Sprint 27 · T5.1 (lettura della PR #59, R5). Un passo sano non basta, se sta in un job che non ferma niente: con
+// `continue-on-error` o con un `if:` sul job, con uno `shell:` sul passo che ne copre l'uscita, o con un `defaults:` — sul job
+// o su tutto il file — che dà quello `shell:` a ogni passo, il passo che rigenera e confronta può fallire e la CI resta verde.
+// Il controllo guarda anche lì, e un job che non riconosce non lo dà per sano.
+
+it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: lo stesso file con `continue-on-error`, con un `if:` o con un `needs:` sul job del passo, anche scritti fra virgolette, con uno `shell:` sul passo, con un `defaults:` sul job o sul file, o col job che non si trova non è sano (sprint 27 · T5.1; lettura della PR #60, R5)', function (string $comando) {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $riga = "        run: {$comando}\n";
+    $job = "    runs-on: ubuntu-latest\n";
+    // Uno `shell:` che copre l'uscita del comando: lo script del passo gira, e come finisce non conta.
+    $shell = 'shell: sh -c "sh {0} || true"'."\n";
+    $forme = [
+        'con continue-on-error sul job' => str_replace($job, $job."    continue-on-error: true\n", $ci),
+        'con un if sul job' => str_replace($job, "    if: false\n".$job, $ci),
+        'con shell sul passo' => str_replace($riga, $riga.'        '.$shell, $ci),
+        'con defaults sul job' => str_replace($job, $job."    defaults:\n      run:\n        ".$shell, $ci),
+        'con defaults sul file' => str_replace("\njobs:\n", "\ndefaults:\n  run:\n    ".$shell."\njobs:\n", $ci),
+        // Lettura della PR #60, R5. Un job dietro un altro job è saltato quando quello è saltato, e il passo non gira.
+        'con needs sul job' => str_replace($job, "    needs: [prima]\n".$job, $ci),
+        // Una chiave scritta fra virgolette o fra apici è la stessa chiave.
+        'con un if fra virgolette sul job' => str_replace($job, "    \"if\": false\n".$job, $ci),
+        'con continue-on-error fra apici sul passo' => str_replace($riga, $riga."        'continue-on-error': true\n", $ci),
+        // Tre spazi davanti al nome del job: per YAML è lo stesso file, ma il controllo non sa più qual è il job del passo.
+        'col job che non si trova' => str_replace("\n  ci:\n", "\n   ci:\n", $ci),
+    ];
+
+    expect([substr_count($ci, $riga), substr_count($ci, $job), substr_count($ci, "\njobs:\n"), substr_count($ci, "\n  ci:\n")])->toBe([1, 1, 1, 1])
+        ->and(difettiDelPassoCheLancia($comando, $ci))->toBe([])
+        ->and(array_map(fn (string $testo) => difettiDelPassoCheLancia($comando, $testo), $forme))->toBe([
+            'con continue-on-error sul job' => ['il job del passo ha `continue-on-error:`'],
+            'con un if sul job' => ['il job del passo ha `if:`'],
+            'con shell sul passo' => ['il passo ha `shell:`'],
+            'con defaults sul job' => ['il job del passo ha `defaults:`'],
+            'con defaults sul file' => ['il file ha `defaults:`'],
+            'con needs sul job' => ['il job del passo ha `needs:`'],
+            'con un if fra virgolette sul job' => ['il job del passo ha `if:`'],
+            'con continue-on-error fra apici sul passo' => ['il passo ha `continue-on-error:`'],
+            'col job che non si trova' => ['il job del passo non si trova'],
+        ]);
+})->with(comandiCheRigeneranoEConfrontano());
 
 it('la CI rigenera la favicon e la confronta, dopo npm ci; lo script è di questo repo, e resvg sta fra gli strumenti a una versione esatta (sprint 15 · T3.3)', function () {
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -2451,20 +2525,179 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
 // Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
 // racconta l'errore pagato davvero: una pagina senza sessione che leggeva `presto`.
 
-it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4)', function (string $frase) {
-    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+const PASSO_DEL_REGISTRO = '## 8. Il prodotto nel registro';
 
-    expect(str_contains($guida, $frase))->toBe(true);
-})->with([
-    'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)'],
-    'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`'],
-    // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
-    'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)'],
-    'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`'],
-    'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»'],
-]);
+/** Un passo della guida, dal suo titolo (`## 8. Il prodotto nel registro`) alla riga prima del titolo dopo. Vuoto se non c'è. */
+function passoDellaGuida(string $guida, string $titolo): string
+{
+    preg_match('/^'.preg_quote($titolo, '/').'\n.*?(?=^## |\z)/ms', $guida, $passo);
 
-it('la guida non dice più che il passo del registro non ha un errore pagato, e né i test, né il README, né la guida dicono più che il CRM è in anteprima (sprint 26 · T8.4)', function () {
+    return $passo[0] ?? '';
+}
+
+/**
+ * Le frasi della guida su `in_arrivo` e sull'errore pagato del passo del registro, ognuna col titolo del passo in cui sta: le
+ * righe di un dataset.
+ *
+ * @return array<string, array{string, string}>
+ */
+function frasiDellaGuidaSuInArrivo(): array
+{
+    return [
+        'quando si è spento per il CRM' => ['`in_arrivo` si spegne quando il prodotto esce per tutti: lo decide zr-pm, e lo chiedi allo stesso modo (per il CRM è successo il 12/10/2026, con la `v1.16.0`)', '## Prima di tutto: ciò che si chiede ad altri'],
+        'l\'errore pagato' => ['**Errore già pagato**: una pagina senza sessione che legge `presto` al posto di `in_arrivo`', PASSO_DEL_REGISTRO],
+        // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
+        'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)', PASSO_DEL_REGISTRO],
+        'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`', PASSO_DEL_REGISTRO],
+        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»', PASSO_DEL_REGISTRO],
+    ];
+}
+
+it('`MODULO-NUOVO.md` dice che dalla v1.16.0 il CRM non è più in arrivo, e nel passo del registro racconta l\'errore pagato: Registrati leggeva `presto` (sprint 26 · T8.4; ogni frase nel suo passo: sprint 27 · T5.5)', function (string $frase, string $passo) {
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+
+    expect(str_contains(suUnaRiga(passoDellaGuida($guida, $passo)), $frase))->toBe(true);
+})->with(frasiDellaGuidaSuInArrivo());
+
+// Sprint 27 · T5.5 (seconda lettura della PR #59, S4). Il titolo del caso qui sopra dice «nel passo del registro», e le frasi
+// si cercavano in tutta la guida: con l'errore pagato spostato sotto un altro passo restava verde. Ogni frase si cerca nel suo
+// passo, e lo dice questo caso: col capoverso dell'errore sotto il passo 9, nel passo 8 le sue frasi non si trovano più.
+
+it('le frasi dell\'errore pagato del registro si cercano nel solo passo 8 della guida: col capoverso spostato sotto il passo 9 la guida le ha ancora, e nel passo 8 non si trovano più; un passo va dal suo titolo al titolo dopo, e uno che la guida non ha è vuoto (sprint 27 · T5.5)', function () {
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $frasi = array_column(array_filter(frasiDellaGuidaSuInArrivo(), fn (array $riga): bool => $riga[1] === PASSO_DEL_REGISTRO), 0);
+    preg_match('/^\*\*Errore già pagato\*\*: una pagina senza sessione (?:[^\n]+\n)+/m', $guida, $capoverso);
+    $spostata = str_replace("\n## 9. La ricerca\n", "\n## 9. La ricerca\n\n".($capoverso[0] ?? ''), str_replace($capoverso[0] ?? '', '', $guida));
+    $trovate = fn (string $testo): array => array_map(fn (string $frase): bool => str_contains($testo, $frase), $frasi);
+    $nelPasso = fn (string $testo): string => suUnaRiga(passoDellaGuida($testo, PASSO_DEL_REGISTRO));
+
+    expect(count($frasi))->toBe(4)
+        ->and($trovate($nelPasso($guida)))->toBe([true, true, true, true])
+        // Spostato, non tolto: la guida intera le ha ancora tutte.
+        ->and($trovate(suUnaRiga($spostata)))->toBe([true, true, true, true])
+        ->and($trovate($nelPasso($spostata)))->toBe([false, false, false, false])
+        ->and(str_starts_with(passoDellaGuida($guida, PASSO_DEL_REGISTRO), PASSO_DEL_REGISTRO."\n"))->toBe(true)
+        ->and(substr_count(passoDellaGuida($guida, PASSO_DEL_REGISTRO), "\n## "))->toBe(0)
+        ->and(passoDellaGuida($guida, '## 8. Un passo che la guida non ha'))->toBe('');
+});
+
+// Sprint 27 · T5.4 (seconda lettura della PR #59, S3). README e guida elencano chi è in arrivo — «Bookings è in arrivo e non è
+// «Presto»», «in arrivo restano Bookings e i tre «Presto»», «e lo restano Bookings e i tre «Presto»» —, e i casi qui sopra
+// fissano quelle parole senza guardare il registro: il giorno che un prodotto esce per tutti le frasi diventano false e i casi
+// restano verdi. Questo controllo ricava i due elenchi dal registro e li cerca nelle tre frasi, là dove sono scritte.
+
+/**
+ * Che cosa, nel README e nella guida, non dice chi è in arrivo com'è nel registro dato: niente se le tre frasi tornano. Dal
+ * registro: i prodotti in arrivo che non sono «Presto», col nome italiano (quello delle lingue), e quanti sono i «Presto». Dal
+ * capoverso del README sui due sì o no e dal passo 8 della guida: le tre frasi che li elencano, i nomi divisi da virgole e da
+ * « e », il numero in lettere. Una frase che manca, che nomina altri prodotti o che ne conta altri è un difetto, e dice che
+ * cosa dà il registro. Lettura della PR #60, R4: se nel registro nessun prodotto è in arrivo senza essere «Presto», la frase
+ * che li nomina non deve esserci, e le altre due contano i soli «Presto» («in arrivo restano i tre «Presto»»).
+ *
+ * @param  list<array<string, mixed>>  $registro
+ * @return list<string>
+ */
+function difettiDiChiEInArrivo(array $registro, string $readme, string $guida): array
+{
+    $nomi = json_decode(File::get(__DIR__.'/../../resources/lingue/it.json'), true, flags: JSON_THROW_ON_ERROR);
+    $inOrdine = function (array $elenco): array {
+        sort($elenco);
+
+        return $elenco;
+    };
+    $inArrivo = array_values(array_map(
+        fn (array $voce): string => $nomi[$voce['id']],
+        array_filter($registro, fn (array $voce): bool => $voce['in_arrivo'] && ! $voce['presto']),
+    ));
+    $presto = count(array_filter($registro, fn (array $voce): bool => $voce['presto']));
+    $delRegistro = 'in arrivo e non «Presto»: '.($inArrivo === [] ? 'nessuno' : implode(', ', $inArrivo))."; «Presto»: {$presto}";
+    $inLettere = ['due' => 2, 'tre' => 3, 'quattro' => 4, 'cinque' => 5, 'sei' => 6];
+    $capoverso = paragrafoDeiDueSiONo($readme);
+    $frasi = [
+        'README, «in arrivo e non «Presto»»' => [$capoverso, '/non `presto`: (?<nomi>[^.;]+?) (?:è|sono) in arrivo e non (?:è|sono) «Presto»/u', null],
+        'README, «in arrivo restano»' => [$capoverso, '/in arrivo restano (?<nomi>[^.;]+?) e i (?<presto>\pL+) «Presto»/u', '/in arrivo restano i (?<presto>\pL+) «Presto»/u'],
+        'guida, «e lo restano»' => [suUnaRiga(passoDellaGuida($guida, PASSO_DEL_REGISTRO)), '/e lo restano (?<nomi>[^.;]+?) e i (?<presto>\pL+) «Presto»/u', '/e lo restano i (?<presto>\pL+) «Presto»/u'],
+    ];
+
+    $difetti = [];
+    foreach ($frasi as $dove => [$testo, $forma, $senzaNomi]) {
+        if ($inArrivo === []) {
+            // Nessuno in arrivo che non sia «Presto»: la frase che li nomina non c'è, e le altre due contano i soli «Presto».
+            $torna = $senzaNomi === null
+                ? preg_match($forma, $testo) !== 1
+                : preg_match($senzaNomi, $testo, $detto) === 1 && ($inLettere[$detto['presto']] ?? null) === $presto;
+        } else {
+            $torna = preg_match($forma, $testo, $detto) === 1
+                && $inOrdine(preg_split('/, | e /u', $detto['nomi']) ?: []) === $inOrdine($inArrivo)
+                && (! isset($detto['presto']) || ($inLettere[$detto['presto']] ?? null) === $presto);
+        }
+        if (! $torna) {
+            $difetti[] = "{$dove}: non dice ciò che dà il registro ({$delRegistro})";
+        }
+    }
+
+    return $difetti;
+}
+
+it('README e guida dicono chi è in arrivo com\'è nel registro: i prodotti in arrivo che non sono «Presto», per nome, e quanti sono i «Presto» si ricavano dal registro e si cercano nelle tre frasi che li elencano; con Bookings fuori dall\'arrivo le tre frasi non tornano più, e con un «Presto» in meno non tornano le due che li contano (sprint 27 · T5.4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $registro = registroDeiProdotti();
+    // Il registro del pacchetto col primo prodotto in arrivo che non è «Presto» uscito per tutti (oggi Bookings)…
+    $uscito = array_column(array_filter($registro, fn (array $voce): bool => $voce['in_arrivo'] && ! $voce['presto']), 'id')[0] ?? null;
+    $conUnoUscito = array_map(fn (array $voce): array => $voce['id'] === $uscito ? [...$voce, 'in_arrivo' => false] : $voce, $registro);
+    // … e senza il primo dei «Presto» (oggi Report): gli altri prodotti restano com'erano.
+    $tolto = array_column(array_filter($registro, fn (array $voce): bool => $voce['presto']), 'id')[0] ?? null;
+    $conUnPrestoInMeno = array_values(array_filter($registro, fn (array $voce): bool => $voce['id'] !== $tolto));
+    // Ciò che il controllo dice di un registro, ricavato da quel registro: i nomi italiani di chi è in arrivo e non è «Presto», e
+    // quanti sono i «Presto». Niente nomi né numeri fissati qui (lettura della PR #60, R4).
+    $nomi = json_decode(File::get(__DIR__.'/../../resources/lingue/it.json'), true, flags: JSON_THROW_ON_ERROR);
+    $nonDice = function (string $dove, array $voci) use ($nomi): string {
+        $inArrivo = array_values(array_map(fn (array $voce): string => $nomi[$voce['id']], array_filter($voci, fn (array $voce): bool => $voce['in_arrivo'] && ! $voce['presto'])));
+        $presto = count(array_filter($voci, fn (array $voce): bool => $voce['presto']));
+
+        return "{$dove}: non dice ciò che dà il registro (in arrivo e non «Presto»: ".($inArrivo === [] ? 'nessuno' : implode(', ', $inArrivo))."; «Presto»: {$presto})";
+    };
+
+    // Prima i documenti col registro di oggi: se non tornano, il rosso dice quale frase. I due registri di prova valgono finché
+    // nel registro un prodotto è in arrivo senza essere «Presto» e uno è «Presto»: chi sono, non conta.
+    expect(difettiDiChiEInArrivo($registro, $readme, $guida))->toBe([])
+        ->and([$uscito, $tolto])->not->toContain(null)
+        ->and(difettiDiChiEInArrivo($conUnoUscito, $readme, $guida))->toBe([
+            $nonDice('README, «in arrivo e non «Presto»»', $conUnoUscito),
+            $nonDice('README, «in arrivo restano»', $conUnoUscito),
+            $nonDice('guida, «e lo restano»', $conUnoUscito),
+        ])
+        ->and(difettiDiChiEInArrivo($conUnPrestoInMeno, $readme, $guida))->toBe([
+            $nonDice('README, «in arrivo restano»', $conUnPrestoInMeno),
+            $nonDice('guida, «e lo restano»', $conUnPrestoInMeno),
+        ]);
+});
+
+// Lettura della PR #60, R4. Il giorno che l'ultimo prodotto in arrivo esce per tutti, README e guida devono poterlo dire: la
+// frase che li nomina non c'è più, e le altre due contano i soli «Presto». Il controllo conosce anche quella forma: prima, con
+// un registro così, le tre frasi non si potevano più scrivere in un modo che tornasse.
+it('README e guida possono dire che nessun prodotto è in arrivo senza essere «Presto»: con un registro così il controllo accetta i documenti senza la frase che li nomina e con le due che contano i soli «Presto», e non quelli di oggi; col registro di oggi non accetta quei documenti (lettura della PR #60, R4)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $senzaNessuno = array_map(fn (array $voce): array => $voce['presto'] ? $voce : [...$voce, 'in_arrivo' => false], registroDeiProdotti());
+    // I documenti di quel giorno, ricavati da quelli di oggi: le tre frasi, senza i nomi.
+    $readmeDiQuelGiorno = (string) preg_replace(
+        ['/non\s+`presto`:\s+[^.;]+?\s+(?:è|sono)\s+in\s+arrivo\s+e\s+non\s+(?:è|sono)\s+«Presto»/u', '/in\s+arrivo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u'],
+        ['non `presto`: oggi nessuno', 'in arrivo restano i $1 «Presto»'],
+        $readme,
+        -1,
+        $nelReadme,
+    );
+    $guidaDiQuelGiorno = (string) preg_replace('/e\s+lo\s+restano\s+[^.;]+?\s+e\s+i\s+(\pL+)\s+«Presto»/u', 'e lo restano i $1 «Presto»', $guida, -1, $nellaGuida);
+
+    expect([$nelReadme, $nellaGuida])->toBe([2, 1])
+        ->and(difettiDiChiEInArrivo($senzaNessuno, $readmeDiQuelGiorno, $guidaDiQuelGiorno))->toBe([])
+        ->and(count(difettiDiChiEInArrivo($senzaNessuno, $readme, $guida)))->toBe(3)
+        ->and(count(difettiDiChiEInArrivo(registroDeiProdotti(), $readmeDiQuelGiorno, $guidaDiQuelGiorno)))->toBe(3);
+});
+
+it('la guida non dice più che il passo del registro non ha un errore pagato, e le due forme scritte dell\'anteprima del CRM non stanno in `tests/`, nel README e nella guida (sprint 26 · T8.4; il titolo: sprint 27 · T5.5)', function () {
     // Le due frasi sono spezzate: intere, questo file le troverebbe in sé stesso.
     $inAnteprima = ['il CRM in '.'anteprima', 'in anteprima '.'(il CRM)'];
     $file = [...(glob(__DIR__.'/*.php') ?: []), ...(glob(__DIR__.'/../*.php') ?: []), __DIR__.'/../../README.md', __DIR__.'/../../MODULO-NUOVO.md'];
@@ -3680,36 +3913,71 @@ it('il README dice, accanto a `destinazioneDellaNotifica`, il metodo PHP che dà
     'è un contratto' => ['Nome e firma del metodo sono un contratto, e cambiano solo con una versione maggiore'],
 ]);
 
-// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639): il segnaposto e l'invito della ricerca dicono le
-// fonti del workspace. Il README lo dice nel punto «La ricerca» — come si compongono, i testi nelle tre lingue con Project
-// Management attivo, quelli senza fonti, quelli fissi di prima e come un frontend li trova nei suoi test —, e nel punto «Il
-// menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
+// Sprint 22 · T8 (voce #1728), riscritto nello sprint 25 · T4 (voce #1639) e nello sprint 27 · T7 (voce #1810): l'invito della
+// ricerca dice le fonti del workspace, e il segnaposto è uno solo. Il README lo dice nel punto «La ricerca» — come si compone
+// l'invito, i testi nelle tre lingue con Project Management attivo, quelli senza fonti, quelli fissi di prima e come un
+// frontend li trova nei suoi test —, e nel punto «Il menu Moduli» l'aiuto della `v1.10.2` non è più quello di oggi.
 
-it('il README dice che dalla v1.15.0 il segnaposto e l\'invito della ricerca dicono le fonti del workspace: nel punto «La ricerca» come si compongono, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
+it('il README dice che dalla v1.17.0 il segnaposto della ricerca è uno solo e che l\'invito dice le fonti del workspace: nel punto «La ricerca» come si compone, i testi nelle tre lingue, quelli senza fonti, quelli fissi di prima e come trovarli nei test di un frontend; nel punto «Il menu Moduli» l\'aiuto di allora col rimando (sprint 22 · T8.1, T8.2; sprint 25 · T4.6)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = ['ricerca' => puntoDellaCornice($readme, 'La ricerca'), 'menu' => puntoDellaCornice($readme, 'Il menu Moduli')];
 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
-    'quante ne nominano' => ['ricerca', 'Il segnaposto ne nomina al più tre, l\'invito tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
-    'i due testi in italiano' => ['ricerca', '«Cerca schede, board, cartelle…» e «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders…» e «Search cards, boards, and folders: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas…» e «Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.»'],
+    'da quando, e che cosa dicono' => ['ricerca', 'Dalla `v1.15.0` l\'invito dice le fonti della ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell\'ordine del registro'],
+    // Sprint 27 · T7 (voce #1810): dalla `v1.17.0` il segnaposto è uno solo, uguale in ogni workspace e in ogni modulo, e non
+    // nomina le fonti: le dice l'invito.
+    'il segnaposto unico' => ['ricerca', 'Dalla `v1.17.0` il segnaposto del campo è uno solo, uguale in ogni workspace e in ogni modulo: «Cerca nel workspace…» (in inglese «Search the workspace…», in spagnolo «Busca en el workspace…»)'],
+    'chi dice le fonti' => ['ricerca', 'Non nomina le fonti: che cosa si può cercare lo dice l\'invito che si legge prima di due caratteri'],
+    'quante ne nominano' => ['ricerca', 'L\'invito le nomina tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
+    // Sprint 27 · T3: dalla `v1.17.0` i membri del workspace sono una fonte, nominata per ultima: l'invito finisce con loro, e i
+    // due testi senza fonti non sono più quelli di un workspace senza moduli attivi.
+    'l\'invito in italiano' => ['ricerca', 'Con Project Management attivo e il CRM no: «Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders, and members: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»'],
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
-    'senza fonti' => ['ricerca', 'Senza fonti, e per chi non ha accettato i documenti legali, il segnaposto è «Cerca…» (in inglese «Search…», in spagnolo «Busca…»); senza fonti l\'invito è «Scrivi almeno 2 caratteri.»'],
+    'senza fonti' => ['ricerca', 'I due testi senza fonti sono «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»)'],
     // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
     // Lettura della PR #59, R1: vale per un browser che ha il resto di ciò che i sorgenti usano; dove manca anche quello, no.
-    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e segnaposto e invito sono questi due, quelli senza fonti, quante che siano le fonti'],
+    'dove il browser non ha l\'elenco' => ['ricerca', 'L\'elenco delle fonti vuole `Intl.ListFormat` nel browser: dove manca, in un browser che ha il resto di ciò che i sorgenti usano — la libreria ES2022 (`Array.prototype.at`, `Object.hasOwn`) e `Intl.RelativeTimeFormat` —, dalla `v1.16.0` la cornice si disegna lo stesso e l\'invito è quello senza fonti, quante che siano le fonti'],
+    'il segnaposto dove il browser non ha l\'elenco' => ['ricerca', 'dalla `v1.17.0` il segnaposto lì è quello unico, come ovunque (nella `v1.16.0` era «Cerca…»)'],
     'e dove manca anche il resto' => ['ricerca', 'Dove manca anche il resto la cornice non si disegna, nella `v1.16.0` come prima: a un browser così lo aggiunge il frontend'],
     'e nella versione di prima' => ['ricerca', 'nella `v1.15.0`, con almeno una fonte, lì il disegno della cornice lanciava un errore'],
-    'le chiavi delle lingue' => ['ricerca', '`searchPlaceholderSources` e `searchHintSources` hanno il posto dell\'elenco, `{sources}`, e `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
+    'le chiavi delle lingue' => ['ricerca', '`searchHintSources` ha il posto dell\'elenco, `{sources}`; `searchPlaceholderSources` è il segnaposto unico e dalla `v1.17.0` non lo ha più (la chiave resta); `searchPlaceholder` e `searchHint` sono quelli senza fonti'],
     'i testi fissi di prima' => ['ricerca', 'Dalla `v1.12.0` alla `v1.14.0` i due testi erano fissi: «Cerca board e cartelle…» e «Cerca board e cartelle: scrivi almeno 2 caratteri.»'],
     'e quelli di prima ancora' => ['ricerca', 'prima ancora «Cerca progetti, schede, contatti…» e «Cerca in tutti i moduli: scrivi almeno 2 caratteri.»'],
     'come trovarli nei test di un frontend' => ['ricerca', 'Un frontend che li ha nei suoi test li trova cercando `board e cartelle` (in inglese `boards and folders`, in spagnolo `tableros y carpetas`), e quelli di prima cercando `Cerca progetti` e `tutti i moduli` (in inglese `Search projects` e `across all modules`, in spagnolo `Busca proyectos` e `todos los módulos`)'],
     'l\'aiuto della v1.10.2 non è più quello di oggi' => ['menu', 'l\'aiuto della ricerca, allora «Cerca in tutti i moduli: scrivi almeno 2 caratteri.» (prima «Cerca in tutti i prodotti: scrivi almeno 2 caratteri.»; dalla `v1.12.0` dice altro: vedi «La ricerca»)'],
 ]);
+
+// Sprint 27 · T7 (voce #1810): dalla `v1.17.0` il segnaposto è uno solo e non nomina le fonti. Che una volta le nominava il
+// README lo dice al passato, per chi aggiorna: le frasi che lo dicevano al presente non ci sono più, e nemmeno il segnaposto di
+// un workspace senza moduli, che non è uscito in nessuna versione.
+it('il README non dice più, al presente, che il segnaposto della ricerca nomina le fonti (sprint 27 · T7.4)', function (string $diPrima) {
+    $ricerca = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca');
+
+    expect($ricerca)->not->toBe('')
+        ->and(str_contains($ricerca, $diPrima))->toBe(false);
+})->with([
+    'resta alle prime tre' => ['il segnaposto resta alle prime tre'],
+    'ne nomina al più tre' => ['Il segnaposto ne nomina al più tre'],
+    'i due testi dicono le fonti' => ['il segnaposto del campo e l\'invito che si legge prima di due caratteri dicono le fonti'],
+    'il segnaposto di un workspace senza moduli' => ['«Cerca membri…»'],
+    'il segnaposto con le fonti, in inglese' => ['«Search cards, boards, folders…» e'],
+    'segnaposto e invito dove manca l\'elenco' => ['segnaposto e invito sono questi due'],
+]);
+
+// Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
+// dal file. Uno spezzato da un a capo si copia in due pezzi, e nei test di un frontend non trova niente: ogni riga del punto
+// chiude gli accenti che apre.
+it('nel punto «La ricerca» del README nessun frammento fra accenti è spezzato da un a capo (sprint 27 · T6)', function () {
+    $righe = explode("\n", puntoDellaCorniceNelFile((string) file_get_contents(__DIR__.'/../../README.md'), 'La ricerca'));
+    $spezzate = array_values(array_filter($righe, fn (string $riga): bool => substr_count($riga, '`') % 2 === 1));
+
+    expect(count($righe))->toBeGreaterThan(1)
+        ->and($spezzate)->toBe([]);
+});
 
 // Sprint 25 · T4 (voce #1639): la ricerca mostra anche schede, contatti, aziende e opportunità, con la seconda riga. Il README
 // dice i tipi, i gruppi, la seconda riga e dove si apre ognuno; la guida dice che cosa chiedere perché la ricerca trovi le
@@ -3732,6 +4000,7 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
     'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
     'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
+    'la guida: chi nomina il nome da elenco' => ['guida', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
     'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
     'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
 ]);
@@ -3745,6 +4014,123 @@ it('né il README né la guida dicono più che la ricerca trova solo board e car
     'README: le fonti di oggi' => ['README.md', 'oggi board e cartelle, di Project Management'],
     'README: i due testi di oggi' => ['README.md', 'dicono ciò che la ricerca trova oggi, board e cartelle'],
     'la guida' => ['MODULO-NUOVO.md', 'trova solo board e cartelle'],
+]);
+
+// Sprint 27 · T3 (voce #1787): dalla `v1.17.0` la ricerca trova anche i membri del workspace. Il README lo dice nel punto «La
+// ricerca» — che cosa sono, il gruppo, il ruolo nella lingua e mai l'email, dove si apre, la fonte nominata per ultima, i due
+// testi senza moduli attivi e l'invito di prima —, nella riga della rotta e nel capoverso delle risorse del registro (`home`
+// ha una risorsa, `codici`, i testi nuovi delle lingue), che sta in coda al paragrafo «Fuori dalla cornice», dove il README dice
+// il registro: i due capoversi dopo, quello dei due sì o no e quello del tono, restano attaccati a lui. La guida dice `codici`
+// nel passo del registro, e non altrove.
+
+/**
+ * Il capoverso del README sulle risorse del registro, su una riga sola: dalla riga che comincia con «Nel registro stanno anche
+ * le risorse» alla riga vuota. È la coda del paragrafo «Fuori dalla cornice», senza una riga vuota davanti. Vuoto se non c'è.
+ */
+function capoversoDelleRisorse(string $readme): string
+{
+    preg_match('/^Nel registro stanno anche le risorse .*?(?=^$|\z)/ms', $readme, $capoverso);
+
+    return suUnaRiga($capoverso[0] ?? '');
+}
+
+it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspace: nel punto «La ricerca» che cosa sono, il gruppo, il ruolo nella lingua e mai l\'email, dove si apre un membro, la fonte nominata per ultima, i testi senza moduli attivi e l\'invito di prima; nella riga della rotta il tipo e il solo ruolo; nel capoverso delle risorse la voce `home`, `codici` e i testi nuovi delle lingue (sprint 27 · T3.1)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'rotta' => rigaDellaRotta($readme, 'POST /cornice/ricerca'),
+        'registro' => capoversoDelleRisorse($readme),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true)
+        // Il capoverso delle risorse chiude il paragrafo che dice il registro: non è un paragrafo a sé, messo fra quello e i due dopo.
+        ->and(str_ends_with(paragrafoFuoriDallaCornice($readme), $testi['registro']))->toBe(true);
+})->with([
+    'che cosa sono, e da quando' => ['ricerca', 'Dalla `v1.17.0` la ricerca trova anche i membri del workspace (`workspace.membro`): non sono di un modulo, il backoffice li cerca in ogni workspace, anche senza moduli attivi, e nel registro stanno nella voce `home`'],
+    'il gruppo' => ['ricerca', 'Il gruppo dei membri è «Membri» (in inglese «Members», in spagnolo «Miembros»), con l\'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il nome di un prodotto, né un tono'],
+    'il ruolo, nella lingua' => ['ricerca', 'Sotto il nome di un membro sta il suo ruolo, nella lingua della persona'],
+    'mai il codice' => ['ricerca', 'e la cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha solo il nome'],
+    'mai l\'email' => ['ricerca', 'L\'email di un membro non esce mai: il backoffice non la dà, e di `contesto` la parte server lascia passare il solo `ruolo`'],
+    'dove si apre' => ['ricerca', 'Dalla `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri'],
+    'la fonte, per ultima' => ['ricerca', 'Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`: «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi'],
+    'col CRM attivo' => ['ricerca', 'col CRM attivo l\'invito nomina anche contatti, aziende e opportunità, prima dei membri. Un modulo `disponibile` o in arrivo non dà fonti'],
+    'senza moduli attivi' => ['ricerca', 'Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least 2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»)'],
+    'i due testi di prima' => ['ricerca', 'Dalla `v1.15.0` alla `v1.16.0` anche il segnaposto nominava le fonti, al più tre, e i membri non erano una fonte'],
+    'nei test di un frontend: Project Management attivo e il CRM no' => ['ricerca', 'con Project Management attivo e il CRM no il segnaposto era «Cerca schede, board, cartelle…» e l\'invito «Cerca schede, board e cartelle: scrivi almeno 2 caratteri.» (cerca `cartelle…` e `e cartelle:`; in inglese `folders…` e `and folders:`, in spagnolo `carpetas…` e `y carpetas:`)'],
+    'nei test di un frontend: tutti e due attivi' => ['ricerca', 'con tutti e due attivi il segnaposto era lo stesso e l\'invito finiva con «contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `e opportunità:`; in inglese `and opportunities:`, in spagnolo `y oportunidades:`)'],
+    // Seconda lettura della PR #60, S1: col solo CRM attivo cambia anche l'invito, che prima finiva con le opportunità.
+    'nei test di un frontend: il solo CRM attivo' => ['ricerca', 'col solo CRM attivo il segnaposto era «Cerca contatti, aziende, opportunità…» e l\'invito «Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `opportunità…` e `e opportunità:`; in inglese `opportunities…` e `and opportunities:`, in spagnolo `oportunidades…` e `y oportunidades:`)'],
+    'nei test di un frontend: nessun modulo attivo' => ['ricerca', 'senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.»'],
+    'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
+    'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
+    'la riga: il solo ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice'],
+    'la riga: mai l\'email' => ['rotta', 'l\'email di un membro non esce mai'],
+    'il registro: le risorse' => ['registro', 'Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com\'è nel backoffice (`board.scheda`), l\'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno la seconda riga del risultato'],
+    'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
+    'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
+    'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che si mostra com\'è arrivato (il ruolo di un contatto del CRM)'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<prodotto>.<tipo>.<chiave>.<codice>`'],
+    'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
+]);
+
+it('i codici e i ruoli che il README dice per un membro sono quelli del registro coi testi delle lingue, nell\'ordine del registro: nel punto «La ricerca», nella riga della rotta e nel capoverso delle risorse (sprint 27 · T3.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $davanti = 'home.workspace.membro.ruolo.';
+    $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
+    $fraAccenti = implode(', ', array_map(fn (string $codice): string => '`'.$codice.'`', $codici));
+    $nella = function (string $lingua) use ($codici, $davanti): string {
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        return implode(', ', array_map(fn (string $codice): string => '«'.$testi['searchContext.'.$davanti.$codice].'»', $codici));
+    };
+
+    expect($codici)->toHaveCount(3)
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'nella lingua della persona: '.$nella('it').' (in inglese '.$nella('en').', in spagnolo '.$nella('es').')'))->toBe(true)
+        ->and(str_contains(puntoDellaCornice($readme, 'La ricerca'), 'Il backoffice dà un codice ('.$fraAccenti.')'))->toBe(true)
+        ->and(str_contains(rigaDellaRotta($readme, 'POST /cornice/ricerca'), 'che è un codice ('.$fraAccenti.')'))->toBe(true)
+        ->and(str_contains(capoversoDelleRisorse($readme), 'per il `ruolo` di un membro '.$fraAccenti))->toBe(true);
+});
+
+// Sprint 27 · T3 (voce #1787): dal 12/10/2026 il contratto ha un tipo di evento in più, `com.zeiras.crm.persona.anonimizzata`,
+// che non genera notifiche: non ha un titolo, e i titoli restano 42. Il README lo dice nel punto «Le notifiche», e nessuna
+// lingua ha quel titolo.
+
+it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il trentasettesimo non genera notifiche e non ha un titolo, e che i titoli restano 42; ogni lingua ha 42 titoli, e nessuno per quel tipo (sprint 27 · T3.2)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $punto = puntoDelleNotifiche($readme);
+    $titoli = [];
+    foreach (glob(__DIR__.'/../../resources/lingue/*.json') ?: [] as $file) {
+        $testi = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+        $titoli[basename($file, '.json')] = array_values(array_filter(array_keys($testi), fn (string $chiave): bool => str_starts_with($chiave, 'notificationTitle.')));
+    }
+
+    expect(str_contains($punto, 'uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal 12/10/2026 e che non genera notifiche (più sotto)'))->toBe(true)
+        ->and(str_contains($punto, 'Dal 12/10/2026 il contratto ha 37 tipi di evento: il trentasettesimo, `com.zeiras.crm.persona.anonimizzata` (un contatto reso anonimo), non genera notifiche e non ha un titolo'))->toBe(true)
+        ->and(str_contains($punto, 'I titoli restano 42: 36 tipi di evento, i cinque «assegnata» e la menzione'))->toBe(true)
+        // Il conto non cambia: nessuna frase lo porta a 43, né dà un titolo a tutti e 37.
+        ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(1)
+        ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
+        ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
+        ->and(array_map('count', $titoli))->toBe(['en' => 42, 'es' => 42, 'it' => 42])
+        ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
+});
+
+it('la guida dice nel passo del registro, e non altrove, come si dà a una risorsa una chiave di `contesto` che è un codice: `codici` nel registro e un testo per codice in ogni lingua; nel passo della ricerca nomina i membri e rimanda al passo del registro (sprint 27 · T3.3)', function (string $passo, string $frase) {
+    $guida = guidaDelModuloNuovo();
+    preg_match('/^## '.preg_quote($passo, '/').'$(.*?)(?=^## |\z)/ms', $guida, $delPasso);
+
+    expect(suUnaRiga($delPasso[1] ?? ''))->not->toBe('')
+        ->and(str_contains(suUnaRiga($delPasso[1] ?? ''), $frase))->toBe(true)
+        // Una volta sola in tutta la guida: sta in quel passo, e non anche in un altro.
+        ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
+})->with([
+    'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`)'],
+    'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
+    'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi ha `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`)'],
+    'la ricerca trova anche i membri' => ['9. La ricerca', 'opportunità del CRM (dalla `v1.17.0` anche i membri del workspace, che non sono di un modulo)'],
+    'il rimando dal passo della ricerca' => ['9. La ricerca', 'Una chiave di `contesto` che porta un codice vuole anche `codici` (passo 8)'],
 ]);
 
 // Sprint 22 · T4, seconda lettura della PR #44 (S2, S3, S5): tre cose che il README taceva a chi installa. Quante sono le cose
@@ -4132,17 +4518,14 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
 
 it('`Registro` legge il file una volta per processo: la prima richiesta dà le voci del registro del pacchetto e le tiene, e con delle voci già in mano dà quelle, senza tornare al file (sprint 26 · T3.2)', function () {
     $voci = new ReflectionProperty(Registro::class, 'voci');
-    $voci->setValue(null, null);
 
-    try {
-        expect(Registro::voci())->toBe(registroDeiProdotti())
-            ->and($voci->getValue())->toBe(registroDeiProdotti());
-        // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
-        $voci->setValue(null, [['id' => 'uat-gia-letto']]);
-        expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
-    } finally {
-        $voci->setValue(null, null);
-    }
+    // Prima della prima richiesta la classe non ha niente in mano: la copia del caso prima l'ha tolta `tests/Pest.php`.
+    expect($voci->getValue())->toBeNull()
+        ->and(Registro::voci())->toBe(registroDeiProdotti())
+        ->and($voci->getValue())->toBe(registroDeiProdotti());
+    // Voci che il file non ha: se la classe tornasse al file a ogni richiesta, darebbe quelle del pacchetto.
+    registroGiaLetto([['id' => 'uat-gia-letto']]);
+    expect(Registro::voci())->toBe([['id' => 'uat-gia-letto']]);
 });
 
 it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un altro file: fuori dal privato ha il solo `voci()`, statico e senza argomenti, e l\'unica proprietà è privata; è una classe interna, non per chi installa il pacchetto (sprint 26 · T3.3)', function () {
@@ -4156,4 +4539,51 @@ it('`Registro` non ha un metodo che scrive il registro né uno che sceglie un al
         ->and($classe->getProperty('voci')->isPrivate())->toBe(true)
         ->and($classe->isFinal())->toBe(true)
         ->and(str_contains((string) $classe->getDocComment(), '@internal'))->toBe(true);
+});
+
+// Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
+// file di test: la scrive `registroGiaLetto()`, e si toglie in un posto solo, `tests/Pest.php`, dopo ogni caso di ogni file.
+// Prima la toglievano due `afterEach` e due `try/finally`, ognuno nel suo file: un altro file che la scriveva e non la toglieva
+// sporcava ricerca e notifiche di ogni file dopo, con rossi lontani dalla causa.
+
+it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
+    // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
+    $chiamate = ['set'.'Value(', 'registroGiaLetto('.'null)'];
+    $quante = fn (string $percorso): array => array_map(fn (string $chiamata): int => substr_count((string) file_get_contents($percorso), $chiamata), $chiamate);
+    $neiFile = [];
+    foreach (glob(__DIR__.'/*.php') ?: [] as $percorso) {
+        $neiFile[basename($percorso)] = $quante($percorso);
+    }
+
+    // Lettura della PR #60, R3. Il conto è di due stringhe nei file di questa cartella: non vede una scrittura fatta in un altro
+    // modo. Che la copia non passi da un file all'altro lo provano i due casi in coda a questo file e in testa a
+    // `RegistroTest.php`, e solo al loro posto: l'ultimo caso di questo file, il primo del file che Pest gira subito dopo (in
+    // ordine di nome e in un processo solo: così li lancia la CI).
+    $file = array_map('basename', glob(__DIR__.'/*.php') ?: []);
+    sort($file);
+    $titoli = function (string $nome): array {
+        preg_match_all("/^it\\('(.*)', function/m", (string) file_get_contents(__DIR__.'/'.$nome), $trovati);
+
+        return $trovati[1];
+    };
+    $diQui = $titoli('PacchettoTest.php');
+    $delFileDopo = $titoli('RegistroTest.php');
+
+    expect(array_key_exists('PacchettoTest.php', $neiFile))->toBe(true)
+        ->and($file[(int) array_search('PacchettoTest.php', $file, true) + 1] ?? null)->toBe('RegistroTest.php')
+        ->and(str_starts_with((string) end($diQui), 'un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file'))->toBe(true)
+        ->and(str_starts_with($delFileDopo[0] ?? '', 'un registro di prova scritto dall\\\'ultimo caso di un altro file non arriva qui'))->toBe(true)
+        ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
+        ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => {$chiamate[1]})->in('Feature');"))->toBe(1);
+});
+
+// L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di
+// `RegistroTest.php`, il file che gira dopo, trova la parte server senza una copia in mano.
+
+it('un caso che scrive un registro di prova e non lo toglie non lo lascia ai casi di un altro file: questo lo scrive, e il primo di `RegistroTest.php` trova quello del pacchetto (sprint 27 · T5.2)', function () {
+    $diProva = [...registroDeiProdotti(), ['id' => 'uat-lasciato-da-un-altro-file']];
+    registroGiaLetto($diProva);
+
+    expect(Registro::voci())->toBe($diProva);
 });

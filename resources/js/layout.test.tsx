@@ -244,7 +244,7 @@ describe('LayoutDellaCornice', () => {
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
-        expect(segnaposto()).toBe('Cerca schede, board, cartelle…');
+        expect(segnaposto()).toBe('Cerca nel workspace…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
         await visita(inSpagnolo, <PaginaB key="2" />);
@@ -256,7 +256,7 @@ describe('LayoutDellaCornice', () => {
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
         expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
-        expect(segnaposto()).toBe('Busca tarjetas, tableros, carpetas…');
+        expect(segnaposto()).toBe('Busca en el workspace…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual(['Augusta King', 'ada@example.com']);
@@ -297,6 +297,24 @@ describe('LayoutDellaCornice', () => {
         await clic(uno('.zr-bell'));
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
         expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche', 'GET /cornice/notifiche']);
+    });
+
+    // Sprint 27 · T4 (lettura della PR #59, R2). Il freno della ricerca è della cornice montata: una visita che porta un altro
+    // workspace la rifà, e lì la prima parola parte anche se nel workspace di prima il freno non era scaduto.
+    it('dopo un 429 della ricerca con `Retry-After: 60` un\'altra parola nello stesso workspace non parte; una visita che porta un altro workspace rifà la cornice, e lì la prima parola scritta parte subito (sprint 27 · T4.3)', async () => {
+        const frenata = { ok: false, status: 429, headers: new Headers({ 'Retry-After': '60' }), json: async () => ({ errore: 'troppe_richieste' }) } as unknown as Response;
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: datiAltroWorkspace.workspace.slug })).mockResolvedValueOnce(frenata));
+        const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
+        await visita(dati, <PaginaA key="1" />);
+        await scrivi('uat');
+        await scrivi('uat lancio');
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(sottoIlCampo()).toStrictEqual(['La ricerca non ha risposto. Riprova tra poco.']);
+
+        await visita(datiAltroWorkspace, <PaginaB key="2" />);
+        await scrivi('lancio');
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}', 'POST /cornice/ricerca {"q":"lancio"}']);
+        expect([titoliDellaRicerca(), sottoIlCampo()]).toStrictEqual([['UAT Lancio Q1'], []]);
     });
 
     it('quando una visita porta un altro workspace ciò che aveva dato la pagina di prima non si monta nella cornice rifatta, nemmeno per un render (sprint 9 · T1.6)', async () => {
@@ -379,8 +397,8 @@ describe('LayoutDellaCornice', () => {
             </LayoutDellaCornice>,
         );
         expect(uno('.zr-shell')?.className).toBe('zr-shell');
-        // Il segnaposto resta quello della cornice, con le fonti del workspace dei dati (sprint 25 · T4.3).
-        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca schede, board, cartelle…');
+        // Il segnaposto resta quello della cornice, uno solo in ogni workspace (sprint 25 · T4.3; sprint 27 · T7.1).
+        expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe('Cerca nel workspace…');
     });
 });
 

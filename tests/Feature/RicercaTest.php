@@ -9,7 +9,6 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\RicercaDellaCornice;
-use Zeiras\Core\Registro;
 
 // Sprint 3 · T5 (voce #1277), la parte server. La rotta della ricerca della cornice nel gruppo `web` del frontend: la parte
 // server la gira a ricerca.elenca col gettone del workspace, che resta nella sessione. Il
@@ -207,6 +206,27 @@ it('di `contesto` passano solo le chiavi che il registro dà al tipo del risulta
     'una lista di testi' => [['UAT Impianti', 'Direttore'], null],
 ]);
 
+// Sprint 27 · T1.5 (voce #1787): ricerca.crea trova anche i colleghi del workspace, per nome. Il backoffice non mette mai l'email
+// nella voce, e il registro dà al tipo la sola chiave `ruolo`: se un giorno l'email, o un'altra chiave, arrivasse nel contesto,
+// si fermerebbe qui e non arriverebbe al browser.
+it('un membro del workspace esce con tipo, id, titolo e il solo `ruolo` del contesto, il codice com\'è: un\'email, o un\'altra chiave che il backoffice mettesse nel contesto, non arriva al browser (sprint 27 · T1.5)', function (array $delBackoffice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    // La voce dell'esempio del contratto del 12/10/2026, e ciò che il caso le aggiunge nel contesto.
+    Http::fake(['*' => Http::response(['data' => [
+        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => $delBackoffice, 'indirizzo' => '/v1/workspace/membri/01k6w1b3d5f7h9k1n3q5s7u9wy'],
+    ], 'successivo' => null])]);
+
+    $risposta = cerca('Marta')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => ['ruolo' => 'amministratore']],
+    ], 'workspace' => 'uat-marketing']);
+
+    expect($risposta->getContent())->not->toContain('example.com')->not->toContain('email')->not->toContain('/v1/');
+})->with([
+    'il contesto del contratto: il solo ruolo' => [['ruolo' => 'amministratore']],
+    'con l\'email dopo il ruolo' => [['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com']],
+    'con l\'email prima del ruolo, e una mansione' => [['email' => 'uat-marta@example.com', 'ruolo' => 'amministratore', 'mansione' => 'UAT Direttrice']],
+]);
+
 /** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
 const CONTESTO_CON_OGNI_CHIAVE = ['reparto' => 'UAT Acquisti', 'lista' => 'Da fare', 'board' => 'UAT Sito', 'ruolo' => 'Direttore', 'organizzazione' => 'UAT Impianti', 'fase' => 'Proposta', 'pipeline' => 'UAT Vendite'];
 
@@ -219,6 +239,9 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
     'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite"}'],
+    // Sprint 27 · T1.5: a un membro del workspace il registro dà il solo `ruolo`. Il valore passa com'è: quali codici hanno un
+    // testo lo sa la cornice, nel browser.
+    'un membro del workspace' => ['workspace.membro', '{"ruolo":"Direttore"}'],
     // Il registro non dà chiavi a un'azienda, a una board, a una cartella: qualunque cosa il backoffice dia, null.
     'un\'azienda' => ['crm.organizzazione', 'null'],
     'una board' => ['board.board', 'null'],
@@ -234,23 +257,19 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
         risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE),
         risultatoDelBackoffice('board.scheda', 'uat-s1', 'UAT Scheda', CONTESTO_CON_OGNI_CHIAVE),
     ], 'successivo' => null])]);
-    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche: nel codice
-    // che va in produzione non c'è un aggancio per i test. Dopo, la parte server torna a leggere quello del pacchetto.
-    $registro = new ReflectionProperty(Registro::class, 'voci');
-    $registro->setValue(null, [
+    // Il registro di prova entra dalla proprietà privata di `Registro`, con la reflection, come per le notifiche
+    // (`registroGiaLetto()`, in `tests/Pest.php`): nel codice che va in produzione non c'è un aggancio per i test. Dopo il
+    // caso lo toglie `tests/Pest.php`, e la parte server torna a leggere quello del pacchetto.
+    registroGiaLetto([
         ['id' => 'crm', 'risorse' => [['tipo' => 'crm.persona', 'contesto' => ['reparto']]]],
         ['id' => 'pm', 'risorse' => [['tipo' => 'board.scheda']]],
         ['id' => 'uat-senza-risorse'],
     ]);
 
-    try {
-        cerca('UAT')->assertOk()->assertExactJson(['data' => [
-            ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
-            ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
-        ], 'workspace' => 'uat-marketing']);
-    } finally {
-        $registro->setValue(null, null);
-    }
+    cerca('UAT')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
+        ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
+    ], 'workspace' => 'uat-marketing']);
 });
 
 it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (sprint 25 · T6, R1; sprint 26 · T3.2)', function () {
@@ -544,15 +563,14 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
 // tutte le rotte: un registro di prova lasciato da un caso arriverebbe a ogni caso dopo, di questo file e degli altri. Lo
 // dicono due casi di fila: il primo scrive un registro di prova e non lo toglie, il secondo trova quello del pacchetto. Lo
-// toglie l'`afterEach` qui sotto, dopo ogni caso di questo file.
-
-afterEach(fn () => (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, null));
+// toglie `tests/Pest.php`, dopo ogni caso di ogni file (sprint 27 · T5.2): fino allo sprint 26 lo toglieva un `afterEach` di
+// questo file, e i due casi provavano solo quello.
 
 it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo la ricerca dà a un contatto le chiavi del registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $contesto) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice('crm.persona', 'uat-p1', 'UAT Persona', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
     if ($diProva !== null) {
-        (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $diProva);
+        registroGiaLetto($diProva);
     }
 
     expect(cerca('UAT')->assertOk()->json('data.0.contesto'))->toBe($contesto);

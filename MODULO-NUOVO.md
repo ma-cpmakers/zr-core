@@ -293,6 +293,13 @@ Non scrivi niente: nome, icona, tono, indirizzo e «Presto» del prodotto sono d
 (`vendor/zeiras/zr-core/resources/registro/prodotti.json`, i nomi in `vendor/zeiras/zr-core/resources/lingue/`), e si
 chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso del registro e del backoffice.
 
+Nel registro stanno anche le risorse del tuo prodotto che la ricerca mostra (passo 9). Se una chiave di `contesto` di una
+risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa:
+nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice
+(`searchContext.<prodotto>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
+codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi ha `codici` il
+membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`).
+
 **Durante lo sviluppo** la cornice non si rompe, in nessuno dei due casi. Finché il registro installato non ha il tuo
 prodotto, con un `product` che non conosce tratta la pagina come una di app.zeiras.com — menu Moduli esteso, nessun
 prodotto aperto —, le tue voci di `nav` ci sono lo stesso, e nel menu Moduli la tua voce manca. Se il registro lo ha ma
@@ -316,12 +323,15 @@ legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il b
 
 Per la ricerca che c'è non scrivi niente: è della cornice, che chiede `POST /cornice/ricerca` —
 README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Dalla `v1.15.0` la
-ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM: perché trovi
+ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM (dalla `v1.17.0`
+anche i membri del workspace, che non sono di un modulo): perché trovi
 **le tue** risorse servono due cose, tutte e due da chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel
 registro (`risorse`: il tipo come lo dà il backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e, se
 il backoffice dà dei testi per riconoscerla, le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi
-in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che il segnaposto e l'invito della ricerca nominano
-dove il tuo modulo è attivo. Un risultato di un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
+in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che l'invito della ricerca nomina dove il tuo
+modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi). Una chiave di `contesto` che
+porta un codice vuole anche `codici` (passo 8). Un risultato di
+un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
 ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
 
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo

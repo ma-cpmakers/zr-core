@@ -17,7 +17,6 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
 use Zeiras\Core\Http\NotificheDellaCornice;
-use Zeiras\Core\Registro;
 
 // Sprint 3 · T3 (voce #1277), riscritto nello sprint 5 · T2 (voce #1257) sul contratto di zr-backoffice. Le rotte delle
 // notifiche per il browser: GET /cornice/notifiche e PATCH /cornice/notifiche/{notifica}/lettura (dalla v1.1.0 la cornice non
@@ -1730,21 +1729,9 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
 
 // Sprint 22 · T3 (voce #1716; seconda lettura della PR #31, S2 e S3). Delle rotte delle notifiche, il registro dei moduli lo legge solo l'elenco, che ne
 // prende gli id: la lettura di una notifica non ne ha bisogno. Un caso dà alla parte server un registro di prova, già
-// letto, e dopo ogni caso di questo file la parte server torna a leggere quello del pacchetto. Il registro di prova entra
-// dalla proprietà privata, con la reflection: nel codice che va in produzione non c'è un aggancio per i test (review della
-// PR #44, R5).
-
-/**
- * Dà alla parte server un registro dei moduli come se lo avesse già letto; con `null` lo rilegge, da quello del pacchetto.
- *
- * @param  list<mixed>|null  $voci
- */
-function registroGiaLetto(?array $voci): void
-{
-    (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $voci);
-}
-
-afterEach(fn () => registroGiaLetto(null));
+// letto, con `registroGiaLetto()`, e dopo ogni caso la parte server torna a leggere quello del pacchetto: l'una e l'altra
+// cosa stanno in `tests/Pest.php`, per tutti i file (sprint 27 · T5.2). Il registro di prova entra dalla proprietà privata,
+// con la reflection: nel codice che va in produzione non c'è un aggancio per i test (review della PR #44, R5).
 
 it('la parte server delle notifiche non ha agganci per i test nel codice che va in produzione: di pubblico ha le tre rotte, la tenuta del blocco e `idsDellaNotifica()`, che è per i frontend e non per i test, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (review della PR #44, R5; sprint 22 · T7.3; sprint 26 · T3.2)', function () {
     $classe = new ReflectionClass(NotificheDellaCornice::class);
@@ -2174,8 +2161,9 @@ it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuo
 
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per
 // tutte le rotte: il registro di prova di un caso lo scrive lì `registroGiaLetto()`, e lasciato lì arriverebbe a ogni caso
-// dopo, di questo file e degli altri. Lo toglie l'`afterEach` di questo file, e lo dicono due casi di fila: il primo scrive
-// un registro di prova e non lo toglie, il secondo trova quello del pacchetto.
+// dopo, di questo file e degli altri. Lo toglie `tests/Pest.php`, dopo ogni caso di ogni file (sprint 27 · T5.2: fino allo
+// sprint 26 lo toglieva un `afterEach` di questo file), e lo dicono due casi di fila: il primo scrive un registro di prova e
+// non lo toglie, il secondo trova quello del pacchetto.
 
 it('un caso che scrive un registro di prova non lo lascia al caso dopo: il primo lo scrive e non lo toglie, e nel secondo l\'elenco dà di una nota gli id che chiede il registro del pacchetto (sprint 26 · T3.3)', function (?array $diProva, array $ids) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);

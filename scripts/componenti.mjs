@@ -1,23 +1,26 @@
 // Il comando che genera resources/js/zeiras/componenti.js da resources/zeiras/bundle.js (il design system di Zeiras, copia
 // derivata): `npm run componenti` scrive il file; `npm run componenti -- --controlla` non scrive: rigenera in memoria, confronta
 // col file ed esce 1 se non sono uguali. Lo lancia la CI a ogni giro. Il file non si ritocca a mano: si rigenera quando il bundle
-// cambia. Se il bundle non ha la forma che lo script conosce dice che cosa non torna ed esce 1, senza scrivere niente; se manca
-// o non si legge lo dice, ed esce 1 allo stesso modo. Come dal bundle si arriva al modulo lo dice scripts/componenti-genera.mjs,
-// che lavora solo su testi. Questo file è solo il comando: fa sempre il suo lavoro, da qualunque cartella lo si lanci, e non c'è
-// niente da importare (chi vuole `genera` lo prende di là).
+// cambia. Se il bundle non ha la forma che lo script conosce dice che cosa non torna ed esce 1, senza scrivere niente; se manca,
+// non si legge, è vuoto o si ferma a metà lo dice, ed esce 1 allo stesso modo. Come dal bundle si arriva al modulo lo dice
+// scripts/componenti-genera.mjs, che lavora solo su testi. Questo file è solo il comando: fa sempre il suo lavoro, da qualunque
+// cartella lo si lanci, e non c'è niente da importare (chi vuole `genera` lo prende di là).
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { componi, leggi } from './componenti-genera.mjs';
+import { componi, leggi, nonIntero } from './componenti-genera.mjs';
 
 const qui = (percorso) => new URL(`../${percorso}`, import.meta.url);
 const fileDelBundle = 'resources/zeiras/bundle.js';
 const fileDelModulo = 'resources/js/zeiras/componenti.js';
 
-// Un bundle che manca, o che non si lascia leggere, non è un bundle di un'altra forma: il rimedio è rimetterlo al suo posto,
-// non toccare lo script. Per questo le due cose si provano una alla volta, ognuna col suo messaggio.
+// Un bundle che manca, che non si lascia leggere, che è vuoto o che si ferma a metà non è un bundle di un'altra forma: il
+// rimedio è rimetterlo al suo posto, non toccare lo script. Per questo le due cose si provano una alla volta, ognuna col suo
+// messaggio.
 let testo;
 try {
     testo = readFileSync(qui(fileDelBundle), 'utf8');
+    const perche = nonIntero(testo);
+    if (perche !== null) throw new Error(perche);
 } catch (errore) {
     console.error(`${fileDelBundle}: non si legge (${errore.message}).\n${fileDelModulo} non è stato scritto: il bundle è la copia derivata del design system, e va rimesso al suo posto.`);
     process.exit(1);

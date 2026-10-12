@@ -10,6 +10,7 @@
 
 const FORMATO = 4;
 const SPAZIO_DEI_NOMI = 'Zeiras';
+const INIZIO_DEL_COMMENTO = '/* @ds-bundle: ';
 const COMMENTO_DEL_FORMATO = /^\/\* @ds-bundle: (\{.*\}) \*\/$/;
 const APERTURA = '(function () {';
 const REACT_DALLA_FINESTRA = '  var React = window.React;';
@@ -29,6 +30,31 @@ const INTESTAZIONE = [
 /** Si ferma dicendo che cosa, nel bundle, non è come lo script lo conosce. */
 function vuole(condizione, cheCosa) {
     if (!condizione) throw new Error(`forma inattesa del bundle: ${cheCosa}`);
+}
+
+/**
+ * Perché un testo non è un bundle intero: è vuoto, o si ferma a metà. `null` se non è né l'uno né l'altro, e allora che forma
+ * ha lo dice `leggi`. Un bundle vuoto o troncato non è un bundle di un'altra forma: il rimedio è rimetterlo al suo posto, non
+ * riallineare lo script. Si ferma a metà un testo che comincia come il bundle che lo script conosce — la riga 1 dichiara il
+ * suo formato, o il testo è un pezzo di quella riga — e a cui manca la riga «})();». Un testo che quella riga la ha è intero:
+ * se dopo ha un'altra coda (non finisce con l'a capo, ha una riga in più) è un bundle di un'altra forma, e rimetterlo al suo
+ * posto lo ridarebbe uguale. Lo stesso per un altro formato dichiarato, intero o no, anche in un file di una riga sola.
+ */
+export function nonIntero(bundle) {
+    if (bundle.trim() === '') return 'è vuoto';
+
+    const righe = bundle.split('\n');
+    const commento = COMMENTO_DEL_FORMATO.exec(righe[0]);
+    // Un pezzo della riga 1: il commento del formato non è intero, e il testo ne è l'inizio.
+    const dentroLaRigaUno = righe.length === 1 && commento === null && (righe[0].startsWith(INIZIO_DEL_COMMENTO) || INIZIO_DEL_COMMENTO.startsWith(righe[0]));
+    let delFormato = false;
+    try {
+        delFormato = JSON.parse(commento?.[1] ?? 'null')?.format === FORMATO;
+    } catch {
+        // La riga 1 non porta un JSON: che cosa non torna lo dice `leggi`.
+    }
+
+    return (dentroLaRigaUno || delFormato) && !righe.includes(CHIUSURA) ? `si ferma a metà: manca la riga «${CHIUSURA}»` : null;
 }
 
 /** Il corpo del bundle, riga per riga, e i nomi che registra: solo se il bundle ha la forma che lo script conosce. */

@@ -28,7 +28,8 @@
 // di ricerca.crea senza `indirizzo` (tipo, id, titolo e `contesto`): board e cartelle in ordine di titolo, e in fondo due tipi
 // che il registro non ha (`board.schede`, `uat-ignoto`), com'era sul tag `v1.14.0`; le fonti nuove di ricerca.crea vengono per
 // prime e stanno dietro un parametro, come ogni dato nuovo della pagina di prova: con `?schede=1` una scheda, con
-// `?crm_attivo=1` — lo stesso che nei dati di prova accende il CRM — contatti, aziende e opportunità; con
+// `?crm_attivo=1` — lo stesso che nei dati di prova accende il CRM — contatti, aziende e opportunità; dopo di loro, senza
+// parametri, un membro del workspace, col ruolo come codice: non è di un modulo, e il backoffice lo dà in ogni workspace; con
 // `?id_malfatto=1` c'è una board in più con l'id `..`, che la cornice non mostra; «ua»
 // risponde dopo 1500 ms con un risultato suo, «uat» dopo 100 ms: scrivendo «uat» di seguito, la risposta di «ua» arriva dopo.
 // Ogni richiesta si scrive in console, una POST col corpo e gli header, e così una richiesta annullata e la risposta che arriva
@@ -141,6 +142,9 @@ let riuscite = 0;
 let caricamenti = 0;
 // Come nei dati di prova (demo.tsx): con `?crm_attivo=1` il CRM è attivo nel workspace, a meno di `?senza_crm=1`.
 const crmAttivo = new URLSearchParams(window.location.search).has('crm_attivo') && !new URLSearchParams(window.location.search).has('senza_crm');
+// Con `?senza_moduli=1` nel workspace nessun modulo è attivo (demo.tsx), e il backoffice lì cerca i soli membri, che non sono di
+// un modulo: della ricerca finta resta il membro.
+const senzaModuli = new URLSearchParams(window.location.search).has('senza_moduli');
 const risultatiDiProva = [
     // Come ricerca.crea: per prime le fonti nuove — schede, contatti, aziende, opportunità —, ognuna col `contesto` che la
     // rotta vera lascia uscire: le chiavi che il registro dà al tipo, coi soli testi. Un contatto può non avere né azienda né
@@ -156,6 +160,9 @@ const risultatiDiProva = [
             { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
         ]
         : []),
+    // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il solo `ruolo`, e come codice: è ciò
+    // che la rotta vera lascia uscire (mai l'email), e il suo testo nella lingua lo mette la cornice.
+    { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } },
     // Poi board e cartelle, in ordine di titolo, senza `contesto`.
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
@@ -249,7 +256,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             return json({
                 data: parola === 'ua'
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
-                    : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase())),
+                    : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
             });
         }

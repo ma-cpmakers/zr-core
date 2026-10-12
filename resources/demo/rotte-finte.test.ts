@@ -521,6 +521,10 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         { tipo: 'crm.organizzazione', id: 'uat-o1', titolo: 'UAT Acme', contesto: null },
         { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta' } },
     ];
+    // Sprint 27 · T2 (voce #1787): un membro del workspace, col solo ruolo e come codice, c'è senza parametri: non dipende da un
+    // modulo, e il backoffice lo dà in ogni workspace. Viene dopo le altre fonti nuove e prima di board e cartelle, come in
+    // ricerca.crea.
+    const membro = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } };
     /** Ciò che la ricerca di «uat» dava sul tag `v1.14.0`: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha. */
     const diPrima = [
         { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
@@ -532,14 +536,17 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     ];
 
     it.each<[string, string, Record<string, unknown>[]]>([
-        ['senza parametri dà ciò che dava sul tag di prima: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha', '', diPrima],
-        ['con `?schede=1` per prima c\'è una scheda, col suo `contesto`', '?schede=1', [scheda, ...diPrima]],
-        ['con `?crm_attivo=1` per primi ci sono contatti, aziende e opportunità, ognuno col suo `contesto`', '?crm_attivo=1', [...delCrm, ...diPrima]],
-        ['con tutti e due, nell\'ordine di ricerca.crea: schede, contatti, aziende e opportunità, poi board e cartelle', '?schede=1&crm_attivo=1', [scheda, ...delCrm, ...diPrima]],
+        ['senza parametri dà un membro del workspace e poi ciò che dava sul tag `v1.14.0`: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha', '', [membro, ...diPrima]],
+        ['con `?schede=1` per prima c\'è una scheda, col suo `contesto`, e il membro viene dopo', '?schede=1', [scheda, membro, ...diPrima]],
+        ['con `?crm_attivo=1` per primi ci sono contatti, aziende e opportunità, ognuno col suo `contesto`, e il membro viene dopo', '?crm_attivo=1', [...delCrm, membro, ...diPrima]],
+        ['con tutti e due, nell\'ordine di ricerca.crea: schede, contatti, aziende, opportunità e membri, poi board e cartelle', '?schede=1&crm_attivo=1', [scheda, ...delCrm, membro, ...diPrima]],
         // Letture della PR #56, N3: `crm_attivo` c'è, ed è `senza_crm` a togliere i risultati del CRM. Senza `crm_attivo`
         // mancherebbero comunque, e il caso resterebbe verde anche se la rotta finta non guardasse `senza_crm`.
-        ['con `?senza_crm=1` i risultati del CRM non ci sono, nemmeno con `?crm_attivo=1`', '?schede=1&crm_attivo=1&senza_crm=1', [scheda, ...diPrima]],
-    ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13)', async (_caso, query, attesi) => {
+        ['con `?senza_crm=1` i risultati del CRM non ci sono, nemmeno con `?crm_attivo=1`; il membro sì, che non è di un modulo', '?schede=1&crm_attivo=1&senza_crm=1', [scheda, membro, ...diPrima]],
+        ['con `?senza_crm=1` e senza `?schede` il membro c\'è lo stesso', '?senza_crm=1', [membro, ...diPrima]],
+        // Sprint 27 · T7.6: senza moduli attivi il backoffice cerca i soli membri, che non sono di un modulo.
+        ['con `?senza_moduli=1` nessun modulo è attivo nel workspace e c\'è il solo membro, anche con `?schede=1&crm_attivo=1`', '?schede=1&crm_attivo=1&senza_moduli=1', [membro]],
+    ])('cercando «uat» la ricerca finta %s (sprint 25 · T4.1, T4.2; T6, R13; sprint 27 · T2.5)', async (_caso, query, attesi) => {
         expect((await rispostaDi('/cornice/ricerca', cerca('uat'), query)).corpo.data).toStrictEqual(attesi);
     });
 
@@ -557,9 +564,12 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
     // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
     // non dà altre forme: un contatto senza azienda né ruolo ha `null`.
-    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null` (sprint 26 · T1.3)', async () => {
+    // Sprint 27 · T2 (voce #1787): di un membro la rotta vera lascia uscire il solo `ruolo`, e il backoffice lo dà come codice: la
+    // rotta finta non gli dà altre chiavi (mai l'email), e il suo ruolo è uno dei codici del registro.
+    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null`, e un membro ha il solo ruolo, come codice del registro (sprint 26 · T1.3; sprint 27 · T2.5)', async () => {
         const { registro } = await import('../js/registro');
-        const chiaviDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo)?.contesto ?? [];
+        const risorsaDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo);
+        const chiaviDi = (tipo: unknown) => risorsaDi(tipo)?.contesto ?? [];
         const risultati = (await rispostaDi('/cornice/ricerca', cerca('uat'), '?schede=1&crm_attivo=1')).corpo.data as { tipo: unknown; id: unknown; contesto: Record<string, unknown> | null }[];
         const fuoriForma = risultati.filter(({ tipo, contesto }) => {
             if (contesto === null) {
@@ -573,7 +583,11 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         expect(fuoriForma.map(({ id }) => id)).toStrictEqual([]);
         expect(risultati.find(({ id }) => id === 'uat-p2')?.contesto).toBeNull();
         // Il controllo non è vuoto: fra i risultati ce ne sono col contesto, e sono quelli di una scheda, di un contatto e di un'opportunità.
-        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1']);
+        expect(risultati.filter(({ contesto }) => contesto !== null).map(({ id }) => id)).toStrictEqual(['uat-s1', 'uat-p1', 'uat-t1', 'uat-m1']);
+        // Dove il registro dice che una chiave porta un codice, il valore è uno dei suoi codici.
+        const fuoriCodice = risultati.filter(({ tipo, contesto }) => Object.entries(risorsaDi(tipo)?.codici ?? {}).some(([chiave, codici]) => !codici.includes(String(contesto?.[chiave]))));
+        expect(fuoriCodice.map(({ id }) => id)).toStrictEqual([]);
+        expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } }]);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([

@@ -99,6 +99,62 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect(esito.errore).not.toContain('riallineato');
     });
 
+    // Lettura della PR #59, R8. Nemmeno un bundle vuoto, o uno che si ferma a metà, è un bundle di un'altra forma: il file c'è
+    // e si apre, ma il rimedio è quello di quando manca, rimetterlo al suo posto. Prima lo trovava `leggi`, «la riga 1 non è il
+    // commento…», e il comando mandava a riallineare lo script. Ogni guasto è fatto dal bundle vero.
+    const GUASTI: [string, (bundle: string) => string, string][] = [
+        ['di 0 byte', () => '', 'è vuoto'],
+        ['di soli a capo', () => '\n\n\n', 'è vuoto'],
+        ['fermo ai primi 5 caratteri', (bundle) => bundle.slice(0, 5), 'si ferma a metà'],
+        ['fermo ai primi 100 caratteri, dentro la riga 1', (bundle) => bundle.slice(0, 100), 'si ferma a metà'],
+        ['fermo ai primi 60.000 caratteri', (bundle) => bundle.slice(0, 60_000), 'si ferma a metà'],
+        ['fermo alle prime 800 righe', (bundle) => `${bundle.split('\n').slice(0, 800).join('\n')}\n`, 'si ferma a metà'],
+    ];
+
+    it.each(GUASTI.flatMap(([quale, guasta, perche]) => [['--controlla'], []].map((argomenti): [string, string[], string, (bundle: string) => string] => [quale, argomenti, perche, guasta])))(
+        'con un bundle %s (argomenti: %j) esce 1 e dice che non si legge (%s), non scrive niente e non dice di riallineare lo script (sprint 27 · T5.3)',
+        (_quale, argomenti, perche, guasta) => {
+            const intero = readFileSync(delRepo(FILE_DEL_BUNDLE), 'utf8');
+            const guastato = guasta(intero);
+            writeFileSync(nellaCopia(FILE_DEL_BUNDLE), guastato);
+            writeFileSync(nellaCopia(FILE_DEL_MODULO), RITOCCATO);
+            const esito = comando(argomenti);
+
+            // Un guasto rimasto uguale al bundle vero direbbe «sano» qui sotto.
+            expect(guastato === intero).toBe(false);
+            expect([esito.uscita, esito.detto, esito.file === RITOCCATO]).toStrictEqual([1, '', true]);
+            expect(esito.errore).toContain(`resources/zeiras/bundle.js: non si legge (${perche}`);
+            expect(esito.errore).toContain('resources/js/zeiras/componenti.js non è stato scritto');
+            expect(esito.errore).not.toContain('riallineato');
+        },
+    );
+
+    // Lettura della PR #60, R6. Un bundle intero con un'altra coda non «si ferma a metà»: la riga «})();» c'è. È un bundle di
+    // un'altra forma: che cosa non torna lo dice `leggi`, e il rimedio è riallineare lo script, non rimettere al suo posto un
+    // bundle che tornerebbe uguale. Lo stesso per un file di una riga col commento intero di un altro formato.
+    const ALTRE_FORME: [string, (bundle: string) => string, string][] = [
+        ['intero, senza l\'ultimo a capo', (bundle) => bundle.slice(0, -1), 'dopo la registrazione non c\'è la sola riga «})();»'],
+        ['intero, con una riga in più in fondo', (bundle) => `${bundle}//# sourceMappingURL=bundle.js.map\n`, 'dopo la registrazione non c\'è la sola riga «})();»'],
+        ['di una riga sola, col commento intero di un altro formato', () => '/* @ds-bundle: {"format":5,"namespace":"Zeiras"} */', 'la riga 1 dichiara il formato 5, lo script conosce il 4'],
+    ];
+
+    it.each(ALTRE_FORME.flatMap(([quale, cambia, cheCosa]) => [['--controlla'], []].map((argomenti): [string, string[], string, (bundle: string) => string] => [quale, argomenti, cheCosa, cambia])))(
+        'con un bundle %s (argomenti: %j) esce 1 e dice che cosa non torna nella sua forma (%s), non che non si legge: rimesso al suo posto tornerebbe uguale; non scrive niente (sprint 27 · lettura della PR #60, R6)',
+        (_quale, argomenti, cheCosa, cambia) => {
+            const intero = readFileSync(delRepo(FILE_DEL_BUNDLE), 'utf8');
+            const cambiato = cambia(intero);
+            writeFileSync(nellaCopia(FILE_DEL_BUNDLE), cambiato);
+            writeFileSync(nellaCopia(FILE_DEL_MODULO), RITOCCATO);
+            const esito = comando(argomenti);
+
+            expect(cambiato === intero).toBe(false);
+            expect([esito.uscita, esito.detto, esito.file === RITOCCATO]).toStrictEqual([1, '', true]);
+            expect(esito.errore).toContain(`resources/zeiras/bundle.js: forma inattesa del bundle: ${cheCosa}`);
+            expect(esito.errore).toContain('lo script va riallineato alla forma nuova del bundle');
+            expect(esito.errore).not.toContain('non si legge');
+        },
+    );
+
     it('lanciato da un collegamento simbolico alla cartella fa lo stesso lavoro: col file ritoccato `--controlla` esce 1', () => {
         const collegamento = join(radice, 'collegamento');
         rmSync(collegamento, { force: true });

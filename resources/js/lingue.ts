@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
+import { prodottoDelRegistro, type CodiceDelContesto, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -9,10 +9,16 @@ import { prodottoDelRegistro, type IdDiProdotto, type TipoDiRisorsa, type VoceDe
 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
- * di ogni sua risorsa (il gruppo dei risultati della ricerca) per `<prodotto>.<tipo>`, il nome da elenco della stessa risorsa,
- * minuscolo, per `searchSource.<prodotto>.<tipo>` e il titolo di ogni tipo di notifica per `notificationTitle.<tipo>`.
+ * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
+ * minuscolo, per `searchSource.<voce>.<tipo>`, il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
+ * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>` e il titolo di ogni tipo di notifica per
+ * `notificationTitle.<tipo>`.
  */
-export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, string> & Record<TipoDiRisorsa, string> & Record<`searchSource.${TipoDiRisorsa}`, string> & {
+export type TestiDellaCornice = Required<AppShellLabels> &
+    Record<IdDiProdotto, string> &
+    Record<TipoDiRisorsa, string> &
+    Record<`searchSource.${TipoDiRisorsa}`, string> &
+    Record<`searchContext.${CodiceDelContesto}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Moduli. */
@@ -53,9 +59,10 @@ export type TestiDellaCornice = Required<AppShellLabels> & Record<IdDiProdotto, 
      */
     acceptanceOff: string;
     /**
-     * Il segnaposto del campo di ricerca quando la ricerca ha delle fonti nel workspace: `{sources}` è il posto dei loro nomi da
-     * elenco, al più tre. `searchPlaceholder`, che è dell'`AppShell`, è quello senza fonti: quale vale lo decide la cornice,
-     * come per `unreadOne` (`testiDellaRicerca`; README, «La ricerca»).
+     * Il segnaposto del campo di ricerca quando la ricerca ha delle fonti nel workspace: uno solo, uguale in ogni workspace e in
+     * ogni modulo, e dalla `v1.17.0` non le nomina (le dice l'invito, `searchHintSources`). `searchPlaceholder`, che è
+     * dell'`AppShell`, è quello senza fonti: quale vale lo decide la cornice, come per `unreadOne` (`testiDellaRicerca`; README,
+     * «La ricerca»).
      */
     searchPlaceholderSources: string;
     /**
@@ -145,33 +152,32 @@ export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string)
     return voce.id === 'home' ? t.dashboard : t[voce.id];
 }
 
-/** Il posto dei nomi delle fonti nei due testi della ricerca che le nominano (`searchPlaceholderSources`, `searchHintSources`). */
+/** Il posto dei nomi delle fonti nell'invito della ricerca che le nomina (`searchHintSources`). */
 const POSTO_DELLE_FONTI = '{sources}';
-/** Quante fonti nomina, al più, il segnaposto del campo di ricerca: il campo è stretto, e i puntini dicono che ce ne sono altre. */
-const FONTI_NEL_SEGNAPOSTO = 3;
 
 /**
  * Il segnaposto del campo di ricerca e l'invito che si legge prima di due caratteri, in una lingua, per le fonti della ricerca
- * in un workspace (`fontiDellaRicerca`): i due testi dell'`AppShell` che la cornice compone. Ogni fonte ha nella lingua il suo
- * nome da elenco (`searchSource.<prodotto>.<tipo>`). L'invito le nomina tutte, unite come la lingua unisce un elenco, con la sua
- * congiunzione («schede, board e cartelle»); il segnaposto le prime tre, col separatore dello stesso elenco e senza
- * congiunzione («schede, board, cartelle»). Senza fonti sono i due testi della lingua che non ne nominano nessuna. L'elenco lo
- * scrive `Intl` nella lingua dei testi, mai in quella del browser. Un browser può non avere `Intl.ListFormat` anche quando ha il
- * resto di `Intl`: lì i due testi sono quelli senza fonti, quante che siano le fonti, e niente lancia.
+ * in un workspace (`fontiDellaRicerca`): i due testi dell'`AppShell` che la cornice sceglie. Il segnaposto è uno solo dove la
+ * ricerca ha delle fonti, e non le nomina: è lo stesso in ogni workspace e in ogni modulo. Le nomina l'invito: ogni fonte ha
+ * nella lingua il suo nome da elenco (`searchSource.<voce>.<tipo>`), e l'invito le dice tutte, unite come la lingua unisce un
+ * elenco, con la sua congiunzione («schede, board e cartelle»). Senza fonti sono i due testi della lingua che non promettono
+ * niente. L'elenco lo scrive `Intl` nella lingua dei testi, mai in quella del browser. Un browser può non avere
+ * `Intl.ListFormat` anche quando ha il resto di `Intl`: lì l'invito è quello senza fonti, quante che siano le fonti, il
+ * segnaposto resta quello unico, e niente lancia.
  */
 export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
-    const [prima] = fonti;
-    if (prima === undefined || typeof Intl.ListFormat !== 'function') {
+    if (fonti.length === 0) {
         return { searchPlaceholder: t.searchPlaceholder, searchHint: t.searchHint };
+    }
+    if (typeof Intl.ListFormat !== 'function') {
+        return { searchPlaceholder: t.searchPlaceholderSources, searchHint: t.searchHint };
     }
     const nomi = fonti.map((fonte) => t[`searchSource.${fonte}`]);
     const elenco = new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' });
-    // Il separatore di un elenco nella lingua, senza la congiunzione: in un elenco di tre voci, quello fra le prime due.
-    const separatore = elenco.formatToParts(Array<string>(3).fill(t[`searchSource.${prima}`])).find((parte) => parte.type === 'literal')?.value ?? '';
 
     return {
-        searchPlaceholder: t.searchPlaceholderSources.replace(POSTO_DELLE_FONTI, () => nomi.slice(0, FONTI_NEL_SEGNAPOSTO).join(separatore)),
+        searchPlaceholder: t.searchPlaceholderSources,
         searchHint: t.searchHintSources.replace(POSTO_DELLE_FONTI, () => elenco.format(nomi)),
     };
 }

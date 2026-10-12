@@ -4,9 +4,25 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Zeiras\Auth\Sessione;
+use Zeiras\Core\Registro;
 use Zeiras\Core\Tests\TestCase;
 
-pest()->extend(TestCase::class)->in('Feature');
+// La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i file di test: un registro di prova lasciato
+// lì da un caso arriverebbe a ogni caso dopo, anche di un altro file. Si toglie qui, dopo ogni caso di ogni file, e in nessun
+// altro posto (lettura della PR #59, R7).
+pest()->extend(TestCase::class)->afterEach(fn () => registroGiaLetto(null))->in('Feature');
+
+/**
+ * Dà alla parte server un registro dei moduli come se lo avesse già letto: entra dalla proprietà privata di `Registro`, con la
+ * reflection, perché nel codice che va in produzione non c'è un aggancio per i test. Con `null` la parte server torna a leggere
+ * quello del pacchetto. È il solo posto dei test che scrive quella proprietà.
+ *
+ * @param  list<mixed>|null  $voci
+ */
+function registroGiaLetto(?array $voci): void
+{
+    (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $voci);
+}
 
 /** @return list<array<string, mixed>> le voci del registro dei prodotti, resources/registro/prodotti.json, nel loro ordine */
 function registroDeiProdotti(): array
@@ -31,6 +47,26 @@ function tipiDiRisorsa(): array
     }
 
     return $tipi;
+}
+
+/**
+ * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<prodotto>.<tipo>.<chiave>.<codice>`:
+ *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti
+ */
+function codiciDelContesto(): array
+{
+    $codici = [];
+    foreach (registroDeiProdotti() as $voce) {
+        foreach ($voce['risorse'] ?? [] as $risorsa) {
+            foreach ($risorsa['codici'] ?? [] as $chiave => $elenco) {
+                foreach ($elenco as $codice) {
+                    $codici[] = $voce['id'].'.'.$risorsa['tipo'].'.'.$chiave.'.'.$codice;
+                }
+            }
+        }
+    }
+
+    return $codici;
 }
 
 /**
