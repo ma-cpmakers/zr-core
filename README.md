@@ -1296,9 +1296,11 @@ Che cosa vede la persona:
   da quando l'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o
   l'accettazione dei documenti legali. Dalla `v2.5.1` una parola cancellata prima dell'arrivo non viene più cercata, e sotto una parola
   battuta un attimo prima dell'arrivo si legge il caricamento, non «Nessun risultato»: parte all'arrivo, una volta sola.
-  Due limiti restano. Una parola rimasta nel campo da una ricerca di prima non parte di nuovo all'arrivo: al ritorno
-  nel campo sotto si legge «Nessun risultato» finché la persona non la ritocca. E i due caratteri si contano come li
-  conta l'`AppShell`: un'emoji da sola ne vale due, parte, e la rotta la rifiuta con un 422;
+  Tre limiti restano. Una parola che era già nel campo quando l'attesa è cominciata — rimasta da una ricerca di prima,
+  o scritta e non ancora cercata — non parte all'arrivo: al ritorno nel campo sotto si legge «Nessun risultato» finché
+  la persona non la ritocca. Il campo è quello della prima `AppShell` del documento: di cornici ce n'è una per pagina,
+  e una seconda leggerebbe il campo della prima. E i due caratteri si contano come li conta l'`AppShell`: un'emoji da
+  sola ne vale due, parte, e la rotta la rifiuta con un 422;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
   sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;

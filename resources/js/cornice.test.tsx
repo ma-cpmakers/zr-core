@@ -4650,12 +4650,15 @@ describe('la ricerca', () => {
             await act(async () => { await vi.advanceTimersByTimeAsync(400); });
             leggi();
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
+            // Le consegne di prima della risposta: quelle del disegno dei risultati non dicono che si è guardato fin lì.
+            const primaDellaRisposta = consegne;
 
             await act(async () => { rispondi(trovati()); await giro(); });
             occhio.disconnect();
             expect(letti.filter((testo) => testo.includes(testi('it').searchEmpty))).toStrictEqual([]);
             // Le tre letture a mano non bastano a dire che la pagina è stata guardata a ogni cambiamento (R7 della review).
-            expect(consegne).toBeGreaterThan(0);
+            expect(primaDellaRisposta).toBeGreaterThan(0);
+            expect(consegne).toBeGreaterThan(primaDellaRisposta);
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
             expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
         });

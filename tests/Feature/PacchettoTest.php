@@ -5339,11 +5339,13 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
     'la parola cancellata in attesa' => ['readme', 'Dalla `v2.5.1` una parola cancellata prima dell\'arrivo non viene più cercata, e sotto una parola battuta un attimo prima dell\'arrivo si legge il caricamento, non «Nessun risultato»: parte all\'arrivo, una volta sola'],
     // Review della PR #72 (R1, R2, R8, R9): il fuoco non conta più; i limiti che restano, e la `persona` vuota.
-    'la ricerca in attesa: la parola di prima' => ['readme', 'Una parola rimasta nel campo da una ricerca di prima non parte di nuovo all\'arrivo: al ritorno nel campo sotto si legge «Nessun risultato» finché la persona non la ritocca'],
+    'la ricerca in attesa: la parola di prima' => ['readme', 'Una parola che era già nel campo quando l\'attesa è cominciata — rimasta da una ricerca di prima, o scritta e non ancora cercata — non parte all\'arrivo: al ritorno nel campo sotto si legge «Nessun risultato» finché la persona non la ritocca'],
+    // Seconda lettura della PR #72 (N1): quale campo legge, detto com'è.
+    'la ricerca in attesa: il campo della prima AppShell' => ['readme', 'Il campo è quello della prima `AppShell` del documento: di cornici ce n\'è una per pagina, e una seconda leggerebbe il campo della prima'],
     'la ricerca in attesa: un\'emoji' => ['readme', 'i due caratteri si contano come li conta l\'`AppShell`: un\'emoji da sola ne vale due, parte, e la rotta la rifiuta con un 422'],
     'la scheda ferma: una persona vuota' => ['readme', 'Nemmeno con una `persona` vuota (`""`): è quel 422 dove il frontend ha `ConvertEmptyStringsToNull`, che Laravel monta di suo, e un 409 `persona_diversa` dove non lo ha'],
-    'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» fa ciò che faceva prima'],
-    'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore: resta in attesa, con campanella e ricerca che caricano e senza avviso, finché non ne arriva uno'],
+    'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» riprova allo stesso indirizzo, senza coda: in Chromium non parte niente'],
+    'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la cornice ha già i dati di quel workspace, resta coi dati di prima'],
     'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
     'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
@@ -5509,6 +5511,8 @@ it('README e guida non dicono più che la parola scritta in attesa parte solo co
     'lasciata uscendo dal campo' => ['lasciata uscendo dal campo prima dell\'arrivo non parte'],
     'anche se l\'hai cancellata' => ['anche se nel frattempo l\'hai cancellata'],
     'le due forme di build' => ['provato in Chromium sulle due forme di build'],
+    // Seconda lettura (N3): «fa ciò che faceva prima» si leggeva in due modi.
+    'fa ciò che faceva prima' => ['«Riprova» fa ciò che faceva prima'],
 ]);
 
 // Sprint 36 · T2 (voce #1968): con un'altra email la cornice si rifà, e il README non dice più che ciò che tiene è del workspace.

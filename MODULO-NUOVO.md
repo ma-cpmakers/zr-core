@@ -318,10 +318,12 @@ allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la crono
 della campanella non arriva, «Riprova» lo richiede dovunque la tua build lo metta, anche se
 l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche». Due cose, dette lì: il JS
 che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta),
-e dove la tua build non scrive il nome del pezzo com'è «Riprova» fa ciò che faceva prima.
-Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore: resta in attesa, con campanella e
-ricerca che caricano e senza avviso, finché non ne arriva uno. Se la tua parte server non è riuscita a leggerlo non
-dare `null`: dai `non_letti`, come fa `Cornice::dopo()`.
+e dove la tua build non scrive il nome del pezzo com'è «Riprova» riprova allo stesso indirizzo, senza coda: in
+Chromium non parte niente.
+Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima
+pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la
+cornice ha già i dati di quel workspace, resta coi dati di prima. Se la tua parte server non è riuscita a leggerlo
+non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`.
 Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
