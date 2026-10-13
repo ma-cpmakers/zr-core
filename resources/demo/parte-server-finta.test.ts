@@ -383,6 +383,16 @@ describe('la sessione della parte server finta nei suoi stati: li sceglie ciò c
         const dopo: DatiDopo = { ...grace, workspace: ricerca, ...diGrace, aggiornati_il: '2026-10-13T00:00:00.000002Z', sessione_il: '2026-10-13T00:00:00.000001Z' };
         expect(conLaSessione({ cornice: null, subito, dopo }, entrata())).toStrictEqual({ cornice: null, subito: { ...subito, lingua: 'es' }, dopo: { ...dopo, lingua: 'es' } });
     });
+
+    // Review della PR #74, R5: gli stati stanno in una chiave sola e si escludono. «UAT la stessa persona cambia lingua» è uno
+    // stato, non un interruttore sopra gli altri: dopo un'altra persona rimette quella della pagina, con la lingua nuova.
+    it.each(['altra', 'altrove'])('i pulsanti scrivono la stessa chiave, e vale l\'ultimo: dopo `entra-%s`, `entra-lingua` rimette la persona e il workspace della pagina, in spagnolo (review della PR #74, R5)', (prima) => {
+        entra(prima);
+        expect(diAda()?.persona).toStrictEqual(grace.persona);
+
+        entra('lingua');
+        expect(diAda()).toStrictEqual({ ...marketing, lingua: 'es' });
+    });
 });
 
 describe('la cronologia cifrata di Inertia, come la dicono README e guida', () => {

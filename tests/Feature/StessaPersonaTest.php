@@ -131,6 +131,20 @@ it('una persona detta che non si può confrontare — non un testo, anche null, 
     'un\'intestazione vuota e quella della sessione nel corpo' => [['persona' => 'uat-grace@example.com'], ['Persona' => '']],
 ]);
 
+// Review della PR #74, R3: una sessione senza l'email della persona (il contratto del backoffice la dà sempre: senza, i dati
+// non sono i suoi). La cornice manderebbe un'intestazione vuota, e la regola la rifiuta: non la prende per non detta, e una
+// persona detta non è mai «quella della sessione» se la sessione non ha un'email.
+it('con una sessione senza email nessuna richiesta che dice la persona arriva al backoffice: l\'intestazione vuota che la cornice manderebbe è un 422, un\'email detta un 409 senza un\'email (review della PR #74, R3)', function (array $intestazioni, int $stato, string $risposta) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['email' => null] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    expect(rotteCheNonRispondono($stato, $risposta, [], $intestazioni))->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'l\'intestazione vuota' => [['Persona' => ''], 422, '{"errore":"dati_non_validi"}'],
+    'un\'email' => [['Persona' => 'uat-grace%40example.com'], 409, '{"errore":"persona_diversa","persona":null}'],
+]);
+
 it('se la richiesta dice la persona nell\'intestazione e nel corpo valgono tutte e due: basta che una non sia quella della sessione, ed è un 409 (sprint 40 · T2.4)', function (string $nelCorpo, string $nellIntestazione) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
     Http::fake();

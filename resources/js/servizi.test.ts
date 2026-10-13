@@ -480,4 +480,26 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         expect(detta).toMatch(/^[\x21-\x7e]+$/);
         expect(decodeURIComponent(String(detta))).toBe(email);
     });
+
+    // Review della PR #74, R3: dei dati della cornice senza l'email (il contratto del backoffice la dà sempre). L'intestazione
+    // parte vuota e la rotta la rifiuta (422: `StessaPersonaTest.php`): l'errore torna a chi ha chiamato. Senza un'email da
+    // confrontare la pagina non si ricarica mai, nemmeno davanti a una risposta che dice di chi è: è voluto.
+    it.each(richieste)('%s senza l\'email di chi la cornice mostra parte con l\'intestazione `Persona` vuota: il 422 della rotta è l\'errore di sempre per chi ha chiamato, e la pagina non si ricarica (review della PR #74, R3)', async (richiesta, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'dati_non_validi' }, 422));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama('')).rejects.toThrow(`${richiesta}: 422`);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('Persona')).toBe('');
+        expect(ricarica).not.toHaveBeenCalled();
+    });
+
+    it.each(richieste)('%s senza l\'email di chi la cornice mostra non ricarica la pagina nemmeno se la risposta dice di chi è: torna a chi ha chiamato (review della PR #74, R3)', async (_richiesta, chiama, corpo) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ ...corpo, persona: 'grace@example.com' })));
+
+        await expect(chiama('')).resolves.toBeDefined();
+        expect(ricarica).not.toHaveBeenCalled();
+    });
 });
