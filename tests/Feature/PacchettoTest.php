@@ -5365,6 +5365,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Review della PR #67 (R2, R3, R5, R6, R9): ciò che un frontend incontra, e il README non diceva.
     'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
+    'non letti dice di chi è (sprint 41 · T4.5)' => ['readme', 'Dalla `v2.7.0` anche `non_letti` dice di chi è: accanto porta `lingua`, `persona`, `workspace` e in fondo `sessione_il`, letti dalla sessione in quell\'istante come li legge `Cornice::subito()`'],
+    'non letti composto a mano (sprint 41 · T4.5)' => ['readme', 'un `non_letti` composto a mano, che non dice di chi è, resta sotto il nome di `subito`'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
     // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
@@ -5379,6 +5381,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» riprova allo stesso indirizzo, senza coda: in Chromium non parte niente'],
     'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la cornice ha già i dati di quel workspace, resta coi dati di prima'],
     'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
+    'la guida: non_letti dice di chi è (sprint 41 · T4.5)' => ['guida', 'Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e `sessione_il`'],
     'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.

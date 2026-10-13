@@ -1351,7 +1351,12 @@ Che cosa vede la persona:
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
-  la sessione finita la tratta il frontend come prima;
+  la sessione finita la tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: accanto porta
+  `lingua`, `persona`, `workspace` e in fondo `sessione_il`, letti dalla sessione in quell'istante come li legge
+  `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà. Se fra
+  `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
+  sua lingua, e non quelli di chi c'era prima; se intanto la sessione è finita `Cornice::dopo()` dà `null`, come senza
+  sessione;
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
@@ -1361,7 +1366,9 @@ usa quella e non guarda `subito` e `dopo`.
 
 Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un
 errore del frontend, un errore di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
-vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso. E un frontend che mette la lingua
+vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
+che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
+`Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
 con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e `Cornice::dopo()` lo
 rilegge nella sua: io.mostra si legge due volte per visita.
 

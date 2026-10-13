@@ -139,11 +139,14 @@ final class Cornice
      * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`,
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
      * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno di quell'istante, lascia nel log una riga
-     * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Il segno serve al browser come
+     * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è
+     * (dalla `v2.7.0`): porta lingua, persona e workspace come sono nella sessione in quell'istante — letti come li legge
+     * `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`, lo stesso segno; niente di ciò che dà il
+     * backoffice. Così la cornice ridotta non resta col nome di chi c'era prima. Il segno serve al browser come
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{non_letti: true, aggiornati_il: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, non_letti: true, aggiornati_il: string, sessione_il: string}|null
      */
     public static function dopo(): ?array
     {
@@ -155,7 +158,15 @@ final class Cornice
             }
             self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
 
-            return ['non_letti' => true, 'aggiornati_il' => Segno::adesso()];
+            // Di chi è lo dice la sessione com'è adesso, mai un'altra chiamata a /v1. Se intanto è finita non è di nessuno.
+            $chi = self::subito();
+            if ($chi === null) {
+                return null;
+            }
+            $segno = $chi['sessione_il'];
+            unset($chi['sessione_il']);
+
+            return [...$chi, 'non_letti' => true, 'aggiornati_il' => $segno, 'sessione_il' => $segno];
         }
 
         if ($dati === null) {

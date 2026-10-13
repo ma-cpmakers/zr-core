@@ -54,8 +54,9 @@ export interface Entrata {
  * Ciò che la parte server ha letto, con la sessione di adesso: se è entrata un'altra persona i dati della cornice sono i suoi,
  * nelle tre forme in cui una pagina li riceve (interi, della sessione, del backoffice), e se è su un altro workspace lo dicono
  * tutte e tre. `dopo` dice di chi è, come `Cornice::dopo()` dalla `v2.4.0`: porta la persona e la lingua di chi è entrato.
- * Le forme ridotte di `dopo` restano ridotte: senza aziende non prende i dati del backoffice, senza workspace
- * (il backoffice non ha risposto) resta com'è. Se non è entrato nessun altro la lettura è quella data.
+ * Le forme ridotte di `dopo` restano ridotte: senza aziende non prende i dati del backoffice — `non_letti` dice di chi è
+ * (dalla `v2.7.0`) e niente altro —, e senza workspace (un `non_letti` composto a mano) resta com'è. Se non è entrato
+ * nessun altro la lettura è quella data.
  */
 export function conLaSessione<Props extends { cornice: DatiDellaCornice | null; subito?: DatiSubito | null | undefined; dopo?: DatiDopo | null | undefined }>(
     letta: Props,

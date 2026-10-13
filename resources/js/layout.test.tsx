@@ -1294,6 +1294,47 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(contenitore.textContent).toContain(testi('es').downTitle);
     });
 
+    // Sprint 41 · T4 (voce 2029). `non_letti` dice di chi è, come `Cornice::dopo()` dalla `v2.7.0`: col backoffice che non
+    // risponde la parte server dà comunque chi è nella sessione, e la cornice ridotta non resta col nome di chi c'era prima.
+    it('un `non_letti` che dice di chi è vale sopra il `subito` di chi c\'era prima: se la sessione è passata a un\'altra persona la cornice ridotta porta il suo nome e la sua email, nella sua lingua (sprint 41 · T4.2)', async () => {
+        const allora: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const nonLettiDiAltra: DatiDopo = { lingua: 'es', persona: altra, workspace: subito.workspace, non_letti: true, aggiornati_il: '2026-10-13T08:00:05.000000Z', sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+
+        await inDue({ subito: allora }, <PaginaA key="1" />);
+        expect(avatar()).toBe(dati.persona.nome);
+
+        await inDue({ subito: allora, dopo: nonLettiDiAltra }, <PaginaA key="1" />);
+        expect(avatar()).toBe(altra.nome);
+        expect(etichette()).not.toContain('CRM');
+        expect(sopraLaPagina()?.textContent).toContain(testi('es').downTitle);
+        await act(async () => {
+            (uno('.zr-avatar-btn') as HTMLElement).click();
+        });
+        expect(document.body.textContent).toContain(altra.email);
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.email);
+    });
+
+    it('un `non_letti` che dice di chi era, più vecchio dei dati che la cornice ha, non la riduce e non riporta a schermo chi c\'era allora: con Indietro restano il nome, la lingua e i dati di chi è entrato (sprint 41 · T4.3)', async () => {
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const lettoDaAltra: DatiDopo = { ...dopo, lingua: 'es', persona: altra, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' };
+        // La voce della cronologia di quando il backoffice non rispondeva: il `subito` e il `non_letti` di chi c'era allora.
+        const allora: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const nonLettiDiAllora: DatiDopo = { lingua: 'it', persona: dati.persona, workspace: subito.workspace, non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+
+        await inDue({ subito: diAltra, dopo: lettoDaAltra }, <PaginaA key="1" />);
+        await inDue({ subito: allora, dopo: nonLettiDiAllora }, <PaginaB key="2" />);
+
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).toContain('CRM');
+        expect(sopraLaPagina()).toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('7');
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(document.body.textContent).not.toContain(testi('it').downTitle);
+    });
+
     it('per la stessa persona un `dopo` che dice di chi è non cambia niente: quando arriva la cornice è quella di sempre e la pagina non si rimonta — lo stesso nodo, il testo scritto, il fuoco —; se è riletto con un altro nome e un\'altra lingua la cornice li mostra, sempre senza rimontare (sprint 37 · T2.4)', async () => {
         const conta = { montaggi: 0 };
         const suo: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };

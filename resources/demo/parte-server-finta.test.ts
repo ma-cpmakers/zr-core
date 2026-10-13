@@ -314,6 +314,11 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
         const daAccettare: DatiDopo = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: 'uat-segno', accettazione_richiesta: true, sessione_il: 'uat-segno' };
 
         expect(conLaSessione(letta({ subito, dopo: nonLetti }), altrove).dopo).toStrictEqual(nonLetti);
+        // Sprint 41 · T4.2 (voce 2029): `non_letti` come lo dà `Cornice::dopo()` dalla `v2.7.0` dice di chi è, ed è di chi è entrato:
+        // nome, lingua e workspace sono i suoi, e dei dati del backoffice non prende niente.
+        const nonLettiDiChi: DatiDopo = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, non_letti: true, aggiornati_il: 'uat-segno', sessione_il: 'uat-segno' };
+        expect(conLaSessione(letta({ subito, dopo: nonLettiDiChi }), stessoWorkspace).dopo).toStrictEqual({ ...nonLettiDiChi, ...grace });
+        expect(conLaSessione(letta({ subito, dopo: nonLettiDiChi }), altrove).dopo).toStrictEqual({ ...nonLettiDiChi, ...grace, workspace: ricerca });
         expect(conLaSessione(letta({ subito, dopo: daAccettare }), altrove).dopo).toStrictEqual({ ...daAccettare, ...grace, workspace: ricerca });
         expect(conLaSessione(letta({ subito, dopo: daAccettare }), stessoWorkspace).dopo).toStrictEqual({ ...daAccettare, ...grace });
         // I soli dati della sessione, prima che `dopo` arrivi: niente `dopo` nemmeno dopo.
