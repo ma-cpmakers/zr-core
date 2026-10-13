@@ -284,7 +284,7 @@ const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'u
 const chiaveDellaSessione = 'uat-persona';
 const delBackofficeDiUnAltra: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'> = {
     prodotti: { pm: 'disponibile', crm: 'attivo' },
-    aziende: [{ id: 'uat-9', nome: 'UAT Hopper', workspace: [{ id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }], nuovo_workspace: false }],
+    aziende: marketing.aziende.map((azienda) => ({ ...azienda, id: 'uat-9', nome: 'UAT Hopper' })),
     non_lette: 2,
 };
 
