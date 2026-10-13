@@ -155,7 +155,7 @@ async function clic(elemento: Element | null): Promise<void> {
 async function scrivi(parola: string, attesa = 300): Promise<void> {
     const campo = uno('.zr-search input') as HTMLInputElement;
     await act(async () => {
-        // Chi scrive ha il fuoco nel campo: all'arrivo di `dopo` la cornice guarda lì (sprint 39 · T3).
+        // Chi scrive ha il fuoco nel campo, come una persona.
         campo.focus();
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
         campo.dispatchEvent(new Event('input', { bubbles: true }));

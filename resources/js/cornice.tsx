@@ -879,18 +879,24 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
     // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora —, e l'`AppShell` non ha `onSearch`
     // (sotto): nessun suo timer resta in sospeso oltre l'arrivo. La parola è stato dell'`AppShell`, e la cornice non la tiene:
-    // quando i dati arrivano legge ciò che c'è nel campo in quel momento, e lo cerca subito, prima che la pagina sia
-    // disegnata — una parola cancellata non parte, e sotto una appena battuta non si legge «Nessun risultato». Guarda il
-    // campo solo se la persona è lì (il fuoco): l'`AppShell` non lo svuota quando si sceglie un risultato, e una parola
-    // rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati. Se al posto dei dati arriva `non_letti` o
-    // l'accettazione non parte niente.
+    // quando i dati arrivano legge ciò che c'è nel suo campo in quel momento — quello nell'intestazione dell'`AppShell`, non
+    // un campo di ricerca della pagina —, e lo cerca subito, prima che la pagina sia disegnata: una parola cancellata non
+    // parte, e sotto una appena battuta non si legge «Nessun risultato». Parte solo se nel campo c'è altro da ciò che c'era
+    // quando l'attesa è cominciata (`diPrima`, riscritto a ogni disegno fuori dall'attesa): l'`AppShell` non svuota il campo
+    // quando si sceglie un risultato, e una parola rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati. Dov'è
+    // il fuoco non conta: chi ha scritto e guarda un'altra finestra trova la sua parola cercata. Se al posto dei dati arriva
+    // `non_letti` o l'accettazione non parte niente.
     const ridottaAdesso = useRef(ridotta);
+    const diPrima = useRef<string>(undefined);
     useLayoutEffect(() => {
-        const parola = ridottaAdesso.current === 'loading' ? document.querySelector<HTMLInputElement>('.zr-search input:focus')?.value.trim() : '';
+        const parola = document.querySelector<HTMLInputElement>('.zr-top .zr-search input')?.value.trim();
+        if (ridottaAdesso.current !== 'loading') {
+            diPrima.current = parola;
+        }
         ridottaAdesso.current = ridotta;
         if (!ridotta) {
-            if (parola && parola.length > 1) {
-                cercaParola(parola);
+            if (parola?.length! > 1 && parola !== diPrima.current) {
+                cercaParola(parola!);
             }
 
             return;

@@ -3831,7 +3831,7 @@ describe('la ricerca', () => {
     async function scrivi(parola: string): Promise<void> {
         const campo = uno('.zr-search input') as HTMLInputElement;
         await act(async () => {
-            // Chi scrive ha il fuoco nel campo: all'arrivo dei dati la cornice guarda lì (sprint 39 · T3).
+            // Chi scrive ha il fuoco nel campo, come una persona.
             campo.focus();
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
             campo.dispatchEvent(new Event('input', { bubbles: true }));
@@ -4587,7 +4587,7 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([]);
     });
 
-    // Sprint 39 · T3 (voce #1971): all'arrivo dei dati la cornice cerca ciò che è nel campo in quel momento, se la persona è lì.
+    // Sprint 39 · T3 (voce #1971): all'arrivo dei dati la cornice cerca ciò che è nel suo campo in quel momento, se è cambiato nell'attesa.
     // Non l'ultima parola che l'`AppShell` le aveva dato: sotto i due caratteri l'`AppShell` non avvisa, e una parola cancellata
     // restava tenuta; e una parola battuta meno di 300 ms prima non era ancora arrivata, e sotto il campo si leggeva «Nessun
     // risultato» fino allo scadere.
@@ -4632,7 +4632,8 @@ describe('la ricerca', () => {
             await batti('ada', 100);
             const letti: string[] = [];
             const leggi = () => { letti.push(uno('.zr-search-panel')?.textContent ?? ''); };
-            const occhio = new MutationObserver(leggi);
+            let consegne = 0;
+            const occhio = new MutationObserver(() => { consegne++; leggi(); });
             occhio.observe(document.body, { subtree: true, childList: true, characterData: true });
 
             // Senza `act`: ciò che si legge subito dopo è ciò che il browser disegnerebbe per primo, prima degli effetti che
@@ -4653,7 +4654,8 @@ describe('la ricerca', () => {
             await act(async () => { rispondi(trovati()); await giro(); });
             occhio.disconnect();
             expect(letti.filter((testo) => testo.includes(testi('it').searchEmpty))).toStrictEqual([]);
-            expect(letti.length).toBeGreaterThanOrEqual(3);
+            // Le tre letture a mano non bastano a dire che la pagina è stata guardata a ogni cambiamento (R7 della review).
+            expect(consegne).toBeGreaterThan(0);
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
             expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
         });
@@ -4687,8 +4689,9 @@ describe('la ricerca', () => {
             expect(partite(fetchFinto)).toStrictEqual([]);
         });
 
-        // Ciò che resta: la cornice guarda il campo solo se la persona è lì. L'`AppShell` non svuota il campo quando si sceglie
-        // un risultato, e una parola rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati, a ogni visita.
+        // Ciò che resta: parte solo ciò che nel campo è cambiato durante l'attesa. L'`AppShell` non svuota il campo quando si
+        // sceglie un risultato, e una parola rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati, a ogni visita.
+        // Al ritorno nel campo sotto si legge «Nessun risultato» finché non la si ritocca: il README lo dice.
         it('una parola rimasta nel campo da una ricerca di prima, col fuoco altrove, non parte di nuovo quando la cornice aspetta i dati e poi arrivano (sprint 39 · T3.3)', async () => {
             const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
             vi.stubGlobal('fetch', fetchFinto);
@@ -4706,6 +4709,8 @@ describe('la ricerca', () => {
 
             expect(campo().value).toBe('lancio');
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            await act(async () => campo().focus());
+            expect(uno('.zr-search-panel')?.textContent).toContain(testi('it').searchEmpty);
         });
 
         // Sprint 39 · T5 (R1, R2 della review): la cornice non guarda dov'è il fuoco. Chi scrive in attesa e passa a un'altra
@@ -4728,15 +4733,20 @@ describe('la ricerca', () => {
             expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
         });
 
-        // S1 della review: la cornice legge il suo campo, non il primo campo di ricerca del documento che ha il fuoco. Una
-        // pagina di un modulo può avere un campo suo dentro un `.zr-search` del design system.
-        it('una parola battuta in attesa in un campo di ricerca della pagina, col fuoco lì, non parte verso la ricerca della cornice quando arrivano i dati (sprint 39 · T3.3)', async () => {
+        // S1 della review: la cornice legge il suo campo, quello nell'intestazione dell'`AppShell`, non il primo campo di ricerca
+        // del documento né quello che ha il fuoco. Una pagina di un modulo può avere un campo suo dentro un `.zr-search` del
+        // design system, e un frontend può averne uno fuori dalla cornice, prima di lei nel documento.
+        it.each([
+            ['della pagina, dentro la cornice', (cornice: (pagina?: ReactElement) => ReactElement, suo: ReactElement) => cornice(suo)],
+            ['del frontend, prima della cornice nel documento', (cornice: (pagina?: ReactElement) => ReactElement, suo: ReactElement) => <>{suo}{cornice()}</>],
+        ])('una parola battuta in attesa in un campo di ricerca %s, col fuoco lì, non parte verso la ricerca della cornice quando arrivano i dati (sprint 39 · T3.3)', async (_dove, insieme) => {
             const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
             vi.stubGlobal('fetch', fetchFinto);
-            const dellaPagina = <div className="zr-search"><input aria-label="Cerca nella pagina" /></div>;
-            await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto}>{dellaPagina}</Cornice>);
-            const suo = uno('main .zr-search input') as HTMLInputElement;
-            expect(suo).not.toBe(campo());
+            const dellaPagina = <div className="zr-search" data-uat="non-della-cornice"><input aria-label="Cerca nella pagina" /></div>;
+            const con = (deiDati: DatiDellaCornice) => insieme((pagina) => <Cornice dati={deiDati} onLogout={esciSenzaEffetto}>{pagina}</Cornice>, dellaPagina);
+            await mostra(con({ ...dati, prodotti: {}, in_attesa: true }));
+            const suo = uno('[data-uat="non-della-cornice"] input') as HTMLInputElement;
+            expect(suo).not.toBe(uno('.zr-top .zr-search input'));
             await act(async () => {
                 suo.focus();
                 Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(suo, 'fattura');
@@ -4744,10 +4754,10 @@ describe('la ricerca', () => {
                 await vi.advanceTimersByTimeAsync(600);
             });
 
-            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{dellaPagina}</Cornice>);
+            await mostra(con(dati));
             await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
 
-            expect(document.activeElement).toBe(uno('main .zr-search input'));
+            expect(document.activeElement).toBe(uno('[data-uat="non-della-cornice"] input'));
             expect(partite(fetchFinto)).toStrictEqual([]);
         });
     });

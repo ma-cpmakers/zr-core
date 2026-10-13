@@ -296,7 +296,7 @@ richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 `Cornice::subito()` (la sola sessione, nessuna chiamata) e, rimandata con `Inertia::defer`, `Cornice::dopo()`, come
 `subito` e `dopo` al posto di `cornice` (i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi). Finché
 `dopo` non arriva la cornice è ridotta e senza avviso, e dalla `v2.2.0` campanella e ricerca caricano: una parola scritta
-intanto si cerca quando `dopo` arriva (anche se nel frattempo l'hai cancellata), e il menu del profilo mostra la persona
+intanto si cerca quando `dopo` arriva (dalla `v2.5.1` non una che nel frattempo hai cancellata), e il menu del profilo mostra la persona
 di `subito`. Dalla `v2.3.0`, se quella persona ha un'altra email rispetto a chi c'era prima, la cornice si rifà e la tua
 pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo. Con Indietro una pagina di prima
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
@@ -316,7 +316,12 @@ lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta 
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede dovunque la tua build lo metta, anche se
-l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche».
+l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche». Due cose, dette lì: il JS
+che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta),
+e dove la tua build non scrive il nome del pezzo com'è «Riprova» fa ciò che faceva prima.
+Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore: resta in attesa, con campanella e
+ricerca che caricano e senza avviso, finché non ne arriva uno. Se la tua parte server non è riuscita a leggerlo non
+dare `null`: dai `non_letti`, come fa `Cornice::dopo()`.
 Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».

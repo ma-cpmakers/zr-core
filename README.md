@@ -599,9 +599,16 @@ cornice === null ? pagina : (
   della cornice, là dove lei importa il pezzo, risolto sull'indirizzo di quel JS. In `import()` entra solo il pezzo della
   campanella, qualunque cosa dica l'errore, e «Riprova» lo richiede anche se l'indirizzo del JS d'ingresso ha una coda sua
   (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, anche una
-  cartella dentro quella (provato in Chromium sulle due forme di build). Con una coda sull'ingresso il pezzo, che importa
+  cartella dentro quella (provato in Chromium 151 su due build delle pagine di prova: `ZR_PEZZI_ALTROVE=1 npm run demo`,
+  col pezzo in `assets/pezzi/`, e `ZR_INGRESSO_CON_CODA=1 npm run demo`, con la cornice nel JS d'ingresso chiesto con
+  `?v=3`). Con una coda sull'ingresso il pezzo, che importa
   il JS della cornice col suo nome, lo chiede senza quella coda, anche al primo colpo: per il browser è un altro indirizzo,
-  e lo scarica una seconda volta (è di quel modo di servire, non di «Riprova»). Dove la build non scrive il nome del pezzo fra
+  e lo scarica una seconda volta, e lo esegue una seconda volta. Se quel JS è anche quello che monta la pagina, la pagina
+  si monta di nuovo: alla prima apertura la campanella si richiude e ciò che la persona aveva scritto si perde, e il
+  pannello si apre al secondo clic (è di quel modo di servire, non di «Riprova»: il JS che contiene la cornice non si
+  serve con una coda, e il nome con l'impronta che la build gli dà basta). Due casi restano come sono: se l'indirizzo del
+  JS della cornice non ha un percorso (`blob:`, `data:`) «Riprova» non richiede il pezzo, e a un nome che la build scrive
+  già con una coda quella di «Riprova» si aggiunge com'è (`x.js?v=1?r=1`). Dove la build non scrive il nome del pezzo fra
   virgolette dentro `import(`, «Riprova» richiama `import()` come prima, allo stesso indirizzo. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
@@ -1185,7 +1192,8 @@ stesso workspace, la rotta non segna niente e risponde 409 `persona_diversa` con
 restano da leggere, l'elenco a schermo non è dato per letto, e la pagina si ricarica. Una richiesta senza `persona` (il JS di
 una versione di prima, rimasto in una scheda) vale come prima: la rotta guarda solo il workspace. Assente è la sola chiave
 che manca: dalla `v2.5.1` una `persona` che c'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non
-segna niente.
+segna niente. Nemmeno con una `persona` vuota (`""`): è quel 422 dove il frontend ha `ConvertEmptyStringsToNull`, che
+Laravel monta di suo, e un 409 `persona_diversa` dove non lo ha.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
@@ -1284,12 +1292,13 @@ Che cosa vede la persona:
   Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: quando
-  `dopo` è arrivato la cornice cerca ciò che c'è nel campo in quel momento, se ha almeno due caratteri e la persona è
-  ancora lì (il campo ha il fuoco), e non cerca niente se al posto dei dati arriva `non_letti` o l'accettazione dei
-  documenti legali. Dalla `v2.5.1` una parola cancellata prima dell'arrivo non viene più cercata, e sotto una parola
+  `dopo` è arrivato la cornice cerca ciò che c'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato
+  da quando l'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o
+  l'accettazione dei documenti legali. Dalla `v2.5.1` una parola cancellata prima dell'arrivo non viene più cercata, e sotto una parola
   battuta un attimo prima dell'arrivo si legge il caricamento, non «Nessun risultato»: parte all'arrivo, una volta sola.
-  Un limite resta: una parola scritta in attesa e lasciata uscendo dal campo prima dell'arrivo non parte, e parte quando
-  la persona la ritocca;
+  Due limiti restano. Una parola rimasta nel campo da una ricerca di prima non parte di nuovo all'arrivo: al ritorno
+  nel campo sotto si legge «Nessun risultato» finché la persona non la ritocca. E i due caratteri si contano come li
+  conta l'`AppShell`: un'emoji da sola ne vale due, parte, e la rotta la rifiuta con un 422;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
   sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;

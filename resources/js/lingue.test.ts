@@ -1180,8 +1180,8 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
 
 // Sprint 34 · T1 (voce #1929). In Chromium un `import()` che non è arrivato resta fallito, per quell'indirizzo, finché la
 // pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda, che cambia a ogni tentativo fallito.
-// L'indirizzo non è quello che dice l'errore del browser: si compone con la cartella del JS e col nome di file con cui il
-// messaggio finisce, subito dopo quella cartella. Qui al posto di `import()` c'è il caso.
+// L'indirizzo non è quello che dice l'errore del browser, che dallo sprint 39 (T4) non si legge: è il nome che la build ha
+// scritto nel testo di `importa`, risolto sull'indirizzo del JS. Qui al posto di `import()` c'è il caso.
 describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo (sprint 34 · T1)', () => {
     const ORIGINE = 'https://app.zeiras.test';
     const CARTELLA = `${ORIGINE}/build/assets/`;

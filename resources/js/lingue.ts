@@ -265,14 +265,16 @@ export let campanella: typeof import('./campanella') | undefined;
  * Chi chiede un pezzo a richiesta, anche dopo che non è arrivato. In Chromium un `import()` che non è arrivato resta fallito,
  * per quell'indirizzo, finché la pagina non si ricarica (provato il 13/10/2026 con la 151): chiamarlo di nuovo non fa
  * partire niente. Per questo, dopo un pezzo non arrivato, la richiesta dopo lo importa dal suo indirizzo con una coda
- * (`?r=1`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta quello già in pagina. La
+ * (`?r=1`), e il browser lo richiede; è lo stesso file. Ciò che importa lui — il JS della cornice, col suo nome — è quello già in pagina solo se la pagina lo ha
+ * chiesto con quel nome: chiesto con una coda, il browser lo scarica e lo esegue di nuovo, anche al primo colpo (README). La
  * coda cambia a ogni tentativo fallito (`?r=2`), non a ogni richiesta: due richieste fatte insieme importano lo stesso
  * indirizzo, che per il browser è una richiesta sola, e dopo l'arrivo l'indirizzo resta quello arrivato, che il browser ha
  * già. L'indirizzo non si legge dall'errore del browser, che non conta: è l'argomento di `import(` nel testo di `importa`,
  * cioè il nome che la build ha dato al pezzo, risolto su `qui`, l'indirizzo del JS che contiene `importa`. Così in
  * `import()` entra solo il pezzo che `importa` avrebbe chiesto, dovunque la build lo metta e qualunque coda abbia `qui`.
  * Dove nel testo di `importa` non c'è un `import(` con un nome fra virgolette, la richiesta dopo è l'`import()` di prima
- * (`importa`). L'errore esce com'è. L'accento rovescio nell'espressione è scritto `\x60`: scritto com'è, chi toglie i
+ * (`importa`). Due casi restano come sono, e il README li dice: un `qui` senza percorso (`blob:`, `data:`), dove `new URL`
+ * lancia prima della promessa, e un nome che la build scrive già con una coda, a cui `?r=` si aggiunge com'è. L'errore esce com'è. L'accento rovescio nell'espressione è scritto `\x60`: scritto com'è, chi toglie i
  * commenti da questo file per le guardie (`senzaCommenti`) lo leggerebbe come l'inizio di un testo.
  */
 export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): () => Promise<Pezzo> {

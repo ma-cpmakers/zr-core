@@ -5021,13 +5021,19 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
     // Sprint 34 · T1.6 (voce #1929): dopo un pezzo della campanella non arrivato «Riprova» lo richiede anche in Chromium.
     'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
-    // Sprint 35 · T3 (voce #1945): la coda cambia al tentativo fallito, e l'indirizzo si compone con la cartella del JS.
+    // Sprint 35 · T3 (voce #1945): la coda cambia al tentativo fallito. Dallo sprint 39 l'indirizzo non si compone più con la
+    // cartella del JS e col nome letto dall'errore (sotto).
     'la coda cambia al tentativo fallito' => ['notifiche', 'La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola'],
     // Sprint 39 · T4 (voci #1972 e #1973): l'indirizzo è il nome che la build ha scritto, non ciò che dice l'errore.
     'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'Dalla `v2.5.1` l\'indirizzo non si legge più dall\'errore del browser: è il nome che la build ha scritto nel JS della cornice, là dove lei importa il pezzo, risolto sull\'indirizzo di quel JS'],
     'solo il pezzo della campanella' => ['notifiche', 'In `import()` entra solo il pezzo della campanella, qualunque cosa dica l\'errore'],
     'dove il pezzo sta altrove' => ['notifiche', '«Riprova» lo richiede anche se l\'indirizzo del JS d\'ingresso ha una coda sua (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un\'altra cartella rispetto al JS d\'ingresso, anche una cartella dentro quella'],
     'con una coda il pezzo chiede l\'ingresso senza' => ['notifiche', 'Con una coda sull\'ingresso il pezzo, che importa il JS della cornice col suo nome, lo chiede senza quella coda, anche al primo colpo: per il browser è un altro indirizzo, e lo scarica una seconda volta'],
+    // Review della PR #72 (R3, R4, note a e b): che cosa riparte con la coda, con che build è provato, i due casi che restano.
+    'con una coda la pagina si monta di nuovo' => ['notifiche', 'e lo esegue una seconda volta. Se quel JS è anche quello che monta la pagina, la pagina si monta di nuovo: alla prima apertura la campanella si richiude e ciò che la persona aveva scritto si perde, e il pannello si apre al secondo clic'],
+    'il JS della cornice senza coda' => ['notifiche', 'il JS che contiene la cornice non si serve con una coda, e il nome con l\'impronta che la build gli dà basta'],
+    'le due build della prova' => ['notifiche', 'provato in Chromium 151 su due build delle pagine di prova: `ZR_PEZZI_ALTROVE=1 npm run demo`, col pezzo in `assets/pezzi/`, e `ZR_INGRESSO_CON_CODA=1 npm run demo`, con la cornice nel JS d\'ingresso chiesto con `?v=3`'],
+    'i due casi di «Riprova» che restano' => ['notifiche', 'se l\'indirizzo del JS della cornice non ha un percorso (`blob:`, `data:`) «Riprova» non richiede il pezzo, e a un nome che la build scrive già con una coda quella di «Riprova» si aggiunge com\'è (`x.js?v=1?r=1`)'],
     'dove la build non scrive il nome' => ['notifiche', 'Dove la build non scrive il nome del pezzo fra virgolette dentro `import(`, «Riprova» richiama `import()` come prima, allo stesso indirizzo'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
@@ -5330,9 +5336,16 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
     // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
-    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel campo in quel momento, se ha almeno due caratteri e la persona è ancora lì (il campo ha il fuoco), e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
+    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
     'la parola cancellata in attesa' => ['readme', 'Dalla `v2.5.1` una parola cancellata prima dell\'arrivo non viene più cercata, e sotto una parola battuta un attimo prima dell\'arrivo si legge il caricamento, non «Nessun risultato»: parte all\'arrivo, una volta sola'],
-    'la ricerca in attesa: il limite che resta' => ['readme', 'una parola scritta in attesa e lasciata uscendo dal campo prima dell\'arrivo non parte, e parte quando la persona la ritocca'],
+    // Review della PR #72 (R1, R2, R8, R9): il fuoco non conta più; i limiti che restano, e la `persona` vuota.
+    'la ricerca in attesa: la parola di prima' => ['readme', 'Una parola rimasta nel campo da una ricerca di prima non parte di nuovo all\'arrivo: al ritorno nel campo sotto si legge «Nessun risultato» finché la persona non la ritocca'],
+    'la ricerca in attesa: un\'emoji' => ['readme', 'i due caratteri si contano come li conta l\'`AppShell`: un\'emoji da sola ne vale due, parte, e la rotta la rifiuta con un 422'],
+    'la scheda ferma: una persona vuota' => ['readme', 'Nemmeno con una `persona` vuota (`""`): è quel 422 dove il frontend ha `ConvertEmptyStringsToNull`, che Laravel monta di suo, e un 409 `persona_diversa` dove non lo ha'],
+    'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» fa ciò che faceva prima'],
+    'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore: resta in attesa, con campanella e ricerca che caricano e senza avviso, finché non ne arriva uno'],
+    'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
+    'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
@@ -5484,6 +5497,18 @@ it('README e guida non dicono più che con una coda sull\'ingresso o coi pezzi i
     'serve ricaricare la pagina' => ['serve ricaricare la pagina'],
     'il nome con cui l\'errore finisce' => ['col nome di file con cui l\'errore del browser finisce'],
     'solo nella stessa cartella' => ['lo richiede solo se la tua build lo mette nella stessa cartella'],
+]);
+
+// Review della PR #72 (R1, R2, R4): la cornice non guarda più dov'è il fuoco, e la parola scritta in attesa parte anche se la
+// persona ha lasciato il campo. README e guida non dicono più il limite di prima, né una prova senza la sua build.
+it('README e guida non dicono più che la parola scritta in attesa parte solo col fuoco nel campo, né che una cancellata parte lo stesso (sprint 39 · T3.4)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'il campo ha il fuoco' => ['il campo ha il fuoco'],
+    'lasciata uscendo dal campo' => ['lasciata uscendo dal campo prima dell\'arrivo non parte'],
+    'anche se l\'hai cancellata' => ['anche se nel frattempo l\'hai cancellata'],
+    'le due forme di build' => ['provato in Chromium sulle due forme di build'],
 ]);
 
 // Sprint 36 · T2 (voce #1968): con un'altra email la cornice si rifà, e il README non dice più che ciò che tiene è del workspace.

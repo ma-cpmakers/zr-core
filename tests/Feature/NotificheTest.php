@@ -2403,6 +2403,25 @@ it('con una `persona` presente che non è un testo risponde 422 dati_non_validi 
     'un oggetto' => [['email' => 'uat-ada@example.com']],
 ]);
 
+// Review della PR #72 (R9): una `persona` vuota. Che cosa arriva alla rotta lo decidono i middleware del frontend: con
+// `ConvertEmptyStringsToNull`, che Laravel monta di suo, è `null`; senza è un testo che non è l'email della sessione. Non si
+// segna niente in nessuno dei due casi, e il README dice le due risposte.
+it('con una `persona` vuota non segna niente e non chiama il backoffice: 422 dati_non_validi dove il vuoto arriva null, 409 persona_diversa dove arriva com\'è (sprint 39 · T1.1)', function (bool $comArriva, int $stato, string $risposta) {
+    if ($comArriva) {
+        test()->withoutMiddleware(ConvertEmptyStringsToNull::class);
+    }
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    $avuta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => '']))->assertStatus($stato);
+
+    expect($avuta->getContent())->toBe($risposta);
+    Http::assertNothingSent();
+})->with([
+    'coi middleware di Laravel' => [false, 422, '{"errore":"dati_non_validi"}'],
+    'senza ConvertEmptyStringsToNull' => [true, 409, '{"errore":"persona_diversa","persona":"uat-ada@example.com"}'],
+]);
+
 it('una `persona` che non è un testo insieme a un altro workspace è un 409 workspace_diverso, come un\'altra email: la guardia nuova sta dove sta il confronto della persona, dopo quella del workspace (sprint 39 · T1.2)', function (mixed $persona) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
