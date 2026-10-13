@@ -564,13 +564,17 @@ cornice === null ? pagina : (
   Dalla `v1.20.0` le frasi delle notifiche — il titolo di ogni tipo e le due famiglie qui sotto — non stanno più nel JS
   d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
   chiede con `fetch` quando si apre la campanella, insieme all'elenco: il file della lingua della persona e quello
-  dell'inglese, una volta sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco). Nella build del
+  dell'inglese, una volta sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco); chi usa l'inglese
+  chiede un file solo. Nella build del
   frontend sono file `.json` con l'impronta nel nome, accanto al JS (restano file anche se il frontend alza `build.assetsInlineLimit`), e la cornice li chiede da dove la pagina prende il
   JS: la CSP di tutti lo lascia fare (`connect-src 'self'`); un frontend che serve la build da un'altra origine
   (`ASSET_URL`) scrive quell'origine anche in `connect-src`, e da lì i file devono arrivare con CORS. Lo stesso vale in sviluppo, se la pagina prende il JS dal server di Vite: è un'altra origine. Finché non arrivano
   il pannello aspetta; se non arrivano — una risposta che non è 200, la rete che cade, dieci secondi senza risposta —
   mostra l'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di
-  titoli di ripiego. Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox
+  titoli di ripiego. Dalla `v2.0.0` è un errore anche un 200 che non porta le frasi — la pagina di un proxy, un file
+  vuoto: le frasi sono un oggetto con almeno un testo sotto una chiave `notificationTitle…` —, e a elenco vuoto le frasi
+  non servono: il pannello dice che non ci sono notifiche senza aspettarle, anche se non arrivano loro o il pezzo della
+  campanella. Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox
   prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo. Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più,
   «Riprova» non riesce finché la pagina non si ricarica. Dalla `v2.0.0` ciò che compone le righe arriva in un pezzo di JS a
   parte, quello della campanella, che la cornice chiede con `import()` alla prima apertura della campanella, dalla stessa
@@ -579,7 +583,9 @@ cornice === null ? pagina : (
   finché la pagina non si ricarica: lì «Riprova» richiede l'elenco, ma il browser il pezzo non lo richiede, e l'errore
   resta fino al ricaricamento. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
-  cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate.
+  cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
+  le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
+  chiedono: le chiede la prossima apertura, con l'elenco.
   Nei test del frontend quei file non li serve nessuno, e un caso che apre la campanella troverebbe l'errore al posto
   dell'elenco: una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, come a una seconda

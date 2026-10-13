@@ -81,10 +81,20 @@ export function frasiDiOgniLingua(file: Record<string, FrasiDelleNotifiche>, ing
 }
 
 /**
+ * Le frasi come devono arrivare: un oggetto con almeno un testo sotto una chiave `notificationTitle…`. Un 200 con dentro
+ * un'altra cosa — `null`, un elenco, un oggetto senza frasi, un testo — non sono frasi.
+ */
+const sonoFrasi = (arrivate: unknown): boolean =>
+    typeof arrivate === 'object' && arrivate !== null && Object.entries(arrivate).some(([chiave, frase]) => chiave.startsWith('notificationTitle') && typeof frase === 'string' && frase !== '');
+
+/**
  * Le frasi di una lingua da file che si caricano quando servono, come li dà `import.meta.glob` senza `eager`: per la cornice,
  * che le chiede all'apertura della campanella. Parte il file della lingua, o della lingua base, e quello dell'inglese, il
  * ripiego; mai gli altri. Una volta arrivate restano in memoria (`pronte`), e non si richiedono; due richieste insieme sono
- * una sola. Se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte da capo.
+ * una sola. Se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte da capo. Lo
+ * stesso se arriva male (`sonoFrasi`): la pagina di un proxy o un file vuoto con un 200 non diventano titoli di ripiego. Chi
+ * usa l'inglese, o una lingua senza un file suo, chiede l'inglese una volta: il file della lingua è il ripiego stesso quando
+ * `file` lo dà con la stessa funzione di `inglesi`.
  */
 export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNotifiche>>, inglesi: () => Promise<FrasiDelleNotifiche>) {
     const { perCodice, fileDi } = fileDelleLingue(file);
@@ -102,9 +112,19 @@ export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNot
             if (pronte !== undefined) {
                 return Promise.resolve(pronte);
             }
-            // Riuscita o no, la richiesta non resta in volo: una fallita — anche per una risposta che non si può comporre — si rifà.
-            const chiesta = inVolo.get(codice) ?? Promise.all([perCodice.get(codice)?.(), inglesi()]).then(([scelte, ripiego]) => {
-                const frasi = componiFrasi(scelte, ripiego);
+            const inVoloAdesso = inVolo.get(codice);
+            if (inVoloAdesso !== undefined) {
+                return inVoloAdesso;
+            }
+            const dellaLingua = perCodice.get(codice);
+            const scelte = dellaLingua === undefined || dellaLingua === inglesi ? undefined : dellaLingua();
+            const ripiego = inglesi();
+            // Riuscita o no, la richiesta non resta in volo: una fallita — anche per frasi arrivate male — si rifà.
+            const chiesta = Promise.all([scelte ?? ripiego, ripiego]).then((arrivate) => {
+                if (!arrivate.every(sonoFrasi)) {
+                    return Promise.reject();
+                }
+                const frasi = componiFrasi(...arrivate);
                 composte.set(codice, frasi);
 
                 return frasi;
@@ -129,9 +149,12 @@ export const indirizziDelleFrasi = import.meta.glob<string>('../lingue/notifiche
 const lette = (percorso: string) => (): Promise<FrasiDelleNotifiche> =>
     fetch(indirizziDelleFrasi[percorso] as string, { signal: AbortSignal.timeout?.(ATTESA_DELLE_FRASI) }).then((risposta) => (risposta.ok ? (risposta.json() as Promise<FrasiDelleNotifiche>) : Promise.reject()));
 
+const INGLESI = '../lingue/notifiche/en.json';
+const inglesi = lette(INGLESI);
+
 export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
-    Object.fromEntries(Object.keys(indirizziDelleFrasi).map((percorso) => [percorso, lette(percorso)])),
-    lette('../lingue/notifiche/en.json'),
+    Object.fromEntries(Object.keys(indirizziDelleFrasi).map((percorso) => [percorso, percorso === INGLESI ? inglesi : lette(percorso)])),
+    inglesi,
 );
 
 /**

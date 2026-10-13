@@ -5254,6 +5254,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
     function caricatore() {
         const chiesti: string[] = [];
         const rotti = new Set<string>();
+        const guasti = new Map<string, unknown>();
         const fermi = new Map<string, () => void>();
         const file = (codice: string, frasi: FrasiDelleNotifiche) => async (): Promise<FrasiDelleNotifiche> => {
             chiesti.push(codice);
@@ -5264,7 +5265,8 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
                 throw new TypeError('Failed to fetch dynamically imported module');
             }
 
-            return frasi;
+            // Un file arrivato male: un 200 con dentro un'altra cosa.
+            return (guasti.has(codice) ? guasti.get(codice) : frasi) as FrasiDelleNotifiche;
         };
         const delCaso = frasiARichiesta({
             '../lingue/notifiche/en.json': file('en', frasiInglesi),
@@ -5277,6 +5279,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         return {
             chiesti,
             rotti,
+            guasti,
             ferma: (codice: string) => fermi.set(codice, () => {}),
             lascia: async (codice: string) => {
                 const via = fermi.get(codice);
@@ -5492,6 +5495,90 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(fetchFinto).toHaveBeenCalledTimes(2);
         expect(errore()).toBeNull();
         expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    // Sprint 33 · T3 (voce #1909). Le frasi arrivate male sono un errore come le frasi che non arrivano; a elenco vuoto le
+    // frasi non servono; a pannello chiuso non si chiedono; e «Segna tutte come lette» c'è solo con l'elenco in pagina.
+    const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
+    const senzaNotifiche = () => uno('.zr-notif .zr-empty') !== null;
+
+    it.each([
+        ['`null`', null],
+        ['un elenco vuoto', []],
+        ['un oggetto vuoto', {}],
+        ['un oggetto senza frasi', { data: {} }],
+        ['un testo', 'UAT pagina di errore'],
+        ['un titolo vuoto', { 'notificationTitle.com.zeiras.board.cartella.creata': '' }],
+    ])('se il file delle frasi arriva con %s il pannello mostra l\'errore con «Riprova», mai i titoli di ripiego, e «Riprova» lo richiede (sprint 33 · T3.1)', async (_caso, corpo) => {
+        const frasi = caricatore();
+        frasi.guasti.set('it', corpo);
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(errore()?.querySelector('p')?.textContent).toBe(testi('it').notificationsError);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        frasi.guasti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain('it');
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it.each<[string, (frasi: ReturnType<typeof caricatore>, campanella: ReturnType<typeof pezzo>) => void]>([
+        ['le frasi non arrivano', (frasi) => frasi.rotti.add('it')],
+        ['le frasi sono ancora in viaggio', (frasi) => frasi.ferma('it')],
+        ['il pezzo della campanella non arriva', (_frasi, campanella) => { campanella.stato.rotto = true; }],
+        ['il pezzo della campanella è ancora in viaggio', (_frasi, campanella) => { campanella.stato.fermo = true; }],
+    ])('a elenco vuoto il pannello dice che non ci sono notifiche anche se %s: niente errore, niente «Riprova», niente attesa (sprint 33 · T3.2)', async (_caso, prepara) => {
+        const frasi = caricatore();
+        const campanella = pezzo();
+        prepara(frasi, campanella);
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [] })));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect([errore(), inAttesa(), senzaNotifiche()]).toStrictEqual([null, false, true]);
+    });
+
+    it('a pannello chiuso un cambio di lingua non chiede le frasi; alla riapertura il pannello le chiede, e i titoli sono nella lingua nuova (sprint 33 · T3.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(titoli()).toStrictEqual([inItaliano]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(frasi.chiesti).not.toContain('es');
+
+        await clic(uno('.zr-bell'));
+        expect(frasi.chiesti).toContain('es');
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    it('«Segna tutte come lette» c\'è con l\'elenco in pagina, e non c\'è mentre il pannello aspetta le frasi di una lingua nuova né quando non arrivano (sprint 33 · T3.4)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        const conNonLette = { ...dati, non_lette: 3 };
+        await mostra(<Cornice dati={conNonLette} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe(testi('it').markAllRead);
+
+        frasi.ferma('es');
+        frasi.rotti.add('es');
+        await mostra(<Cornice dati={{ ...conNonLette, lingua: 'es' }} onLogout={esciSenzaEffetto} />);
+        expect([inAttesa(), segnaTutte()]).toStrictEqual([true, null]);
+
+        await frasi.lascia('es');
+        expect([errore() !== null, segnaTutte()]).toStrictEqual([true, null]);
     });
 });
 

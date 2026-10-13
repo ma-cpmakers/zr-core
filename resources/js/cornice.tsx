@@ -592,6 +592,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
+    // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
     const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
@@ -600,8 +601,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
         const chiesto = caricaNotifiche();
         chiesto.catch(seDaAccettare);
-        Promise.all([chiesto, caricaFrasi(questi.lingua)]).then(
-            ([{ elenco, il, workspace }]) => {
+        const frasi = caricaFrasi(questi.lingua);
+        frasi.catch(() => undefined);
+        chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
+            ({ elenco, il, workspace }) => {
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'ready', elenco, richiesta: questa, workspace });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa, workspace });
@@ -617,11 +620,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le frasi sono di una lingua, e la lingua dei dati può cambiare con l'elenco in pagina (un'altra visita, con la cornice
     // montata): quelle della lingua nuova si chiedono qui, e finché non ci sono il pannello non mostra l'elenco (sotto), così
     // non resta un titolo nella lingua di prima accanto a un'ora nella nuova. Che cosa si sa delle frasi di una lingua chieste
-    // così sta nello stato: l'arrivo ridisegna il pannello, e se non arrivano il pannello è in errore, con «Riprova».
+    // così sta nello stato: l'arrivo ridisegna il pannello, e se non arrivano il pannello è in errore, con «Riprova». A pannello
+    // chiuso non si chiedono: le chiede la prossima apertura, con l'elenco. Che è aperto lo dice la pagina, perché l'`AppShell`
+    // avvisa quando il pannello si apre e non quando si chiude.
     const [frasiChieste, setFrasiChieste] = useState<{ lingua: string; arrivate: boolean }>();
     const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(dati.lingua) === undefined;
     useLayoutEffect(() => {
-        if (!servonoLeFrasi) {
+        if (!servonoLeFrasi || !document.querySelector('.zr-notif')) {
             return undefined;
         }
         let ancora = true;
@@ -635,6 +640,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             ancora = false;
         };
     }, [servonoLeFrasi, dati.lingua]);
+    // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
+    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
     // da lì.
     const carica = () => {
@@ -741,8 +748,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
     // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Un altro rispetto ai dati di adesso, o
     // rispetto a quelli con cui l'elenco è stato chiesto, di cui il clic manda lo slug: se i dati passano al workspace
-    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
+    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è. E non c'è
+    // mentre il pannello mostra l'attesa o l'errore, anche quelli delle frasi di una lingua nuova.
+    const segnaTutteLette = statoDelPannello !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
@@ -797,7 +805,6 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // in errore se non sono arrivate (sopra).
     const frasi = frasiPronte(dati.lingua);
     const riga = campanella?.rigaConLeFrasi;
-    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
     // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Fa

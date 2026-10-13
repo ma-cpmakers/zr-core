@@ -56,18 +56,44 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         expect(fetchFinto).toHaveBeenCalledTimes(4);
     });
 
-    it('un 200 col corpo `null` è un errore e non resta in volo: la richiesta dopo riparte da capo e riesce (T1.5)', async () => {
+    // Sprint 33 · T3.1 (voce #1909). Un 200 che non porta le frasi — la pagina di un proxy, un file vuoto — è un errore come un
+    // 404: le frasi sono un oggetto con almeno un testo sotto una chiave `notificationTitle…`.
+    const ARRIVATE_MALE: [string, unknown][] = [
+        ['`null`', null], ['un elenco', []], ['un oggetto vuoto', {}], ['un oggetto senza frasi', { data: {} }], ['un testo', 'UAT pagina di errore'], ['un numero', 7],
+        ['un titolo vuoto', { 'notificationTitle.uat': '' }], ['un titolo che non è un testo', { 'notificationTitle.uat': { it: 'UAT' } }],
+    ];
+
+    it.each(ARRIVATE_MALE)('un 200 con %s al posto delle frasi della lingua è un errore e non resta in volo né in memoria: la richiesta dopo riparte da capo e riesce (sprint 30 · T1.5; sprint 33 · T3.1)', async (_caso, corpo) => {
         const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ 'notificationTitle.uat': 'UAT' }));
-        fetchFinto.mockImplementationOnce(async () => risposta(null)).mockImplementationOnce(async () => risposta(null));
+        fetchFinto.mockImplementationOnce(async () => risposta(corpo));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte } = await import('./campanella');
 
-        await expect(caricaFrasi('it')).rejects.toBeInstanceOf(TypeError);
+        await expect(caricaFrasi('it')).rejects.toBeUndefined();
         expect(frasiPronte('it')).toBeUndefined();
         expect(fetchFinto).toHaveBeenCalledTimes(2);
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
         expect(fetchFinto).toHaveBeenCalledTimes(4);
+    });
+
+    it.each(ARRIVATE_MALE)('un 200 con %s al posto delle frasi dell\'inglese è un errore anche se quelle della lingua sono arrivate bene (sprint 33 · T3.1)', async (_caso, corpo) => {
+        const fetchFinto = vi.fn(async (indirizzo: string) => risposta(/\/en\.json/.test(indirizzo) ? corpo : { 'notificationTitle.uat': 'UAT' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
+
+        await expect(caricaFrasi('it')).rejects.toBeUndefined();
+        expect(frasiPronte('it')).toBeUndefined();
+    });
+
+    it.each(['en', 'en-GB'])('chi usa l\'inglese («%s») fa una sola richiesta di `en.json` per volta, e in memoria restano le frasi (sprint 33 · T3.5)', async (lingua) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT title' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./campanella');
+
+        await expect(caricaFrasi(lingua)).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT title' });
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual([indirizziDelleFrasi[EN]]);
+        expect(frasiPronte(lingua)).toStrictEqual({ 'notificationTitle.uat': 'UAT title' });
     });
 
     it('dove il browser non ha `AbortSignal.timeout` le frasi si chiedono lo stesso, senza un tempo massimo: niente lancia e il pannello non resta in attesa (T1.5)', async () => {
