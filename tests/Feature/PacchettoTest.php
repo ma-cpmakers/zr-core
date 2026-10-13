@@ -5119,7 +5119,12 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
     'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
-    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
+    // Sprint 33 · T2.5 (voce #1890): il nome di chi ha fatto si taglia nel titolo; il resto è del backoffice.
+    'il nome di chi ha fatto si taglia' => ['notifiche', 'Dalla `v2.0.0` il nome di chi ha fatto, nel titolo, oltre i 60 caratteri è tagliato: i primi 59 e «…»'],
+    'come si conta il nome' => ['notifiche', 'Si conta dopo la pulizia, per caratteri come li vede chi legge (`Intl.Segmenter`): un\'emoji o una lettera con l\'accento composto valgono uno e non si spezzano'],
+    'dove Intl.Segmenter manca' => ['notifiche', 'dove `Intl.Segmenter` manca si conta per punti di codice, e lì un\'emoji composta o un accento composto possono restare a metà'],
+    'ciò che non si taglia' => ['notifiche', 'L\'avatar dice il nome intero, e il nome della cosa resta intero dovunque stia'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il resto è del backoffice: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
@@ -5130,6 +5135,11 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
     'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
 ]);
+
+// Sprint 33 · T2.5 (voce #1890): dalla v2 il nome di chi ha fatto si taglia, e il README non dice più il contrario.
+it('il README non dice più che il nome di chi ha fatto non si taglia (sprint 33 · T2.5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Il nome non si taglia'))->toBe(false);
+});
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
 // Management.
