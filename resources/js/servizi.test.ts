@@ -301,7 +301,7 @@ describe('il 429 con `Retry-After` di una rotta della cornice', () => {
 // quella, e non torna a chi l'ha chiesta per la persona che la cornice mostra. La pagina si ricarica, e chi ha chiesto resta in
 // attesa. Una risposta che non lo dice, o non lo dice con un testo, vale come prima.
 describe('una risposta che dice di chi è', () => {
-    // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è a schermo, e chi è a schermo lo dice la cornice a ogni disegno.
+    // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è a schermo, e chi è a schermo lo dice la cornice quando si monta (dalla review: non a ogni disegno).
     // In questi casi è Ada, che è anche chi chiede: la scheda rimasta ferma.
     beforeEach(() => {
         mostra('ada@example.com');

@@ -138,25 +138,26 @@ final class Cornice
      * non è quella di `subito()`, e fra le due la sessione può essere passata a un'altra persona o a un altro workspace, da
      * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`,
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
-     * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno di quell'istante, lascia nel log una riga
+     * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno della lettura, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è
      * (dalla `v2.7.0`): dopo `non_letti` e `aggiornati_il` porta lingua, persona e workspace come sono nella sessione in
-     * quell'istante — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`, che è
-     * l'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita: un `non_letti` arrivato
-     * tardi non vale sopra i dati di chi è entrato intanto. Niente di ciò che dà il backoffice. Così la cornice ridotta non
+     * quell'istante — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`. I due segni
+     * sono quello della lettura di io.mostra di questa richiesta — l'istante in cui è cominciata, come nei dati riusciti,
+     * anche se l'ha fatta `lingua()` — e non quello in cui è fallita: un `non_letti` arrivato tardi non vale sopra i dati
+     * di chi è entrato intanto. Niente di ciò che dà il backoffice. Così la cornice ridotta non
      * resta col nome di chi c'era prima. Se intanto la sessione è finita — chiusa, o col gettone scaduto — dà null come senza
      * sessione, e non scrive la riga nel log. Il segno `aggiornati_il` serve al browser come
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, non_letti: true, aggiornati_il: string, sessione_il: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string}|null
      */
     public static function dopo(): ?array
     {
-        // Il segno di chi è si prende prima della lettura, come quello dei dati: la persona è quella della sessione com'era
-        // quando la richiesta è cominciata, e il backoffice può metterci secondi a non rispondere. Preso alla fine, un
-        // `non_letti` in ritardo varrebbe nel browser sopra i dati di chi è entrato intanto.
-        $segno = Segno::adesso();
+        // Se la lettura fallisce il suo segno è quello di quando è cominciata, come nei dati riusciti: il backoffice può
+        // metterci secondi a non rispondere, e col segno della fine un `non_letti` in ritardo varrebbe nel browser sopra i
+        // dati di chi è entrato intanto. Questo è il ripiego: di norma il segno è quello che `lettura()` tiene (sotto).
+        $prima = Segno::adesso();
 
         try {
             $dati = self::dati();
@@ -165,16 +166,22 @@ final class Cornice
                 throw $errore;
             }
 
-            // Di chi è lo dice la sessione com'è adesso, mai un'altra chiamata a /v1. Se intanto è finita — chiusa, o col
-            // gettone scaduto — non è di nessuno: null come senza sessione, e nel log niente, perché nessuna cornice esce ridotta.
+            // Di chi è lo dice la sessione che questa richiesta ha in mano — con lingua e nome riletti, se io.mostra aveva
+            // risposto —, mai un'altra chiamata a /v1. Se intanto è finita — chiusa, o col gettone scaduto — non è di
+            // nessuno: null come senza sessione, e nel log niente, perché nessuna cornice esce ridotta.
             $chi = self::subito();
             if ($chi === null) {
                 return null;
             }
             self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
 
-            // Le due chiavi di sempre davanti, quelle della `v2.7.0` in fondo. `aggiornati_il` è l'istante del fallimento.
-            return ['non_letti' => true, 'aggiornati_il' => $chi['sessione_il'], ...$chi, 'sessione_il' => $segno];
+            // Il segno è quello della lettura di io.mostra di questa richiesta, che `dati()` ha fatto o ha trovato già fatta
+            // da `lingua()` (il frontend che mette la lingua prima del controller): lo stesso che i dati riusciti avrebbero.
+            $tenuta = request()->attributes->get(self::LETTURA);
+            $segno = is_array($tenuta) ? $tenuta['segno'] : $prima;
+
+            // Le due chiavi di sempre davanti, quelle della `v2.7.0` in fondo.
+            return ['non_letti' => true, 'aggiornati_il' => $segno, ...$chi, 'sessione_il' => $segno];
         }
 
         if ($dati === null) {

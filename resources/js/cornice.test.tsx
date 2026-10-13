@@ -3734,7 +3734,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
-    // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è ancora a schermo. Se intanto una visita ha portato chi è entrato
+    // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);

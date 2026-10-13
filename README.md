@@ -1242,7 +1242,10 @@ Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non 
 portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi
 c'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l'elenco
 delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Se chi ha risposto è una
-terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è sua.
+terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
+quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
+su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
+smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
 lette» in corso. Niente di chi è entrato va a schermo.
@@ -1350,17 +1353,19 @@ Che cosa vede la persona:
   sola ne vale due, parte, e la rotta la rifiuta con un 422;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
-  sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;
+  sessione è passata a lei fra le due richieste), o di un altro workspace, la cornice si rifà, e la pagina con lei;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
-  `['non_letti' => true]` col segno di quell'istante (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
+  `['non_letti' => true]` col segno della lettura (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
   li tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
   `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione in quell'istante,
   come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
-  `sessione_il` è l'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita: un
-  `non_letti` arrivato tardi non vale sopra i dati di chi è entrato mentre il backoffice non rispondeva. Se fra
+  I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
+  e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l'istante del fallimento) — anche quando
+  io.mostra l'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i
+  dati di chi è entrato mentre il backoffice non rispondeva. Se fra
   `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
   sua lingua, e non quelli di chi c'era prima: la cornice si rifà, e la pagina con lei — ciò che la persona stava
   scrivendo si perde, come per un `dopo` di un'altra persona —, e lo stesso con un `non_letti` di un altro workspace.
