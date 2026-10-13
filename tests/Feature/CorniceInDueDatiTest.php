@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
@@ -58,7 +59,7 @@ it('senza sessione, o con la sessione aperta ma senza workspace, Cornice::subito
     Http::assertNothingSent();
 });
 
-it('Cornice::dopo() dà ciò che Cornice::dati() legge dal backoffice — prodotti, aziende, non lette e il segno, in quest\'ordine — e prima il workspace di cui sono, senza lingua e persona, con le letture di sempre (sprint 34 · T4.2; review della PR #67, R6)', function () {
+it('Cornice::dopo() dà ciò che Cornice::dati() dà, nello stesso ordine e con le letture di sempre — chi ha letto (lingua e persona), il workspace di cui sono, prodotti, aziende, non lette e il segno — e in fondo sessione_il, l\'istante in cui quella persona è stata letta (sprint 34 · T4.2; review della PR #67, R6; sprint 37 · T2.3)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato();
@@ -66,10 +67,33 @@ it('Cornice::dopo() dà ciò che Cornice::dati() legge dal backoffice — prodot
     $dopo = Cornice::dopo();
 
     // Le letture di una Cornice::dati(): una per metodo, e i workspace sulle loro due pagine. dopo() non ne aggiunge.
-    expect($dopo)->toBe(array_diff_key(datiAttesi('2026-10-09T21:31:05.123456Z'), ['lingua' => true, 'persona' => true]))
-        ->and(array_keys((array) $dopo))->toBe(['workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il'])
+    expect($dopo)->toBe([...datiAttesi('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z'])
+        ->and(array_keys((array) $dopo))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il', 'sessione_il'])
         ->and(((array) $dopo)['workspace'])->toBe(((array) Cornice::subito())['workspace'])
         ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
+});
+
+it('Cornice::dopo() dice di chi sono i dati che dà: se fra la subito() di una pagina e la sua dopo() nella sessione entra un\'altra persona, dopo() porta nome, email e lingua di questa, le sue non lette e l\'istante della sua lettura; la subito() di prima resta di chi c\'era (sprint 37 · T2.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    $ioDiGrace = ioMostra(9);
+    $ioDiGrace['data']['utente'] = $grace;
+    backofficeDiChiHaAccettato(['/v1/io' => $ioDiGrace]);
+
+    $subito = Cornice::subito();
+    // Dallo stesso browser entra un'altra persona, nello stesso workspace, prima che la richiesta rimandata parta.
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000001', 'UTC'));
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
+    $dopo = (array) Cornice::dopo();
+
+    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'])
+        ->and($subito['sessione_il'] ?? null)->toBe('2026-10-09T21:31:05.123456Z')
+        ->and($dopo['persona'] ?? null)->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'])
+        ->and($dopo['lingua'] ?? null)->toBe('it')
+        ->and($dopo['non_lette'] ?? null)->toBe(9)
+        ->and($dopo['sessione_il'] ?? null)->toBe('2026-10-09T21:31:09.000001Z')
+        ->and($dopo['aggiornati_il'] ?? null)->toBe('2026-10-09T21:31:09.000001Z');
 });
 
 it('dopo una Cornice::dopo() la lingua e il nome di Cornice::subito() sono quelli che io.mostra ha dato: prima erano quelli dell\'ingresso (sprint 34 · T4.10)', function () {
@@ -127,13 +151,13 @@ it('con la sessione che scade mentre la cornice legge, GettoneRifiutato passa da
     expect(fn () => Cornice::dopo())->toThrow(GettoneRifiutato::class);
 });
 
-it('davanti al 403 accettazione_richiesta Cornice::dopo() dà i dati ridotti di Cornice::dati(), senza lingua e persona: il workspace, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; mai non_letti, e nessun avviso nel log (sprint 34 · T4.2, T4.7)', function (string $percorso) {
+it('davanti al 403 accettazione_richiesta Cornice::dopo() dà i dati ridotti di Cornice::dati() — chi ha letto, il workspace, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta — e in fondo sessione_il: anche ridotti dicono di chi sono; mai non_letti, e nessun avviso nel log (sprint 34 · T4.2, T4.7; sprint 37 · T2.3)', function (string $percorso) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
     backofficeDiChiHaAccettato([$percorso => accettazioneRichiesta()]);
 
-    expect(Cornice::dopo())->toBe(['workspace' => datiAttesi('2026-10-09T21:31:05.123456Z')['workspace'], 'prodotti' => [], 'aziende' => [], 'non_lette' => 0, 'aggiornati_il' => '2026-10-09T21:31:05.123456Z', 'accettazione_richiesta' => true])
+    expect(Cornice::dopo())->toBe([...datiRidotti('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z'])
         ->and(avvisiDellaRiga())->toBe([]);
 })->with(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace']);
 
