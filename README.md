@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 53,9 KB | 18,0 KB | 36,0 KB | 5,9 KB |
-| la cornice e due componenti per nome | 57,1 KB | 19,1 KB | 36,0 KB | 5,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,0 KB | 37,2 KB | 36,0 KB | 5,9 KB |
+| solo la cornice, dall'ingresso per le app | 53,9 KB | 18,0 KB | 37,0 KB | 5,9 KB |
+| la cornice e due componenti per nome | 57,1 KB | 19,1 KB | 37,0 KB | 5,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,0 KB | 37,2 KB | 37,0 KB | 5,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -97,8 +97,9 @@ della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifi
 con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con
-gzip, cioè 18 KB. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
+tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.486 byte con
+gzip. Sono 18 KB più 54 byte: dalla `v2.3.0` la cornice si rifà quando cambia la persona (17 byte) e con Indietro non riporta
+a schermo chi c'era prima (37), e quei byte sono ciò che costano quelle due sole correzioni. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -548,11 +549,15 @@ cornice === null ? pagina : (
   scheda, e `risorsa_nome` è il titolo della scheda. Dalla `v1.16.0` ha un titolo anche la notifica che Project
   Management manda a chi viene menzionato in un commento: «Ti hanno menzionato in un commento». Non è un evento nemmeno
   lei: il suo `tipo` è `board.commento.menzione`, senza `com.zeiras.` davanti, e la chiave del titolo è
-  `notificationTitle.board.commento.menzione`. Con lei i titoli sono 42: i 36 tipi di evento del contratto, i cinque
+  `notificationTitle.board.commento.menzione`. Con lei i titoli erano 42: i 36 tipi di evento del contratto, i cinque
   «assegnata» e la menzione. Anche lei è nel contratto dal 12/10/2026: `app` `pm`, nei `dati` l'`id` della scheda e
   `commento_id`, l'id del commento, mai il testo, e `risorsa_nome` è il titolo della scheda. Dal 12/10/2026 il contratto
   ha 37 tipi di evento: il trentasettesimo, `com.zeiras.crm.persona.anonimizzata` (un contatto reso anonimo), non genera
-  notifiche e non ha un titolo. I titoli restano 42: 36 tipi di evento, i cinque «assegnata» e la menzione. Di che prodotto è
+  notifiche e non ha un titolo. I titoli restavano 42: 36 tipi di evento, i cinque «assegnata» e la menzione. Dalla `v2.3.0`
+  hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM:
+  `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita
+  modificato». Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la
+  menzione. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -612,7 +617,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantaquattro tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
@@ -762,7 +767,8 @@ cornice === null ? pagina : (
   tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
   dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
   tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
-  ha una anche una menzione in un commento), le mancano gli id di ogni percorso del suo tipo, o il
+  ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
+  non ne hanno una: il CRM non ha ancora detto che pagina aprono), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
@@ -1172,12 +1178,53 @@ Che cosa vede la persona:
   caricamento, non in quello d'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando,
   senza «Riprova». Se la cornice ha già i dati di quel workspace, da una pagina di prima, restano quelli finché non
   arrivano i nuovi; dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione
-  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Il resto di ciò che la cornice tiene è
-  del workspace, non della persona: aziende e workspace, moduli, il numero delle non lette, l'elenco delle notifiche già
-  aperto e i risultati di una ricerca restano a schermo sotto il nome nuovo, finché `dopo` non arriva. Una pagina ripresa
-  dalla cronologia con Indietro porta il `subito` di allora: il menu del profilo mostra la persona di quella pagina, e la
-  mostra anche dopo, sopra i dati di adesso, se il `dopo` che arriva è stato letto di nuovo; torna quella di adesso alla
-  visita dopo, o subito se anche il `dopo` è quello di allora (valgono i dati che la cornice ha già). Senza avviso la pagina tiene la sua
+  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Dalla `v2.3.0` ciò che la cornice tiene è
+  della persona che lo ha visto, e la persona è la sua email: se `subito` dice un'altra email sullo stesso workspace — la
+  sessione è passata a un'altra persona da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con
+  lei, come quando cambia il workspace. Riparte ridotta come a un primo caricamento: nessuna azienda, nessun modulo e
+  nessun numero di non lette di chi c'era prima, e nemmeno il suo elenco delle notifiche, i suoi risultati e la parola che
+  aveva scritto nella ricerca. Con la stessa email e un altro nome o un'altra lingua i dati che ci sono restano, come
+  prima. Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout: un'altra email rifà la cornice. Una pagina ripresa
+  dalla cronologia con Indietro porta il `subito` di allora: dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il
+  segno dell'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la
+  persona. Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo`
+  letto di nuovo. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
+  chi è entrato, e se li sta ancora aspettando la cornice resta ridotta fino alla visita dopo, perché Inertia un `dopo` che
+  la voce ha già non lo richiede. Questo vale sullo stesso workspace. Fra due workspace il layout rifà la cornice, che così
+  non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati
+  (chi monta `Cornice` senza il layout questo limite non lo ha: lì i dati di una pagina più vecchia di un'altra persona non
+  valgono in nessun workspace). Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e
+  sta sotto nome ed email di allora. Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
+  pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
+  capo non sa chi c'era, e una
+  pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia
+  lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato. E
+  `dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un'altra persona, tiene i
+  dati di quella sotto il `subito` di allora; se poi la sessione torna a chi c'era, con Indietro su quella voce li vede
+  sotto il proprio nome. Il contenuto
+  della pagina, poi, la cornice non lo tocca mai: con Indietro è quello di allora anche se la persona è cambiata. Per
+  questo all'uscita il frontend toglie la cronologia: con la cronologia cifrata di Inertia (`inertia.history.encrypt` a
+  `true`, o `Inertia::encryptHistory()` nella richiesta; serve HTTPS) la risposta dell'uscita chiama
+  `Inertia::clearHistory()`, e una voce di prima non si legge più: Inertia la richiede alla parte server, che risponde con
+  la sessione di adesso:
+
+  ```php
+  // config/inertia.php
+  'history' => ['encrypt' => true],
+
+  // la rotta dell'uscita, chiusa la sessione
+  Inertia::clearHistory();
+
+  return redirect('/');
+  ```
+
+  La cronologia che si toglie è quella della scheda che riceve la risposta dell'uscita: la chiave con cui Inertia la cifra
+  sta nel `sessionStorage` di quella scheda, e il client la toglie quando gli arriva una pagina di Inertia col segnale.
+  Se l'uscita rimanda a una pagina che non è di Inertia (l'ingresso), il segnale arriva con la prima pagina di Inertia
+  servita dopo: provalo nel tuo frontend prima di contarci. In una scheda rimasta aperta mentre la sessione cambia da
+  un'altra la
+  cronologia resta leggibile: lì vale solo ciò che la cornice fa da sé, e il contenuto delle pagine di prima resta.
+  Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
   sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte

@@ -3320,6 +3320,7 @@ function nomiDiAltriNellaGuida(): array
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
         'Inertia::defer' => 'Inertia, dal server',
+        'Inertia::clearHistory' => 'Inertia, dal server',
         'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
@@ -3806,7 +3807,7 @@ it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi vien
 // punto «Le notifiche», coi titoli che ora sono 42 e ciò che ne dice il contratto; dove si apre, e che l'id del commento non
 // entra nell'indirizzo; la quarta riga del registro. `MODULO-NUOVO.md` la porta accanto alla scheda assegnata.
 
-it('il README dice, dalla v1.16.0, il titolo, il tipo e la chiave della notifica a chi viene menzionato in un commento, che i titoli sono 42, che cosa ne dice il contratto, che un clic apre la scheda e non porta l\'id del commento, e la quarta riga del registro (sprint 26 · T6.3)', function (string $dove, string $frase) {
+it('il README dice, dalla v1.16.0, il titolo, il tipo e la chiave della notifica a chi viene menzionato in un commento, che con lei i titoli erano 42, che cosa ne dice il contratto, che un clic apre la scheda e non porta l\'id del commento, e la quarta riga del registro (sprint 26 · T6.3)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^- \*\*Le notifiche\*\* .*?(?=^- \*\*|\z)/ms', $readme, $punto);
     $testo = $dove === 'punto' ? suUnaRiga($punto[0] ?? '') : suUnaRiga($readme);
@@ -3816,7 +3817,8 @@ it('il README dice, dalla v1.16.0, il titolo, il tipo e la chiave della notifica
 })->with([
     'il titolo' => ['punto', 'Dalla `v1.16.0` ha un titolo anche la notifica che Project Management manda a chi viene menzionato in un commento: «Ti hanno menzionato in un commento»'],
     'il tipo senza `com.zeiras.` davanti, e la chiave' => ['punto', 'Non è un evento nemmeno lei: il suo `tipo` è `board.commento.menzione`, senza `com.zeiras.` davanti, e la chiave del titolo è `notificationTitle.board.commento.menzione`'],
-    'quanti sono i titoli' => ['punto', 'Con lei i titoli sono 42: i 36 tipi di evento del contratto, i cinque «assegnata» e la menzione'],
+    // Sprint 36 · T5: coi motivi di perdita del CRM i titoli sono 44, e i 42 passano al passato.
+    'quanti sono i titoli' => ['punto', 'Con lei i titoli erano 42: i 36 tipi di evento del contratto, i cinque «assegnata» e la menzione'],
     'che cosa ne dice il contratto' => ['punto', 'Anche lei è nel contratto dal 12/10/2026: `app` `pm`, nei `dati` l\'`id` della scheda e `commento_id`, l\'id del commento, mai il testo, e `risorsa_nome` è il titolo della scheda'],
     'dove si apre' => ['punto', 'Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso indirizzo: l\'id è quello della scheda, e `commento_id` non entra nell\'indirizzo, perché Project Management non ha una pagina che porti dritto a un commento'],
     'i tipi con una destinazione' => ['punto', 'non hanno una destinazione; dalla `v1.16.0` ne ha una anche una menzione in un commento'],
@@ -3837,7 +3839,7 @@ it('il README non dice più che il contratto non elenca la notifica a chi viene 
         ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
 });
 
-it('il README non dice più che i titoli sono 40, né che sono 41, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3)', function () {
+it('il README non dice più che i titoli sono 40, né che sono 41 o 42, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3; sprint 36 · T5.4)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
 
@@ -3845,7 +3847,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, né che le sc
         ->and(substr_count($readme, 'i titoli erano 40'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 41'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 41'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 42'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 42'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 42'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 44'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4164,7 +4168,7 @@ it('i codici e i ruoli che il README dice per un membro sono quelli del registro
 // che non genera notifiche: non ha un titolo, e i titoli restano 42. Il README lo dice nel punto «Le notifiche», e nessuna
 // lingua ha quel titolo.
 
-it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il trentasettesimo non genera notifiche e non ha un titolo, e che i titoli restano 42; ogni lingua ha 42 titoli, e nessuno per quel tipo (sprint 27 · T3.2)', function () {
+it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il trentasettesimo non genera notifiche e non ha un titolo, e che i titoli restavano 42; dalla v2.3.0 ogni lingua ha 44 titoli, e nessuno per quel tipo (sprint 27 · T3.2; sprint 36 · T5.4)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $punto = puntoDelleNotifiche($readme);
     $titoli = [];
@@ -4174,14 +4178,30 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
 
     expect(str_contains($punto, 'uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal 12/10/2026 e che non genera notifiche (più sotto)'))->toBe(true)
         ->and(str_contains($punto, 'Dal 12/10/2026 il contratto ha 37 tipi di evento: il trentasettesimo, `com.zeiras.crm.persona.anonimizzata` (un contatto reso anonimo), non genera notifiche e non ha un titolo'))->toBe(true)
-        ->and(str_contains($punto, 'I titoli restano 42: 36 tipi di evento, i cinque «assegnata» e la menzione'))->toBe(true)
-        // Il conto non cambia: nessuna frase lo porta a 43, né dà un titolo a tutti e 37.
-        ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(1)
+        ->and(str_contains($punto, 'I titoli restavano 42: 36 tipi di evento, i cinque «assegnata» e la menzione'))->toBe(true)
+        // Quel tipo non cambia il conto: nessuna frase lo porta a 43, né dà un titolo a tutti e 37.
+        ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 42, 'es' => 42, 'it' => 42])
+        ->and(array_map('count', $titoli))->toBe(['en' => 44, 'es' => 44, 'it' => 44])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
+
+// Sprint 36 · T5 (voce #1970): dal 13/10/2026 il contratto ha due tipi di evento in più, i motivi di perdita del CRM creati o
+// modificati. Dalla `v2.3.0` hanno un titolo e la frase con solo chi, e nessuna destinazione: i titoli sono 44, e i 42 passano
+// al passato. Il README lo dice nel punto «Le notifiche».
+
+it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi loro titoli, che il contratto ha 39 tipi di evento e i titoli sono 44, e che non hanno una destinazione (sprint 36 · T5.4)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
+        ->and(substr_count(suUnaRiga($readme), 'i titoli sono 44'))->toBe(1)
+        ->and(substr_count(suUnaRiga($readme), 'i titoli erano 42'))->toBe(1);
+})->with([
+    'i due tipi e i titoli' => ['Dalla `v2.3.0` hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM: `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita modificato»'],
+    'quanti sono i titoli' => ['Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la menzione'],
+    'nessuna destinazione' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, non ne hanno una: il CRM non ha ancora detto che pagina aprono'],
+]);
 
 // Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
 // README lo dice nel punto «La ricerca», nella riga della rotta (di un'opportunità passa anche `esito`, com'è arrivato) e nel
@@ -4960,8 +4980,11 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
     'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
-    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con gzip, cioè 18 KB. Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
+    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
+    // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
+    // Indietro, 54 in tutto.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.486 byte con gzip. Sono 18 KB più 54 byte'],
+    'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
@@ -5155,7 +5178,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantaquattro tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
@@ -5231,6 +5254,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 35 · T4.3 (voce #1945): in attesa campanella e ricerca caricano (T1), e la persona è quella di `subito` (T2).
     'in attesa' => ['readme', 'Dalla `v2.2.0` campanella e ricerca sono nello stato di caricamento, non in quello d\'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando, senza «Riprova»'],
     'la persona in attesa' => ['readme', 'dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione è cambiata da un\'altra scheda, il menu del profilo non mostra chi c\'era prima'],
+    // Sprint 36 · T2 (voce #1968): ciò che la cornice tiene è della persona, e con un'altra email la cornice si rifà.
+    'un\'altra persona' => ['readme', 'Dalla `v2.3.0` ciò che la cornice tiene è della persona che lo ha visto, e la persona è la sua email'],
+    'un\'altra persona: si rifà' => ['readme', 'la cornice si rifà, e la pagina con lei, come quando cambia il workspace. Riparte ridotta come a un primo caricamento'],
+    'la stessa email' => ['readme', 'Con la stessa email e un altro nome o un\'altra lingua i dati che ci sono restano'],
+    'un\'altra persona: senza il layout' => ['readme', 'Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout'],
+    'la guida: un\'altra persona' => ['guida', 'se quella persona ha un\'altra email rispetto a chi c\'era prima, la cornice si rifà e la tua pagina con lei'],
     'i due tipi' => ['readme', 'I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e `resources/js/app`)'],
     'quando arriva' => ['readme', 'la pagina non si rimonta: ciò che la persona stava scrivendo in un campo, il fuoco e lo scorrimento restano'],
     'non letti' => ['readme', "`Cornice::dopo()` non lancia: dà `['non_letti' => true]`"],
@@ -5245,6 +5274,23 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: parte da sola quando `dopo` è arrivato — l\'ultima di almeno due caratteri che l\'`AppShell` ha dato alla cornice —, e non parte se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
     'la parola cancellata in attesa' => ['readme', 'una parola cancellata prima dell\'arrivo viene cercata lo stesso, con l\'invito sotto il campo vuoto'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
+    // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
+    'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
+    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo` letto di nuovo'],
+    'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
+    'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
+    // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
+    'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],
+    'Indietro: fra due workspace' => ['readme', 'Fra due workspace il layout rifà la cornice, che così non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati'],
+    'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
+    'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
+    // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
+    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto nome ed email di allora'],
+    'Indietro: dopo non dice di chi è' => ['readme', '`dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un\'altra persona, tiene i dati di quella sotto il `subito` di allora'],
+    'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
+    'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
+    'la guida: Indietro fra due workspace' => ['guida', 'una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
+    'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
     'il frontend può dirlo da sé' => ['readme', '`dopo={{ non_letti: true }}`'],
@@ -5278,6 +5324,23 @@ it('il README non dice più che in Chromium il pezzo della campanella non si ric
 })->with([
     'il browser non lo richiede' => ['il browser il pezzo non lo richiede'],
     'l\'errore resta' => ['e l\'errore resta fino al ricaricamento'],
+]);
+
+// Sprint 36 · T2 (voce #1968): con un'altra email la cornice si rifà, e il README non dice più che ciò che tiene è del workspace.
+it('il README non dice più che ciò che la cornice tiene resta a schermo sotto il nome di un\'altra persona (sprint 36 · T2)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'è del workspace' => ['del workspace, non della persona'],
+    'sotto il nome nuovo' => ['restano a schermo sotto il nome nuovo'],
+]);
+
+// Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.
+it('README e guida non dicono più che con Indietro il menu del profilo mostra la persona di allora (sprint 36 · T3.4)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
+    'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

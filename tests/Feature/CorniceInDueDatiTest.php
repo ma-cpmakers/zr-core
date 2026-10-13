@@ -28,7 +28,8 @@ function nonRisponde(int $stato, ?string $codice): mixed
     };
 }
 
-it('Cornice::subito() dà lingua, persona e workspace della sessione, in quest\'ordine e nient\'altro, senza una richiesta al backoffice e lasciando la sessione com\'è (sprint 34 · T4.1)', function () {
+it('Cornice::subito() dà lingua, persona e workspace della sessione e in fondo il segno di quell\'istante, in quest\'ordine e nient\'altro, senza una richiesta al backoffice e lasciando la sessione com\'è (sprint 34 · T4.1; sprint 36 · T3.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     // Se subito() leggesse io.mostra ci troverebbe una lingua e un nome nuovi, e li metterebbe nella sessione.
     backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
     sessioneAMano(marketing());
@@ -38,6 +39,7 @@ it('Cornice::subito() dà lingua, persona e workspace della sessione, in quest\'
         'lingua' => 'en',
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
     ])->and(session(Sessione::CHIAVE))->toBe($prima);
     Http::assertNothingSent();
 });

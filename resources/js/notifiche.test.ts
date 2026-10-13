@@ -186,6 +186,14 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'crm', tipo, ids: {} }, { crm: 'in_arrivo' })).toBeUndefined();
     });
 
+    // Sprint 36 · T5.3 (voce #1970): i motivi di perdita del CRM hanno un titolo, non una destinazione: zr-crm non ha ancora detto
+    // che pagina aprono, e la riga non apre il CRM a tentoni, nemmeno con un id.
+    it.each([['com.zeiras.crm.motivo.creato'], ['com.zeiras.crm.motivo.modificato']])('una notifica di un motivo di perdita, di tipo «%s», non ha una destinazione, con o senza id (sprint 36 · T5.3)', (tipo) => {
+        expect(apre({ app: 'crm', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-motivo-1' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo })).toBeUndefined();
+    });
+
     // Sprint 24 · T3 (voce #1748). Project Management ha le sue prime destinazioni: una scheda nuova, modificata o assegnata a
     // chi riceve la notifica apre la pagina della scheda in zr-board, `/c/<id>` dopo `/w/<slug>` (zr-board, nota 10451 del #95:
     // quella pagina legge la scheda e rimanda al suo dettaglio nella board). «assegnata» non è un evento: arriva senza

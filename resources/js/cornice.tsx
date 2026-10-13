@@ -56,6 +56,13 @@ export interface DatiDellaCornice {
      */
     aggiornati_il?: string | undefined;
     /**
+     * Il segno della sessione: l'istante in cui la parte server ha letto lingua e persona dalla sessione, in `Cornice::subito()`
+     * (dalla `v2.3.0`). Dice alla cornice se la persona della pagina è più vecchia di quella che mostra: una voce della
+     * cronologia ripresa con Indietro porta il `subito` di allora, e non riporta a schermo chi c'era allora. Nei dati interi
+     * di `Cornice::dati()` non c'è, e lì vale il segno della lettura.
+     */
+    sessione_il?: string | undefined;
+    /**
      * `true` se la persona non ha ancora accettato i documenti legali in vigore (dalla `v1.14.0`): la parte server lo dice
      * quando il backoffice le risponde 403 `accettazione_richiesta`, e allora `prodotti` e `aziende` sono vuoti e le non lette
      * zero perché non li ha potuti leggere, non perché non ci siano. La cornice esce ridotta, con l'avviso che porta alla
@@ -76,9 +83,9 @@ export interface DatiDellaCornice {
 }
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
-export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace'>;
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
 /** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha risposto. */
-export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa'>>;
+export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa' | 'sessione_il'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
 export interface GruppoDiVoci {
@@ -365,17 +372,6 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
 }
 
-/**
- * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
- * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
- * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`.
- */
-function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
-    const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
-
-    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa : diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli);
-}
-
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
 interface Saputo {
     con: DatiDellaCornice;
@@ -411,8 +407,8 @@ const TETTO_DEL_FRENO = 60;
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
  * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
- * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
- * stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
+ * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da quella dei dati tenuti (`Cornice`): lì, fra due dati
+ * con lo stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
  */
 function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): boolean {
     if (saputo === undefined || dati.workspace.slug !== saputo.con.workspace.slug) {
@@ -493,21 +489,49 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
  */
 const inUnAltroWorkspace: DatiDellaCornice['prodotti'] = Object.fromEntries(registro.filter((voce) => voce.id !== 'home').map((voce) => [voce.id, 'disponibile']));
 
-export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps) {
+export function Cornice(props: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
-    // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
-    // loro segno dice che sono stati letti prima: allora restano quelli che ci sono. Con lo stesso segno vale la pagina, come
-    // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
-    // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
-    const [tenuti, setTenuti] = useState(dellaPagina);
-    const dati = lettiPrima(dellaPagina, tenuti) ? tenuti : dellaPagina;
+    // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono stati letti prima di quelli
+    // tenuti (sotto). Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per
+    // un render.
+    const [tenuti, setTenuti] = useState(props.dati);
+
+    // Chi è entrato e la sua lingua li dice la pagina: la persona può aver cambiato nome o lingua da un'altra scheda, o la sessione
+    // può essere passata a un'altra. Tranne quando la pagina è più vecchia di chi la cornice mostra: lo dice il segno della
+    // sessione (`sessione_il`, o quello della lettura nei dati interi), e allora resta chi c'è. Con Indietro la voce della
+    // cronologia porta il `subito` di allora, anche quando il suo `dopo` è riletto: senza questo tornerebbero nome ed email di
+    // chi c'era allora. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    const [mostrato, setMostrato] = useState(props.dati);
+    const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+    const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
+
+    // La pagina è della persona mostrata fin qui (la stessa email), o i suoi dati sono stati letti dopo la sessione di chi la
+    // cornice mostra (il `dopo` che Inertia richiede quando alla voce manca: è di chi è entrato, sotto il `subito` di allora).
+    // Allora sono letti prima di quelli tenuti se sono dello stesso workspace e, col segno da tutte e due le parti, il loro è
+    // più indietro; con lo stesso segno no: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
+    // Senza un segno da una parte, o fra due workspace, non si può dire, e vale la pagina: un confronto con `undefined` è sempre
+    // falso. Dei dati `in_attesa` lasciano quelli tenuti, se questi non lo sono. Altrimenti la pagina è di un'altra persona:
+    // se è lei a essere entrata adesso valgono i suoi dati, ridotti come sono; se è più vecchia di chi la cornice mostra
+    // (Indietro) i suoi dati sono quelli di allora e non valgono, nemmeno quando la voce della cronologia li porta interi e chi
+    // è entrato aspetta ancora i propri. Restano i tenuti, che sono di chi è entrato.
+    const dati = (props.dati.persona.email === mostrato.persona.email || segno(props.dati.aggiornati_il)! > della(mostrato) ? tenuti.workspace.slug === props.dati.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }
-    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la sessione può essere
-    // cambiata da un'altra scheda, e il menu del profilo non mostra la persona di prima. Fuori dall'attesa vale il segno.
-    const { lingua, persona } = dellaPagina.in_attesa ? dellaPagina : dati;
+    if (chi !== mostrato) {
+        setMostrato(chi);
+    }
+
+    // La `key` è l'email di chi è entrato: ciò che la cornice tiene (i dati di prima, l'elenco delle notifiche, la ricerca coi suoi
+    // risultati e la sua parola, i pannelli aperti) è della persona che lo ha visto. Se la sessione passa a un'altra sullo stesso
+    // workspace — da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con lei: niente di chi c'era prima
+    // resta sotto il nome nuovo, nemmeno per un disegno. Sta qui e non nel layout: vale anche per chi monta `Cornice` da sé.
+    return <DiUnaPersona key={chi.persona.email} {...props} dati={dati} chi={chi} />;
+}
+
+/** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
+function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -615,8 +639,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const [inCorso, setInCorso] = useState(false);
     const [neRestano, setNeRestano] = useState<Saputo>();
     const ultimaRichiesta = useRef(0);
-    // Con l'elenco partono le frasi delle notifiche della lingua dei dati (`caricaFrasi`): non stanno nel JS d'ingresso, e alla
-    // prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
+    // Con l'elenco partono le frasi delle notifiche della lingua di chi è entrato adesso (`caricaFrasi`; in attesa non è quella
+    // dei dati tenuti): non stanno nel JS d'ingresso, e alla prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
     // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
@@ -628,7 +652,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
         const chiesto = caricaNotifiche();
         chiesto.catch(seDaAccettare);
-        const frasi = caricaFrasi(questi.lingua);
+        const frasi = caricaFrasi(lingua);
         frasi.catch(() => undefined);
         chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
             ({ elenco, il, workspace }) => {

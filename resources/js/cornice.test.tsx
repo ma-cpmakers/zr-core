@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, Fragment, useEffect, type ReactElement } from 'react';
+import { act, Fragment, useEffect, useLayoutEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
@@ -408,27 +408,207 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
-    it('coi dati `in_attesa`, se la cornice ha già i dati di quel workspace, il menu del profilo e la lingua sono quelli dei dati nuovi; moduli, aziende e workspace restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1)', async () => {
+    it('coi dati `in_attesa` della stessa persona (la stessa email), se la cornice ha già i dati di quel workspace, il nome e la lingua sono quelli dei dati nuovi; moduli, aziende, workspace e non lette restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1; sprint 36 · T2.4)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
-        await mostra(<Cornice dati={{ ...dati, aziende, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        const rinominata = { nome: 'Augusta King', email: dati.persona.email };
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         const quante = etichette().length;
 
         // Fuori dall'attesa vale il segno: i dati letti prima non portano nemmeno la loro persona.
         await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, aggiornati_il: '2026-10-13T07:59:59.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
-        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
-        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        // In attesa: la persona ha cambiato nome e lingua da un'altra scheda, e `subito` porta quelli di adesso.
+        await mostra(<Cornice dati={{ lingua: 'es', persona: rinominata, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
 
         expect(etichette()).toHaveLength(quante);
         expect(etichette()).toContain('Gestión de proyectos');
         expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
         expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
         expect(uno('aside.zr-side')?.textContent).not.toContain('Otro nombre');
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(rinominata.nome);
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([rinominata.nome, rinominata.email]);
+    });
+
+    it('coi dati `in_attesa` di un\'altra persona (un\'altra email), anche se la cornice ha già i dati di quel workspace, la cornice è quella ridotta di un primo caricamento: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima, e il menu del profilo dice chi è entrato (sprint 36 · T2.1)', async () => {
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).toContain('CRM');
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+
+        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        expect(etichette()).not.toContain('CRM');
+        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
+        expect(uno('aside.zr-side')?.textContent).toContain('Otro nombre');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
+    it('senza il layout, dei dati `in_attesa` con la sessione letta prima di quella di chi la cornice mostra (Indietro) non riportano la persona di allora: avatar, menu, moduli e non lette restano di chi è entrato adesso, anche quando arrivano i dati riletti con la persona di allora; della stessa persona non torna il nome di prima (sprint 36 · T3.1, T3.2)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const diAdesso: ColSegno = { ...dati, lingua: 'es', persona: altra, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: '2026-10-13T08:00:03.000000Z', aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const indietro: ColSegno = { lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: diPrima.sessione_il };
+        const riletti: ColSegno = { ...diAdesso, lingua: dati.lingua, persona: dati.persona, non_lette: 3, sessione_il: diPrima.sessione_il, aggiornati_il: '2026-10-13T08:00:06.000000Z' };
+        const diChiEEntrato = (nome: string) => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(etichette()).toContain('Gestión de proyectos');
+            expect(uno('.zr-ws-switch')).toBeNull();
+        };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        await mostra(<Cornice dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato(altra.nome);
+
+        await mostra(<Cornice dati={indietro} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato(altra.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        await mostra(<Cornice dati={riletti} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato(altra.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+
+        // La stessa persona, che intanto ha cambiato nome: una sessione letta dopo lo porta, quella di prima non lo riporta indietro.
+        const rinominata: ColSegno = { ...indietro, lingua: 'es', persona: { nome: 'Augusta Ada King', email: altra.email }, sessione_il: '2026-10-13T08:00:08.000000Z' };
+        await mostra(<Cornice dati={rinominata} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato('Augusta Ada King');
+        const colNomeDiPrima: ColSegno = { ...rinominata, persona: altra, sessione_il: diAdesso.sessione_il };
+        await mostra(<Cornice dati={colNomeDiPrima} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato('Augusta Ada King');
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+    });
+
+    it('senza il layout il verso in avanti resta anche coi segni: dei dati `in_attesa` con la sessione letta dopo e un\'altra persona la mostrano da subito, e la cornice riparte ridotta (sprint 36 · T3.3)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const diAdesso: ColSegno = { lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+
+        await mostra(<Cornice dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).not.toContain('CRM');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
+
+        // Un segno che non ha la forma di quelli della parte server vale come nessun segno: vale la pagina.
+        const senzaForma: ColSegno = { ...diAdesso, lingua: dati.lingua, persona: dati.persona, sessione_il: '2026-10-13' };
+        await mostra(<Cornice dati={senzaForma} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+    });
+
+    it('senza il layout, con Indietro su una pagina intera di chi c\'era prima mentre chi è entrato è ancora in attesa, i dati di allora non valgono: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima sotto il nome di adesso, né a quel disegno né alla visita dopo; poi arrivano i suoi (sprint 36 · T6, R1)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const inAttesa: ColSegno = { lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const ridottaDiChiEEntrato = () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(etichette()).not.toContain('CRM');
+            expect(uno('.zr-ws-switch')).toBeNull();
+            expect(uno('.zr-bell-count')).toBeNull();
+        };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).toContain('CRM');
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        await mostra(<Cornice dati={inAttesa} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        // Indietro: la voce della cronologia porta la pagina di allora intera, col suo `dopo`, e niente si richiede.
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        // Una visita dopo, ancora in attesa: fra i dati tenuti non c'è niente di chi c'era prima.
+        await mostra(<Cornice dati={{ ...inAttesa }} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        await mostra(<Cornice dati={{ ...dati, lingua: 'es', persona: altra, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: inAttesa.sessione_il, aggiornati_il: '2026-10-13T08:00:04.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
+    it('senza il layout, con Indietro su una pagina di chi c\'era prima in un altro workspace i dati di allora non valgono: sotto il nome di adesso restano workspace, moduli e non lette di adesso (sprint 36 · T6, R2)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const diAdesso: ColSegno = { ...dati, lingua: 'es', persona: altra, workspace: { nome: 'Otro espacio', slug: 'otro-espacio' }, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: '2026-10-13T08:00:03.000000Z', aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const diChiEEntrato = () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(uno('aside.zr-side')?.textContent).toContain('Otro espacio');
+            expect(uno('.zr-ws-switch')).toBeNull();
+            expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        await mostra(<Cornice dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato();
+
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato();
+    });
+
+    it('quando la persona cambia nessun disegno porta i dati di chi c\'era prima sotto il nome nuovo, nemmeno uno: lo guarda la pagina a ogni disegno (sprint 36 · T6, R7)', async () => {
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const visti: string[] = [];
+        // A ogni disegno, col DOM già scritto: chi dice l'avatar, il numero di non lette, il selettore.
+        function Spia() {
+            useLayoutEffect(() => {
+                visti.push(`${uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')} · ${uno('.zr-bell-count')?.textContent ?? 'nessun numero'} · ${uno('.zr-ws-switch') ? 'selettore' : 'nessun selettore'}`);
+            });
+
+            return null;
+        }
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
+        expect(visti.at(-1)).toBe(`${dati.persona.nome} · 4 · selettore`);
+
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
+        const diAltra = visti.filter((visto) => visto.startsWith(altra.nome));
+        expect(diAltra).not.toHaveLength(0);
+        expect([...new Set(diAltra)]).toStrictEqual([`${altra.nome} · nessun numero · nessun selettore`]);
+        expect(visti.at(-1)).toBe(diAltra[0]);
+    });
+
+    it('i due limiti di Indietro che il README dichiara: dei dati senza `sessione_il` valgono come una pagina nuova e portano la loro persona, e una cornice montata da capo non sa chi aveva mostrato (sprint 36 · T6, R12)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il?: string };
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: ColSegno = { ...diPrima, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+        await mostra(<Cornice key="1" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice key="1" dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice key="1" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(altra.nome);
+
+        // Il primo limite: il segno manca, e vale la pagina.
+        await mostra(<Cornice key="1" dati={{ ...diPrima, sessione_il: undefined }} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(dati.persona.nome);
+
+        // Il secondo: la cornice si monta da capo, e la pagina di allora è la prima che vede.
+        await mostra(<Cornice key="1" dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(altra.nome);
+        await mostra(<Cornice key="2" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(dati.persona.nome);
     });
 
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
@@ -1999,6 +2179,17 @@ describe('il pannello delle notifiche', () => {
         expect(await apertiDalPannello(dati, prodotto, elenco, dellElenco)).toStrictEqual(tipi.map(([, percorso]) => nelWorkspace + percorso));
     });
 
+    // Sprint 36 · T5.3 (voce #1970): i motivi di perdita del CRM hanno un titolo, non una destinazione. Un clic apre la pagina delle
+    // notifiche, come per ogni riga che non ha dove andare: mai il CRM a tentoni, nemmeno con un id.
+    it('un clic su una notifica di un motivo di perdita del CRM apre la pagina delle notifiche, non il CRM, con o senza id (sprint 36 · T5.3)', async () => {
+        const deiMotivi = [
+            { id: 'uat-n91', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.creato', ids: {} },
+            { id: 'uat-n90', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.modificato', ids: { id: 'uat-motivo-1' } },
+        ];
+
+        expect(await apertiDalPannello(dati, 'crm', deiMotivi)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+    });
+
     it('un clic su una nota apre la cosa più specifica a cui è legata — l\'opportunità, poi il contatto, poi l\'azienda —, e senza un legame in forma la pagina delle notifiche (sprint 23 · T3.4)', async () => {
         const note = [
             // Come la dà la parte server: i soli id del percorso che si apre.
@@ -2675,7 +2866,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     /**
-     * I titoli dei 42 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
+     * I titoli dei 44 tipi di notifica che zr-core conosce, in italiano, inglese e spagnolo: la tabella dello sprint 12 e, dallo
      * sprint 21, i sette del CRM (voce #1641: nel CRM una `persona` è un «contatto») e i cinque che il contratto porta dall'11/10
      * (voce #1706: le viste salvate di una board, e le aziende del CRM, che nel contratto sono `organizzazione`); dallo sprint 22
      * i nove in fondo (voce #1720: le opportunità, che nel contratto sono `trattativa`, le attività, e i quattro «assegnata», che
@@ -2726,14 +2917,17 @@ describe('il pannello delle notifiche', () => {
         ['crm.attivita.assegnata', 'Ti è stata assegnata un\'attività', 'An activity was assigned to you', 'Se te ha asignado una actividad'],
         ['board.scheda.assegnata', 'Ti è stata assegnata una scheda', 'A card was assigned to you', 'Se te ha asignado una tarjeta'],
         ['board.commento.menzione', 'Ti hanno menzionato in un commento', 'You were mentioned in a comment', 'Te han mencionado en un comentario'],
+        // Sprint 36 · T5: i motivi di perdita del CRM, in fondo: più sopra le righe si prendono per posto.
+        ['com.zeiras.crm.motivo.creato', 'Nuovo motivo di perdita', 'New loss reason', 'Nuevo motivo de pérdida'],
+        ['com.zeiras.crm.motivo.modificato', 'Motivo di perdita modificato', 'Loss reason changed', 'Motivo de pérdida modificado'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 42 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(42);
-        expect(titoliPerTipo).toHaveLength(42);
+    it('la tabella dei titoli ha 44 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; sprint 36 · T5.1)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(44);
+        expect(titoliPerTipo).toHaveLength(44);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -2835,9 +3029,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 42 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 44 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./frasi');
-        // I 42 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 44 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -2847,11 +3041,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 42 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 44 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 42)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(42)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 44)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(44)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
@@ -4215,6 +4409,49 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
         expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
         expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+    });
+
+    // Sprint 36 · T2 (voce #1968): ciò che la cornice tiene è della persona che lo ha visto. Senza il layout, e quindi senza la sua `key`.
+    it.each([
+        ['senza segno', undefined, undefined],
+        ['col segno più avanti', '2026-10-13T08:00:00.000000Z', '2026-10-13T08:00:05.000000Z'],
+    ])('senza il layout, coi dati di un\'altra persona sullo stesso workspace (%s) la cornice non tiene i risultati, la parola e l\'elenco delle notifiche di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async (_caso, prima, poi) => {
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(indirizzo === '/cornice/notifiche' ? { data: [{ id: 'uat-n1', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' }] } : { data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const apriLaCampanella = () => act(async () => { uno('.zr-bell')?.click(); await giro(); });
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: prima }} onLogout={esciSenzaEffetto} />);
+        await scrivi('lancio');
+        expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+        await apriLaCampanella();
+        expect(tutti('.zr-notif .zr-notif-item')).toHaveLength(1);
+        const partitePrima = fetchFinto.mock.calls.length;
+
+        await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Augusta King', email: 'augusta@example.com' }, aggiornati_il: poi }} onLogout={esciSenzaEffetto} />);
+        await act(giro);
+        expect((uno('.zr-search input') as HTMLInputElement).value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(uno('.zr-notif')).toBeNull();
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(0);
+        expect(fetchFinto.mock.calls).toHaveLength(partitePrima);
+
+        await apriLaCampanella();
+        expect(fetchFinto.mock.calls.slice(partitePrima).map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche']);
+    });
+
+    it('la parola scritta in attesa da una persona non parte quando arrivano i dati di un\'altra, e nel campo non resta (sprint 36 · T2.2)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await scrivi('lancio');
+
+        await mostra(<Cornice dati={{ ...dati, persona: altra, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        expect((uno('.zr-search input') as HTMLInputElement).value).toBe('');
+        await mostra(<Cornice dati={{ ...dati, persona: altra }} onLogout={esciSenzaEffetto} />);
+        await act(giro);
+
+        expect(partite(fetchFinto)).toStrictEqual([]);
     });
 
     describe('il freno del backoffice', () => {
@@ -5672,6 +5909,61 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
 
         await clic(uno('.zr-bell'));
         expect(frasi.chiesti).toContain('es');
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    it('stessa persona, lingua passata da `it` a `es` da un\'altra scheda: coi dati `in_attesa` della visita nuova la campanella aperta chiede le frasi di `es`, una volta sola, e mai quelle della lingua dei dati tenuti; le righe sono in spagnolo. Senza cambio di lingua la richiesta è una, di `it` (sprint 36 · T4.1, T4.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        // I dati tenuti restano: la cornice non è ridotta, e la campanella si apre.
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        expect(frasi.chiesti).toStrictEqual([]);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(frasi.chiesti).not.toContain('it');
+        expect(frasi.chiesti.filter((codice) => codice === 'es')).toHaveLength(1);
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    it('senza cambio di lingua la campanella aperta chiede le frasi di `it` una volta sola (sprint 36 · T4.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(frasi.chiesti.filter((codice) => codice === 'it')).toHaveLength(1);
+        expect(frasi.chiesti).not.toContain('es');
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se le frasi di `es` non arrivano alla campanella aperta in attesa, «Riprova» richiede quelle di `es`, non quelle della lingua dei dati tenuti (sprint 36 · T4.2)', async () => {
+        const frasi = caricatore();
+        frasi.rotti.add('es');
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        expect(errore()).not.toBeNull();
+        expect(titoli()).toStrictEqual([]);
+        expect(frasi.chiesti).not.toContain('it');
+
+        frasi.rotti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        await act(prossimoGiro);
+
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain('es');
+        expect(frasi.chiesti).not.toContain('it');
         expect(titoli()).toStrictEqual([inSpagnolo]);
     });
 
