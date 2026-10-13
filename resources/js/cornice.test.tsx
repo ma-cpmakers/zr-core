@@ -512,6 +512,62 @@ describe('la Cornice', () => {
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
     });
 
+    it('senza il layout, con Indietro su una pagina intera di chi c\'era prima mentre chi è entrato è ancora in attesa, i dati di allora non valgono: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima sotto il nome di adesso, né a quel disegno né alla visita dopo; poi arrivano i suoi (sprint 36 · T6, R1)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const inAttesa: ColSegno = { lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const ridottaDiChiEEntrato = () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(etichette()).not.toContain('CRM');
+            expect(uno('.zr-ws-switch')).toBeNull();
+            expect(uno('.zr-bell-count')).toBeNull();
+        };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).toContain('CRM');
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        await mostra(<Cornice dati={inAttesa} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        // Indietro: la voce della cronologia porta la pagina di allora intera, col suo `dopo`, e niente si richiede.
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        // Una visita dopo, ancora in attesa: fra i dati tenuti non c'è niente di chi c'era prima.
+        await mostra(<Cornice dati={{ ...inAttesa }} onLogout={esciSenzaEffetto} />);
+        ridottaDiChiEEntrato();
+
+        await mostra(<Cornice dati={{ ...dati, lingua: 'es', persona: altra, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: inAttesa.sessione_il, aggiornati_il: '2026-10-13T08:00:04.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
+    it('senza il layout, con Indietro su una pagina di chi c\'era prima in un altro workspace i dati di allora non valgono: sotto il nome di adesso restano workspace, moduli e non lette di adesso (sprint 36 · T6, R2)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il: string };
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { ...dati, aziende, non_lette: 4, sessione_il: '2026-10-13T08:00:00.000000Z', aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const diAdesso: ColSegno = { ...dati, lingua: 'es', persona: altra, workspace: { nome: 'Otro espacio', slug: 'otro-espacio' }, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: '2026-10-13T08:00:03.000000Z', aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const diChiEEntrato = () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(uno('aside.zr-side')?.textContent).toContain('Otro espacio');
+            expect(uno('.zr-ws-switch')).toBeNull();
+            expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        await mostra(<Cornice dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato();
+
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        diChiEEntrato();
+    });
+
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
         const titolo = testi('it').downTitle;
