@@ -606,7 +606,9 @@ cornice === null ? pagina : (
   e lo scarica una seconda volta, e lo esegue una seconda volta. Se quel JS è anche quello che monta la pagina, la pagina
   si monta di nuovo: alla prima apertura la campanella si richiude e ciò che la persona aveva scritto si perde, e il
   pannello si apre al secondo clic (è di quel modo di servire, non di «Riprova»: il JS che contiene la cornice non si
-  serve con una coda, e il nome con l'impronta che la build gli dà basta). Due casi restano come sono: se l'indirizzo del
+  serve con una coda, e il nome con l'impronta che la build gli dà basta). Lì, dopo un «Riprova», la pagina si monta di
+  nuovo allo stesso modo, e riaprendo la campanella il pannello mostra ancora l'errore: le righe arrivano con un secondo
+  «Riprova». Due casi restano come sono: se l'indirizzo del
   JS della cornice non ha un percorso (`blob:`, `data:`) «Riprova» non richiede il pezzo, e a un nome che la build scrive
   già con una coda quella di «Riprova» si aggiunge com'è (`x.js?v=1?r=1`). Dove la build non scrive il nome del pezzo fra
   virgolette dentro `import(`, «Riprova» richiama `import()` come prima, allo stesso indirizzo. Il titolo di ripiego (`notificationTitle`) resta nel file dei
