@@ -4708,16 +4708,46 @@ describe('la ricerca', () => {
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
         });
 
-        it('il limite che resta: una parola battuta in attesa e lasciata uscendo dal campo prima dell\'arrivo dei dati non parte (sprint 39 · T3.4)', async () => {
+        // Sprint 39 · T5 (R1, R2 della review): la cornice non guarda dov'è il fuoco. Chi scrive in attesa e passa a un'altra
+        // finestra, o esce dal campo, trova la sua parola cercata: parte ciò che nel campo è cambiato da quando l'attesa è
+        // cominciata.
+        it('una parola battuta in attesa e lasciata uscendo dal campo prima dell\'arrivo dei dati parte all\'arrivo: una richiesta, e i risultati sono lì al ritorno (sprint 39 · T3.3)', async () => {
             const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
             vi.stubGlobal('fetch', fetchFinto);
             await mostra(inAttesa);
             await batti('lancio', 600);
             await act(async () => campo().blur());
+            expect(document.activeElement).not.toBe(campo());
 
             await mostra(arrivati);
             await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
 
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            await act(async () => campo().focus());
+            expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+            expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+        });
+
+        // S1 della review: la cornice legge il suo campo, non il primo campo di ricerca del documento che ha il fuoco. Una
+        // pagina di un modulo può avere un campo suo dentro un `.zr-search` del design system.
+        it('una parola battuta in attesa in un campo di ricerca della pagina, col fuoco lì, non parte verso la ricerca della cornice quando arrivano i dati (sprint 39 · T3.3)', async () => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            const dellaPagina = <div className="zr-search"><input aria-label="Cerca nella pagina" /></div>;
+            await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto}>{dellaPagina}</Cornice>);
+            const suo = uno('main .zr-search input') as HTMLInputElement;
+            expect(suo).not.toBe(campo());
+            await act(async () => {
+                suo.focus();
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(suo, 'fattura');
+                suo.dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(600);
+            });
+
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{dellaPagina}</Cornice>);
+            await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+            expect(document.activeElement).toBe(uno('main .zr-search input'));
             expect(partite(fetchFinto)).toStrictEqual([]);
         });
     });
