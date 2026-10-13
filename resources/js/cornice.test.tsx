@@ -3656,6 +3656,53 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif-dot')?.getAttribute('aria-label')).toBe('non letta');
         expect(segnaTutte()?.textContent).toBe(testo);
     });
+
+    // Sprint 37 · T4 (voce #1999): l'elenco dice di chi è (`persona`, l'email della persona della sessione che ha risposto). In
+    // una scheda rimasta ferma la sessione può essere passata a un'altra persona, anche sullo stesso workspace: lo scarto per
+    // workspace non la vede. Il suo elenco non va sotto il nome di chi la cornice mostra: la pagina si ricarica.
+    /** Come `rotte`, con l'elenco del workspace dei dati e ciò che la parte server dice di chi è. */
+    const rotteDiUnaPersona = (conLaPersona: Record<string, unknown>) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, workspace: dati.workspace.slug, ...conLaPersona }) : segnateFinoA(opzioni)));
+
+    it('in una scheda rimasta ferma l\'elenco di un\'altra persona, dello stesso workspace, non va a schermo, nemmeno per un disegno: la pagina si ricarica, una volta, e il pannello resta in caricamento (sprint 37 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = rotteDiUnaPersona({ persona: 'grace@example.com' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        const disegnate: number[] = [];
+        const guarda = new MutationObserver(() => disegnate.push(voci().length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(Math.max(0, ...disegnate)).toBe(0);
+        expect(voci()).toHaveLength(0);
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(segnaTutte()).toBeNull();
+        // Il numero resta quello dei dati: niente dell'elenco di chi è entrato lo cambia.
+        expect(campanella()).toBe('2');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+        ['con `persona` null', { persona: null }],
+    ])('un elenco %s va a schermo come prima, con una richiesta sola e senza ricaricare la pagina (sprint 37 · T4.3, T4.4)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = rotteDiUnaPersona(conLaPersona);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+
+        expect(voci()).toHaveLength(notificheDelServer.length);
+        expect(segnaTutte()).not.toBeNull();
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
 });
 
 // Sprint 3 · T5 (voce #1277). La ricerca Ctrl/Cmd+K attraverso POST /cornice/ricerca: una richiesta sola in volo, i risultati
@@ -4637,6 +4684,47 @@ describe('la ricerca', () => {
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4'), ricercaDi('piano di lancio')]);
             expect(titoli()).toStrictEqual(['Risultato di «piano di lancio»']);
         });
+    });
+
+    // Sprint 37 · T4 (voce #1999): la ricerca dice di chi sono i risultati (`persona`, l'email della persona della sessione che
+    // ha risposto). In una scheda rimasta ferma la sessione può essere passata a un'altra persona, anche sullo stesso
+    // workspace: lo scarto per workspace non la vede. I suoi risultati non vanno sotto il nome di chi la cornice mostra.
+    it('in una scheda rimasta ferma i risultati di un\'altra persona, dello stesso workspace, non vanno a schermo, nemmeno per un disegno: la pagina si ricarica, una volta, e la ricerca resta in caricamento (sprint 37 · T4.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const disegnate: number[] = [];
+        const guarda = new MutationObserver(() => disegnate.push(righe().length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await scrivi('lancio');
+        await act(giro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(Math.max(0, ...disegnate)).toBe(0);
+        expect(righe()).toHaveLength(0);
+        expect(inCaricamento()).toBe('Sto cercando…');
+        expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+        ['con `persona` null', { persona: null }],
+    ])('una risposta %s mostra i risultati come prima, con una richiesta sola e senza ricaricare la pagina (sprint 37 · T4.3, T4.4)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug, ...conLaPersona }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+
+        expect(titoli()).toContain('Lancio Q4');
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 });
 

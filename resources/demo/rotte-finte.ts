@@ -279,6 +279,8 @@ export const notifichePartite = {
 // la persona della «sessione» (la dà la pagina di prova del layout con `?sessione`) lo fanno anche queste, e lo dicono nel
 // testo: in cima all'elenco c'è una notifica da leggere di chi è entrato adesso («UAT scheda di Ada»), e in cima ai risultati
 // una board sua («UAT Lancio di Ada»). Ognuna ha la sua notifica: letta da una persona, resta da leggere per l'altra.
+// Sprint 37 · T4 (voce #1999): come le rotte vere dalla `v2.4.0`, elenco e ricerca dicono anche di chi sono (`persona`, l'email
+// di chi è nella «sessione»): in una scheda ferma la cornice non mostra la risposta di un'altra persona, e ricarica la pagina.
 type NotificaDiProva = (typeof notificheDiProva)[number];
 const diUnaPersona = new Map<string, NotificaDiProva>();
 
@@ -294,7 +296,7 @@ function notificaDi(nome: string): NotificaDiProva {
     return notifica;
 }
 
-export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string } | undefined): void {
+export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string; email?: string } | undefined): void {
     /** L'elenco di chi è nella «sessione» adesso: con la persona, la sua notifica e poi quelle di tutti. */
     const elenco = (): NotificaDiProva[] => {
         const persona = personaDellaSessione?.();
@@ -362,6 +364,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
                     : risultati().filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
+                // Di chi è, come la rotta vera dalla `v2.4.0` (sprint 37 · T4): senza la persona della «sessione» non lo dice.
+                persona: personaDellaSessione?.()?.email,
             });
         }
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
@@ -381,7 +385,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è. `workspace` è quello della «sessione», come lo dice
             // la parte server dalla `v1.12.0`: se la pagina di prova non lo dà, manca anche lui.
-            return json({ data: elenco(), aggiornati_il: lettoIl, workspace: slugDellaSessione() });
+            return json({ data: elenco(), aggiornati_il: lettoIl, workspace: slugDellaSessione(), persona: personaDellaSessione?.()?.email });
         }
         if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
             letture += 1;

@@ -951,6 +951,26 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: true });
     });
 
+    it('elenco e ricerca dicono di chi sono, come le rotte vere: `persona` è l\'email di chi è nella «sessione» adesso; senza la persona non lo dicono (sprint 37 · T4.3)', async () => {
+        /** Che cosa la risposta dice di chi è; `null` se non lo dice. */
+        const diChi = async (indirizzo: string, opzioni?: RequestInit) => {
+            const inArrivo = fetch(indirizzo, opzioni);
+            await vi.advanceTimersByTimeAsync(1500);
+            const corpo = (await (await inArrivo).json()) as Record<string, unknown>;
+
+            return 'persona' in corpo ? corpo.persona : null;
+        };
+        const sessione: { persona: typeof ada | undefined } = { persona: ada };
+        await rotte(sessione);
+        const diAda = [await diChi('/cornice/notifiche'), await diChi('/cornice/ricerca', cerca('lancio'))];
+        sessione.persona = grace;
+        const diGrace = [await diChi('/cornice/notifiche'), await diChi('/cornice/ricerca', cerca('lancio'))];
+        sessione.persona = undefined;
+        const diNessuno = [await diChi('/cornice/notifiche'), await diChi('/cornice/ricerca', cerca('lancio'))];
+
+        expect([diAda, diGrace, diNessuno]).toStrictEqual([[ada.email, ada.email], [grace.email, grace.email], [null, null]]);
+    });
+
     it('senza la persona, o quando la «sessione» non ne ha una, elenco e risultati sono quelli di prima: nessuna riga col nome di qualcuno (sprint 37 · T1.1)', async () => {
         await rotte(null);
         const elenco = (await righeDi('/cornice/notifiche')).righe;

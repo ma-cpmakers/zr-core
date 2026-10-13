@@ -139,7 +139,7 @@ describe('cerca', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultati, workspace: 'uat-vendite' }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(cerca('uat', new AbortController().signal)).resolves.toStrictEqual({ risultati, workspace: 'uat-vendite' });
+        await expect(cerca('uat', new AbortController().signal, 'ada@example.com')).resolves.toStrictEqual({ risultati, workspace: 'uat-vendite' });
         expect(fetchFinto.mock.calls.map(([indirizzo, opzioni]) => [indirizzo, opzioni?.method, opzioni?.body])).toStrictEqual([['/cornice/ricerca', 'POST', '{"q":"uat"}']]);
     });
 
@@ -153,7 +153,7 @@ describe('cerca', () => {
     ])('una risposta %s è un errore: mai dei risultati senza il loro workspace, mai un elenco vuoto (sprint 22 · T6.6)', async (_caso, corpo, errore) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta(corpo)));
 
-        await expect(cerca('uat', new AbortController().signal)).rejects.toThrow(errore);
+        await expect(cerca('uat', new AbortController().signal, 'ada@example.com')).rejects.toThrow(errore);
     });
 
     // Sprint 23 · T2 (voce #1742, S4): lo `workspace` della risposta entra nell'indirizzo di ogni risultato, e ci entra solo con la
@@ -162,14 +162,14 @@ describe('cerca', () => {
     it.each(['..', '.', 'Acme', 'a/b', 'acme_marketing', 'acme-', 'acme marketing'])('una risposta con un `workspace` fuori dalla forma di uno slug — «%s» — è un errore: nessun risultato (sprint 23 · T2.3)', async (workspace) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }], workspace })));
 
-        await expect(cerca('uat', new AbortController().signal)).rejects.toThrow('POST /cornice/ricerca: workspace');
+        await expect(cerca('uat', new AbortController().signal, 'ada@example.com')).rejects.toThrow('POST /cornice/ricerca: workspace');
     });
 
     it.each(['acme', 'acme-marketing', 'a', '9', 'uat-marketing-2'])('uno slug buono — «%s» — non è un errore: i risultati arrivano col loro workspace (sprint 23 · T2.3)', async (workspace) => {
         const risultati = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }];
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: risultati, workspace })));
 
-        await expect(cerca('uat', new AbortController().signal)).resolves.toStrictEqual({ risultati, workspace });
+        await expect(cerca('uat', new AbortController().signal, 'ada@example.com')).resolves.toStrictEqual({ risultati, workspace });
     });
 });
 
@@ -182,10 +182,10 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
     });
 
     const chiamate: [string, () => Promise<unknown>][] = [
-        ['caricaNotifiche', () => caricaNotifiche()],
+        ['caricaNotifiche', () => caricaNotifiche('ada@example.com')],
         ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing')],
         ['segnaLetta', () => segnaLetta('uat-n69')],
-        ['cerca', () => cerca('lancio', new AbortController().signal)],
+        ['cerca', () => cerca('lancio', new AbortController().signal, 'ada@example.com')],
     ];
     /** Come una chiamata finisce: con quell'errore, con un altro, o bene. */
     const esitoDi = (chiama: () => Promise<unknown>) => chiama().then(() => 'riuscita', (errore: unknown) => (errore instanceof AccettazioneRichiesta ? 'AccettazioneRichiesta' : errore instanceof Error ? 'Error' : 'altro'));
@@ -251,7 +251,7 @@ describe('il 429 con `Retry-After` di una rotta della cornice', () => {
         json: async () => ({ errore: 'troppe_richieste' }),
     }) as unknown as Response;
     /** L'errore con cui la ricerca finisce. */
-    const erroreDellaRicerca = () => cerca('uat', new AbortController().signal).then(() => undefined, (errore: unknown) => errore);
+    const erroreDellaRicerca = () => cerca('uat', new AbortController().signal, 'ada@example.com').then(() => undefined, (errore: unknown) => errore);
 
     it.each<[string, number]>([
         ['1', 1],
@@ -293,5 +293,51 @@ describe('il 429 con `Retry-After` di una rotta della cornice', () => {
 
         const errore = await erroreDellaRicerca();
         expect([errore instanceof Error, errore instanceof TroppeRichieste, (errore as Error).message]).toStrictEqual([true, false, `POST /cornice/ricerca: ${stato}`]);
+    });
+});
+
+// Sprint 37 · T4 (voce #1999): l'elenco delle notifiche e la ricerca dicono di chi sono (`persona`, l'email della persona della
+// sessione che ha risposto). In una scheda rimasta ferma la sessione può essere passata a un'altra persona: la risposta è di
+// quella, e non torna a chi l'ha chiesta per la persona che la cornice mostra. La pagina si ricarica, e chi ha chiesto resta in
+// attesa. Una risposta che non lo dice, o non lo dice con un testo, vale come prima.
+describe('una risposta che dice di chi è', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const elenco = [{ id: 'uat-n1', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata' }];
+    const risultati = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }];
+    const chiamate: [string, Record<string, unknown>, (email: string) => Promise<unknown>, unknown][] = [
+        ['caricaNotifiche', { data: elenco, aggiornati_il: unIstante, workspace: 'uat-vendite' }, (email) => caricaNotifiche(email), { elenco, il: unIstante, workspace: 'uat-vendite' }],
+        ['cerca', { data: risultati, workspace: 'uat-vendite' }, (email) => cerca('lancio', new AbortController().signal, email), { risultati, workspace: 'uat-vendite' }],
+    ];
+    /** Come finisce una chiamata entro qualche giro: chiusa, con un errore, o ancora in attesa. */
+    const esitoDi = (chiesto: Promise<unknown>) => Promise.race([chiesto.then(() => 'chiusa', () => 'errore'), new Promise((fatto) => setTimeout(() => fatto('in attesa'), 20))]);
+
+    it.each(chiamate)('%s: una risposta di un\'altra persona non torna a chi l\'ha chiesta — né chiusa né con un errore — e la pagina si ricarica, una volta (sprint 37 · T4.1, T4.2)', async (_nome, corpo, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => risposta({ ...corpo, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(chiamate.flatMap(([nome, corpo, chiama, attesa]) => ([
+        ['della stessa persona', { persona: 'ada@example.com' }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+        ['con `persona` null', { persona: null }],
+        ['con una `persona` che è un numero', { persona: 12 }],
+        ['con una `persona` che è un oggetto', { persona: { email: 'grace@example.com' } }],
+    ] as [string, Record<string, unknown>][]).map(([come, conLaPersona]) => [nome, come, { ...corpo, ...conLaPersona }, chiama, attesa] as const)))('%s: una risposta %s torna come prima, con una richiesta sola e senza ricaricare la pagina (sprint 37 · T4.3, T4.4)', async (_nome, _come, corpo, chiama, attesa) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama('ada@example.com')).resolves.toStrictEqual(attesa);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 });

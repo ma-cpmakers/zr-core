@@ -302,7 +302,8 @@ pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
-`dopo` com'è. Il contenuto della tua pagina, con Indietro, resta sempre quello di
+`dopo` com'è. In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
+ricerca di un'altra persona: ricarica la pagina. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa

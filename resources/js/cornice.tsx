@@ -655,7 +655,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         if (svuota) {
             setNotifiche({ stato: 'loading', elenco: [], richiesta: questa, workspace: undefined });
         }
-        const chiesto = caricaNotifiche();
+        const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
         const frasi = caricaFrasi(lingua);
         frasi.catch(() => undefined);
@@ -939,7 +939,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
-        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal).then(
+        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal, persona.email).then(
             ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'ready', risultati, workspace });
