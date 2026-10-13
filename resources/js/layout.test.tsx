@@ -906,6 +906,61 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 
+    it('con Indietro sulla voce della cronologia di chi c\'era prima — il suo `subito` di allora, senza `dopo` — avatar e menu del profilo dicono chi è entrato adesso, e moduli, selettore e non lette restano i suoi: niente di chi c\'era prima, né in attesa né quando arriva un `dopo` riletto (sprint 36 · T3.1, T3.2)', async () => {
+        const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: DatiSubito & { sessione_il: string } = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const dopoDiAdesso: DatiDopo = { prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const nelMenu = async () => {
+            if (!uno('.zr-profile-head')) {
+                await clic(uno('.zr-avatar-btn'));
+            }
+
+            return tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent);
+        };
+        const diChiEEntrato = async () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(await nelMenu()).toStrictEqual([altra.nome, altra.email]);
+            expect(document.body.textContent).not.toContain(dati.persona.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(etichette()).toContain('Gestión de proyectos');
+            expect(uno('.zr-ws-switch')).toBeNull();
+        };
+
+        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        await inDue({ subito: diAdesso }, <PaginaB key="2" />);
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        await diChiEEntrato();
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // Indietro: la voce della cronologia porta il `subito` di allora, e il `dopo` si richiede.
+        await inDue({ subito: diPrima }, <PaginaA key="1" />);
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        await diChiEEntrato();
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // Il `dopo` riletto è della sessione di adesso; il `subito` resta quello della voce.
+        await inDue({ subito: diPrima, dopo: { ...dopoDiAdesso, non_lette: 3, aggiornati_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaA key="1" />);
+        await diChiEEntrato();
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+    });
+
+    it('il verso in avanti resta anche coi segni: un `subito` con la sessione letta dopo e un\'altra persona la mostra da subito, e la cornice riparte ridotta senza niente di chi c\'era prima (sprint 36 · T3.3)', async () => {
+        const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: DatiSubito & { sessione_il: string } = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('7');
+
+        await inDue({ subito: diAdesso }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).not.toContain('CRM');
+        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diAltra = { ...subito, persona: altra };
