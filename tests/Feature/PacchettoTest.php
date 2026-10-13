@@ -2452,7 +2452,8 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
         ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
 })->with([
     'nome e argomenti' => ['`titoloDellaNotifica(tipo, lingua)`'],
-    'da dove si importa, e per chi' => ['Dallo stesso ingresso si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    // Sprint 33 · T1.1 (voce #1915): dalla `v2.0.0` non più dallo stesso ingresso.
+    'da dove si importa, e per chi' => ['Da `…/resources/js/frasi` — dalla `v2.0.0`: prima dallo stesso ingresso, vedi «Passare alla v2» — si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['dà il titolo di una notifica di quel tipo nella lingua'],
     // Sprint 29 · T4 (review della PR #62, R5): dalla `v1.19.0` il pannello usa `rigaDellaNotifica`, e questo è il titolo di prima.
     'è il titolo senza la frase' => ['è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto'],
@@ -4905,13 +4906,14 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
     'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono'],
+    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con gzip, cioè 18 KB. Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
     $prove = (string) file_get_contents(__DIR__.'/../../resources/js/prove.ts');
-    $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts']);
+    $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts', 'campanella.ts']);
 
     expect($guida)->toContain('la cornice li chiede con `fetch` quando si apre la campanella: nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l\'errore di caricamento con «Riprova»')
         // Seconda lettura della PR #63 (S10, S8): dove stanno i file, e chi rifà i moduli nei casi.
