@@ -5186,7 +5186,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), delle quattro assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale): per questo delle quattro assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome'],
 ]);
 
 // Sprint 33 · T2.5 (voce #1890): dalla v2 il nome di chi ha fatto si taglia, e il README non dice più il contrario.

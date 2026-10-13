@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 52,8 KB | 17,6 KB | 35,0 KB | 5,9 KB |
-| la cornice e due componenti per nome | 56,1 KB | 18,7 KB | 35,0 KB | 5,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 114,9 KB | 36,8 KB | 35,0 KB | 5,9 KB |
+| solo la cornice, dall'ingresso per le app | 52,8 KB | 17,6 KB | 36,0 KB | 5,9 KB |
+| la cornice e due componenti per nome | 56,1 KB | 18,7 KB | 36,0 KB | 5,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 114,9 KB | 36,8 KB | 36,0 KB | 5,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -607,14 +607,15 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima venticinque: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
-  create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato. Le aziende, le
-  opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta Rossi ha modificato l'azienda «Acme»»). Gli
-  altri hanno solo la seconda. Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una
-  nota il backoffice non dà il nome (quello di un contatto è un dato personale). Le quattro assegnazioni del CRM non
-  hanno ancora la loro frase col nome: di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo
-  dà, e sta nella riga sotto il titolo. Per un modulo c'è una
+  create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
+  modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
+  Rossi ha modificato l'azienda «Acme»»), quelle assegnate dalla `v2.1.0` («Marta Rossi ti ha assegnato l'azienda
+  «Acme»»). Gli altri hanno solo la seconda. Di una cosa eliminata, di un membro del workspace, e del CRM di un
+  contatto e di una nota il backoffice non dà il nome (quello di un contatto è un dato personale): per questo un
+  contatto assegnato resta «Marta Rossi ti ha assegnato un contatto», e un'azienda assegnata di cui il nome non
+  arriva «Marta Rossi ti ha assegnato un'azienda». Per un modulo c'è una
   differenza: di un modulo il backoffice dà il codice (`pm`), e nella frase c'è il
   nome nella lingua della persona; con un codice che il registro non ha resta la frase con solo chi. E quando una
   persona entra nel workspace chi ha fatto, per il contratto, è lei: la frase è «Marta Rossi è ora nel workspace».

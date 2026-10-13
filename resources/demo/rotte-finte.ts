@@ -92,6 +92,8 @@ const DI_UN_TIPO_NUOVO: Record<string, Record<string, string>> = {
     'crm.persona.assegnata': { id: 'uat-persona-1' },
     'crm.organizzazione.assegnata': { id: 'uat-azienda-1' },
 };
+/** Il nome delle due assegnate di `?opportunita=1` che lo hanno, con `?chi=1` (sprint 34 · T3): un'attività resta senza, e di un contatto il backoffice non lo dà. */
+const NOME_DI_UN_ASSEGNATA: Record<string, string> = { 'crm.organizzazione.assegnata': 'UAT Acme', 'crm.trattativa.assegnata': 'UAT Rinnovo 2027' };
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -183,14 +185,14 @@ const notificheDiProva = [
         : []),
     // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
     // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
-    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`, che dà anche chi le ha assegnate). Portano l'id che il loro percorso chiede
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`, che dà anche chi le ha assegnate e, dell'azienda e dell'opportunità, il nome: sta nel titolo). Portano l'id che il loro percorso chiede
     // (`DI_UN_TIPO_NUOVO`): quello dell'opportunità, del contatto o dell'azienda; un'attività nessuno, perché apre «Da fare».
     ...(opportunita
         ? [
               'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
               'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
-          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', NOME_DI_UN_ASSEGNATA[tipo] ?? null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),
