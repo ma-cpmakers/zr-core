@@ -1157,11 +1157,13 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
 });
 
 // Sprint 34 · T1 (voce #1929). In Chromium un `import()` che non è arrivato resta fallito, per quell'indirizzo, finché la
-// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda diversa a ogni tentativo. L'indirizzo è
-// quello che dice l'errore del browser, e vale solo se è della stessa origine del JS. Qui al posto di `import()` c'è il caso.
+// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda, che cambia a ogni tentativo fallito.
+// L'indirizzo non è quello che dice l'errore del browser: si compone con la cartella del JS e col nome di file con cui il
+// messaggio finisce, subito dopo quella cartella. Qui al posto di `import()` c'è il caso.
 describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo (sprint 34 · T1)', () => {
     const ORIGINE = 'https://app.zeiras.test';
-    const PEZZO = `${ORIGINE}/build/assets/campanella-D5veh6YO.js`;
+    const CARTELLA = `${ORIGINE}/build/assets/`;
+    const PEZZO = `${CARTELLA}campanella-D5veh6YO.js`;
     const nonArrivato = (indirizzo: string) => new TypeError(`Failed to fetch dynamically imported module: ${indirizzo}`);
 
     /** Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. */
@@ -1174,7 +1176,7 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
             return 'il pezzo';
         });
 
-        return { importa, chiedi: pezzoARichiesta(importa, ORIGINE) };
+        return { importa, chiedi: pezzoARichiesta(importa, CARTELLA) };
     }
 
     it('il pezzo che arriva al primo colpo si importa senza un indirizzo e senza coda, e a ogni richiesta allo stesso modo (T1.4)', async () => {
@@ -1208,7 +1210,6 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         ['non dice un indirizzo', new TypeError('Importing a module script failed.')],
         ['dice un indirizzo di un\'altra origine', nonArrivato('https://altro.example/campanella.js')],
         ['dice un indirizzo che comincia come l\'origine ma è di un altro host', nonArrivato(`${ORIGINE}.altro.example/campanella.js`)],
-        ['dice l\'origine dentro la coda di un altro indirizzo', nonArrivato(`https://altro.example/x.js?da=${PEZZO}`)],
         ['non è un errore', undefined],
     ])('se l\'errore %s la richiesta dopo è l\'`import()` di prima: nessun indirizzo letto da un messaggio entra in `import()`', async (_caso, errore) => {
         const { importa, chiedi } = chiImporta(errore);
@@ -1216,6 +1217,73 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         await expect(chiedi()).rejects.toBe(errore);
         await chiedi();
         expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+
+    // Sprint 35 · T3 (voce #1945). La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme
+    // importano lo stesso indirizzo, e per il browser lo stesso indirizzo è una richiesta sola e un modulo solo.
+    it('dopo un pezzo non arrivato due richieste fatte insieme importano lo stesso indirizzo, con la stessa coda (sprint 35 · T3.1)', async () => {
+        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO));
+
+        await expect(chiedi()).rejects.toThrow();
+        await Promise.all([chiedi(), chiedi()]);
+        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+    });
+
+    it('se due richieste fatte insieme falliscono tutte e due, la richiesta dopo ha una coda che nessuna delle due aveva (sprint 35 · T3.1)', async () => {
+        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`), nonArrivato(`${PEZZO}?r=1`));
+
+        await expect(chiedi()).rejects.toThrow();
+        await Promise.allSettled([chiedi(), chiedi()]);
+        await chiedi();
+        const [[ultimo]] = importa.mock.calls.slice(-1);
+        expect(importa.mock.calls.slice(1, 3)).toStrictEqual([[`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+        expect([ultimo?.startsWith(`${PEZZO}?r=`), ultimo === `${PEZZO}?r=1`]).toStrictEqual([true, false]);
+    });
+
+    it('arrivato il pezzo dopo un tentativo fallito, la richiesta dopo importa l\'indirizzo arrivato, con la stessa coda: il browser non lo scarica e non lo valuta da capo (sprint 35 · T3.2)', async () => {
+        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO));
+
+        await expect(chiedi()).rejects.toThrow();
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+    });
+
+    // La stessa origine non basta: il pezzo sta nella cartella di questo JS, e un indirizzo letto da un messaggio vale solo se
+    // sta lì. Ciò che entra in `import()` si guarda come lo legge il browser, che risolve `..`, `%2e` e la barra rovescia.
+    it.each([
+        ['in un\'altra cartella', `${ORIGINE}/caricati/campanella.js`],
+        ['nella cartella sopra', `${ORIGINE}/build/campanella.js`],
+        ['in una cartella che comincia come quella dell\'ingresso', `${ORIGINE}/build/assets-altri/campanella.js`],
+        // Un frontend che mette i pezzi a richiesta in una cartella dentro quella dell'ingresso: il nome della cartella non è un file.
+        ['in una cartella dentro quella dell\'ingresso', `${CARTELLA}chunks/campanella-D5veh6YO.js`],
+        ['nella cartella dell\'ingresso, ma il messaggio non finisce col nome del file', `${PEZZO} e altro`],
+        ['nella cartella dell\'ingresso, con una coda sua', `${PEZZO}?v=3`],
+    ])('un indirizzo della stessa origine %s non entra in `import()`: la richiesta dopo è l\'`import()` di prima (sprint 35 · T3.3)', async (_caso, indirizzo) => {
+        const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
+
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+
+    // Ciò che entra in `import()` è scritto riga per riga: niente, salvo dove il messaggio finisce con un file della cartella.
+    it.each<[string, string, string | undefined]>([
+        ['e risale con `..`', `${CARTELLA}../../caricati/x.js`, undefined],
+        ['e risale con `..` in fondo', `${CARTELLA}..`, undefined],
+        ['e risale con `.` e `..`', `${CARTELLA}./../x.js`, undefined],
+        ['e risale con `%2e%2e`', `${CARTELLA}%2e%2e/%2E%2e/caricati/x.js`, undefined],
+        ['e risale con la barra rovescia', `${CARTELLA}..\\..\\caricati\\x.js`, undefined],
+        ['e risale con `..` dopo un nome', `${CARTELLA}x/../../../caricati/x.js`, undefined],
+        ['dentro la coda di un indirizzo di un\'altra origine, e risale', `https://altro.example/x.js?da=${CARTELLA}../x.js`, undefined],
+        // Fino alla `v2.1.0` questo indirizzo era scartato intero; dalla `v2.2.0` ne resta il file della cartella dell'ingresso.
+        ['in fondo alla coda di un indirizzo di un\'altra origine', `https://altro.example/x.js?da=${PEZZO}`, `${PEZZO}?r=1`],
+    ])('un messaggio che dice la cartella dell\'ingresso %s non porta `import()` fuori dalla cartella (sprint 35 · T3.3)', async (_caso, indirizzo, atteso) => {
+        const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
+
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(importa.mock.calls).toStrictEqual([[undefined], [atteso]]);
     });
 });
 

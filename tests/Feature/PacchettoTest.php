@@ -4948,7 +4948,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
     // Sprint 34 · T1.6 (voce #1929): dopo un pezzo della campanella non arrivato «Riprova» lo richiede anche in Chromium.
     'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
-    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'L\'indirizzo è quello che dice l\'errore del browser, e vale solo se ha la stessa origine del JS'],
+    // Sprint 35 · T3 (voce #1945): la coda cambia al tentativo fallito, e l'indirizzo si compone con la cartella del JS.
+    'la coda cambia al tentativo fallito' => ['notifiche', 'La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola'],
+    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'Dalla `v2.2.0` l\'indirizzo si compone con la cartella del JS della cornice e col nome di file con cui l\'errore del browser finisce, subito dopo quella cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l\'errore'],
+    'dove il pezzo sta altrove' => ['notifiche', 'in un frontend che mette i pezzi a richiesta in un\'altra cartella rispetto al JS d\'ingresso — anche una cartella dentro quella —, «Riprova» richiama `import()` come prima'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
     // Seconda lettura della PR #63 (S1, S2, S8, S15).
@@ -5225,7 +5228,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'subito() non chiama il backoffice' => ['readme', '`Cornice::subito()` legge solo la sessione — lingua, persona, workspace — e non chiama mai il backoffice'],
     'Inertia è del frontend' => ['readme', 'zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend'],
     'l\'esempio' => ['readme', "'dopo' => Inertia::defer(fn () => Cornice::dopo()),"],
-    'in attesa' => ['readme', 'nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso'],
+    // Sprint 35 · T4.3 (voce #1945): in attesa campanella e ricerca caricano (T1), e la persona è quella di `subito` (T2).
+    'in attesa' => ['readme', 'Dalla `v2.2.0` campanella e ricerca sono nello stato di caricamento, non in quello d\'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando, senza «Riprova»'],
+    'la persona in attesa' => ['readme', 'dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione è cambiata da un\'altra scheda, il menu del profilo non mostra chi c\'era prima'],
+    'i due tipi' => ['readme', 'I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e `resources/js/app`)'],
     'quando arriva' => ['readme', 'la pagina non si rimonta: ciò che la persona stava scrivendo in un campo, il fuoco e lo scorrimento restano'],
     'non letti' => ['readme', "`Cornice::dopo()` non lancia: dà `['non_letti' => true]`"],
     'l\'avviso' => ['readme', 'con l\'avviso «Zeiras non risponde» sopra la pagina, senza pulsante'],
@@ -5236,14 +5242,34 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
-    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte: si cerca di nuovo quando `dopo` è arrivato'],
+    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: parte da sola quando `dopo` è arrivato — l\'ultima di almeno due caratteri che l\'`AppShell` ha dato alla cornice —, e non parte se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
+    'la parola cancellata in attesa' => ['readme', 'una parola cancellata prima dell\'arrivo viene cercata lo stesso, con l\'invito sotto il campo vuoto'],
+    'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
     'il frontend può dirlo da sé' => ['readme', '`dopo={{ non_letti: true }}`'],
     'due letture per visita' => ['readme', 'io.mostra si legge due volte per visita'],
     'la guida: le due funzioni' => ['guida', 'rimandata con `Inertia::defer`, `Cornice::dopo()`'],
     'la guida: il rimando' => ['guida', 'README, «La cornice in due dati»'],
+    'la guida: in attesa caricano' => ['guida', 'dalla `v2.2.0` campanella e ricerca caricano: una parola scritta intanto si cerca quando `dopo` arriva'],
+    'la guida: la persona in attesa' => ['guida', 'e il menu del profilo mostra la persona di `subito`'],
+    'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
 ]);
+
+// Sprint 35 · T4.2 (voce #1945): dalla `v2.1.0` le chiavi di una notifica della parte server sono undici, con `azioni` e
+// `board_nome`. Commenti e nomi dei casi non dicono più il numero di prima.
+it('nessun commento e nessun nome di caso dice più «nove chiavi» della parte server: sono undici (sprint 35 · T4.2)', function (string $file) {
+    $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
+
+    expect($testo)->not->toBe('')
+        ->and(substr_count($testo, 'nove chiavi'))->toBe(0);
+})->with(['resources/demo/rotte-finte.ts', 'resources/demo/rotte-finte.test.ts', 'tests/Feature/NotificheTest.php']);
+
+it('il commento di `?accorpata=1` dice che è la forma di prima della `v2.1.0`, tenuta per le schermate (sprint 35 · T4.2)', function () {
+    $rotte = (string) file_get_contents(__DIR__.'/../../resources/demo/rotte-finte.ts');
+
+    expect(substr_count($rotte, 'È la forma di prima della `v2.1.0`, tenuta per le schermate'))->toBe(1);
+});
 
 // Sprint 34 · T1.6 (voce #1929): «Riprova» il pezzo della campanella lo richiede anche in Chromium, e il README non dice più
 // il contrario.

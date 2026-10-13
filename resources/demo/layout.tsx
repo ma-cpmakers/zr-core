@@ -269,6 +269,13 @@ function dopoLetto(): NonNullable<Props['dopo']> {
           : { workspace, prodotti, aziende, non_lette, aggiornati_il };
 }
 
+// Sprint 35 · T2 (voce #1945): con `?persona=altra` i dati della sessione della «Due dati» sono di un'altra persona, in
+// inglese, nello stesso workspace. Dalla «Lunga» alla «Due dati» con `?dopo=mai` la cornice resta in attesa coi dati che aveva
+// di quel workspace, e il menu del profilo e la lingua sono quelli della richiesta nuova. Il collegamento alla «Due dati» c'è solo
+// con quel parametro: senza, la pagina è quella di prima, schermate comprese.
+const altraPersona = scelti.get('persona') === 'altra';
+const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' } };
+
 const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };
 type Nome = keyof typeof pagine;
 
@@ -279,7 +286,7 @@ const propsDi: Record<Nome, Props> = {
     'senza-dati': { cornice: null },
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
     'nessuna-attiva': { cornice: marketing },
-    'due-dati': { cornice: null, subito: { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace } },
+    'due-dati': { cornice: null, subito: altraPersona ? { ...diUnAltra, workspace: marketing.workspace } : { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace } },
 };
 
 /** Quanto aspetta la risposta di una visita lenta, in millisecondi: il tempo di fare altro sulla pagina prima che arrivi. */
@@ -291,7 +298,7 @@ const attesaLenta = 6000;
  */
 function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
-    for (const parametro of ['segno', 'non_lette', 'dopo']) {
+    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);
@@ -345,6 +352,7 @@ function Collegamenti() {
                 <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
                 <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
                 <a href={indirizzoDi('nessuna-attiva')} data-uat="vai-nessuna-attiva" onClick={apri('nessuna-attiva')}>UAT alla Nessuna attiva</a>{' · '}
+                {altraPersona && <><a href={indirizzoDi('due-dati')} data-uat="vai-due-dati" onClick={apri('due-dati')}>UAT alla Due dati</a>{' · '}</>}
                 <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
             </p>
             {/* Una risposta letta adesso e arrivata dopo: la visita lenta, e la pagina che Inertia scarica prima e tiene trenta secondi. */}

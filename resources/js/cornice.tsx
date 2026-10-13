@@ -64,7 +64,7 @@ export interface DatiDellaCornice {
     accettazione_richiesta?: boolean | undefined;
     /**
      * `true` finché i dati letti dal backoffice non sono arrivati (dalla `v2.1.0`): lo mette `LayoutDellaCornice` quando ha
-     * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca che dicono `loading`. Se
+     * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca nello stato di caricamento. Se
      * la cornice ha già dati letti di quel workspace restano quelli, finché non arrivano i nuovi.
      */
     in_attesa?: boolean | undefined;
@@ -505,6 +505,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     if (dati !== tenuti) {
         setTenuti(dati);
     }
+    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la sessione può essere
+    // cambiata da un'altra scheda, e il menu del profilo non mostra la persona di prima. Fuori dall'attesa vale il segno.
+    const { lingua, persona } = dellaPagina.in_attesa ? dellaPagina : dati;
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -526,7 +529,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const daAccettare = dati.accettazione_richiesta === true || loDiceIlSegnale;
     // Ridotta anche finché i dati letti dal backoffice non arrivano (`in_attesa`) e quando la parte server non li ha potuti
     // leggere (`non_letti`): senza moduli, con campanella e ricerca spente. L'accettazione vince su tutti e due.
-    const ridotta = daAccettare || !!(dati.in_attesa || dati.non_letti);
+    // Il valore è lo stato che l'`AppShell` ha per ciò che campanella e ricerca dicono allora: in attesa niente è andato
+    // storto, i dati stanno arrivando, ed è il caricamento; con `non_letti` e con l'accettazione, dove non sta arrivando
+    // niente, l'errore. `undefined` nella cornice di sempre.
+    const ridotta = daAccettare || dati.non_letti ? 'error' : dati.in_attesa ? 'loading' : undefined;
     // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
     // dell'errore lo decide chi ha chiamato, come prima.
     const seDaAccettare = (errore: unknown) => {
@@ -534,7 +540,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             setLoDiceUnaRotta(true);
         }
     };
-    const t = testi(dati.lingua);
+    const t = testi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
     // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
@@ -542,7 +548,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const fonti = ridotta ? [] : fontiDellaRicerca(dati.prodotti);
     // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
     const quali = fonti.join();
-    const dellaRicerca = useMemo(() => testiDellaRicerca(dati.lingua, fonti), [dati.lingua, quali]);
+    const dellaRicerca = useMemo(() => testiDellaRicerca(lingua, fonti), [lingua, quali]);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
     const prodotti = {
@@ -559,7 +565,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
 
             return senzaUndefined({
                 id: voce.id,
-                label: nomeDellaVoce(voce, dati.lingua),
+                label: nomeDellaVoce(voce, lingua),
                 icon: voce.icona,
                 tone: voce.tono,
                 home: voce === dashboard,
@@ -645,13 +651,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // chiuso non si chiedono: le chiede la prossima apertura, con l'elenco. Che è aperto lo dice la pagina, perché l'`AppShell`
     // avvisa quando il pannello si apre e non quando si chiude.
     const [frasiChieste, setFrasiChieste] = useState<{ lingua: string; arrivate: boolean }>();
-    const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(dati.lingua) === undefined;
+    const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(lingua) === undefined;
     useLayoutEffect(() => {
         if (!servonoLeFrasi || !document.querySelector('.zr-notif')) {
             return undefined;
         }
         let ancora = true;
-        const lingua = dati.lingua;
         caricaFrasi(lingua).then(
             () => ancora && setFrasiChieste({ lingua, arrivate: true }),
             () => ancora && setFrasiChieste({ lingua, arrivate: false }),
@@ -660,9 +665,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         return () => {
             ancora = false;
         };
-    }, [servonoLeFrasi, dati.lingua]);
+    }, [servonoLeFrasi, lingua]);
     // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
-    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
+    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
     // da lì.
     const carica = () => {
@@ -824,7 +829,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const adesso = new Date();
     // Le frasi della lingua dei dati, se sono in memoria. Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è
     // in errore se non sono arrivate (sopra).
-    const frasi = frasiPronte(dati.lingua);
+    const frasi = frasiPronte(lingua);
     const riga = campanella?.rigaConLeFrasi;
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
@@ -842,13 +847,27 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
     // mezzo la cornice è passata allo stato ridotto, la ricerca di prima arriva qui lo stesso. Che cosa vale adesso lo dice un
     // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
+    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora — ma la cornice la tiene, l'ultima che
+    // l'`AppShell` le ha dato: la parola è stato dell'`AppShell`, che sotto i due caratteri non avvisa, e la cornice la conosce
+    // solo da qui (una parola cancellata resta tenuta: README, «La cornice in due dati»). Quando i dati arrivano parte lei; se al
+    // loro posto arriva `non_letti` o l'accettazione la cornice la dimentica, e così a ogni disegno che non è in attesa: mai la
+    // parola di una visita di prima.
+    const daCercare = useRef<string>(undefined);
     const ridottaAdesso = useRef(ridotta);
     useLayoutEffect(() => {
-        ridottaAdesso.current = ridotta;
-        if (ridotta) {
-            ricercaInVolo.current?.abort();
-            ricercaInVolo.current = undefined;
+        if (ridottaAdesso.current !== 'loading') {
+            daCercare.current = undefined;
         }
+        ridottaAdesso.current = ridotta;
+        if (!ridotta) {
+            if (daCercare.current) {
+                cercaParola(daCercare.current);
+            }
+
+            return;
+        }
+        ricercaInVolo.current?.abort();
+        ricercaInVolo.current = undefined;
     });
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
@@ -858,7 +877,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
-    // non ha cercato (quella scritta mentre era ridotta non è partita).
+    // non ha cercato. La parola scritta in attesa è un'altra cosa: non è partita, e parte all'arrivo dei dati (sopra).
     if (ridotta && ricerca !== undefined) {
         setRicerca(undefined);
     }
@@ -878,6 +897,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     };
     const cercaParola = (parola: string) => {
         if (ridottaAdesso.current) {
+            daCercare.current = parola;
+
             return;
         }
         if (performance.now() < frenataFinoA.current) {
@@ -906,7 +927,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
         );
     };
-    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, ricerca.workspace) ?? []) : []);
+    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, ricerca.workspace) ?? []) : []);
     const voci = [prodotti, ...nav];
 
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
@@ -956,7 +977,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             <div />
         </div>
     ) : null;
-    const spenta = daAccettare ? t.acceptanceOff : dati.in_attesa ? t.loading : t.downOff;
+    const spenta = daAccettare ? t.acceptanceOff : t.downOff;
 
     const shell = (
         <AppShell
@@ -972,6 +993,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 ...pagina,
                 active: active === null || (ridotta && aperto !== undefined && !active) ? idDiNessunaVoce(voci) : active,
                 companies,
+                searchState: ridotta ?? ricerca?.stato ?? 'ready',
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
@@ -982,8 +1004,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
                 // la campanella tiene il gestore dell'apertura: aperta in attesa chiede l'elenco, e il pannello lo mostra quando
                 // arrivano (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). Quello di «Riprova» no: il
-                // pannello in attesa è nello stato d'errore, e l'`AppShell` ci scriverebbe il pulsante. La ricerca nemmeno: nello
-                // stato ridotto la cornice la dimentica (sopra). Le voci del modulo, il
+                // pannello in attesa è nello stato di caricamento, che non ha il pulsante. La ricerca in attesa tiene il suo
+                // gestore: la parola non parte, la cornice la tiene e la cerca all'arrivo dei dati (sopra). Lo stato della
+                // ricerca sta qui, fra ciò che decide la cornice, col suo valore: quello dello stato ridotto, o quello
+                // dell'ultima ricerca, o `ready`. Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
@@ -995,23 +1019,24 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
-                onSearch: ridotta ? undefined : cercaParola,
+                onSearch: avvisoSopraLaPagina ? undefined : cercaParola,
                 flush: avvisoSopraLaPagina ? undefined : pagina.flush,
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
-            user={dati.persona.nome}
-            email={dati.persona.email}
+            email={persona.email}
+            user={persona.nome}
             workspace={dati.workspace.nome}
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
-            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, dati.lingua), dati.lingua, adesso))}
-            notificationsState={ridotta ? 'error' : statoDelPannello}
-            searchResults={ridotta ? [] : risultati}
-            searchState={ridotta ? 'error' : (ricerca?.stato ?? 'ready')}
+            // In attesa lo stato è quello di caricamento. I risultati non hanno bisogno di una guardia loro: nello stato
+            // ridotto la cornice ha già dimenticato la ricerca (sopra), e senza quella non ce ne sono.
+            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, lingua), lingua, adesso))}
+            notificationsState={ridotta ?? statoDelPannello}
+            searchResults={risultati}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
             // contenitore a pagina intera.
             onSelectResult={(scelto) => {
@@ -1025,9 +1050,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
             // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
             // copia il segnaposto della ricerca e l'invito, che dice le fonti del workspace (`dellaRicerca`). A chi non ha
-            // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
-            // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
-            labels={ridotta
+            // accettato i documenti legali, e quando il backoffice non ha risposto, la frase di zr-core al posto dei tre testi
+            // che pannello e ricerca mostrerebbero: l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore
+            // della ricerca. In attesa i testi sono quelli di sempre: il pannello e la ricerca caricano coi testi
+            // dell'`AppShell`, e sotto il campo vuoto c'è l'invito a scrivere, perché la parola scritta verrà cercata.
+            labels={avvisoSopraLaPagina
                 ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
                 : { ...t, ...dellaRicerca, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}

@@ -1,7 +1,8 @@
 import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
+import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
@@ -619,11 +620,11 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(contenitore.textContent).not.toContain(t.downTitle);
 
         await clic(uno('.zr-bell'));
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t.loading);
+        expect(uno('.zr-notif [role="status"]')?.textContent).toBe(t.loading);
         expect(tutti('.zr-notif button').map((pulsante) => pulsante.textContent)).not.toContain(t.retry);
         expect(tutti('.zr-notif .zr-notif-item')).toHaveLength(0);
         await scrivi('uat');
-        expect(sottoLaRicerca()).toStrictEqual([t.loading]);
+        expect(sottoLaRicerca()).toStrictEqual([t.searchLoading]);
         expect(titoliDellaRicerca()).toStrictEqual([]);
     });
 
@@ -651,6 +652,129 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaCheDa key="1" cose={{ flush: true }} />);
         expect(sopraLaPagina()).not.toBeNull();
         expect(forma()).toBe('zr-main');
+    });
+
+    // In attesa niente è andato storto: i dati stanno arrivando. Pannello e ricerca lo dicono con lo stato di caricamento
+    // dell'`AppShell`, non con quello d'errore; `non_letti` e l'accettazione restano nell'errore, col loro testo.
+    it('in attesa il pannello aperto e la ricerca con una parola sono nello stato di caricamento: un `role="status"`, nessun `role="alert"`, nessun «Riprova», e nessuna ricerca partita (sprint 35 · T1.1, T1.2, T1.3)', async () => {
+        await inDue({ subito }, <PaginaA />);
+        const t = testi('it');
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="status"]')?.textContent).toBe(t.loading);
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(tutti('.zr-notif button').map((pulsante) => pulsante.textContent)).not.toContain(t.retry);
+
+        // Sotto il campo con meno di due caratteri c'è l'invito di sempre, non un testo d'attesa: la parola scritta verrà cercata.
+        await scrivi('u');
+        expect(sottoLaRicerca()).toStrictEqual([t.searchHint]);
+        await scrivi('uat');
+        expect(tutti('.zr-search-note').map((nota) => nota.getAttribute('role'))).toStrictEqual(['status']);
+        expect(uno('.zr-search-note.is-error')).toBeNull();
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(t.searchEmpty);
+        expect(richieste()).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each<[string, NonNullable<LayoutDellaCorniceProps['dopo']>, 'downOff' | 'acceptanceOff']>([
+        ['`non_letti`', { non_letti: true }, 'downOff'],
+        ['l\'accettazione richiesta', { prodotti: [], aziende: [], non_lette: 0, aggiornati_il: dopo.aggiornati_il, accettazione_richiesta: true }, 'acceptanceOff'],
+    ])('se dopo l\'attesa arriva %s, pannello e ricerca sono nello stato d\'errore col loro testo, e la parola scritta in attesa non parte (sprint 35 · T1.1, T1.2, T1.3)', async (_caso, arrivati, testo) => {
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat');
+
+        await inDue({ subito, dopo: arrivati }, <PaginaA />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+        });
+        const t = testi('it');
+
+        expect(tutti('.zr-search-note').map((nota) => [nota.getAttribute('role'), nota.classList.contains('is-error'), nota.textContent])).toStrictEqual([['alert', true, t[testo]]]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t[testo]);
+        expect(uno('.zr-notif [role="status"]')).toBeNull();
+        expect(richieste()).toStrictEqual([]);
+    });
+
+    it.each<[string, number]>([
+        ['i 300 ms dell\'`AppShell` sono già passati', 300],
+        ['i 300 ms passano dopo l\'arrivo', 100],
+    ])('una parola scritta in attesa parte una volta sola, all\'arrivo di `dopo`, e il riquadro mostra i suoi risultati: %s (sprint 35 · T1.3)', async (_caso, attesa) => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat', attesa);
+        expect(richieste()).toStrictEqual([]);
+
+        await inDue({ subito, dopo }, <PaginaA />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+            await giro();
+        });
+
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+    });
+
+    it('«Nessun risultato» per la parola scritta in attesa si legge solo dopo la risposta vuota della sua ricerca (sprint 35 · T1.3)', async () => {
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat');
+
+        await inDue({ subito, dopo }, <PaginaA />);
+        await act(giro);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(uno('.zr-search-panel')?.textContent).toContain(`${testi('it').searchEmpty} «uat»`);
+    });
+
+    // La parola tenuta si dimentica a ogni disegno che non è in attesa: se al posto dei dati arriva `non_letti` o l'accettazione,
+    // non parte nemmeno quando poi i dati buoni arrivano.
+    it.each<[string, NonNullable<LayoutDellaCorniceProps['dopo']>]>([
+        ['`non_letti`', { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' }],
+        ['l\'accettazione richiesta', { prodotti: [], aziende: [], non_lette: 0, aggiornati_il: '2026-10-13T08:00:01.000000Z', accettazione_richiesta: true }],
+    ])('una parola scritta in attesa non parte nemmeno quando, dopo %s, arrivano i dati buoni: la cornice l\'ha dimenticata (sprint 35 · T1.3)', async (_caso, arrivati) => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat');
+
+        await inDue({ subito, dopo: arrivati }, <PaginaA />);
+        await inDue({ subito, dopo: { ...dopo, aggiornati_il: '2026-10-13T08:00:02.000000Z' } }, <PaginaA />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+            await giro();
+        });
+
+        expect(uno('.zr-bell')?.textContent).toContain('7');
+        expect(richieste()).toStrictEqual([]);
+    });
+
+    // Un limite, non una scelta: sotto i due caratteri l'`AppShell` non chiama `onSearch`, e la cornice non sa che la parola è
+    // stata cancellata. Tiene l'ultima che ha avuto, e all'arrivo dei dati la cerca; sotto il campo vuoto resta l'invito.
+    it('una parola scritta in attesa e poi cancellata parte lo stesso all\'arrivo di `dopo`: l\'`AppShell` non dice alla cornice che il campo è vuoto; sotto il campo resta l\'invito (sprint 35 · T4.3, il limite che il README dichiara)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat');
+        await scrivi('');
+
+        await inDue({ subito, dopo }, <PaginaA />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(300);
+            await giro();
+        });
+
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(sottoLaRicerca()).toStrictEqual([expect.stringMatching(/scrivi almeno 2 caratteri\.$/)]);
+        expect(titoliDellaRicerca()).toStrictEqual([]);
+    });
+
+    // L'altro limite: l'`AppShell` aspetta 300 ms dall'ultimo tasto prima di chiamare `onSearch`. Una parola scritta meno di
+    // 300 ms prima dell'arrivo dei dati la cornice non l'ha ancora avuta: fino allo scadere si legge «Nessun risultato».
+    it('una parola scritta meno di 300 ms prima dell\'arrivo di `dopo`: finché i 300 ms dell\'`AppShell` non scadono nessuna richiesta parte e sotto il campo si legge «Nessun risultato» (sprint 35 · T4.3, il limite che il README dichiara)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat', 100);
+
+        await inDue({ subito, dopo }, <PaginaA />);
+        expect(richieste()).toStrictEqual([]);
+        expect(uno('.zr-search-panel')?.textContent).toContain(`${testi('it').searchEmpty} «uat»`);
     });
 
     it('un `non_letti` letto prima dei dati che la cornice ha non la riduce: resta quella di sempre (Indietro su una visita di quando il backoffice non rispondeva); uno letto dopo sì (review della PR #67, R5)', async () => {
@@ -741,6 +865,26 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: { ...subito, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />);
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
         expect(etichette()).not.toContain('CRM');
+    });
+
+    it('alla visita dopo, mentre il `dopo` nuovo non è ancora arrivato, persona e lingua sono quelle del `subito` nuovo: il menu del profilo non mostra chi c\'era prima; i moduli restano quelli tenuti (sprint 35 · T2.1)', async () => {
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await inDue({ subito, dopo }, <PaginaA key="1" />);
+        expect(etichette()).toContain('CRM');
+
+        await inDue({ subito: { ...subito, lingua: 'es', persona: altra } }, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(etichette()).toContain('CRM');
+        expect(etichette()).toContain('Gestión de proyectos');
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
+    it('`DatiSubito` e `DatiDopo` escono da tutti e due gli ingressi, e sono i tipi di `subito` e `dopo` del layout (sprint 35 · T4.1)', () => {
+        expectTypeOf<DatiSubito>().toEqualTypeOf<NonNullable<LayoutDellaCorniceProps['subito']>>();
+        expectTypeOf<DatiDopo>().toEqualTypeOf<NonNullable<LayoutDellaCorniceProps['dopo']>>();
+        expectTypeOf<DatiSubitoDiApp>().toEqualTypeOf<DatiSubito>();
+        expectTypeOf<DatiDopoDiApp>().toEqualTypeOf<DatiDopo>();
     });
 
     it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
