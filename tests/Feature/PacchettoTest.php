@@ -5340,6 +5340,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
     'la scheda ferma: ciò che resta fuori' => ['readme', 'Resta fuori «Segna tutte come lette» da una scheda ferma che ha già il suo elenco a schermo: la rotta delle letture non dice di chi è'],
     'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
+    'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
+    'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
+    'la guida: l\'email' => ['guida', 'La persona la riconosce dall\'email, che c\'è sempre: la garantisce il contratto del backoffice, non zr-auth, che la porta com\'è'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
     'la guida: Indietro fra due workspace' => ['guida', 'nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`'],
@@ -5416,6 +5420,18 @@ it('README e guida non dicono più il limite dei due workspace (sprint 37 · T3.
     'riporta la cornice di allora' => ['riporta la cornice di allora'],
     'una pagina di un altro workspace sì' => ['una pagina di un altro workspace sì'],
     'questo limite non lo ha' => ['questo limite non lo ha'],
+]);
+
+// Sprint 37 · T5.2 (voce #2000): che l'email c'è sempre lo garantisce il contratto del backoffice. zr-auth la porta nella
+// sessione com'è e non la controlla: README e guida non lo dicono garante.
+it('README e guida non dicono che l\'email della persona la garantisce zr-auth (sprint 37 · T5.2)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'la garantisce zr-auth' => ['la garantisce zr-auth'],
+    'garantita da zr-auth' => ['garantita da zr-auth'],
+    'zr-auth garantisce' => ['zr-auth garantisce'],
+    'zr-auth la controlla' => ['zr-auth la controlla'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

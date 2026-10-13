@@ -1172,6 +1172,10 @@ stessa persona non cambia niente. Resta fuori «Segna tutte come lette» da una 
 la rotta delle letture non dice di chi è, e un clic lì segna le notifiche di chi è nella sessione, fino all'istante di
 quell'elenco.
 
+In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
+backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
+non la controlla.
+
 Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
 
 ```php
