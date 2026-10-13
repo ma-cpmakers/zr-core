@@ -115,11 +115,11 @@ it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Co
     backofficeDiChiHaAccettato([$percorso => nonRisponde($stato, $codice)]);
 
     expect(Cornice::dopo())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'en',
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
-        'non_letti' => true,
-        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
     ])
         ->and(avvisiDellaRiga())->toBe(['zr-core, dati della cornice: il backoffice non ha risposto ('.$tipo.'): la cornice esce ridotta']);
@@ -150,11 +150,11 @@ it('col backoffice che non risponde Cornice::dopo() dice di chi è non_letti: se
 
     expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'])
         ->and(Cornice::dopo())->toBe([
+            'non_letti' => true,
+            'aggiornati_il' => '2026-10-09T21:31:09.000001Z',
             'lingua' => 'it',
             'persona' => ['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'],
             'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
-            'non_letti' => true,
-            'aggiornati_il' => '2026-10-09T21:31:09.000001Z',
             'sessione_il' => '2026-10-09T21:31:09.000001Z',
         ])
         // Una richiesta sola, quella che non ha avuto risposta: il nome non si chiede di nuovo a io.mostra.
@@ -170,11 +170,11 @@ it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_l
     $dopo = Cornice::dopo();
 
     expect($dopo)->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'es',
         'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
-        'non_letti' => true,
-        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
     ])
         ->and(array_keys((array) $dopo))->not->toContain('prodotti', 'aziende', 'non_lette', 'accettazione_richiesta')
@@ -182,8 +182,35 @@ it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_l
         ->and(avvisiDellaRiga())->toHaveCount(1);
 });
 
-it('se mentre il backoffice non risponde la sessione finisce, Cornice::dopo() dà null come senza sessione: non c\'è nessuno di cui dire non_letti (sprint 41 · T4.4)', function () {
+// Sprint 41 · T6 (review della PR #75, S1). Il segno di chi è si prende prima della lettura, come nel ramo riuscito: nome ed
+// email sono quelli della sessione com'era quando la richiesta è cominciata, e un `non_letti` arrivato tardi — il backoffice
+// ci mette secondi a non rispondere — non deve valere sopra i dati di chi è entrato intanto. A orologio fermo i due segni sono
+// uguali e il caso non distingue niente: qui la risposta finta sposta l'orologio.
+it('col backoffice che non risponde il segno di chi è, sessione_il, è l\'istante in cui la lettura è cominciata, e aggiornati_il quello in cui è fallita: un non_letti in ritardo non è più recente di chi è entrato mentre il backoffice non rispondeva (sprint 41 · T6, S1)', function (string $percorso) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([$percorso => function () {
+        Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:12.500000', 'UTC'));
+
+        return Http::response('segno-del-corpo', 502);
+    }]);
+
+    expect(Cornice::dopo())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:12.500000Z',
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
+    ]);
+})->with([
+    'io.mostra' => ['/v1/io'],
+    'app.elenca' => ['/v1/app'],
+]);
+
+it('se mentre il backoffice non risponde la sessione finisce, Cornice::dopo() dà null come senza sessione: non c\'è nessuno di cui dire non_letti, e nel log non c\'è scritto che la cornice esce ridotta (sprint 41 · T4.4; T6, R8)', function () {
+    sessioneAMano(marketing());
+    logDellaRiga();
     backofficeDiChiHaAccettato(['/v1/app' => function () {
         Sessione::chiudi();
 
@@ -191,7 +218,27 @@ it('se mentre il backoffice non risponde la sessione finisce, Cornice::dopo() d�
     }]);
 
     expect(Cornice::dopo())->toBeNull()
-        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1]);
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1])
+        ->and(avvisiDellaRiga())->toBe([]);
+});
+
+// Sprint 41 · T6 (review della PR #75, R8). La sessione finisce anche da sola: zr-auth guarda `scade_il`, e un gettone che
+// scade mentre il backoffice non risponde lascia la sessione senza nessuno, come `Sessione::chiudi()`.
+it('se il gettone scade mentre il backoffice non risponde, Cornice::dopo() dà null come senza sessione e non scrive nel log che la cornice esce ridotta (sprint 41 · T6, R8)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato(['/v1/app' => function () {
+        // Il gettone di `sessioneAMano()` scade dopo un'ora.
+        Carbon::setTestNow(Carbon::parse('2026-10-09 22:31:05.123457', 'UTC'));
+
+        return Http::response('segno-del-corpo', 500);
+    }]);
+
+    expect(Cornice::dopo())->toBeNull()
+        ->and(Sessione::aperta())->toBeFalse()
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1])
+        ->and(avvisiDellaRiga())->toBe([]);
 });
 
 it('un errore di /v1 che non è «il backoffice non risponde» passa da Cornice::dopo() com\'è, come da Cornice::dati(): non diventa non_letti (sprint 34 · T4.2)', function (string $percorso, int $stato, string $codice) {
