@@ -588,10 +588,12 @@ cornice === null ? pagina : (
   per quell'indirizzo, finché la pagina non si ricarica: per questo, dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova»
   lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede. È lo stesso file:
   serve che chi dà la build ignori la coda, come fa di solito un server di file. La coda cambia a ogni tentativo fallito, non a ogni
-  richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola. Dalla `v2.2.0`
-  l'indirizzo si compone con la cartella del JS della cornice e col nome di file che l'errore del browser dice dopo quella
-  cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l'errore. Dove l'errore non la dice, o in un
-  frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, «Riprova» richiama `import()` come prima. Il titolo di ripiego (`notificationTitle`) resta nel file dei
+  richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola (provato in
+  Chromium). Dalla `v2.2.0` l'indirizzo si compone con la cartella del JS della cornice e col nome di file con cui l'errore del
+  browser finisce, subito dopo quella cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l'errore.
+  Dove l'errore non la dice o non finisce col nome del file, se l'indirizzo del JS d'ingresso ha una coda sua (`app.js?v=3`), o in un
+  frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso — anche una cartella dentro quella —,
+  «Riprova» richiama `import()` come prima: in Chromium il pezzo non viene richiesto di nuovo, e serve ricaricare la pagina. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
   le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
@@ -1170,11 +1172,16 @@ Che cosa vede la persona:
   caricamento, non in quello d'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando,
   senza «Riprova». Se la cornice ha già i dati di quel workspace, da una pagina di prima, restano quelli finché non
   arrivano i nuovi; dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione
-  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Senza avviso la pagina tiene la sua
+  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Una pagina ripresa dalla cronologia con
+  Indietro porta il `subito` di allora: finché il suo `dopo` non arriva, il menu del profilo mostra la persona di quella
+  pagina. Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
-  sola, una volta, quando `dopo` è arrivato — l'ultima scritta —, e non parte se al posto dei dati arriva `non_letti`
-  o l'accettazione dei documenti legali;
+  sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte
+  se al posto dei dati arriva `non_letti` o l'accettazione dei documenti legali. Due limiti, dell'`AppShell`: sotto i due
+  caratteri non avvisa la cornice, e una parola cancellata prima dell'arrivo viene cercata lo stesso, con l'invito sotto il
+  campo vuoto; e una parola scritta meno di 300 ms prima dell'arrivo parte allo scadere dei suoi 300 ms, e fino ad allora
+  sotto il campo si legge «Nessun risultato»;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà

@@ -765,6 +765,18 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(titoliDellaRicerca()).toStrictEqual([]);
     });
 
+    // L'altro limite: l'`AppShell` aspetta 300 ms dall'ultimo tasto prima di chiamare `onSearch`. Una parola scritta meno di
+    // 300 ms prima dell'arrivo dei dati la cornice non l'ha ancora avuta: fino allo scadere si legge «Nessun risultato».
+    it('una parola scritta meno di 300 ms prima dell\'arrivo di `dopo`: finché i 300 ms dell\'`AppShell` non scadono nessuna richiesta parte e sotto il campo si legge «Nessun risultato» (sprint 35 · T4.3, il limite che il README dichiara)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
+        await inDue({ subito }, <PaginaA />);
+        await scrivi('uat', 100);
+
+        await inDue({ subito, dopo }, <PaginaA />);
+        expect(richieste()).toStrictEqual([]);
+        expect(uno('.zr-search-panel')?.textContent).toContain(`${testi('it').searchEmpty} «uat»`);
+    });
+
     it('un `non_letti` letto prima dei dati che la cornice ha non la riduce: resta quella di sempre (Indietro su una visita di quando il backoffice non rispondeva); uno letto dopo sì (review della PR #67, R5)', async () => {
         await inDue({ subito, dopo }, <PaginaA key="1" />);
 

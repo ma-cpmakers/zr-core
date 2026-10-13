@@ -64,7 +64,7 @@ export interface DatiDellaCornice {
     accettazione_richiesta?: boolean | undefined;
     /**
      * `true` finché i dati letti dal backoffice non sono arrivati (dalla `v2.1.0`): lo mette `LayoutDellaCornice` quando ha
-     * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca che dicono `loading`. Se
+     * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca nello stato di caricamento. Se
      * la cornice ha già dati letti di quel workspace restano quelli, finché non arrivano i nuovi.
      */
     in_attesa?: boolean | undefined;
