@@ -5447,6 +5447,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza)'],
     'la scheda ferma: la risorsa, in quale browser' => ['readme', 'come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»)'],
     'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'Fa eccezione la risposta di un\'altra persona a una scheda rimasta ferma, che ricarica la pagina'],
+    // Terza lettura, N5: con la `naviga` di partenza la pagina non se ne va sempre prima della risposta.
+    'la lettura con un clic: quando la pagina se ne va' => ['readme', 'la pagina se ne va quando la destinazione arriva, e se è prima della risposta il numero nuovo lo possono portare i dati della pagina dopo'],
     // Review della PR #74, R3, S2, S3: i dati senza email, e le due cose che guarda chi installa.
     // Seconda lettura, N1: un 422 solo se l'email è un testo vuoto; se manca o è `null` parte un testo, ed è un 409.
     'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe senza un\'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l\'email è un testo vuoto, 409 `persona_diversa` se manca o è `null`'],
@@ -5593,6 +5595,7 @@ it('il README non dice più che dalla scheda ferma la destinazione del clic su u
     'la destinazione' => ['La destinazione di quel clic si apre lo stesso'],
     'la sua risorsa' => ['La sua risorsa si apre lo stesso'],
     'i dati senza email: sempre vuota' => ['l\'intestazione partirebbe vuota'],
+    'la pagina se ne va sempre prima' => ['la pagina se ne va prima della risposta'],
 ]);
 
 // Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.

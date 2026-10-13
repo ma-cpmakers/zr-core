@@ -510,11 +510,13 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         expect(ricarica).not.toHaveBeenCalled();
     });
 
-    it.each(richieste)('%s senza l\'email di chi la cornice mostra non ricarica la pagina nemmeno se la risposta dice di chi è: torna a chi ha chiamato (review della PR #74, R3)', async (_richiesta, chiama, corpo) => {
+    it.each(richieste)('%s senza l\'email di chi la cornice mostra — vuota, `null` o che manca — non ricarica la pagina nemmeno se la risposta dice di chi è: torna a chi ha chiamato (review della PR #74, R3; terza lettura, N6)', async (_richiesta, chiama, corpo) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ ...corpo, persona: 'grace@example.com' })));
 
-        await expect(chiama('')).resolves.toBeDefined();
+        for (const email of ['', null, undefined]) {
+            await expect(chiama(email as string)).resolves.toBeDefined();
+        }
         expect(ricarica).not.toHaveBeenCalled();
     });
 });
