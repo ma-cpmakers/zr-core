@@ -260,7 +260,9 @@ function DueDati({ visita, dopo }: Props) {
             {/* Sprint 37 · T1: la rilettura del solo `dopo` da una scheda rimasta ferma. La risposta è di chi è nella sessione adesso. */}
             {scelti.has('sessione') && (
                 <p>
-                    <button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>
+                    <button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>{' · '}
+                    {/* Sprint 38 · T1 (voce 2027): la rilettura del solo `subito`, quella che un frontend non deve fare. Il `dopo` resta quello che la pagina aveva. */}
+                    <button type="button" data-uat="rileggi-subito" onClick={() => router.reload({ only: ['subito'] })}>UAT rileggi subito</button>
                 </p>
             )}
             {contatori}
@@ -302,11 +304,15 @@ const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'u
 // `?sessione` le rotte finte sanno chi è entrato: l'elenco delle notifiche e i risultati della ricerca sono i suoi, col nome nel
 // testo («UAT scheda di Ada», «UAT Lancio di Grace»), anche in una scheda rimasta ferma su una pagina dell'altra persona.
 const chiaveDellaSessione = 'uat-persona';
-const delBackofficeDiUnAltra: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'> = {
-    prodotti: { pm: 'disponibile', crm: 'attivo' },
-    aziende: (marketing.aziende ?? []).map((azienda) => ({ ...azienda, id: 'uat-9', nome: 'UAT Hopper' })),
-    non_lette: 2,
-};
+// Sprint 38 · T1 (voce 2026): con `?accettazione=dopo&per_altra` è l'altra persona a non aver accettato i documenti legali. I
+// dati che il backoffice dà per lei sono quelli ridotti, e le rotte finte rispondono 403 solo a lei: la prima resta com'era.
+const delBackofficeDiUnAltra: Entrata['backoffice'] = scelti.get('accettazione') === 'dopo' && scelti.has('per_altra')
+    ? { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true }
+    : {
+          prodotti: { pm: 'disponibile', crm: 'attivo' },
+          aziende: (marketing.aziende ?? []).map((azienda) => ({ ...azienda, id: 'uat-9', nome: 'UAT Hopper' })),
+          non_lette: 2,
+      };
 
 const ricerca = { nome: 'UAT Ricerca', slug: 'uat-ricerca' };
 /** Chi può entrare al posto della prima persona, secondo ciò che i pulsanti scrivono nel `localStorage`: nello stesso workspace, o su un altro. */

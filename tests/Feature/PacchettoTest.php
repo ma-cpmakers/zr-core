@@ -731,6 +731,26 @@ it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su
         ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
 });
 
+// Sprint 38 · T1 (voci #2026, #2027, #2028): tre comandi in più per vedere nel browser ciò che resta fra due persone e una
+// pagina. Che cosa fanno lo provano rotte-finte.test.ts e parte-server-finta.test.ts; qui, che la pagina di prova li ha: se il
+// 403 finto valesse per tutte e due le persone, o se «UAT rileggi subito» chiedesse anche `dopo`, i difetti non si vedrebbero.
+it('la pagina di prova del layout, con ?sessione, rilegge il solo subito, dà gli errori delle rotte finte solo a chi è entrato dopo e tiene nel browser le notifiche lette di ognuna (sprint 38 · T1.1)', function () {
+    $subito = '<button type="button" data-uat="rileggi-subito" onClick={() => router.reload({ only: [\'subito\'] })}>UAT rileggi subito</button>';
+    $altraDaAccettare = "scelti.get('accettazione') === 'dopo' && scelti.has('per_altra')";
+    $perAltra = "const soloPerLAltra = new URLSearchParams(window.location.search).has('per_altra');";
+    $aChiTocca = 'const toccaAChiCE = () => !soloPerLAltra || personaDellaSessione?.()?.email !== laPrima;';
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$subito, 'data-uat="rileggi-subito"', $altraDaAccettare]))->toBe([$subito => 1, 'data-uat="rileggi-subito"' => 1, $altraDaAccettare => 1])
+        // Il 403 e il 429 passano tutti dalla stessa domanda: il 429 della ricerca, il 403 della ricerca e quello delle altre tre.
+        ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$perAltra, $aChiTocca, '&& toccaAChiCE()) {', 'localStorage.getItem(chiave) !== null', 'const chiave = `uat-letta-di-${breve.toLowerCase()}`;']))->toBe([
+            $perAltra => 1,
+            $aChiTocca => 1,
+            '&& toccaAChiCE()) {' => 3,
+            'localStorage.getItem(chiave) !== null' => 1,
+            'const chiave = `uat-letta-di-${breve.toLowerCase()}`;' => 1,
+        ]);
+});
+
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
     $parteServer = (string) file_get_contents(__DIR__.'/../../resources/demo/parte-server-finta.ts');
     $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);

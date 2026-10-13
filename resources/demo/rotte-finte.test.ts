@@ -871,6 +871,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
     type Riga = { id: string; letta: boolean; risorsa_nome: string | null; titolo?: string };
 
     beforeEach(() => {
+        // La notifica di ognuna resta nel browser (sprint 38 · T1): ogni caso parte da un browser nuovo.
+        localStorage.clear();
         vi.resetModules();
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -883,8 +885,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
     });
 
     /** Le rotte finte nel workspace `uat-marketing`, con la persona che `sessione.persona` dice in quel momento (o senza dirla: `null`). */
-    async function rotte(sessione: { persona: typeof ada | undefined } | null): Promise<void> {
-        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+    async function rotte(sessione: { persona: typeof ada | undefined } | null, query = ''): Promise<void> {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
         const { rotteFinte } = await import('./rotte-finte');
         if (sessione === null) {
             rotteFinte(() => 'uat-marketing');
@@ -969,6 +971,71 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         const diNessuno = [await diChi('/cornice/notifiche'), await diChi('/cornice/ricerca', cerca('lancio'))];
 
         expect([diAda, diGrace, diNessuno]).toStrictEqual([[ada.email, ada.email], [grace.email, grace.email], [null, null]]);
+    });
+
+    // Sprint 38 · T1 (voci 2026, 2028): ciò che serve a vedere, in una scheda rimasta ferma, l'errore di chi è entrato dopo e di
+    // chi sono le notifiche segnate. Se il 403 finto valesse per tutte e due le persone il difetto non si distinguerebbe dal
+    // caso di sempre: la scheda di Ada sarebbe ridotta anche senza Grace.
+    it('con `?accettazione=dopo&per_altra` il 403 `accettazione_richiesta` è solo di chi è entrato dopo: a chi era nella «sessione» al caricamento le rotte rispondono come sempre (sprint 38 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione, '?accettazione=dopo&per_altra');
+        expect((await righeDi('/cornice/notifiche')).stato).toBe(200);
+        expect((await righeDi('/cornice/ricerca', cerca('lancio'))).stato).toBe(200);
+
+        sessione.persona = grace;
+        const inArrivo = fetch('/cornice/notifiche');
+        await vi.advanceTimersByTimeAsync(1500);
+        const risposta = await inArrivo;
+        expect([risposta.status, await risposta.json()]).toStrictEqual([403, { errore: 'accettazione_richiesta' }]);
+        expect((await righeDi('/cornice/ricerca', cerca('lancio'))).stato).toBe(403);
+        expect((await righeDi('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date().toISOString(), workspace: 'uat-marketing' }) })).stato).toBe(403);
+
+        // Torna la prima: di nuovo come sempre.
+        sessione.persona = ada;
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: false });
+    });
+
+    it('senza `per_altra` il 403 di `?accettazione=dopo` resta di chiunque sia nella «sessione», come prima (sprint 38 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione, '?accettazione=dopo');
+        expect((await righeDi('/cornice/notifiche')).stato).toBe(403);
+        sessione.persona = grace;
+        expect((await righeDi('/cornice/notifiche')).stato).toBe(403);
+    });
+
+    it('con `?ricerca_frenata=5&per_altra` il 429 è della prima ricerca di chi è entrato dopo, non di chi era nella «sessione» al caricamento (sprint 38 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione, '?ricerca_frenata=5&per_altra');
+        expect((await righeDi('/cornice/ricerca', cerca('lancio'))).stato).toBe(200);
+        expect((await righeDi('/cornice/ricerca', cerca('lancio'))).stato).toBe(200);
+
+        sessione.persona = grace;
+        const inArrivo = fetch('/cornice/ricerca', cerca('lancio'));
+        await vi.advanceTimersByTimeAsync(1500);
+        const frenata = await inArrivo;
+        expect([frenata.status, frenata.headers.get('Retry-After'), await frenata.json()]).toStrictEqual([429, '5', { errore: 'troppe_richieste' }]);
+        // Una volta sola, come senza `per_altra`.
+        expect(titoli((await righeDi('/cornice/ricerca', cerca('lancio'))).righe)[0]).toBe('UAT Lancio di Grace');
+    });
+
+    it('la lettura della notifica di una persona resta nel browser: dopo un ricaricamento della pagina è ancora letta, e quella dell\'altra è ancora da leggere (sprint 38 · T1.1)', async () => {
+        const sessione = { persona: grace };
+        await rotte(sessione);
+        expect((await righeDi('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date().toISOString(), workspace: 'uat-marketing' }) })).stato).toBe(200);
+
+        // La pagina ricaricata: un modulo nuovo, lo stesso browser.
+        vi.resetModules();
+        await rotte(sessione);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: true });
+        sessione.persona = ada;
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: false });
+
+        // E una lettura tolta si toglie anche lì.
+        sessione.persona = grace;
+        expect((await righeDi('/cornice/notifiche/uat-di-grace/lettura', { method: 'PATCH', body: JSON.stringify({ letta: false }) })).stato).toBe(200);
+        vi.resetModules();
+        await rotte(sessione);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: false });
     });
 
     it('senza la persona, o quando la «sessione» non ne ha una, elenco e risultati sono quelli di prima: nessuna riga col nome di qualcuno (sprint 37 · T1.1)', async () => {

@@ -45,7 +45,7 @@ export function lettura<Props extends { cornice: DatiDellaCornice | null }>(prop
  */
 export interface Entrata {
     sessione: Pick<DatiDellaCornice, 'lingua' | 'persona'>;
-    backoffice: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'>;
+    backoffice: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette' | 'accettazione_richiesta'>;
     workspace?: DatiDellaCornice['workspace'];
 }
 

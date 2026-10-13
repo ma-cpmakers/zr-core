@@ -254,6 +254,10 @@ const altre = new URLSearchParams(window.location.search).has('altre');
 // Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
 // dalla `v1.14.0`, le quattro rispondono 403 col solo codice, dopo la loro attesa. I dati della pagina restano quelli di sempre.
 const daAccettare = new URLSearchParams(window.location.search).get('accettazione') === 'dopo';
+// Sprint 38 · T1 (voci 2026, 2028): con `?per_altra` il 403 di `?accettazione=dopo` e il 429 di `?ricerca_frenata` valgono solo
+// per chi è entrato dopo: alla persona che era nella «sessione» quando la pagina si è caricata le rotte rispondono come sempre.
+// Così in una scheda rimasta ferma si vede l'errore di un'altra persona, e non quello di chi la scheda mostra.
+const soloPerLAltra = new URLSearchParams(window.location.search).has('per_altra');
 
 let partite = 0;
 const inAscolto = new Set<() => void>();
@@ -287,10 +291,19 @@ const diUnaPersona = new Map<string, NotificaDiProva>();
 /** Il nome con cui i testi di prova dicono di chi sono: «Ada» per «UAT Ada Lovelace». */
 const nomeBreve = (nome: string) => nome.replace(/^UAT /, '').split(' ')[0] ?? nome;
 
-/** La notifica di quella persona: la stessa a ogni richiesta, così una lettura resta. */
+/**
+ * La notifica di quella persona: la stessa a ogni richiesta, così una lettura resta. Resta anche nel browser (`localStorage`,
+ * sprint 38 · T1): la vedono un'altra scheda e la pagina ricaricata, come una lettura fatta davvero. Così si vede di chi sono
+ * le notifiche che «Segna tutte come lette» ha segnato da una scheda rimasta ferma. `letta` qui sotto è sostituita da quella.
+ */
 function notificaDi(nome: string): NotificaDiProva {
     const breve = nomeBreve(nome);
-    const notifica = diUnaPersona.get(breve) ?? { id: `uat-di-${breve.toLowerCase()}`, creata_il: fa(1), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', autore_nome: null, risorsa_nome: `UAT scheda di ${breve}`, per_me: null, ids: { id: 'uat-scheda-1' } };
+    const chiave = `uat-letta-di-${breve.toLowerCase()}`;
+    const notifica = diUnaPersona.get(breve) ?? Object.defineProperty({ id: `uat-di-${breve.toLowerCase()}`, creata_il: fa(1), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', autore_nome: null, risorsa_nome: `UAT scheda di ${breve}`, per_me: null, ids: { id: 'uat-scheda-1' } }, 'letta', {
+        enumerable: true,
+        get: () => localStorage.getItem(chiave) !== null,
+        set: (letta: boolean) => (letta ? localStorage.setItem(chiave, '1') : localStorage.removeItem(chiave)),
+    });
     diUnaPersona.set(breve, notifica);
 
     return notifica;
@@ -309,6 +322,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
 
         return breve === '' ? risultatiDiProva : [{ tipo: 'board.board', id: `uat-di-${breve.toLowerCase()}`, titolo: `UAT Lancio di ${breve}`, contesto: null }, ...risultatiDiProva];
     };
+    /** Chi era nella «sessione» quando la pagina si è caricata: con `?per_altra` gli errori non sono per lei. */
+    const laPrima = personaDellaSessione?.()?.email;
+    const toccaAChiCE = () => !soloPerLAltra || personaDellaSessione?.()?.email !== laPrima;
     const fetchDelBrowser = window.fetch.bind(window);
     const cookieCsrf = 'XSRF-TOKEN';
     document.cookie = `${cookieCsrf}=uat-gettone-csrf%3D%3D; path=/`;
@@ -344,12 +360,12 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Non si ferma sull'annullamento: la risposta di una parola vecchia arriva lo stesso, e la cornice non la mostra.
             await new Promise((fatto) => setTimeout(fatto, { ua: 1500, uat: 100 }[parola] ?? 800));
             console.info('UAT risposta', percorso);
-            if (ricercaFrenata !== null && !giaFrenata) {
+            if (ricercaFrenata !== null && !giaFrenata && toccaAChiCE()) {
                 giaFrenata = true;
 
                 return new Response(JSON.stringify({ errore: 'troppe_richieste' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': ricercaFrenata } });
             }
-            if (daAccettare) {
+            if (daAccettare && toccaAChiCE()) {
                 return json({ errore: 'accettazione_richiesta' }, 403);
             }
             if (errore === 'ricerca') {
@@ -371,7 +387,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
-        if (daAccettare) {
+        if (daAccettare && toccaAChiCE()) {
             return json({ errore: 'accettazione_richiesta' }, 403);
         }
         if (percorso === '/cornice/notifiche') {
