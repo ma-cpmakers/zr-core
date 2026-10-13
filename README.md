@@ -1188,14 +1188,35 @@ Che cosa vede la persona:
   dalla cronologia con Indietro porta il `subito` di allora: dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il
   segno dell'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la
   persona. Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo`
-  letto di nuovo. Due limiti. Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua
-  persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da capo non sa chi c'era, e una
+  letto di nuovo. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
+  chi è entrato, e se li sta ancora aspettando la cornice resta ridotta fino alla visita dopo, perché Inertia un `dopo` che
+  la voce ha già non lo richiede. Questo vale sullo stesso workspace. Fra due workspace il layout rifà la cornice, che così
+  non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati
+  (chi monta `Cornice` senza il layout questo limite non lo ha: lì i dati di una pagina più vecchia di un'altra persona non
+  valgono in nessun workspace). Altri due limiti. Un `subito` composto a mano senza `sessione_il` vale come una pagina
+  nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da capo
+  non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto. Il contenuto
   della pagina, poi, la cornice non lo tocca mai: con Indietro è quello di allora anche se la persona è cambiata. Per
   questo all'uscita il frontend toglie la cronologia: con la cronologia cifrata di Inertia (`inertia.history.encrypt` a
   `true`, o `Inertia::encryptHistory()` nella richiesta; serve HTTPS) la risposta dell'uscita chiama
   `Inertia::clearHistory()`, e una voce di prima non si legge più: Inertia la richiede alla parte server, che risponde con
-  la sessione di adesso. Senza avviso la pagina tiene la sua
+  la sessione di adesso:
+
+  ```php
+  // config/inertia.php
+  'history' => ['encrypt' => true],
+
+  // la rotta dell'uscita, chiusa la sessione
+  Inertia::clearHistory();
+
+  return redirect('/');
+  ```
+
+  La cronologia che si toglie è quella della scheda che riceve la risposta dell'uscita: la chiave con cui Inertia la cifra
+  sta nel `sessionStorage` di quella scheda. In una scheda rimasta aperta mentre la sessione cambia da un'altra la
+  cronologia resta leggibile: lì vale solo ciò che la cornice fa da sé, e il contenuto delle pagine di prima resta.
+  Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
   sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte

@@ -904,6 +904,12 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(etichette()).toContain('Gestión de proyectos');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // Le sue aziende arrivano come il resto: il selettore torna, con le sue e senza quelle di chi c'era prima (R8).
+        const sue = [{ id: '8', nome: 'Globex', workspace: [{ id: 'ws-8', nome: 'Ventas', slug: 'globex-ventas' }, { id: 'ws-9', nome: dati.workspace.nome, slug: dati.workspace.slug }] }];
+        await inDue({ subito: diAltra, dopo: { prodotti: { pm: 'attivo' }, aziende: sue, non_lette: 2, aggiornati_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaB key="2" />);
+        expect(uno('.zr-ws-switch')?.textContent).toContain('Globex');
+        expect(uno('.zr-ws-switch')?.textContent).not.toContain('Acme');
     });
 
     it('con Indietro sulla voce della cronologia di chi c\'era prima — il suo `subito` di allora, senza `dopo` — avatar e menu del profilo dicono chi è entrato adesso, e moduli, selettore e non lette restano i suoi: niente di chi c\'era prima, né in attesa né quando arriva un `dopo` riletto (sprint 36 · T3.1, T3.2)', async () => {

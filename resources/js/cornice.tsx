@@ -372,18 +372,6 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
 }
 
-/**
- * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
- * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
- * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`. Dei dati `in_attesa` sono letti prima di
- * quelli tenuti solo se la persona che la cornice mostra è la stessa di prima (`stessaPersona`), cioè la stessa email: con
- * un'altra valgono loro, ridotti come sono. I due segni si confrontano senza chiedere prima se ci sono: un confronto con
- * `undefined` è sempre falso, da una parte e dall'altra.
- */
-function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice, stessaPersona: boolean): boolean {
-    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa && stessaPersona : segno(questi.aggiornati_il)! < segno(quelli.aggiornati_il)!);
-}
-
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
 interface Saputo {
     con: DatiDellaCornice;
@@ -419,8 +407,8 @@ const TETTO_DEL_FRENO = 60;
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
  * da tutte e due le parti, il segno dei dati è lo stesso o più indietro. Senza un istante da una parte non si confronta
- * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da `lettiPrima`: lì, fra due dati con lo
- * stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
+ * niente: vale solo per i dati con cui la rotta è stata chiesta. È un'altra regola da quella dei dati tenuti (`Cornice`): lì, fra due dati
+ * con lo stesso segno, vale la pagina; qui, a pari istante, vale ciò che la rotta ha detto.
  */
 function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): boolean {
     if (saputo === undefined || dati.workspace.slug !== saputo.con.workspace.slug) {
@@ -504,10 +492,9 @@ const inUnAltroWorkspace: DatiDellaCornice['prodotti'] = Object.fromEntries(regi
 export function Cornice(props: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
-    // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
-    // loro segno dice che sono stati letti prima: allora restano quelli che ci sono. Con lo stesso segno vale la pagina, come
-    // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
-    // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
+    // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono stati letti prima di quelli
+    // tenuti (sotto). Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per
+    // un render.
     const [tenuti, setTenuti] = useState(props.dati);
 
     // Chi è entrato e la sua lingua li dice la pagina: la persona può aver cambiato nome o lingua da un'altra scheda, o la sessione
@@ -519,7 +506,15 @@ export function Cornice(props: CorniceProps) {
     const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
 
-    const dati = lettiPrima(props.dati, tenuti, chi.persona.email === mostrato.persona.email) ? tenuti : props.dati;
+    // La pagina è della persona mostrata fin qui (la stessa email): i suoi dati sono letti prima di quelli tenuti se sono dello
+    // stesso workspace e, col segno da tutte e due le parti, il loro è più indietro; con lo stesso segno no: è la stessa lettura,
+    // e un contenuto diverso lo ha messo il frontend nel browser. Senza un segno da una parte, o fra due workspace, non si può
+    // dire, e vale la pagina: un confronto con `undefined` è sempre falso. Dei dati `in_attesa` lasciano quelli tenuti, se
+    // questi non lo sono. La pagina è di un'altra persona: se è lei a essere entrata adesso valgono i suoi dati, ridotti come
+    // sono. Se è più vecchia di chi la cornice mostra (Indietro) i suoi dati valgono solo se sono stati letti dopo la sessione
+    // di adesso, cioè riletti (il `dopo` che Inertia richiede quando alla voce manca): quelli di allora no, nemmeno quando la
+    // voce della cronologia li porta interi e chi è entrato aspetta ancora i propri. Restano i tenuti, che sono di chi è entrato.
+    const dati = (props.dati.persona.email === mostrato.persona.email ? props.dati.workspace.slug === tenuti.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato && !(segno(props.dati.aggiornati_il)! > della(mostrato))) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }

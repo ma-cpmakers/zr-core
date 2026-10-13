@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatiDellaCornice } from '../js/cornice';
@@ -235,5 +237,19 @@ describe('la parte server finta della pagina di prova del layout', () => {
         await vi.advanceTimersByTimeAsync(10_000);
         expect(leggi).toHaveBeenCalledTimes(1);
         expect(consegna).not.toHaveBeenCalled();
+    });
+});
+
+// Review della PR #69 (R10). README e guida dicono che cosa fa Inertia all'uscita: la cronologia cifrata, la risposta che la
+// toglie, la chiave nel `sessionStorage` della scheda. Si legge nel client installato per le pagine di prova: se una versione
+// nuova cambia quei nomi, o tiene la chiave altrove, questo caso è rosso e le frasi si riscrivono.
+describe('la cronologia cifrata di Inertia, come la dicono README e guida', () => {
+    it('il client installato conosce `clearHistory` e `encryptHistory` della pagina, e tiene la chiave della cronologia nel `sessionStorage` della scheda (review della PR #69, R10)', () => {
+        const client = readFileSync(resolve(process.cwd(), 'node_modules/@inertiajs/core/dist/index.js'), 'utf8');
+
+        expect(client).toContain('clearHistory');
+        expect(client).toContain('encryptHistory');
+        expect(client).toContain('window.sessionStorage.setItem(');
+        expect(client).toContain('key: "historyKey"');
     });
 });

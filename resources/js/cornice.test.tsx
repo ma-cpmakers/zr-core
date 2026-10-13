@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, Fragment, useEffect, type ReactElement } from 'react';
+import { act, Fragment, useEffect, useLayoutEffect, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
@@ -566,6 +566,49 @@ describe('la Cornice', () => {
 
         await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
         diChiEEntrato();
+    });
+
+    it('quando la persona cambia nessun disegno porta i dati di chi c\'era prima sotto il nome nuovo, nemmeno uno: lo guarda la pagina a ogni disegno (sprint 36 · T6, R7)', async () => {
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const visti: string[] = [];
+        // A ogni disegno, col DOM già scritto: chi dice l'avatar, il numero di non lette, il selettore.
+        function Spia() {
+            useLayoutEffect(() => {
+                visti.push(`${uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')} · ${uno('.zr-bell-count')?.textContent ?? 'nessun numero'} · ${uno('.zr-ws-switch') ? 'selettore' : 'nessun selettore'}`);
+            });
+
+            return null;
+        }
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
+        expect(visti.at(-1)).toBe(`${dati.persona.nome} · 4 · selettore`);
+
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
+        const diAltra = visti.filter((visto) => visto.startsWith(altra.nome));
+        expect(diAltra).not.toHaveLength(0);
+        expect([...new Set(diAltra)]).toStrictEqual([`${altra.nome} · nessun numero · nessun selettore`]);
+        expect(visti.at(-1)).toBe(diAltra[0]);
+    });
+
+    it('i due limiti di Indietro che il README dichiara: dei dati senza `sessione_il` valgono come una pagina nuova e portano la loro persona, e una cornice montata da capo non sa chi aveva mostrato (sprint 36 · T6, R12)', async () => {
+        type ColSegno = DatiDellaCornice & { sessione_il?: string };
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const diPrima: ColSegno = { lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: ColSegno = { ...diPrima, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+        await mostra(<Cornice key="1" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice key="1" dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice key="1" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(altra.nome);
+
+        // Il primo limite: il segno manca, e vale la pagina.
+        await mostra(<Cornice key="1" dati={{ ...diPrima, sessione_il: undefined }} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(dati.persona.nome);
+
+        // Il secondo: la cornice si monta da capo, e la pagina di allora è la prima che vede.
+        await mostra(<Cornice key="1" dati={diAdesso} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(altra.nome);
+        await mostra(<Cornice key="2" dati={diPrima} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(dati.persona.nome);
     });
 
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {

@@ -5279,6 +5279,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo` letto di nuovo'],
     'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
+    // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
+    'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],
+    'Indietro: fra due workspace' => ['readme', 'Fra due workspace il layout rifà la cornice, che così non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati'],
+    'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
+    'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
+    'la guida: Indietro fra due workspace' => ['guida', 'una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
@@ -5328,7 +5334,6 @@ it('README e guida non dicono più che con Indietro il menu del profilo mostra l
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
         ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
 })->with([
-    'finché il suo dopo non arriva' => ['finché il suo `dopo` non arriva'],
     'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
     'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
 ]);
