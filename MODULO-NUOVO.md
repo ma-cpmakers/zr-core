@@ -302,7 +302,10 @@ pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
-`dopo` com'è. In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
+`dopo` com'è. **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
+**tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
+sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. In una scheda
+rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
 ricerca di un'altra persona: ricarica la pagina. La persona la riconosce dall'email, che c'è sempre: la garantisce il
 contratto del backoffice, non zr-auth, che la porta com'è. Resta fuori «Segna tutte come lette» da una scheda ferma con
 l'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione. Il contenuto della tua pagina, con Indietro, resta sempre quello di

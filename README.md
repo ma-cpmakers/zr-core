@@ -1192,6 +1192,16 @@ Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Iner
 </LayoutDellaCornice>
 ```
 
+**Tre cose un frontend non le fa**, perché `subito` e `dopo` siano sempre della stessa persona: **non rilegge `subito`
+senza `dopo`** (un ricaricamento parziale con `only`, che chiede la sola prop `subito`), **non tiene `subito` con `once`**,
+e **non compone `dopo` a mano** (chi proprio lo fa gli lascia `lingua`, `persona` e `sessione_il`, come detto sopra).
+Se succede — alla pagina arriva il `subito` di chi è entrato e fra le props resta il `dopo` di chi c'era — dalla `v2.5.0`
+i dati di prima non vanno sotto il nome nuovo: un `dopo` di un'altra persona, letto con una sessione più vecchia di
+quella di `subito`, non vale, e **la cornice resta in attesa di un `dopo` di chi è entrato**: ridotta, col suo nome e la
+sua lingua, finché la pagina non lo rilegge o non fa una visita. Per la stessa persona il `dopo` vale anche sotto un
+`subito` riletto dopo di lui, coi suoi dati, il suo nome e la sua lingua, senza attesa. Un `dopo` che non dice di chi è,
+o un segno che manca da una delle due parti, si unisce a `subito` come prima della `v2.5.0`.
+
 I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e
 `resources/js/app`), gli stessi di `subito` e `dopo` del layout.
 

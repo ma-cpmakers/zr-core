@@ -5383,6 +5383,38 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
 ]);
 
+// Sprint 38 · T2.5 (voce #2027): le tre cose che un frontend non fa con `subito` e `dopo`, e che cosa fa la cornice se
+// succede. In grassetto, tutte e tre, e dove il frontend scrive le due props: non in una nota in fondo.
+it('README e guida dicono in grassetto le tre cose che un frontend non fa con `subito` e `dopo`, e che la cornice resta in attesa: accanto all\'esempio e nel capoverso «In due dati», una volta sola (sprint 38 · T2.5)', function (string $file, string $da, string $a, array $inGrassetto) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+    $inizio = strpos($testo, $da);
+    $fine = $inizio === false ? false : strpos($testo, $a, $inizio);
+
+    expect($inizio)->not->toBeFalse()
+        ->and($fine)->not->toBeFalse();
+
+    $pezzo = substr($testo, (int) $inizio, (int) $fine - (int) $inizio);
+    $quante = array_map(fn (string $frase): int => substr_count($pezzo, $frase), $inGrassetto);
+
+    expect(array_combine($inGrassetto, $quante))->toBe(array_fill_keys($inGrassetto, 1))
+        ->and(array_sum(array_map(fn (string $frase): int => substr_count($testo, $frase), $inGrassetto)))->toBe(count($inGrassetto));
+})->with([
+    'il README, subito dopo l\'esempio' => ['README.md', '<LayoutDellaCornice subito={subito} dopo={dopo} product="pm" onLogout={esci}>', 'I tipi delle due parti escono dai due ingressi', [
+        '**Tre cose un frontend non le fa**',
+        '**non rilegge `subito` senza `dopo`** (un ricaricamento parziale con `only`',
+        '**non tiene `subito` con `once`**',
+        '**non compone `dopo` a mano**',
+        '**la cornice resta in attesa di un `dopo` di chi è entrato**',
+    ]],
+    'la guida, nel capoverso «In due dati»' => ['MODULO-NUOVO.md', '**In due dati**, dalla `v2.1.0`', 'In una scheda rimasta ferma, dalla stessa versione', [
+        '**Tre cose non le fai**',
+        '**rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`)',
+        '**tenere `subito` con `once`**',
+        '**comporre `dopo` a mano**',
+        '**resta in attesa di un `dopo` di chi è entrato**',
+    ]],
+]);
+
 // Sprint 35 · T4.2 (voce #1945): dalla `v2.1.0` le chiavi di una notifica della parte server sono undici, con `azioni` e
 // `board_nome`. Commenti e nomi dei casi non dicono più il numero di prima.
 it('nessun commento e nessun nome di caso dice più «nove chiavi» della parte server: sono undici (sprint 35 · T4.2)', function (string $file) {
