@@ -123,6 +123,18 @@ describe('la parte server finta della pagina di prova del layout', () => {
         expect(JSON.parse((await chiede('')).data).props).toEqual({ errors: {}, cornice: marketing });
     });
 
+    // Sprint 38 · T1 (voce 2027): «UAT rileggi subito» chiede il solo `subito`. La risposta non porta `dopo`, nemmeno se la
+    // parte server lo ha letto: nella pagina resta quello di prima, che può essere di un'altra persona. È il caso da vedere.
+    it('a una rilettura del solo `subito` rimanda il solo `subito`: il `dopo` che la pagina aveva resta quello (sprint 38 · T1.1)', async () => {
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+        const subito = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' }, workspace: marketing.workspace, sessione_il: '2026-10-13T00:00:00.000003Z' };
+        const dueDati = () => () => ({ component: 'due-dati', props: { errors: {}, cornice: null, subito, dopo: { ...marketing, sessione_il: '2026-10-13T00:00:00.000004Z' } } });
+        const chiede = (soltanto: string) => clientFinto(dueDati, 1).request({ ...visita(new AbortController().signal), headers: { 'X-Inertia-Partial-Data': soltanto } });
+
+        expect(JSON.parse((await chiede('subito')).data).props).toStrictEqual({ subito });
+        expect(Object.keys(JSON.parse((await chiede('dopo')).data).props)).toStrictEqual(['dopo']);
+    });
+
     it('una visita che Inertia annulla mentre aspetta la risposta è rifiutata con HttpCancelledError, come fa il client vero, e la sua pagina non si prepara (sprint 10 · T3.1, review della PR)', async () => {
         vi.spyOn(console, 'info').mockImplementation(() => {});
         const { leggi, consegna } = parteServer();
@@ -285,6 +297,16 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
         expect(dueDati.subito).toStrictEqual({ ...grace, workspace: ricerca, sessione_il: subito.sessione_il });
         // Deve fallire se `dopo` resta nel workspace della pagina mentre `subito` dice l'altro: non sarebbe la lettura di una sessione sola.
         expect(dueDati.dopo).toStrictEqual({ ...grace, workspace: ricerca, ...diGrace, aggiornati_il: dopo.aggiornati_il, sessione_il: dopo.sessione_il });
+    });
+
+    // Sprint 38 · T1 (voce 2026): l'altra persona può essere una che non ha accettato i documenti legali. I suoi dati sono
+    // quelli ridotti: la pagina che si ricarica da una scheda ferma è la sua, con l'avviso dell'accettazione.
+    it('un\'altra persona che non ha accettato i documenti legali: i dati interi sono i suoi, ridotti, e `subito` non lo dice (sprint 38 · T1.1)', () => {
+        const ridotti = { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true } satisfies Entrata['backoffice'];
+        const daAccettare: Entrata = { sessione: grace, backoffice: ridotti };
+
+        expect(conLaSessione(letta({ cornice: marketing }), daAccettare).cornice).toStrictEqual({ ...grace, workspace: marketing.workspace, ...ridotti });
+        expect(conLaSessione(letta({ subito }), daAccettare).subito).toStrictEqual({ ...grace, workspace: marketing.workspace, sessione_il: subito.sessione_il });
     });
 
     it('le forme ridotte di `dopo` restano ridotte: senza i dati del backoffice non ne prendono, e il workspace cambia solo dove c\'è (sprint 37 · T1.1)', () => {

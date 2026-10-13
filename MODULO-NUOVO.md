@@ -302,10 +302,17 @@ pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
-`dopo` com'è. In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
-ricerca di un'altra persona: ricarica la pagina. La persona la riconosce dall'email, che c'è sempre: la garantisce il
-contratto del backoffice, non zr-auth, che la porta com'è. Resta fuori «Segna tutte come lette» da una scheda ferma con
-l'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione. Il contenuto della tua pagina, con Indietro, resta sempre quello di
+`dopo` com'è. **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
+**tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
+sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un
+`dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui
+manca uno dei due si unisce ancora a `subito`, e i dati di chi c'era tornano a schermo. In una scheda
+rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati della
+ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il
+freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
+contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
+scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Una scheda ferma mostra ciò che aveva finché da
+lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa

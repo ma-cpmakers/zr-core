@@ -2272,7 +2272,7 @@ it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa p
 });
 
 // Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) le rotte
-// della cornice rispondono 403 col solo codice, nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
+// della cornice rispondono 403 col codice e, dalla `v2.5.0`, l'email della persona della sessione (`persona`), nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
 // backoffice restano nella parte server. Il 403 si riconosce dallo stato e dal codice insieme: ogni altra risposta resta
 // l'errore che era. La quarta rotta, la ricerca, è in RicercaTest. Il 403 è accettazioneRichiesta() di tests/Pest.php.
 
@@ -2286,13 +2286,13 @@ function rottaDelleNotifiche(string $rotta): TestResponse
     });
 }
 
-it('davanti al 403 accettazione_richiesta del backoffice le tre rotte delle notifiche rispondono 403 col solo codice: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3)', function (string $rotta) {
+it('davanti al 403 accettazione_richiesta del backoffice le tre rotte delle notifiche rispondono 403 col codice e con `persona`, l\'email di chi è nella sessione, e nient\'altro: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3; sprint 38 · T3.4)', function (string $rotta) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => accettazioneRichiesta()]);
 
     $risposta = rottaDelleNotifiche($rotta)->assertForbidden();
 
-    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta","persona":"uat-ada@example.com"}');
     Http::assertSentCount(1);
 })->with([
     'GET /cornice/notifiche' => ['elenco'],
@@ -2300,15 +2300,102 @@ it('davanti al 403 accettazione_richiesta del backoffice le tre rotte delle noti
     'POST /cornice/notifiche/letture' => ['letture'],
 ]);
 
-it('quel 403 a un richiamo delle letture è lo stesso 403 col solo codice, e dopo non parte un\'altra chiamata (sprint 24 · T1.3)', function () {
+it('quel 403 a un richiamo delle letture è lo stesso 403, e dopo non parte un\'altra chiamata (sprint 24 · T1.3)', function () {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, true), fn () => accettazioneRichiesta(), lettureDopo(0, false)]);
 
     $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z')))->assertForbidden();
 
-    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta","persona":"uat-ada@example.com"}');
     Http::assertSentCount(2);
 });
+
+// Sprint 38 · T3.4 (voce #2026): anche quel 403 dice di chi è. In una scheda rimasta ferma la sessione può essere passata a
+// un'altra persona, e la cornice deve sapere che l'errore non è di chi mostra: `persona` è l'email della persona della
+// sessione, presa prima di chiamare il backoffice. Nel corpo entrano solo il codice e l'email.
+
+it('quel 403 dice di chi è: `persona` è l\'email della persona della sessione, mai un valore della richiesta, e di lei non passano né l\'id né il nome (sprint 38 · T3.4)', function (string $rotta, array $diversa, string $email) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
+    Http::fake(['*' => accettazioneRichiesta()]);
+    $intestazioni = ['X-Persona' => 'uat-altra@example.org'];
+
+    $risposta = senzaGettone(match ($rotta) {
+        'elenco' => $this->getJson('cornice/notifiche?persona=uat-altra@example.org&email=uat-altra@example.org', $intestazioni),
+        'lettura' => $this->patchJson('cornice/notifiche/uat-n3/lettura?persona=uat-altra@example.org', ['letta' => true, 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], $intestazioni),
+        'letture' => $this->postJson('cornice/notifiche/letture?email=uat-altra@example.org', lettureFinoA('2026-10-08T10:00:00.000Z') + ['email' => 'uat-altra@example.org'], $intestazioni),
+    })->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta","persona":"'.$email.'"}');
+    Http::assertSentCount(1);
+})->with(['elenco', 'lettura', 'letture'])->with([
+    'Ada' => [['id' => 'uat-persona-1'], 'uat-ada@example.com'],
+    'Grace, entrata dopo' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-grace@example.com'],
+]);
+
+it('l\'email di quel 403 è presa prima di chiamare il backoffice: se durante la chiamata la sessione passa a un\'altra persona, la risposta dice chi ha chiesto (sprint 38 · T3.4)', function (string $rotta) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(function () {
+        sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', ['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com']);
+
+        return accettazioneRichiesta();
+    });
+
+    $risposta = rottaDelleNotifiche($rotta)->assertForbidden();
+
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta","persona":"uat-ada@example.com"}')
+        // La sessione è passata davvero all'altra persona: senza, il caso non proverebbe l'ordine.
+        ->and(Sessione::utente()['email'] ?? null)->toBe('uat-grace@example.com');
+    Http::assertSentCount(1);
+})->with(['elenco', 'lettura', 'letture']);
+
+// Sprint 38 · T4.2 (voce #2028): «Segna tutte come lette» dice per chi lo chiede. In una scheda rimasta ferma la sessione può
+// essere passata a un'altra persona dello stesso workspace: lo slug è lo stesso, e la rotta segnerebbe lette le notifiche di
+// chi è entrato, mai viste. `persona` nel corpo è l'email di chi la cornice mostra: si confronta con quella della sessione, e
+// basta. Non sceglie di chi segnare, non va al backoffice. Una richiesta che non la porta (un JS di prima) vale come prima.
+
+it('con una `persona` che non è l\'email della sessione risponde 409 persona_diversa con l\'email della sessione, e non chiama il backoffice: da una scheda ferma non si segnano le notifiche di chi è entrato dopo (sprint 38 · T4.2)', function (array $diversa, string $chiesta, string $dellaSessione) {
+    // Senza il middleware che toglie gli spazi: l'email si confronta com'è.
+    test()->withoutMiddleware(TrimStrings::class);
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => $chiesta]))->assertStatus(409);
+
+    expect($risposta->getContent())->toBe('{"errore":"persona_diversa","persona":"'.$dellaSessione.'"}');
+    Http::assertNothingSent();
+})->with([
+    'Ada a schermo, Grace nella sessione' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-ada@example.com', 'uat-grace@example.com'],
+    'la stessa con le maiuscole' => [[], 'UAT-Ada@example.com', 'uat-ada@example.com'],
+    'la stessa con uno spazio in fondo' => [[], 'uat-ada@example.com ', 'uat-ada@example.com'],
+]);
+
+it('con la `persona` della sessione, senza `persona`, o con una `persona` che non è un testo, la rotta risponde come prima: una chiamata al backoffice col solo fino_a, e né il corpo né la query né un\'intestazione scelgono di chi segnare (sprint 38 · T4.2)', function (array $inPiu) {
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture?persona=uat-altra@example.org', lettureFinoA('2026-10-08T10:00:00.123Z') + $inPiu, ['X-Persona' => 'uat-altra@example.org']))
+        ->assertOk()->assertJsonPath('data', ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => false]);
+    expect(chiamateAlBackoffice())->toBe([chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])]);
+})->with([
+    'la stessa email' => [['persona' => 'uat-ada@example.com']],
+    'senza persona: un JS di prima rimasto in una scheda' => [[]],
+    'null' => [['persona' => null]],
+    'un numero' => [['persona' => 7]],
+    'true' => [['persona' => true]],
+    'una lista' => [['persona' => ['uat-altra@example.org']]],
+]);
+
+it('le guardie di prima vengono prima e restano com\'erano: con un\'altra `persona` insieme a un altro workspace, o a un fino_a che non è un istante, la risposta è la loro e non dice `persona` (sprint 38 · T4.2)', function (array $corpo, int $stato, string $errore) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
+    Http::assertNothingSent();
+})->with([
+    'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409, 'workspace_diverso'],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422, 'dati_non_validi'],
+    'senza workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z'], 422, 'dati_non_validi'],
+]);
 
 it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere accettazione_richiesta a nessuna delle tre rotte delle notifiche (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $rotta) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);

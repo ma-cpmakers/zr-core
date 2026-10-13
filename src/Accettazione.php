@@ -9,7 +9,8 @@ use Zeiras\Auth\Errori\ErroreApi;
 /**
  * Il 403 `accettazione_richiesta` di /v1: la persona non ha ancora accettato i documenti legali in vigore, e finché non lo
  * fa il backoffice le apre solo io.mostra, i documenti, l'accettazione e l'uscita. Per la cornice non è un guasto: i dati
- * escono ridotti (`Cornice::dati()`, con `accettazione_richiesta`), e le sue rotte lo dicono al browser col solo codice.
+ * escono ridotti (`Cornice::dati()`, con `accettazione_richiesta`), e le sue rotte lo dicono al browser col codice e con
+ * l'email di chi è nella sessione (`persona`).
  *
  * Si riconosce dallo stato e dal codice insieme, mai dalla classe dell'errore: fra le versioni di zr-auth che il vincolo del
  * pacchetto accetta ce ne sono senza una classe per questo 403. Un 403 con un altro codice, o senza codice, e quel codice con
@@ -29,12 +30,15 @@ final class Accettazione
     }
 
     /**
-     * Ciò che una rotta della cornice risponde a un errore di /v1 che non tratta da sé: davanti a quel 403 un 403 col solo
-     * codice, nella forma degli errori delle rotte; ogni altro errore lo rilancia com'è. I documenti mancanti, il titolo e il
-     * dettaglio del backoffice restano nella parte server: la cornice non mostra testi legali e non fa accettare niente.
+     * Ciò che una rotta della cornice risponde a un errore di /v1 che non tratta da sé: davanti a quel 403 un 403 col
+     * codice, nella forma degli errori delle rotte, e con `persona`; ogni altro errore lo rilancia com'è. I documenti
+     * mancanti, il titolo e il dettaglio del backoffice restano nella parte server: la cornice non mostra testi legali e non
+     * fa accettare niente. `$persona` è l'email della persona della sessione, letta dalla rotta prima di chiamare il
+     * backoffice (dalla `v2.5.0`): una pagina rimasta ferma mentre la sessione passava a un'altra persona sa così che
+     * l'errore non è di chi mostra. Solo l'email: né l'id né il nome.
      */
-    public static function rispostaA(ErroreApi $errore): JsonResponse
+    public static function rispostaA(ErroreApi $errore, ?string $persona = null): JsonResponse
     {
-        return self::richiesta($errore) ? new JsonResponse(['errore' => self::CODICE], 403) : throw $errore;
+        return self::richiesta($errore) ? new JsonResponse(['errore' => self::CODICE, 'persona' => $persona], 403) : throw $errore;
     }
 }

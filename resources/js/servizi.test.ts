@@ -31,7 +31,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta('uat-n69')).resolves.toStrictEqual({ il: unIstante });
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
             ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
@@ -41,7 +41,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        const lettura = segnaLetta('uat-n69');
+        const lettura = segnaLetta('uat-n69', 'ada@example.com');
         expect(fetchFinto).toHaveBeenCalledTimes(1);
         await lettura;
     });
@@ -54,7 +54,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await segnaLetta(id);
+        await segnaLetta(id, 'ada@example.com');
         expect(fetchFinto.mock.calls.map(([chiesto]) => chiesto)).toStrictEqual([indirizzo]);
     });
 
@@ -77,7 +77,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -94,7 +94,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id as string)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id as string, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -107,7 +107,7 @@ describe('segnaLetta', () => {
     ])('una risposta con `letta: true` il cui istante %s non è un errore: è senza segno (sprint 22 · T2.5)', async (_come, conLIstante) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: { id: 'uat-n69', letta: true }, ...conLIstante })));
 
-        await expect(segnaLetta('uat-n69')).resolves.toStrictEqual({ il: undefined });
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: undefined });
     });
 
     it.each([
@@ -122,7 +122,7 @@ describe('segnaLetta', () => {
     ])('una risposta con %s è un errore, mai una lettura riuscita (sprint 22 · T2.3)', async (_come, dellaRotta) => {
         vi.stubGlobal('fetch', vi.fn(async () => dellaRotta));
 
-        await expect(segnaLetta('uat-n69')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
     });
 });
 
@@ -174,7 +174,7 @@ describe('cerca', () => {
 });
 
 // Sprint 24 · T2 (voce #1745): se la persona non ha accettato i documenti legali in vigore le quattro rotte della cornice
-// rispondono 403 col solo codice, `{"errore":"accettazione_richiesta"}`. Per la cornice non è un guasto: le quattro chiamate
+// rispondono 403 col codice, `{"errore":"accettazione_richiesta"}`, e dalla `v2.5.0` con l'email di chi è (`persona`). Per la cornice non è un guasto: le quattro chiamate
 // lanciano `AccettazioneRichiesta`, che lei riconosce. Ogni altro esito resta l'errore di prima.
 describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
     afterEach(() => {
@@ -183,8 +183,8 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
 
     const chiamate: [string, () => Promise<unknown>][] = [
         ['caricaNotifiche', () => caricaNotifiche('ada@example.com')],
-        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing')],
-        ['segnaLetta', () => segnaLetta('uat-n69')],
+        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com')],
+        ['segnaLetta', () => segnaLetta('uat-n69', 'ada@example.com')],
         ['cerca', () => cerca('lancio', new AbortController().signal, 'ada@example.com')],
     ];
     /** Come una chiamata finisce: con quell'errore, con un altro, o bene. */
@@ -337,6 +337,91 @@ describe('una risposta che dice di chi è', () => {
         vi.stubGlobal('fetch', fetchFinto);
 
         await expect(chiama('ada@example.com')).resolves.toStrictEqual(attesa);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è (`persona`, dalla `v2.5.0` nel corpo del 403
+    // `accettazione_richiesta` e del 429 della ricerca). Di un'altra persona non diventa un errore di chi ha chiesto: la
+    // cornice non si riduce e la ricerca non si ferma sotto il nome di prima, e la pagina si ricarica.
+    const diErrore = (stato: number, corpo: Record<string, unknown>) => ({
+        ok: false,
+        status: stato,
+        headers: new Headers(stato === 429 ? { 'Retry-After': '30' } : {}),
+        json: async () => corpo,
+    }) as unknown as Response;
+    const errori: [string, number, string, typeof AccettazioneRichiesta | typeof TroppeRichieste][] = [
+        ['il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta],
+        ['il 429 coi secondi', 429, 'troppe_richieste', TroppeRichieste],
+    ];
+    // Sprint 38 · T5 (R1 della review): anche la lettura di una notifica (`PATCH …/lettura`) passa l'email di chi la cornice
+    // mostra: il suo 403 `accettazione_richiesta` dice di chi è come quello delle altre rotte.
+    const conErrore = [
+        ...chiamate.flatMap(([nome, , chiama]) => errori.map(([quale, stato, codice, classe]) => [nome, quale, stato, codice, classe, chiama] as const)),
+        ['segnaLetta', 'il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta, (email: string) => segnaLetta('uat-n69', email)] as const,
+    ];
+
+    it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(conErrore.flatMap(([nome, quale, stato, codice, classe, chiama]) => ([
+        ['della stessa persona', { persona: 'ada@example.com' }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+        ['con `persona` null', { persona: null }],
+        ['con una `persona` che è un numero', { persona: 12 }],
+    ] as [string, Record<string, unknown>][]).map(([come, conLaPersona]) => [nome, quale, come, stato, { errore: codice, ...conLaPersona }, classe, chiama] as const)))('%s: %s %s resta l\'errore di sempre, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T3.3)', async (_nome, _quale, _come, stato, corpo, classe, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(stato, corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama('ada@example.com')).rejects.toBeInstanceOf(classe);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // Sprint 38 · T4 (voce #2028): «Segna tutte come lette» dice per chi lo chiede. `segnaLetteFinoA` manda l'email di chi la
+    // cornice mostra (`persona`), e la parte server, se la sessione è di un'altra persona, non segna niente e risponde 409
+    // `persona_diversa` con l'email di chi è entrato: un errore di un'altra persona, e la pagina si ricarica.
+    const segna = () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com');
+
+    it('segnaLetteFinoA manda nel corpo l\'email di chi la cornice mostra, accanto all\'istante e allo slug (sprint 38 · T4.1)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await segna();
+        expect(JSON.parse(String(fetchFinto.mock.calls[0]?.[1]?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+    });
+
+    it.each<[string, Response]>([
+        ['il 409 `persona_diversa` di un\'altra persona', diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' })],
+        ['una risposta riuscita che dice un\'altra persona', risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' }, persona: 'grace@example.com' })],
+    ])('segnaLetteFinoA: %s non torna a chi ha chiesto — né chiusa né con un errore — e la pagina si ricarica, una volta (sprint 38 · T4.1)', async (_quale, laRisposta) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => laRisposta);
+        vi.stubGlobal('fetch', fetchFinto);
+
+        expect(await esitoDi(segna())).toBe('in attesa');
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: 'ada@example.com' }],
+        ['che non dice di chi è', {}],
+        ['con `persona` null', { persona: null }],
+    ])('segnaLetteFinoA: un 409 `persona_diversa` %s resta l\'errore di sempre, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T4.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(409, { errore: 'persona_diversa', ...conLaPersona }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(segna()).rejects.toThrow('POST /cornice/notifiche/letture: 409');
         expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });

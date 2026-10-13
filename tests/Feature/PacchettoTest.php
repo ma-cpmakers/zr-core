@@ -731,6 +731,26 @@ it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su
         ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
 });
 
+// Sprint 38 · T1 (voci #2026, #2027, #2028): tre comandi in più per vedere nel browser ciò che resta fra due persone e una
+// pagina. Che cosa fanno lo provano rotte-finte.test.ts e parte-server-finta.test.ts; qui, che la pagina di prova li ha: se il
+// 403 finto valesse per tutte e due le persone, o se «UAT rileggi subito» chiedesse anche `dopo`, i difetti non si vedrebbero.
+it('la pagina di prova del layout, con ?sessione, rilegge il solo subito, dà gli errori delle rotte finte solo a chi è entrato dopo e tiene nel browser le notifiche lette di ognuna (sprint 38 · T1.1)', function () {
+    $subito = '<button type="button" data-uat="rileggi-subito" onClick={() => router.reload({ only: [\'subito\'] })}>UAT rileggi subito</button>';
+    $altraDaAccettare = "scelti.get('accettazione') === 'dopo' && scelti.has('per_altra')";
+    $perAltra = "const soloPerLAltra = new URLSearchParams(window.location.search).has('per_altra');";
+    $aChiTocca = 'const toccaAChiCE = () => !soloPerLAltra || personaDellaSessione?.()?.email !== laPrima;';
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$subito, 'data-uat="rileggi-subito"', $altraDaAccettare]))->toBe([$subito => 1, 'data-uat="rileggi-subito"' => 1, $altraDaAccettare => 1])
+        // Il 403 e il 429 passano tutti dalla stessa domanda: il 429 della ricerca, il 403 della ricerca e quello delle altre tre.
+        ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$perAltra, $aChiTocca, '&& toccaAChiCE()) {', 'localStorage.getItem(chiave) !== null', 'const chiave = `uat-letta-di-${breve.toLowerCase()}`;']))->toBe([
+            $perAltra => 1,
+            $aChiTocca => 1,
+            '&& toccaAChiCE()) {' => 3,
+            'localStorage.getItem(chiave) !== null' => 1,
+            'const chiave = `uat-letta-di-${breve.toLowerCase()}`;' => 1,
+        ]);
+});
+
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
     $parteServer = (string) file_get_contents(__DIR__.'/../../resources/demo/parte-server-finta.ts');
     $lock = json_decode((string) file_get_contents(__DIR__.'/../../package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
@@ -1001,7 +1021,7 @@ function rigaDellaRotta(string $readme, string $rotta): string
 it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4; sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
-    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $cosaDice = fn (string $testo): array => [
         'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
@@ -1371,7 +1391,7 @@ it('il README non dice più che il titolo di una notifica è uno per tutte (spri
 
 it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per cosa (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Il README con la riga delle letture e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
     $scambiate = strtr($readme, [$letture => $ricerca, $ricerca => $letture]);
@@ -1634,7 +1654,7 @@ it('il README dice, nella riga della rotta, che una risposta del backoffice senz
 })->with([
     'una notifica senza tipo' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx)'],
     'anche nella lettura di una notifica sola' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`'],
-    'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
+    'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
 ]);
 
 // Sprint 18 · T1 (voce #1638): la ricerca è una POST con la parola nel corpo. Il README lo dice nella riga della rotta, che è
@@ -1700,7 +1720,7 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     // Lettura della PR #56, R1: una lista chiusa, quella del registro.
     'la riga: il contesto di un risultato' => ['rotta', 'dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un\'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server'],
     'la riga: il tratto al backoffice' => ['rotta', 'dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l\'indirizzo di quella richiesta non porta query'],
-    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
+    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste", persona}` (`persona`, dalla `v2.5.0`: l\'email della persona della sessione, di chi è il freno) con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
     // Sprint 26 · T4.5 (lettura della PR #56, R8): che cosa fa la cornice, nel browser, con quei secondi.
     'la riga: la cornice aspetta i secondi del freno' => ['rotta', 'e la cornice mostra l\'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo'],
     // Lettura della PR #59, R3: il freno non regge a un rimontaggio.
@@ -4445,7 +4465,7 @@ it('il README non promette più che senza `Intl.ListFormat` la cornice si disegn
         ->and(str_contains($readme, 'in un browser che ha il resto di ciò che i sorgenti usano'))->toBe(true);
 });
 
-it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
+it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col codice — dalla `v2.5.0` anche con l\'email di chi è — (sprint 24 · T2.7)', function (string $frase) {
     $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
 
     expect($parteServer)->not->toBe('')
@@ -4466,7 +4486,7 @@ it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi
     'le chiamate del frontend: chi decide' => ['lì la persona resta dov\'è, e che cosa mostrarle lo decide il frontend. Per le visite il frontend non scrive un rimando suo'],
     // Seconda lettura della PR #52, S10 (sprint 25 · T5.6).
     'le chiamate del frontend: la quarta forma (S10)' => ['La quarta forma è della pagina dell\'accettazione stessa (l\'host e il percorso di `zr-auth.accettazione`, con o senza la lingua davanti): lì risponde quel 403 anche a una visita e a una visita di Inertia, perché un rimando la manderebbe a sé stessa'],
-    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
+    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta", persona}`: il codice e, dalla `v2.5.0`, l\'email della persona della sessione (`persona`: di chi è quell\'errore); titolo, dettaglio e documenti mancanti del backoffice restano nella parte server'],
     // Lettura della PR #52, R10.
     'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth'],
     // Seconda lettura della PR #52, S2 (sprint 25 · T5.2): da quale versione di zr-auth.
@@ -5338,18 +5358,35 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: le due rotte' => ['readme', 'Dalla `v2.4.0` anche l\'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l\'email della persona della sessione'],
     'la scheda ferma: a schermo' => ['readme', 'La cornice non la mostra sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello resta in caricamento'],
     'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
-    'la scheda ferma: ciò che resta fuori' => ['readme', 'Resta fuori «Segna tutte come lette» da una scheda ferma che ha già il suo elenco a schermo: la rotta delle letture non dice di chi è'],
-    'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    // Sprint 38 · T5 (seconda lettura della PR #71: N1, N2, N4): la lettura con un clic, il corpo di «Segna tutte come lette»,
+    // il ricaricamento che non avviene, e nella guida il `dopo` composto a mano.
+    'la scheda ferma: la lettura con un clic' => ['readme', 'Lo stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`): se arriva prima che la risorsa si apra, la pagina si ricarica al suo posto'],
+    'la scheda ferma: il corpo di «Segna tutte come lette»' => ['readme', 'e dalla `v2.5.0` l\'email di chi la cornice mostra (`persona`)'],
+    'la scheda ferma: il ricaricamento che non avviene' => ['readme', 'Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di restare — chi ha chiesto resta in attesa finché la pagina non si ricarica'],
+    'la guida: un dopo composto a mano' => ['guida', 'Lo fa per un `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui manca uno dei due si unisce ancora a `subito`'],
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
     'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
     // Sprint 37 · T6 (review della PR #70: R7, R13): ciò che resta fuori lo dice anche la guida; l'email dei dati composti a mano.
-    'la guida: ciò che resta fuori' => ['guida', 'Resta fuori «Segna tutte come lette» da una scheda ferma con l\'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione'],
     'i dati composti a mano: l\'email' => ['readme', 'Chi compone a mano i dati della cornice dà come email della persona quella della sessione: con un\'altra, campanella e ricerca ricaricano la pagina a ogni uso'],
     'la guida: l\'email' => ['guida', 'La persona la riconosce dall\'email, che c\'è sempre: la garantisce il contratto del backoffice, non zr-auth, che la porta com\'è'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
     'la guida: Indietro fra due workspace' => ['guida', 'nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`'],
+    // Sprint 38 · T3.6 (voce #2026): in una scheda ferma anche gli errori di chi è entrato non vanno sotto il nome di prima.
+    'la scheda ferma: gli errori' => ['readme', 'Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta` e il 429 della ricerca portano `persona`'],
+    'la scheda ferma: gli errori a schermo' => ['readme', 'In una scheda rimasta ferma l\'errore di chi è entrato non riduce la cornice e non ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica'],
+    'la scheda ferma: il 403 di zr-auth' => ['readme', 'Il 403 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima'],
+    // Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non è più un limite; ciò che resta, detto.
+    'la scheda ferma: segna tutte' => ['readme', 'Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l\'email di chi mostra, e la rotta la confronta con quella della sessione'],
+    'la scheda ferma: il 409' => ['readme', 'la rotta non segna niente e risponde 409 `persona_diversa` con l\'email di chi è entrato: le sue notifiche restano da leggere, l\'elenco a schermo non è dato per letto, e la pagina si ricarica'],
+    'la scheda ferma: senza persona' => ['readme', 'Una richiesta senza `persona` (il JS di una versione di prima, rimasto in una scheda) vale come prima: la rotta guarda solo il workspace'],
+    'la scheda ferma: ciò che resta' => ['readme', 'Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una richiesta'],
+    'la scheda ferma: la riga della rotta' => ['readme', '409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice, e non si segna niente; una richiesta senza `persona` vale come prima'],
+    'la guida: segna tutte da una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica'],
+    'la guida: ciò che resta a una scheda ferma' => ['guida', 'Una scheda ferma mostra ciò che aveva finché da lì non parte una richiesta'],
+    'la guida: gli errori in una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima'],
     'la guida: il contenuto della pagina' => ['guida', 'Il contenuto della tua pagina, con Indietro, resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
@@ -5361,6 +5398,47 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: in attesa caricano' => ['guida', 'dalla `v2.2.0` campanella e ricerca caricano: una parola scritta intanto si cerca quando `dopo` arriva'],
     'la guida: la persona in attesa' => ['guida', 'e il menu del profilo mostra la persona di `subito`'],
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
+]);
+
+// Sprint 38 · T2.5 (voce #2027): le tre cose che un frontend non fa con `subito` e `dopo`, e che cosa fa la cornice se
+// succede. In grassetto, tutte e tre, e dove il frontend scrive le due props: non in una nota in fondo.
+it('README e guida dicono in grassetto le tre cose che un frontend non fa con `subito` e `dopo`, e che la cornice resta in attesa: accanto all\'esempio e nel capoverso «In due dati», una volta sola (sprint 38 · T2.5)', function (string $file, string $da, string $a, array $inGrassetto) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$file));
+    $inizio = strpos($testo, $da);
+    $fine = $inizio === false ? false : strpos($testo, $a, $inizio);
+
+    expect($inizio)->not->toBeFalse()
+        ->and($fine)->not->toBeFalse();
+
+    $pezzo = substr($testo, (int) $inizio, (int) $fine - (int) $inizio);
+    $quante = array_map(fn (string $frase): int => substr_count($pezzo, $frase), $inGrassetto);
+
+    expect(array_combine($inGrassetto, $quante))->toBe(array_fill_keys($inGrassetto, 1))
+        ->and(array_sum(array_map(fn (string $frase): int => substr_count($testo, $frase), $inGrassetto)))->toBe(count($inGrassetto));
+})->with([
+    'il README, subito dopo l\'esempio' => ['README.md', '<LayoutDellaCornice subito={subito} dopo={dopo} product="pm" onLogout={esci}>', 'I tipi delle due parti escono dai due ingressi', [
+        '**Tre cose un frontend non le fa**',
+        '**non rilegge `subito` senza `dopo`** (un ricaricamento parziale con `only`',
+        '**non tiene `subito` con `once`**',
+        '**non compone `dopo` a mano**',
+        '**la cornice resta in attesa di un `dopo` di chi è entrato**',
+    ]],
+    'la guida, nel capoverso «In due dati»' => ['MODULO-NUOVO.md', '**In due dati**, dalla `v2.1.0`', 'In una scheda rimasta ferma, dalla `v2.4.0`', [
+        '**Tre cose non le fai**',
+        '**rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`)',
+        '**tenere `subito` con `once`**',
+        '**comporre `dopo` a mano**',
+        '**resta in attesa di un `dopo` di chi è entrato**',
+    ]],
+]);
+
+// Sprint 38 · T3.6 (voce #2026): dalla `v2.5.0` il 403 `accettazione_richiesta` e il 429 della ricerca dicono anche di chi
+// sono (`persona`). Il README non dice più che portano il solo codice.
+it('il README non dice più che quel 403 e quel 429 portano il solo codice: dalla `v2.5.0` dicono anche di chi sono (sprint 38 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il 403' => ['`{errore: "accettazione_richiesta"}`, col solo codice'],
+    'il 429' => ['la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`'],
 ]);
 
 // Sprint 35 · T4.2 (voce #1945): dalla `v2.1.0` le chiavi di una notifica della parte server sono undici, con `azioni` e
@@ -5412,6 +5490,16 @@ it('il README non dice più che `dopo` non dice di chi è, né che i dati rilett
     'sopra i dati di adesso' => ['sopra i dati di adesso'],
     'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
     'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
+]);
+
+// Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non segna le notifiche di un'altra persona.
+it('README e guida non dicono più che «Segna tutte come lette» da una scheda ferma resta fuori (sprint 38 · T4.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'resta fuori' => ['Resta fuori «Segna tutte come lette»'],
+    'la rotta non dice di chi è' => ['la rotta delle letture non dice di chi è'],
+    'segna le notifiche di chi è nella sessione' => ['segna le notifiche di chi è nella sessione'],
 ]);
 
 // Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.

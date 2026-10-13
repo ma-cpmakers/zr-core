@@ -1459,7 +1459,7 @@ describe('il pannello delle notifiche', () => {
         expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
         expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
         // Com'è nell'elenco, col suo fuso: né l'ora del browser («adesso» sono le 12:00) né l'istante riscritto.
-        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         // Prima della risposta non cambia niente, e un altro clic non manda una seconda richiesta.
         expect(campanella()).toBe('60');
         expect(nonLette()).toStrictEqual([true, true, false]);
@@ -1473,6 +1473,48 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()).toBeNull();
         // Nessuna PATCH, e l'elenco non si ricarica: nel frattempo nessuno l'ha ricaricato.
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+    });
+
+    // Sprint 38 · T4 (voce #2028): «Segna tutte come lette» dice per chi lo chiede (`persona`, l'email di chi la cornice mostra).
+    // In una scheda rimasta ferma la sessione può essere passata a un'altra persona dello stesso workspace: la parte server non
+    // segna niente e risponde 409 `persona_diversa` con l'email di chi è entrato. Niente è dato per letto, e la pagina si ricarica.
+    it('in una scheda rimasta ferma «Segna tutte come lette» manda l\'email di chi è mostrato, e al 409 `persona_diversa` di chi è entrato non dà niente per letto: una POST sola, la pagina si ricarica, numero ed elenco restano com\'erano (sprint 38 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        await act(prossimoGiro);
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(campanella()).toBe('60');
+        expect(nonLette()).toStrictEqual([true, true, false]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        ricarica.mockRestore();
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è', {}],
+    ])('un 409 `persona_diversa` %s è un errore come gli altri: niente è dato per letto, il pulsante resta per riprovare e la pagina non si ricarica (sprint 38 · T4.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer }) : risposta({ errore: 'persona_diversa', ...conLaPersona }, 409)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await clic(segnaTutte());
+        await act(prossimoGiro);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(campanella()).toBe('60');
+        expect(nonLette()).toStrictEqual([true, true, false]);
+        expect(segnaTutte()).not.toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
+        ricarica.mockRestore();
     });
 
     it.each<[string, ReturnType<typeof nata>[], string]>([
@@ -1490,7 +1532,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa, workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa, workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual(elenco.map(() => false));
     });
@@ -1505,7 +1547,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(segnaTutte()).toBeNull();
     });
@@ -1567,7 +1609,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(2)).toStrictEqual(['POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
     });
@@ -1643,7 +1685,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false, false]);
     });
@@ -1700,7 +1742,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(nonLette()).toStrictEqual([true, false, false, false]);
         expect(campanella()).toBe('1');
     });
@@ -1736,7 +1778,7 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
     });
 
     // Sprint 23 · T1. Con due schede su due workspace l'elenco in pagina può essere di un altro workspace rispetto ai dati: lì
@@ -1778,7 +1820,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
     });
 
     it('se i dati passano a un altro workspace a pannello aperto e la parte server dice di quale workspace è l\'elenco, il pulsante non c\'è finché in pagina c\'è l\'elenco del workspace di prima, e torna con l\'elenco del workspace dei dati (sprint 23 · T1.3)', async () => {
@@ -1801,7 +1843,7 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite', persona: 'ada@example.com' });
     });
 
     // Sprint 24 · T4 (voce #1754; lettura della PR #51, R3). L'elenco chiesto coi dati di un workspace può essere, per la parte
@@ -1829,7 +1871,7 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite', persona: 'ada@example.com' });
     });
 
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
@@ -2087,7 +2129,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Project Management · 2 minuti fa', 'Project Management · 10 minuti fa']);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing', persona: 'ada@example.com' });
     });
 
     // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
@@ -3142,7 +3184,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
         expect(segnaTutte()).toBeNull();
@@ -3246,7 +3288,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual([
             'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
         ]);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
         expect(segnaTutte()).toBeNull();
@@ -3304,7 +3346,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual([
             'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
         ]);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
         // La notifica nata dopo quell'istante non è stata segnata: resta non letta in pagina e sulla campanella.
         expect(nonLette()).toStrictEqual([true, false, false, false]);
         expect(campanella()).toBe('1');
@@ -3683,6 +3725,47 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()).toBeNull();
         // Il numero resta quello dei dati: niente dell'elenco di chi è entrato lo cambia.
         expect(campanella()).toBe('2');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è. In una scheda rimasta ferma il 403 `accettazione_richiesta` di
+    // chi è entrato non riduce la cornice sotto il nome di chi è mostrato: la pagina si ricarica, e dopo è di chi è entrato.
+    it('in una scheda rimasta ferma il 403 `accettazione_richiesta` di un\'altra persona non riduce la cornice sotto il nome di chi è mostrato, nemmeno per un disegno: una richiesta sola, la pagina si ricarica e il pannello resta in caricamento (sprint 38 · T3.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', persona: 'grace@example.com' }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        const ridotte: boolean[] = [];
+        const guarda = new MutationObserver(() => ridotte.push(contenitore.textContent?.includes('Ci sono documenti da accettare') ?? false));
+        guarda.observe(contenitore, { childList: true, subtree: true, characterData: true });
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(ridotte).not.toContain(true);
+        expect(uno('main .zr-alert')).toBeNull();
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(campanella()).toBe('2');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('quel 403 %s riduce la cornice come prima, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T3.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
+        expect(campanella()).toBeNull();
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
@@ -4710,6 +4793,57 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 
+    // Sprint 38 · T3 (voce #2026): anche il 429 dice di chi è. In una scheda rimasta ferma il freno di chi è entrato non ferma
+    // la ricerca di chi è mostrato e non mette il suo errore sotto il nome di prima: la pagina si ricarica.
+    /** Il 429 della ricerca coi suoi 30 secondi, con ciò che la parte server dice di chi è. */
+    const frenataDi = (conLaPersona: Record<string, unknown>) => ({
+        ok: false,
+        status: 429,
+        headers: new Headers({ 'Retry-After': '30' }),
+        json: async () => ({ errore: 'troppe_richieste', ...conLaPersona }),
+    }) as unknown as Response;
+
+    it('in una scheda rimasta ferma il 429 di un\'altra persona non ferma la ricerca di chi è mostrato e non mostra il suo errore, nemmeno per un disegno: una richiesta sola, la pagina si ricarica, e un\'altra parola parte (sprint 38 · T3.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => frenataDi({ persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const avvisi: number[] = [];
+        const guarda = new MutationObserver(() => avvisi.push(tutti('.zr-search-panel [role="alert"]').length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await scrivi('lancio');
+        await act(giro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(Math.max(0, ...avvisi)).toBe(0);
+        expect(inCaricamento()).toBe('Sto cercando…');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+
+        // I secondi erano di un'altra persona: la ricerca di chi è mostrato non è ferma.
+        await scrivi('lancio q4');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4')]);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('quel 429 %s ferma la ricerca come prima: il suo errore, nessun\'altra richiesta e nessun ricaricamento (sprint 38 · T3.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => frenataDi(conLaPersona));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        await act(giro);
+        expect(uno('.zr-search-panel [role="alert"]')).not.toBeNull();
+        await scrivi('lancio q4');
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+    });
+
     it.each<[string, Record<string, unknown>]>([
         ['della stessa persona', { persona: dati.persona.email }],
         ['che non dice di chi è (una parte server di prima)', {}],
@@ -5123,6 +5257,53 @@ describe('chi non ha accettato i documenti legali', () => {
         await clic(uno('.zr-notif-list .zr-notif-item'));
         expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
         expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(cornice()).toStrictEqual(ridotta);
+    });
+
+    // Sprint 38 · T5 (R1 della review, voce #2026): anche la lettura con un clic dice per chi è chiesta. In una scheda rimasta
+    // ferma il 403 `accettazione_richiesta` di chi è entrato non riduce la cornice sotto il nome di chi è mostrato: la pagina
+    // si ricarica, e dopo è di chi è entrato.
+    it('in una scheda rimasta ferma, alla lettura di una notifica con un clic il 403 `accettazione_richiesta` di un\'altra persona non riduce la cornice sotto il nome di chi è mostrato, nemmeno per un disegno: una PATCH sola, e la pagina si ricarica (sprint 38 · T5, R1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email })
+            : risposta({ errore: 'accettazione_richiesta', persona: 'grace@example.com' }, 403)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const prima = cornice();
+        const avvisi: boolean[] = [];
+        const guarda = new MutationObserver(() => avvisi.push(avviso() !== null));
+        guarda.observe(contenitore, { childList: true, subtree: true, characterData: true });
+
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).not.toContain(true);
+        expect(cornice()).toStrictEqual(prima);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: diSempre.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('alla lettura con un clic quel 403 %s riduce la cornice come prima, senza ricaricare la pagina (sprint 38 · T5, R1)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing' })
+            : risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+
+        expect(ricarica).not.toHaveBeenCalled();
         expect(cornice()).toStrictEqual(ridotta);
     });
 
