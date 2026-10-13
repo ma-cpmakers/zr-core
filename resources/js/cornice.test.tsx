@@ -3734,6 +3734,28 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
+    // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è ancora a schermo. Se intanto una visita ha portato chi è entrato
+    // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
+    it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const lenta = inAttesa();
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // Una visita porta chi è entrato, sullo stesso workspace: la cornice si rifà, e poi arriva la risposta di prima.
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: grace.email }));
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('5');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
     // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è. In una scheda rimasta ferma il 403 `accettazione_richiesta` di
     // chi è entrato non riduce la cornice sotto il nome di chi è mostrato: la pagina si ricarica, e dopo è di chi è entrato.
     it('in una scheda rimasta ferma il 403 `accettazione_richiesta` di un\'altra persona non riduce la cornice sotto il nome di chi è mostrato, nemmeno per un disegno: una richiesta sola, la pagina si ricarica e il pannello resta in caricamento (sprint 38 · T3.1)', async () => {
