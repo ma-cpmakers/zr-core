@@ -1791,6 +1791,9 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
     'un tipo del CRM che nel registro non c\'è' => ['crm', 'com.zeiras.crm.persona.eliminata'],
+    // Sprint 36 · T5.3: i motivi di perdita hanno un titolo, non una destinazione: zr-crm non l'ha ancora detta.
+    'un motivo di perdita del CRM creato' => ['crm', 'com.zeiras.crm.motivo.creato'],
+    'un motivo di perdita del CRM modificato' => ['crm', 'com.zeiras.crm.motivo.modificato'],
     // Sprint 23 · T3: i nove tipi dello sprint 22 (T5.3) ora hanno una destinazione, e stanno nei casi in fondo al file. Qui
     // resta ciò che non ce l'ha: un tipo `eliminata` di una risorsa con una pagina sua, che aprirebbe una pagina che non c'è, e
     // un tipo scritto quasi come uno del registro — un «assegnata» arriva senza `com.zeiras.` davanti, un evento con.

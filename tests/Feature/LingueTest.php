@@ -158,6 +158,7 @@ function tipiDiNotificaDelContratto(): array
         ...array_keys(titoliDelleNotificheDelCrm()),
         ...array_keys(titoliDelleNotificheDiVisteEAziende()),
         ...array_keys(titoliDelleNotificheDiOpportunitaEAttivita()),
+        ...array_keys(titoliDelleNotificheDeiMotiviDiPerdita()),
     ];
 }
 
@@ -230,6 +231,21 @@ function titoliDelleNotificheDiOpportunitaEAttivita(): array
         'com.zeiras.crm.attivita.creata' => ['it' => 'Nuova attività', 'en' => 'New activity', 'es' => 'Nueva actividad'],
         'com.zeiras.crm.attivita.modificata' => ['it' => 'Attività modificata', 'en' => 'Activity changed', 'es' => 'Actividad modificada'],
         'com.zeiras.crm.attivita.eliminata' => ['it' => 'Attività eliminata', 'en' => 'Activity deleted', 'es' => 'Actividad eliminada'],
+    ];
+}
+
+/**
+ * I titoli dei due tipi di evento che il contratto porta dal 13/10/2026 (10:23 UTC): un motivo di perdita del CRM creato o
+ * modificato, con le parole di zr-crm («loss reason», «motivo de pérdida»). In italiano e in spagnolo «motivo» è al maschile:
+ * ogni titolo è un testo intero per tipo. La tabella è scritta qui, non letta dai file delle lingue (sprint 36 · T5.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDeiMotiviDiPerdita(): array
+{
+    return [
+        'com.zeiras.crm.motivo.creato' => ['it' => 'Nuovo motivo di perdita', 'en' => 'New loss reason', 'es' => 'Nuevo motivo de pérdida'],
+        'com.zeiras.crm.motivo.modificato' => ['it' => 'Motivo di perdita modificato', 'en' => 'Loss reason changed', 'es' => 'Motivo de pérdida modificado'],
     ];
 }
 
@@ -408,6 +424,15 @@ function frasiDelleNotificheConChi(): array
         'com.zeiras.crm.attivita.eliminata' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who} ha eliminato un\'attività', 'en' => '{who} deleted an activity', 'es' => '{who} ha eliminado una actividad'],
+        ],
+        // Sprint 36 · T5: i motivi di perdita, con la sola frase con chi (zr-crm non ne ha data una col nome).
+        'com.zeiras.crm.motivo.creato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha creato un motivo di perdita', 'en' => '{who} created a loss reason', 'es' => '{who} ha creado un motivo de pérdida'],
+        ],
+        'com.zeiras.crm.motivo.modificato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha modificato un motivo di perdita', 'en' => '{who} edited a loss reason', 'es' => '{who} ha modificado un motivo de pérdida'],
         ],
         'com.zeiras.crm.nota.creata' => [
             'chiECosa' => null,
@@ -730,14 +755,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 42 tipi di notifica, 36 dei 37 tipi di evento del contratto (quello che non genera notifiche non ha un titolo) più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 44 tipi di notifica, 38 dei 39 tipi di evento del contratto (quello che non genera notifiche non ha un titolo) più i sei che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, e la menzione in un commento —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
-    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(36)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(42)
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(44)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -786,6 +811,31 @@ it('le nove notifiche nuove del CRM, opportunità, attività e ciò che viene as
         ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli))
         // La parola è quella del CRM, non quella del contratto: «trattativa», «deal», «negociación».
         ->and(implode(' · ', array_map(fn (?string $titolo) => (string) $titolo, $titoli)))->not->toMatch('/trattativ|\bdeals?\b|negociaci/iu');
+})->with(['it', 'en', 'es']);
+
+it('le due notifiche dei motivi di perdita del CRM hanno il titolo della tabella nella lingua, non quello di ripiego né quello di un\'altra lingua, e sono tipi di evento del contratto (sprint 36 · T5.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelleNotificheDeiMotiviDiPerdita();
+    $titoli = [];
+    foreach (array_keys($tabella) as $tipo) {
+        $titoli[$tipo] = $testi["notificationTitle.$tipo"] ?? null;
+    }
+    $delleAltreLingue = [];
+    foreach ($tabella as $perLingua) {
+        unset($perLingua[$codice]);
+        $delleAltreLingue = [...$delleAltreLingue, ...array_values($perLingua)];
+    }
+
+    // Tutti e due insieme: un rosso li mostra tutti, non solo il primo che manca.
+    expect($tabella)->toHaveCount(2)
+        ->and($titoli)->toBe(array_map(fn (array $perLingua) => $perLingua[$codice], $tabella))
+        // Nessuno dei due è il titolo di ripiego, né il testo di un'altra lingua.
+        ->and($testi['notificationTitle'] ?? null)->not->toBeIn(array_values($titoli))
+        ->and(array_intersect(array_values($titoli), $delleAltreLingue))->toBe([])
+        // Sono eventi: il tipo ha `com.zeiras.` davanti, e senza non ha un titolo.
+        ->and(array_diff(array_keys($tabella), tipiDiNotificaDelContratto()))->toBe([])
+        ->and($testi)->not->toHaveKey('notificationTitle.crm.motivo.creato')
+        ->and($testi)->not->toHaveKey('notificationTitle.crm.motivo.modificato');
 })->with(['it', 'en', 'es']);
 
 it('i quattro «assegnata» hanno il titolo sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: lo stesso nome col prefisso resta senza titolo, e nessuno dei quattro è un tipo di evento del contratto (sprint 22 · T5.2, T5.4)', function (string $codice) {
@@ -1264,7 +1314,7 @@ it('ogni lingua ha le tre frasi della riga sotto il titolo di una notifica, nel 
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 70 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 72 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2; sprint 36 · T5.1)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1281,10 +1331,10 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(70)
+    expect($attese)->toHaveCount(72)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(42)
+        ->and($conLeFrasi)->toHaveCount(44)
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
