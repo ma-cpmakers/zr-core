@@ -408,24 +408,45 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
-    it('coi dati `in_attesa`, se la cornice ha già i dati di quel workspace, il menu del profilo e la lingua sono quelli dei dati nuovi; moduli, aziende e workspace restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1)', async () => {
+    it('coi dati `in_attesa` della stessa persona (la stessa email), se la cornice ha già i dati di quel workspace, il nome e la lingua sono quelli dei dati nuovi; moduli, aziende, workspace e non lette restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1; sprint 36 · T2.4)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
-        await mostra(<Cornice dati={{ ...dati, aziende, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        const rinominata = { nome: 'Augusta King', email: dati.persona.email };
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         const quante = etichette().length;
 
         // Fuori dall'attesa vale il segno: i dati letti prima non portano nemmeno la loro persona.
         await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, aggiornati_il: '2026-10-13T07:59:59.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
-        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
-        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        // In attesa: la persona ha cambiato nome e lingua da un'altra scheda, e `subito` porta quelli di adesso.
+        await mostra(<Cornice dati={{ lingua: 'es', persona: rinominata, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
 
         expect(etichette()).toHaveLength(quante);
         expect(etichette()).toContain('Gestión de proyectos');
         expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
         expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
         expect(uno('aside.zr-side')?.textContent).not.toContain('Otro nombre');
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(rinominata.nome);
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([rinominata.nome, rinominata.email]);
+    });
+
+    it('coi dati `in_attesa` di un\'altra persona (un\'altra email), anche se la cornice ha già i dati di quel workspace, la cornice è quella ridotta di un primo caricamento: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima, e il menu del profilo dice chi è entrato (sprint 36 · T2.1)', async () => {
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).toContain('CRM');
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+
+        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        expect(etichette()).not.toContain('CRM');
+        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(uno('.zr-ws-switch')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
+        expect(uno('aside.zr-side')?.textContent).toContain('Otro nombre');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
@@ -4215,6 +4236,49 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
         expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
         expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+    });
+
+    // Sprint 36 · T2 (voce #1968): ciò che la cornice tiene è della persona che lo ha visto. Senza il layout, e quindi senza la sua `key`.
+    it.each([
+        ['senza segno', undefined, undefined],
+        ['col segno più avanti', '2026-10-13T08:00:00.000000Z', '2026-10-13T08:00:05.000000Z'],
+    ])('senza il layout, coi dati di un\'altra persona sullo stesso workspace (%s) la cornice non tiene i risultati, la parola e l\'elenco delle notifiche di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async (_caso, prima, poi) => {
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(indirizzo === '/cornice/notifiche' ? { data: [{ id: 'uat-n1', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' }] } : { data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const apriLaCampanella = () => act(async () => { uno('.zr-bell')?.click(); await giro(); });
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: prima }} onLogout={esciSenzaEffetto} />);
+        await scrivi('lancio');
+        expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+        await apriLaCampanella();
+        expect(tutti('.zr-notif .zr-notif-item')).toHaveLength(1);
+        const partitePrima = fetchFinto.mock.calls.length;
+
+        await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Augusta King', email: 'augusta@example.com' }, aggiornati_il: poi }} onLogout={esciSenzaEffetto} />);
+        await act(giro);
+        expect((uno('.zr-search input') as HTMLInputElement).value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(uno('.zr-notif')).toBeNull();
+        await act(async () => uno('.zr-search input')?.focus());
+        expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(0);
+        expect(fetchFinto.mock.calls).toHaveLength(partitePrima);
+
+        await apriLaCampanella();
+        expect(fetchFinto.mock.calls.slice(partitePrima).map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche']);
+    });
+
+    it('la parola scritta in attesa da una persona non parte quando arrivano i dati di un\'altra, e nel campo non resta (sprint 36 · T2.2)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await scrivi('lancio');
+
+        await mostra(<Cornice dati={{ ...dati, persona: altra, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        expect((uno('.zr-search input') as HTMLInputElement).value).toBe('');
+        await mostra(<Cornice dati={{ ...dati, persona: altra }} onLogout={esciSenzaEffetto} />);
+        await act(giro);
+
+        expect(partite(fetchFinto)).toStrictEqual([]);
     });
 
     describe('il freno del backoffice', () => {
