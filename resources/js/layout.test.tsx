@@ -155,6 +155,8 @@ async function clic(elemento: Element | null): Promise<void> {
 async function scrivi(parola: string, attesa = 300): Promise<void> {
     const campo = uno('.zr-search input') as HTMLInputElement;
     await act(async () => {
+        // Chi scrive ha il fuoco nel campo, come una persona.
+        campo.focus();
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
         campo.dispatchEvent(new Event('input', { bubbles: true }));
         await vi.advanceTimersByTimeAsync(attesa);
@@ -749,9 +751,10 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(richieste()).toStrictEqual([]);
     });
 
-    // Un limite, non una scelta: sotto i due caratteri l'`AppShell` non chiama `onSearch`, e la cornice non sa che la parola è
-    // stata cancellata. Tiene l'ultima che ha avuto, e all'arrivo dei dati la cerca; sotto il campo vuoto resta l'invito.
-    it('una parola scritta in attesa e poi cancellata parte lo stesso all\'arrivo di `dopo`: l\'`AppShell` non dice alla cornice che il campo è vuoto; sotto il campo resta l\'invito (sprint 35 · T4.3, il limite che il README dichiara)', async () => {
+    // Sprint 39 · T3 (voce #1971): qui c'erano i due limiti che il README dichiarava dallo sprint 35 (T4.3) — una parola
+    // cancellata partiva lo stesso, e sotto una battuta meno di 300 ms prima si leggeva «Nessun risultato». All'arrivo di `dopo`
+    // la cornice cerca ciò che è nel campo in quel momento: i due casi chiedono il contrario di prima.
+    it('una parola scritta in attesa e poi cancellata non parte all\'arrivo di `dopo`, né dopo; sotto il campo vuoto resta l\'invito (sprint 39 · T3.1)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
         await inDue({ subito }, <PaginaA />);
         await scrivi('uat');
@@ -759,25 +762,31 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await inDue({ subito, dopo }, <PaginaA />);
         await act(async () => {
-            await vi.advanceTimersByTimeAsync(300);
+            await vi.advanceTimersByTimeAsync(1000);
             await giro();
         });
 
-        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(richieste()).toStrictEqual([]);
         expect(sottoLaRicerca()).toStrictEqual([expect.stringMatching(/scrivi almeno 2 caratteri\.$/)]);
         expect(titoliDellaRicerca()).toStrictEqual([]);
     });
 
-    // L'altro limite: l'`AppShell` aspetta 300 ms dall'ultimo tasto prima di chiamare `onSearch`. Una parola scritta meno di
-    // 300 ms prima dell'arrivo dei dati la cornice non l'ha ancora avuta: fino allo scadere si legge «Nessun risultato».
-    it('una parola scritta meno di 300 ms prima dell\'arrivo di `dopo`: finché i 300 ms dell\'`AppShell` non scadono nessuna richiesta parte e sotto il campo si legge «Nessun risultato» (sprint 35 · T4.3, il limite che il README dichiara)', async () => {
+    it('una parola scritta meno di 300 ms prima dell\'arrivo di `dopo` parte all\'arrivo, una volta sola, e sotto il campo non si legge «Nessun risultato»: né all\'arrivo, né allo scadere dei 300 ms dell\'`AppShell` (sprint 39 · T3.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug })));
         await inDue({ subito }, <PaginaA />);
         await scrivi('uat', 100);
 
         await inDue({ subito, dopo }, <PaginaA />);
-        expect(richieste()).toStrictEqual([]);
-        expect(uno('.zr-search-panel')?.textContent).toContain(`${testi('it').searchEmpty} «uat»`);
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(400);
+            await giro();
+        });
+
+        expect(richieste()).toStrictEqual(['POST /cornice/ricerca {"q":"uat"}']);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+        expect(titoliDellaRicerca().length).toBeGreaterThan(0);
     });
 
     it('un `non_letti` letto prima dei dati che la cornice ha non la riduce: resta quella di sempre (Indietro su una visita di quando il backoffice non rispondeva); uno letto dopo sì (review della PR #67, R5)', async () => {

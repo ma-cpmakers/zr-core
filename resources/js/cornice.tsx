@@ -877,21 +877,26 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
     // mezzo la cornice è passata allo stato ridotto, la ricerca di prima arriva qui lo stesso. Che cosa vale adesso lo dice un
     // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
-    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora — ma la cornice la tiene, l'ultima che
-    // l'`AppShell` le ha dato: la parola è stato dell'`AppShell`, che sotto i due caratteri non avvisa, e la cornice la conosce
-    // solo da qui (una parola cancellata resta tenuta: README, «La cornice in due dati»). Quando i dati arrivano parte lei; se al
-    // loro posto arriva `non_letti` o l'accettazione la cornice la dimentica, e così a ogni disegno che non è in attesa: mai la
-    // parola di una visita di prima.
-    const daCercare = useRef<string>(undefined);
+    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora —, e l'`AppShell` non ha `onSearch`
+    // (sotto): nessun suo timer resta in sospeso oltre l'arrivo. La parola è stato dell'`AppShell`, e la cornice non la tiene:
+    // quando i dati arrivano legge ciò che c'è nel suo campo in quel momento — quello nell'intestazione dell'`AppShell`, non
+    // un campo di ricerca della pagina —, e lo cerca subito, prima che la pagina sia disegnata: una parola cancellata non
+    // parte, e sotto una appena battuta non si legge «Nessun risultato». Parte solo se nel campo c'è altro da ciò che c'era
+    // quando l'attesa è cominciata (`diPrima`, riscritto a ogni disegno fuori dall'attesa): l'`AppShell` non svuota il campo
+    // quando si sceglie un risultato, e una parola rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati. Dov'è
+    // il fuoco non conta: chi ha scritto e guarda un'altra finestra trova la sua parola cercata. Se al posto dei dati arriva
+    // `non_letti` o l'accettazione non parte niente.
     const ridottaAdesso = useRef(ridotta);
+    const diPrima = useRef<string>(undefined);
     useLayoutEffect(() => {
+        const parola = document.querySelector<HTMLInputElement>('.zr-top .zr-search input')?.value.trim();
         if (ridottaAdesso.current !== 'loading') {
-            daCercare.current = undefined;
+            diPrima.current = parola;
         }
         ridottaAdesso.current = ridotta;
         if (!ridotta) {
-            if (daCercare.current) {
-                cercaParola(daCercare.current);
+            if (parola?.length! > 1 && parola !== diPrima.current) {
+                cercaParola(parola!);
             }
 
             return;
@@ -907,7 +912,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
-    // non ha cercato. La parola scritta in attesa è un'altra cosa: non è partita, e parte all'arrivo dei dati (sopra).
+    // non ha cercato. La parola scritta in attesa è un'altra cosa: non è partita, e all'arrivo dei dati si cerca ciò che è nel
+    // campo (sopra).
     if (ridotta && ricerca !== undefined) {
         setRicerca(undefined);
     }
@@ -927,8 +933,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     const cercaParola = (parola: string) => {
         if (ridottaAdesso.current) {
-            daCercare.current = parola;
-
             return;
         }
         if (performance.now() < frenataFinoA.current) {
@@ -1034,8 +1038,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
                 // la campanella tiene il gestore dell'apertura: aperta in attesa chiede l'elenco, e il pannello lo mostra quando
                 // arrivano (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). Quello di «Riprova» no: il
-                // pannello in attesa è nello stato di caricamento, che non ha il pulsante. La ricerca in attesa tiene il suo
-                // gestore: la parola non parte, la cornice la tiene e la cerca all'arrivo dei dati (sopra). Lo stato della
+                // pannello in attesa è nello stato di caricamento, che non ha il pulsante. La ricerca nello stato ridotto non ha il
+                // suo gestore, nemmeno in attesa: all'arrivo dei dati la cornice cerca ciò che è nel campo (sopra). Lo stato della
                 // ricerca sta qui, fra ciò che decide la cornice, col suo valore: quello dello stato ridotto, o quello
                 // dell'ultima ricerca, o `ready`. Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
@@ -1049,7 +1053,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
-                onSearch: avvisoSopraLaPagina ? undefined : cercaParola,
+                onSearch: ridotta ? undefined : cercaParola,
                 flush: avvisoSopraLaPagina ? undefined : pagina.flush,
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}

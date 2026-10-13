@@ -235,6 +235,26 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, true], [true, false]]);
     });
 
+    // Sprint 39 · T4 (voci #1972 e #1973). Dopo un pezzo non arrivato «Riprova» lo importa col nome che la build ha scritto nel
+    // JS d'ingresso, dentro `import(` e fra virgolette (`pezzoARichiesta`, in `lingue.ts`). Una build che lo scrivesse in un
+    // altro modo lascerebbe a «Riprova» l'`import()` di prima, che in Chromium non fa partire niente.
+    it.each(app)('«%s»: nel JS d\'ingresso il nome del pezzo della campanella sta fra virgolette dentro `import(`, dove «Riprova» lo legge (sprint 39 · T4.2)', (_nome, costruita) => {
+        const nomi = [...costruita().js.matchAll(/import\(([\x22\x27\x60])(.+?)\1/g)].map(([, , nome = '']) => nome.replace(/-[\w-]{8,}\.js$/, '-<impronta>.js'));
+
+        expect(nomi.sort()).toStrictEqual(['./campanella-<impronta>.js', './rimedi-<impronta>.js']);
+    });
+
+    // Il pezzo importa il JS d'ingresso col nome del file, senza code: se un frontend serve l'ingresso con una coda sua
+    // (`app.js?v=3`), per il browser quello che il pezzo chiede è un altro indirizzo (README, «Le notifiche»).
+    it.each(app)('«%s»: il pezzo della campanella importa il JS d\'ingresso col suo nome di file, senza una coda (sprint 39 · T4.5)', (_nome, costruita) => {
+        const [campanella = ''] = costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
+
+        const importati = [...campanella.matchAll(/from\s*([\x22\x27\x60])(.+?)\1/g)].map(([, , nome]) => nome);
+
+        expect(importati).toHaveLength(1);
+        expect(importati[0]).toMatch(/^\.\/[\w-]+\.js$/);
+    });
+
     // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
     it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
         expect(volte(costruita().js, 'Segmenter')).toBe(0);

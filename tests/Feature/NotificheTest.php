@@ -2369,7 +2369,9 @@ it('con una `persona` che non è l\'email della sessione risponde 409 persona_di
     'la stessa con uno spazio in fondo' => [[], 'uat-ada@example.com ', 'uat-ada@example.com'],
 ]);
 
-it('con la `persona` della sessione, senza `persona`, o con una `persona` che non è un testo, la rotta risponde come prima: una chiamata al backoffice col solo fino_a, e né il corpo né la query né un\'intestazione scelgono di chi segnare (sprint 38 · T4.2)', function (array $inPiu) {
+// Dallo sprint 39 (T1, voce #2038) qui non c'è più il terzo ramo, «una `persona` che non è un testo vale come assente»: quei
+// casi (null, un numero, true, una lista) sono passati nel caso di sotto, che chiede il contrario.
+it('con la `persona` della sessione, o senza la chiave `persona`, la rotta risponde come prima: una chiamata al backoffice col solo fino_a, e né il corpo né la query né un\'intestazione scelgono di chi segnare (sprint 38 · T4.2; sprint 39 · T1.2)', function (array $inPiu) {
     $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, false)]);
 
@@ -2379,10 +2381,58 @@ it('con la `persona` della sessione, senza `persona`, o con una `persona` che no
 })->with([
     'la stessa email' => [['persona' => 'uat-ada@example.com']],
     'senza persona: un JS di prima rimasto in una scheda' => [[]],
-    'null' => [['persona' => null]],
-    'un numero' => [['persona' => 7]],
-    'true' => [['persona' => true]],
-    'una lista' => [['persona' => ['uat-altra@example.org']]],
+]);
+
+// Sprint 39 · T1 (voce #2038; S2 della review della PR #71): una `persona` presente che non è un testo non è «assente». Chi
+// la manda così dice di chi crede di segnare, e lo dice male: la rotta non può confrontarla, e non segna quelle di chi è nella
+// sessione. Assente è la sola chiave che manca: `null` è presente, e `json('persona')` è null in tutti e due i casi.
+
+it('con una `persona` presente che non è un testo risponde 422 dati_non_validi e non chiama il backoffice: non vale come assente, nemmeno null (sprint 39 · T1.1)', function (mixed $persona) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => $persona]))
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    Http::assertNothingSent();
+})->with([
+    'null' => [null],
+    'un numero' => [7],
+    'true' => [true],
+    'false' => [false],
+    'una lista' => [['uat-ada@example.com']],
+    'un oggetto' => [['email' => 'uat-ada@example.com']],
+]);
+
+// Review della PR #72 (R9): una `persona` vuota. Che cosa arriva alla rotta lo decidono i middleware del frontend: con
+// `ConvertEmptyStringsToNull`, che Laravel monta di suo, è `null`; senza è un testo che non è l'email della sessione. Non si
+// segna niente in nessuno dei due casi, e il README dice le due risposte.
+it('con una `persona` vuota non segna niente e non chiama il backoffice: 422 dati_non_validi dove il vuoto arriva null, 409 persona_diversa dove arriva com\'è (sprint 39 · T1.1)', function (bool $comArriva, int $stato, string $risposta) {
+    if ($comArriva) {
+        test()->withoutMiddleware(ConvertEmptyStringsToNull::class);
+    }
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    $avuta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => '']))->assertStatus($stato);
+
+    expect($avuta->getContent())->toBe($risposta);
+    Http::assertNothingSent();
+})->with([
+    'coi middleware di Laravel' => [false, 422, '{"errore":"dati_non_validi"}'],
+    'senza ConvertEmptyStringsToNull' => [true, 409, '{"errore":"persona_diversa","persona":"uat-ada@example.com"}'],
+]);
+
+it('una `persona` che non è un testo insieme a un altro workspace è un 409 workspace_diverso, come un\'altra email: la guardia nuova sta dove sta il confronto della persona, dopo quella del workspace (sprint 39 · T1.2)', function (mixed $persona) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite', 'persona' => $persona]))
+        ->assertStatus(409)->assertExactJson(['errore' => 'workspace_diverso']);
+    Http::assertNothingSent();
+})->with([
+    'null' => [null],
+    'un numero' => [7],
+    'una lista' => [['uat-ada@example.com']],
 ]);
 
 it('le guardie di prima vengono prima e restano com\'erano: con un\'altra `persona` insieme a un altro workspace, o a un fino_a che non è un istante, la risposta è la loro e non dice `persona` (sprint 38 · T4.2)', function (array $corpo, int $stato, string $errore) {
