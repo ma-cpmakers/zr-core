@@ -3830,6 +3830,8 @@ describe('la ricerca', () => {
     async function scrivi(parola: string): Promise<void> {
         const campo = uno('.zr-search input') as HTMLInputElement;
         await act(async () => {
+            // Chi scrive ha il fuoco nel campo: all'arrivo dei dati la cornice guarda lì (sprint 39 · T3).
+            campo.focus();
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
             campo.dispatchEvent(new Event('input', { bubbles: true }));
             await vi.advanceTimersByTimeAsync(300);
@@ -4582,6 +4584,132 @@ describe('la ricerca', () => {
         await act(giro);
 
         expect(partite(fetchFinto)).toStrictEqual([]);
+    });
+
+    // Sprint 39 · T3 (voce #1971): all'arrivo dei dati la cornice cerca ciò che è nel campo in quel momento, se la persona è lì.
+    // Non l'ultima parola che l'`AppShell` le aveva dato: sotto i due caratteri l'`AppShell` non avvisa, e una parola cancellata
+    // restava tenuta; e una parola battuta meno di 300 ms prima non era ancora arrivata, e sotto il campo si leggeva «Nessun
+    // risultato» fino allo scadere.
+    describe('la ricerca quando arrivano i dati', () => {
+        const inAttesa = <Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />;
+        const arrivati = <Cornice dati={dati} onLogout={esciSenzaEffetto} />;
+        const campo = () => uno('.zr-search input') as HTMLInputElement;
+        const trovati = () => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' });
+
+        /** Batte una parola nel campo, col fuoco, e lascia passare solo quei millisecondi: i 300 dell'`AppShell` possono non essere scaduti. */
+        async function batti(parola: string, millisecondi: number): Promise<void> {
+            await act(async () => {
+                campo().focus();
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), parola);
+                campo().dispatchEvent(new Event('input', { bubbles: true }));
+                await vi.advanceTimersByTimeAsync(millisecondi);
+            });
+        }
+
+        it('una parola scritta in attesa e poi cancellata non parte quando arrivano i dati, né dopo: sotto il campo vuoto non ci sono risultati né «Nessun risultato» (sprint 39 · T3.1)', async () => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(inAttesa);
+            await batti('ada', 600);
+            await batti('', 600);
+
+            await mostra(arrivati);
+            await act(giro);
+            await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+            expect(partite(fetchFinto)).toStrictEqual([]);
+            expect(campo().value).toBe('');
+            expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(0);
+            expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+        });
+
+        it('una parola battuta meno di 300 ms prima dell\'arrivo dei dati parte all\'arrivo, una volta sola, e sotto il campo non si legge mai «Nessun risultato»: lo si guarda a ogni cambiamento della pagina, dall\'arrivo alla risposta (sprint 39 · T3.2)', async () => {
+            let rispondi: (arrivata: Response) => void = () => undefined;
+            const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => new Promise<Response>((arrivata) => { rispondi = arrivata; }));
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(inAttesa);
+            await batti('ada', 100);
+            const letti: string[] = [];
+            const leggi = () => { letti.push(uno('.zr-search-panel')?.textContent ?? ''); };
+            const occhio = new MutationObserver(leggi);
+            occhio.observe(document.body, { subtree: true, childList: true, characterData: true });
+
+            await mostra(arrivati);
+            leggi();
+            await act(giro);
+            leggi();
+            // I 300 ms dell'`AppShell` scadono qui: non parte una seconda richiesta.
+            await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+            leggi();
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
+
+            await act(async () => { rispondi(trovati()); await giro(); });
+            occhio.disconnect();
+            expect(letti.filter((testo) => testo.includes(testi('it').searchEmpty))).toStrictEqual([]);
+            expect(letti.length).toBeGreaterThanOrEqual(3);
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
+            expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+        });
+
+        it('una parola battuta in attesa e lasciata nel campo, col fuoco, parte da sola all\'arrivo dei dati: una richiesta, anche passati i 300 ms (sprint 39 · T3.3)', async () => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(inAttesa);
+            await batti('lancio', 600);
+            expect(partite(fetchFinto)).toStrictEqual([]);
+
+            await mostra(arrivati);
+            await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+        });
+
+        it.each([
+            ['i dati non letti', { ...dati, non_letti: true }],
+            ['l\'accettazione dei documenti legali', { ...dati, accettazione_richiesta: true }],
+        ])('se al posto dei dati arriva %s, la parola battuta in attesa non parte, nemmeno un attimo prima dell\'arrivo (sprint 39 · T3.3)', async (_che, ridotti) => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(inAttesa);
+            await batti('ada', 100);
+
+            await mostra(<Cornice dati={ridotti as DatiDellaCornice} onLogout={esciSenzaEffetto} />);
+            await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+            expect(partite(fetchFinto)).toStrictEqual([]);
+        });
+
+        // Ciò che resta: la cornice guarda il campo solo se la persona è lì. L'`AppShell` non svuota il campo quando si sceglie
+        // un risultato, e una parola rimasta da una ricerca di prima partirebbe a ogni arrivo dei dati, a ogni visita.
+        it('una parola rimasta nel campo da una ricerca di prima, col fuoco altrove, non parte di nuovo quando la cornice aspetta i dati e poi arrivano (sprint 39 · T3.3)', async () => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(arrivati);
+            await batti('lancio', 600);
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+            await act(async () => campo().blur());
+
+            await mostra(inAttesa);
+            await mostra(arrivati);
+            await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+            expect(campo().value).toBe('lancio');
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+        });
+
+        it('il limite che resta: una parola battuta in attesa e lasciata uscendo dal campo prima dell\'arrivo dei dati non parte (sprint 39 · T3.4)', async () => {
+            const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati());
+            vi.stubGlobal('fetch', fetchFinto);
+            await mostra(inAttesa);
+            await batti('lancio', 600);
+            await act(async () => campo().blur());
+
+            await mostra(arrivati);
+            await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+            expect(partite(fetchFinto)).toStrictEqual([]);
+        });
     });
 
     describe('il freno del backoffice', () => {
