@@ -259,7 +259,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
             '-import { rigaDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/app\';',
             '+import { rigaDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/frasi\';',
         ]);
-        expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito finché la pagina non si ricarica')).toBe(1);
+        expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito, per quell\'indirizzo, finché la pagina non si ricarica')).toBe(1);
     });
 
     it('il pezzo della campanella pesa, con gzip, al più 1.217 byte: la misura, col taglio del nome di chi ha fatto e con le frasi guardate all\'arrivo (sprint 33 · T1.7, T2.4, T3.6)', () => {

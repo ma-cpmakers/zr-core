@@ -246,9 +246,36 @@ export function nomePulito(valore: unknown): string | undefined {
 export let campanella: typeof import('./campanella') | undefined;
 
 /**
- * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
- * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo chiama di nuovo
- * `import()`. Che il browser lo richieda davvero non è detto: Chromium un `import()` fallito non lo rifà finché la pagina non
- * si ricarica (README, «Le notifiche»).
+ * Chi chiede un pezzo a richiesta, anche dopo che non è arrivato. In Chromium un `import()` che non è arrivato resta fallito,
+ * per quell'indirizzo, finché la pagina non si ricarica (provato il 13/10/2026 con la 151): chiamarlo di nuovo non fa
+ * partire niente. Per questo, dopo un pezzo non arrivato, la richiesta dopo lo importa dal suo indirizzo con una coda diversa
+ * a ogni tentativo (`?r=1`, `?r=2`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta
+ * quello già in pagina. L'indirizzo è quello che dice l'errore del browser, il primo nel suo messaggio e senza la coda, e
+ * vale solo se è di `origine`, quella di questo JS: un altro indirizzo letto da un messaggio non entra mai in `import()`.
+ * Dove l'errore non lo dice la richiesta dopo è l'`import()` di prima (`importa` senza niente). L'errore esce com'è.
  */
-export const chiediLaCampanella = () => import('./campanella').then((arrivata) => (campanella = arrivata));
+export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezzo>, origine: string): () => Promise<Pezzo> {
+    let nonArrivato: string | undefined;
+    let tentativi = 0;
+
+    return () =>
+        importa(nonArrivato && `${nonArrivato}?r=${++tentativi}`).catch((errore: unknown) => {
+            const [indirizzo] = /https?:[^\s?#]+/.exec(String(errore)) ?? [];
+            if (indirizzo?.startsWith(`${origine}/`)) {
+                nonArrivato = indirizzo;
+            }
+            throw errore;
+        });
+}
+
+const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(
+    (daQui) => (daQui === undefined ? import('./campanella') : import(/* @vite-ignore */ daQui)),
+    new URL(import.meta.url).origin,
+);
+
+/**
+ * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
+ * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
+ * Chromium (`pezzoARichiesta`; README, «Le notifiche»).
+ */
+export const chiediLaCampanella = () => ilPezzoDellaCampanella().then((arrivata) => (campanella = arrivata));

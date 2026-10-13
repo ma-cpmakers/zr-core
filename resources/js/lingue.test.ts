@@ -6,7 +6,7 @@ import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
-import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -1152,5 +1152,68 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
         expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha modificato la scheda «${isolato(nome)}»` });
         expect(riga({ tipo: eliminata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha eliminato una scheda`, sotto: nome });
         expect(nomePulito(nome)).toBe(nome);
+    });
+});
+
+// Sprint 34 · T1 (voce #1929). In Chromium un `import()` che non è arrivato resta fallito, per quell'indirizzo, finché la
+// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda diversa a ogni tentativo. L'indirizzo è
+// quello che dice l'errore del browser, e vale solo se è della stessa origine del JS. Qui al posto di `import()` c'è il caso.
+describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo (sprint 34 · T1)', () => {
+    const ORIGINE = 'https://app.zeiras.test';
+    const PEZZO = `${ORIGINE}/build/assets/campanella-D5veh6YO.js`;
+    const nonArrivato = (indirizzo: string) => new TypeError(`Failed to fetch dynamically imported module: ${indirizzo}`);
+
+    /** Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. */
+    function chiImporta(...errori: unknown[]) {
+        const importa = vi.fn(async (_daQui?: string) => {
+            if (errori.length > 0) {
+                throw errori.shift();
+            }
+
+            return 'il pezzo';
+        });
+
+        return { importa, chiedi: pezzoARichiesta(importa, ORIGINE) };
+    }
+
+    it('il pezzo che arriva al primo colpo si importa senza un indirizzo e senza coda, e a ogni richiesta allo stesso modo (T1.4)', async () => {
+        const { importa, chiedi } = chiImporta();
+
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+
+    it('dopo un pezzo non arrivato la richiesta dopo importa il suo indirizzo con una coda, diversa a ogni tentativo, e l\'errore che esce è quello del browser (T1.1, T1.2)', async () => {
+        const [primo, secondo] = [nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`)];
+        const { importa, chiedi } = chiImporta(primo, secondo);
+
+        await expect(chiedi()).rejects.toBe(primo);
+        await expect(chiedi()).rejects.toBe(secondo);
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=2`]]);
+    });
+
+    it('un errore dopo che non dice l\'indirizzo non fa dimenticare quello di prima', async () => {
+        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO), new TypeError('Importing a module script failed.'));
+
+        await expect(chiedi()).rejects.toThrow();
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(importa.mock.calls.at(-1)).toStrictEqual([`${PEZZO}?r=2`]);
+    });
+
+    it.each([
+        ['non dice un indirizzo', new TypeError('Importing a module script failed.')],
+        ['dice un indirizzo di un\'altra origine', nonArrivato('https://altro.example/campanella.js')],
+        ['dice un indirizzo che comincia come l\'origine ma è di un altro host', nonArrivato(`${ORIGINE}.altro.example/campanella.js`)],
+        ['dice l\'origine dentro la coda di un altro indirizzo', nonArrivato(`https://altro.example/x.js?da=${PEZZO}`)],
+        ['non è un errore', undefined],
+    ])('se l\'errore %s la richiesta dopo è l\'`import()` di prima: nessun indirizzo letto da un messaggio entra in `import()`', async (_caso, errore) => {
+        const { importa, chiedi } = chiImporta(errore);
+
+        await expect(chiedi()).rejects.toBe(errore);
+        await chiedi();
+        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
     });
 });

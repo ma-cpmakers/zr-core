@@ -584,9 +584,11 @@ cornice === null ? pagina : (
   «Riprova» non riesce finché la pagina non si ricarica. Dalla `v2.0.0` ciò che compone le righe arriva in un pezzo di JS a
   parte, quello della campanella, che la cornice chiede con `import()` alla prima apertura della campanella, dalla stessa
   origine del JS: finché non arriva il pannello aspetta, e se non arriva mostra lo stesso errore con «Riprova», senza un
-  errore fuori dal pannello. In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito
-  finché la pagina non si ricarica: lì «Riprova» richiede l'elenco, ma il browser il pezzo non lo richiede, e l'errore
-  resta fino al ricaricamento. Il titolo di ripiego (`notificationTitle`) resta nel file dei
+  errore fuori dal pannello. In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito,
+  per quell'indirizzo, finché la pagina non si ricarica: per questo, dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova»
+  lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede. È lo stesso file:
+  serve che chi dà la build ignori la coda, come fa di solito un server di file. L'indirizzo è quello che dice l'errore del browser, e vale solo se ha la stessa
+  origine del JS; dove l'errore non lo dice «Riprova» richiama `import()` come prima. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
   le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
