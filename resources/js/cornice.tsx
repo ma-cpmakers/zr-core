@@ -643,8 +643,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     const [inCorso, setInCorso] = useState(false);
     const [neRestano, setNeRestano] = useState<Saputo>();
     const ultimaRichiesta = useRef(0);
-    // Con l'elenco partono le frasi delle notifiche della lingua dei dati (`caricaFrasi`): non stanno nel JS d'ingresso, e alla
-    // prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
+    // Con l'elenco partono le frasi delle notifiche della lingua di chi è entrato adesso (`caricaFrasi`; in attesa non è quella
+    // dei dati tenuti): non stanno nel JS d'ingresso, e alla prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
     // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
@@ -656,7 +656,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
         const chiesto = caricaNotifiche();
         chiesto.catch(seDaAccettare);
-        const frasi = caricaFrasi(questi.lingua);
+        const frasi = caricaFrasi(lingua);
         frasi.catch(() => undefined);
         chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
             ({ elenco, il, workspace }) => {
