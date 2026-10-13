@@ -421,7 +421,8 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     }
     const deiDati = segno(dati.aggiornati_il);
 
-    return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
+    // Un confronto con `undefined` è sempre falso, e un segno, quando c'è, non è mai un testo vuoto.
+    return deiDati! <= saputo.il! || (!(deiDati && saputo.il) && saputo.con === dati);
 }
 
 /**
@@ -432,9 +433,7 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
  * invece sono stati letti prima che la rotta fosse chiesta, e non lo vedono di certo.
  */
 function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean {
-    const [deiDati, diAllora] = [segno(dati.aggiornati_il), segno(saputo.con.aggiornati_il)];
-
-    return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && deiDati !== undefined && diAllora !== undefined && deiDati <= diAllora);
+    return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && segno(dati.aggiornati_il)! <= segno(saputo.con.aggiornati_il)!);
 }
 
 /**
@@ -536,7 +535,7 @@ export function Cornice(props: CorniceProps) {
 }
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
-function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
+function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -944,7 +943,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
-        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal, persona.email).then(
+        cerca([...parola].slice(0, 100).join(''), questa.signal, persona.email).then(
             ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'ready', risultati, workspace });
@@ -978,8 +977,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
-        if (notifica !== undefined && elencoDi !== undefined && risorsa !== undefined && !notifica.letta) {
-            leggi(notifica.id, elencoDi);
+        // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
+        if (risorsa !== undefined && !notifica!.letta) {
+            leggi(notifica!.id, elencoDi!);
         }
         naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
     };
@@ -998,7 +998,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // quello di `zr-stack`, che lo mette fra due figli: il secondo è un `div` vuoto, finché l'`AppShell` non ha un posto suo
     // per un avviso (richiesta al design system).
     const vaiAllAccettazione = () => {
-        const qui = window.location.href;
+        const qui = location.href;
         naviga(dashboard.indirizzo + paginaDellAccettazione + (qui.startsWith('https://') && qui.length <= 2000 ? `?ritorno=${encodeURIComponent(qui)}` : ''));
     };
     // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di
