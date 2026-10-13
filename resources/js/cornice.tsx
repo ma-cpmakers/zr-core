@@ -505,6 +505,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     if (dati !== tenuti) {
         setTenuti(dati);
     }
+    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la sessione può essere
+    // cambiata da un'altra scheda, e il menu del profilo non mostra la persona di prima. Fuori dall'attesa vale il segno.
+    const { lingua, persona } = dellaPagina.in_attesa ? dellaPagina : dati;
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -537,7 +540,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             setLoDiceUnaRotta(true);
         }
     };
-    const t = testi(dati.lingua);
+    const t = testi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
     // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
@@ -545,7 +548,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const fonti = ridotta ? [] : fontiDellaRicerca(dati.prodotti);
     // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
     const quali = fonti.join();
-    const dellaRicerca = useMemo(() => testiDellaRicerca(dati.lingua, fonti), [dati.lingua, quali]);
+    const dellaRicerca = useMemo(() => testiDellaRicerca(lingua, fonti), [lingua, quali]);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
     const prodotti = {
@@ -562,7 +565,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
 
             return senzaUndefined({
                 id: voce.id,
-                label: nomeDellaVoce(voce, dati.lingua),
+                label: nomeDellaVoce(voce, lingua),
                 icon: voce.icona,
                 tone: voce.tono,
                 home: voce === dashboard,
@@ -648,13 +651,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // chiuso non si chiedono: le chiede la prossima apertura, con l'elenco. Che è aperto lo dice la pagina, perché l'`AppShell`
     // avvisa quando il pannello si apre e non quando si chiude.
     const [frasiChieste, setFrasiChieste] = useState<{ lingua: string; arrivate: boolean }>();
-    const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(dati.lingua) === undefined;
+    const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(lingua) === undefined;
     useLayoutEffect(() => {
         if (!servonoLeFrasi || !document.querySelector('.zr-notif')) {
             return undefined;
         }
         let ancora = true;
-        const lingua = dati.lingua;
         caricaFrasi(lingua).then(
             () => ancora && setFrasiChieste({ lingua, arrivate: true }),
             () => ancora && setFrasiChieste({ lingua, arrivate: false }),
@@ -663,9 +665,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         return () => {
             ancora = false;
         };
-    }, [servonoLeFrasi, dati.lingua]);
+    }, [servonoLeFrasi, lingua]);
     // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
-    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
+    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
     // da lì.
     const carica = () => {
@@ -827,7 +829,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const adesso = new Date();
     // Le frasi della lingua dei dati, se sono in memoria. Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è
     // in errore se non sono arrivate (sopra).
-    const frasi = frasiPronte(dati.lingua);
+    const frasi = frasiPronte(lingua);
     const riga = campanella?.rigaConLeFrasi;
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
@@ -924,7 +926,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             },
         );
     };
-    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, dati.lingua, t, ricerca.workspace) ?? []) : []);
+    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, ricerca.workspace) ?? []) : []);
     const voci = [prodotti, ...nav];
 
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.
@@ -1021,8 +1023,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
-            user={dati.persona.nome}
-            email={dati.persona.email}
+            email={persona.email}
+            user={persona.nome}
             workspace={dati.workspace.nome}
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
@@ -1031,7 +1033,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
             // In attesa lo stato è quello di caricamento. I risultati non hanno bisogno di una guardia loro: nello stato
             // ridotto la cornice ha già dimenticato la ricerca (sopra), e senza quella non ce ne sono.
-            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, dati.lingua), dati.lingua, adesso))}
+            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, lingua), lingua, adesso))}
             notificationsState={ridotta ?? statoDelPannello}
             searchResults={risultati}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un

@@ -408,6 +408,44 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
+    it('coi dati `in_attesa`, se la cornice ha già i dati di quel workspace, il menu del profilo e la lingua sono quelli dei dati nuovi; moduli, aziende e workspace restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1)', async () => {
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, aziende, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        const quante = etichette().length;
+
+        // Fuori dall'attesa vale il segno: i dati letti prima non portano nemmeno la loro persona.
+        await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, aggiornati_il: '2026-10-13T07:59:59.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
+
+        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        expect(etichette()).toHaveLength(quante);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
+        expect(uno('aside.zr-side')?.textContent).not.toContain('Otro nombre');
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
+    it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
+        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+        const titolo = testi('it').downTitle;
+        await mostra(<Cornice dati={{ ...dati, prodotti: [], non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(contenitore.textContent).toContain(titolo);
+
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).not.toContain('CRM');
+        expect(contenitore.textContent).toContain(titolo);
+
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:02.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(etichette()).toContain('CRM');
+        expect(contenitore.textContent).not.toContain(titolo);
+    });
+
     it.each(['board', 'home'])('con product="%s", che non è un prodotto del registro, il menu Moduli resta esteso', async (prodotto) => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product={prodotto} />);
 
@@ -4177,44 +4215,6 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
         expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
         expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
-    });
-
-    it('coi dati `in_attesa`, se la cornice ha già i dati di quel workspace, il menu del profilo e la lingua sono quelli dei dati nuovi; moduli, aziende e workspace restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1)', async () => {
-        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
-        await mostra(<Cornice dati={{ ...dati, aziende, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
-        const quante = etichette().length;
-
-        // Fuori dall'attesa vale il segno: i dati letti prima non portano nemmeno la loro persona.
-        await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, aggiornati_il: '2026-10-13T07:59:59.000000Z' }} onLogout={esciSenzaEffetto} />);
-        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
-
-        // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
-        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
-
-        expect(etichette()).toHaveLength(quante);
-        expect(etichette()).toContain('Gestión de proyectos');
-        expect(uno('.zr-ws-switch')).not.toBeNull();
-        expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
-        expect(uno('aside.zr-side')?.textContent).not.toContain('Otro nombre');
-        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        await clic(uno('.zr-avatar-btn'));
-        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
-    });
-
-    it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
-        const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const titolo = testi('it').downTitle;
-        await mostra(<Cornice dati={{ ...dati, prodotti: [], non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
-        expect(contenitore.textContent).toContain(titolo);
-
-        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
-        expect(etichette()).not.toContain('CRM');
-        expect(contenitore.textContent).toContain(titolo);
-
-        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:02.000000Z' }} onLogout={esciSenzaEffetto} />);
-        expect(etichette()).toContain('CRM');
-        expect(contenitore.textContent).not.toContain(titolo);
     });
 
     describe('il freno del backoffice', () => {
