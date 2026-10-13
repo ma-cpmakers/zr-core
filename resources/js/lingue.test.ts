@@ -1188,124 +1188,151 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
     const PEZZO = `${CARTELLA}campanella-D5veh6YO.js`;
     const nonArrivato = (indirizzo: string) => new TypeError(`Failed to fetch dynamically imported module: ${indirizzo}`);
 
-    /** Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. */
-    function chiImporta(...errori: unknown[]) {
-        const importa = vi.fn(async (_daQui?: string) => {
+    /**
+     * Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. `testo` è la
+     * funzione che importa il pezzo come la scrive la build, col nome che ha dato al file; `qui` l'indirizzo del JS che la
+     * contiene. In `chiamate` c'è ciò che è stato importato: niente per l'`import()` di prima, o l'indirizzo.
+     */
+    function chiImporta(errori: unknown[] = [], { testo = '()=>import("./campanella-D5veh6YO.js")', qui = `${CARTELLA}app-BkT9x0aa.js` } = {}) {
+        const chiamate: (string | undefined)[] = [];
+        const prova = async (indirizzo?: string) => {
+            chiamate.push(indirizzo);
             if (errori.length > 0) {
                 throw errori.shift();
             }
 
             return 'il pezzo';
-        });
+        };
 
-        return { importa, chiedi: pezzoARichiesta(importa, CARTELLA) };
+        // @ts-expect-error la firma nuova arriva col codice (sprint 39 · T4)
+        return { chiamate, chiedi: pezzoARichiesta(Object.assign(() => prova(), { toString: () => testo }), (indirizzo) => prova(indirizzo), qui) };
     }
 
     it('il pezzo che arriva al primo colpo si importa senza un indirizzo e senza coda, e a ogni richiesta allo stesso modo (T1.4)', async () => {
-        const { importa, chiedi } = chiImporta();
+        const { chiamate, chiedi } = chiImporta();
 
         await expect(chiedi()).resolves.toBe('il pezzo');
         await expect(chiedi()).resolves.toBe('il pezzo');
-        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+        expect(chiamate).toStrictEqual([undefined, undefined]);
     });
 
     it('dopo un pezzo non arrivato la richiesta dopo importa il suo indirizzo con una coda, diversa a ogni tentativo, e l\'errore che esce è quello del browser (T1.1, T1.2)', async () => {
         const [primo, secondo] = [nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`)];
-        const { importa, chiedi } = chiImporta(primo, secondo);
+        const { chiamate, chiedi } = chiImporta([primo, secondo]);
 
         await expect(chiedi()).rejects.toBe(primo);
         await expect(chiedi()).rejects.toBe(secondo);
         await expect(chiedi()).resolves.toBe('il pezzo');
-        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=2`]]);
-    });
-
-    it('un errore dopo che non dice l\'indirizzo non fa dimenticare quello di prima', async () => {
-        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO), new TypeError('Importing a module script failed.'));
-
-        await expect(chiedi()).rejects.toThrow();
-        await expect(chiedi()).rejects.toThrow();
-        await chiedi();
-        expect(importa.mock.calls.at(-1)).toStrictEqual([`${PEZZO}?r=2`]);
-    });
-
-    it.each([
-        ['non dice un indirizzo', new TypeError('Importing a module script failed.')],
-        ['dice un indirizzo di un\'altra origine', nonArrivato('https://altro.example/campanella.js')],
-        ['dice un indirizzo che comincia come l\'origine ma è di un altro host', nonArrivato(`${ORIGINE}.altro.example/campanella.js`)],
-        ['non è un errore', undefined],
-    ])('se l\'errore %s la richiesta dopo è l\'`import()` di prima: nessun indirizzo letto da un messaggio entra in `import()`', async (_caso, errore) => {
-        const { importa, chiedi } = chiImporta(errore);
-
-        await expect(chiedi()).rejects.toBe(errore);
-        await chiedi();
-        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=2`]);
     });
 
     // Sprint 35 · T3 (voce #1945). La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme
     // importano lo stesso indirizzo, e per il browser lo stesso indirizzo è una richiesta sola e un modulo solo.
     it('dopo un pezzo non arrivato due richieste fatte insieme importano lo stesso indirizzo, con la stessa coda (sprint 35 · T3.1)', async () => {
-        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO));
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO)]);
 
         await expect(chiedi()).rejects.toThrow();
         await Promise.all([chiedi(), chiedi()]);
-        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=1`]);
     });
 
     it('se due richieste fatte insieme falliscono tutte e due, la richiesta dopo ha una coda che nessuna delle due aveva (sprint 35 · T3.1)', async () => {
-        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`), nonArrivato(`${PEZZO}?r=1`));
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`), nonArrivato(`${PEZZO}?r=1`)]);
 
         await expect(chiedi()).rejects.toThrow();
         await Promise.allSettled([chiedi(), chiedi()]);
         await chiedi();
-        const [[ultimo]] = importa.mock.calls.slice(-1);
-        expect(importa.mock.calls.slice(1, 3)).toStrictEqual([[`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+        const ultimo = chiamate.at(-1);
+        expect(chiamate.slice(1, 3)).toStrictEqual([`${PEZZO}?r=1`, `${PEZZO}?r=1`]);
         expect([ultimo?.startsWith(`${PEZZO}?r=`), ultimo === `${PEZZO}?r=1`]).toStrictEqual([true, false]);
     });
 
     it('arrivato il pezzo dopo un tentativo fallito, la richiesta dopo importa l\'indirizzo arrivato, con la stessa coda: il browser non lo scarica e non lo valuta da capo (sprint 35 · T3.2)', async () => {
-        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO));
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO)]);
 
         await expect(chiedi()).rejects.toThrow();
         await expect(chiedi()).resolves.toBe('il pezzo');
         await expect(chiedi()).resolves.toBe('il pezzo');
-        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=1`]]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=1`]);
     });
 
-    // La stessa origine non basta: il pezzo sta nella cartella di questo JS, e un indirizzo letto da un messaggio vale solo se
-    // sta lì. Ciò che entra in `import()` si guarda come lo legge il browser, che risolve `..`, `%2e` e la barra rovescia.
+    // Sprint 39 · T4 (voci #1972 e #1973). L'indirizzo del pezzo non si legge più dall'errore del browser: è quello che la
+    // build ha scritto nella funzione che lo importa, risolto sull'indirizzo del JS che la contiene.
     it.each([
-        ['in un\'altra cartella', `${ORIGINE}/caricati/campanella.js`],
-        ['nella cartella sopra', `${ORIGINE}/build/campanella.js`],
-        ['in una cartella che comincia come quella dell\'ingresso', `${ORIGINE}/build/assets-altri/campanella.js`],
-        // Un frontend che mette i pezzi a richiesta in una cartella dentro quella dell'ingresso: il nome della cartella non è un file.
-        ['in una cartella dentro quella dell\'ingresso', `${CARTELLA}chunks/campanella-D5veh6YO.js`],
-        ['nella cartella dell\'ingresso, ma il messaggio non finisce col nome del file', `${PEZZO} e altro`],
-        ['nella cartella dell\'ingresso, con una coda sua', `${PEZZO}?v=3`],
-    ])('un indirizzo della stessa origine %s non entra in `import()`: la richiesta dopo è l\'`import()` di prima (sprint 35 · T3.3)', async (_caso, indirizzo) => {
-        const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
+        ['una coda sua', `${CARTELLA}app-BkT9x0aa.js?v=3`],
+        ['una coda con una barra e due punti', `${CARTELLA}app-BkT9x0aa.js?da=/altro/../x`],
+        ['un frammento', `${CARTELLA}app-BkT9x0aa.js#/pagina`],
+    ])('se l\'indirizzo del JS d\'ingresso ha %s la richiesta dopo importa lo stesso il pezzo, dalla sua cartella e senza quella coda (sprint 39 · T4.1)', async (_caso, qui) => {
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO)], { qui });
 
         await expect(chiedi()).rejects.toThrow();
         await chiedi();
-        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`]);
     });
 
-    // Ciò che entra in `import()` è scritto riga per riga: niente, salvo dove il messaggio finisce con un file della cartella.
-    it.each<[string, string, string | undefined]>([
-        ['e risale con `..`', `${CARTELLA}../../caricati/x.js`, undefined],
-        ['e risale con `..` in fondo', `${CARTELLA}..`, undefined],
-        ['e risale con `.` e `..`', `${CARTELLA}./../x.js`, undefined],
-        ['e risale con `%2e%2e`', `${CARTELLA}%2e%2e/%2E%2e/caricati/x.js`, undefined],
-        ['e risale con la barra rovescia', `${CARTELLA}..\\..\\caricati\\x.js`, undefined],
-        ['e risale con `..` dopo un nome', `${CARTELLA}x/../../../caricati/x.js`, undefined],
-        ['dentro la coda di un indirizzo di un\'altra origine, e risale', `https://altro.example/x.js?da=${CARTELLA}../x.js`, undefined],
-        // Fino alla `v2.1.0` questo indirizzo era scartato intero; dalla `v2.2.0` ne resta il file della cartella dell'ingresso.
-        ['in fondo alla coda di un indirizzo di un\'altra origine', `https://altro.example/x.js?da=${PEZZO}`, `${PEZZO}?r=1`],
-    ])('un messaggio che dice la cartella dell\'ingresso %s non porta `import()` fuori dalla cartella (sprint 35 · T3.3)', async (_caso, indirizzo, atteso) => {
-        const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
+    it.each([
+        ['in una cartella dentro quella dell\'ingresso', '()=>import("./pezzi/campanella-D5veh6YO.js")', `${CARTELLA}pezzi/campanella-D5veh6YO.js`],
+        ['in una cartella accanto a quella dell\'ingresso', '()=>import("../pezzi/campanella-D5veh6YO.js")', `${ORIGINE}/build/pezzi/campanella-D5veh6YO.js`],
+        ['in una cartella detta dalla radice', '()=>import("/build/pezzi/campanella-D5veh6YO.js")', `${ORIGINE}/build/pezzi/campanella-D5veh6YO.js`],
+    ])('coi pezzi a richiesta %s la richiesta dopo importa il pezzo da lì (sprint 39 · T4.2)', async (_caso, testo, pezzo) => {
+        const { chiamate, chiedi } = chiImporta([nonArrivato(pezzo)], { testo });
 
         await expect(chiedi()).rejects.toThrow();
         await chiedi();
-        expect(importa.mock.calls).toStrictEqual([[undefined], [atteso]]);
+        expect(chiamate).toStrictEqual([undefined, `${pezzo}?r=1`]);
+    });
+
+    // Come la build scrive la funzione non è di zr-core: il nome è l'argomento di `import(`, fra virgolette di qualunque
+    // tipo, anche con altro prima.
+    it.each([
+        ['fra apici', '()=>import(\'./campanella-D5veh6YO.js\')'],
+        ['fra accenti', '()=>import(`./campanella-D5veh6YO.js`)'],
+        ['dentro la funzione che carica prima ciò che al pezzo serve', '()=>t(()=>import("./campanella-D5veh6YO.js"),__vite__mapDeps([0,1]))'],
+        ['dopo un altro testo fra virgolette', '()=>t("./altro-file.js",()=>import("./campanella-D5veh6YO.js"))'],
+        ['su più righe', '() => {\n    return import("./campanella-D5veh6YO.js");\n}'],
+    ])('il nome del pezzo scritto %s si legge lo stesso (sprint 39 · T4.2)', async (_caso, testo) => {
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO)], { testo });
+
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`]);
+    });
+
+    it.each([
+        ['non ha un `import(`', '()=>carica("./campanella-D5veh6YO.js")'],
+        ['importa un nome che non è scritto lì', '()=>import(nome)'],
+        ['è vuoto', ''],
+    ])('se il testo della funzione %s la richiesta dopo è l\'`import()` di prima, senza un indirizzo (sprint 39 · T4.2)', async (_caso, testo) => {
+        const { chiamate, chiedi } = chiImporta([nonArrivato(PEZZO), nonArrivato(PEZZO)], { testo });
+
+        await expect(chiedi()).rejects.toThrow();
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(chiamate).toStrictEqual([undefined, undefined, undefined]);
+    });
+
+    // Ciò che l'errore dice non conta: in `import()` entra il pezzo della campanella, mai un indirizzo letto da un messaggio.
+    it.each<[string, unknown]>([
+        ['nomina un altro file della stessa cartella', nonArrivato(`${CARTELLA}altro-file.js`)],
+        ['nomina un file di una cartella dentro quella', nonArrivato(`${CARTELLA}chunks/altro-file.js`)],
+        ['nomina il pezzo con una coda sua', nonArrivato(`${PEZZO}?v=3`)],
+        ['nomina il pezzo e poi altro', nonArrivato(`${PEZZO} e altro`)],
+        ['risale con `..`', nonArrivato(`${CARTELLA}../../caricati/x.js`)],
+        ['risale con `%2e%2e`', nonArrivato(`${CARTELLA}%2e%2e/%2E%2e/caricati/x.js`)],
+        ['risale con la barra rovescia', nonArrivato(`${CARTELLA}..\\..\\caricati\\x.js`)],
+        ['dice un indirizzo di un\'altra origine', nonArrivato('https://altro.example/campanella.js')],
+        ['dice un indirizzo che comincia come l\'origine ma è di un altro host', nonArrivato(`${ORIGINE}.altro.example/campanella.js`)],
+        ['dice un indirizzo di un\'altra origine con la cartella nella coda', nonArrivato(`https://altro.example/x.js?da=${CARTELLA}../x.js`)],
+        ['scrive un `import(` suo', new TypeError('import("https://altro.example/x.js") failed')],
+        ['non dice un indirizzo', new TypeError('Importing a module script failed.')],
+        ['non è un errore', undefined],
+    ])('se l\'errore %s la richiesta dopo chiede il pezzo della campanella, e l\'errore esce com\'è (sprint 39 · T4.3)', async (_caso, errore) => {
+        const { chiamate, chiedi } = chiImporta([errore, errore]);
+
+        await expect(chiedi()).rejects.toBe(errore);
+        await expect(chiedi()).rejects.toBe(errore);
+        await chiedi();
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=2`]);
     });
 });
 
