@@ -108,13 +108,20 @@ it('dopo una Cornice::dopo() la lingua e il nome di Cornice::subito() sono quell
         ->and([$poi['lingua'] ?? null, $poi['persona']['nome'] ?? null])->toBe(['es', 'UAT Ada Lovelace']);
 });
 
-it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
+it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante e con chi è nella sessione — lingua, persona, workspace e in fondo sessione_il —, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5; sprint 41 · T4.1)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
     backofficeDiChiHaAccettato([$percorso => nonRisponde($stato, $codice)]);
 
-    expect(Cornice::dopo())->toBe(['non_letti' => true, 'aggiornati_il' => '2026-10-09T21:31:05.123456Z'])
+    expect(Cornice::dopo())->toBe([
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
+    ])
         ->and(avvisiDellaRiga())->toBe(['zr-core, dati della cornice: il backoffice non ha risposto ('.$tipo.'): la cornice esce ridotta']);
 })->with([
     'io.mostra, la connessione cade' => ['/v1/io', 0, null, BackofficeNonRisponde::class],
@@ -126,6 +133,66 @@ it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Co
     'io.aziende.elenca, la connessione cade' => ['/v1/io/aziende', 0, null, BackofficeNonRisponde::class],
     'io.workspace.elenca, un 503 di /v1' => ['/v1/io/workspace', 503, 'non_disponibile', ErroreApi::class],
 ]);
+
+// Sprint 41 · T4 (voce #2029). `non_letti` dice di chi è: fra la subito() di una pagina e la sua dopo() la sessione può essere
+// passata a un'altra persona, e col backoffice che non risponde la cornice ridotta restava col nome di chi c'era prima. Di chi è
+// lo dice la sessione, mai una chiamata in più a /v1.
+it('col backoffice che non risponde Cornice::dopo() dice di chi è non_letti: se fra la subito() di una pagina e la sua dopo() nella sessione entra un\'altra persona, porta nome, email e lingua di questa, il workspace e l\'istante di quella lettura, e niente del backoffice; la subito() di prima resta di chi c\'era (sprint 41 · T4.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => nonRisponde(0, null)]);
+
+    $subito = Cornice::subito();
+    // Dallo stesso browser entra un'altra persona, nello stesso workspace, prima che la richiesta rimandata parta.
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000001', 'UTC'));
+    $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
+
+    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'])
+        ->and(Cornice::dopo())->toBe([
+            'lingua' => 'it',
+            'persona' => ['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'],
+            'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+            'non_letti' => true,
+            'aggiornati_il' => '2026-10-09T21:31:09.000001Z',
+            'sessione_il' => '2026-10-09T21:31:09.000001Z',
+        ])
+        // Una richiesta sola, quella che non ha avuto risposta: il nome non si chiede di nuovo a io.mostra.
+        ->and(percorsiChiamati())->toBe(['/v1/io']);
+});
+
+it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_letti sono quelli della sessione dopo quella lettura — riletti da io.mostra, con l\'email dell\'ingresso —, e Cornice::dopo() non chiama /v1 un\'altra volta per dirli (sprint 41 · T4.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace']), '/v1/app' => nonRisponde(503, 'non_disponibile')]);
+
+    $dopo = Cornice::dopo();
+
+    expect($dopo)->toBe([
+        'lingua' => 'es',
+        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
+    ])
+        ->and(array_keys((array) $dopo))->not->toContain('prodotti', 'aziende', 'non_lette', 'accettazione_richiesta')
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1])
+        ->and(avvisiDellaRiga())->toHaveCount(1);
+});
+
+it('se mentre il backoffice non risponde la sessione finisce, Cornice::dopo() dà null come senza sessione: non c\'è nessuno di cui dire non_letti (sprint 41 · T4.4)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/app' => function () {
+        Sessione::chiudi();
+
+        return Http::response('segno-del-corpo', 500);
+    }]);
+
+    expect(Cornice::dopo())->toBeNull()
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1]);
+});
 
 it('un errore di /v1 che non è «il backoffice non risponde» passa da Cornice::dopo() com\'è, come da Cornice::dati(): non diventa non_letti (sprint 34 · T4.2)', function (string $percorso, int $stato, string $codice) {
     sessioneAMano(marketing());
