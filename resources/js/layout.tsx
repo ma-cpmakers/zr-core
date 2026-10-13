@@ -18,7 +18,8 @@ export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     subito?: DatiSubito | null | undefined;
     /**
      * I dati che la parte server legge dal backoffice (`Cornice::dopo()`): possono arrivare dopo il primo disegno (con Inertia,
-     * una prop rimandata), e quando arrivano la cornice diventa quella di sempre senza che la pagina si rimonti.
+     * una prop rimandata), e quando arrivano la cornice diventa quella di sempre senza che la pagina si rimonti. Dicono di
+     * chi sono (dalla `v2.4.0`): se fra `subito` e `dopo` la sessione è passata a un'altra persona, la cornice è la sua.
      */
     dopo?: DatiDopo | null | undefined;
 }
@@ -50,6 +51,8 @@ const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) =>
 
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
+    // `dopo` sta sopra, con tutto ciò che porta: è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
+    // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
     const cornice = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
     if (!cornice) {
         return children;

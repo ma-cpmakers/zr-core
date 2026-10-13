@@ -5309,7 +5309,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
-    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo` letto di nuovo'],
+    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di nuovo, che è suo e lo dice'],
     'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
@@ -5318,11 +5318,21 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
-    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto nome ed email di allora'],
-    'Indietro: dopo non dice di chi è' => ['readme', '`dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un\'altra persona, tiene i dati di quella sotto il `subito` di allora'],
+    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e dalla `v2.4.0` lo dice: quando arriva, la cornice è la sua'],
+    // Sprint 37 · T2.6 (voce #1998): `dopo` dice di chi è, e che cosa cambia per un frontend.
+    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come le ha date io.mostra in quella lettura e, in fondo, `sessione_il`, il segno di quella lettura'],
+    'dopo dice di chi è: nel layout' => ['readme', 'se fra le due richieste la sessione è passata a un\'altra persona la cornice è la sua, coi suoi dati, e i dati di una persona non stanno sotto il nome di un\'altra'],
+    'dopo dice di chi è: per un frontend' => ['readme', 'Per un frontend che dà al layout `Cornice::dopo()` com\'è non c\'è niente da scrivere, e tre cose si vedono'],
+    'dopo dice di chi è: la scheda ferma' => ['readme', 'Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a un\'altra persona mostra la cornice di questa, rifatta, e la pagina con lei'],
+    'dopo dice di chi è: a mano' => ['readme', 'chi compone `dopo` a mano gli lascia `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`'],
+    'dopo dice di chi è: il limite che resta' => ['readme', 'un `dopo` senza `persona` e `sessione_il` — composto a mano, o di una voce della cronologia salvata prima della `v2.4.0` — vale come prima'],
+    'dopo dice di chi è: chi torna' => ['readme', 'se poi la sessione torna a chi c\'era, con Indietro su quella voce restano il suo nome e i suoi dati'],
+    'dopo dice di chi è: la pagina con lei' => ['readme', 'Solo se `dopo` è di un\'altra persona (un\'altra email: la sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei'],
+    'dopo dice di chi è: la lingua' => ['readme', 'Dalla `v2.4.0` quelli riletti arrivano già con `dopo`, e la cornice li mostra da quel momento'],
+    'la guida: dopo dice di chi è' => ['guida', 'Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno)'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
-    'la guida: Indietro fra due workspace' => ['guida', 'una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
+    'la guida: Indietro fra due workspace' => ['guida', 'Con Indietro una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
@@ -5374,6 +5384,16 @@ it('README e guida non dicono più che con Indietro il menu del profilo mostra l
 })->with([
     'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
     'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
+]);
+
+// Sprint 37 · T2.6 (voce #1998): `Cornice::dopo()` dice di chi sono i suoi dati, e il README non dice più il contrario.
+it('il README non dice più che `dopo` non dice di chi è, né che i dati riletti stanno sopra i dati di adesso sotto il nome di allora (sprint 37 · T2.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'dopo non dice di chi è' => ['`dopo` non dice di chi è'],
+    'sopra i dati di adesso' => ['sopra i dati di adesso'],
+    'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
+    'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

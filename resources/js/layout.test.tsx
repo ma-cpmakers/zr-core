@@ -1025,6 +1025,114 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('5');
     });
 
+    it('una voce lasciata prima che il suo `dopo` arrivasse e riletta da un\'altra persona porta il `dopo` di questa, che dice di chi è: quando chi c\'era torna e, in attesa su una pagina sua, fa Indietro su quella voce, a schermo restano il suo nome e niente dell\'altra — moduli, selettore, non lette —, né a quel disegno né alle visite dopo (sprint 37 · T2.1)', async () => {
+        const allora: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        // Il `dopo` che l'altra persona ha riletto sulla voce di allora: la parte server dice di chi è, e quando l'ha letta.
+        const rilettoDaAltra: DatiDopo = { lingua: 'es', persona: altra, workspace: subito.workspace, prodotti: { pm: 'attivo' }, aziende, non_lette: 2, aggiornati_il: '2026-10-13T08:00:05.000000Z', sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const tornata: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:08.000000Z' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+        const nienteDiAltra = () => {
+            expect(avatar()).toBe(dati.persona.nome);
+            expect(document.body.textContent).not.toContain(altra.nome);
+            expect(document.body.textContent).not.toContain(altra.email);
+            expect(etichette()).not.toContain('Gestión de proyectos');
+        };
+        await inDue({ subito: allora }, <PaginaA key="1" />);
+        const inAttesa = etichette();
+        await inDue({ subito: diAltra }, <PaginaB key="2" />);
+
+        // Indietro dell'altra persona sulla voce lasciata senza `dopo`: Inertia lo richiede, ed è il suo.
+        await inDue({ subito: allora }, <PaginaA key="1" />);
+        await inDue({ subito: allora, dopo: rilettoDaAltra }, <PaginaA key="1" />);
+        expect(avatar()).toBe(altra.nome);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // La sessione torna a chi c'era: apre una pagina e, prima che il suo `dopo` arrivi, torna con Indietro su quella voce.
+        await inDue({ subito: tornata }, <PaginaB key="3" />);
+        nienteDiAltra();
+        await inDue({ subito: allora, dopo: rilettoDaAltra }, <PaginaA key="1" />);
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        nienteDiAltra();
+        expect([etichette(), uno('.zr-ws-switch'), uno('.zr-bell-count')]).toStrictEqual([inAttesa, null, null]);
+
+        // Alle visite dopo: Avanti ancora in attesa, poi i suoi dati, poi di nuovo Indietro su quella voce.
+        await inDue({ subito: { ...tornata } }, <PaginaB key="3" />);
+        nienteDiAltra();
+        expect([etichette(), uno('.zr-ws-switch'), uno('.zr-bell-count')]).toStrictEqual([inAttesa, null, null]);
+        await inDue({ subito: tornata, dopo: { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:09.000000Z', sessione_il: '2026-10-13T08:00:09.000000Z' } }, <PaginaB key="3" />);
+        nienteDiAltra();
+        expect([etichette().includes('CRM'), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, '7']);
+        await inDue({ subito: allora, dopo: rilettoDaAltra }, <PaginaA key="1" />);
+        nienteDiAltra();
+        expect([etichette().includes('CRM'), uno('.zr-ws-switch'), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, null, '7']);
+    });
+
+    it('in una scheda ferma su una pagina di una persona, quando la sessione è passata a un\'altra e si rilegge il solo `dopo`, che dice di chi è, la cornice diventa quella di chi è entrato — nome, lingua e i suoi dati —, e l\'elenco delle notifiche, i risultati e la parola di chi c\'era prima non restano (sprint 37 · T2.2)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
+        const ferma: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const suo: DatiDopo = { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+        const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
+        await inDue({ subito: ferma, dopo: suo }, <PaginaA key="1" />);
+        await scrivi('uat');
+        expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
+        await clic(uno('.zr-bell'));
+        expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
+        expect(richieste()).toStrictEqual(diPrima);
+
+        // La scheda non visita niente: il `subito` resta quello di allora, e il `dopo` riletto è di chi è entrato da un'altra scheda.
+        await inDue({ subito: ferma, dopo: { lingua: 'es', persona: altra, workspace: subito.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:05.000000Z', sessione_il: '2026-10-13T08:00:05.000000Z' } }, <PaginaA key="1" />);
+        await act(giro);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.email);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(uno('.zr-notif')).toBeNull();
+        expect(richieste()).toStrictEqual(diPrima);
+
+        // I risultati di prima non sono rimasti nemmeno fuori dallo schermo, e la campanella chiede l'elenco di chi è entrato.
+        await scrivi('ua', 0);
+        expect(uno('.zr-search-panel')).not.toBeNull();
+        expect(titoliDellaRicerca()).toStrictEqual([]);
+        await clic(uno('.zr-bell'));
+        expect(richieste()).toStrictEqual([...diPrima, 'GET /cornice/notifiche']);
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
+    it('per la stessa persona un `dopo` che dice di chi è non cambia niente: quando arriva la cornice è quella di sempre e la pagina non si rimonta — lo stesso nodo, il testo scritto, il fuoco —; se è riletto con un altro nome e un\'altra lingua la cornice li mostra, sempre senza rimontare (sprint 37 · T2.4)', async () => {
+        const conta = { montaggi: 0 };
+        const suo: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const letto: DatiDopo = { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+        await inDue({ subito: suo }, <PaginaColCampo conta={conta} />);
+        const [barra, nodo] = [uno('aside.zr-side'), campo()];
+        nodo.value = 'UAT scritto';
+        nodo.focus();
+
+        await inDue({ subito: suo, dopo: letto }, <PaginaColCampo conta={conta} />);
+
+        expect(etichette()).toContain('CRM');
+        expect(uno('aside.zr-side')).toBe(barra);
+        expect(campo()).toBe(nodo);
+        expect([campo().value, document.activeElement === nodo, conta.montaggi]).toStrictEqual(['UAT scritto', true, 1]);
+        expect(sopraLaPagina()).toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('7');
+
+        // Riletto dopo (un ricaricamento del solo `dopo`): io.mostra ha dato un altro nome e un'altra lingua alla stessa email.
+        await inDue({ subito: suo, dopo: { ...letto, lingua: 'es', persona: { nome: 'Augusta King', email: dati.persona.email }, non_lette: 4, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaColCampo conta={conta} />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Augusta King');
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        expect(uno('aside.zr-side')).toBe(barra);
+        expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
+    });
+
     it('il limite dei due workspace che il README dichiara: sotto il layout Indietro su una pagina di chi c\'era prima in un altro workspace riporta la cornice di allora, e se alla voce manca il `dopo` quello riletto, di chi è entrato, sta sotto il nome di allora (sprint 36 · T6, seconda lettura, N4; lo chiude la voce 1993 del backlog)', async () => {
         const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
         const altrove = datiAltroWorkspace.workspace;

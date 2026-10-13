@@ -254,7 +254,7 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
     const stessoWorkspace: Entrata = { sessione: grace, backoffice: diGrace };
     const altrove: Entrata = { ...stessoWorkspace, workspace: ricerca };
     const subito: DatiSubito = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, sessione_il: '2026-10-13T00:00:00.000001Z' };
-    const dopo: DatiDopo = { workspace: marketing.workspace, prodotti: marketing.prodotti, aziende: marketing.aziende, non_lette: 7, aggiornati_il: '2026-10-13T00:00:00.000002Z' };
+    const dopo: DatiDopo = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, prodotti: marketing.prodotti, aziende: marketing.aziende, non_lette: 7, aggiornati_il: '2026-10-13T00:00:00.000002Z', sessione_il: '2026-10-13T00:00:00.000002Z' };
     /** Ciò che la parte server ha letto per una pagina: i dati interi, o i due dati. */
     const letta = (pezzi: { cornice?: DatiDellaCornice | null; subito?: DatiSubito; dopo?: DatiDopo }) => ({ cornice: null, cartella: 'UAT Q4', ...pezzi });
 
@@ -273,7 +273,8 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
             cornice: null,
             cartella: 'UAT Q4',
             subito: { ...grace, workspace: marketing.workspace, sessione_il: subito.sessione_il },
-            dopo: { workspace: marketing.workspace, ...diGrace, aggiornati_il: dopo.aggiornati_il },
+            // Sprint 37 · T2: `dopo` dice di chi è, come `Cornice::dopo()` — la persona e la lingua di chi è entrato, col segno della lettura.
+            dopo: { ...grace, workspace: marketing.workspace, ...diGrace, aggiornati_il: dopo.aggiornati_il, sessione_il: dopo.sessione_il },
         });
     });
 
@@ -283,16 +284,16 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
         const dueDati = conLaSessione(letta({ subito, dopo }), altrove);
         expect(dueDati.subito).toStrictEqual({ ...grace, workspace: ricerca, sessione_il: subito.sessione_il });
         // Deve fallire se `dopo` resta nel workspace della pagina mentre `subito` dice l'altro: non sarebbe la lettura di una sessione sola.
-        expect(dueDati.dopo).toStrictEqual({ workspace: ricerca, ...diGrace, aggiornati_il: dopo.aggiornati_il });
+        expect(dueDati.dopo).toStrictEqual({ ...grace, workspace: ricerca, ...diGrace, aggiornati_il: dopo.aggiornati_il, sessione_il: dopo.sessione_il });
     });
 
     it('le forme ridotte di `dopo` restano ridotte: senza i dati del backoffice non ne prendono, e il workspace cambia solo dove c\'è (sprint 37 · T1.1)', () => {
         const nonLetti: DatiDopo = { non_letti: true, aggiornati_il: 'uat-segno' };
-        const daAccettare: DatiDopo = { workspace: marketing.workspace, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: 'uat-segno', accettazione_richiesta: true };
+        const daAccettare: DatiDopo = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: 'uat-segno', accettazione_richiesta: true, sessione_il: 'uat-segno' };
 
         expect(conLaSessione(letta({ subito, dopo: nonLetti }), altrove).dopo).toStrictEqual(nonLetti);
-        expect(conLaSessione(letta({ subito, dopo: daAccettare }), altrove).dopo).toStrictEqual({ ...daAccettare, workspace: ricerca });
-        expect(conLaSessione(letta({ subito, dopo: daAccettare }), stessoWorkspace).dopo).toStrictEqual(daAccettare);
+        expect(conLaSessione(letta({ subito, dopo: daAccettare }), altrove).dopo).toStrictEqual({ ...daAccettare, ...grace, workspace: ricerca });
+        expect(conLaSessione(letta({ subito, dopo: daAccettare }), stessoWorkspace).dopo).toStrictEqual({ ...daAccettare, ...grace });
         // I soli dati della sessione, prima che `dopo` arrivi: niente `dopo` nemmeno dopo.
         expect(Object.hasOwn(conLaSessione(letta({ subito }), altrove), 'dopo')).toBe(false);
     });

@@ -132,16 +132,18 @@ final class Cornice
     }
 
     /**
-     * La parte dei dati che si legge dal backoffice, senza lingua e persona, che dà `subito()`: le stesse letture di `dati()`,
-     * e gli stessi dati ridotti davanti al 403 `accettazione_richiesta`. Il workspace resta: dice di quale workspace sono
-     * questi dati, letti in una richiesta che non è quella di `subito()` (fra le due la sessione può essere passata a un
-     * altro, da un'altra scheda), e nel browser vale su quello di `subito()`. Se il backoffice non risponde — la
+     * La parte dei dati che si legge dal backoffice: le stesse letture di `dati()`, e gli stessi dati, anche ridotti davanti
+     * al 403 `accettazione_richiesta`. Dice di chi sono (dalla `v2.4.0`): porta lingua e persona come le ha date io.mostra
+     * in quella lettura e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
+     * non è quella di `subito()`, e fra le due la sessione può essere passata a un'altra persona o a un altro workspace, da
+     * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`,
+     * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
      * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno di quell'istante, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Il segno serve al browser come
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
-     * @return array{workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|array{non_letti: true, aggiornati_il: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{non_letti: true, aggiornati_il: string}|null
      */
     public static function dopo(): ?array
     {
@@ -159,9 +161,9 @@ final class Cornice
         if ($dati === null) {
             return null;
         }
-        unset($dati['lingua'], $dati['persona']);
 
-        return $dati;
+        // La persona è stata letta con questi dati: il suo segno è il loro.
+        return [...$dati, 'sessione_il' => $dati['aggiornati_il']];
     }
 
     /**

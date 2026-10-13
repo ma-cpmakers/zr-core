@@ -1151,6 +1151,14 @@ backoffice; `Cornice::dopo()` legge dal backoffice ciò che `Cornice::dati()` le
 `non_lette`, `aggiornati_il` e, per chi non ha accettato i documenti legali, `accettazione_richiesta` — e può arrivare
 più tardi. `Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`, così se
 fra le due richieste la sessione è passata a un altro workspace (un'altra scheda) nome, slug e moduli sono dello stesso.
+Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come le ha date io.mostra
+in quella lettura e, in fondo, `sessione_il`, il segno di quella lettura. Nel layout valgono anche loro su quelli di
+`subito`: se fra le due richieste la sessione è passata a un'altra persona la cornice è la sua, coi suoi dati, e i dati
+di una persona non stanno sotto il nome di un'altra. Per un frontend che dà al layout `Cornice::dopo()` com'è non c'è
+niente da scrivere, e tre cose si vedono. La lingua e il nome della cornice, quando `dopo` arriva, sono quelli riletti
+da io.mostra, i più recenti. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
+un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
+`lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`.
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
@@ -1187,21 +1195,22 @@ Che cosa vede la persona:
   prima. Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout: un'altra email rifà la cornice. Una pagina ripresa
   dalla cronologia con Indietro porta il `subito` di allora: dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il
   segno dell'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la
-  persona. Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo`
-  letto di nuovo. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
+  persona. Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di
+  nuovo, che è suo e lo dice. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
   chi è entrato, e se li sta ancora aspettando la cornice resta ridotta fino alla visita dopo, perché Inertia un `dopo` che
   la voce ha già non lo richiede. Questo vale sullo stesso workspace. Fra due workspace il layout rifà la cornice, che così
   non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati
   (chi monta `Cornice` senza il layout questo limite non lo ha: lì i dati di una pagina più vecchia di un'altra persona non
   valgono in nessun workspace). Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e
-  sta sotto nome ed email di allora. Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
+  dalla `v2.4.0` lo dice: quando arriva, la cornice è la sua. Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
   pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia
   lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato. E
-  `dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un'altra persona, tiene i
-  dati di quella sotto il `subito` di allora; se poi la sessione torna a chi c'era, con Indietro su quella voce li vede
-  sotto il proprio nome. Il contenuto
+  un `dopo` senza `persona` e `sessione_il` — composto a mano, o di una voce della cronologia salvata prima della
+  `v2.4.0` — vale come prima: se lo ha riletto un'altra persona su una voce lasciata prima che arrivasse, tiene i dati
+  di quella sotto il `subito` di allora. Con `Cornice::dopo()` della `v2.4.0` no: quella voce è per intero di chi l'ha
+  riletta, e se poi la sessione torna a chi c'era, con Indietro su quella voce restano il suo nome e i suoi dati. Il contenuto
   della pagina, poi, la cornice non lo tocca mai: con Indietro è quello di allora anche se la persona è cambiata. Per
   questo all'uscita il frontend toglie la cronologia: con la cronologia cifrata di Inertia (`inertia.history.encrypt` a
   `true`, o `Inertia::encryptHistory()` nella richiesta; serve HTTPS) la risposta dell'uscita chiama
@@ -1233,7 +1242,8 @@ Che cosa vede la persona:
   campo vuoto; e una parola scritta meno di 300 ms prima dell'arrivo parte allo scadere dei suoi 300 ms, e fino ad allora
   sotto il campo si legge «Nessun risultato»;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
-  scrivendo in un campo, il fuoco e lo scorrimento restano;
+  scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
+  sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
   `['non_letti' => true]` col segno di quell'istante (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
@@ -1243,7 +1253,8 @@ Che cosa vede la persona:
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
-una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Se c'è `cornice`, il layout
+una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Dalla `v2.4.0` quelli
+riletti arrivano già con `dopo`, e la cornice li mostra da quel momento. Se c'è `cornice`, il layout
 usa quella e non guarda `subito` e `dopo`.
 
 Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un

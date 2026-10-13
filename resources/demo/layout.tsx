@@ -269,16 +269,19 @@ function DueDati({ visita, dopo }: Props) {
     );
 }
 
-/** Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace, come `Cornice::dopo()`. */
-function dopoLetto(): NonNullable<Props['dopo']> {
+/**
+ * Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace e
+ * con chi ha letto — lingua, persona e in fondo `sessione_il`, il segno di quella lettura —, come `Cornice::dopo()`.
+ */
+function dopoLetto({ lingua, persona }: Pick<DatiDellaCornice, 'lingua' | 'persona'>): NonNullable<Props['dopo']> {
     const { workspace, prodotti, aziende, non_lette } = marketing;
     const aggiornati_il = istanteDellaLettura();
 
     return comeArrivaDopo === 'non_letti'
         ? { non_letti: true, aggiornati_il }
         : comeArrivaDopo === 'accettazione'
-          ? { workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true }
-          : { workspace, prodotti, aziende, non_lette, aggiornati_il };
+          ? { lingua, persona, workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true, sessione_il: aggiornati_il }
+          : { lingua, persona, workspace, prodotti, aziende, non_lette, aggiornati_il, sessione_il: aggiornati_il };
 }
 
 // Sprint 35 · T2 (voce #1945): con `?persona=altra` i dati della sessione della «Due dati» sono di un'altra persona, in
@@ -365,7 +368,7 @@ const paginaDellIndirizzo = () => paginaDi(window.location.search);
 /** Ciò che il «server» legge per una pagina, quando la visita gli arriva: i dati di una lettura nuova (col segno, salvo `?segno=no`). */
 function leggi(nome: Nome): Props {
     // La richiesta che la «Due dati» fa dopo il primo disegno porta anche ciò che il «server» ha letto dal backoffice.
-    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
+    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto(altraPersona ? diUnAltra : marketing) } : {};
     chiestoDopo = false;
 
     // Come `Cornice::subito()`: i dati della sessione portano l'istante in cui sono stati letti (salvo `?segno=no`).
