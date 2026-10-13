@@ -595,11 +595,14 @@ cornice === null ? pagina : (
   lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede. È lo stesso file:
   serve che chi dà la build ignori la coda, come fa di solito un server di file. La coda cambia a ogni tentativo fallito, non a ogni
   richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola (provato in
-  Chromium). Dalla `v2.2.0` l'indirizzo si compone con la cartella del JS della cornice e col nome di file con cui l'errore del
-  browser finisce, subito dopo quella cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l'errore.
-  Dove l'errore non la dice o non finisce col nome del file, se l'indirizzo del JS d'ingresso ha una coda sua (`app.js?v=3`), o in un
-  frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso — anche una cartella dentro quella —,
-  «Riprova» richiama `import()` come prima: in Chromium il pezzo non viene richiesto di nuovo, e serve ricaricare la pagina. Il titolo di ripiego (`notificationTitle`) resta nel file dei
+  Chromium). Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
+  della cornice, là dove lei importa il pezzo, risolto sull'indirizzo di quel JS. In `import()` entra solo il pezzo della
+  campanella, qualunque cosa dica l'errore, e «Riprova» lo richiede anche se l'indirizzo del JS d'ingresso ha una coda sua
+  (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, anche una
+  cartella dentro quella (provato in Chromium sulle due forme di build). Con una coda sull'ingresso il pezzo, che importa
+  il JS della cornice col suo nome, lo chiede senza quella coda, anche al primo colpo: per il browser è un altro indirizzo,
+  e lo scarica una seconda volta (è di quel modo di servire, non di «Riprova»). Dove la build non scrive il nome del pezzo fra
+  virgolette dentro `import(`, «Riprova» richiama `import()` come prima, allo stesso indirizzo. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
   le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si

@@ -268,37 +268,30 @@ export let campanella: typeof import('./campanella') | undefined;
  * (`?r=1`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta quello già in pagina. La
  * coda cambia a ogni tentativo fallito (`?r=2`), non a ogni richiesta: due richieste fatte insieme importano lo stesso
  * indirizzo, che per il browser è una richiesta sola, e dopo l'arrivo l'indirizzo resta quello arrivato, che il browser ha
- * già. L'indirizzo non si legge dall'errore del browser: si compone qui, con `cartella` — quella di questo JS, con la barra
- * in fondo — e col nome di file con cui il messaggio finisce subito dopo di lei, fatto solo di lettere, cifre, `_`, `.` e `-`
- * e mai con un punto per primo. Così in `import()` entra solo un file di quella cartella, qualunque cosa dica il messaggio:
- * non una cartella dentro di lei, non un nome seguito da altro. Dove l'errore non dice la cartella, non finisce col nome, o
- * il pezzo sta altrove — anche in una cartella dentro quella —, la richiesta dopo è l'`import()` di prima (`importa` senza
- * niente). L'errore esce com'è.
+ * già. L'indirizzo non si legge dall'errore del browser, che non conta: è l'argomento di `import(` nel testo di `importa`,
+ * cioè il nome che la build ha dato al pezzo, risolto su `qui`, l'indirizzo del JS che contiene `importa`. Così in
+ * `import()` entra solo il pezzo che `importa` avrebbe chiesto, dovunque la build lo metta e qualunque coda abbia `qui`.
+ * Dove nel testo di `importa` non c'è un `import(` con un nome fra virgolette, la richiesta dopo è l'`import()` di prima
+ * (`importa`). L'errore esce com'è.
  */
-export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezzo>, cartella: string): () => Promise<Pezzo> {
-    let nonArrivato: string | undefined;
+export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): () => Promise<Pezzo> {
     let tentativi = 0;
 
-    return () =>
-        importa(nonArrivato && `${nonArrivato}?r=${tentativi}`).catch((errore: unknown) => {
+    return () => {
+        const nome = tentativi && /import\((["'`])(.+?)\1/.exec(String(importa));
+
+        return (nome ? daLi(`${new URL(nome[2]!, qui)}?r=${tentativi}`) : importa()).catch((errore: unknown) => {
             tentativi++;
-            const nome = String(errore).split(cartella)[1]?.match(/^\w[\w.-]*$/);
-            if (nome) {
-                nonArrivato = cartella + nome[0];
-            }
             throw errore;
         });
+    };
 }
 
-const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(
-    (daQui) => (daQui === undefined ? import('./campanella') : import(/* @vite-ignore */ daQui)),
-    new URL(import.meta.url + '/..').href,
-);
+const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(() => import('./campanella'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
 
 /**
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
  * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
- * Chromium dove `pezzoARichiesta` sa comporre l'indirizzo (README, «Le notifiche», coi casi in cui non sa). Arrivato, non si
- * chiede più.
+ * Chromium, con l'indirizzo che `pezzoARichiesta` legge dalla build (README, «Le notifiche»). Arrivato, non si chiede più.
  */
 export const chiediLaCampanella = async () => (campanella ??= await ilPezzoDellaCampanella());

@@ -1204,7 +1204,6 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
             return 'il pezzo';
         };
 
-        // @ts-expect-error la firma nuova arriva col codice (sprint 39 · T4)
         return { chiamate, chiedi: pezzoARichiesta(Object.assign(() => prova(), { toString: () => testo }), (indirizzo) => prova(indirizzo), qui) };
     }
 

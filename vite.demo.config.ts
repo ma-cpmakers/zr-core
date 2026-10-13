@@ -24,7 +24,8 @@ const favicon = (): Plugin => ({
 // Le pagine di prova della UAT (resources/demo): `npm run demo` le costruisce in dist/demo, `npx vite preview --config
 // vite.demo.config.ts` le serve. Tre ingressi: index.html (la `Cornice` montata dalla pagina, presa dall'ingresso di sempre),
 // app.html (la stessa pagina, con la `Cornice` dell'ingresso per le app) e layout.html (il layout della cornice sotto Inertia).
-// Non entrano nel pacchetto.
+// Non entrano nel pacchetto. Con `ZR_PEZZI_ALTROVE=1 npm run demo` il pezzo della campanella va in una cartella dentro quella del
+// JS d'ingresso (`assets/pezzi/`), come lo può mettere un frontend: è la build con cui si prova «Riprova» (README, «Le notifiche»).
 export default defineConfig({
     plugins: [react(), favicon()],
     root: 'resources/demo',
@@ -34,6 +35,9 @@ export default defineConfig({
         emptyOutDir: true,
         rolldownOptions: {
             input: ['index.html', 'app.html', 'layout.html'].map((pagina) => delRepo(`resources/demo/${pagina}`)),
+            output: process.env.ZR_PEZZI_ALTROVE
+                ? { chunkFileNames: (pezzo) => `assets/${pezzo.name === 'campanella' ? 'pezzi/' : ''}[name]-[hash].js` }
+                : {},
         },
     },
 });

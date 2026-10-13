@@ -5023,8 +5023,12 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
     // Sprint 35 · T3 (voce #1945): la coda cambia al tentativo fallito, e l'indirizzo si compone con la cartella del JS.
     'la coda cambia al tentativo fallito' => ['notifiche', 'La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola'],
-    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'Dalla `v2.2.0` l\'indirizzo si compone con la cartella del JS della cornice e col nome di file con cui l\'errore del browser finisce, subito dopo quella cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l\'errore'],
-    'dove il pezzo sta altrove' => ['notifiche', 'in un frontend che mette i pezzi a richiesta in un\'altra cartella rispetto al JS d\'ingresso — anche una cartella dentro quella —, «Riprova» richiama `import()` come prima'],
+    // Sprint 39 · T4 (voci #1972 e #1973): l'indirizzo è il nome che la build ha scritto, non ciò che dice l'errore.
+    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'Dalla `v2.5.1` l\'indirizzo non si legge più dall\'errore del browser: è il nome che la build ha scritto nel JS della cornice, là dove lei importa il pezzo, risolto sull\'indirizzo di quel JS'],
+    'solo il pezzo della campanella' => ['notifiche', 'In `import()` entra solo il pezzo della campanella, qualunque cosa dica l\'errore'],
+    'dove il pezzo sta altrove' => ['notifiche', '«Riprova» lo richiede anche se l\'indirizzo del JS d\'ingresso ha una coda sua (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un\'altra cartella rispetto al JS d\'ingresso, anche una cartella dentro quella'],
+    'con una coda il pezzo chiede l\'ingresso senza' => ['notifiche', 'Con una coda sull\'ingresso il pezzo, che importa il JS della cornice col suo nome, lo chiede senza quella coda, anche al primo colpo: per il browser è un altro indirizzo, e lo scarica una seconda volta'],
+    'dove la build non scrive il nome' => ['notifiche', 'Dove la build non scrive il nome del pezzo fra virgolette dentro `import(`, «Riprova» richiama `import()` come prima, allo stesso indirizzo'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
     // Seconda lettura della PR #63 (S1, S2, S8, S15).
@@ -5468,6 +5472,18 @@ it('il README non dice più che in Chromium il pezzo della campanella non si ric
 })->with([
     'il browser non lo richiede' => ['il browser il pezzo non lo richiede'],
     'l\'errore resta' => ['e l\'errore resta fino al ricaricamento'],
+]);
+
+// Sprint 39 · T4 (voci #1972 e #1973): «Riprova» richiede il pezzo anche con una coda sull'ingresso e coi pezzi altrove, e
+// l'indirizzo non viene più dall'errore: README e guida non dicono più il contrario.
+it('README e guida non dicono più che con una coda sull\'ingresso o coi pezzi in un\'altra cartella serve ricaricare la pagina, né che l\'indirizzo viene dall\'errore (sprint 39 · T4.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'non viene richiesto di nuovo' => ['il pezzo non viene richiesto di nuovo'],
+    'serve ricaricare la pagina' => ['serve ricaricare la pagina'],
+    'il nome con cui l\'errore finisce' => ['col nome di file con cui l\'errore del browser finisce'],
+    'solo nella stessa cartella' => ['lo richiede solo se la tua build lo mette nella stessa cartella'],
 ]);
 
 // Sprint 36 · T2 (voce #1968): con un'altra email la cornice si rifà, e il README non dice più che ciò che tiene è del workspace.
