@@ -288,7 +288,7 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * chi e che cosa (`notificationTitleWhoWhat.<tipo>`, coi posti `{who}` e `{what}`) e quella con solo chi
  * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
  * backoffice non dà il nome. Dallo sprint 31 (T1) anche i 18 tipi del CRM, con le parole di zr-crm: hanno la sola frase con chi
- * — il nome di un contatto è un dato personale, e delle altre cose il contratto non dà il nome —, tranne le due della pipeline
+ * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome, e le assegnazioni non hanno ancora la frase col nome —, tranne le due della pipeline
  * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate.
  * Con T2 anche i cinque del workspace e `com.zeiras.app.modificata`, con le parole di zr-home: ogni tipo che ha un titolo ha la
  * frase con solo chi. Di un membro il contratto non dà il nome; di un modulo dà il codice, e la cornice ne scrive il nome.
@@ -1206,7 +1206,7 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e venticinque anche quella con chi e che cosa: 67 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e venticinque anche quella con chi e che cosa: 67 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {

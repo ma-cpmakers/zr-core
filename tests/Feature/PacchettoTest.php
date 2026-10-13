@@ -4830,8 +4830,9 @@ it('il README dice, nel punto del Tab dentro un dialogo, i due casi chiusi dalla
     'un riquadro che non si vede' => ['Dalla `v1.22.0`: un `iframe` largo o alto zero — un riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima invece di passare da lì e uscire dietro il velo'],
     'il fuoco torna a chi lo aveva' => ['chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna all\'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha preso un altro (provati in Chrome)'],
     // Review della PR #65 (R1, R7, R13): un altro dialogo aperto intanto, il `tabindex` che resta, un DOM senza geometria.
-    'un altro dialogo aperto intanto' => ['Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo'],
-    'il tabindex che resta' => ['Al dialogo che ha preso il fuoco resta il `tabindex="-1"` che la cornice gli ha scritto, anche se poi guadagna un pulsante; riaperto, è un elemento nuovo e non lo ha'],
+    'un altro dialogo aperto intanto' => ['Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo (provato in Chrome)'],
+    'il tabindex che resta' => ['Al dialogo che ha preso il fuoco resta il `tabindex="-1"` che la cornice gli ha scritto (provato in Chrome), anche se poi guadagna un pulsante (questo in un browser non è provato); riaperto, è un elemento nuovo e non lo ha'],
+    'chiuso l\'altro dialogo' => ['Chiuso poi quell\'altro dialogo, il fuoco resta alla pagina: al pulsante di partenza non torna (provato in Chrome)'],
     'un DOM senza geometria' => ['Un test del modulo con un `iframe` in fondo a un `Dialog` va riletto: in un DOM senza geometria (happy-dom, jsdom) larghezza e altezza sono sempre zero, e lì un `iframe` non è mai una fermata'],
 ]);
 
@@ -4845,9 +4846,9 @@ it('il README dice, nel punto del fuoco nel pannello delle notifiche, dove va il
     expect(str_contains($punto, 'Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è provato'))->toBe(true)
         ->and(str_contains($punto, 'un campo cliccato fuori dal pannello — non si toglie (provato in Chrome)'))->toBe(true)
         ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false)
-        // Review della PR #65 (R3): il clic che non dà il fuoco è provato coi casi del pacchetto, e dopo il clic sull'avatar no.
+        // Review della PR #65 (R3): il clic che non dà il fuoco è provato coi casi del pacchetto; dopo il clic sull'avatar, in Chrome.
         ->and(str_contains($punto, 'Lo provano i casi del pacchetto, che imitano un clic che non dà il fuoco: in Safari e in Firefox non è provato'))->toBe(true)
-        ->and(str_contains($punto, 'In Safari, a pannello aperto, il clic sull\'avatar chiude il pannello e apre il menu del profilo senza dare il fuoco all\'avatar: dove va il fuoco allora non è provato, perché Safari non è fra i browser delle prove'))->toBe(true);
+        ->and(str_contains($punto, 'A pannello aperto, il clic sull\'avatar chiude il pannello e apre il menu del profilo, e il fuoco va sulla prima voce del menu, che il `Menu` mette a fuoco da sé: provato in Chrome; in Safari, dove il clic non dà il fuoco all\'avatar, non è provato'))->toBe(true);
 });
 
 // Sprint 32 · T3.5 (voce #1913): una notifica del backoffice può raccontare più azioni. Il README dice, nella riga dell'elenco, che
@@ -5116,7 +5117,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
     'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
-    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`)'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
@@ -5125,7 +5126,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM, che il nome lo tengono nella riga sotto'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

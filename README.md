@@ -93,7 +93,7 @@ dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69
 di JS, i rimedi provvisori di tastiera (circa 1,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026, e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+I pesi fra parentesi sono misure del 12/10/2026 (quello dei rimedi, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con
 gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono.
 
@@ -387,8 +387,9 @@ cornice === null ? pagina : (
   Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Dalla `v1.21.0` il fuoco torna sulla campanella
   anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS): prima
   restava alla pagina. Lo provano i casi del pacchetto, che imitano un clic che non dà il fuoco: in Safari e in Firefox non
-  è provato. In Safari, a pannello aperto, il clic sull'avatar chiude il pannello e apre il menu del profilo senza dare il
-  fuoco all'avatar: dove va il fuoco allora non è provato, perché Safari non è fra i browser delle prove. Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
+  è provato. A pannello aperto, il clic sull'avatar chiude il pannello e apre il menu del profilo, e il fuoco va sulla
+  prima voce del menu, che il `Menu` mette a fuoco da sé: provato in Chrome; in Safari, dove il clic non dà il fuoco
+  all'avatar, non è provato. Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
   chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è
   provato. A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie (provato in Chrome). Vale anche
   nello stato ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
@@ -416,9 +417,10 @@ cornice === null ? pagina : (
   invece di passare da lì e uscire dietro il velo; e chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco
   torna all'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha
   preso un altro (provati in Chrome). Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel
-  dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo. Al dialogo che ha preso il fuoco
-  resta il `tabindex="-1"` che la cornice gli ha scritto, anche se poi guadagna un pulsante; riaperto, è un elemento nuovo
-  e non lo ha. Il modulo non deve fare niente,
+  dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo (provato in Chrome). Chiuso poi
+  quell'altro dialogo, il fuoco resta alla pagina: al pulsante di partenza non torna (provato in Chrome). Al dialogo che
+  ha preso il fuoco resta il `tabindex="-1"` che la cornice gli ha scritto (provato in Chrome), anche se poi guadagna un
+  pulsante (questo in un browser non è provato); riaperto, è un elemento nuovo e non lo ha. Il modulo non deve fare niente,
   e non scriva una trappola sua: sarebbero due. Un test del modulo con un `iframe` in fondo a un `Dialog` va riletto: in
   un DOM senza geometria (happy-dom, jsdom) larghezza e altezza sono sempre zero, e lì un `iframe` non è mai una fermata.
   È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
@@ -587,8 +589,10 @@ cornice === null ? pagina : (
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
   che pulito è vuoto vale come un nome che manca, e l'avatar dice lo stesso nome pulito. E nella frase ognuno sta fra
   U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno: chi confronta un titolo con un
-  testo scritto a mano li conti. Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuta
-  il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`).
+  testo scritto a mano li conti. Il nome non si taglia: i caratteri di controllo, di direzione del testo e a
+  larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la
+  lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo
+  rifiuta: lo pulisce.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
