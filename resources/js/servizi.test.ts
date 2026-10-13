@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -301,6 +301,12 @@ describe('il 429 con `Retry-After` di una rotta della cornice', () => {
 // quella, e non torna a chi l'ha chiesta per la persona che la cornice mostra. La pagina si ricarica, e chi ha chiesto resta in
 // attesa. Una risposta che non lo dice, o non lo dice con un testo, vale come prima.
 describe('una risposta che dice di chi è', () => {
+    // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è a schermo, e chi è a schermo lo dice la cornice a ogni disegno.
+    // In questi casi è Ada, che è anche chi chiede: la scheda rimasta ferma.
+    beforeEach(() => {
+        mostra('ada@example.com');
+    });
+
     afterEach(() => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
@@ -322,6 +328,17 @@ describe('una risposta che dice di chi è', () => {
 
         expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
         expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(chiamate)('%s: se chi l\'ha chiesta non è più a schermo — una visita ha portato chi è entrato, e la cornice è la sua — una risposta di un\'altra persona non ricarica la pagina, e non torna comunque a chi l\'ha chiesta (sprint 41 · T5.1)', async (_nome, corpo, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => risposta({ ...corpo, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        mostra('grace@example.com');
+
+        expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
+        expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 

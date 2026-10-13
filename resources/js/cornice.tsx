@@ -4,7 +4,7 @@ import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePuli
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, mostra, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -536,6 +536,7 @@ export function Cornice(props: CorniceProps) {
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
 function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
+    mostra(persona.email);
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -633,7 +634,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // E il workspace di cui è (`workspace`), come lo dice la parte server: quello della sessione, che non è sempre quello dei
     // dati della pagina (due schede su due workspace). `undefined` finché non si sa. Lo tiene anche `caricate`, con le non
     // lette dell'elenco: contano sulla campanella solo se l'elenco è del workspace dei dati (sotto).
-    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0, workspace: undefined });
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace?: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: string[]; richiesta: number; workspace: string | undefined }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
@@ -652,7 +653,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
-            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa, workspace: undefined });
+            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
         }
         const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
@@ -667,7 +668,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             },
             () => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa, workspace: undefined });
+                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa });
                 }
             },
         );

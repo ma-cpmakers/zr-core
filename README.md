@@ -1238,6 +1238,9 @@ notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva 
 ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
+Dalla `v2.7.0` la pagina si ricarica solo per chi è ancora a schermo: se una visita ha già portato chi è entrato e la
+cornice si è rifatta, una risposta in ritardo all'elenco o alla ricerca, chiesta da chi c'era prima, non ricarica la sua
+pagina, e niente di quella risposta va a schermo.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
 lette» in corso. Niente di chi è entrato va a schermo.

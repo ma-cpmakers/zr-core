@@ -93,17 +93,25 @@ export class TroppeRichieste extends Error {
  * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
  * che dalla `v2.6.0` è di tutte e quattro le rotte). Con `email` una risposta di un'altra persona non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
- * ricarica — dopo, è di chi è entrato. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
+ * ricarica — dopo, è di chi è entrato. Si ricarica solo se chi ha chiesto è ancora a schermo (`mostra`, dalla `v2.7.0`): se
+ * una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
  * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
+let aSchermo: string | undefined;
+
+/** Chi la cornice mostra adesso: lo dice la cornice a ogni disegno, con l'email. */
+export function mostra(email: string): void {
+    aSchermo = email;
+}
+
 async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>(() => location.reload());
+        return new Promise<never>(() => email === aSchermo && location.reload());
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
