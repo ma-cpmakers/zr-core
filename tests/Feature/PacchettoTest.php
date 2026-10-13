@@ -5443,17 +5443,23 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Review della PR #74, R1: misurato in Chromium con la `naviga` di sempre, la destinazione si apre solo se arriva prima del 409.
     'la scheda ferma: la destinazione del clic' => ['readme', 'La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione'],
     'la scheda ferma: la risorsa, nel capoverso della scheda ferma' => ['readme', 'La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si ricarica al suo posto'],
+    // Seconda lettura, N2: una frase su ciò che fa il browser dice in quale è provata.
+    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza)'],
+    'la scheda ferma: la risorsa, in quale browser' => ['readme', 'come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»)'],
+    'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'Fa eccezione la risposta di un\'altra persona a una scheda rimasta ferma, che ricarica la pagina'],
     // Review della PR #74, R3, S2, S3: i dati senza email, e le due cose che guarda chi installa.
-    'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe vuota, e le quattro rotte la rifiutano con un 422 `dati_non_validi`'],
+    // Seconda lettura, N1: un 422 solo se l'email è un testo vuoto; se manca o è `null` parte un testo, ed è un 409.
+    'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe senza un\'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l\'email è un testo vuoto, 409 `persona_diversa` se manca o è `null`'],
     'la scheda ferma: JS e parte server insieme' => ['readme', 'Il JS e la parte server del pacchetto si aggiornano insieme, e la cache delle rotte si rifà al deploy'],
-    'la scheda ferma: l\'email in un\'intestazione' => ['readme', 'uno strumento che registra le intestazioni delle richieste la tiene'],
+    'la scheda ferma: l\'email in un\'intestazione' => ['readme', 'uno strumento che registra le intestazioni delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura'],
+    'la scheda ferma: l\'intestazione tolta per strada' => ['readme', 'Se invece qualcosa fra il browser e il frontend la toglie, la rotta non confronta: una richiesta che non dice la persona vale come prima'],
     'la scheda ferma: un JS di prima' => ['readme', 'Un JS di prima della `v2.6.0` rimasto in una scheda non dice la persona in tre richieste — l\'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come prima'],
     'la scheda ferma: ciò che un JS di prima segna ancora' => ['readme', 'il suo clic su una notifica la segna ancora a chi è entrato, finché la scheda non si ricarica'],
     'la scheda ferma: nel pannello' => ['readme', 'che dalla `v2.6.0` non è più nel corpo: sta nell\'intestazione `Persona`'],
     'la guida: il clic su una notifica' => ['guida', 'Dalla `v2.6.0` nemmeno il clic su una notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l\'intestazione `Persona`'],
     // Review della PR #74, R2 e R6: ciò che resta fuori, e chi chiama da sé una rotta della cornice.
     'la guida: chi chiama da sé una rotta' => ['guida', 'Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`'],
-    'la guida: ciò che resta fuori' => ['guida', 'un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica'],
+    'la guida: ciò che resta fuori' => ['guida', 'un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica, e dei dati della cornice senza l\'email'],
     'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, senza chiamare il backoffice, e non si segna niente; dalla `v2.6.0` la persona si guarda prima del workspace e degli altri controlli della rotta'],
     // Sprint 40 · T2 (voce #2051): la regola della persona è di tutte e quattro le rotte, e l'ordine dei rifiuti è scritto.
     'la regola della persona: le quattro rotte' => ['readme', 'Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro'],
@@ -5581,11 +5587,12 @@ it('il README non dice più che ciò che la cornice tiene resta a schermo sotto 
 
 // Review della PR #74, R1: dalla scheda ferma la destinazione del clic non «si apre lo stesso». Misurato in Chromium con la
 // `naviga` di sempre: se il 409 arriva prima che la destinazione abbia preso il posto della pagina, la pagina si ricarica.
-it('il README non dice più che dalla scheda ferma la destinazione del clic su una notifica si apre lo stesso (review della PR #74, R1)', function (string $frase) {
+it('il README non dice più che dalla scheda ferma la destinazione del clic su una notifica si apre lo stesso, né che dei dati senza email danno sempre un 422 (review della PR #74, R1; seconda lettura, N1)', function (string $frase) {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
 })->with([
     'la destinazione' => ['La destinazione di quel clic si apre lo stesso'],
     'la sua risorsa' => ['La sua risorsa si apre lo stesso'],
+    'i dati senza email: sempre vuota' => ['l\'intestazione partirebbe vuota'],
 ]);
 
 // Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.

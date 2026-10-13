@@ -436,6 +436,7 @@ describe('una risposta che dice di chi è', () => {
 // altro carattere `fetch` lancerebbe prima di partire.
 describe('ogni richiesta dice di chi è la pagina che chiede', () => {
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
 
@@ -481,9 +482,10 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         expect(decodeURIComponent(String(detta))).toBe(email);
     });
 
-    // Review della PR #74, R3: dei dati della cornice senza l'email (il contratto del backoffice la dà sempre). L'intestazione
-    // parte vuota e la rotta la rifiuta (422: `StessaPersonaTest.php`): l'errore torna a chi ha chiamato. Senza un'email da
-    // confrontare la pagina non si ricarica mai, nemmeno davanti a una risposta che dice di chi è: è voluto.
+    // Review della PR #74, R3 (seconda lettura, N1): dei dati della cornice senza l'email (il contratto del backoffice la dà
+    // sempre). Se è un testo vuoto l'intestazione parte vuota, ed è un 422; se manca o è `null` parte il testo che ne fa
+    // `encodeURIComponent`, ed è un 409 senza un'email (`StessaPersonaTest.php`). L'errore torna a chi ha chiamato. Senza
+    // un'email da confrontare la pagina non si ricarica mai, nemmeno davanti a una risposta che dice di chi è: è voluto.
     it.each(richieste)('%s senza l\'email di chi la cornice mostra parte con l\'intestazione `Persona` vuota: il 422 della rotta è l\'errore di sempre per chi ha chiamato, e la pagina non si ricarica (review della PR #74, R3)', async (richiesta, chiama) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'dati_non_validi' }, 422));
@@ -492,6 +494,19 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         await expect(chiama('')).rejects.toThrow(`${richiesta}: 422`);
         expect(fetchFinto).toHaveBeenCalledTimes(1);
         expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('Persona')).toBe('');
+        expect(ricarica).not.toHaveBeenCalled();
+    });
+
+    it.each(richieste)('%s con un\'email che manca o è `null` (dati che non sono quelli del contratto) parte col testo `undefined` o `null` nell\'intestazione: il 409 senza un\'email della rotta è l\'errore di sempre, e la pagina non si ricarica (seconda lettura della PR #74, N1)', async (richiesta, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'persona_diversa', persona: null }, 409));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        for (const [email, detta] of [[null, 'null'], [undefined, 'undefined']] as const) {
+            await expect(chiama(email as unknown as string)).rejects.toThrow(`${richiesta}: 409`);
+            expect(new Headers(fetchFinto.mock.lastCall?.[1]?.headers).get('Persona')).toBe(detta);
+        }
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
         expect(ricarica).not.toHaveBeenCalled();
     });
 
