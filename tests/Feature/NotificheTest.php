@@ -1956,7 +1956,7 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
     $risposta = senzaGettone($this->getJson($indirizzo, $intestazioni))->assertOk();
 
     expect($risposta->json('workspace'))->toBe($workspace['slug'])
-        ->and(array_keys($risposta->json()))->toBe(['data', 'aggiornati_il', 'workspace'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'aggiornati_il', 'workspace', 'persona'])
         ->and($risposta->json('data.*.id'))->toBe(['uat-n1']);
     Http::assertSentCount(1);
 })->with([

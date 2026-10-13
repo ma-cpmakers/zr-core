@@ -237,7 +237,7 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
 
-    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing"}');
+    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing","persona":"uat-ada@example.com"}');
 })->with([
     'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
@@ -421,7 +421,7 @@ it('POST /cornice/ricerca dice di quale workspace sono i risultati: lo slug del 
     Gettone::assenteDa($risposta);
 
     expect($risposta->json('workspace'))->toBe($workspace['slug'])
-        ->and(array_keys($risposta->json()))->toBe(['data', 'workspace'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'workspace', 'persona'])
         ->and($risposta->json('data.*.id'))->toBe(ID_DELL_ESEMPIO_DI_RICERCA)
         // Al backoffice va la parola e basta: ciò che il browser manda accanto a `q` resta qui.
         ->and(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'UAT']]]);
