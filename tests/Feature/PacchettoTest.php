@@ -692,8 +692,8 @@ it('la pagina di prova del layout scarica prima la Corta col prefetch di Inertia
 });
 
 it('le rotte finte della pagina di prova del layout dicono quando sull\'orologio dei dati, e con ?segno=no non hanno un orologio (sprint 11 · T3.1)', function () {
-    // Dallo sprint 37 · T1 le rotte ricevono anche la persona della «sessione», dopo l'orologio.
-    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string } | undefined): void {';
+    // Dallo sprint 37 · T1 le rotte ricevono anche la persona della «sessione», dopo l'orologio; da T4, con la sua email.
+    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string; email?: string } | undefined): void {';
 
     expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined, ']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined, ' => 1])
         ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$conOrologio, 'aggiornati_il: ', 'segnate_il: ']))->toBe([$conOrologio => 1, 'aggiornati_il: ' => 1, 'segnate_il: ' => 1]);
