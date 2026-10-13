@@ -412,7 +412,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (errore === 'letture' && letture === 1) {
                 return json({ errore: 'uat_errore' }, 502);
             }
-            const { fino_a: finoA, workspace, persona } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown; persona?: unknown };
+            const corpo = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown; persona?: unknown };
+            const { fino_a: finoA, workspace, persona } = corpo;
             const finoAIl = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
             if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
@@ -425,7 +426,11 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             }
             // Come la parte server dalla `v2.5.0` (sprint 38 · T4): `persona` è l'email di chi la pagina mostra. Se nella
             // «sessione» adesso c'è un'altra persona non segna niente, e lo dice con la sua email. Senza `persona`, o se la
-            // pagina di prova non dice chi è nella «sessione», la lettura riesce come prima.
+            // pagina di prova non dice chi è nella «sessione», la lettura riesce come prima. Dallo sprint 39 (T1) una `persona`
+            // che c'è e non è un testo — anche `null` — è un 422, come nella parte server: assente è la sola chiave che manca.
+            if ('persona' in corpo && typeof persona !== 'string') {
+                return json({ errore: 'dati_non_validi' }, 422);
+            }
             const diAdesso = personaDellaSessione?.()?.email;
             if (diAdesso !== undefined && typeof persona === 'string' && persona !== diAdesso) {
                 return json({ errore: 'persona_diversa', persona: diAdesso }, 409);

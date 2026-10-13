@@ -948,6 +948,25 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: true });
     });
 
+    // Sprint 39 · T1 (voce 2038): come la rotta vera, una `persona` che c'è e non è un testo non vale come assente. Non segna
+    // niente e risponde 422; con un altro workspace risponde il 409 del workspace, che viene prima.
+    it.each([
+        ['null', null], ['un numero', 7], ['true', true], ['una lista', [ada.email]], ['un oggetto', { email: ada.email }],
+    ])('POST /cornice/notifiche/letture con una `persona` che non è un testo (%s) risponde 422 `dati_non_validi` e non segna niente; con un altro workspace risponde 409 `workspace_diverso` (sprint 39 · T1.3)', async (_quale, persona) => {
+        await rotte({ persona: ada });
+        const segna = async (workspace: string): Promise<[number, unknown]> => {
+            const inArrivo = fetch('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date(Date.now() + 60_000).toISOString(), workspace, persona }) });
+            await vi.advanceTimersByTimeAsync(1500);
+            const risposta = await inArrivo;
+
+            return [risposta.status, await risposta.json()];
+        };
+
+        expect(await segna('uat-marketing')).toStrictEqual([422, { errore: 'dati_non_validi' }]);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: false });
+        expect(await segna('uat-vendite')).toStrictEqual([409, { errore: 'workspace_diverso' }]);
+    });
+
     // Sprint 38 · T5 (R5 della review): come la rotta vera, che guarda di chi è la richiesta prima di chiamare il backoffice —
     // ed è il backoffice a dare il 403 —, il 409 `persona_diversa` viene prima del 403 di `?accettazione=dopo`.
     it('con `?accettazione=dopo&per_altra` la POST /cornice/notifiche/letture chiesta per chi c\'era prima risponde 409 `persona_diversa`, non il 403 di chi è entrato; chiesta per chi è entrato, il suo 403 (sprint 38 · T5, R5)', async () => {

@@ -278,10 +278,16 @@ final class NotificheDellaCornice
 
         // Lo stesso per la persona: la sessione può essere passata a un'altra dello stesso workspace, con la pagina che chiede
         // rimasta ferma. Lo slug è lo stesso, e qui segnerebbe lette le notifiche di chi è entrato, mai viste. `persona` del
-        // corpo si confronta e basta: di chi segnare lo dice sempre e solo la sessione. Una richiesta che non la porta con un
-        // testo (un JS di prima rimasto in una scheda) vale come prima. La risposta dice di chi è, come il 403 di sotto.
+        // corpo si confronta e basta: di chi segnare lo dice sempre e solo la sessione. Una richiesta che non la porta (un JS
+        // di prima rimasto in una scheda) vale come prima. La risposta dice di chi è, come il 403 di sotto.
         $persona = Sessione::utente()['email'] ?? null;
         $chiesta = $richiesta->json('persona');
+
+        // Una `persona` che c'è e non è un testo non è «assente»: chi la manda dice di chi crede di segnare, e la rotta non
+        // può confrontarla. Non si segna niente. Che ci sia lo dice la chiave nel corpo, non il valore: `null` è presente.
+        if (! is_string($chiesta) && $richiesta->json()->has('persona')) {
+            return new JsonResponse(['errore' => 'dati_non_validi'], 422);
+        }
 
         if (is_string($chiesta) && $chiesta !== $persona) {
             return new JsonResponse(['errore' => 'persona_diversa', 'persona' => $persona], 409);

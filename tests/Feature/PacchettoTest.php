@@ -5384,6 +5384,9 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: senza persona' => ['readme', 'Una richiesta senza `persona` (il JS di una versione di prima, rimasto in una scheda) vale come prima: la rotta guarda solo il workspace'],
     'la scheda ferma: ciò che resta' => ['readme', 'Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una richiesta'],
     'la scheda ferma: la riga della rotta' => ['readme', '409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice, e non si segna niente; una richiesta senza `persona` vale come prima'],
+    // Sprint 39 · T1.3 (voce #2038): una `persona` che c'è e non è un testo non vale come assente.
+    'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
+    'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, dopo il controllo del workspace e senza chiamare il backoffice'],
     'la guida: segna tutte da una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica'],
     'la guida: ciò che resta a una scheda ferma' => ['guida', 'Una scheda ferma mostra ciò che aveva finché da lì non parte una richiesta'],
     'la guida: gli errori in una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima'],
