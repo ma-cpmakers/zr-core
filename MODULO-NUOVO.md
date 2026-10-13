@@ -304,7 +304,8 @@ sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dal
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
 `dopo` com'è. In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
 ricerca di un'altra persona: ricarica la pagina. La persona la riconosce dall'email, che c'è sempre: la garantisce il
-contratto del backoffice, non zr-auth, che la porta com'è. Il contenuto della tua pagina, con Indietro, resta sempre quello di
+contratto del backoffice, non zr-auth, che la porta com'è. Resta fuori «Segna tutte come lette» da una scheda ferma con
+l'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa

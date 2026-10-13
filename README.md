@@ -1152,14 +1152,16 @@ backoffice; `Cornice::dopo()` legge dal backoffice ciò che `Cornice::dati()` le
 `non_lette`, `aggiornati_il` e, per chi non ha accettato i documenti legali, `accettazione_richiesta` — e può arrivare
 più tardi. `Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`, così se
 fra le due richieste la sessione è passata a un altro workspace (un'altra scheda) nome, slug e moduli sono dello stesso.
-Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come le ha date io.mostra
-in quella lettura e, in fondo, `sessione_il`, il segno di quella lettura. Nel layout valgono anche loro su quelli di
+Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione
+dopo quella lettura (la lingua e il nome riletti da io.mostra, l'email dell'ingresso) e, in fondo, `sessione_il`, il segno
+di quella lettura. Nel layout valgono anche loro su quelli di
 `subito`: se fra le due richieste la sessione è passata a un'altra persona la cornice è la sua, coi suoi dati, e i dati
 di una persona non stanno sotto il nome di un'altra. Per un frontend che dà al layout `Cornice::dopo()` com'è non c'è
 niente da scrivere, e tre cose si vedono. La lingua e il nome della cornice, quando `dopo` arriva, sono quelli riletti
 da io.mostra, i più recenti. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
-`lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`.
+`lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
+email della persona quella della sessione: con un'altra, campanella e ricerca ricaricano la pagina a ogni uso.
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
@@ -1213,10 +1215,12 @@ Che cosa vede la persona:
   nuovo, che è suo e lo dice. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
   chi è entrato, e se li sta ancora aspettando la cornice resta ridotta fino alla visita dopo, perché Inertia un `dopo` che
   la voce ha già non lo richiede. Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni
-  workspace, e chi è stato mostrato per ultimo lo tiene lui, sopra. Con Indietro su una pagina di chi c'era prima in un
+  workspace, e chi è mostrato lo tiene lui, sopra: è chi ha il segno più avanti, e non torna indietro, per quante voci si
+  ripercorrano con Indietro e Avanti. Con Indietro su una pagina di chi c'era prima in un
   altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà. Se a quella
   voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome. Per la stessa
-  persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace
+  persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace,
+  col nome e la lingua di adesso
   (chi monta `Cornice` senza il layout era già così: lì i dati di una pagina più vecchia di un'altra persona non
   valgono in nessun workspace). Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
   pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
