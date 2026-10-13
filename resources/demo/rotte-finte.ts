@@ -340,11 +340,47 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             inAscolto.forEach((avvisa) => avvisa());
         }
         const json = (corpo: unknown, stato = 200) => new Response(JSON.stringify(corpo), { status: stato, headers: { 'Content-Type': 'application/json' } });
+        // Come la parte server dalla `v2.6.0` (`StessaPersona`, sprint 40 · T3): le quattro rotte guardano di chi è la richiesta
+        // prima di ogni loro controllo. Lo dice l'intestazione `Persona` — l'email passata da `encodeURIComponent`: così la
+        // manda la cornice — o `persona` nel corpo JSON, e valgono tutti e due. Detta e non confrontabile (non un testo, anche
+        // `null`, o un testo vuoto) è un 422; se non è l'email di chi è nella «sessione» adesso, un 409 con quell'email e
+        // nient'altro. Non detta, o se la pagina di prova non dice chi è nella «sessione», la rotta risponde come prima.
+        const diUnAltro = (): Response | undefined => {
+            const dette: unknown[] = [];
+            const intestazione = new Headers(opzioni?.headers).get('Persona');
+            if (intestazione !== null) {
+                try {
+                    dette.push(decodeURIComponent(intestazione));
+                } catch {
+                    // Come `rawurldecode`: ciò che non si decodifica resta com'è.
+                    dette.push(intestazione);
+                }
+            }
+            let corpo: unknown = null;
+            try {
+                corpo = JSON.parse(String(opzioni?.body ?? ''));
+            } catch {
+                // Un corpo che non è JSON non dice una persona.
+            }
+            if (typeof corpo === 'object' && corpo !== null && 'persona' in corpo) {
+                dette.push(corpo.persona);
+            }
+            if (dette.some((detta) => typeof detta !== 'string' || detta === '')) {
+                return json({ errore: 'dati_non_validi' }, 422);
+            }
+            const diAdesso = personaDellaSessione?.()?.email;
+
+            return diAdesso !== undefined && dette.some((detta) => detta !== diAdesso) ? json({ errore: 'persona_diversa', persona: diAdesso }, 409) : undefined;
+        };
         if (percorso.split('?')[0] === '/cornice/ricerca') {
             // Come la parte server: la parola si legge solo dal corpo di una POST, da 2 a 100 caratteri senza gli spazi ai bordi.
             if (opzioni?.method !== 'POST') {
                 // Come Laravel a una rotta che c'è solo in POST: i metodi ammessi, e nessun corpo che la rotta vera non ha.
                 return new Response(null, { status: 405, headers: { Allow: 'POST' } });
+            }
+            const rifiuto = diUnAltro();
+            if (rifiuto) {
+                return rifiuto;
             }
             let corpo: unknown = null;
             try {
@@ -387,9 +423,17 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
-        // Come la parte server: il 403 lo dà il backoffice, e «Segna tutte come lette» guarda il corpo, il workspace e di chi
-        // è la richiesta prima di chiamarlo. Il suo 403 sta più sotto, dopo il 409 `persona_diversa`.
+        // Come la parte server: di chi è la richiesta si guarda prima di tutto il resto, e solo sulle rotte che ci sono.
         const delleLetture = percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST';
+        const daSegnare = opzioni?.method === 'PATCH' ? /^\/cornice\/notifiche\/([A-Za-z0-9_-]{1,64})\/lettura$/.exec(percorso)?.[1] : undefined;
+        if (percorso === '/cornice/notifiche' || delleLetture || daSegnare !== undefined) {
+            const rifiuto = diUnAltro();
+            if (rifiuto) {
+                return rifiuto;
+            }
+        }
+        // Come la parte server: il 403 lo dà il backoffice, e «Segna tutte come lette» guarda il corpo e il workspace prima di
+        // chiamarlo. Il suo 403 sta più sotto, dopo il 409 `workspace_diverso`.
         const daAccettarePerChiCE = () => json({ errore: 'accettazione_richiesta', persona: personaDellaSessione?.()?.email }, 403);
         if (daAccettare && toccaAChiCE() && !delleLetture) {
             return daAccettarePerChiCE();
@@ -412,8 +456,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (errore === 'letture' && letture === 1) {
                 return json({ errore: 'uat_errore' }, 502);
             }
-            const corpo = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown; persona?: unknown };
-            const { fino_a: finoA, workspace, persona } = corpo;
+            const { fino_a: finoA, workspace } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown };
             const finoAIl = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
             if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
@@ -423,17 +466,6 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             const dellaSessione = slugDellaSessione();
             if (dellaSessione !== undefined && workspace !== dellaSessione) {
                 return json({ errore: 'workspace_diverso' }, 409);
-            }
-            // Come la parte server dalla `v2.5.0` (sprint 38 · T4): `persona` è l'email di chi la pagina mostra. Se nella
-            // «sessione» adesso c'è un'altra persona non segna niente, e lo dice con la sua email. Senza `persona`, o se la
-            // pagina di prova non dice chi è nella «sessione», la lettura riesce come prima. Dallo sprint 39 (T1) una `persona`
-            // che c'è e non è un testo — anche `null` — è un 422, come nella parte server: assente è la sola chiave che manca.
-            if ('persona' in corpo && typeof persona !== 'string') {
-                return json({ errore: 'dati_non_validi' }, 422);
-            }
-            const diAdesso = personaDellaSessione?.()?.email;
-            if (diAdesso !== undefined && typeof persona === 'string' && persona !== diAdesso) {
-                return json({ errore: 'persona_diversa', persona: diAdesso }, 409);
             }
             if (daAccettare && toccaAChiCE()) {
                 return daAccettarePerChiCE();
@@ -453,12 +485,11 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // La lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa: la segna e risponde come la
         // parte server dalla `v1.12.0`, con l'istante preso a notifica segnata. Con `?errore=lettura` fallisce sempre: la
         // risorsa si apre lo stesso, e la notifica resta da leggere.
-        const daSegnare = /^\/cornice\/notifiche\/([A-Za-z0-9_-]{1,64})\/lettura$/.exec(percorso)?.[1];
-        if (daSegnare !== undefined && opzioni?.method === 'PATCH') {
+        if (daSegnare !== undefined) {
             if (errore === 'lettura') {
                 return json({ errore: 'uat_errore' }, 502);
             }
-            const { letta } = JSON.parse(String(opzioni.body)) as { letta?: unknown };
+            const { letta } = JSON.parse(String(opzioni?.body)) as { letta?: unknown };
             if (typeof letta !== 'boolean') {
                 return json({ errore: 'dati_non_validi' }, 422);
             }

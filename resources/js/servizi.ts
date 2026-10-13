@@ -81,24 +81,32 @@ export class TroppeRichieste extends Error {
 }
 
 /**
- * Una chiamata a una rotta della cornice. Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
+ * Una chiamata a una rotta della cornice. Ogni richiesta dice di chi è la pagina che chiede (dalla `v2.6.0`): l'intestazione
+ * `Persona` porta `email`, quella di chi la cornice mostra, passata da `encodeURIComponent` — un'intestazione porta solo
+ * caratteri di Latin-1, e con un altro `fetch` lancerebbe prima di partire —, e mai l'indirizzo. La parte server la confronta
+ * con la sessione prima di ogni altro controllo: a una pagina rimasta ferma, con la sessione passata a un'altra persona,
+ * risponde 409 `persona_diversa` senza leggere né segnare niente. `dati` va nel corpo, in JSON; `Content-Type` e il gettone
+ * CSRF partono con ogni richiesta, anche con la `GET` che non ha un corpo.
+ *
+ * Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
  * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
- * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa` di
- * «Segna tutte come lette»). Con `email`, quella di chi la cornice mostra, una risposta di un'altra persona non torna a chi
+ * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
+ * che dalla `v2.6.0` è di tutte e quattro le rotte). Con `email` una risposta di un'altra persona non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
  * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
-async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}, email?: string): Promise<unknown> {
-    const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
+async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
+    // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
+    const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
         return new Promise<never>(() => location.reload());
     }
     if (!risposta.ok) {
-        const esito = `${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
+        const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
         // Solo quel codice cambia l'errore di un 403 — quello che una rotta della cornice dà al suo errore (`errore`), o quello
         // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace), o lo
         // stesso codice con un altro stato, restano l'errore di sempre.
@@ -134,7 +142,7 @@ export function segno(valore: unknown): string | undefined {
  * `email` è quella di chi la cornice mostra: un elenco, o un errore, di un'altra persona non torna (`chiama`).
  */
 export async function caricaNotifiche(email: string): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
-    const corpo = (await chiama('/cornice/notifiche', {}, email)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
+    const corpo = (await chiama('/cornice/notifiche', email)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
@@ -146,20 +154,17 @@ export async function caricaNotifiche(email: string): Promise<{ elenco: Notifica
  * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
  * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
- * altro (un'altra scheda) la parte server non segna niente. `persona` è l'email di chi la cornice mostra: se la sessione è
- * passata a un'altra persona (una scheda rimasta ferma) la parte server non segna niente nemmeno lì, lo dice con l'email di chi
- * è entrato, e la pagina si ricarica (`chiama`). Una risposta senza `fino_a` è un errore come le altre. Dà
+ * altro (un'altra scheda) la parte server non segna niente. `persona` è l'email di chi la cornice mostra, e dalla `v2.6.0` parte
+ * nell'intestazione come per le altre richieste, non più nel corpo: se la sessione è passata a un'altra persona (una scheda
+ * rimasta ferma) la parte server non segna niente nemmeno lì, lo dice con l'email di chi è entrato, e la pagina si ricarica
+ * (`chiama`). Una risposta senza `fino_a` è un errore come le altre. Dà
  * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
  * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
  * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano.
  */
 export async function segnaLetteFinoA(finoA: string, workspace: string, persona: string): Promise<{ il: string | undefined; altre: boolean }> {
     const indirizzo = '/cornice/notifiche/letture';
-    const corpo = (await chiama(indirizzo, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ workspace, fino_a: finoA, persona }),
-    }, persona)) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
+    const corpo = (await chiama(indirizzo, persona, 'POST', { workspace, fino_a: finoA })) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
         throw new Error(`POST ${indirizzo}: fino_a`);
     }
@@ -175,8 +180,10 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
  * `.` o `..` il browser porterebbe la richiesta, col gettone CSRF, a un'altra rotta. Senza quella forma la richiesta non
  * parte, ed è una lettura non riuscita. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un
  * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
- * manca, o ha un'altra forma, non è un errore, è senza segno. `email` è quella di chi la cornice mostra: il 403
- * `accettazione_richiesta` di un'altra persona non torna a chi ha chiesto, e la pagina si ricarica (vedi `chiama`).
+ * manca, o ha un'altra forma, non è un errore, è senza segno. `email` è quella di chi la cornice mostra: se la sessione è
+ * passata a un'altra persona la parte server non segna la notifica a chi è entrato (409 `persona_diversa`, dalla `v2.6.0`), e
+ * né quel 409 né il 403 `accettazione_richiesta` di un'altra persona tornano a chi ha chiesto: la pagina, se è ancora lì, si
+ * ricarica (vedi `chiama`).
  */
 export async function segnaLetta(id: string, email: string): Promise<{ il: string | undefined }> {
     // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
@@ -185,12 +192,7 @@ export async function segnaLetta(id: string, email: string): Promise<{ il: strin
         throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
     }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
-    const corpo = (await chiama(indirizzo, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ letta: true }),
-        keepalive: true,
-    }, email)) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
+    const corpo = (await chiama(indirizzo, email, 'PATCH', { letta: true }, { keepalive: true })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
     if (corpo?.data?.letta !== true) {
         throw new Error(`PATCH ${indirizzo}: letta`);
     }
@@ -210,12 +212,7 @@ export async function segnaLetta(id: string, email: string): Promise<{ il: strin
  */
 export async function cerca(parola: string, segnale: AbortSignal, email: string): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
-    const corpo = (await chiama(indirizzo, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ q: parola }),
-        signal: segnale,
-    }, email)) as { data?: unknown; workspace?: unknown } | null;
+    const corpo = (await chiama(indirizzo, email, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }

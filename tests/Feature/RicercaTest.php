@@ -554,7 +554,9 @@ it('il 403 e il 429 della ricerca dicono di chi sono: `persona` è l\'email dell
     sessioneAMano(WORKSPACE_DELLA_RICERCA, 'en', $diversa);
     Http::fake(['*' => $stato === 429 ? troppeRichieste('37') : accettazioneRichiesta()]);
 
-    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
+    // Dallo sprint 40 (T2, voce #2051) `persona` nel corpo non è più fra i valori che la rotta ignora: detta lì, o
+    // nell'intestazione `Persona`, si confronta con la sessione (`StessaPersonaTest.php`). Query, `email` e `X-Persona` no.
+    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
 
     $risposta->assertStatus($stato);
     Gettone::assenteDa($risposta);
@@ -612,7 +614,9 @@ it('POST /cornice/ricerca dice di chi è la risposta: `persona` è l\'email dell
     sessioneAMano(WORKSPACE_DELLA_RICERCA, 'en', $diversa);
     Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
 
-    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
+    // Dallo sprint 40 (T2, voce #2051) `persona` nel corpo non è più fra i valori che la rotta ignora: detta lì, o
+    // nell'intestazione `Persona`, si confronta con la sessione (`StessaPersonaTest.php`). Query, `email` e `X-Persona` no.
+    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
 
     $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing', 'persona' => $email]);
     Gettone::assenteDa($risposta);

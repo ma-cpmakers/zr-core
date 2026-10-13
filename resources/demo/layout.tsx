@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } fr
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
-import { clientFinto, colSegno, conLaSessione, istanteDellaLettura, lettura } from './parte-server-finta';
+import { chiaveDellaSessione, clientFinto, colSegno, conLaSessione, istanteDellaLettura, lettura, sessioneFinta } from './parte-server-finta';
 import type { Entrata } from './parte-server-finta';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
@@ -303,7 +303,12 @@ const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'u
 // Ricerca», qualunque pagina apra: è il workspace della sua sessione, e lo dicono anche i dati riletti dal backoffice. Con
 // `?sessione` le rotte finte sanno chi è entrato: l'elenco delle notifiche e i risultati della ricerca sono i suoi, col nome nel
 // testo («UAT scheda di Ada», «UAT Lancio di Grace»), anche in una scheda rimasta ferma su una pagina dell'altra persona.
-const chiaveDellaSessione = 'uat-persona';
+//
+// Sprint 40 · T5 (voce 2002): un quarto pulsante lascia la persona che c'è e le cambia la lingua, in spagnolo: dopo «UAT
+// rileggi subito» e «UAT rileggi dopo», o dopo una visita, i testi della cornice sono nella lingua nuova, nome ed email gli
+// stessi (col solo `subito` riletto resta la lingua del `dopo` di prima). È uno stato, non un interruttore: la chiave è una,
+// e dopo «UAT entra un'altra persona» rimette la prima persona, in spagnolo. Gli stati della «sessione» stanno
+// nella parte server finta (`sessioneFinta`), dove un caso li legge tutti: qui, solo i dati di chi può entrare.
 // Sprint 38 · T1 (voce 2026): con `?accettazione=dopo&per_altra` è l'altra persona a non aver accettato i documenti legali. I
 // dati che il backoffice dà per lei sono quelli ridotti, e le rotte finte rispondono 403 solo a lei: la prima resta com'era.
 const delBackofficeDiUnAltra: Entrata['backoffice'] = scelti.get('accettazione') === 'dopo' && scelti.has('per_altra')
@@ -315,17 +320,11 @@ const delBackofficeDiUnAltra: Entrata['backoffice'] = scelti.get('accettazione')
       };
 
 const ricerca = { nome: 'UAT Ricerca', slug: 'uat-ricerca' };
-/** Chi può entrare al posto della prima persona, secondo ciò che i pulsanti scrivono nel `localStorage`: nello stesso workspace, o su un altro. */
-const entrate = new Map<string, Entrata>([
-    ['altra', { sessione: diUnAltra, backoffice: delBackofficeDiUnAltra }],
-    ['altrove', {
-        sessione: diUnAltra,
-        backoffice: { ...delBackofficeDiUnAltra, aziende: (delBackofficeDiUnAltra.aziende ?? []).map((azienda) => ({ ...azienda, workspace: [{ id: 'uat-ws-9', ...ricerca }] })) },
-        workspace: ricerca,
-    }],
-]);
-/** Chi è entrato adesso: nessuno, finché un pulsante non lo dice. */
-const entrata = () => entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '');
+/**
+ * Chi è entrato adesso, secondo ciò che i pulsanti scrivono nel `localStorage`: nessuno, finché un pulsante non lo dice; l'altra
+ * persona, nello stesso workspace o su un altro; o la persona che c'è, in spagnolo.
+ */
+const entrata = sessioneFinta({ sessione: diUnAltra, backoffice: delBackofficeDiUnAltra }, ricerca, 'es');
 
 const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };
 type Nome = keyof typeof pagine;
@@ -421,6 +420,7 @@ function Collegamenti() {
                 <p>
                     <button type="button" data-uat="entra-altra" onClick={() => localStorage.setItem(chiaveDellaSessione, 'altra')}>UAT entra un'altra persona</button>{' · '}
                     <button type="button" data-uat="entra-altrove" onClick={() => localStorage.setItem(chiaveDellaSessione, 'altrove')}>UAT entra un'altra persona su un altro workspace</button>{' · '}
+                    <button type="button" data-uat="entra-lingua" onClick={() => localStorage.setItem(chiaveDellaSessione, 'lingua')}>UAT la stessa persona cambia lingua</button>{' · '}
                     <button type="button" data-uat="entra-prima" onClick={() => localStorage.removeItem(chiaveDellaSessione)}>UAT torna la prima persona</button>
                 </p>
             )}

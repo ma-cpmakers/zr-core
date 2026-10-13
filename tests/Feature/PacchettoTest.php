@@ -617,7 +617,7 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura'])
+        ->and($importati('./parte-server-finta'))->toBe(['chiaveDellaSessione', 'clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura', 'sessioneFinta'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -718,14 +718,14 @@ it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su
         'chiediDopo();' => 1,
     ])
         // Le due letture della «sessione»: i dati di una visita e ciò che le rotte finte rispondono vengono dalla stessa.
-        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato, "['altrove', {", 'workspace: ricerca,']))->toBe([
+        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato]))->toBe([
             $letta => 1,
             $delleRotte => 1,
             'conLaSessione(' => 2,
             $chiEEntrato => 1,
-            "['altrove', {" => 1,
-            'workspace: ricerca,' => 1,
         ])
+        // Dallo sprint 40 (T5) gli stati della «sessione» stanno nella parte server finta, dove un caso li legge.
+        ->and(scritteNellaPaginaDiProva('parte-server-finta.ts', ["['altrove', {", 'workspace: altrove,']))->toBe(["['altrove', {" => 1, 'workspace: altrove,' => 1])
         // Dietro `?sessione`, quattro volte in tutto: il collegamento alla «Due dati», i pulsanti di chi entra, «UAT rileggi dopo»
         // e la persona data alle rotte finte.
         ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
@@ -748,6 +748,32 @@ it('la pagina di prova del layout, con ?sessione, rilegge il solo subito, dà gl
             '&& toccaAChiCE()) {' => 3,
             'localStorage.getItem(chiave) !== null' => 1,
             'const chiave = `uat-letta-di-${breve.toLowerCase()}`;' => 1,
+        ]);
+});
+
+// Sprint 40 · T5 (voce #2002): un quarto pulsante lascia la persona che c'è e le cambia la lingua, per una riga di UAT sulla
+// lingua senza una variante della pagina fatta a mano. Che cosa dà ogni stato della «sessione» lo prova
+// parte-server-finta.test.ts, che li legge tutti e quattro; qui, che la pagina di prova prende gli stati da lì e non ne tiene
+// di suoi: se li tenesse, il caso leggerebbe una «sessione» che la pagina non usa.
+it('la pagina di prova del layout, con ?sessione, lascia la stessa persona con un\'altra lingua, e gli stati della sessione sono quelli della parte server finta (sprint 40 · T5.1)', function () {
+    $lingua = '<button type="button" data-uat="entra-lingua" onClick={() => localStorage.setItem(chiaveDellaSessione, \'lingua\')}>UAT la stessa persona cambia lingua</button>';
+    $stati = "const entrata = sessioneFinta({ sessione: diUnAltra, backoffice: delBackofficeDiUnAltra }, ricerca, 'es');";
+    $laLingua = "['lingua', { sessione: { lingua: altraLingua }, backoffice: {} }],";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$lingua, 'data-uat="entra-lingua"', $stati, 'sessioneFinta(', 'new Map<string, Entrata>(', 'const chiaveDellaSessione', 'localStorage.getItem(']))->toBe([
+        $lingua => 1,
+        'data-uat="entra-lingua"' => 1,
+        $stati => 1,
+        'sessioneFinta(' => 1,
+        'new Map<string, Entrata>(' => 0,
+        'const chiaveDellaSessione' => 0,
+        'localStorage.getItem(' => 0,
+    ])
+        ->and(scritteNellaPaginaDiProva('parte-server-finta.ts', ["export const chiaveDellaSessione = 'uat-persona';", "['altra', altra],", $laLingua, "entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '')"]))->toBe([
+            "export const chiaveDellaSessione = 'uat-persona';" => 1,
+            "['altra', altra]," => 1,
+            $laLingua => 1,
+            "entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '')" => 1,
         ]);
 });
 
@@ -5345,7 +5371,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Seconda lettura della PR #72 (N1): quale campo legge, detto com'è.
     'la ricerca in attesa: il campo della prima AppShell' => ['readme', 'Il campo è quello della prima `AppShell` del documento: di cornici ce n\'è una per pagina, e una seconda leggerebbe il campo della prima'],
     'la ricerca in attesa: un\'emoji' => ['readme', 'i due caratteri si contano come li conta l\'`AppShell`: un\'emoji da sola ne vale due, parte, e la rotta la rifiuta con un 422'],
-    'la scheda ferma: una persona vuota' => ['readme', 'Nemmeno con una `persona` vuota (`""`): è quel 422 dove il frontend ha `ConvertEmptyStringsToNull`, che Laravel monta di suo, e un 409 `persona_diversa` dove non lo ha'],
+    // Sprint 40 · T2.3 (voce #2051): un testo vuoto non si può confrontare, e la risposta è una sola.
+    'la scheda ferma: una persona vuota' => ['readme', 'Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422 anche dove il frontend non ha `ConvertEmptyStringsToNull`, che Laravel monta di suo (fino alla `v2.5.1` lì era un 409 `persona_diversa`)'],
     'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» riprova allo stesso indirizzo, senza coda: in Chromium non parte niente'],
     'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la cornice ha già i dati di quel workspace, resta coi dati di prima'],
     'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
@@ -5409,7 +5436,42 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: la riga della rotta' => ['readme', '409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice, e non si segna niente; una richiesta senza `persona` vale come prima'],
     // Sprint 39 · T1.3 (voce #2038): una `persona` che c'è e non è un testo non vale come assente.
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
-    'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, dopo il controllo del workspace e senza chiamare il backoffice'],
+    // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
+    'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
+    'la scheda ferma: fuori dal corpo' => ['readme', 'L\'email non sta mai nell\'indirizzo, e nel corpo di «Segna tutte come lette» non c\'è più'],
+    'la scheda ferma: il clic su una notifica' => ['readme', 'nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la segnava letta a lui'],
+    // Review della PR #74, R1: misurato in Chromium con la `naviga` di sempre, la destinazione si apre solo se arriva prima del 409.
+    'la scheda ferma: la destinazione del clic' => ['readme', 'La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione'],
+    'la scheda ferma: la risorsa, nel capoverso della scheda ferma' => ['readme', 'La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si ricarica al suo posto'],
+    // Seconda lettura, N2: una frase su ciò che fa il browser dice in quale è provata.
+    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza)'],
+    'la scheda ferma: la risorsa, in quale browser' => ['readme', 'come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»)'],
+    'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'Fa eccezione la risposta di un\'altra persona a una scheda rimasta ferma, che ricarica la pagina'],
+    // Terza lettura, N5: con la `naviga` di partenza la pagina non se ne va sempre prima della risposta.
+    'la lettura con un clic: quando la pagina se ne va' => ['readme', 'la pagina se ne va quando la destinazione arriva, e se è prima della risposta il numero nuovo lo possono portare i dati della pagina dopo'],
+    // Review della PR #74, R3, S2, S3: i dati senza email, e le due cose che guarda chi installa.
+    // Seconda lettura, N1: un 422 solo se l'email è un testo vuoto; se manca o è `null` parte un testo, ed è un 409.
+    'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe senza un\'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l\'email è un testo vuoto, 409 `persona_diversa` se manca o è `null`'],
+    'la scheda ferma: JS e parte server insieme' => ['readme', 'Il JS e la parte server del pacchetto si aggiornano insieme, e la cache delle rotte si rifà al deploy'],
+    'la scheda ferma: l\'email in un\'intestazione' => ['readme', 'uno strumento che registra le intestazioni delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura'],
+    'la scheda ferma: l\'intestazione tolta per strada' => ['readme', 'Se invece qualcosa fra il browser e il frontend la toglie, la rotta non confronta: una richiesta che non dice la persona vale come prima'],
+    'la scheda ferma: un JS di prima' => ['readme', 'Un JS di prima della `v2.6.0` rimasto in una scheda non dice la persona in tre richieste — l\'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come prima'],
+    'la scheda ferma: ciò che un JS di prima segna ancora' => ['readme', 'il suo clic su una notifica la segna ancora a chi è entrato, finché la scheda non si ricarica'],
+    'la scheda ferma: nel pannello' => ['readme', 'che dalla `v2.6.0` non è più nel corpo: sta nell\'intestazione `Persona`'],
+    'la guida: il clic su una notifica' => ['guida', 'Dalla `v2.6.0` nemmeno il clic su una notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l\'intestazione `Persona`'],
+    // Review della PR #74, R2 e R6: ciò che resta fuori, e chi chiama da sé una rotta della cornice.
+    'la guida: chi chiama da sé una rotta' => ['guida', 'Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`'],
+    'la guida: ciò che resta fuori' => ['guida', 'un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica, e dei dati della cornice senza l\'email'],
+    'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, senza chiamare il backoffice, e non si segna niente; dalla `v2.6.0` la persona si guarda prima del workspace e degli altri controlli della rotta'],
+    // Sprint 40 · T2 (voce #2051): la regola della persona è di tutte e quattro le rotte, e l'ordine dei rifiuti è scritto.
+    'la regola della persona: le quattro rotte' => ['readme', 'Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro'],
+    'la regola della persona: dove si dice' => ['readme', 'nell\'intestazione `Persona`, l\'email passata da `encodeURIComponent`, o in `persona` nel corpo JSON'],
+    'la regola della persona: il 409' => ['readme', 'la rotta risponde 409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice e senza dati'],
+    'la regola della persona: tutti e due i posti' => ['readme', 'Se la dice in tutti e due i posti valgono tutti e due: basta che uno non sia quello della sessione'],
+    'la regola della persona: il 422' => ['readme', 'un valore che non è un testo, anche `null`, o un testo vuoto — è un 422 `{errore: "dati_non_validi"}`'],
+    'la regola della persona: non detta' => ['readme', 'Una richiesta che non la dice risponde come prima'],
+    'la regola della persona: l\'ordine' => ['readme', 'il 401 della guardia, il 403 `gettone_senza_workspace`, la persona (prima il 422, poi il 409), e solo dopo i 422 della rotta e il 409 `workspace_diverso`'],
+    'la regola della persona: chi sceglie' => ['readme', 'Di chi sono i dati lo dice sempre e solo la sessione: ciò che la richiesta dice si confronta e basta'],
     'la guida: segna tutte da una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica'],
     'la guida: ciò che resta a una scheda ferma' => ['guida', 'Una scheda ferma mostra ciò che aveva finché da lì non parte una richiesta'],
     'la guida: gli errori in una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima'],
@@ -5523,6 +5585,17 @@ it('il README non dice più che ciò che la cornice tiene resta a schermo sotto 
 })->with([
     'è del workspace' => ['del workspace, non della persona'],
     'sotto il nome nuovo' => ['restano a schermo sotto il nome nuovo'],
+]);
+
+// Review della PR #74, R1: dalla scheda ferma la destinazione del clic non «si apre lo stesso». Misurato in Chromium con la
+// `naviga` di sempre: se il 409 arriva prima che la destinazione abbia preso il posto della pagina, la pagina si ricarica.
+it('il README non dice più che dalla scheda ferma la destinazione del clic su una notifica si apre lo stesso, né che dei dati senza email danno sempre un 422 (review della PR #74, R1; seconda lettura, N1)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'la destinazione' => ['La destinazione di quel clic si apre lo stesso'],
+    'la sua risorsa' => ['La sua risorsa si apre lo stesso'],
+    'i dati senza email: sempre vuota' => ['l\'intestazione partirebbe vuota'],
+    'la pagina se ne va sempre prima' => ['la pagina se ne va prima della risposta'],
 ]);
 
 // Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.

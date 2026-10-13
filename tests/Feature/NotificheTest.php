@@ -2321,7 +2321,9 @@ it('quel 403 dice di chi è: `persona` è l\'email della persona della sessione,
 
     $risposta = senzaGettone(match ($rotta) {
         'elenco' => $this->getJson('cornice/notifiche?persona=uat-altra@example.org&email=uat-altra@example.org', $intestazioni),
-        'lettura' => $this->patchJson('cornice/notifiche/uat-n3/lettura?persona=uat-altra@example.org', ['letta' => true, 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], $intestazioni),
+        // Dallo sprint 40 (T2, voce #2051) `persona` nel corpo non è più fra i valori che la rotta ignora: detta lì, o
+        // nell'intestazione `Persona`, si confronta con la sessione (`StessaPersonaTest.php`). Query ed `email` no.
+        'lettura' => $this->patchJson('cornice/notifiche/uat-n3/lettura?persona=uat-altra@example.org', ['letta' => true, 'email' => 'uat-altra@example.org'], $intestazioni),
         'letture' => $this->postJson('cornice/notifiche/letture?email=uat-altra@example.org', lettureFinoA('2026-10-08T10:00:00.000Z') + ['email' => 'uat-altra@example.org'], $intestazioni),
     })->assertForbidden();
 
@@ -2404,9 +2406,9 @@ it('con una `persona` presente che non è un testo risponde 422 dati_non_validi 
 ]);
 
 // Review della PR #72 (R9): una `persona` vuota. Che cosa arriva alla rotta lo decidono i middleware del frontend: con
-// `ConvertEmptyStringsToNull`, che Laravel monta di suo, è `null`; senza è un testo che non è l'email della sessione. Non si
-// segna niente in nessuno dei due casi, e il README dice le due risposte.
-it('con una `persona` vuota non segna niente e non chiama il backoffice: 422 dati_non_validi dove il vuoto arriva null, 409 persona_diversa dove arriva com\'è (sprint 39 · T1.1)', function (bool $comArriva, int $stato, string $risposta) {
+// `ConvertEmptyStringsToNull`, che Laravel monta di suo, è `null`; senza è un testo vuoto. Non si segna niente in nessuno dei
+// due casi. Dallo sprint 40 (T2.3, voce #2051) la risposta è la stessa: un testo vuoto non si può confrontare, come `null`.
+it('con una `persona` vuota non segna niente e non chiama il backoffice: 422 dati_non_validi, dove il vuoto arriva null e dove arriva com\'è (sprint 39 · T1.1; sprint 40 · T2.3)', function (bool $comArriva, int $stato, string $risposta) {
     if ($comArriva) {
         test()->withoutMiddleware(ConvertEmptyStringsToNull::class);
     }
@@ -2419,15 +2421,17 @@ it('con una `persona` vuota non segna niente e non chiama il backoffice: 422 dat
     Http::assertNothingSent();
 })->with([
     'coi middleware di Laravel' => [false, 422, '{"errore":"dati_non_validi"}'],
-    'senza ConvertEmptyStringsToNull' => [true, 409, '{"errore":"persona_diversa","persona":"uat-ada@example.com"}'],
+    'senza ConvertEmptyStringsToNull' => [true, 422, '{"errore":"dati_non_validi"}'],
 ]);
 
-it('una `persona` che non è un testo insieme a un altro workspace è un 409 workspace_diverso, come un\'altra email: la guardia nuova sta dove sta il confronto della persona, dopo quella del workspace (sprint 39 · T1.2)', function (mixed $persona) {
+// Dallo sprint 40 (T2.5, voce #2051) la persona viene prima dei controlli della rotta, su tutte e quattro: qui rispondeva il
+// workspace (409 `workspace_diverso`), adesso risponde lei.
+it('una `persona` che non è un testo insieme a un altro workspace è un 422 dati_non_validi: la persona si guarda prima del workspace (sprint 39 · T1.2; sprint 40 · T2.5)', function (mixed $persona) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
 
     senzaGettone($this->postJson('cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite', 'persona' => $persona]))
-        ->assertStatus(409)->assertExactJson(['errore' => 'workspace_diverso']);
+        ->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
     Http::assertNothingSent();
 })->with([
     'null' => [null],
@@ -2435,11 +2439,16 @@ it('una `persona` che non è un testo insieme a un altro workspace è un 409 wor
     'una lista' => [['uat-ada@example.com']],
 ]);
 
-it('le guardie di prima vengono prima e restano com\'erano: con un\'altra `persona` insieme a un altro workspace, o a un fino_a che non è un istante, la risposta è la loro e non dice `persona` (sprint 38 · T4.2)', function (array $corpo, int $stato, string $errore) {
+// Fino alla `v2.5.1` qui rispondevano le guardie di prima (409 `workspace_diverso`, 422 `dati_non_validi`). Dallo sprint 40
+// (T2.5, voce #2051) la persona si guarda prima, come sulle altre tre rotte; con la persona della sessione le guardie di prima
+// rispondono com'erano.
+it('la persona viene prima delle guardie di prima: con un\'altra `persona` insieme a un altro workspace, o a un fino_a che non è un istante, la risposta è il 409 persona_diversa; con quella della sessione è la loro (sprint 38 · T4.2; sprint 40 · T2.5)', function (array $corpo, int $stato, string $errore) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
 
-    senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
+    $diUnAltra = senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus(409);
+    expect($diUnAltra->getContent())->toBe('{"errore":"persona_diversa","persona":"uat-ada@example.com"}');
+    senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-ada@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
     Http::assertNothingSent();
 })->with([
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409, 'workspace_diverso'],

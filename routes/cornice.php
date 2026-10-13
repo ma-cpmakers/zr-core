@@ -5,6 +5,7 @@ use Zeiras\Auth\Sessione;
 use Zeiras\Core\Http\ConWorkspace;
 use Zeiras\Core\Http\NotificheDellaCornice;
 use Zeiras\Core\Http\RicercaDellaCornice;
+use Zeiras\Core\Http\StessaPersona;
 
 // Le rotte di zr-core per il browser, sull'origine del frontend: nel gruppo `web`, con la sessione, la guardia di zr-auth e
 // il CSRF, e nel workspace della sessione (ConWorkspace). La cornice chiama l'elenco delle notifiche, le letture e la
@@ -18,7 +19,9 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 // altro workspace. Il blocco dura tenutaDelBlocco() secondi da quando è preso: una richiesta che i middleware del frontend
 // tengono più a lungo prima della rotta ci arriva a blocco scaduto. Solo loro, e mai il gruppo: col blocco sulle GET due
 // richieste della stessa persona si metterebbero in fila.
-Route::middleware(['web', ConWorkspace::class])->prefix('cornice')->group(function (): void {
+// Dalla v2.6.0 ogni rotta del gruppo confronta la persona che la richiesta dice con quella della sessione, prima di ogni
+// controllo suo (StessaPersona): una rotta nuova sta qui dentro, e la regola ce l'ha.
+Route::middleware(['web', ConWorkspace::class, StessaPersona::class])->prefix('cornice')->group(function (): void {
     Route::get('notifiche', [NotificheDellaCornice::class, 'elenco']);
     Route::post('notifiche/letture', [NotificheDellaCornice::class, 'letture'])
         ->block(NotificheDellaCornice::tenutaDelBlocco(), Sessione::BLOCCO_ATTESA);

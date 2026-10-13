@@ -33,7 +33,7 @@ describe('segnaLetta', () => {
 
         await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
-            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...gettone }, body: '{"letta":true}', keepalive: true }],
+            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
     });
 
@@ -391,12 +391,14 @@ describe('una risposta che dice di chi è', () => {
     // `persona_diversa` con l'email di chi è entrato: un errore di un'altra persona, e la pagina si ricarica.
     const segna = () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com');
 
-    it('segnaLetteFinoA manda nel corpo l\'email di chi la cornice mostra, accanto all\'istante e allo slug (sprint 38 · T4.1)', async () => {
+    // Dallo sprint 40 (T3, voce #2051) l'email non sta più nel corpo: la dice l'intestazione `Persona`, come le altre tre richieste.
+    it('segnaLetteFinoA dice l\'email di chi la cornice mostra nell\'intestazione `Persona`; nel corpo restano l\'istante e lo slug (sprint 38 · T4.1, sprint 40 · T3.1)', async () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
         vi.stubGlobal('fetch', fetchFinto);
 
         await segna();
-        expect(JSON.parse(String(fetchFinto.mock.calls[0]?.[1]?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(JSON.parse(String(fetchFinto.mock.calls[0]?.[1]?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('Persona')).toBe('ada%40example.com');
     });
 
     it.each<[string, Response]>([
@@ -424,5 +426,97 @@ describe('una risposta che dice di chi è', () => {
         await expect(segna()).rejects.toThrow('POST /cornice/notifiche/letture: 409');
         expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+});
+
+// Sprint 40 · T3 (voce #2051): ogni richiesta della cornice alla sua parte server dice di chi è la pagina che chiede, e la
+// parte server la confronta con la sessione (`StessaPersona`, 409 `persona_diversa`). Prima lo diceva solo «Segna tutte come
+// lette», nel corpo: da una scheda rimasta ferma il clic su una notifica la segnava letta a chi era entrato dopo. L'email va
+// nell'intestazione `Persona`, passata da `encodeURIComponent`: un'intestazione porta solo caratteri di Latin-1, e con un
+// altro carattere `fetch` lancerebbe prima di partire.
+describe('ogni richiesta dice di chi è la pagina che chiede', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const finoA = '2026-10-06T11:55:00+00:00';
+    const richieste: [string, (email: string) => Promise<unknown>, Record<string, unknown>, Record<string, unknown> | undefined][] = [
+        ['GET /cornice/notifiche', (email) => caricaNotifiche(email), { data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }, undefined],
+        ['POST /cornice/ricerca', (email) => cerca('lancio', new AbortController().signal, email), { data: [], workspace: 'uat-vendite' }, { q: 'lancio' }],
+        ['POST /cornice/notifiche/letture', (email) => segnaLetteFinoA(finoA, 'acme-marketing', email), { data: { fino_a: '2026-10-06T11:55:00.000Z' } }, { fino_a: finoA, workspace: 'acme-marketing' }],
+        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => segnaLetta('uat-n69', email), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
+    ];
+    const corpoDi = (opzioni?: RequestInit) => (opzioni?.body == null ? undefined : (JSON.parse(String(opzioni.body)) as unknown));
+
+    it.each(richieste)('%s porta nell\'intestazione `Persona` l\'email di chi la cornice mostra, passata da `encodeURIComponent`; l\'email non sta nell\'indirizzo, e il corpo è quello di sempre (sprint 40 · T3.1)', async (richiesta, chiama, corpo, nelCorpo) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await chiama('ada@example.com');
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        const [indirizzo, opzioni] = fetchFinto.mock.calls[0] ?? [];
+        expect(`${opzioni?.method ?? 'GET'} ${indirizzo}`).toBe(richiesta);
+        expect(new Headers(opzioni?.headers).get('Persona')).toBe('ada%40example.com');
+        expect(indirizzo).not.toContain('ada');
+        expect(corpoDi(opzioni)).toStrictEqual(nelCorpo);
+    });
+
+    it.each(richieste)('%s con un\'email che ha caratteri fuori da Latin-1 parte lo stesso: nell\'intestazione ci sono solo caratteri ASCII, e decodificata è quell\'email (sprint 40 · T3, invariante)', async (_richiesta, chiama, corpo) => {
+        const email = 'łucja.żółć+uat@example.com';
+        // Come il `fetch` del browser: un'intestazione con un carattere oltre U+00FF è un TypeError, prima di ogni richiesta.
+        const fetchFinto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => {
+            for (const valore of Object.values((opzioni?.headers ?? {}) as Record<string, string>)) {
+                if (/[^\u0000-\u00ff]/.test(valore)) {
+                    throw new TypeError('Failed to execute \'fetch\': String contains non ISO-8859-1 code point.');
+                }
+            }
+
+            return risposta(corpo);
+        });
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama(email)).resolves.toBeDefined();
+        const detta = new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('Persona');
+        expect(detta).toMatch(/^[\x21-\x7e]+$/);
+        expect(decodeURIComponent(String(detta))).toBe(email);
+    });
+
+    // Review della PR #74, R3 (seconda lettura, N1): dei dati della cornice senza l'email (il contratto del backoffice la dà
+    // sempre). Se è un testo vuoto l'intestazione parte vuota, ed è un 422; se manca o è `null` parte il testo che ne fa
+    // `encodeURIComponent`, ed è un 409 senza un'email (`StessaPersonaTest.php`). L'errore torna a chi ha chiamato. Senza
+    // un'email da confrontare la pagina non si ricarica mai, nemmeno davanti a una risposta che dice di chi è: è voluto.
+    it.each(richieste)('%s senza l\'email di chi la cornice mostra parte con l\'intestazione `Persona` vuota: il 422 della rotta è l\'errore di sempre per chi ha chiamato, e la pagina non si ricarica (review della PR #74, R3)', async (richiesta, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'dati_non_validi' }, 422));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama('')).rejects.toThrow(`${richiesta}: 422`);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('Persona')).toBe('');
+        expect(ricarica).not.toHaveBeenCalled();
+    });
+
+    it.each(richieste)('%s con un\'email che manca o è `null` (dati che non sono quelli del contratto) parte col testo `undefined` o `null` nell\'intestazione: il 409 senza un\'email della rotta è l\'errore di sempre, e la pagina non si ricarica (seconda lettura della PR #74, N1)', async (richiesta, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'persona_diversa', persona: null }, 409));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        for (const [email, detta] of [[null, 'null'], [undefined, 'undefined']] as const) {
+            await expect(chiama(email as unknown as string)).rejects.toThrow(`${richiesta}: 409`);
+            expect(new Headers(fetchFinto.mock.lastCall?.[1]?.headers).get('Persona')).toBe(detta);
+        }
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(ricarica).not.toHaveBeenCalled();
+    });
+
+    it.each(richieste)('%s senza l\'email di chi la cornice mostra — vuota, `null` o che manca — non ricarica la pagina nemmeno se la risposta dice di chi è: torna a chi ha chiamato (review della PR #74, R3; terza lettura, N6)', async (_richiesta, chiama, corpo) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ ...corpo, persona: 'grace@example.com' })));
+
+        for (const email of ['', null, undefined]) {
+            await expect(chiama(email as string)).resolves.toBeDefined();
+        }
+        expect(ricarica).not.toHaveBeenCalled();
     });
 });
