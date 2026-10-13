@@ -949,10 +949,11 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
     });
 
     // Sprint 39 · T1 (voce 2038): come la rotta vera, una `persona` che c'è e non è un testo non vale come assente. Non segna
-    // niente e risponde 422; con un altro workspace risponde il 409 del workspace, che viene prima.
+    // niente e risponde 422. Dallo sprint 40 (T3), come nella rotta vera dalla `v2.6.0`, la persona si guarda prima del
+    // workspace: anche con un altro workspace è quel 422, non più il 409 `workspace_diverso`.
     it.each([
         ['null', null], ['un numero', 7], ['true', true], ['una lista', [ada.email]], ['un oggetto', { email: ada.email }],
-    ])('POST /cornice/notifiche/letture con una `persona` che non è un testo (%s) risponde 422 `dati_non_validi` e non segna niente; con un altro workspace risponde 409 `workspace_diverso` (sprint 39 · T1.3)', async (_quale, persona) => {
+    ])('POST /cornice/notifiche/letture con una `persona` che non è un testo (%s) risponde 422 `dati_non_validi` e non segna niente, anche con un altro workspace: la persona si guarda prima (sprint 39 · T1.3, sprint 40 · T3.3)', async (_quale, persona) => {
         await rotte({ persona: ada });
         const segna = async (workspace: string): Promise<[number, unknown]> => {
             const inArrivo = fetch('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date(Date.now() + 60_000).toISOString(), workspace, persona }) });
@@ -964,7 +965,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
 
         expect(await segna('uat-marketing')).toStrictEqual([422, { errore: 'dati_non_validi' }]);
         expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: false });
-        expect(await segna('uat-vendite')).toStrictEqual([409, { errore: 'workspace_diverso' }]);
+        expect(await segna('uat-vendite')).toStrictEqual([422, { errore: 'dati_non_validi' }]);
     });
 
     // Sprint 38 · T5 (R5 della review): come la rotta vera, che guarda di chi è la richiesta prima di chiamare il backoffice —

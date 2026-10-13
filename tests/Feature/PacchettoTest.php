@@ -5410,6 +5410,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: la riga della rotta' => ['readme', '409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice, e non si segna niente; una richiesta senza `persona` vale come prima'],
     // Sprint 39 · T1.3 (voce #2038): una `persona` che c'è e non è un testo non vale come assente.
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
+    // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
+    'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
+    'la scheda ferma: fuori dal corpo' => ['readme', 'L\'email non sta mai nell\'indirizzo, e nel corpo di «Segna tutte come lette» non c\'è più'],
+    'la scheda ferma: il clic su una notifica' => ['readme', 'nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la segnava letta a lui'],
+    'la scheda ferma: la destinazione del clic' => ['readme', 'La destinazione di quel clic si apre lo stesso, subito e senza aspettare la risposta; la pagina si ricarica solo se è ancora lì quando il 409 arriva'],
+    'la scheda ferma: un JS di prima' => ['readme', 'Un JS di prima della `v2.6.0` rimasto in una scheda non dice la persona in tre richieste — l\'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come prima'],
+    'la scheda ferma: ciò che un JS di prima segna ancora' => ['readme', 'il suo clic su una notifica la segna ancora a chi è entrato, finché la scheda non si ricarica'],
+    'la scheda ferma: nel pannello' => ['readme', 'che dalla `v2.6.0` non è più nel corpo: sta nell\'intestazione `Persona`'],
+    'la guida: il clic su una notifica' => ['guida', 'Dalla `v2.6.0` nemmeno il clic su una notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l\'intestazione `Persona`'],
     'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, senza chiamare il backoffice, e non si segna niente; dalla `v2.6.0` la persona si guarda prima del workspace e degli altri controlli della rotta'],
     // Sprint 40 · T2 (voce #2051): la regola della persona è di tutte e quattro le rotte, e l'ordine dei rifiuti è scritto.
     'la regola della persona: le quattro rotte' => ['readme', 'Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro'],
