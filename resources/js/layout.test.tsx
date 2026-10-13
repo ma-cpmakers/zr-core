@@ -664,6 +664,9 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-notif [role="alert"]')).toBeNull();
         expect(tutti('.zr-notif button').map((pulsante) => pulsante.textContent)).not.toContain(t.retry);
 
+        // Sotto il campo con meno di due caratteri c'è l'invito di sempre, non un testo d'attesa: la parola scritta verrà cercata.
+        await scrivi('u');
+        expect(sottoLaRicerca()).toStrictEqual([t.searchHint]);
         await scrivi('uat');
         expect(tutti('.zr-search-note').map((nota) => nota.getAttribute('role'))).toStrictEqual(['status']);
         expect(uno('.zr-search-note.is-error')).toBeNull();

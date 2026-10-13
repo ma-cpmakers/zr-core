@@ -526,7 +526,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     const daAccettare = dati.accettazione_richiesta === true || loDiceIlSegnale;
     // Ridotta anche finché i dati letti dal backoffice non arrivano (`in_attesa`) e quando la parte server non li ha potuti
     // leggere (`non_letti`): senza moduli, con campanella e ricerca spente. L'accettazione vince su tutti e due.
-    const ridotta = daAccettare || !!(dati.in_attesa || dati.non_letti);
+    // Il valore è lo stato che l'`AppShell` ha per ciò che campanella e ricerca dicono allora: in attesa niente è andato
+    // storto, i dati stanno arrivando, ed è il caricamento; con `non_letti` e con l'accettazione, dove non sta arrivando
+    // niente, l'errore. `undefined` nella cornice di sempre.
+    const ridotta = daAccettare || dati.non_letti ? 'error' : dati.in_attesa ? 'loading' : undefined;
     // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
     // dell'errore lo decide chi ha chiamato, come prima.
     const seDaAccettare = (errore: unknown) => {
@@ -842,13 +845,26 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
     // mezzo la cornice è passata allo stato ridotto, la ricerca di prima arriva qui lo stesso. Che cosa vale adesso lo dice un
     // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
+    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora — ma la cornice la tiene, l'ultima: la
+    // parola è stato dell'`AppShell`, e la cornice la conosce solo da qui. Quando i dati arrivano parte lei, una volta; se al
+    // loro posto arriva `non_letti` o l'accettazione la cornice la dimentica, e così a ogni disegno che non è in attesa: mai la
+    // parola di una visita di prima.
+    const daCercare = useRef<string>(undefined);
     const ridottaAdesso = useRef(ridotta);
     useLayoutEffect(() => {
-        ridottaAdesso.current = ridotta;
-        if (ridotta) {
-            ricercaInVolo.current?.abort();
-            ricercaInVolo.current = undefined;
+        if (ridottaAdesso.current !== 'loading') {
+            daCercare.current = undefined;
         }
+        ridottaAdesso.current = ridotta;
+        if (!ridotta) {
+            if (daCercare.current) {
+                cercaParola(daCercare.current);
+            }
+
+            return;
+        }
+        ricercaInVolo.current?.abort();
+        ricercaInVolo.current = undefined;
     });
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
@@ -858,7 +874,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
-    // non ha cercato (quella scritta mentre era ridotta non è partita).
+    // non ha cercato. La parola scritta in attesa è un'altra cosa: non è partita, e parte all'arrivo dei dati (sopra).
     if (ridotta && ricerca !== undefined) {
         setRicerca(undefined);
     }
@@ -878,6 +894,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     };
     const cercaParola = (parola: string) => {
         if (ridottaAdesso.current) {
+            daCercare.current = parola;
+
             return;
         }
         if (performance.now() < frenataFinoA.current) {
@@ -956,7 +974,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             <div />
         </div>
     ) : null;
-    const spenta = daAccettare ? t.acceptanceOff : dati.in_attesa ? t.loading : t.downOff;
+    const spenta = daAccettare ? t.acceptanceOff : t.downOff;
 
     const shell = (
         <AppShell
@@ -972,6 +990,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 ...pagina,
                 active: active === null || (ridotta && aperto !== undefined && !active) ? idDiNessunaVoce(voci) : active,
                 companies,
+                searchState: ridotta ?? ricerca?.stato ?? 'ready',
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
@@ -982,8 +1001,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
                 // la campanella tiene il gestore dell'apertura: aperta in attesa chiede l'elenco, e il pannello lo mostra quando
                 // arrivano (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). Quello di «Riprova» no: il
-                // pannello in attesa è nello stato d'errore, e l'`AppShell` ci scriverebbe il pulsante. La ricerca nemmeno: nello
-                // stato ridotto la cornice la dimentica (sopra). Le voci del modulo, il
+                // pannello in attesa è nello stato di caricamento, che non ha il pulsante. La ricerca in attesa tiene il suo
+                // gestore: la parola non parte, la cornice la tiene e la cerca all'arrivo dei dati (sopra). Lo stato della
+                // ricerca sta qui, fra ciò che decide la cornice, col suo valore: quello dello stato ridotto, o quello
+                // dell'ultima ricerca, o `ready`. Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
@@ -995,7 +1016,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
-                onSearch: ridotta ? undefined : cercaParola,
+                onSearch: avvisoSopraLaPagina ? undefined : cercaParola,
                 flush: avvisoSopraLaPagina ? undefined : pagina.flush,
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
@@ -1008,10 +1029,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
+            // In attesa lo stato è quello di caricamento. I risultati non hanno bisogno di una guardia loro: nello stato
+            // ridotto la cornice ha già dimenticato la ricerca (sopra), e senza quella non ce ne sono.
             notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, dati.lingua), dati.lingua, adesso))}
-            notificationsState={ridotta ? 'error' : statoDelPannello}
-            searchResults={ridotta ? [] : risultati}
-            searchState={ridotta ? 'error' : (ricerca?.stato ?? 'ready')}
+            notificationsState={ridotta ?? statoDelPannello}
+            searchResults={risultati}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
             // contenitore a pagina intera.
             onSelectResult={(scelto) => {
@@ -1025,9 +1047,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
             // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
             // copia il segnaposto della ricerca e l'invito, che dice le fonti del workspace (`dellaRicerca`). A chi non ha
-            // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
-            // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
-            labels={ridotta
+            // accettato i documenti legali, e quando il backoffice non ha risposto, la frase di zr-core al posto dei tre testi
+            // che pannello e ricerca mostrerebbero: l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore
+            // della ricerca. In attesa i testi sono quelli di sempre: il pannello e la ricerca caricano coi testi
+            // dell'`AppShell`, e sotto il campo vuoto c'è l'invito a scrivere, perché la parola scritta verrà cercata.
+            labels={avvisoSopraLaPagina
                 ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
                 : { ...t, ...dellaRicerca, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
