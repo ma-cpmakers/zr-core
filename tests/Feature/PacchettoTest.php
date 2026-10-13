@@ -2452,7 +2452,8 @@ it('il README dice, nel paragrafo di nomeDellaVoce, la funzione che dà il titol
         ->and(paragrafoFuoriDallaCornice($altrove))->toBe('');
 })->with([
     'nome e argomenti' => ['`titoloDellaNotifica(tipo, lingua)`'],
-    'da dove si importa, e per chi' => ['Dallo stesso ingresso si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
+    // Sprint 33 · T1.1 (voce #1915): dalla `v2.0.0` non più dallo stesso ingresso.
+    'da dove si importa, e per chi' => ['Da `…/resources/js/frasi` — dalla `v2.0.0`: prima dallo stesso ingresso, vedi «Passare alla v2» — si importa `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['dà il titolo di una notifica di quel tipo nella lingua'],
     // Sprint 29 · T4 (review della PR #62, R5): dalla `v1.19.0` il pannello usa `rigaDellaNotifica`, e questo è il titolo di prima.
     'è il titolo senza la frase' => ['è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto'],
@@ -4905,13 +4906,14 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
     'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono'],
+    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con gzip, cioè 18 KB. Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
     $prove = (string) file_get_contents(__DIR__.'/../../resources/js/prove.ts');
-    $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts']);
+    $ingressi = array_map(fn (string $file): string => (string) file_get_contents(__DIR__.'/../../resources/js/'.$file), ['index.ts', 'app.ts', 'cornice.tsx', 'lingue.ts', 'frasi.ts', 'campanella.ts']);
 
     expect($guida)->toContain('la cornice li chiede con `fetch` quando si apre la campanella: nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l\'errore di caricamento con «Riprova»')
         // Seconda lettura della PR #63 (S10, S8): dove stanno i file, e chi rifà i moduli nei casi.
@@ -5117,7 +5119,12 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
     'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
-    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
+    // Sprint 33 · T2.5 (voce #1890): il nome di chi ha fatto si taglia nel titolo; il resto è del backoffice.
+    'il nome di chi ha fatto si taglia' => ['notifiche', 'Dalla `v2.0.0` il nome di chi ha fatto, nel titolo, oltre i 60 caratteri è tagliato: i primi 59 e «…»'],
+    'come si conta il nome' => ['notifiche', 'Si conta dopo la pulizia, per caratteri come li vede chi legge (`Intl.Segmenter`): un\'emoji o una lettera con l\'accento composto valgono uno e non si spezzano'],
+    'dove Intl.Segmenter manca' => ['notifiche', 'dove `Intl.Segmenter` manca si conta per punti di codice, e lì un\'emoji composta o un accento composto possono restare a metà'],
+    'ciò che non si taglia' => ['notifiche', 'L\'avatar dice il nome intero, e il nome della cosa resta intero dovunque stia'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il resto è del backoffice: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
@@ -5128,6 +5135,11 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
     'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
 ]);
+
+// Sprint 33 · T2.5 (voce #1890): dalla v2 il nome di chi ha fatto si taglia, e il README non dice più il contrario.
+it('il README non dice più che il nome di chi ha fatto non si taglia (sprint 33 · T2.5)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Il nome non si taglia'))->toBe(false);
+});
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
 // Management.

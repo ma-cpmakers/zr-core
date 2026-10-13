@@ -25,7 +25,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         const attesa = vi.spyOn(AbortSignal, 'timeout');
         const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(/\/it\.json/.test(indirizzo) ? { 'notificationTitle.uat': 'UAT titolo' } : { 'notificationTitle.uat': 'UAT title', 'notificationTitle.solo': 'UAT only' }));
         vi.stubGlobal('fetch', fetchFinto);
-        const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./lingue');
+        const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./campanella');
 
         expect(fetchFinto).not.toHaveBeenCalled();
         expect(Object.keys(indirizziDelleFrasi).sort()).toStrictEqual([EN, '../lingue/notifiche/es.json', IT]);
@@ -46,7 +46,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ 'notificationTitle.uat': 'UAT' }));
         fetchFinto.mockImplementationOnce(async () => risposta({ 'notificationTitle.uat': 'UAT pagina di errore' }, status));
         vi.stubGlobal('fetch', fetchFinto);
-        const { caricaFrasi, frasiPronte } = await import('./lingue');
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
 
         await expect(caricaFrasi('it')).rejects.toBeUndefined();
         expect(frasiPronte('it')).toBeUndefined();
@@ -56,18 +56,44 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         expect(fetchFinto).toHaveBeenCalledTimes(4);
     });
 
-    it('un 200 col corpo `null` è un errore e non resta in volo: la richiesta dopo riparte da capo e riesce (T1.5)', async () => {
-        const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ 'notificationTitle.uat': 'UAT' }));
-        fetchFinto.mockImplementationOnce(async () => risposta(null)).mockImplementationOnce(async () => risposta(null));
-        vi.stubGlobal('fetch', fetchFinto);
-        const { caricaFrasi, frasiPronte } = await import('./lingue');
+    // Sprint 33 · T3.1 (voce #1909). Un 200 che non porta le frasi — la pagina di un proxy, un file vuoto — è un errore come un
+    // 404: le frasi sono un oggetto con almeno un testo sotto una chiave `notificationTitle…`.
+    const ARRIVATE_MALE: [string, unknown][] = [
+        ['`null`', null], ['un elenco', []], ['un oggetto vuoto', {}], ['un oggetto senza frasi', { data: {} }], ['un testo', 'UAT pagina di errore'], ['un numero', 7],
+        ['un titolo vuoto', { 'notificationTitle.uat': '' }], ['un titolo che non è un testo', { 'notificationTitle.uat': { it: 'UAT' } }],
+    ];
 
-        await expect(caricaFrasi('it')).rejects.toBeInstanceOf(TypeError);
+    it.each(ARRIVATE_MALE)('un 200 con %s al posto delle frasi della lingua è un errore e non resta in volo né in memoria: la richiesta dopo riparte da capo e riesce (sprint 30 · T1.5; sprint 33 · T3.1)', async (_caso, corpo) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string) => risposta({ 'notificationTitle.uat': 'UAT' }));
+        fetchFinto.mockImplementationOnce(async () => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
+
+        await expect(caricaFrasi('it')).rejects.toBeUndefined();
         expect(frasiPronte('it')).toBeUndefined();
         expect(fetchFinto).toHaveBeenCalledTimes(2);
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
         expect(fetchFinto).toHaveBeenCalledTimes(4);
+    });
+
+    it.each(ARRIVATE_MALE)('un 200 con %s al posto delle frasi dell\'inglese è un errore anche se quelle della lingua sono arrivate bene (sprint 33 · T3.1)', async (_caso, corpo) => {
+        const fetchFinto = vi.fn(async (indirizzo: string) => risposta(/\/en\.json/.test(indirizzo) ? corpo : { 'notificationTitle.uat': 'UAT' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
+
+        await expect(caricaFrasi('it')).rejects.toBeUndefined();
+        expect(frasiPronte('it')).toBeUndefined();
+    });
+
+    it.each(['en', 'en-GB'])('chi usa l\'inglese («%s») fa una sola richiesta di `en.json` per volta, e in memoria restano le frasi (sprint 33 · T3.5)', async (lingua) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT title' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./campanella');
+
+        await expect(caricaFrasi(lingua)).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT title' });
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual([indirizziDelleFrasi[EN]]);
+        expect(frasiPronte(lingua)).toStrictEqual({ 'notificationTitle.uat': 'UAT title' });
     });
 
     it('dove il browser non ha `AbortSignal.timeout` le frasi si chiedono lo stesso, senza un tempo massimo: niente lancia e il pannello non resta in attesa (T1.5)', async () => {
@@ -77,7 +103,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         try {
             const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT' }));
             vi.stubGlobal('fetch', fetchFinto);
-            const { caricaFrasi } = await import('./lingue');
+            const { caricaFrasi } = await import('./campanella');
 
             await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
             expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal)).toStrictEqual([undefined, undefined]);
@@ -99,7 +125,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
             opzioni?.signal?.addEventListener('abort', () => respinta(new DOMException('The operation timed out.', 'TimeoutError')));
         }));
         vi.stubGlobal('fetch', fetchFinto);
-        const { caricaFrasi, frasiPronte } = await import('./lingue');
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
 
         const chiesta = caricaFrasi('es');
         expect(orologi).toHaveLength(2);
@@ -118,7 +144,7 @@ describe('`frasiInMemoria`, per i test di chi installa il pacchetto (sprint 30 �
         const fetchFinto = vi.fn(async () => risposta({}, 500));
         vi.stubGlobal('fetch', fetchFinto);
         const { frasiInMemoria } = await import('./prove');
-        const { caricaFrasi, frasiPronte } = await import('./lingue');
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
         expect(frasiPronte('it')).toBeUndefined();
 
         await frasiInMemoria();
@@ -133,6 +159,22 @@ describe('`frasiInMemoria`, per i test di chi installa il pacchetto (sprint 30 �
 
         await caricaFrasi('it');
         await caricaFrasi('zz');
+        expect(fetchFinto).not.toHaveBeenCalled();
+    });
+
+    // Sprint 33 · T1.6 (voce #1915). Dalla `v2.0.0` ciò che compone le righe è un pezzo a richiesta: `frasiInMemoria` dà alla
+    // cornice anche quello, così la riga di prima nel file di preparazione dei test basta ancora.
+    it('dà alla cornice anche il pezzo della campanella: dopo, la cornice ha pezzo e frasi senza chiedere niente (sprint 33 · T1.6)', async () => {
+        const fetchFinto = vi.fn(async () => risposta({}, 500));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { frasiInMemoria } = await import('./prove');
+        const delleLingue = await import('./lingue');
+        expect(delleLingue.campanella).toBeUndefined();
+
+        await frasiInMemoria();
+
+        expect(delleLingue.campanella).toBe(await import('./campanella'));
+        expect(delleLingue.campanella?.frasiPronte('it')).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -166,7 +208,7 @@ describe('le frasi dei file del pacchetto, dal caricatore vero (sprint 31 · T4)
     ])('con la lingua "%s" le frasi che carica la cornice sono quelle dei file del pacchetto: il file della lingua sopra quello dell\'inglese (T4.1)', async (lingua, file) => {
         const fetchDiProva = serveIFile();
         vi.stubGlobal('fetch', fetchDiProva);
-        const { caricaFrasi, frasiPronte } = await import('./lingue');
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
         expect(frasiPronte(lingua)).toBeUndefined();
 
         await expect(caricaFrasi(lingua)).resolves.toStrictEqual({ ...frasiInglesi, ...file });
@@ -195,7 +237,7 @@ describe('le frasi dei file del pacchetto, dal caricatore vero (sprint 31 · T4)
         vi.stubGlobal('fetch', vi.fn(async () => risposta({}, 500)));
         const { frasiInMemoria: diPrima } = await import('./prove');
         vi.resetModules();
-        const { frasiPronte } = await import('./lingue');
+        const { frasiPronte } = await import('./campanella');
 
         await diPrima();
         expect(frasiPronte('it')).toBeUndefined();

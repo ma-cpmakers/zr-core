@@ -44,7 +44,8 @@ ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una 
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
-una copia.
+una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
+notifiche in una pagina sua (vedi «Passare alla v2»).
 
 - **L'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi
   dell'ingresso di sempre tranne `Zeiras`. I componenti del design system si prendono per nome dal loro modulo,
@@ -82,20 +83,23 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,3 KB | 18,0 KB | 31,7 KB | 4,4 KB |
-| la cornice e due componenti per nome | 57,5 KB | 19,2 KB | 31,7 KB | 4,4 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,4 KB | 37,2 KB | 31,7 KB | 4,4 KB |
+| solo la cornice, dall'ingresso per le app | 52,8 KB | 17,6 KB | 33,7 KB | 5,4 KB |
+| la cornice e due componenti per nome | 56,1 KB | 18,7 KB | 33,7 KB | 5,4 KB |
+| la stessa cornice, dall'ingresso di sempre | 114,9 KB | 36,8 KB | 33,7 KB | 5,4 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
 di JS, i rimedi provvisori di tastiera (circa 1,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
-pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
+pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
+della campanella (circa 1,2 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
+con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026 (quello dei rimedi, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.464 byte con
-gzip, cioè 18 KB più 32 byte per i rimedi provvisori di tastiera, finché ci sono.
+I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con
+gzip, cioè 18 KB. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
+notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -119,6 +123,28 @@ la corregge.
 risposta di Laravel — più sotto, «Le intestazioni di sicurezza».
 
 Il design system è uno solo per app, quello di zr-core: il frontend non ne tiene una copia sua.
+
+### Passare alla v2
+
+La `v2.0.0` cambia un import per chi installa: le tre funzioni per chi mostra le notifiche in una pagina sua —
+`rigaDellaNotifica`, `titoloDellaNotifica` e `risorsaDellaNotifica` — non si importano più dai due ingressi
+(`…/resources/js` e `…/resources/js/app`) ma da `…/resources/js/frasi`. Nomi e argomenti sono quelli di prima. I
+risultati cambiano in due casi, come nel pannello: il nome di chi ha fatto oltre i 60 caratteri esce tagliato nel titolo
+(`rigaDellaNotifica`), e un nome fatto solo di caratteri che non si vedono vale come un nome che manca (vedi «Le
+notifiche»). Chi importa `…/resources/js/frasi` da una pagina che sta nel JS d'ingresso si porta lì anche il pezzo della
+campanella: si importa da una pagina caricata a richiesta.
+
+```diff
+-import { rigaDellaNotifica } from '../../vendor/zeiras/zr-core/resources/js/app';
++import { rigaDellaNotifica } from '../../vendor/zeiras/zr-core/resources/js/frasi';
+```
+
+`resources/js/frasi` c'è dalla `v1.20.0`, con `rigaDellaNotifica` e `titoloDellaNotifica`: per queste due l'import si può
+cambiare restando sulla v1, prima di aggiornare; `risorsaDellaNotifica` da lì si importa dalla `v2.0.0`. Un frontend che non
+usa nessuna delle tre non cambia niente nel codice. Il perché: un modulo che un ingresso riesporta resta nel JS d'ingresso
+di ogni app, anche di quelle che non lo usano; ora ciò che compone le righe delle notifiche è un pezzo a richiesta, che la
+cornice chiede quando si apre la campanella (vedi «Quanto pesa», sopra). Nei test del frontend la riga
+`beforeAll(() => frasiInMemoria())` resta com'è: dà alla cornice anche quel pezzo.
 
 ## La parte server
 
@@ -543,22 +569,33 @@ cornice === null ? pagina : (
   Dalla `v1.20.0` le frasi delle notifiche — il titolo di ogni tipo e le due famiglie qui sotto — non stanno più nel JS
   d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
   chiede con `fetch` quando si apre la campanella, insieme all'elenco: il file della lingua della persona e quello
-  dell'inglese, una volta sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco). Nella build del
+  dell'inglese, una volta sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco); chi usa l'inglese
+  chiede un file solo. Nella build del
   frontend sono file `.json` con l'impronta nel nome, accanto al JS (restano file anche se il frontend alza `build.assetsInlineLimit`), e la cornice li chiede da dove la pagina prende il
   JS: la CSP di tutti lo lascia fare (`connect-src 'self'`); un frontend che serve la build da un'altra origine
   (`ASSET_URL`) scrive quell'origine anche in `connect-src`, e da lì i file devono arrivare con CORS. Lo stesso vale in sviluppo, se la pagina prende il JS dal server di Vite: è un'altra origine. Finché non arrivano
   il pannello aspetta; se non arrivano — una risposta che non è 200, la rete che cade, dieci secondi senza risposta —
   mostra l'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di
-  titoli di ripiego. Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox
+  titoli di ripiego. Dalla `v2.0.0` è un errore anche un 200 che non porta le frasi — la pagina di un proxy, un file
+  vuoto: le frasi sono un oggetto con almeno un testo sotto una chiave `notificationTitle…` —, e a elenco vuoto le frasi
+  non servono: il pannello dice che non ci sono notifiche senza aspettarle, anche se non arrivano loro o il pezzo della
+  campanella. Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox
   prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo. Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più,
-  «Riprova» non riesce finché la pagina non si ricarica. Il titolo di ripiego (`notificationTitle`) resta nel file dei
+  «Riprova» non riesce finché la pagina non si ricarica. Dalla `v2.0.0` ciò che compone le righe arriva in un pezzo di JS a
+  parte, quello della campanella, che la cornice chiede con `import()` alla prima apertura della campanella, dalla stessa
+  origine del JS: finché non arriva il pannello aspetta, e se non arriva mostra lo stesso errore con «Riprova», senza un
+  errore fuori dal pannello. In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito
+  finché la pagina non si ricarica: lì «Riprova» richiede l'elenco, ma il browser il pezzo non lo richiede, e l'errore
+  resta fino al ricaricamento. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
-  cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate.
+  cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
+  le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
+  chiedono: le chiede la prossima apertura, con l'elenco, e intanto la campanella tiene il suo numero.
   Nei test del frontend quei file non li serve nessuno, e un caso che apre la campanella troverebbe l'errore al posto
   dell'elenco: una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, come a una seconda
-  apertura. `prove` è per i test: non è un ingresso per le pagine. Un caso che rifà i moduli (`vi.resetModules()`)
-  la richiama dopo aver importato di nuovo la cornice: le frasi stanno in memoria nel modulo delle lingue, e un modulo
+  apertura. Dalla `v2.0.0` le dà anche il pezzo della campanella, e la riga resta quella. `prove` è per i test: non è un ingresso per le pagine. Un caso che rifà i moduli (`vi.resetModules()`)
+  la richiama dopo aver importato di nuovo la cornice: le frasi stanno in memoria nel modulo che le carica, e un modulo
   rifatto riparte senza. Anche `frasiInMemoria` si prende con un import nuovo, dopo `vi.resetModules()`: quella importata
   in cima al file mette le frasi nel modulo di prima. In un caso, dopo `vi.resetModules()`:
   `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();`
@@ -589,10 +626,19 @@ cornice === null ? pagina : (
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
   che pulito è vuoto vale come un nome che manca, e l'avatar dice lo stesso nome pulito. E nella frase ognuno sta fra
   U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno: chi confronta un titolo con un
-  testo scritto a mano li conti. Il nome non si taglia: i caratteri di controllo, di direzione del testo e a
-  larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la
-  lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo
-  rifiuta: lo pulisce.
+  testo scritto a mano li conti. Dalla `v2.0.0` il nome di chi ha fatto, nel titolo, oltre i 60 caratteri è tagliato:
+  i primi 59 e «…». Si conta dopo la pulizia, per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una
+  lettera con l'accento composto valgono uno e non si spezzano; dove `Intl.Segmenter` manca si conta per punti di
+  codice, e lì un'emoji composta o un accento composto possono restare a metà (`Intl.Segmenter` manca in Firefox prima
+  della 125, in Safari prima della 14.1 e in Chrome prima della 87). Se il taglio cade dopo uno spazio, prima del segno
+  lo spazio non resta. L'avatar dice il nome intero, e il nome
+  della cosa resta intero dovunque stia. Il resto è del backoffice: i caratteri di controllo, di direzione del testo e
+  a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza
+  massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo rifiuta: lo
+  pulisce. Dalla `v2.0.0` vale come un nome che manca anche un nome fatto solo di caratteri che non si vedono — a
+  larghezza zero o riempitivi: U+200B, U+2060, U+00AD, U+3164, U+2800 —, anche misti a spazi: il titolo è senza chi,
+  con l'icona al posto dell'avatar. In testa a un nome si tolgono, come gli spazi; da dentro e dalla coda no: U+200D
+  tiene insieme un'emoji composta.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
@@ -769,7 +815,9 @@ cornice === null ? pagina : (
   Opportunità), il nome e il tono del prodotto e l'icona del tipo; i gruppi escono nell'ordine del backoffice, quello del
   primo risultato di ognuno, e dentro un gruppo i risultati nel suo ordine. Il gruppo dei membri è «Membri» (in inglese
   «Members», in spagnolo «Miembros»), con l'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il
-  nome di un prodotto, né un tono. Sotto il titolo sta la seconda riga: i testi di
+  nome di un prodotto, né un tono. Dalla `v2.0.0` il titolo di un risultato è pulito come i nomi di una notifica: senza i
+  caratteri che cambiano la direzione del testo, con a capo e caratteri di controllo ridotti a uno spazio; un risultato
+  senza un titolo che si vede non si mostra. Sotto il titolo sta la seconda riga: i testi di
   `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un
   contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e una cartella non hanno una
   seconda riga; un tipo che il registro non ha non si mostra. Sotto il nome di un membro sta il suo ruolo, nella lingua
@@ -884,7 +932,8 @@ Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.
 
 Fuori dalla cornice — le schede dei prodotti nella Dashboard — il registro e il nome di ogni voce nella lingua della
-persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`. Dallo stesso ingresso si importa
+persona si importano dallo stesso ingresso: `registro` e `nomeDellaVoce(voce, lingua)`. Da `…/resources/js/frasi` — dalla
+`v2.0.0`: prima dallo stesso ingresso, vedi «Passare alla v2» — si importa
 `titoloDellaNotifica(tipo, lingua)`, per chi mostra le notifiche in una pagina sua: dà il titolo di una notifica di quel
 tipo nella lingua: è il titolo che il pannello della cornice scrive quando la notifica non ha una frase con chi ha fatto.
 `tipo` è il `tipo` della notifica, com'è nella risposta del backoffice (`com.zeiras.board.scheda.creata`); `lingua` è il codice
@@ -905,7 +954,8 @@ sua: dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pann
 quando il tipo ce l'ha — vedi «Le notifiche», più sopra —: gli stessi testi del pannello, che le sue frasi le chiede a parte (più sotto). Della notifica legge
 `tipo`, `autore_nome` e `risorsa_nome`; `sotto` manca quando sotto il titolo non c'è niente da scrivere.
 `titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono: chi le usa insieme ha la riga di prima, senza le
-frasi.
+frasi. Dalla `v2.0.0` tutte e tre si importano da `…/resources/js/frasi`, e i due ingressi non le esportano più; ciò che
+segue si importa ancora dall'ingresso.
 Dalla `v1.11.0` si importa anche
 `destinazioneDellaNotifica(notifica, slug, prodotti)`, per chi apre una notifica da una pagina sua: dà l'indirizzo che il
 pannello della cornice apre con un clic su quella notifica, ed è la funzione che usa il pannello. `notifica` è la
@@ -977,9 +1027,10 @@ e `persa`, coi testi `searchContext.crm.crm.trattativa.esito.vinta` e `….persa
 backoffice dà per un'opportunità aperta, non è fra i codici e non ha un testo: così un'opportunità aperta non mostra
 l'esito.
 Dalla `v1.20.0` `titoloDellaNotifica` e `rigaDellaNotifica` portano con sé le frasi delle notifiche di ogni lingua: restano
-sincrone, con gli stessi nomi dai due ingressi, e danno gli stessi testi del pannello. Un'app che le usa in una pagina sua
+sincrone e danno gli stessi testi del pannello; dalla `v2.0.0` si importano da `…/resources/js/frasi`, non più dai due
+ingressi (vedi «Passare alla v2»). Un'app che le usa in una pagina sua
 ha le frasi nel pezzo di quella pagina; un'app che non le usa non le porta, e ha solo quelle che la cornice carica a
-richiesta.
+richiesta. Se quella pagina sta nel JS d'ingresso, frasi e pezzo della campanella entrano nell'ingresso con lei.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il

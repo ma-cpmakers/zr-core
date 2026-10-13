@@ -44,8 +44,19 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * (il fuoco nel pannello delle notifiche) e #1870 (Tab dentro un dialogo aperto). Stanno in un pezzo a richiesta, e nel JS
  * d'ingresso c'è solo la riga che lo chiede. Il tetto torna a 18 KB quando i rimedi escono, perché il design system porta
  * i suoi, o con la prossima versione maggiore.
+ *
+ * Sprint 33 · T1 (voce #1915): è la versione maggiore, la `v2.0.0`. Ciò che compone le righe delle notifiche e carica le frasi
+ * è uscito dal JS d'ingresso, in un pezzo che la cornice chiede quando si apre la campanella: l'eccezione è finita, e il
+ * tetto è di nuovo 18 KB.
  */
-const TETTO_DELL_INGRESSO = 18 * 1024 + 32;
+const TETTO_DELL_INGRESSO = 18 * 1024;
+/**
+ * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
+ * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
+ */
+const DELLA_CAMPANELLA = '{what}';
+/** Le tre funzioni per chi mostra le notifiche in una pagina sua: dalla `v2.0.0` si importano da `resources/js/frasi`. */
+const PER_LE_PAGINE = ['rigaDellaNotifica', 'risorsaDellaNotifica', 'titoloDellaNotifica'];
 /** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
 const DEI_RIMEDI = 'MutationObserver';
 
@@ -54,6 +65,8 @@ interface Costruito {
     js: string;
     /** Ciò che si scarica a richiesta: i pezzi, uno per `import()`, e i file delle frasi, che la cornice chiede con `fetch`. */
     aRichiesta: string[];
+    /** Di ciò che si scarica a richiesta, i soli pezzi di codice. */
+    pezzi: string[];
     /** I nomi dei file delle frasi nella build. */
     fileDelleFrasi: string[];
     esporta: string[];
@@ -73,6 +86,7 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     return {
         js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
         aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map((uscita) => (typeof uscita.source === 'string' ? uscita.source : Buffer.from(uscita.source).toString()))],
+        pezzi: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
         fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
     };
@@ -125,6 +139,7 @@ let perNome: Costruito;
 let diSempre: Costruito;
 let ingressoPerLeApp: Costruito;
 let ingressoDiSempre: Costruito;
+let ingressoDelleFrasi: Costruito;
 let dalBundle: Costruito;
 let dalModulo: Costruito;
 
@@ -138,6 +153,7 @@ beforeAll(async () => {
     diSempre = await app('resources/demo/peso/oggi.ts');
     ingressoPerLeApp = await ingresso('resources/js/app.ts');
     ingressoDiSempre = await ingresso('resources/js/index.ts');
+    ingressoDelleFrasi = await ingresso('resources/js/frasi.ts');
     dalBundle = await appCheImporta(DAL_BUNDLE);
     dalModulo = await appCheImporta(DAL_MODULO);
     vi.unstubAllEnvs();
@@ -193,10 +209,24 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
     });
 
-    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; il quarto è il pezzo dei rimedi di tastiera, senza frasi', (_nome, costruita) => {
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri due sono pezzi di codice, senza frasi: la campanella e i rimedi di tastiera', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
-        expect(lingueDeiPezzi.sort()).toStrictEqual([[], ['en'], ['es'], ['it']]);
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], ['en'], ['es'], ['it']]);
+        expect(costruita().pezzi).toHaveLength(2);
+    });
+
+    // Sprint 33 · T1.2 (voce #1915). Che il pezzo si chieda all'apertura della campanella, e non al montaggio, lo provano i casi
+    // della cornice (`cornice.test.tsx`).
+    it.each(app)('«%s»: ciò che compone la riga di una notifica non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello dei rimedi (sprint 33 · T1.2)', (_nome, costruita) => {
+        expect(volte(costruita().js, DELLA_CAMPANELLA)).toBe(0);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, true], [true, false]]);
+    });
+
+    // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
+    it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
+        expect(volte(costruita().js, 'Segmenter')).toBe(0);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [true, true]]);
     });
 
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
@@ -209,9 +239,34 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB e 32 byte: i 32 sono dei rimedi provvisori di tastiera', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB: i 32 byte in più dei rimedi di tastiera sono finiti con la v2 (sprint 33 · T1.3)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_464);
+        expect(TETTO_DELL_INGRESSO).toBe(18_432);
+    });
+
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18 KB, 18.432 byte, e non più quello coi 32 byte in più (sprint 33 · T1.3)', (file) => {
+        const testo = readFileSync(delRepo(file), 'utf8');
+
+        // «32 byte» da soli: «18.432 byte» li contiene, e non sono quelli.
+        expect([volte(testo, '18.432 byte') > 0, volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0]);
+    });
+
+    it('il README ha «Passare alla v2» con l\'import di prima e quello nuovo, e dice che cosa fa Chromium quando il pezzo non arriva (sprint 33 · T1.5, T1.7)', () => {
+        const readme = readFileSync(delRepo('README.md'), 'utf8');
+        const [, passaggio = ''] = /^### Passare alla v2\n(.*?)^##/ms.exec(readme) ?? [];
+
+        expect(passaggio.split('\n').filter((riga) => /^[-+]import /.test(riga))).toStrictEqual([
+            '-import { rigaDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/app\';',
+            '+import { rigaDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/frasi\';',
+        ]);
+        expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito finché la pagina non si ricarica')).toBe(1);
+    });
+
+    it('il pezzo della campanella pesa, con gzip, al più 1.217 byte: la misura, col taglio del nome di chi ha fatto e con le frasi guardate all\'arrivo (sprint 33 · T1.7, T2.4, T3.6)', () => {
+        const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
+
+        expect(campanella).not.toBe('');
+        expect(gzip(campanella)).toBeLessThanOrEqual(1_217);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,2 KB (sprint 31 · T3.7)', () => {
@@ -221,13 +276,22 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_228);
     });
 
-    // Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente: il pezzo che importa
-    // `rigaDellaNotifica` porta le frasi di ogni lingua. I due ingressi del pacchetto la esportano, e costruiti da soli le hanno.
+    // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
+    // le importa da `resources/js/frasi`, che porta le frasi di ogni lingua. I due ingressi del pacchetto non riesportano più
+    // niente da lì: un modulo che un ingresso importa in modo statico resta nel JS d'ingresso anche se la cornice lo chiede con
+    // `import()`.
     it.each([
         ['per le app', () => ingressoPerLeApp],
         ['di sempre', () => ingressoDiSempre],
-    ])('l\'ingresso %s, che esporta le funzioni per chi mostra le notifiche in una pagina sua, porta le frasi di ogni lingua', (_nome, costruito) => {
-        expect(Object.values(FRASI).filter((frase) => !costruito().js.includes(frase))).toStrictEqual([]);
+    ])('l\'ingresso %s non esporta le tre funzioni per le pagine, e non porta né le frasi né ciò che compone le righe (sprint 33 · T1.1)', (_nome, costruito) => {
+        expect(PER_LE_PAGINE.filter((nome) => costruito().esporta.includes(nome))).toStrictEqual([]);
+        expect(Object.values(FRASI).filter((frase) => costruito().js.includes(frase))).toStrictEqual([]);
+        expect(volte(costruito().js, DELLA_CAMPANELLA)).toBe(0);
+    });
+
+    it('`resources/js/frasi` esporta le tre funzioni, e solo quelle, con le frasi di ogni lingua (sprint 33 · T1.1)', () => {
+        expect(ingressoDelleFrasi.esporta).toStrictEqual(PER_LE_PAGINE);
+        expect(Object.values(FRASI).filter((frase) => !ingressoDelleFrasi.js.includes(frase))).toStrictEqual([]);
     });
 });
 

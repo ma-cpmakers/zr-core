@@ -1,12 +1,18 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { caricaFrasi, frasiPronte, linguaDeiTesti, nomeDellaVoce, nomePulito, rigaConLeFrasi, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
+
+// Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
+// chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
+// già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
+const caricaFrasi = (lingua: string) => chiediLaCampanella().then((arrivata) => arrivata.caricaFrasi(lingua));
+const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
 // il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
@@ -219,9 +225,8 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
  * che non lo dice (`null`, la chiave che manca), in «Per me» come in «Tutte» — `forMe` allora non arriva all'`AppShell`, e non
  * è mai `false` per una notifica di cui non si sa.
  */
-function nelPannello(notifica: NotificaDellaCornice, frasi: FrasiDelleNotifiche, lingua: string, adesso: Date): ShellNotification {
+function nelPannello(notifica: NotificaDellaCornice, riga: { titolo: string; sotto?: string }, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
-    const riga = rigaConLeFrasi(frasi, notifica, lingua);
 
     return senzaUndefined({
         id: notifica.id,
@@ -311,7 +316,9 @@ function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDel
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
     const { id } = risultato;
-    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
+    // Il titolo lo ha scritto una persona: pulito come un nome. Senza un titolo che si vede il risultato non si mostra.
+    const title = nomePulito(risultato.titolo);
+    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id) || title === undefined) {
         return undefined;
     }
     const { dellaVoce, risorsa } = trovata;
@@ -321,7 +328,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
-        title: risultato.titolo,
+        title,
         subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
         group: t[tipo],
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
@@ -587,6 +594,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // prima apertura arrivano dalla rete; dopo restano in memoria. Il pannello mostra l'elenco quando ha tutti e due. Se le
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
+    // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
     const chiedi = (svuota: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
@@ -595,8 +603,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         }
         const chiesto = caricaNotifiche();
         chiesto.catch(seDaAccettare);
-        Promise.all([chiesto, caricaFrasi(questi.lingua)]).then(
-            ([{ elenco, il, workspace }]) => {
+        const frasi = caricaFrasi(questi.lingua);
+        frasi.catch(() => undefined);
+        chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
+            ({ elenco, il, workspace }) => {
                 if (questa === ultimaRichiesta.current) {
                     setNotifiche({ stato: 'ready', elenco, richiesta: questa, workspace });
                     setCaricate({ con: questi, nonLette: elenco.filter((notifica) => !notifica.letta).map(({ id }) => id), il, richiesta: questa, workspace });
@@ -612,11 +622,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le frasi sono di una lingua, e la lingua dei dati può cambiare con l'elenco in pagina (un'altra visita, con la cornice
     // montata): quelle della lingua nuova si chiedono qui, e finché non ci sono il pannello non mostra l'elenco (sotto), così
     // non resta un titolo nella lingua di prima accanto a un'ora nella nuova. Che cosa si sa delle frasi di una lingua chieste
-    // così sta nello stato: l'arrivo ridisegna il pannello, e se non arrivano il pannello è in errore, con «Riprova».
+    // così sta nello stato: l'arrivo ridisegna il pannello, e se non arrivano il pannello è in errore, con «Riprova». A pannello
+    // chiuso non si chiedono: le chiede la prossima apertura, con l'elenco. Che è aperto lo dice la pagina, perché l'`AppShell`
+    // avvisa quando il pannello si apre e non quando si chiude.
     const [frasiChieste, setFrasiChieste] = useState<{ lingua: string; arrivate: boolean }>();
     const servonoLeFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && frasiPronte(dati.lingua) === undefined;
     useLayoutEffect(() => {
-        if (!servonoLeFrasi) {
+        if (!servonoLeFrasi || !document.querySelector('.zr-notif')) {
             return undefined;
         }
         let ancora = true;
@@ -630,6 +642,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             ancora = false;
         };
     }, [servonoLeFrasi, dati.lingua]);
+    // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
+    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
     // da lì.
     const carica = () => {
@@ -685,7 +699,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         const elencoDiQuestoWorkspace = caricate !== undefined && (caricate.workspace === undefined || caricate.workspace === dati.workspace.slug);
         const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette - tolteDaiDati, caricate !== undefined && elencoDiQuestiDati && elencoDiQuestoWorkspace ? caricate.nonLette.filter((id) => !lettaNellElenco(id)).length : 0);
 
-        // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
+        // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate.
         return { elenco, nonLette, sullaCampanella: nonLette ?? elenco.filter((notifica) => !notifica.letta).length };
     };
     const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
@@ -736,8 +750,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // le non lette stanno oltre la prima pagina. Non c'è quando la parte server dice che l'elenco è di un altro workspace (due
     // schede su due workspace): da lì non segnerebbe niente, la rotta risponde 409. Un altro rispetto ai dati di adesso, o
     // rispetto a quelli con cui l'elenco è stato chiesto, di cui il clic manda lo slug: se i dati passano al workspace
-    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è.
-    const segnaTutteLette = notifiche.stato !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
+    // dell'elenco con la cornice montata, l'elenco resta chiesto coi dati di prima. Se non lo dice, il pulsante c'è. E non c'è
+    // mentre il pannello mostra l'attesa o l'errore, anche quelli delle frasi di una lingua nuova.
+    const segnaTutteLette = statoDelPannello !== 'ready' || finoA === undefined || caricate === undefined || !(sullaCampanella > 0) || (caricate.workspace !== undefined && (caricate.workspace !== dati.workspace.slug || caricate.workspace !== caricate.con.workspace.slug)) ? undefined : async () => {
         if (leStaSegnando.current) {
             return;
         }
@@ -791,7 +806,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le frasi della lingua dei dati, se sono in memoria. Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è
     // in errore se non sono arrivate (sopra).
     const frasi = frasiPronte(dati.lingua);
-    const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
+    const riga = campanella?.rigaConLeFrasi;
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
     // risposta che arriva tardi, anche di una richiesta annullata, non sostituisce mai quella della parola più recente. Fa
@@ -945,7 +960,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
-                unreadCount: ridotta ? 0 : nonLette,
+                // Senza il numero dei dati, quello delle non lette caricate: lo dà la cornice e non lo conta il design system
+                // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
+                unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
                 onNotificationsOpen: ridotta ? undefined : carica,
                 onRetryNotifications: ridotta ? undefined : carica,
@@ -964,7 +981,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
-            notifications={ridotta || frasi === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, frasi, dati.lingua, adesso))}
+            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, dati.lingua), dati.lingua, adesso))}
             notificationsState={ridotta ? 'error' : statoDelPannello}
             searchResults={ridotta ? [] : risultati}
             searchState={ridotta ? 'error' : (ricerca?.stato ?? 'ready')}

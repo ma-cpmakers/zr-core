@@ -20,7 +20,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   componenti sono un modulo ES generato dal `bundle.js` del design system (`resources/js/zeiras/componenti.js`, vedi «Stack
   e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
   system intero, e lo scrive in `window.Zeiras`, con `window.React`; quello per le app (`resources/js/app`, dalla `v1.15.0`)
-  dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. I font arrivano da Google
+  dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. Dalla `v2.0.0` le tre funzioni per le
+  pagine che mostrano le notifiche hanno un ingresso loro, `resources/js/frasi`. I font arrivano da Google
   Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
   `font-src https://fonts.gstatic.com`.
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
@@ -88,9 +89,10 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
   numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
   build fatte nel caso, mai con un numero scritto a mano.
-- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 18.464 byte con gzip, cioè 18 KB più
-  32 byte per i rimedi provvisori di tastiera (`resources/js/rimedi.ts`, un pezzo a richiesta). Torna a 18 KB quando i rimedi
-  escono. Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
+- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 18.432 byte con gzip, cioè 18 KB
+  (dalla `v2.0.0`). Fuori dall'ingresso stanno due pezzi a richiesta: ciò che compone le righe delle notifiche e carica le
+  frasi (`resources/js/campanella.ts`, chiesto all'apertura della campanella: nessun ingresso riesporta niente da lì) e i
+  rimedi provvisori di tastiera (`resources/js/rimedi.ts`). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 
@@ -108,5 +110,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 32 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 33 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

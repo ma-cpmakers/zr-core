@@ -62,7 +62,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto
   dell'elenco. Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
-  che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice. Se un caso rifà i
+  che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, e dalla `v2.0.0` anche
+  il pezzo di JS che compone le righe, che la cornice chiede all'apertura della campanella. Se un caso rifà i
   moduli (`vi.resetModules()`), la richiama dopo l'import. Anche `frasiInMemoria` si prende con un import nuovo, dopo
   `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima. In un caso, dopo
   `vi.resetModules()`: `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();` Mentre

@@ -265,7 +265,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['es', [{ titolo: '\u{2068}Marta Rossi\u{2069} ha modificado la tarjeta «\u{2068}UAT Preparare il lancio\u{2069}»' }, { titolo: '\u{2068}Bruno Neri\u{2069} ha eliminado una tarjeta' }, { titolo: 'Tarjeta modificada', sotto: 'UAT Rivedere il piano editoriale' }]],
     ])('con `?frasi=1` ci sono tre notifiche di Project Management, e nella lingua "%s" la prima dice chi e che cosa, la seconda solo chi, la terza il titolo col nome sotto (sprint 29 · T3.1)', async (lingua, righe) => {
         await rotte(false, '?frasi=1');
-        const { rigaDellaNotifica } = await import('../js/index');
+        const { rigaDellaNotifica } = await import('../js/frasi');
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
@@ -284,7 +284,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // restano com'erano. È come la dà la parte server: l'istante dell'ultima azione in `creata_il`, e le nove chiavi di sempre.
     it('con `?accorpata=1` in cima all\'elenco c\'è una notifica che racconta più azioni, da leggere: in `creata_il` ha l\'istante dell\'ultima, due minuti fa, sopra quella di cinque minuti fa, e non porta `ultima_azione_il`, `azioni` né `board` (sprint 32 · T3.1, T3.4)', async () => {
         await rotte(false, '?accorpata=1');
-        const { rigaDellaNotifica } = await import('../js/index');
+        const { rigaDellaNotifica } = await import('../js/frasi');
 
         const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; creata_il: string; letta: boolean; tipo?: string }[];
         const [prima, seconda] = notifiche;
@@ -355,7 +355,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // un'opportunità col nome, un contatto e un'attività eliminata, di cui il backoffice non dà il nome, e un'azienda senza nome.
     it('con `?nomi_crm=1` in cima all\'elenco ci sono cinque notifiche del CRM con chi ha fatto: l\'azienda e l\'opportunità col nome lo hanno nel titolo, nelle tre lingue, e sotto niente; il contatto, l\'attività eliminata e l\'azienda senza nome hanno la frase con solo chi (sprint 32 · T4.1, T4.2)', async () => {
         await rotte(false, '?nomi_crm=1');
-        const { rigaDellaNotifica } = await import('../js/index');
+        const { rigaDellaNotifica } = await import('../js/frasi');
 
         const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean; app?: string | null; tipo?: string; risorsa_nome?: string | null; ids?: Record<string, string> }[];
         const [azienda, opportunita, contatto, eliminata, senzaNome, sesta] = notifiche;

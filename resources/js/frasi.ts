@@ -1,13 +1,16 @@
 import inglesi from '../lingue/notifiche/en.json';
-import { frasiDiOgniLingua, rigaConLeFrasi, titoloConLeFrasi, type FrasiDelleNotifiche } from './lingue';
+import { frasiDiOgniLingua, rigaConLeFrasi, titoloConLeFrasi } from './campanella';
+import type { FrasiDelleNotifiche } from './lingue';
+
+export { risorsaDellaNotifica } from './campanella';
 
 // Le notifiche in una pagina che non è il pannello della cornice (zr-home, la pagina di tutte le notifiche): gli stessi titoli
 // e le stesse righe, subito, senza aspettare niente. Per questo qui le frasi di tutte le lingue sono importate per intero; la
 // cornice non passa da questo modulo e le sue le carica quando si apre la campanella (`caricaFrasi`), così un'app che non usa
-// queste funzioni non porta le frasi nel JS d'ingresso. Alla radice del modulo non succede niente: le lingue si compongono
-// alla prima chiamata, e la build toglie il modulo intero a chi non lo usa. I file sono gli stessi che carica la cornice, ma
-// lei ne ha solo l'indirizzo e li chiede con `fetch`: per la build quelli sono file a sé, e restano fuori dal JS d'ingresso
-// anche se un ingresso riesporta queste funzioni.
+// queste funzioni non porta le frasi nel JS d'ingresso. Le lingue si compongono alla prima chiamata. I file sono gli stessi
+// che carica la cornice, ma lei ne ha solo l'indirizzo e li chiede con `fetch`: per la build quelli sono file a sé. Dalla
+// `v2.0.0` questo è l'ingresso delle tre funzioni per le pagine: i due ingressi del pacchetto non le riesportano, perché ciò
+// che compone le righe (`./campanella`) resti fuori dal JS d'ingresso di chi non le usa.
 
 const file = import.meta.glob<FrasiDelleNotifiche>('../lingue/notifiche/*.json', { eager: true, import: 'default' });
 let diOgniLingua: ((lingua: string) => Readonly<FrasiDelleNotifiche>) | undefined;

@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import { prodottoDelRegistro, type CodiceDelContesto, type IdDiProdotto, type TipoDiRisorsa, type VoceDelRegistro } from './registro';
+import type { CodiceDelContesto, IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -111,7 +111,7 @@ function codiceDi(lingua: string): string {
  * I file di una cartella di lingue come li dà `import.meta.glob` (`{ '../lingue/it.json': … }`), per codice, e il codice del
  * file che serve una lingua: il suo, o quello della lingua base. Nessuno, se zr-core non ce l'ha.
  */
-function fileDelleLingue<Uno>(file: Record<string, Uno>) {
+export function fileDelleLingue<Uno>(file: Record<string, Uno>) {
     const perCodice = new Map(Object.entries(file).map(([percorso, uno]) => [codiceDi(percorso.replace(/^.*\/|\.json$/g, '')), uno]));
 
     return {
@@ -212,30 +212,6 @@ export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[
     };
 }
 
-/** Così comincia il tipo di una notifica su un'app (`com.zeiras.app.modificata`): la cosa a cui si riferisce è un prodotto. */
-const TIPO_SU_UN_APP = 'com.zeiras.app.';
-
-/**
- * Il nome della cosa a cui si riferisce una notifica, in una lingua: la riga sotto il titolo. È il suo `risorsa_nome`, pulito
- * (`nomePulito`). Per una notifica su un'app (un tipo `com.zeiras.app.…`) il backoffice dà lì il codice dell'app (`pm`), e il nome
- * è quello che il prodotto ha nel registro e nelle lingue, anche per un prodotto «Presto» o non attivo nel workspace: un codice che
- * il registro non ha, o la Dashboard, non dà niente, e il codice non si mostra mai. Niente (`undefined`) anche quando il nome non
- * c'è: `null`, vuoto, di soli spazi, senza la chiave, o un valore che non è un testo. È la funzione del pannello delle notifiche
- * della cornice: chi mostra le notifiche in una pagina sua ha lo stesso testo.
- */
-export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: unknown }, lingua: string): string | undefined {
-    const nome = nomePulito(notifica.risorsa_nome);
-    if (nome === undefined || typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
-        return nome;
-    }
-    const prodotto = prodottoDelRegistro(nome);
-
-    return prodotto && nomeDellaVoce(prodotto, lingua);
-}
-
-/** I posti dei due nomi in una frase delle lingue: `{who}` chi ha fatto, `{what}` la cosa. */
-const POSTI_DEI_NOMI = /\{who\}|\{what\}/g;
-
 /**
  * I caratteri che cambiano la direzione del testo (U+061C, U+200E, U+200F, U+202A-202E, U+2066-2069: la proprietà Unicode
  * `Bidi_Control`): in un nome non servono, e uno lasciato aperto rovescia ciò che segue.
@@ -249,148 +225,30 @@ const DI_DIREZIONE = /\p{Bidi_C}/gu;
 const SPAZI_E_CONTROLLI = /[ \p{Cc}\p{Zl}\p{Zp}]+/gu;
 
 /**
+ * Ciò che in testa a un nome non si vede: spazi, i caratteri che un testo ignora (`Default_Ignorable_Code_Point`: larghezza
+ * zero e riempitivi, come U+200B, U+2060, U+00AD, U+3164) e il braille vuoto, U+2800.
+ */
+const IN_TESTA_NON_SI_VEDE = /^[\s\p{DI}\u2800]+/u;
+
+/**
  * Un nome del backoffice, pulito: lo ha scritto una persona, e fino a che il backoffice non lo rifiuta arriva com'è. Senza i
  * caratteri di direzione; a capo, tabulazioni e gli altri caratteri di controllo sono uno spazio, più spazi di fila uno solo, e
- * intorno nessuno. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto: è un nome che manca.
+ * intorno nessuno. In testa non ha caratteri che non si vedono (`IN_TESTA_NON_SI_VEDE`): lì non tengono insieme niente, e
+ * l'avatar prende l'iniziale dal primo carattere. Da dentro un nome e dalla coda non si tolgono: U+200D tiene insieme un'emoji
+ * composta, U+FE0F la chiude. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto, come uno
+ * fatto solo di caratteri che non si vedono: è un nome che manca.
  */
 export function nomePulito(valore: unknown): string | undefined {
-    return (typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').trim()) || undefined;
+    return (typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').replace(IN_TESTA_NON_SI_VEDE, '').trim()) || undefined;
 }
+
+/** Il pezzo a richiesta con ciò che serve a pannello delle notifiche aperto (`./campanella`): niente finché non è arrivato. */
+export let campanella: typeof import('./campanella') | undefined;
 
 /**
- * Una frase delle lingue coi due nomi al posto di `{who}` e `{what}`. I nomi vengono dal backoffice e sono testo: entrano in un
- * passaggio solo, così un `{what}` scritto dentro il nome di una persona resta com'è, e da una funzione, così `$&` non è un
- * comando. Ogni nome sta fra U+2068 e U+2069, i caratteri che lo isolano dalla direzione della frase: un nome in arabo o in
- * ebraico non sposta le parole intorno. Li mette questa funzione, sempre in coppia: i nomi arrivano già puliti (`nomePulito`).
- * Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa e il nome non c'è: in pagina non arriva mai un
- * posto vuoto.
+ * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
+ * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo chiama di nuovo
+ * `import()`. Che il browser lo richieda davvero non è detto: Chromium un `import()` fallito non lo rifà finché la pagina non
+ * si ricarica (README, «Le notifiche»).
  */
-export function fraseConINomi(frase: unknown, chi: string, cosa?: string): string | undefined {
-    if (typeof frase !== 'string' || frase === '' || (cosa === undefined && frase.includes('{what}'))) {
-        return undefined;
-    }
-
-    return frase.replace(POSTI_DEI_NOMI, (posto) => `\u2068${posto === '{who}' ? chi : (cosa ?? '')}\u2069`);
-}
-
-/**
- * Le frasi di una lingua, sempre tutte quelle che l'inglese ha: quelle che la lingua non ha, o ha vuote, sono in inglese, come
- * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese.
- */
-function componiFrasi(scelte: FrasiDelleNotifiche | undefined, inglesi: FrasiDelleNotifiche): Readonly<FrasiDelleNotifiche> {
-    const frasi = { ...inglesi };
-    for (const chiave of Object.keys(inglesi) as (keyof FrasiDelleNotifiche)[]) {
-        const frase = scelte?.[chiave];
-        if (typeof frase === 'string' && frase.trim() !== '') {
-            frasi[chiave] = frase;
-        }
-    }
-
-    return Object.freeze(frasi);
-}
-
-/**
- * Le frasi di ogni lingua da file già tutti in memoria, come li dà `import.meta.glob` con `eager`: per chi mostra le notifiche
- * in una pagina sua (`./frasi`). Si compongono una volta per file, alla prima richiesta.
- */
-export function frasiDiOgniLingua(file: Record<string, FrasiDelleNotifiche>, inglesi: FrasiDelleNotifiche): (lingua: string) => Readonly<FrasiDelleNotifiche> {
-    const { perCodice, fileDi } = fileDelleLingue(file);
-    const composte = new Map<string, Readonly<FrasiDelleNotifiche>>();
-
-    return (lingua) => {
-        const codice = fileDi(lingua) ?? '';
-        const pronte = composte.get(codice) ?? componiFrasi(perCodice.get(codice), inglesi);
-        composte.set(codice, pronte);
-
-        return pronte;
-    };
-}
-
-/**
- * Le frasi di una lingua da file che si caricano quando servono, come li dà `import.meta.glob` senza `eager`: per la cornice,
- * che le chiede all'apertura della campanella. Parte il file della lingua, o della lingua base, e quello dell'inglese, il
- * ripiego; mai gli altri. Una volta arrivate restano in memoria (`pronte`), e non si richiedono; due richieste insieme sono
- * una sola. Se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte da capo.
- */
-export function frasiARichiesta(file: Record<string, () => Promise<FrasiDelleNotifiche>>, inglesi: () => Promise<FrasiDelleNotifiche>) {
-    const { perCodice, fileDi } = fileDelleLingue(file);
-    const composte = new Map<string, Readonly<FrasiDelleNotifiche>>();
-    const inVolo = new Map<string, Promise<Readonly<FrasiDelleNotifiche>>>();
-
-    return {
-        /** Le frasi di una lingua se sono già in memoria: niente (`undefined`) finché `carica` non le ha portate. */
-        pronte(lingua: string): Readonly<FrasiDelleNotifiche> | undefined {
-            return composte.get(fileDi(lingua) ?? '');
-        },
-        carica(lingua: string): Promise<Readonly<FrasiDelleNotifiche>> {
-            const codice = fileDi(lingua) ?? '';
-            const pronte = composte.get(codice);
-            if (pronte !== undefined) {
-                return Promise.resolve(pronte);
-            }
-            // Riuscita o no, la richiesta non resta in volo: una fallita — anche per una risposta che non si può comporre — si rifà.
-            const chiesta = inVolo.get(codice) ?? Promise.all([perCodice.get(codice)?.(), inglesi()]).then(([scelte, ripiego]) => {
-                const frasi = componiFrasi(scelte, ripiego);
-                composte.set(codice, frasi);
-
-                return frasi;
-            }).finally(() => inVolo.delete(codice));
-            inVolo.set(codice, chiesta);
-
-            return chiesta;
-        },
-    };
-}
-
-// I file delle frasi, a richiesta. La cornice ne ha solo l'indirizzo (`?url`: un file `.json` della build, con la sua impronta
-// nel nome) e li chiede con `fetch`, non con `import()`: in Chrome un `import()` che non arriva resta fallito finché la pagina
-// non si ricarica, e «Riprova» non lo richiederebbe mai. `no-inline` perché restino file anche in un frontend che alza
-// `build.assetsInlineLimit`: scritti nel JS come `data:`, la CSP di tutti (`connect-src 'self'`) fermerebbe la richiesta.
-// `./frasi` importa gli stessi file per intero, come moduli: per la build sono un'altra cosa, e questi restano fuori dal JS
-// d'ingresso anche se un ingresso riesporta quelle funzioni. Una richiesta che non risponde entro `ATTESA_DELLE_FRASI` è un
-// errore come un'altra; dove il browser non ha `AbortSignal.timeout` la richiesta parte lo stesso, senza un tempo massimo.
-const ATTESA_DELLE_FRASI = 10_000;
-/** L'indirizzo di ogni file delle frasi, per percorso (`'../lingue/notifiche/it.json'`). Esportato per `./prove`. */
-export const indirizziDelleFrasi = import.meta.glob<string>('../lingue/notifiche/*.json', { query: '?url&no-inline', import: 'default', eager: true });
-
-const lette = (percorso: string) => (): Promise<FrasiDelleNotifiche> =>
-    fetch(indirizziDelleFrasi[percorso] as string, { signal: AbortSignal.timeout?.(ATTESA_DELLE_FRASI) }).then((risposta) => (risposta.ok ? (risposta.json() as Promise<FrasiDelleNotifiche>) : Promise.reject()));
-
-export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
-    Object.fromEntries(Object.keys(indirizziDelleFrasi).map((percorso) => [percorso, lette(percorso)])),
-    lette('../lingue/notifiche/en.json'),
-);
-
-/**
- * Il titolo di una notifica in una lingua, con le frasi di quella lingua: quello del suo tipo (`notificationTitle.<tipo>`).
- * Quali tipi zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante,
- * o che non è un testo — ha il titolo di ripiego, che è un testo della cornice, e il codice del tipo non si mostra mai.
- */
-export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, lingua: string): string {
-    const delTipo = typeof tipo === 'string' ? frasi[`notificationTitle.${tipo}`] : undefined;
-
-    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : testi(lingua).notificationTitle;
-}
-
-/**
- * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
- * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
- * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
- * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase.
- * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
- * `risorsaDellaNotifica`. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
- * isolati (`fraseConINomi`). È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
- * stessi testi a chi mostra le notifiche in una pagina sua.
- */
-export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
-    const cosa = risorsaDellaNotifica(notifica, lingua);
-    // Le frasi sono di un tipo che è un testo: senza, chi ha fatto non entra nel titolo.
-    const chi = typeof notifica.tipo === 'string' ? nomePulito(notifica.autore_nome) : undefined;
-    const conCosa = chi === undefined || cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
-    if (conCosa !== undefined) {
-        return { titolo: conCosa };
-    }
-    const titolo = (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
-
-    return cosa === undefined ? { titolo } : { titolo, sotto: cosa };
-}
+export const chiediLaCampanella = () => import('./campanella').then((arrivata) => (campanella = arrivata));

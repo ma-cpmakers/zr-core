@@ -9,8 +9,10 @@ import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, typ
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
+import * as dellaCampanella from './campanella';
+import { frasiARichiesta } from './campanella';
 import * as delleLingue from './lingue';
-import { frasiARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
@@ -967,6 +969,32 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
     });
 
+    // Sprint 33 · T2 (voce #1890). Il taglio del nome è del titolo: l'avatar dice il nome intero, pulito.
+    it('un nome di chi ha fatto oltre i 60 caratteri è tagliato nel titolo, e l\'avatar dice il nome intero pulito (sprint 33 · T2.1, T2.2)', async () => {
+        const lungo = `Maria ${'Anna '.repeat(12)}Rossi`;
+        await apriSu([conInPiu('uat-n5a', { autore_nome: ` ${lungo}\n` })]);
+        const avatar = voci()[0].querySelector('.zr-avatar');
+
+        expect(lungo).toHaveLength(71);
+        expect(voci()[0].querySelector('.zr-notif-title')?.textContent).toBe(`\u{2068}${lungo.slice(0, 59)}…\u{2069} ha creato una cartella`);
+        expect([avatar?.getAttribute('aria-label'), avatar?.getAttribute('title'), avatar?.textContent]).toStrictEqual([lungo, lungo, 'MR']);
+    });
+
+    // Sprint 33 · T4 (voce #1910). Caratteri che non si vedono e che la pulizia non toglie: da soli non sono un nome.
+    it('un nome di chi ha fatto di soli caratteri che non si vedono è un nome che manca: il titolo senza chi e l\'icona al posto dell\'avatar; così il nome della cosa: niente frase con che cosa, niente seconda riga (sprint 33 · T4.1)', async () => {
+        const invisibili = '\u{200B} \u{2060}\u{00AD}\u{3164} \u{2800}';
+        await apriSu([
+            conInPiu('uat-n5b', { autore_nome: invisibili, risorsa_nome: 'Lancio corso' }),
+            conInPiu('uat-n5c', { autore_nome: 'Marta Rossi', risorsa_nome: invisibili }),
+        ]);
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(['Nuova cartella', '\u{2068}Marta Rossi\u{2069} ha creato una cartella']);
+        expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual([null, 'MR']);
+        expect(voci().map((voce) => voce.querySelector('.zr-iconbox') !== null)).toStrictEqual([true, false]);
+        expect(secondeRighe()).toStrictEqual(['Lancio corso', null]);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/[\u{200B}\u{2060}\u{00AD}\u{3164}\u{2800}]/u);
+    });
+
     // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: quando il backoffice dà il nome
     // di chi, il titolo è una frase delle lingue; il nome della cosa, se c'è, sta nella frase e non anche sotto.
     it('una notifica di Project Management con chi e che cosa ha per titolo la frase, senza seconda riga; con solo chi la frase senza il nome della cosa; senza chi resta com\'era; un tipo senza frasi resta com\'era anche con chi (sprint 29 · T2.1, T2.2, T2.3, T2.5)', async () => {
@@ -1076,7 +1104,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 30 · T2 (voce #1875). I caratteri sono scritti col loro codice, mai incollati.
-    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, intero, e l\'avatar dice lo stesso nome pulito (sprint 30 · T2.1, T2.2, T2.3)', async () => {
+    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, oltre i 60 caratteri tagliato, e l\'avatar dice lo stesso nome pulito, intero (sprint 30 · T2.1, T2.2, T2.3; sprint 33 · T2.1, T2.2)', async () => {
         const lungo = `Maria ${'Addolorata '.repeat(6)}De Rossi`;
         await apriSu([
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia\u{202E} Bianchi', risorsa_nome: '\u{202E}Lancio\ncorso' }),
@@ -1090,7 +1118,7 @@ describe('il pannello delle notifiche', () => {
         expect(lungo).toHaveLength(80);
         expect(titoli()).toStrictEqual([
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»',
-            `\u{2068}${lungo}\u{2069} ha modificato una scheda`,
+            `\u{2068}${lungo.slice(0, 59)}…\u{2069} ha modificato una scheda`,
             '\u{2068}Ada Neri\u{2069} ha eliminato una scheda',
             'Scheda modificata',
         ]);
@@ -2747,7 +2775,7 @@ describe('il pannello delle notifiche', () => {
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
     it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 42 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
-        const { titoloDellaNotifica } = await import('./index');
+        const { titoloDellaNotifica } = await import('./frasi');
         // I 42 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
@@ -3633,6 +3661,21 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('brief');
         expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent).toBe(`Lancio Q4${delDesignSystem}Da fare`);
+    });
+
+    // Sprint 33 · T4.3 (voce #1910). Il titolo di un risultato lo ha scritto una persona, come i nomi di una notifica.
+    it('il titolo di un risultato della ricerca è pulito come la seconda riga: senza caratteri di direzione, con a capo e controlli ridotti a uno spazio; un risultato senza un titolo che si vede non si mostra (sprint 33 · T4.3; review della PR #66, R5)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.scheda', id: '01k7b1s1', titolo: '\u{202E}Scrivere\n\til  brief\u{2066} ', contesto: { board: 'Lancio\u{202E} Q4' } },
+            { tipo: 'board.scheda', id: '01k7b1s2', titolo: 'Brief \u{1F469}\u{200D}\u{1F4BB}' },
+            { tipo: 'board.scheda', id: '01k7b1s3', titolo: '\u{202E}\u{200B} \u{3164}', contesto: { board: 'Brief' } },
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('brief');
+
+        expect(titoli()).toStrictEqual(['Scrivere il brief', 'Brief \u{1F469}\u{200D}\u{1F4BB}']);
+        expect(righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null)).toStrictEqual(['Lancio Q4', null]);
+        expect(uno('.zr-search-panel')?.textContent).not.toMatch(/[\p{Bidi_C}\p{Cc}]/u);
     });
 
     it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {
@@ -5241,6 +5284,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
     function caricatore() {
         const chiesti: string[] = [];
         const rotti = new Set<string>();
+        const guasti = new Map<string, unknown>();
         const fermi = new Map<string, () => void>();
         const file = (codice: string, frasi: FrasiDelleNotifiche) => async (): Promise<FrasiDelleNotifiche> => {
             chiesti.push(codice);
@@ -5251,19 +5295,21 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
                 throw new TypeError('Failed to fetch dynamically imported module');
             }
 
-            return frasi;
+            // Un file arrivato male: un 200 con dentro un'altra cosa.
+            return (guasti.has(codice) ? guasti.get(codice) : frasi) as FrasiDelleNotifiche;
         };
         const delCaso = frasiARichiesta({
             '../lingue/notifiche/en.json': file('en', frasiInglesi),
             '../lingue/notifiche/es.json': file('es', frasiSpagnole),
             '../lingue/notifiche/it.json': file('it', frasiItaliane),
         }, file('en', frasiInglesi));
-        vi.spyOn(delleLingue, 'caricaFrasi').mockImplementation(delCaso.carica);
-        vi.spyOn(delleLingue, 'frasiPronte').mockImplementation(delCaso.pronte);
+        vi.spyOn(dellaCampanella, 'caricaFrasi').mockImplementation(delCaso.carica);
+        vi.spyOn(dellaCampanella, 'frasiPronte').mockImplementation(delCaso.pronte);
 
         return {
             chiesti,
             rotti,
+            guasti,
             ferma: (codice: string) => fermi.set(codice, () => {}),
             lascia: async (codice: string) => {
                 const via = fermi.get(codice);
@@ -5335,6 +5381,93 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
+    // Sprint 33 · T1 (voce #1915). Dalla `v2.0.0` ciò che compone le righe e carica le frasi è un pezzo a richiesta
+    // (`./campanella`): la cornice lo chiede con `import()` quando si apre la campanella. Qui il pezzo vero, ma al posto di chi
+    // lo chiede c'è il caso, che dice quando arriva e se arriva. Una promessa respinta che nessuno gestisce ferma il giro di
+    // vitest: che i casi passino dice anche che in console non resta un errore non gestito.
+    function pezzo() {
+        let arrivato: typeof dellaCampanella | undefined;
+        let via: (() => void) | undefined;
+        const stato = { fermo: false, rotto: false };
+        const chiesto = vi.spyOn(delleLingue, 'chiediLaCampanella').mockImplementation(async () => {
+            if (stato.fermo) {
+                await new Promise<void>((lascia) => (via = lascia));
+            }
+            if (stato.rotto) {
+                throw new TypeError('Failed to fetch dynamically imported module');
+            }
+            arrivato = dellaCampanella;
+
+            return dellaCampanella;
+        });
+        vi.spyOn(delleLingue, 'campanella', 'get').mockImplementation(() => arrivato);
+
+        return {
+            chiesto,
+            stato,
+            lascia: async () => {
+                stato.fermo = false;
+                await act(async () => {
+                    via?.();
+                    await prossimoGiro();
+                });
+            },
+        };
+    }
+
+    it('il pezzo della campanella non si chiede al montaggio della cornice: si chiede quando si apre la campanella, e il titolo è la frase di sempre (sprint 33 · T1.2)', async () => {
+        const campanella = pezzo();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(campanella.chiesto).not.toHaveBeenCalled();
+
+        await clic(uno('.zr-bell'));
+
+        expect(campanella.chiesto).toHaveBeenCalled();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('finché il pezzo non arriva il pannello aspetta, anche con l\'elenco già arrivato: nessun titolo di ripiego; poi mostra le righe di sempre (sprint 33 · T1.4)', async () => {
+        const campanella = pezzo();
+        campanella.stato.fermo = true;
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(inAttesa()).toBe(true);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        await campanella.lascia();
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se il pezzo non arriva il pannello mostra l\'errore con «Riprova», non resta in attesa, e la cornice resta quella di sempre; «Riprova» richiede elenco e pezzo (sprint 33 · T1.5)', async () => {
+        const campanella = pezzo();
+        campanella.stato.rotto = true;
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(errore()?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(uno('.zr-shell')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+
+        campanella.stato.rotto = false;
+        const primaDiRiprova = campanella.chiesto.mock.calls.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(campanella.chiesto.mock.calls.length).toBeGreaterThan(primaDiRiprova);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
     it('alla seconda apertura l\'elenco si richiede e le frasi no: restano in memoria (T1.6)', async () => {
         const frasi = caricatore();
         const fetchFinto = conLElenco();
@@ -5392,6 +5525,93 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(fetchFinto).toHaveBeenCalledTimes(2);
         expect(errore()).toBeNull();
         expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    // Sprint 33 · T3 (voce #1909). Le frasi arrivate male sono un errore come le frasi che non arrivano; a elenco vuoto le
+    // frasi non servono; a pannello chiuso non si chiedono; e «Segna tutte come lette» c'è solo con l'elenco in pagina.
+    const segnaTutte = () => uno('.zr-notif .zr-pop-head button');
+    const senzaNotifiche = () => uno('.zr-notif .zr-empty') !== null;
+
+    it.each([
+        ['`null`', null],
+        ['un elenco vuoto', []],
+        ['un oggetto vuoto', {}],
+        ['un oggetto senza frasi', { data: {} }],
+        ['un testo', 'UAT pagina di errore'],
+        ['un titolo vuoto', { 'notificationTitle.com.zeiras.board.cartella.creata': '' }],
+    ])('se il file delle frasi arriva con %s il pannello mostra l\'errore con «Riprova», mai i titoli di ripiego, e «Riprova» lo richiede (sprint 33 · T3.1)', async (_caso, corpo) => {
+        const frasi = caricatore();
+        frasi.guasti.set('it', corpo);
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(errore()?.querySelector('p')?.textContent).toBe(testi('it').notificationsError);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        frasi.guasti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain('it');
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it.each<[string, (frasi: ReturnType<typeof caricatore>, campanella: ReturnType<typeof pezzo>) => void]>([
+        ['le frasi non arrivano', (frasi) => frasi.rotti.add('it')],
+        ['le frasi sono ancora in viaggio', (frasi) => frasi.ferma('it')],
+        ['il pezzo della campanella non arriva', (_frasi, campanella) => { campanella.stato.rotto = true; }],
+        ['il pezzo della campanella è ancora in viaggio', (_frasi, campanella) => { campanella.stato.fermo = true; }],
+    ])('a elenco vuoto il pannello dice che non ci sono notifiche anche se %s: niente errore, niente «Riprova», niente attesa (sprint 33 · T3.2)', async (_caso, prepara) => {
+        const frasi = caricatore();
+        const campanella = pezzo();
+        prepara(frasi, campanella);
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [] })));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect([errore(), inAttesa(), senzaNotifiche()]).toStrictEqual([null, false, true]);
+    });
+
+    it('a pannello chiuso un cambio di lingua non chiede le frasi; alla riapertura il pannello le chiede, e i titoli sono nella lingua nuova (sprint 33 · T3.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(titoli()).toStrictEqual([inItaliano]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+
+        await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(frasi.chiesti).not.toContain('es');
+        // Review della PR #66 (R3): i dati non dicono le non lette, e la campanella conta quelle caricate anche adesso che
+        // l'elenco non si può scrivere.
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+
+        await clic(uno('.zr-bell'));
+        expect(frasi.chiesti).toContain('es');
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    it('«Segna tutte come lette» c\'è con l\'elenco in pagina, e non c\'è mentre il pannello aspetta le frasi di una lingua nuova né quando non arrivano (sprint 33 · T3.4)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        const conNonLette = { ...dati, non_lette: 3 };
+        await mostra(<Cornice dati={conNonLette} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(segnaTutte()?.textContent).toBe(testi('it').markAllRead);
+
+        frasi.ferma('es');
+        frasi.rotti.add('es');
+        await mostra(<Cornice dati={{ ...conNonLette, lingua: 'es' }} onLogout={esciSenzaEffetto} />);
+        expect([inAttesa(), segnaTutte()]).toStrictEqual([true, null]);
+
+        await frasi.lascia('es');
+        expect([errore() !== null, segnaTutte()]).toStrictEqual([true, null]);
     });
 });
 
