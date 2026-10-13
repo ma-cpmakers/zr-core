@@ -225,12 +225,22 @@ const DI_DIREZIONE = /\p{Bidi_C}/gu;
 const SPAZI_E_CONTROLLI = /[ \p{Cc}\p{Zl}\p{Zp}]+/gu;
 
 /**
+ * Un carattere che si vede: né uno spazio, né uno di quelli che un testo ignora (`Default_Ignorable_Code_Point`: larghezza
+ * zero e riempitivi, come U+200B, U+2060, U+00AD, U+3164), né il braille vuoto, U+2800.
+ */
+const SI_VEDE = /[^\s\p{DI}\u2800]/u;
+
+/**
  * Un nome del backoffice, pulito: lo ha scritto una persona, e fino a che il backoffice non lo rifiuta arriva com'è. Senza i
  * caratteri di direzione; a capo, tabulazioni e gli altri caratteri di controllo sono uno spazio, più spazi di fila uno solo, e
- * intorno nessuno. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto: è un nome che manca.
+ * intorno nessuno. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto, o non ha un carattere
+ * che si vede (`SI_VEDE`): è un nome che manca. Da dentro un nome i caratteri che non si vedono non si tolgono: U+200D tiene
+ * insieme un'emoji composta.
  */
 export function nomePulito(valore: unknown): string | undefined {
-    return (typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').trim()) || undefined;
+    const pulito = typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').trim();
+
+    return (pulito && SI_VEDE.test(pulito) && pulito) || undefined;
 }
 
 /** Il pezzo a richiesta con ciò che serve a pannello delle notifiche aperto (`./campanella`): niente finché non è arrivato. */

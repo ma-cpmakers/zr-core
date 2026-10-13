@@ -1062,11 +1062,23 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
         ['di soli caratteri di direzione', '\u{202E}\u{2066}\u{2069}'],
         ['di caratteri di controllo e di direzione', '\u{0000}\u{202E} \u{009F}\u{200F}'],
         ['vuoto', ''],
-    ])('un nome %s dopo la pulizia è un nome che manca: il titolo di prima, senza frase (T2.3)', (_, nome) => {
+        // Sprint 33 · T4.1 (voce #1910): i caratteri che non si vedono e che la pulizia non toglie.
+        ['di soli caratteri a larghezza zero', '\u{200B}\u{2060}\u{00AD}\u{200D}\u{FEFF}'],
+        ['di soli riempitivi', '\u{3164}\u{2800}'],
+        ['di caratteri che non si vedono misti a spazi', ' \u{200B} \u{3164}\n\u{2800} \u{00AD}\u{2060} '],
+    ])('un nome %s dopo la pulizia è un nome che manca: il titolo di prima, senza frase (T2.3; sprint 33 · T4.1)', (_, nome) => {
         expect(nomePulito(nome)).toBeUndefined();
         expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: 'Lancio corso' })).toStrictEqual(riga({ tipo: modificata, risorsa_nome: 'Lancio corso' }));
         expect(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi', risorsa_nome: nome })).toStrictEqual(riga({ tipo: modificata, autore_nome: 'Giulia Bianchi' }));
         expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: frasiItaliane[`notificationTitle.${modificata}`] });
+    });
+
+    // Sprint 33 · T4.2 (voce #1910). I caratteri che non si vedono non si tolgono da dentro un nome: tengono insieme un'emoji.
+    it('un nome con un carattere che si vede resta com\'è, coi caratteri a larghezza zero che ha dentro: un\'emoji composta resta intera (sprint 33 · T4.2)', () => {
+        const famiglia = '\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}';
+
+        expect([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', '\u{200B}A', '\u{3164}.', '\u{2800}\u{2801}'].map(nomePulito)).toStrictEqual([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', '\u{200B}A', '\u{3164}.', '\u{2800}\u{2801}']);
+        expect(riga({ tipo: modificata, autore_nome: famiglia }).titolo).toBe(`${isolato(famiglia)} ha modificato una scheda`);
     });
 
     it('ciò che non è un testo non è un nome (T2.3)', () => {

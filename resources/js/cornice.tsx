@@ -326,7 +326,8 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
-        title: risultato.titolo,
+        // Lo ha scritto una persona: pulito come un nome, e vuoto se pulito non resta niente.
+        title: nomePulito(risultato.titolo) ?? '',
         subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
         group: t[tipo],
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),

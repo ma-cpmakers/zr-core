@@ -628,7 +628,9 @@ cornice === null ? pagina : (
   della cosa resta intero dovunque stia. Il resto è del backoffice: i caratteri di controllo, di direzione del testo e
   a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza
   massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo rifiuta: lo
-  pulisce.
+  pulisce. Dalla `v2.0.0` vale come un nome che manca anche un nome fatto solo di caratteri che non si vedono — a
+  larghezza zero o riempitivi: U+200B, U+2060, U+00AD, U+3164, U+2800 —, anche misti a spazi: il titolo è senza chi,
+  con l'icona al posto dell'avatar. Da dentro un nome non si tolgono: U+200D tiene insieme un'emoji composta.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
@@ -805,7 +807,8 @@ cornice === null ? pagina : (
   Opportunità), il nome e il tono del prodotto e l'icona del tipo; i gruppi escono nell'ordine del backoffice, quello del
   primo risultato di ognuno, e dentro un gruppo i risultati nel suo ordine. Il gruppo dei membri è «Membri» (in inglese
   «Members», in spagnolo «Miembros»), con l'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il
-  nome di un prodotto, né un tono. Sotto il titolo sta la seconda riga: i testi di
+  nome di un prodotto, né un tono. Dalla `v2.0.0` il titolo di un risultato è pulito come i nomi di una notifica: senza i
+  caratteri che cambiano la direzione del testo, con a capo e caratteri di controllo ridotti a uno spazio. Sotto il titolo sta la seconda riga: i testi di
   `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un
   contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e una cartella non hanno una
   seconda riga; un tipo che il registro non ha non si mostra. Sotto il nome di un membro sta il suo ruolo, nella lingua

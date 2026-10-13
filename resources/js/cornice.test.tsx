@@ -980,6 +980,21 @@ describe('il pannello delle notifiche', () => {
         expect([avatar?.getAttribute('aria-label'), avatar?.getAttribute('title'), avatar?.textContent]).toStrictEqual([lungo, lungo, 'MR']);
     });
 
+    // Sprint 33 · T4 (voce #1910). Caratteri che non si vedono e che la pulizia non toglie: da soli non sono un nome.
+    it('un nome di chi ha fatto di soli caratteri che non si vedono è un nome che manca: il titolo senza chi e l\'icona al posto dell\'avatar; così il nome della cosa: niente frase con che cosa, niente seconda riga (sprint 33 · T4.1)', async () => {
+        const invisibili = '\u{200B} \u{2060}\u{00AD}\u{3164} \u{2800}';
+        await apriSu([
+            conInPiu('uat-n5b', { autore_nome: invisibili, risorsa_nome: 'Lancio corso' }),
+            conInPiu('uat-n5c', { autore_nome: 'Marta Rossi', risorsa_nome: invisibili }),
+        ]);
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(['Nuova cartella', '\u{2068}Marta Rossi\u{2069} ha creato una cartella']);
+        expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual([null, 'MR']);
+        expect(voci().map((voce) => voce.querySelector('.zr-iconbox') !== null)).toStrictEqual([true, false]);
+        expect(secondeRighe()).toStrictEqual(['Lancio corso', null]);
+        expect(uno('.zr-notif-list')?.textContent).not.toMatch(/[\u{200B}\u{2060}\u{00AD}\u{3164}\u{2800}]/u);
+    });
+
     // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: quando il backoffice dà il nome
     // di chi, il titolo è una frase delle lingue; il nome della cosa, se c'è, sta nella frase e non anche sotto.
     it('una notifica di Project Management con chi e che cosa ha per titolo la frase, senza seconda riga; con solo chi la frase senza il nome della cosa; senza chi resta com\'era; un tipo senza frasi resta com\'era anche con chi (sprint 29 · T2.1, T2.2, T2.3, T2.5)', async () => {
@@ -3646,6 +3661,21 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('brief');
         expect(righe()[0]?.querySelector('.zr-search-sub')?.textContent).toBe(`Lancio Q4${delDesignSystem}Da fare`);
+    });
+
+    // Sprint 33 · T4.3 (voce #1910). Il titolo di un risultato lo ha scritto una persona, come i nomi di una notifica.
+    it('il titolo di un risultato della ricerca è pulito come la seconda riga: senza caratteri di direzione, con a capo e controlli ridotti a uno spazio; uno che pulito è vuoto è un titolo vuoto (sprint 33 · T4.3)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'board.scheda', id: '01k7b1s1', titolo: '\u{202E}Scrivere\n\til  brief\u{2066} ', contesto: { board: 'Lancio\u{202E} Q4' } },
+            { tipo: 'board.scheda', id: '01k7b1s2', titolo: 'Brief \u{1F469}\u{200D}\u{1F4BB}' },
+            { tipo: 'board.scheda', id: '01k7b1s3', titolo: '\u{202E}\u{200B} \u{3164}', contesto: { board: 'Brief' } },
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('brief');
+
+        expect(titoli()).toStrictEqual(['Scrivere il brief', 'Brief \u{1F469}\u{200D}\u{1F4BB}', '']);
+        expect(righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null)).toStrictEqual(['Lancio Q4', null, 'Brief']);
+        expect(uno('.zr-search-panel')?.textContent).not.toMatch(/[\p{Bidi_C}\p{Cc}]/u);
     });
 
     it('una board o una cartella non ha una seconda riga, nemmeno con un `contesto`: quali testi la fanno lo dice il registro, tipo per tipo (sprint 25 · T4.1)', async () => {
