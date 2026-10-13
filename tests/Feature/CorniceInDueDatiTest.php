@@ -185,8 +185,9 @@ it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_l
 // Sprint 41 · T6 (review della PR #75, S1). Il segno di chi è si prende prima della lettura, come nel ramo riuscito: nome ed
 // email sono quelli della sessione com'era quando la richiesta è cominciata, e un `non_letti` arrivato tardi — il backoffice
 // ci mette secondi a non rispondere — non deve valere sopra i dati di chi è entrato intanto. A orologio fermo i due segni sono
-// uguali e il caso non distingue niente: qui la risposta finta sposta l'orologio.
-it('col backoffice che non risponde il segno di chi è, sessione_il, è l\'istante in cui la lettura è cominciata, e aggiornati_il quello in cui è fallita: un non_letti in ritardo non è più recente di chi è entrato mentre il backoffice non rispondeva (sprint 41 · T6, S1)', function (string $percorso) {
+// uguali e il caso non distingue niente: qui la risposta finta sposta l'orologio. Dalla seconda lettura (N3) anche
+// `aggiornati_il` è quell'istante, come nei dati riusciti: ogni lettura porta il segno di quando è cominciata.
+it('col backoffice che non risponde i due segni di non_letti, sessione_il e aggiornati_il, sono l\'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita: un non_letti in ritardo non è più recente di chi è entrato mentre il backoffice non rispondeva (sprint 41 · T6, S1 e N3)', function (string $percorso) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato([$percorso => function () {
@@ -197,7 +198,7 @@ it('col backoffice che non risponde il segno di chi è, sessione_il, è l\'istan
 
     expect(Cornice::dopo())->toBe([
         'non_letti' => true,
-        'aggiornati_il' => '2026-10-09T21:31:12.500000Z',
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'en',
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
@@ -206,6 +207,41 @@ it('col backoffice che non risponde il segno di chi è, sessione_il, è l\'istan
 })->with([
     'io.mostra' => ['/v1/io'],
     'app.elenca' => ['/v1/app'],
+]);
+
+// Sprint 41 · T6 (seconda lettura della PR #75, N1). Un frontend che mette la lingua della pagina con `Cornice::lingua()`
+// prima del controller ha già letto io.mostra quando `dopo()` comincia: la lettura è quella, tenuta sulla richiesta, e il
+// segno di `non_letti` è il suo — l'istante in cui è cominciata —, non quello in cui `dopo()` è partita, che viene dopo il
+// fallimento.
+it('se Cornice::lingua() ha già letto io.mostra in questa richiesta, i segni di non_letti sono quelli di quella lettura — l\'istante in cui è cominciata —, sia quando è lei a fallire sia quando riesce lenta e cade una lettura dopo; io.mostra non si rilegge (sprint 41 · T6, N1)', function (int $statoDiIo, string $lingua) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([
+        '/v1/io' => function () use ($statoDiIo) {
+            // Il backoffice ci mette sette secondi a rispondere, o a non rispondere.
+            Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:12.500000', 'UTC'));
+
+            return $statoDiIo === 200 ? Http::response(ioMostraCon(['lingua' => 'es'])) : Http::response('segno-del-corpo', $statoDiIo);
+        },
+        '/v1/app' => nonRisponde(503, 'non_disponibile'),
+    ]);
+
+    // Il middleware della lingua, prima del controller; poi la prop rimandata.
+    Cornice::lingua();
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:13.000000', 'UTC'));
+
+    expect(Cornice::dopo())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
+        'lingua' => $lingua,
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
+    ])
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
+})->with([
+    'io.mostra fallisce in lingua()' => [502, 'en'],
+    'io.mostra riesce lenta in lingua(), poi cade app.elenca' => [200, 'es'],
 ]);
 
 it('se mentre il backoffice non risponde la sessione finisce, Cornice::dopo() dà null come senza sessione: non c\'è nessuno di cui dire non_letti, e nel log non c\'è scritto che la cornice esce ridotta (sprint 41 · T4.4; T6, R8)', function () {
