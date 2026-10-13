@@ -4948,7 +4948,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
     // Sprint 34 · T1.6 (voce #1929): dopo un pezzo della campanella non arrivato «Riprova» lo richiede anche in Chromium.
     'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
-    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'L\'indirizzo è quello che dice l\'errore del browser, e vale solo se ha la stessa origine del JS'],
+    // Sprint 35 · T3 (voce #1945): la coda cambia al tentativo fallito, e l'indirizzo si compone con la cartella del JS.
+    'la coda cambia al tentativo fallito' => ['notifiche', 'La coda cambia a ogni tentativo fallito, non a ogni richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola'],
+    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'Dalla `v2.2.0` l\'indirizzo si compone con la cartella del JS della cornice e col nome di file che l\'errore del browser dice dopo quella cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l\'errore'],
+    'dove il pezzo sta altrove' => ['notifiche', 'in un frontend che mette i pezzi a richiesta in un\'altra cartella rispetto al JS d\'ingresso, «Riprova» richiama `import()` come prima'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
     // Seconda lettura della PR #63 (S1, S2, S8, S15).

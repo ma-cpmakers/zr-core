@@ -264,21 +264,26 @@ export let campanella: typeof import('./campanella') | undefined;
 /**
  * Chi chiede un pezzo a richiesta, anche dopo che non è arrivato. In Chromium un `import()` che non è arrivato resta fallito,
  * per quell'indirizzo, finché la pagina non si ricarica (provato il 13/10/2026 con la 151): chiamarlo di nuovo non fa
- * partire niente. Per questo, dopo un pezzo non arrivato, la richiesta dopo lo importa dal suo indirizzo con una coda diversa
- * a ogni tentativo (`?r=1`, `?r=2`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta
- * quello già in pagina. L'indirizzo è quello che dice l'errore del browser, il primo nel suo messaggio e senza la coda, e
- * vale solo se è di `origine`, quella di questo JS: un altro indirizzo letto da un messaggio non entra mai in `import()`.
- * Dove l'errore non lo dice la richiesta dopo è l'`import()` di prima (`importa` senza niente). L'errore esce com'è.
+ * partire niente. Per questo, dopo un pezzo non arrivato, la richiesta dopo lo importa dal suo indirizzo con una coda
+ * (`?r=1`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta quello già in pagina. La
+ * coda cambia a ogni tentativo fallito (`?r=2`), non a ogni richiesta: due richieste fatte insieme importano lo stesso
+ * indirizzo, che per il browser è una richiesta sola, e dopo l'arrivo l'indirizzo resta quello arrivato, che il browser ha
+ * già. L'indirizzo non si legge dall'errore del browser: si compone qui, con `cartella` — quella di questo JS, con la barra
+ * in fondo — e col nome di file che nel messaggio la segue, fatto solo di lettere, cifre, `_`, `.` e `-` e mai con un punto
+ * per primo. Così in `import()` entra solo un file di quella cartella, qualunque cosa dica il messaggio. Dove l'errore non
+ * dice la cartella, o il pezzo sta altrove, la richiesta dopo è l'`import()` di prima (`importa` senza niente). L'errore
+ * esce com'è.
  */
-export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezzo>, origine: string): () => Promise<Pezzo> {
+export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezzo>, cartella: string): () => Promise<Pezzo> {
     let nonArrivato: string | undefined;
     let tentativi = 0;
 
     return () =>
-        importa(nonArrivato && `${nonArrivato}?r=${++tentativi}`).catch((errore: unknown) => {
-            const [indirizzo] = /https?:[^\s?#]+/.exec(String(errore)) ?? [];
-            if (indirizzo?.startsWith(`${origine}/`)) {
-                nonArrivato = indirizzo;
+        importa(nonArrivato && `${nonArrivato}?r=${tentativi}`).catch((errore: unknown) => {
+            tentativi++;
+            const nome = String(errore).split(cartella)[1]?.match(/^\w[\w.-]*/);
+            if (nome) {
+                nonArrivato = cartella + nome[0];
             }
             throw errore;
         });
@@ -286,13 +291,12 @@ export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezz
 
 const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(
     (daQui) => (daQui === undefined ? import('./campanella') : import(/* @vite-ignore */ daQui)),
-    new URL(import.meta.url).origin,
+    new URL(import.meta.url + '/..').href,
 );
 
 /**
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
  * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
- * Chromium (`pezzoARichiesta`; README, «Le notifiche»). Arrivato, non si chiede più: dopo un tentativo fallito ogni richiesta
- * avrebbe una coda nuova, e il browser lo scaricherebbe e lo valuterebbe da capo, con la memoria delle frasi vuota.
+ * Chromium (`pezzoARichiesta`; README, «Le notifiche»). Arrivato, non si chiede più.
  */
 export const chiediLaCampanella = async () => (campanella ??= await ilPezzoDellaCampanella());

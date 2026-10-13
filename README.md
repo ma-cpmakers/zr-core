@@ -587,8 +587,11 @@ cornice === null ? pagina : (
   errore fuori dal pannello. In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito,
   per quell'indirizzo, finché la pagina non si ricarica: per questo, dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova»
   lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede. È lo stesso file:
-  serve che chi dà la build ignori la coda, come fa di solito un server di file. L'indirizzo è quello che dice l'errore del browser, e vale solo se ha la stessa
-  origine del JS; dove l'errore non lo dice «Riprova» richiama `import()` come prima. Il titolo di ripiego (`notificationTitle`) resta nel file dei
+  serve che chi dà la build ignori la coda, come fa di solito un server di file. La coda cambia a ogni tentativo fallito, non a ogni
+  richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola. Dalla `v2.2.0`
+  l'indirizzo si compone con la cartella del JS della cornice e col nome di file che l'errore del browser dice dopo quella
+  cartella: in `import()` entra solo un file di quella cartella, qualunque cosa dica l'errore. Dove l'errore non la dice, o in un
+  frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, «Riprova» richiama `import()` come prima. Il titolo di ripiego (`notificationTitle`) resta nel file dei
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
   le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
