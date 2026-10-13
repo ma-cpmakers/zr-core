@@ -1,5 +1,6 @@
-import { createContext, useContext, useLayoutEffect, useReducer } from 'react';
+import { createContext, useContext, useLayoutEffect, useReducer, useState } from 'react';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
+import { segno } from './servizi';
 
 // Il layout della cornice per i frontend con Inertia. Il modulo lo rende dal suo layout (un componente a livello di modulo,
 // dato a `createInertiaApp({ layout })`) e la cornice resta montata mentre la pagina cambia: il testo scritto nella ricerca, il
@@ -49,11 +50,27 @@ function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina):
 /** Come la pagina scrive nel layout ciò che dà alla cornice. Solo la funzione, che è sempre la stessa: mai lo stato, o la pagina si renderebbe a ogni cambio della cornice. */
 const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) => void) | null>(null);
 
+/** Il segno di chi questi dati mostrano, come lo legge `Cornice`: quello della sessione, o quello della lettura nei dati interi. */
+const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
     // `dopo` sta sopra, con tutto ciò che porta: è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
     // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
-    const cornice = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
+    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
+
+    // Chi la cornice ha mostrato per ultimo sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice
+    // si rifà e non lo sa più. Una pagina di un'altra persona (un'altra email), di un altro workspace e più vecchia di chi è
+    // stato mostrato (il segno della sessione, o quello della lettura nei dati interi) è una voce della cronologia ripresa con
+    // Indietro: i suoi dati non valgono, restano quelli visti, e la cornice non si rifà. Nello stesso workspace lo decide
+    // `Cornice`, che lì è rimasta montata. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    const [vista, vedi] = useState(pagina);
+    const diAllora = pagina && vista && pagina.persona.email !== vista.persona.email && pagina.workspace.slug !== vista.workspace.slug && della(vista) > della(pagina);
+    const cornice = diAllora ? vista : pagina;
+    // I dati si compongono a ogni render: quelli visti cambiano solo quando cambia chi sono, di quale workspace o il loro segno.
+    if (pagina && !diAllora && (!vista || pagina.persona.email !== vista.persona.email || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
+        vedi(pagina);
+    }
     if (!cornice) {
         return children;
     }
@@ -64,7 +81,8 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
 
     // La `key` è lo slug del workspace: ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i
     // pannelli, le notifiche) è di quel workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con
-    // lei: niente del workspace di prima resta davanti a chi è passato a un altro.
+    // lei: niente del workspace di prima resta davanti a chi è passato a un altro. Lo slug è quello dei dati che valgono: con
+    // Indietro su una pagina di allora di un'altra persona resta quello di chi è entrato.
     return (
         <CorniceMontata key={cornice.workspace.slug} dati={cornice} {...dellaCornice}>
             {children}

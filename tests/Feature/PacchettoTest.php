@@ -5314,11 +5314,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
     'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],
-    'Indietro: fra due workspace' => ['readme', 'Fra due workspace il layout rifà la cornice, che così non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati'],
+    // Sprint 37 · T3.6 (voce #1993): il limite dei due workspace non c'è più.
+    'Indietro: fra due workspace' => ['readme', 'Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni workspace, e chi è stato mostrato per ultimo lo tiene lui, sopra'],
+    'Indietro: fra due workspace, a schermo' => ['readme', 'Con Indietro su una pagina di chi c\'era prima in un altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà'],
+    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace'],
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
-    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e dalla `v2.4.0` lo dice: quando arriva, la cornice è la sua'],
+    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome'],
     // Sprint 37 · T2.6 (voce #1998): `dopo` dice di chi è, e che cosa cambia per un frontend.
     'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come le ha date io.mostra in quella lettura e, in fondo, `sessione_il`, il segno di quella lettura'],
     'dopo dice di chi è: nel layout' => ['readme', 'se fra le due richieste la sessione è passata a un\'altra persona la cornice è la sua, coi suoi dati, e i dati di una persona non stanno sotto il nome di un\'altra'],
@@ -5332,7 +5335,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: dopo dice di chi è' => ['guida', 'Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno)'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
-    'la guida: Indietro fra due workspace' => ['guida', 'Con Indietro una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
+    'la guida: Indietro fra due workspace' => ['guida', 'nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`'],
+    'la guida: il contenuto della pagina' => ['guida', 'Il contenuto della tua pagina, con Indietro, resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
@@ -5394,6 +5398,17 @@ it('il README non dice più che `dopo` non dice di chi è, né che i dati rilett
     'sopra i dati di adesso' => ['sopra i dati di adesso'],
     'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
     'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
+]);
+
+// Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.
+it('README e guida non dicono più il limite dei due workspace (sprint 37 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'non sa più chi ha mostrato' => ['non sa più chi ha mostrato'],
+    'riporta la cornice di allora' => ['riporta la cornice di allora'],
+    'una pagina di un altro workspace sì' => ['una pagina di un altro workspace sì'],
+    'questo limite non lo ha' => ['questo limite non lo ha'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

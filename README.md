@@ -1198,11 +1198,13 @@ Che cosa vede la persona:
   persona. Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di
   nuovo, che è suo e lo dice. Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di
   chi è entrato, e se li sta ancora aspettando la cornice resta ridotta fino alla visita dopo, perché Inertia un `dopo` che
-  la voce ha già non lo richiede. Questo vale sullo stesso workspace. Fra due workspace il layout rifà la cornice, che così
-  non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati
-  (chi monta `Cornice` senza il layout questo limite non lo ha: lì i dati di una pagina più vecchia di un'altra persona non
-  valgono in nessun workspace). Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e
-  dalla `v2.4.0` lo dice: quando arriva, la cornice è la sua. Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
+  la voce ha già non lo richiede. Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni
+  workspace, e chi è stato mostrato per ultimo lo tiene lui, sopra. Con Indietro su una pagina di chi c'era prima in un
+  altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà. Se a quella
+  voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome. Per la stessa
+  persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace
+  (chi monta `Cornice` senza il layout era già così: lì i dati di una pagina più vecchia di un'altra persona non
+  valgono in nessun workspace). Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
   pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia

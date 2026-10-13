@@ -1133,29 +1133,87 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
     });
 
-    it('il limite dei due workspace che il README dichiara: sotto il layout Indietro su una pagina di chi c\'era prima in un altro workspace riporta la cornice di allora, e se alla voce manca il `dopo` quello riletto, di chi è entrato, sta sotto il nome di allora (sprint 36 · T6, seconda lettura, N4; lo chiude la voce 1993 del backlog)', async () => {
-        const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+    it('fra due workspace, con Indietro su una pagina intera di chi c\'era prima la cornice resta di chi è entrato: avatar, lingua, workspace e non lette sono i suoi, niente di allora è a schermo e la cornice non si rifà, né a quel disegno né alle visite dopo (sprint 37 · T3.1)', async () => {
         const altrove = datiAltroWorkspace.workspace;
-        const diAdesso: DatiSubito & { sessione_il: string } = { lingua: 'es', persona: altra, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' };
-        const dopoDiAdesso: DatiDopo = { workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const diPrima: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const dopoDiPrima: DatiDopo = { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+        const diAdesso: DatiSubito = { lingua: 'es', persona: altra, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const dopoDiAdesso: DatiDopo = { lingua: 'es', persona: altra, workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z', sessione_il: '2026-10-13T08:00:04.000000Z' };
+        const diChiEEntrato = () => {
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.email);
+            expect(uno('aside.zr-side')?.textContent).toContain(altrove.nome);
+            expect(uno('aside.zr-side')?.textContent).not.toContain('Acme');
+            expect(etichette()).toContain('Gestión de proyectos');
+            expect([uno('.zr-ws-switch'), uno('.zr-bell-count')?.textContent]).toStrictEqual([null, '2']);
+        };
+        await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
+        expect([uno('.zr-ws-switch') !== null, uno('.zr-bell-count')?.textContent]).toStrictEqual([true, '7']);
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        diChiEEntrato();
+        const barra = uno('aside.zr-side');
+
+        // Indietro sulla voce intera di chi c'era prima, in un altro workspace.
+        await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        diChiEEntrato();
+        expect(uno('aside.zr-side')).toBe(barra);
+
+        // Avanti, e di nuovo Indietro.
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        diChiEEntrato();
+        await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
+        diChiEEntrato();
+        expect(uno('aside.zr-side')).toBe(barra);
+    });
+
+    it('fra due workspace, con Indietro su una voce di chi c\'era prima a cui manca il `dopo` la cornice resta di chi è entrato mentre Inertia lo richiede, e i dati riletti, che sono suoi, stanno sotto il suo nome: sia quando `dopo` dice di chi è, sia quando non lo dice (sprint 37 · T3.2; era il limite dei due workspace del README, sprint 36 · T6, N4)', async () => {
+        const altrove = datiAltroWorkspace.workspace;
+        const diPrima: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: DatiSubito = { lingua: 'es', persona: altra, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const dopoDiAdesso: DatiDopo = { lingua: 'es', persona: altra, workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z', sessione_il: '2026-10-13T08:00:04.000000Z' };
         const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
-        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
-        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
-        expect(avatar()).toBe(altra.nome);
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
-
-        // Indietro sulla voce intera di chi c'era prima, in un altro workspace: torna la cornice di allora.
-        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
-        expect(avatar()).toBe(dati.persona.nome);
-        expect(uno('.zr-bell-count')?.textContent).toBe('7');
-
-        // Una voce senza `dopo`: quello riletto è di chi è entrato, col suo workspace, sotto il nome di allora.
-        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        const suoi = (nonLette: string) => {
+            expect(avatar()).toBe(altra.nome);
+            expect(document.body.textContent).not.toContain(dati.persona.nome);
+            expect(uno('aside.zr-side')?.textContent).toContain(altrove.nome);
+            expect(uno('.zr-bell-count')?.textContent).toBe(nonLette);
+        };
         await inDue({ subito: diPrima }, <PaginaA key="1" />);
-        await inDue({ subito: diPrima, dopo: { ...dopoDiAdesso, aggiornati_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaA key="1" />);
-        expect(avatar()).toBe(dati.persona.nome);
-        expect(uno('aside.zr-side')?.textContent).toContain(altrove.nome);
-        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        suoi('2');
+
+        // Indietro: la voce porta il solo `subito` di allora, e Inertia richiede il `dopo`.
+        await inDue({ subito: diPrima }, <PaginaA key="1" />);
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        suoi('2');
+        await inDue({ subito: diPrima, dopo: { ...dopoDiAdesso, non_lette: 5, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaA key="1" />);
+        suoi('5');
+
+        // Lo stesso con un `dopo` che non dice di chi è (composto a mano, o di una voce salvata prima della `v2.4.0`).
+        await inDue({ subito: { ...diAdesso, sessione_il: '2026-10-13T08:00:07.000000Z' }, dopo: { ...dopoDiAdesso, non_lette: 5, aggiornati_il: '2026-10-13T08:00:08.000000Z', sessione_il: '2026-10-13T08:00:08.000000Z' } }, <PaginaB key="2" />);
+        await inDue({ subito: { ...diPrima, sessione_il: '2026-10-13T07:59:00.000000Z' } }, <PaginaA key="3" />);
+        suoi('5');
+        await inDue({ subito: { ...diPrima, sessione_il: '2026-10-13T07:59:00.000000Z' }, dopo: { workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 6, aggiornati_il: '2026-10-13T08:00:09.000000Z' } }, <PaginaA key="3" />);
+        suoi('6');
+    });
+
+    it('per la stessa persona fra due workspace niente cambia: con Indietro su una pagina di un altro workspace la cornice è quella di quel workspace, coi suoi dati, e si rifà (sprint 37 · T3.3)', async () => {
+        const altrove = datiAltroWorkspace.workspace;
+        const diPrima: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const dopoDiPrima: DatiDopo = { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+        await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
+        await inDue({ subito: { ...diPrima, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' }, dopo: { lingua: 'it', persona: dati.persona, workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z', sessione_il: '2026-10-13T08:00:04.000000Z' } }, <PaginaB key="2" />);
+        expect([uno('aside.zr-side')?.textContent?.includes(altrove.nome), uno('.zr-ws-switch'), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, null, '2']);
+        const barra = uno('aside.zr-side');
+
+        await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        expect(uno('aside.zr-side')).not.toBe(barra);
+        expect(uno('aside.zr-side')?.textContent).toContain(dati.workspace.nome);
+        expect([uno('.zr-ws-switch') !== null, etichette().includes('CRM'), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, true, '7']);
     });
 
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
