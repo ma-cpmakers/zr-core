@@ -3319,6 +3319,7 @@ function nomiDiAltriNellaGuida(): array
         'prependToPriorityList' => 'Laravel',
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
+        'Inertia::defer' => 'Inertia, dal server',
         'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
@@ -5208,6 +5209,31 @@ it('README e guida non dicono più che le assegnazioni del CRM non hanno la fras
     'non hanno ancora la frase' => ['notifiche', 'non hanno ancora la loro frase col nome'],
     'la prima venticinque' => ['notifiche', 'la prima venticinque'],
     'la guida: il nome nella riga sotto' => ['guida', 'un\'attività assegnata il nome sta nella riga sotto'],
+]);
+
+// Sprint 34 · T4.10 (voce #1932): la cornice in due dati. Il README dice le due funzioni, l'esempio per un frontend con Inertia
+// (che zr-core non importa), che cosa vede la persona nei tre stati, e di chi sono lingua e nome di `subito()`; la guida rimanda lì.
+it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la prop rimandata, i tre stati e la lingua di subito(); la guida rimanda al README (sprint 34 · T4.10)', function (string $dove, string $frase) {
+    $testi = [
+        'readme' => suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'le due parti' => ['readme', 'Dalla `v2.1.0` i dati della cornice si possono dare in due parti'],
+    'subito() non chiama il backoffice' => ['readme', '`Cornice::subito()` legge solo la sessione — lingua, persona, workspace — e non chiama mai il backoffice'],
+    'Inertia è del frontend' => ['readme', 'zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend'],
+    'l\'esempio' => ['readme', "'dopo' => Inertia::defer(fn () => Cornice::dopo()),"],
+    'in attesa' => ['readme', 'nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso'],
+    'quando arriva' => ['readme', 'la pagina non si rimonta: ciò che la persona stava scrivendo in un campo, il fuoco e lo scorrimento restano'],
+    'non letti' => ['readme', "`Cornice::dopo()` non lancia: dà `['non_letti' => true]`"],
+    'l\'avviso' => ['readme', 'con l\'avviso «Zeiras non risponde» sopra la pagina, senza pulsante'],
+    'la sessione finita' => ['readme', '`GettoneRifiutato` passano, come da `Cornice::dati()`'],
+    'la lingua di subito()' => ['readme', 'La lingua e il nome di `Cornice::subito()` sono quelli dell\'ingresso finché'],
+    'chi manda solo cornice' => ['readme', 'chi manda solo `cornice` non cambia niente'],
+    'la guida: le due funzioni' => ['guida', 'rimandata con `Inertia::defer`, `Cornice::dopo()`'],
+    'la guida: il rimando' => ['guida', 'README, «La cornice in due dati»'],
 ]);
 
 // Sprint 34 · T1.6 (voce #1929): «Riprova» il pezzo della campanella lo richiede anche in Chromium, e il README non dice più

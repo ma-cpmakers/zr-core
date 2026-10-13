@@ -577,7 +577,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
-        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'skipToContent',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'skipToContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
@@ -925,6 +925,26 @@ it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre
     ]],
     'il pulsante dell\'avviso' => ['acceptanceAction', ['Vai ai documenti', 'Go to the documents', 'Ir a los documentos']],
     'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
+]);
+
+// Sprint 34 · T4 (voce #1932): quando la parte server non ha potuto leggere il backoffice (`Cornice::dopo()` con `non_letti`)
+// la cornice esce ridotta con un avviso suo, senza pulsante. I tre testi sono di zr-core, e non parlano di documenti: non è
+// lo stato di chi non ha accettato.
+it('i tre testi di quando Zeiras non risponde ci sono nelle tre lingue, sono di zr-core e nessuno parla di documenti (sprint 34 · T4.6)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+    $nelleTre = [$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null];
+
+    expect($nelleTre)->toBe($attesi)
+        ->and(chiaviDiAppShellLabels())->not->toContain($chiave)
+        ->and(array_filter($attesi, fn (string $testo): bool => preg_match('/document/iu', $testo) === 1))->toBe([]);
+})->with([
+    'il titolo dell\'avviso' => ['downTitle', ['Zeiras non risponde', 'Zeiras is not responding', 'Zeiras no responde']],
+    'la frase dell\'avviso' => ['downText', [
+        'Moduli, notifiche e ricerca tornano quando Zeiras risponde. Riprova fra poco.',
+        'Modules, notifications and search come back when Zeiras responds. Try again shortly.',
+        'Los módulos, las notificaciones y la búsqueda vuelven cuando Zeiras responda. Inténtalo de nuevo en breve.',
+    ]],
+    'campanella e ricerca spente' => ['downOff', ['Non disponibile finché Zeiras non risponde.', 'Not available until Zeiras responds.', 'No disponible hasta que Zeiras responda.']],
 ]);
 
 // Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ne ha uno:
