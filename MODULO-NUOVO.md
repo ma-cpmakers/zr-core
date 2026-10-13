@@ -313,8 +313,11 @@ freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di p
 contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
 scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.6.0` nemmeno il clic su una
 notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l'intestazione `Persona`, e la sua parte server
-risponde 409 `persona_diversa` a quella di un'altra persona. Tu non scrivi niente: la regola la registra zr-core
-(README, «Le rotte della cornice»). Una scheda ferma mostra ciò che aveva finché da
+risponde 409 `persona_diversa` a quella di un'altra persona. Per la cornice tu non scrivi niente: la regola la registra
+zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
+come lì è scritto: a una richiesta che non la dice la rotta risponde come prima. Restano fuori due cose, dette nello stesso
+punto: un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica,
+e dei dati della cornice senza l'email. Una scheda ferma mostra ciò che aveva finché da
 lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo

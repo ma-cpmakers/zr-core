@@ -372,13 +372,20 @@ cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta so
 nell'indirizzo, e nel corpo di «Segna tutte come lette» non c'è più. Con lei partono in ogni richiesta `Content-Type` e il
 gettone CSRF, anche nella `GET` dell'elenco. Così da una scheda rimasta ferma, con la sessione passata a un'altra persona,
 nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la
-segnava letta a lui. La destinazione di quel clic si apre lo stesso, subito e senza aspettare la risposta; la pagina si
-ricarica solo se è ancora lì quando il 409 arriva. Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
+segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
+prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
+entrato. Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
 prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
 notifica la segna ancora a chi è entrato, finché la scheda non si ricarica. E dei dati della cornice senza l'email della
-persona: l'intestazione partirebbe senza un'email, e le quattro rotte la rifiutano (l'email è obbligatoria nel contratto
-del backoffice: «La cornice in due dati»).
+persona: l'intestazione partirebbe vuota, e le quattro rotte la rifiutano con un 422 `dati_non_validi` — elenco, ricerca e
+letture danno errore, e la pagina non si ricarica (l'email è obbligatoria nel contratto del backoffice: «La cornice in due
+dati»). Chi installa la `v2.6.0` guarda due cose. Il JS e la parte server del pacchetto si aggiornano insieme, e la cache
+delle rotte si rifà al deploy (`php artisan route:cache`): il confronto di «Segna tutte come lette» non lo fa più il
+controller ma la regola delle rotte, e con una cache delle rotte fatta prima dell'aggiornamento, o col JS nuovo davanti a
+una parte server fino alla `v2.5.1`, non lo fa nessuno, senza un errore che lo dica. E l'email della persona ora parte in
+un'intestazione di ognuna delle quattro richieste, anche della `GET` dell'elenco: uno strumento che registra le intestazioni
+delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura.
 
 Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le quattro rotte rispondono 403
 `{errore: "accettazione_richiesta", persona}`: il codice e, dalla `v2.5.0`, l'email della persona della sessione
@@ -1223,7 +1230,8 @@ segna niente. Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422
 `ConvertEmptyStringsToNull`, che Laravel monta di suo (fino alla `v2.5.1` lì era un 409 `persona_diversa`).
 Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, nell'intestazione `Persona` e non più nel
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
-notifica la segna letta a chi è entrato. La sua risorsa si apre lo stesso.
+notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
+ricarica al suo posto, come per il 403 qui sopra.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di

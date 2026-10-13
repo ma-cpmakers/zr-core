@@ -305,7 +305,9 @@ const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'u
 // testo («UAT scheda di Ada», «UAT Lancio di Grace»), anche in una scheda rimasta ferma su una pagina dell'altra persona.
 //
 // Sprint 40 · T5 (voce 2002): un quarto pulsante lascia la persona che c'è e le cambia la lingua, in spagnolo: dopo «UAT
-// rileggi subito» i testi della cornice sono nella lingua nuova, nome ed email gli stessi. Gli stati della «sessione» stanno
+// rileggi subito» e «UAT rileggi dopo», o dopo una visita, i testi della cornice sono nella lingua nuova, nome ed email gli
+// stessi (col solo `subito` riletto resta la lingua del `dopo` di prima). È uno stato, non un interruttore: la chiave è una,
+// e dopo «UAT entra un'altra persona» rimette la prima persona, in spagnolo. Gli stati della «sessione» stanno
 // nella parte server finta (`sessioneFinta`), dove un caso li legge tutti: qui, solo i dati di chi può entrare.
 // Sprint 38 · T1 (voce 2026): con `?accettazione=dopo&per_altra` è l'altra persona a non aver accettato i documenti legali. I
 // dati che il backoffice dà per lei sono quelli ridotti, e le rotte finte rispondono 403 solo a lei: la prima resta com'era.

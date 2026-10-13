@@ -82,7 +82,8 @@ export const chiaveDellaSessione = 'uat-persona';
  * La «sessione» della parte server finta nei suoi stati: chi è entrato adesso, secondo ciò che i pulsanti della pagina di prova
  * hanno scritto nel `localStorage`. Senza un valore, o con uno che non è di questi, c'è la prima persona e la lettura resta
  * com'è. `altra`: un'altra persona nello stesso workspace. `altrove`: la stessa su un altro workspace, che è anche quello delle
- * sue aziende. `lingua`: la persona che c'è, con un'altra lingua e nient'altro di diverso.
+ * sue aziende. `lingua`: la persona che c'è, con un'altra lingua e nient'altro di diverso. Gli stati si escludono: la chiave
+ * è una e vale l'ultimo scritto, così `lingua` dopo `altra` rimette la persona della pagina.
  */
 export function sessioneFinta(altra: Entrata, altrove: NonNullable<Entrata['workspace']>, altraLingua: string): () => Entrata | undefined {
     const entrate = new Map<string, Entrata>([
