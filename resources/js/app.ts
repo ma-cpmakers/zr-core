@@ -6,5 +6,5 @@ export { nomeDellaVoce } from './lingue';
 export { destinazioneDellaNotifica } from './notifiche';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { tonoDelWorkspace } from './tono';
-export { Cornice, type CorniceProps, type DatiDellaCornice, type GruppoDiVoci } from './cornice';
+export { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci } from './cornice';
 export { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type LayoutDellaCorniceProps } from './layout';

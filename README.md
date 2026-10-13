@@ -1160,14 +1160,21 @@ Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Iner
 </LayoutDellaCornice>
 ```
 
+I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e
+`resources/js/app`), gli stessi di `subito` e `dopo` del layout.
+
 Che cosa vede la persona:
 
 - **finché `dopo` non arriva** la cornice è montata e ridotta: il nome della persona e quello del workspace al loro
-  posto, nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso. Se la cornice ha
-  già i dati di quel workspace, da una pagina di prima, restano quelli finché non arrivano i nuovi. Senza avviso la
-  pagina tiene la sua forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa
-  chiede già l'elenco, e il pannello lo mostra quando `dopo` arriva; invece una parola scritta nella ricerca in attesa
-  non parte: si cerca di nuovo quando `dopo` è arrivato;
+  posto, nel menu la sola Dashboard, nessun avviso. Dalla `v2.2.0` campanella e ricerca sono nello stato di
+  caricamento, non in quello d'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando,
+  senza «Riprova». Se la cornice ha già i dati di quel workspace, da una pagina di prima, restano quelli finché non
+  arrivano i nuovi; dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione
+  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Senza avviso la pagina tiene la sua
+  forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
+  e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
+  sola, una volta, quando `dopo` è arrivato — l'ultima scritta —, e non parte se al posto dei dati arriva `non_letti`
+  o l'accettazione dei documenti legali;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà

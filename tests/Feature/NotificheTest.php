@@ -1319,7 +1319,7 @@ it('GET /cornice/notifiche dà di ogni notifica undici chiavi: le cinque di prim
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing']);
 
-    // Le stesse nove chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
+    // Le stesse undici chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
     foreach ($risposta->json('data') as $notifica) {
         expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'ids']);
     }

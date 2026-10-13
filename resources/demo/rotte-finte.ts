@@ -62,8 +62,9 @@ const schede = new URLSearchParams(window.location.search).has('schede');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
 // Con `?accorpata=1` in cima all'elenco c'è una notifica che racconta più azioni (sprint 32 · T3): è nata un'ora fa e l'ultima
-// azione è di due minuti fa. È come la dà la parte server: in `creata_il` c'è l'istante dell'ultima azione, e `ultima_azione_il`,
-// `azioni` e `board` del backoffice non ci sono.
+// azione è di due minuti fa. È la forma di prima della `v2.1.0`, tenuta per le schermate: in `creata_il` c'è l'istante dell'ultima
+// azione, e `ultima_azione_il`, `azioni` e `board` del backoffice non ci sono. Dalla `v2.1.0` la parte server dà anche `azioni` e
+// `board_nome`: sono in `?conto=1`.
 const accorpata = new URLSearchParams(window.location.search).has('accorpata');
 // Con `?conto=1` in cima all'elenco ci sono cinque notifiche di Project Management con `azioni` e `board_nome`, come li dà la
 // parte server dalla `v2.1.0` (sprint 34 · T2), per le righe che il pannello può scrivere sotto il titolo: il conto e la board;

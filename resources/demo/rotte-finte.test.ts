@@ -281,7 +281,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     });
 
     // Sprint 32 · T3 (voce #1913): una notifica che racconta più azioni sta dietro `?accorpata=1`, così le pagine di prova di prima
-    // restano com'erano. È come la dà la parte server: l'istante dell'ultima azione in `creata_il`, e le nove chiavi di sempre.
+    // restano com'erano. È come la dava la parte server prima della `v2.1.0`, e resta per le schermate: l'istante dell'ultima
+    // azione in `creata_il`, e le chiavi di allora (dalla `v2.1.0` sono undici, con `azioni` e `board_nome`: quelle di `?conto=1`).
     it('con `?accorpata=1` in cima all\'elenco c\'è una notifica che racconta più azioni, da leggere: in `creata_il` ha l\'istante dell\'ultima, due minuti fa, sopra quella di cinque minuti fa, e non porta `ultima_azione_il`, `azioni` né `board` (sprint 32 · T3.1, T3.4)', async () => {
         await rotte(false, '?accorpata=1');
         const { rigaDellaNotifica } = await import('../js/frasi');
@@ -578,7 +579,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         // Quella su un'app non è di un prodotto (`app` è `null`): che cosa è cambiato lo dice il tipo, quale app `risorsa_nome`.
         expect((corpo.data as Record<string, unknown>[]).filter(({ id }) => id === 'uat-0').map(({ app, tipo, letta }) => ({ app, tipo, letta }))).toStrictEqual([{ app: null, tipo: 'com.zeiras.app.modificata', letta: true }]);
-        // Le nove chiavi della parte server (dallo sprint 21 anche `ids`), e nessun'altra (una non ha `tipo`: è il caso del titolo di ripiego).
+        // Le chiavi che la parte server dava prima della `v2.1.0` (dallo sprint 21 anche `ids`), e nessun'altra (una non ha `tipo`: è il
+        // caso del titolo di ripiego). Dalla `v2.1.0` la parte server ne dà undici, con `azioni` e `board_nome`: qui le hanno quelle di `?conto=1`.
         expect((corpo.data as Record<string, unknown>[]).map((notifica) => Object.keys(notifica).sort().join(' '))).toStrictEqual([
             'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
             'app autore_nome creata_il id ids letta per_me risorsa_nome tipo',
