@@ -4465,7 +4465,7 @@ it('il README non promette più che senza `Intl.ListFormat` la cornice si disegn
         ->and(str_contains($readme, 'in un browser che ha il resto di ciò che i sorgenti usano'))->toBe(true);
 });
 
-it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col solo codice (sprint 24 · T2.7)', function (string $frase) {
+it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi non ha accettato i documenti legali, che `prodotti` vuoto lì non è «Presto», e che le quattro rotte rispondono 403 col codice — dalla `v2.5.0` anche con l\'email di chi è — (sprint 24 · T2.7)', function (string $frase) {
     $parteServer = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
 
     expect($parteServer)->not->toBe('')
@@ -5358,7 +5358,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: le due rotte' => ['readme', 'Dalla `v2.4.0` anche l\'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l\'email della persona della sessione'],
     'la scheda ferma: a schermo' => ['readme', 'La cornice non la mostra sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello resta in caricamento'],
     'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
-    'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
     'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
@@ -5417,7 +5417,7 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**non compone `dopo` a mano**',
         '**la cornice resta in attesa di un `dopo` di chi è entrato**',
     ]],
-    'la guida, nel capoverso «In due dati»' => ['MODULO-NUOVO.md', '**In due dati**, dalla `v2.1.0`', 'In una scheda rimasta ferma, dalla stessa versione', [
+    'la guida, nel capoverso «In due dati»' => ['MODULO-NUOVO.md', '**In due dati**, dalla `v2.1.0`', 'In una scheda rimasta ferma, dalla `v2.4.0`', [
         '**Tre cose non le fai**',
         '**rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`)',
         '**tenere `subito` con `once`**',

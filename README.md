@@ -665,7 +665,7 @@ cornice === null ? pagina : (
   caricamento fallisce, l'errore e «Riprova».
   «Segna tutte come lette» manda una richiesta sola, `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` — la
   `creata_il` più recente fra le notifiche caricate, così com'è, e lo slug del workspace dei dati con cui il pannello le ha
-  caricate — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
+  caricate, e dalla `v2.5.0` l'email di chi la cornice mostra (`persona`) — e il gettone CSRF del cookie `XSRF-TOKEN` (lo mette Laravel nel gruppo `web`) nell'header `X-XSRF-TOKEN`:
   segna lette le notifiche della persona nate fino a lì, anche quelle oltre la prima
   pagina, e non quelle arrivate dopo, mai viste. Alla risposta le notifiche caricate sono lette e la campanella non ha più
   un numero, fino alla prossima visita che porta dati letti dopo (vedi «La campanella»), col numero del backoffice; se la
@@ -1172,7 +1172,8 @@ sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì �
 resta in caricamento. Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la
 stessa persona non cambia niente. Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta`
 e il 429 della ricerca portano `persona`. In una scheda rimasta ferma l'errore di chi è entrato non riduce la cornice e non
-ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica, come per una risposta coi dati. Il 403
+ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica, come per una risposta coi dati. Lo
+stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`). Il 403
 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima.
 Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l'email di chi mostra, e la
 rotta la confronta con quella della sessione. In una scheda rimasta ferma, se la sessione è passata a un'altra persona dello

@@ -23,7 +23,7 @@ use Zeiras\Core\Http\RicercaDellaCornice;
 // Sprint 25 · T3 (voce #1639): anche dalla parte server al backoffice la parola sta nel corpo. La parte server chiama
 // ricerca.crea (POST /v1/ricerca, corpo `{q}` e nient'altro, indirizzo senza query); di ogni risultato dà anche `contesto`
 // (null, o i soli testi non vuoti che il backoffice ha dato) e mai `indirizzo`; davanti al 429 `troppe_richieste` risponde
-// 429 col solo codice e i secondi di `Retry-After`.
+// 429 col codice, i secondi di `Retry-After` e, dalla `v2.5.0`, l'email della persona della sessione (`persona`).
 // Sprint 25 · T6 (lettura della PR #56, R1): di `contesto` passano le sole chiavi che il registro dei moduli dà al tipo del
 // risultato (`risorse[].contesto`), una lista chiusa: una chiave che il backoffice aggiungesse domani non arriva al browser da
 // sola, entra dal registro. Il registro è quello del pacchetto, letto una volta per processo come fa l'elenco delle notifiche.
@@ -488,7 +488,7 @@ it('lo `workspace` della risposta della ricerca è quello della sessione prima d
 });
 
 // Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) la ricerca
-// risponde 403 col solo codice, come le tre rotte delle notifiche (NotificheTest): i documenti mancanti, il titolo e il
+// risponde 403 col codice e, dalla `v2.5.0`, l'email della persona della sessione (`persona`), come le tre rotte delle notifiche (NotificheTest): i documenti mancanti, il titolo e il
 // dettaglio del backoffice restano nella parte server. Il 403 è accettazioneRichiesta() di tests/Pest.php.
 
 it('davanti al 403 accettazione_richiesta del backoffice la ricerca risponde 403 col codice e con `persona`, l\'email di chi è nella sessione, e nient\'altro: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3; sprint 38 · T3.4)', function () {
@@ -513,7 +513,7 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un al
 })->with(quasiAccettazioneRichiesta());
 
 // Sprint 25 · T3 (voce #1639): ricerca.crea ha un freno per persona (120 ricerche al minuto, 2.000 al giorno). Davanti al suo 429
-// `troppe_richieste` la ricerca risponde 429 col solo codice e coi secondi di `Retry-After`, se il backoffice li dice: il titolo,
+// `troppe_richieste` la ricerca risponde 429 col codice, dalla `v2.5.0` l'email della persona della sessione (`persona`), e coi secondi di `Retry-After`, se il backoffice li dice: il titolo,
 // il dettaglio e ogni altra intestazione del backoffice restano nella parte server. Il 429 è troppeRichieste(), qui sopra.
 
 it('davanti al 429 troppe_richieste del backoffice la ricerca risponde 429 col codice, con `persona` e con `Retry-After` coi secondi del backoffice: né il titolo, né il dettaglio, né un\'altra intestazione (sprint 25 · T3.3; sprint 38 · T3.4)', function (string $riprovaFra) {

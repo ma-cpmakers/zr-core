@@ -177,7 +177,7 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
  * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
  * manca, o ha un'altra forma, non è un errore, è senza segno.
  */
-export async function segnaLetta(id: string): Promise<{ il: string | undefined }> {
+export async function segnaLetta(id: string, email?: string): Promise<{ il: string | undefined }> {
     // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
     // un'espressione regolare lo converte da sé, e `null` o un numero hanno la forma di un id.
     if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
@@ -189,7 +189,7 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ letta: true }),
         keepalive: true,
-    })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
+    }, email)) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
     if (corpo?.data?.letta !== true) {
         throw new Error(`PATCH ${indirizzo}: letta`);
     }

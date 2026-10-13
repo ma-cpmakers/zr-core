@@ -5260,6 +5260,53 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(cornice()).toStrictEqual(ridotta);
     });
 
+    // Sprint 38 · T5 (R1 della review, voce #2026): anche la lettura con un clic dice per chi è chiesta. In una scheda rimasta
+    // ferma il 403 `accettazione_richiesta` di chi è entrato non riduce la cornice sotto il nome di chi è mostrato: la pagina
+    // si ricarica, e dopo è di chi è entrato.
+    it('in una scheda rimasta ferma, alla lettura di una notifica con un clic il 403 `accettazione_richiesta` di un\'altra persona non riduce la cornice sotto il nome di chi è mostrato, nemmeno per un disegno: una PATCH sola, e la pagina si ricarica (sprint 38 · T5, R1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email })
+            : risposta({ errore: 'accettazione_richiesta', persona: 'grace@example.com' }, 403)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const prima = cornice();
+        const avvisi: boolean[] = [];
+        const guarda = new MutationObserver(() => avvisi.push(avviso() !== null));
+        guarda.observe(contenitore, { childList: true, subtree: true, characterData: true });
+
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).not.toContain(true);
+        expect(cornice()).toStrictEqual(prima);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: diSempre.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('alla lettura con un clic quel 403 %s riduce la cornice come prima, senza ricaricare la pagina (sprint 38 · T5, R1)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing' })
+            : risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={diSempre} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(cornice()).toStrictEqual(ridotta);
+    });
+
     it('`accettazione_richiesta: false` vale come assente, e senza la chiave e senza il segnale l\'`AppShell` riceve le prop di prima: né una in più né una in meno (sprint 24 · T2.6)', async () => {
         const appShell = vi.spyOn(componenti, 'AppShell');
         const date = async (deiDati: DatiDellaCornice) => {

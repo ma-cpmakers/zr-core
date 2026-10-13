@@ -764,7 +764,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
-        segnaLetta(id).then(
+        segnaLetta(id, persona.email).then(
             ({ il }) => {
                 setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
                 setDaDire(id);

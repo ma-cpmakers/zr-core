@@ -387,8 +387,12 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // Come la parte server: l'elenco si comincia a leggere quando la richiesta arriva, non quando la risposta parte.
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
-        if (daAccettare && toccaAChiCE()) {
-            return json({ errore: 'accettazione_richiesta', persona: personaDellaSessione?.()?.email }, 403);
+        // Come la parte server: il 403 lo dà il backoffice, e «Segna tutte come lette» guarda il corpo, il workspace e di chi
+        // è la richiesta prima di chiamarlo. Il suo 403 sta più sotto, dopo il 409 `persona_diversa`.
+        const delleLetture = percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST';
+        const daAccettarePerChiCE = () => json({ errore: 'accettazione_richiesta', persona: personaDellaSessione?.()?.email }, 403);
+        if (daAccettare && toccaAChiCE() && !delleLetture) {
+            return daAccettarePerChiCE();
         }
         if (percorso === '/cornice/notifiche') {
             caricamenti += 1;
@@ -425,6 +429,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             const diAdesso = personaDellaSessione?.()?.email;
             if (diAdesso !== undefined && typeof persona === 'string' && persona !== diAdesso) {
                 return json({ errore: 'persona_diversa', persona: diAdesso }, 409);
+            }
+            if (daAccettare && toccaAChiCE()) {
+                return daAccettarePerChiCE();
             }
             // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.
             riuscite += 1;

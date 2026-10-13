@@ -174,7 +174,7 @@ describe('cerca', () => {
 });
 
 // Sprint 24 · T2 (voce #1745): se la persona non ha accettato i documenti legali in vigore le quattro rotte della cornice
-// rispondono 403 col solo codice, `{"errore":"accettazione_richiesta"}`. Per la cornice non è un guasto: le quattro chiamate
+// rispondono 403 col codice, `{"errore":"accettazione_richiesta"}`, e dalla `v2.5.0` con l'email di chi è (`persona`). Per la cornice non è un guasto: le quattro chiamate
 // lanciano `AccettazioneRichiesta`, che lei riconosce. Ogni altro esito resta l'errore di prima.
 describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
     afterEach(() => {
@@ -354,7 +354,12 @@ describe('una risposta che dice di chi è', () => {
         ['il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta],
         ['il 429 coi secondi', 429, 'troppe_richieste', TroppeRichieste],
     ];
-    const conErrore = chiamate.flatMap(([nome, , chiama]) => errori.map(([quale, stato, codice, classe]) => [nome, quale, stato, codice, classe, chiama] as const));
+    // Sprint 38 · T5 (R1 della review): anche la lettura di una notifica (`PATCH …/lettura`) passa l'email di chi la cornice
+    // mostra: il suo 403 `accettazione_richiesta` dice di chi è come quello delle altre rotte.
+    const conErrore = [
+        ...chiamate.flatMap(([nome, , chiama]) => errori.map(([quale, stato, codice, classe]) => [nome, quale, stato, codice, classe, chiama] as const)),
+        ['segnaLetta', 'il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta, (email: string) => segnaLetta('uat-n69', email)] as const,
+    ];
 
     it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);

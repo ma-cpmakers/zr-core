@@ -1,4 +1,4 @@
-import { act, useEffect, useState, type ReactElement } from 'react';
+import { act, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
@@ -1122,23 +1122,41 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(uno('.zr-ws-switch')).toBeNull();
             expect(uno('.zr-bell-count')).toBeNull();
         };
-        await inDue({ subito: suo, dopo: letto }, <PaginaA key="1" />);
+        // «A quel disegno e ai successivi» (sprint 38 · T5, R9 della review): dal ricaricamento parziale in poi la pagina guarda
+        // il DOM a ogni suo disegno, appena scritto e prima di ogni effetto. Di chi c'era prima niente, nemmeno per un disegno.
+        const daQui = { guarda: false };
+        const diChiCEra: boolean[] = [];
+        function PaginaCheGuarda() {
+            useLayoutEffect(() => {
+                if (daQui.guarda) {
+                    const testo = document.body.textContent ?? '';
+                    diChiCEra.push(testo.includes(dati.persona.nome) || testo.includes('Acme') || uno('.zr-bell-count') !== null || etichette().includes('CRM'));
+                }
+            });
+
+            return <PaginaA />;
+        }
+        await inDue({ subito: suo, dopo: letto }, <PaginaCheGuarda key="1" />);
         expect(etichette()).toContain('CRM');
         expect(uno('.zr-ws-switch')?.textContent).toContain('Acme');
         expect(uno('.zr-bell-count')?.textContent).toBe('7');
 
         // Un ricaricamento parziale del solo `subito` (`only: ['subito']`): il `dopo` fra le props resta quello di prima.
-        await inDue({ subito: diAltra, dopo: letto }, <PaginaA key="1" />);
+        daQui.guarda = true;
+        await inDue({ subito: diAltra, dopo: letto }, <PaginaCheGuarda key="1" />);
         inAttesaDiChiEEntrato();
         await act(giro);
         inAttesaDiChiEEntrato();
+        daQui.guarda = false;
+        expect(diChiCEra.length).toBeGreaterThan(0);
+        expect(diChiCEra).not.toContain(true);
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="status"]')?.textContent).toBe(testi('es').loading);
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
         inAttesaDiChiEEntrato();
 
-        await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace: diAltra.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaA key="1" />);
+        await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace: diAltra.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaCheGuarda key="1" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(etichette()).toContain('Gestión de proyectos');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');

@@ -2272,7 +2272,7 @@ it('con più percorsi la parte server dà gli id del primo che `dati` soddisfa p
 });
 
 // Sprint 24 · T1 (voce #1745): davanti al 403 `accettazione_richiesta` del backoffice (documenti legali da accettare) le rotte
-// della cornice rispondono 403 col solo codice, nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
+// della cornice rispondono 403 col codice e, dalla `v2.5.0`, l'email della persona della sessione (`persona`), nella forma dei loro errori: i documenti mancanti, il titolo e il dettaglio del
 // backoffice restano nella parte server. Il 403 si riconosce dallo stato e dal codice insieme: ogni altra risposta resta
 // l'errore che era. La quarta rotta, la ricerca, è in RicercaTest. Il 403 è accettazioneRichiesta() di tests/Pest.php.
 

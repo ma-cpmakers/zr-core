@@ -948,6 +948,24 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: true });
     });
 
+    // Sprint 38 · T5 (R5 della review): come la rotta vera, che guarda di chi è la richiesta prima di chiamare il backoffice —
+    // ed è il backoffice a dare il 403 —, il 409 `persona_diversa` viene prima del 403 di `?accettazione=dopo`.
+    it('con `?accettazione=dopo&per_altra` la POST /cornice/notifiche/letture chiesta per chi c\'era prima risponde 409 `persona_diversa`, non il 403 di chi è entrato; chiesta per chi è entrato, il suo 403 (sprint 38 · T5, R5)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione, '?accettazione=dopo&per_altra');
+        const segnaPer = async (persona: string): Promise<[number, unknown]> => {
+            const inArrivo = fetch('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date(Date.now() + 60_000).toISOString(), workspace: 'uat-marketing', persona }) });
+            await vi.advanceTimersByTimeAsync(1500);
+            const risposta = await inArrivo;
+
+            return [risposta.status, await risposta.json()];
+        };
+        sessione.persona = grace;
+
+        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: grace.email }]);
+        expect(await segnaPer(grace.email)).toStrictEqual([403, { errore: 'accettazione_richiesta', persona: grace.email }]);
+    });
+
     it('POST /cornice/ricerca dà fra i risultati una board di chi è entrato adesso: «UAT Lancio di Ada», poi «UAT Lancio di Grace»; gli altri sono gli stessi (sprint 37 · T1.1)', async () => {
         const sessione = { persona: ada };
         await rotte(sessione);
