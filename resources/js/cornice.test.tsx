@@ -6200,6 +6200,67 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 
+    it('se a dialogo ancora aperto la pagina cambia — entra un avviso —, chiuso il dialogo il fuoco torna lo stesso a chi lo aveva (sprint 32 · T1.2)', async () => {
+        largaAlPiu720(false);
+        const pagina = (aperto: boolean, conAvviso: boolean) => (
+            <>
+                <button type="button" id="dietro">Dietro il dialogo</button>
+                {conAvviso ? <p id="avviso">Arrivato</p> : null}
+                <Dialog open={aperto} title="Attendi"><p>Solo testo</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(true, false));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        const ilDialogo = uno('.zr-dialog');
+
+        await laPagina(pagina(true, true));
+        expect(uno('#avviso')).not.toBeNull();
+        expect(uno('.zr-dialog')).toBe(ilDialogo);
+        expect(document.activeElement).toBe(ilDialogo);
+
+        await laPagina(pagina(false, true));
+        expect(document.activeElement).toBe(dietro());
+    });
+
+    it('se al posto del dialogo senza fermate ne entra un altro, il fuoco non torna al pulsante dietro il velo: Invio lo premerebbe di nuovo (sprint 32 · T1.2)', async () => {
+        largaAlPiu720(false);
+        const pagina = (attendi: boolean, fatto: boolean) => (
+            <>
+                <button type="button" id="dietro">Dietro il dialogo</button>
+                <Dialog open={attendi} title="Attendi"><p>Solo testo</p></Dialog>
+                <Dialog open={fatto} title="Fatto" onClose={() => undefined}><p>Fatto</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(true, false));
+        await conIlFuoco(dietro());
+        expect(await premi('Tab')).toBe(true);
+        const alDietro = vi.spyOn(dietro() as HTMLElement, 'focus');
+
+        await laPagina(pagina(false, true));
+        expect(alDietro).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(document.body);
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
+    });
+
+    it('un dialogo senza fermate aperto sopra un altro: chiuso, il fuoco torna al pulsante del dialogo che resta (sprint 32 · T1.2)', async () => {
+        largaAlPiu720(false);
+        const pagina = (attendi: boolean) => (
+            <>
+                <Dialog open title="Conferma" onClose={() => undefined}><p>Sotto</p></Dialog>
+                <Dialog open={attendi} title="Attendi"><p>Solo testo</p></Dialog>
+            </>
+        );
+        await laPagina(pagina(true));
+        await conIlFuoco(chiudi());
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe([...document.querySelectorAll('.zr-dialog')].pop());
+
+        await laPagina(pagina(false));
+        expect(document.activeElement).toBe(chiudi());
+    });
+
     // Sprint 32 · T2.3: il caso legge un file con `node:fs`, e gira. Con happy-dom vitest gira comunque in `node`: happy-dom dà
     // `document` e `window`, e i moduli di `node` restano. Ciò che happy-dom non ha è `fetch` verso un file e la geometria.
     it('la larghezza sotto cui il pannello di dettaglio trattiene il fuoco è quella a cui il CSS del design system lo fa largo tutta la pagina (sprint 31 · T3.5)', async () => {

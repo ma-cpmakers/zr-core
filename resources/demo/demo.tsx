@@ -79,26 +79,37 @@ const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiorn
 
 /**
  * Con `?rimedi=1`: un `Dialog` e un `DetailPanel` da aprire, per provare coi tasti veri che Tab resta dentro (il dialogo
- * sempre, il pannello sotto 720 px). Il dialogo si apre anche da dentro il pannello: uno sopra l'altro.
+ * sempre, il pannello sotto 720 px). Il dialogo si apre anche da dentro il pannello: uno sopra l'altro. «UAT attendi» apre
+ * un dialogo senza niente su cui fermarsi, che dopo quattro secondi si chiude da sé; «UAT attendi e poi fatto» al suo posto
+ * ne apre un altro, con la «×». Con `&iframe=<lato>` il dialogo ha in fondo un `iframe` largo e alto quanto detto (anche 0).
  */
 function ProvaDeiRimedi() {
     const [dialogo, setDialogo] = useState(false);
     const [pannello, setPannello] = useState(false);
+    const [attesa, setAttesa] = useState<'no' | 'attendi' | 'fatto'>('no');
+    const lato = new URLSearchParams(window.location.search).get('iframe');
     const apriIlDialogo = <Button variant="secondary" onClick={() => setDialogo(true)}>UAT apri il dialogo</Button>;
+    const attendi = (poi: 'no' | 'fatto') => {
+        setAttesa('attendi');
+        setTimeout(() => setAttesa(poi), 4000);
+    };
 
     return (
         <div id="uat-rimedi" className="zr-stack">
             <p>{apriIlDialogo} <Button variant="secondary" onClick={() => setPannello(true)}>UAT apri il pannello</Button> <a href="#uat-dopo" id="uat-dopo">UAT dopo</a></p>
+            <p><Button variant="secondary" onClick={() => attendi('no')}>UAT attendi</Button> <Button variant="secondary" onClick={() => attendi('fatto')}>UAT attendi e poi fatto</Button></p>
             {pannello ? (
                 <DetailPanel label="UAT scheda" head="UAT Lancio corso" onClose={() => setPannello(false)} foot={<Button variant="secondary">UAT commenta</Button>}>
                     <p><input aria-label="UAT titolo" defaultValue="UAT Lancio corso" /></p>
                     <p>{apriIlDialogo}</p>
                 </DetailPanel>
             ) : null}
-            <Dialog open={dialogo} title="UAT nuova scheda" onClose={() => setDialogo(false)} footer={<><Button variant="secondary" onClick={() => setDialogo(false)}>UAT annulla</Button> <Button onClick={() => setDialogo(false)}>UAT salva</Button></>}>
+            <Dialog open={dialogo} title="UAT nuova scheda" onClose={() => setDialogo(false)} footer={<><Button variant="secondary" onClick={() => setDialogo(false)}>UAT annulla</Button> <Button onClick={() => setDialogo(false)}>UAT salva</Button>{lato !== null ? <iframe title="UAT riquadro" width={lato} height={lato} /> : null}</>}>
                 <p><input aria-label="UAT nome" /></p>
                 <p><Button variant="ghost" disabled>UAT spento</Button></p>
             </Dialog>
+            <Dialog open={attesa === 'attendi'} title="UAT attendi"><p>UAT quattro secondi</p></Dialog>
+            <Dialog open={attesa === 'fatto'} title="UAT fatto" onClose={() => setAttesa('no')}><p>UAT fatto</p></Dialog>
         </div>
     );
 }

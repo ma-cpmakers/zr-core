@@ -70,7 +70,8 @@ function eUnaFermata(elemento: HTMLElement): boolean {
 /**
  * Il dialogo senza fermate a cui il rimedio ha dato il fuoco, e chi lo aveva prima. Quando quel dialogo esce dal documento il
  * fuoco resta alla pagina: torna a chi lo aveva, se è ancora in pagina; a un elemento che lo ha preso nel frattempo non si
- * toglie.
+ * toglie. Se intanto un altro dialogo trattiene il fuoco, torna a chi lo aveva solo se sta dentro quel dialogo: un pulsante
+ * dietro il velo non lo riprende, perché Invio lo premerebbe di nuovo.
  */
 let preso: [dialogo: HTMLElement, loAveva: Element | null] | null = null;
 
@@ -79,7 +80,7 @@ function fuocoAChiLoAveva(): void {
         const loAveva = preso[1];
 
         preso = null;
-        if (document.activeElement === document.body && loAveva instanceof HTMLElement && loAveva.isConnected) {
+        if (document.activeElement === document.body && loAveva instanceof HTMLElement && (chiTrattieneIlFuoco() ?? document).contains(loAveva)) {
             loAveva.focus();
         }
     }

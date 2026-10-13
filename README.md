@@ -90,7 +90,7 @@ Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito.
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,1 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026, e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
@@ -386,7 +386,9 @@ cornice === null ? pagina : (
   con l'ultima non letta —, e dove va il fuoco allora lo decide il browser: di solito esce dal pannello, che resta aperto.
   Esc chiude il pannello e riporta il fuoco sulla campanella, come prima. Dalla `v1.21.0` il fuoco torna sulla campanella
   anche chiudendo il pannello col clic, dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS): prima
-  restava alla pagina. Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
+  restava alla pagina. Lo provano i casi del pacchetto, che imitano un clic che non dà il fuoco: in Safari e in Firefox non
+  è provato. In Safari, a pannello aperto, il clic sull'avatar chiude il pannello e apre il menu del profilo senza dare il
+  fuoco all'avatar: dove va il fuoco allora non è provato, perché Safari non è fra i browser delle prove. Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che
   chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è
   provato. A un elemento che lo ha preso — un campo cliccato fuori dal pannello — non si toglie (provato in Chrome). Vale anche
   nello stato ridotto. Il pannello è quello che l'`AppShell` scrive accanto alla campanella: un elemento di una pagina con la stessa
@@ -394,7 +396,7 @@ cornice === null ? pagina : (
   l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
-  1,1 KB con gzip, con quello del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
+  1,2 KB con gzip, con quello del punto sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
   a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
@@ -413,8 +415,13 @@ cornice === null ? pagina : (
   riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima
   invece di passare da lì e uscire dietro il velo; e chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco
   torna all'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha
-  preso un altro (provati in Chrome). Il modulo non deve fare niente,
-  e non scriva una trappola sua: sarebbero due. È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
+  preso un altro (provati in Chrome). Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel
+  dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo. Al dialogo che ha preso il fuoco
+  resta il `tabindex="-1"` che la cornice gli ha scritto, anche se poi guadagna un pulsante; riaperto, è un elemento nuovo
+  e non lo ha. Il modulo non deve fare niente,
+  e non scriva una trappola sua: sarebbero due. Un test del modulo con un `iframe` in fondo a un `Dialog` va riletto: in
+  un DOM senza geometria (happy-dom, jsdom) larghezza e altezza sono sempre zero, e lì un `iframe` non è mai una fermata.
+  È provvisorio: `Dialog` e `DetailPanel` del design system non trattengono
   ancora il fuoco, e la cornice lo fa da sé, senza toccare i componenti; quando lo fanno loro questo si toglie, senza che
   il modulo cambi niente. Non copre due cose: una pagina senza la cornice, dove un dialogo aperto non trattiene niente, e
   il primo campo in fuoco all'apertura, che resta del modulo. Restano fuori anche tre casi: da dentro un `iframe` i

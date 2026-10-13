@@ -4829,6 +4829,10 @@ it('il README dice, nel punto del Tab dentro un dialogo, i due casi chiusi dalla
 })->with([
     'un riquadro che non si vede' => ['Dalla `v1.22.0`: un `iframe` largo o alto zero — un riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima invece di passare da lì e uscire dietro il velo'],
     'il fuoco torna a chi lo aveva' => ['chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna all\'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha preso un altro (provati in Chrome)'],
+    // Review della PR #65 (R1, R7, R13): un altro dialogo aperto intanto, il `tabindex` che resta, un DOM senza geometria.
+    'un altro dialogo aperto intanto' => ['Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo'],
+    'il tabindex che resta' => ['Al dialogo che ha preso il fuoco resta il `tabindex="-1"` che la cornice gli ha scritto, anche se poi guadagna un pulsante; riaperto, è un elemento nuovo e non lo ha'],
+    'un DOM senza geometria' => ['Un test del modulo con un `iframe` in fondo a un `Dialog` va riletto: in un DOM senza geometria (happy-dom, jsdom) larghezza e altezza sono sempre zero, e lì un `iframe` non è mai una fermata'],
 ]);
 
 // Sprint 32 · T2.4 (voce #1912; review della PR #64, R12): dove va il fuoco dopo il clic su una notifica o su «Vedi tutte» il
@@ -4840,7 +4844,10 @@ it('il README dice, nel punto del fuoco nel pannello delle notifiche, dove va il
 
     expect(str_contains($punto, 'Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è provato'))->toBe(true)
         ->and(str_contains($punto, 'un campo cliccato fuori dal pannello — non si toglie (provato in Chrome)'))->toBe(true)
-        ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false);
+        ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false)
+        // Review della PR #65 (R3): il clic che non dà il fuoco è provato coi casi del pacchetto, e dopo il clic sull'avatar no.
+        ->and(str_contains($punto, 'Lo provano i casi del pacchetto, che imitano un clic che non dà il fuoco: in Safari e in Firefox non è provato'))->toBe(true)
+        ->and(str_contains($punto, 'In Safari, a pannello aperto, il clic sull\'avatar chiude il pannello e apre il menu del profilo senza dare il fuoco all\'avatar: dove va il fuoco allora non è provato, perché Safari non è fra i browser delle prove'))->toBe(true);
 });
 
 // Sprint 32 · T3.5 (voce #1913): una notifica del backoffice può raccontare più azioni. Il README dice, nella riga dell'elenco, che
