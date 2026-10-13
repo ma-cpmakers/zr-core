@@ -310,7 +310,11 @@ const paginaDellIndirizzo = () => paginaDi(window.location.search);
 
 /** Ciò che il «server» legge per una pagina, quando la visita gli arriva: i dati di una lettura nuova (col segno, salvo `?segno=no`). */
 function leggi(nome: Nome): Props {
-    return lettura(propsDi[nome], segno);
+    // La richiesta che la «Due dati» fa dopo il primo disegno porta anche ciò che il «server» ha letto dal backoffice.
+    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
+    chiestoDopo = false;
+
+    return { ...lettura(propsDi[nome], segno), ...delBackoffice };
 }
 
 /**
@@ -393,9 +397,7 @@ rotteFinte(() => (propsDi[paginaDellIndirizzo()].cornice ?? propsDi[paginaDellIn
 // che poi prende la pagina tenuta non passa di qui. Fra lo scaricamento e la visita i montaggi mostrati non dicono niente.
 http.setClient(clientFinto((indirizzo) => {
     const nome = paginaDi(indirizzo.search);
-    // La richiesta che la «Due dati» fa dopo il primo disegno porta anche ciò che il «server» ha letto dal backoffice.
-    const letta = { ...leggi(nome), ...(nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {}) };
-    chiestoDopo = false;
+    const letta = leggi(nome);
 
     return () => {
         montaggi = 0;
