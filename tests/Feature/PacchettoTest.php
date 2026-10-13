@@ -4898,6 +4898,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'finché non arrivano' => ['notifiche', 'Finché non arrivano il pannello aspetta'],
     'se non arrivano' => ['notifiche', 'se non arrivano — una risposta che non è 200, la rete che cade, dieci secondi senza risposta — mostra l\'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di titoli di ripiego'],
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
+    // Sprint 34 · T1.6 (voce #1929): dopo un pezzo della campanella non arrivato «Riprova» lo richiede anche in Chromium.
+    'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
+    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'L\'indirizzo è quello che dice l\'errore del browser, e vale solo se ha la stessa origine del JS'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
     // Seconda lettura della PR #63 (S1, S2, S8, S15).
@@ -5140,6 +5143,15 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
 it('il README non dice più che il nome di chi ha fatto non si taglia (sprint 33 · T2.5)', function () {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Il nome non si taglia'))->toBe(false);
 });
+
+// Sprint 34 · T1.6 (voce #1929): «Riprova» il pezzo della campanella lo richiede anche in Chromium, e il README non dice più
+// il contrario.
+it('il README non dice più che in Chromium il pezzo della campanella non si richiede fino al ricaricamento (sprint 34 · T1.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il browser non lo richiede' => ['il browser il pezzo non lo richiede'],
+    'l\'errore resta' => ['e l\'errore resta fino al ricaricamento'],
+]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
 // Management.
