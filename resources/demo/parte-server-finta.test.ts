@@ -4,6 +4,8 @@ import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
 import { clientFinto, colSegno, conLaSessione, lettura, type Entrata } from './parte-server-finta';
+// @ts-expect-error Sprint 40 · T5: i casi rossi. La «sessione» coi suoi stati arriva col codice del task.
+import { chiaveDellaSessione, sessioneFinta } from './parte-server-finta';
 
 // Sprint 10 · T3 (voce #1453), dopo la review della PR. La UAT del layout gira sulla pagina di prova, e ciò che lì fa la parte
 // server lo fa questo file: se smette di mettere il segno a ogni lettura, se `?segno=no` non lo toglie più, o se risponde a una
@@ -318,6 +320,70 @@ describe('la sessione della parte server finta: i dati di una lettura sono di ch
         expect(conLaSessione(letta({ subito, dopo: daAccettare }), stessoWorkspace).dopo).toStrictEqual({ ...daAccettare, ...grace });
         // I soli dati della sessione, prima che `dopo` arrivi: niente `dopo` nemmeno dopo.
         expect(Object.hasOwn(conLaSessione(letta({ subito }), altrove), 'dopo')).toBe(false);
+    });
+});
+
+// Sprint 40 · T5 (voce 2002). La «sessione» ha i suoi stati, e li sceglie ciò che i pulsanti della pagina di prova scrivono nel
+// `localStorage`. Fin qui stavano nella pagina, dove nessun caso li leggeva: uno stato che avesse dato un'altra persona, o
+// un'altra lingua, avrebbe cambiato le righe della UAT in silenzio. Il quarto è nuovo: la persona che c'è, con un'altra lingua
+// e nient'altro di diverso, per una riga di UAT sulla lingua senza una variante della pagina costruita a mano.
+describe('la sessione della parte server finta nei suoi stati: li sceglie ciò che la pagina di prova scrive nel localStorage', () => {
+    const grace = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' } };
+    const diGrace = { prodotti: { pm: 'disponibile', crm: 'attivo' }, aziende: [{ id: 'uat-9', nome: 'UAT Hopper', workspace: [{ nome: 'UAT Marketing', slug: 'uat-marketing' }] }], non_lette: 2 } satisfies Entrata['backoffice'];
+    const ricerca = { nome: 'UAT Ricerca', slug: 'uat-ricerca' };
+    /** Chi è entrato adesso, come lo chiede la pagina di prova: con l'altra persona, il suo altro workspace e l'altra lingua. */
+    const entrata = (): Entrata | undefined => sessioneFinta({ sessione: grace, backoffice: diGrace }, ricerca, 'es')();
+    /** Ciò che la parte server legge adesso per una pagina di Ada. */
+    const diAda = () => conLaSessione({ cornice: structuredClone(marketing), cartella: 'UAT Q4' }, entrata()).cornice;
+    /** Il clic su un pulsante di chi entra. */
+    const entra = (stato: string) => localStorage.setItem(chiaveDellaSessione, stato);
+
+    afterEach(() => localStorage.clear());
+
+    // Deve fallire se uno stato dà un'altra persona, un'altra lingua o un altro workspace di quelli che il suo pulsante dice.
+    it.each([
+        ['nessun valore: la prima persona, nella sua lingua', undefined, 'uat-zr-core@example.com', 'it', 'uat-marketing'],
+        ['`altra`: un\'altra persona nello stesso workspace', 'altra', 'uat-zr-core-2@example.com', 'en', 'uat-marketing'],
+        ['`altrove`: un\'altra persona su un altro workspace', 'altrove', 'uat-zr-core-2@example.com', 'en', 'uat-ricerca'],
+        ['`lingua`: la stessa persona con un\'altra lingua', 'lingua', 'uat-zr-core@example.com', 'es', 'uat-marketing'],
+    ])('%s (sprint 40 · T5.2)', (_stato, scritto, email, lingua, workspace) => {
+        if (scritto !== undefined) {
+            entra(scritto);
+        }
+        const letta = diAda();
+
+        expect([letta?.persona.email, letta?.lingua, letta?.workspace.slug]).toStrictEqual([email, lingua, workspace]);
+    });
+
+    it('la chiave è una sola, e senza un valore suo non è entrato nessun altro: la lettura resta com\'è, anche dopo «UAT torna la prima persona» (sprint 40 · T5.2)', () => {
+        expect(chiaveDellaSessione).toBe('uat-persona');
+        expect(entrata()).toBeUndefined();
+        expect(diAda()).toStrictEqual(marketing);
+
+        entra('uat-nessuno');
+        expect(entrata()).toBeUndefined();
+
+        entra('altra');
+        expect(diAda()).toStrictEqual({ ...grace, workspace: marketing.workspace, ...diGrace });
+        localStorage.removeItem(chiaveDellaSessione);
+        expect(diAda()).toStrictEqual(marketing);
+    });
+
+    it('altrove, l\'altra persona è nel suo workspace anche per il backoffice: le sue aziende hanno quello, e il resto è come nello stesso workspace (sprint 40 · T5.2)', () => {
+        entra('altrove');
+
+        expect(diAda()).toStrictEqual({ ...grace, workspace: ricerca, ...diGrace, aziende: [{ id: 'uat-9', nome: 'UAT Hopper', workspace: [{ id: 'uat-ws-9', ...ricerca }] }] });
+    });
+
+    it('con un\'altra lingua cambia la sola lingua: persona, workspace e dati del backoffice restano quelli della pagina, di chiunque sia, nei dati interi e nei due dati (sprint 40 · T5.1)', () => {
+        entra('lingua');
+
+        // Deve fallire se il comando cambia anche la persona o il workspace.
+        expect(diAda()).toStrictEqual({ ...marketing, lingua: 'es' });
+
+        const subito: DatiSubito = { ...grace, workspace: ricerca, sessione_il: '2026-10-13T00:00:00.000001Z' };
+        const dopo: DatiDopo = { ...grace, workspace: ricerca, ...diGrace, aggiornati_il: '2026-10-13T00:00:00.000002Z', sessione_il: '2026-10-13T00:00:00.000001Z' };
+        expect(conLaSessione({ cornice: null, subito, dopo }, entrata())).toStrictEqual({ cornice: null, subito: { ...subito, lingua: 'es' }, dopo: { ...dopo, lingua: 'es' } });
     });
 });
 

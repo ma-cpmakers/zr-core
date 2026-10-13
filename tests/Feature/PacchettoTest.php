@@ -617,7 +617,7 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura'])
+        ->and($importati('./parte-server-finta'))->toBe(['chiaveDellaSessione', 'clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura', 'sessioneFinta'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -718,14 +718,14 @@ it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su
         'chiediDopo();' => 1,
     ])
         // Le due letture della «sessione»: i dati di una visita e ciò che le rotte finte rispondono vengono dalla stessa.
-        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato, "['altrove', {", 'workspace: ricerca,']))->toBe([
+        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato]))->toBe([
             $letta => 1,
             $delleRotte => 1,
             'conLaSessione(' => 2,
             $chiEEntrato => 1,
-            "['altrove', {" => 1,
-            'workspace: ricerca,' => 1,
         ])
+        // Dallo sprint 40 (T5) gli stati della «sessione» stanno nella parte server finta, dove un caso li legge.
+        ->and(scritteNellaPaginaDiProva('parte-server-finta.ts', ["['altrove', {", 'workspace: altrove,']))->toBe(["['altrove', {" => 1, 'workspace: altrove,' => 1])
         // Dietro `?sessione`, quattro volte in tutto: il collegamento alla «Due dati», i pulsanti di chi entra, «UAT rileggi dopo»
         // e la persona data alle rotte finte.
         ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
@@ -748,6 +748,32 @@ it('la pagina di prova del layout, con ?sessione, rilegge il solo subito, dà gl
             '&& toccaAChiCE()) {' => 3,
             'localStorage.getItem(chiave) !== null' => 1,
             'const chiave = `uat-letta-di-${breve.toLowerCase()}`;' => 1,
+        ]);
+});
+
+// Sprint 40 · T5 (voce #2002): un quarto pulsante lascia la persona che c'è e le cambia la lingua, per una riga di UAT sulla
+// lingua senza una variante della pagina fatta a mano. Che cosa dà ogni stato della «sessione» lo prova
+// parte-server-finta.test.ts, che li legge tutti e quattro; qui, che la pagina di prova prende gli stati da lì e non ne tiene
+// di suoi: se li tenesse, il caso leggerebbe una «sessione» che la pagina non usa.
+it('la pagina di prova del layout, con ?sessione, lascia la stessa persona con un\'altra lingua, e gli stati della sessione sono quelli della parte server finta (sprint 40 · T5.1)', function () {
+    $lingua = '<button type="button" data-uat="entra-lingua" onClick={() => localStorage.setItem(chiaveDellaSessione, \'lingua\')}>UAT la stessa persona cambia lingua</button>';
+    $stati = "const entrata = sessioneFinta({ sessione: diUnAltra, backoffice: delBackofficeDiUnAltra }, ricerca, 'es');";
+    $laLingua = "['lingua', { sessione: { lingua: altraLingua }, backoffice: {} }],";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$lingua, 'data-uat="entra-lingua"', $stati, 'sessioneFinta(', 'new Map<string, Entrata>(', 'const chiaveDellaSessione', 'localStorage.getItem(']))->toBe([
+        $lingua => 1,
+        'data-uat="entra-lingua"' => 1,
+        $stati => 1,
+        'sessioneFinta(' => 1,
+        'new Map<string, Entrata>(' => 0,
+        'const chiaveDellaSessione' => 0,
+        'localStorage.getItem(' => 0,
+    ])
+        ->and(scritteNellaPaginaDiProva('parte-server-finta.ts', ["export const chiaveDellaSessione = 'uat-persona';", "['altra', altra],", $laLingua, "entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '')"]))->toBe([
+            "export const chiaveDellaSessione = 'uat-persona';" => 1,
+            "['altra', altra]," => 1,
+            $laLingua => 1,
+            "entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '')" => 1,
         ]);
 });
 
