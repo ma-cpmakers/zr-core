@@ -1021,7 +1021,7 @@ function rigaDellaRotta(string $readme, string $rotta): string
 it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo istante e che cos\'è: aggiornati_il nell\'elenco, segnate_il nelle letture (sprint 11 · T1.4; sprint 12 · T4.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $elenco = '| `GET /cornice/notifiche` |';
-    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $cosaDice = fn (string $testo): array => [
         'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
@@ -1391,7 +1391,7 @@ it('il README non dice più che il titolo di una notifica è uno per tutte (spri
 
 it('il README dice, nella riga di POST /cornice/notifiche/letture, una frase per cosa (sprint 12 · T4.6)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
+    $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Il README con la riga delle letture e quella della ricerca scambiate di rotta: la frase c'è, ma nella riga di un'altra rotta.
     $scambiate = strtr($readme, [$letture => $ricerca, $ricerca => $letture]);
@@ -1654,7 +1654,7 @@ it('il README dice, nella riga della rotta, che una risposta del backoffice senz
 })->with([
     'una notifica senza tipo' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx)'],
     'anche nella lettura di una notifica sola' => ['GET /cornice/notifiche', '| `GET /cornice/notifiche` |', 'è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`'],
-    'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
+    'una lettura senza altre' => ['POST /cornice/notifiche/letture', '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |', 'o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx)'],
 ]);
 
 // Sprint 18 · T1 (voce #1638): la ricerca è una POST con la parola nel corpo. Il README lo dice nella riga della rotta, che è
@@ -5358,13 +5358,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: le due rotte' => ['readme', 'Dalla `v2.4.0` anche l\'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l\'email della persona della sessione'],
     'la scheda ferma: a schermo' => ['readme', 'La cornice non la mostra sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello resta in caricamento'],
     'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
-    'la scheda ferma: ciò che resta fuori' => ['readme', 'Resta fuori «Segna tutte come lette» da una scheda ferma che ha già il suo elenco a schermo: la rotta delle letture non dice di chi è'],
     'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
     'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
     // Sprint 37 · T6 (review della PR #70: R7, R13): ciò che resta fuori lo dice anche la guida; l'email dei dati composti a mano.
-    'la guida: ciò che resta fuori' => ['guida', 'Resta fuori «Segna tutte come lette» da una scheda ferma con l\'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione'],
     'i dati composti a mano: l\'email' => ['readme', 'Chi compone a mano i dati della cornice dà come email della persona quella della sessione: con un\'altra, campanella e ricerca ricaricano la pagina a ogni uso'],
     'la guida: l\'email' => ['guida', 'La persona la riconosce dall\'email, che c\'è sempre: la garantisce il contratto del backoffice, non zr-auth, che la porta com\'è'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
@@ -5374,6 +5372,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: gli errori' => ['readme', 'Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta` e il 429 della ricerca portano `persona`'],
     'la scheda ferma: gli errori a schermo' => ['readme', 'In una scheda rimasta ferma l\'errore di chi è entrato non riduce la cornice e non ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica'],
     'la scheda ferma: il 403 di zr-auth' => ['readme', 'Il 403 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima'],
+    // Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non è più un limite; ciò che resta, detto.
+    'la scheda ferma: segna tutte' => ['readme', 'Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l\'email di chi mostra, e la rotta la confronta con quella della sessione'],
+    'la scheda ferma: il 409' => ['readme', 'la rotta non segna niente e risponde 409 `persona_diversa` con l\'email di chi è entrato: le sue notifiche restano da leggere, l\'elenco a schermo non è dato per letto, e la pagina si ricarica'],
+    'la scheda ferma: senza persona' => ['readme', 'Una richiesta senza `persona` (il JS di una versione di prima, rimasto in una scheda) vale come prima: la rotta guarda solo il workspace'],
+    'la scheda ferma: ciò che resta' => ['readme', 'Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una richiesta'],
+    'la scheda ferma: la riga della rotta' => ['readme', '409 `{errore: "persona_diversa", persona}` con l\'email della sessione, senza chiamare il backoffice, e non si segna niente; una richiesta senza `persona` vale come prima'],
+    'la guida: segna tutte da una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica'],
+    'la guida: ciò che resta a una scheda ferma' => ['guida', 'Una scheda ferma mostra ciò che aveva finché da lì non parte una richiesta'],
     'la guida: gli errori in una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima'],
     'la guida: il contenuto della pagina' => ['guida', 'Il contenuto della tua pagina, con Indietro, resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
@@ -5478,6 +5484,16 @@ it('il README non dice più che `dopo` non dice di chi è, né che i dati rilett
     'sopra i dati di adesso' => ['sopra i dati di adesso'],
     'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
     'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
+]);
+
+// Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non segna le notifiche di un'altra persona.
+it('README e guida non dicono più che «Segna tutte come lette» da una scheda ferma resta fuori (sprint 38 · T4.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'resta fuori' => ['Resta fuori «Segna tutte come lette»'],
+    'la rotta non dice di chi è' => ['la rotta delle letture non dice di chi è'],
+    'segna le notifiche di chi è nella sessione' => ['segna le notifiche di chi è nella sessione'],
 ]);
 
 // Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.

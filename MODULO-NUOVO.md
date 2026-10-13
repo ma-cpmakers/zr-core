@@ -308,8 +308,9 @@ sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di ch
 rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
 ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il
 freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
-contratto del backoffice, non zr-auth, che la porta com'è. Resta fuori «Segna tutte come lette» da una scheda ferma con
-l'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione. Il contenuto della tua pagina, con Indietro, resta sempre quello di
+contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
+scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Una scheda ferma mostra ciò che aveva finché da
+lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa

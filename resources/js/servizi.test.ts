@@ -183,7 +183,7 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
 
     const chiamate: [string, () => Promise<unknown>][] = [
         ['caricaNotifiche', () => caricaNotifiche('ada@example.com')],
-        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing')],
+        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com')],
         ['segnaLetta', () => segnaLetta('uat-n69')],
         ['cerca', () => cerca('lancio', new AbortController().signal, 'ada@example.com')],
     ];
@@ -377,6 +377,46 @@ describe('una risposta che dice di chi è', () => {
         vi.stubGlobal('fetch', fetchFinto);
 
         await expect(chiama('ada@example.com')).rejects.toBeInstanceOf(classe);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    // Sprint 38 · T4 (voce #2028): «Segna tutte come lette» dice per chi lo chiede. `segnaLetteFinoA` manda l'email di chi la
+    // cornice mostra (`persona`), e la parte server, se la sessione è di un'altra persona, non segna niente e risponde 409
+    // `persona_diversa` con l'email di chi è entrato: un errore di un'altra persona, e la pagina si ricarica.
+    const segna = () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com');
+
+    it('segnaLetteFinoA manda nel corpo l\'email di chi la cornice mostra, accanto all\'istante e allo slug (sprint 38 · T4.1)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' } }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await segna();
+        expect(JSON.parse(String(fetchFinto.mock.calls[0]?.[1]?.body))).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+    });
+
+    it.each<[string, Response]>([
+        ['il 409 `persona_diversa` di un\'altra persona', diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' })],
+        ['una risposta riuscita che dice un\'altra persona', risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' }, persona: 'grace@example.com' })],
+    ])('segnaLetteFinoA: %s non torna a chi ha chiesto — né chiusa né con un errore — e la pagina si ricarica, una volta (sprint 38 · T4.1)', async (_quale, laRisposta) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => laRisposta);
+        vi.stubGlobal('fetch', fetchFinto);
+
+        expect(await esitoDi(segna())).toBe('in attesa');
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: 'ada@example.com' }],
+        ['che non dice di chi è', {}],
+        ['con `persona` null', { persona: null }],
+    ])('segnaLetteFinoA: un 409 `persona_diversa` %s resta l\'errore di sempre, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T4.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(409, { errore: 'persona_diversa', ...conLaPersona }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(segna()).rejects.toThrow('POST /cornice/notifiche/letture: 409');
         expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });

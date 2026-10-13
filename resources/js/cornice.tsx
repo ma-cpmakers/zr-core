@@ -818,8 +818,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         let altre: boolean;
         try {
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
-            // sessione è passata a un altro, la parte server non segna niente.
-            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug));
+            // sessione è passata a un altro, la parte server non segna niente. E con l'email di chi è mostrato: nemmeno se
+            // è passata a un'altra persona.
+            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug, persona.email));
         } catch (errore) {
             // Non cambia niente: il pulsante resta, per riprovare.
             seDaAccettare(errore);

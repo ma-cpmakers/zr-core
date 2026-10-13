@@ -924,6 +924,30 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect(diGrace.slice(1)).toStrictEqual(diAda.slice(1));
     });
 
+    // Sprint 38 · T4 (voce 2028): come la rotta vera dalla `v2.5.0`, «Segna tutte come lette» chiesta per chi c'era prima non
+    // segna le notifiche di chi è entrato, e lo dice con la sua email: in una scheda ferma la cornice ricarica la pagina.
+    it('POST /cornice/notifiche/letture con la `persona` di chi c\'era prima non segna niente e risponde 409 `persona_diversa` con l\'email di chi è entrato, la cui notifica resta da leggere; con la sua, o senza `persona`, segna come prima (sprint 38 · T4.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione);
+        const segnaPer = async (persona?: string): Promise<[number, unknown]> => {
+            const inArrivo = fetch('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date(Date.now() + 60_000).toISOString(), workspace: 'uat-marketing', persona }) });
+            await vi.advanceTimersByTimeAsync(1500);
+            const risposta = await inArrivo;
+
+            return [risposta.status, ((await risposta.json()) as { errore?: unknown; persona?: unknown })];
+        };
+        sessione.persona = grace;
+
+        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: grace.email }]);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: false });
+
+        expect((await segnaPer(grace.email))[0]).toBe(200);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: true });
+        sessione.persona = ada;
+        expect((await segnaPer())[0]).toBe(200);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: true });
+    });
+
     it('POST /cornice/ricerca dà fra i risultati una board di chi è entrato adesso: «UAT Lancio di Ada», poi «UAT Lancio di Grace»; gli altri sono gli stessi (sprint 37 · T1.1)', async () => {
         const sessione = { persona: ada };
         await rotte(sessione);

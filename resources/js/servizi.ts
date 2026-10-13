@@ -83,12 +83,13 @@ export class TroppeRichieste extends Error {
 /**
  * Una chiamata a una rotta della cornice. Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
  * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
- * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta` e il 429 della ricerca). Con `email`, quella di chi la
- * cornice mostra, una risposta di un'altra persona non torna a chi l'ha chiesta, né coi dati né con un errore: la sessione è
- * passata a un'altra persona con la pagina ferma, e la pagina si ricarica — dopo, è di chi è entrato. La promessa non si
- * chiude: fino al ricaricamento chi ha chiesto resta in attesa, e niente di quella risposta va a schermo, nemmeno la cornice
- * ridotta o il freno della ricerca. Una risposta che non lo dice con un testo (una parte server di prima) vale com'è: nessun
- * ricaricamento. Una risposta 200 senza un corpo JSON torna `null`, e l'errore lo dà chi ha chiamato.
+ * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa` di
+ * «Segna tutte come lette»). Con `email`, quella di chi la cornice mostra, una risposta di un'altra persona non torna a chi
+ * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
+ * ricarica — dopo, è di chi è entrato. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
+ * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Una risposta che non lo dice
+ * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
+ * `null`, e l'errore lo dà chi ha chiamato.
  */
 async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}, email?: string): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
@@ -145,18 +146,20 @@ export async function caricaNotifiche(email: string): Promise<{ elenco: Notifica
  * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
  * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
- * altro (un'altra scheda) la parte server non segna niente. Una risposta senza `fino_a` è un errore come le altre. Dà
+ * altro (un'altra scheda) la parte server non segna niente. `persona` è l'email di chi la cornice mostra: se la sessione è
+ * passata a un'altra persona (una scheda rimasta ferma) la parte server non segna niente nemmeno lì, lo dice con l'email di chi
+ * è entrato, e la pagina si ricarica (`chiama`). Una risposta senza `fino_a` è un errore come le altre. Dà
  * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
  * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
  * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano.
  */
-export async function segnaLetteFinoA(finoA: string, workspace: string): Promise<{ il: string | undefined; altre: boolean }> {
+export async function segnaLetteFinoA(finoA: string, workspace: string, persona: string): Promise<{ il: string | undefined; altre: boolean }> {
     const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
-        body: JSON.stringify({ fino_a: finoA, workspace }),
-    })) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
+        body: JSON.stringify({ workspace, fino_a: finoA, persona }),
+    }, persona)) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
         throw new Error(`POST ${indirizzo}: fino_a`);
     }

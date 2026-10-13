@@ -247,15 +247,18 @@ final class NotificheDellaCornice
      * POST /cornice/notifiche/letture: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso,
      * anche quelle oltre la prima pagina (io.notifiche.letture.crea). Il backoffice ne segna al più 5000 per chiamata e dice
      * se ne restano (`altre`): lo si richiama con lo stesso `fino_a` finché ne restano, al più CHIAMATE volte e senza chiamate
-     * nuove passati SECONDI dall'arrivo della richiesta. `altre` della risposta è `false` quando il backoffice ha detto che non ne restano,
-     * `true` quando un tetto ha fermato i richiami: non è un errore, e la stessa richiesta ripetuta continua da lì. `fino_a`
-     * della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del workspace della pagina
-     * che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `segnate_il` è l'istante preso dopo l'ultima
-     * risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può non saperlo. Una
-     * chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta segnato. La rotta
-     * tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di zr-auth, qui non
-     * si arriva, e la risposta è il 503 di zr-auth. Se qui si arriva passati SECONDI dall'arrivo della richiesta — il lock è già
-     * preso da allora — la rotta non chiama il backoffice e risponde 503 `fuori_tempo`: finirebbe a lock scaduto.
+     * nuove passati SECONDI dall'arrivo della richiesta. `altre` della risposta è `false` quando il backoffice ha detto che
+     * non ne restano, `true` quando un tetto ha fermato i richiami: non è un errore, e la stessa richiesta ripetuta continua
+     * da lì. `fino_a` della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del
+     * workspace della pagina che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `persona` è l'email di
+     * chi quella pagina mostra (dalla `v2.5.0`): se non è quella della sessione la rotta non chiama il backoffice e risponde
+     * 409 `persona_diversa` con `persona`, l'email della sessione; non va al backoffice nemmeno lei. `segnate_il` è l'istante
+     * preso dopo l'ultima risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può
+     * non saperlo. Una chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta
+     * segnato. La rotta tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di
+     * zr-auth, qui non si arriva, e la risposta è il 503 di zr-auth. Se qui si arriva passati SECONDI dall'arrivo della
+     * richiesta — il lock è già preso da allora — la rotta non chiama il backoffice e risponde 503 `fuori_tempo`: finirebbe a
+     * lock scaduto.
      */
     public function letture(Request $richiesta): JsonResponse
     {
@@ -271,6 +274,17 @@ final class NotificheDellaCornice
         // ancora quello di prima, e l'istante è delle sue notifiche. Qui segnerebbe lette quelle dell'altro, mai viste.
         if ($workspace !== (Sessione::workspace()['slug'] ?? null)) {
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
+        }
+
+        // Lo stesso per la persona: la sessione può essere passata a un'altra dello stesso workspace, con la pagina che chiede
+        // rimasta ferma. Lo slug è lo stesso, e qui segnerebbe lette le notifiche di chi è entrato, mai viste. `persona` del
+        // corpo si confronta e basta: di chi segnare lo dice sempre e solo la sessione. Una richiesta che non la porta con un
+        // testo (un JS di prima rimasto in una scheda) vale come prima. La risposta dice di chi è, come il 403 di sotto.
+        $persona = Sessione::utente()['email'] ?? null;
+        $chiesta = $richiesta->json('persona');
+
+        if (is_string($chiesta) && $chiesta !== $persona) {
+            return new JsonResponse(['errore' => 'persona_diversa', 'persona' => $persona], 409);
         }
 
         // Per il client di zr-auth un tempo di 0 è «senza limite» — e lo diventa ogni valore che `(int)` porta a 0 —, e uno
@@ -290,8 +304,6 @@ final class NotificheDellaCornice
         }
 
         $chiamate = 0;
-        // Di chi è la risposta, se è quel 403: l'email della sessione, presa prima di chiamare il backoffice.
-        $persona = Sessione::utente()['email'] ?? null;
 
         try {
             // Il ciclo finisce su ogni strada: il backoffice dice che non ne restano, il tetto delle chiamate, quello del

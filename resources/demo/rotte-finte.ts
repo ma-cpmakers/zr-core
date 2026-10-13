@@ -408,7 +408,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (errore === 'letture' && letture === 1) {
                 return json({ errore: 'uat_errore' }, 502);
             }
-            const { fino_a: finoA, workspace } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown };
+            const { fino_a: finoA, workspace, persona } = JSON.parse(String(opzioni.body)) as { fino_a?: unknown; workspace?: unknown; persona?: unknown };
             const finoAIl = typeof finoA === 'string' ? new Date(finoA).getTime() : Number.NaN;
             if (Number.isNaN(finoAIl) || typeof workspace !== 'string' || workspace === '') {
                 return json({ errore: 'dati_non_validi' }, 422);
@@ -418,6 +418,13 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             const dellaSessione = slugDellaSessione();
             if (dellaSessione !== undefined && workspace !== dellaSessione) {
                 return json({ errore: 'workspace_diverso' }, 409);
+            }
+            // Come la parte server dalla `v2.5.0` (sprint 38 · T4): `persona` è l'email di chi la pagina mostra. Se nella
+            // «sessione» adesso c'è un'altra persona non segna niente, e lo dice con la sua email. Senza `persona`, o se la
+            // pagina di prova non dice chi è nella «sessione», la lettura riesce come prima.
+            const diAdesso = personaDellaSessione?.()?.email;
+            if (diAdesso !== undefined && typeof persona === 'string' && persona !== diAdesso) {
+                return json({ errore: 'persona_diversa', persona: diAdesso }, 409);
             }
             // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.
             riuscite += 1;
