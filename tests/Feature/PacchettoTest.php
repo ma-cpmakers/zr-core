@@ -5318,7 +5318,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 37 · T3.6 (voce #1993): il limite dei due workspace non c'è più.
     'Indietro: fra due workspace' => ['readme', 'Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni workspace, e chi è mostrato lo tiene lui, sopra: è chi ha il segno più avanti, e non torna indietro, per quante voci si ripercorrano con Indietro e Avanti'],
     'Indietro: fra due workspace, a schermo' => ['readme', 'Con Indietro su una pagina di chi c\'era prima in un altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà'],
-    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace, col nome e la lingua di adesso'],
+    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona cambia una cosa sola: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace, coi dati di allora, ma col nome e la lingua di adesso, non con quelli di allora'],
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
@@ -5444,6 +5444,8 @@ it('README e guida non dicono più che il layout tiene chi è stato mostrato per
 })->with([
     'chi è stato mostrato per ultimo' => ['chi è stato mostrato per ultimo'],
     'come le ha date io.mostra' => ['come le ha date io.mostra'],
+    // Seconda lettura (N2): su una pagina sua più vecchia di un altro workspace nome e lingua sono quelli di adesso.
+    'per la stessa persona niente cambia' => ['Per la stessa persona niente cambia'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

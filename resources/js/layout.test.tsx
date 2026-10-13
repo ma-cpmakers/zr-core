@@ -1280,9 +1280,12 @@ describe('la cornice in due dati, sotto il layout', () => {
         await aSchermo(dati.persona, qui, '3', altrove);
     });
 
-    it('lo stesso quando la pagina sua più vecchia è di un altro workspace e la cornice si è rifatta lì: Avanti sulla voce di un\'altra persona in quel workspace non la mostra (sprint 37 · T6, S2)', async () => {
+    it.each([
+        ['coi due dati', voce],
+        ['con la `cornice` intera', intera],
+    ])('lo stesso quando la pagina sua più vecchia è di un altro workspace e la cornice si è rifatta lì: Avanti sulla voce di un\'altra persona in quel workspace non la mostra (%s; sprint 37 · T6, S2)', async (_come, fai) => {
         const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
-        const [y1, x2, y3] = [voce(dati.persona, altrove, 0, 1), voce(altra, altrove, 10, 2), voce(dati.persona, qui, 20, 3)];
+        const [y1, x2, y3] = [fai(dati.persona, altrove, 0, 1), fai(altra, altrove, 10, 2), fai(dati.persona, qui, 20, 3)];
         await inDue(y1, <PaginaA key="1" />);
         await inDue(x2, <PaginaB key="2" />);
         await inDue(y3, <PaginaA key="3" />);
