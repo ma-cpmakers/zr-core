@@ -368,12 +368,13 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
 /**
  * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
  * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
- * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`.
+ * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`. Dei dati `in_attesa` sono letti prima di
+ * quelli tenuti solo se sono della stessa persona, cioè della stessa email: quelli di un'altra valgono loro, ridotti come sono.
  */
 function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
     const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
 
-    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa : diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli);
+    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa && questi.persona.email === quelli.persona.email : diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli);
 }
 
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
@@ -493,21 +494,32 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
  */
 const inUnAltroWorkspace: DatiDellaCornice['prodotti'] = Object.fromEntries(registro.filter((voce) => voce.id !== 'home').map((voce) => [voce.id, 'disponibile']));
 
-export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps) {
+export function Cornice(props: CorniceProps) {
     // I dati più recenti che la cornice ha visto. La pagina può darne di più vecchi di quelli che la cornice ha già: con Indietro
     // e Avanti del browser tornano i dati di allora, e una risposta letta prima può arrivare dopo (una visita lenta, una pagina
     // che il `prefetch` di Inertia teneva). I dati della pagina valgono sempre, tranne quando sono dello stesso workspace e il
     // loro segno dice che sono stati letti prima: allora restano quelli che ci sono. Con lo stesso segno vale la pagina, come
     // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
     // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
-    const [tenuti, setTenuti] = useState(dellaPagina);
-    const dati = lettiPrima(dellaPagina, tenuti) ? tenuti : dellaPagina;
+    const [tenuti, setTenuti] = useState(props.dati);
+    const dati = lettiPrima(props.dati, tenuti) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }
-    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la sessione può essere
-    // cambiata da un'altra scheda, e il menu del profilo non mostra la persona di prima. Fuori dall'attesa vale il segno.
-    const { lingua, persona } = dellaPagina.in_attesa ? dellaPagina : dati;
+
+    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la persona può aver cambiato
+    // nome o lingua da un'altra scheda. Fuori dall'attesa vale il segno.
+    const chi = props.dati.in_attesa ? props.dati : dati;
+
+    // La `key` è l'email di chi è entrato: ciò che la cornice tiene (i dati di prima, l'elenco delle notifiche, la ricerca coi suoi
+    // risultati e la sua parola, i pannelli aperti) è della persona che lo ha visto. Se la sessione passa a un'altra sullo stesso
+    // workspace — da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con lei: niente di chi c'era prima
+    // resta sotto il nome nuovo, nemmeno per un disegno. Sta qui e non nel layout: vale anche per chi monta `Cornice` da sé.
+    return <DiUnaPersona key={chi.persona.email} {...props} dati={dati} chi={chi} />;
+}
+
+/** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
+function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più

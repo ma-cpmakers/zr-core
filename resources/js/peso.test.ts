@@ -48,8 +48,12 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * Sprint 33 · T1 (voce #1915): è la versione maggiore, la `v2.0.0`. Ciò che compone le righe delle notifiche e carica le frasi
  * è uscito dal JS d'ingresso, in un pezzo che la cornice chiede quando si apre la campanella: l'eccezione è finita, e il
  * tetto è di nuovo 18 KB.
+ *
+ * Sprint 36 · T2 (voce #1968): la cornice si rifà quando cambia la persona, e la correzione non ci sta nemmeno togliendo altro.
+ * Il tetto sale di ciò che costa lei, 17 byte, e di nient'altro (zr-pm, 13/10/2026, nota 12283 del progetto, punto 5:
+ * l'eccezione vale per questa correzione e per quella di Indietro). Ciò che non ci sta continua a non entrare.
  */
-const TETTO_DELL_INGRESSO = 18 * 1024;
+const TETTO_DELL_INGRESSO = 18 * 1024 + 17;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -239,16 +243,16 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18 KB: i 32 byte in più dei rimedi di tastiera sono finiti con la v2 (sprint 33 · T1.3)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.449 byte: 18 KB più i 17 byte della cornice che si rifà quando cambia la persona; i 32 byte in più dei rimedi di tastiera sono finiti con la v2 (sprint 33 · T1.3; sprint 36 · T2.6)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_432);
+        expect(TETTO_DELL_INGRESSO).toBe(18_449);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18 KB, 18.432 byte, e non più quello coi 32 byte in più (sprint 33 · T1.3)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.449 byte, non più quello di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
-        // «32 byte» da soli: «18.432 byte» li contiene, e non sono quelli.
-        expect([volte(testo, '18.432 byte') > 0, volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0]);
+        // «32 byte» da soli, non dentro un altro numero.
+        expect([volte(testo, '18.449 byte') > 0, volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0]);
     });
 
     it('il README ha «Passare alla v2» con l\'import di prima e quello nuovo, e dice che cosa fa Chromium quando il pezzo non arriva (sprint 33 · T1.5, T1.7)', () => {

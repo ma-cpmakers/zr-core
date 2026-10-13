@@ -902,7 +902,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await inDue({ subito: diAltra, dopo: { prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:05.000000Z' } }, <PaginaB key="2" />);
         expect(etichette()).toContain('Gestión de proyectos');
-        expect(etichette()).not.toContain('CRM');
+        expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 

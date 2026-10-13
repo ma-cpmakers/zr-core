@@ -4960,8 +4960,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'senza il tempo massimo' => ['notifiche', 'Dove il browser non ha `AbortSignal.timeout` (Safari prima della 16, Chrome prima della 103, Firefox prima della 100) le frasi si chiedono lo stesso, senza il tempo massimo'],
     'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
-    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con gzip, cioè 18 KB. Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
+    // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
+    // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.449 byte con gzip. Sono 18 KB più 17 byte'],
+    'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
@@ -5231,6 +5233,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 35 · T4.3 (voce #1945): in attesa campanella e ricerca caricano (T1), e la persona è quella di `subito` (T2).
     'in attesa' => ['readme', 'Dalla `v2.2.0` campanella e ricerca sono nello stato di caricamento, non in quello d\'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando, senza «Riprova»'],
     'la persona in attesa' => ['readme', 'dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione è cambiata da un\'altra scheda, il menu del profilo non mostra chi c\'era prima'],
+    // Sprint 36 · T2 (voce #1968): ciò che la cornice tiene è della persona, e con un'altra email la cornice si rifà.
+    'un\'altra persona' => ['readme', 'Dalla `v2.3.0` ciò che la cornice tiene è della persona che lo ha visto, e la persona è la sua email'],
+    'un\'altra persona: si rifà' => ['readme', 'la cornice si rifà, e la pagina con lei, come quando cambia il workspace. Riparte ridotta come a un primo caricamento'],
+    'la stessa email' => ['readme', 'Con la stessa email e un altro nome o un\'altra lingua i dati che ci sono restano'],
+    'un\'altra persona: senza il layout' => ['readme', 'Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout'],
+    'la guida: un\'altra persona' => ['guida', 'se quella persona ha un\'altra email rispetto a chi c\'era prima, la cornice si rifà e la tua pagina con lei'],
     'i due tipi' => ['readme', 'I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e `resources/js/app`)'],
     'quando arriva' => ['readme', 'la pagina non si rimonta: ciò che la persona stava scrivendo in un campo, il fuoco e lo scorrimento restano'],
     'non letti' => ['readme', "`Cornice::dopo()` non lancia: dà `['non_letti' => true]`"],
@@ -5278,6 +5286,14 @@ it('il README non dice più che in Chromium il pezzo della campanella non si ric
 })->with([
     'il browser non lo richiede' => ['il browser il pezzo non lo richiede'],
     'l\'errore resta' => ['e l\'errore resta fino al ricaricamento'],
+]);
+
+// Sprint 36 · T2 (voce #1968): con un'altra email la cornice si rifà, e il README non dice più che ciò che tiene è del workspace.
+it('il README non dice più che ciò che la cornice tiene resta a schermo sotto il nome di un\'altra persona (sprint 36 · T2)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'è del workspace' => ['del workspace, non della persona'],
+    'sotto il nome nuovo' => ['restano a schermo sotto il nome nuovo'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

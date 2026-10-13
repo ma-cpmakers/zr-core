@@ -97,8 +97,9 @@ della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifi
 con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.432 byte con
-gzip, cioè 18 KB. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
+tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.449 byte con
+gzip. Sono 18 KB più 17 byte: dalla `v2.3.0` la cornice si rifà quando cambia la persona, e quei byte sono ciò che costa
+quella sola correzione. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -1172,9 +1173,13 @@ Che cosa vede la persona:
   caricamento, non in quello d'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando,
   senza «Riprova». Se la cornice ha già i dati di quel workspace, da una pagina di prima, restano quelli finché non
   arrivano i nuovi; dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione
-  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Il resto di ciò che la cornice tiene è
-  del workspace, non della persona: aziende e workspace, moduli, il numero delle non lette, l'elenco delle notifiche già
-  aperto e i risultati di una ricerca restano a schermo sotto il nome nuovo, finché `dopo` non arriva. Una pagina ripresa
+  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Dalla `v2.3.0` ciò che la cornice tiene è
+  della persona che lo ha visto, e la persona è la sua email: se `subito` dice un'altra email sullo stesso workspace — la
+  sessione è passata a un'altra persona da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con
+  lei, come quando cambia il workspace. Riparte ridotta come a un primo caricamento: nessuna azienda, nessun modulo e
+  nessun numero di non lette di chi c'era prima, e nemmeno il suo elenco delle notifiche, i suoi risultati e la parola che
+  aveva scritto nella ricerca. Con la stessa email e un altro nome o un'altra lingua i dati che ci sono restano, come
+  prima. Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout: un'altra email rifà la cornice. Una pagina ripresa
   dalla cronologia con Indietro porta il `subito` di allora: il menu del profilo mostra la persona di quella pagina, e la
   mostra anche dopo, sopra i dati di adesso, se il `dopo` che arriva è stato letto di nuovo; torna quella di adesso alla
   visita dopo, o subito se anche il `dopo` è quello di allora (valgono i dati che la cornice ha già). Senza avviso la pagina tiene la sua
