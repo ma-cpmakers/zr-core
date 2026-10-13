@@ -62,6 +62,9 @@ const frasi = new URLSearchParams(window.location.search).has('frasi');
 // azione è di due minuti fa. È come la dà la parte server: in `creata_il` c'è l'istante dell'ultima azione, e `ultima_azione_il`,
 // `azioni` e `board` del backoffice non ci sono.
 const accorpata = new URLSearchParams(window.location.search).has('accorpata');
+// Con `?azienda=1` in cima all'elenco c'è un'azienda del CRM modificata tre minuti fa, con chi ha fatto e il nome dell'azienda
+// (sprint 32 · T4): il titolo li dice tutti e due, e sotto non c'è niente. Un clic apre l'azienda.
+const azienda = new URLSearchParams(window.location.search).has('azienda');
 
 /**
  * Gli `ids` delle tre note di `?crm=1`, come li dà la parte server: i soli del percorso che si apre. La prima è legata a
@@ -89,6 +92,10 @@ const notificheDiProva = [
     // Solo con `?accorpata=1`, la più recente: una lista modificata più volte dalla stessa persona, da leggere. Non ha una destinazione.
     ...(accorpata
         ? [{ id: 'uat-a1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Da fare', per_me: null, ids: {} as Record<string, string> }]
+        : []),
+    // Solo con `?azienda=1`: un'azienda del CRM modificata, da leggere, con chi ha fatto e il nome dell'azienda.
+    ...(azienda
+        ? [{ id: 'uat-z1', creata_il: fa(3), letta: false, app: 'crm', tipo: 'com.zeiras.crm.organizzazione.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Acme', per_me: null, ids: { id: 'uat-azienda-1' } as Record<string, string> }]
         : []),
     // Solo con `?schede=1`, la più recente: una scheda assegnata, col tipo com'è nel backoffice, senza `com.zeiras.` davanti, chi
     // l'ha assegnata e il nome della scheda, che per questo tipo il backoffice manda sempre. Un clic apre la scheda e la segna letta.
