@@ -60,7 +60,7 @@ const opportunita = new URLSearchParams(window.location.search).has('opportunita
 // Dallo sprint 26 (T6), subito dopo la prima, c'è la notifica a chi viene menzionato in un commento, da leggere: apre la sua scheda.
 const schede = new URLSearchParams(window.location.search).has('schede');
 // Con `?motivi=1` (sprint 36 · T5) in fondo all'elenco ci sono le due notifiche dei motivi di perdita del CRM, lette: hanno un
-// titolo e, con `?chi=1`, la frase con chi; non hanno una destinazione, e non portano id.
+// titolo e, con `?chi=1`, la frase con chi; dalla `v2.7.0` aprono le Impostazioni del CRM, senza un id.
 const motivi = new URLSearchParams(window.location.search).has('motivi');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');

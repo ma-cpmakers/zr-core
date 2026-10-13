@@ -334,8 +334,10 @@ Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
 Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e
-`sessione_il`, e la cornice ridotta non resta col nome di chi c'era prima. Se lo componi tu nella parte server,
-dallo nella stessa forma; uno che dice solo `non_letti` vale come prima, sotto il nome dei dati della sessione.
+`sessione_il`, e la cornice ridotta non resta col nome di chi c'era prima. Se è di un'altra persona, o di un altro
+workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde. Se lo componi tu nella
+parte server, dallo nella stessa forma, con `sessione_il` preso prima di leggere; uno che dice solo `non_letti` vale
+come prima, sotto il nome dei dati della sessione.
 
 ## 7. La cornice montata una volta sola
 

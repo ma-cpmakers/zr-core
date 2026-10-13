@@ -1238,9 +1238,11 @@ notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva 
 ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
-Dalla `v2.7.0` la pagina si ricarica solo per chi è ancora a schermo: se una visita ha già portato chi è entrato e la
-cornice si è rifatta, una risposta in ritardo all'elenco o alla ricerca, chiesta da chi c'era prima, non ricarica la sua
-pagina, e niente di quella risposta va a schermo.
+Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
+portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi
+c'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l'elenco
+delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Se chi ha risposto è una
+terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è sua.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
 lette» in corso. Niente di chi è entrato va a schermo.
@@ -1354,12 +1356,18 @@ Che cosa vede la persona:
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
-  la sessione finita la tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: accanto porta
-  `lingua`, `persona`, `workspace` e in fondo `sessione_il`, letti dalla sessione in quell'istante come li legge
-  `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà. Se fra
+  li tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
+  `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione in quell'istante,
+  come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
+  `sessione_il` è l'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita: un
+  `non_letti` arrivato tardi non vale sopra i dati di chi è entrato mentre il backoffice non rispondeva. Se fra
   `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
-  sua lingua, e non quelli di chi c'era prima; se intanto la sessione è finita `Cornice::dopo()` dà `null`, come senza
-  sessione;
+  sua lingua, e non quelli di chi c'era prima: la cornice si rifà, e la pagina con lei — ciò che la persona stava
+  scrivendo si perde, come per un `dopo` di un'altra persona —, e lo stesso con un `non_letti` di un altro workspace.
+  Un `non_letti` di un'altra persona più vecchio del `subito` che la pagina ha non si unisce, come un `dopo` intero: la
+  cornice resta in attesa, senza avviso, finché non arriva un altro `dopo` (fino alla `v2.6.0` usciva «Zeiras non
+  risponde»). Se intanto la sessione è finita — chiusa, o col gettone scaduto — `Cornice::dopo()` dà `null`, come senza
+  sessione, e nel log non scrive niente;
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o

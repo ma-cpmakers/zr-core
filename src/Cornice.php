@@ -140,9 +140,12 @@ final class Cornice
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
      * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno di quell'istante, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è
-     * (dalla `v2.7.0`): porta lingua, persona e workspace come sono nella sessione in quell'istante — letti come li legge
-     * `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`, lo stesso segno; niente di ciò che dà il
-     * backoffice. Così la cornice ridotta non resta col nome di chi c'era prima. Il segno serve al browser come
+     * (dalla `v2.7.0`): dopo `non_letti` e `aggiornati_il` porta lingua, persona e workspace come sono nella sessione in
+     * quell'istante — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`, che è
+     * l'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita: un `non_letti` arrivato
+     * tardi non vale sopra i dati di chi è entrato intanto. Niente di ciò che dà il backoffice. Così la cornice ridotta non
+     * resta col nome di chi c'era prima. Se intanto la sessione è finita — chiusa, o col gettone scaduto — dà null come senza
+     * sessione, e non scrive la riga nel log. Il segno `aggiornati_il` serve al browser come
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
@@ -150,23 +153,28 @@ final class Cornice
      */
     public static function dopo(): ?array
     {
+        // Il segno di chi è si prende prima della lettura, come quello dei dati: la persona è quella della sessione com'era
+        // quando la richiesta è cominciata, e il backoffice può metterci secondi a non rispondere. Preso alla fine, un
+        // `non_letti` in ritardo varrebbe nel browser sopra i dati di chi è entrato intanto.
+        $segno = Segno::adesso();
+
         try {
             $dati = self::dati();
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             if ($errore instanceof ErroreApi && $errore->stato < 500 && $errore->stato !== 429) {
                 throw $errore;
             }
-            self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
 
-            // Di chi è lo dice la sessione com'è adesso, mai un'altra chiamata a /v1. Se intanto è finita non è di nessuno.
+            // Di chi è lo dice la sessione com'è adesso, mai un'altra chiamata a /v1. Se intanto è finita — chiusa, o col
+            // gettone scaduto — non è di nessuno: null come senza sessione, e nel log niente, perché nessuna cornice esce ridotta.
             $chi = self::subito();
             if ($chi === null) {
                 return null;
             }
-            $segno = $chi['sessione_il'];
-            unset($chi['sessione_il']);
+            self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
 
-            return [...$chi, 'non_letti' => true, 'aggiornati_il' => $segno, 'sessione_il' => $segno];
+            // Le due chiavi di sempre davanti, quelle della `v2.7.0` in fondo. `aggiornati_il` è l'istante del fallimento.
+            return ['non_letti' => true, 'aggiornati_il' => $chi['sessione_il'], ...$chi, 'sessione_il' => $segno];
         }
 
         if ($dati === null) {

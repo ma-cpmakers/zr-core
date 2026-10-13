@@ -1335,6 +1335,88 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(document.body.textContent).not.toContain(testi('it').downTitle);
     });
 
+    // Sprint 41 · T6 (review della PR 75, R4): due salti di Indietro, tre voci, e il menu del profilo aperto: «restano nome ed
+    // email di chi è entrato» si guarda dove l'email si legge, non solo sull'avatar.
+    it('con due salti di Indietro su due voci di quando il backoffice non rispondeva a chi c\'era prima la cornice resta di chi è entrato: nel menu del profilo aperto nome ed email sono i suoi, coi suoi dati, e niente di allora è a schermo (sprint 41 · T6, R4)', async () => {
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const lettoDaAltra: DatiDopo = { ...dopo, lingua: 'es', persona: altra, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' };
+        // Una voce della cronologia di allora: il `subito` e il `non_letti` di chi c'era, coi segni di quel secondo.
+        const diAllora = (secondo: number): { subito: DatiSubito; dopo: DatiDopo } => ({
+            subito: { ...subito, sessione_il: `2026-10-13T08:00:0${secondo}.000000Z` },
+            dopo: { non_letti: true, aggiornati_il: `2026-10-13T08:00:0${secondo + 1}.000000Z`, lingua: 'it', persona: dati.persona, workspace: subito.workspace, sessione_il: `2026-10-13T08:00:0${secondo}.000000Z` },
+        });
+        const nelMenuAperto = async (): Promise<string> => {
+            if (!uno('.zr-profile-menu')) {
+                await act(async () => {
+                    (uno('.zr-avatar-btn') as HTMLElement).click();
+                });
+            }
+
+            return document.body.textContent ?? '';
+        };
+
+        await inDue({ subito: diAltra, dopo: lettoDaAltra }, <PaginaColCampo key="3" conta={{ montaggi: 0 }} />);
+        for (const [secondo, pagina, id] of [[2, <PaginaB key="2" />, '#uat-pagina-b'], [0, <PaginaA key="1" />, '#uat-pagina-a']] as const) {
+            await inDue(diAllora(secondo), pagina);
+
+            expect(uno(id)).not.toBeNull();
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+            expect(etichette()).toContain('CRM');
+            expect(sopraLaPagina()).toBeNull();
+            expect(uno('.zr-bell-count')?.textContent).toBe('7');
+            const testo = await nelMenuAperto();
+            expect(uno('.zr-profile-menu')).not.toBeNull();
+            expect(testo).toContain(altra.email);
+            expect(testo).not.toContain(dati.persona.nome);
+            expect(testo).not.toContain(dati.persona.email);
+            expect(testo).not.toContain(testi('it').downTitle);
+            expect(testo).not.toContain(testi('es').downTitle);
+        }
+    });
+
+    // Sprint 41 · T6 (review della PR 75, R7): dalla `v2.7.0` anche `non_letti` dice di chi è, e vale per lui la regola del
+    // `dopo` intero: quello di un'altra persona, più vecchio del `subito` che c'è, non si unisce. Fino alla `v2.6.0` un
+    // `non_letti` non diceva di chi era, e sotto quel `subito` usciva «Zeiras non risponde».
+    it('un `non_letti` di chi c\'era prima, arrivato sotto un `subito` più recente di chi è entrato, non si unisce, come un `dopo` intero: la cornice resta di chi è entrato, in attesa, senza l\'avviso «Zeiras non risponde» (sprint 41 · T6, R7)', async () => {
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const nonLettiDiPrima: DatiDopo = { non_letti: true, aggiornati_il: '2026-10-13T08:00:07.000000Z', lingua: 'it', persona: dati.persona, workspace: subito.workspace, sessione_il: '2026-10-13T08:00:01.000000Z' };
+
+        await inDue({ subito: diAltra, dopo: nonLettiDiPrima }, <PaginaA key="1" />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(sopraLaPagina()).toBeNull();
+        expect(contenitore.textContent).not.toContain(testi('es').downTitle);
+        expect(contenitore.textContent).not.toContain(testi('it').downTitle);
+        expect(contenitore.textContent).not.toContain(dati.persona.nome);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="status"]')?.textContent).toBe(testi('es').loading);
+    });
+
+    // Sprint 41 · T6 (review della PR 75, R3): «la pagina resta dov'è» vale per il `non_letti` della stessa persona. Quello di
+    // un'altra persona, o di un altro workspace, rifà la cornice, e la pagina con lei: ciò che si stava scrivendo si perde.
+    it('un `non_letti` della stessa persona riduce la cornice senza rimontare la pagina — lo stesso campo, col testo scritto —; quello di un\'altra persona, o di un altro workspace, rifà la cornice e la pagina con lei, e il testo scritto si perde (sprint 41 · T6, R3)', async () => {
+        const conta = { montaggi: 0 };
+        const suo: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const nonLetti = (secondo: number, chi: Pick<DatiDopo, 'lingua' | 'persona' | 'workspace'>): DatiDopo => ({ non_letti: true, aggiornati_il: `2026-10-13T08:00:0${secondo + 1}.000000Z`, ...chi, sessione_il: `2026-10-13T08:00:0${secondo}.000000Z` });
+        await inDue({ subito: suo }, <PaginaColCampo conta={conta} />);
+        const nodo = campo();
+        nodo.value = 'UAT scritto';
+
+        await inDue({ subito: suo, dopo: nonLetti(1, { lingua: 'it', persona: dati.persona, workspace: subito.workspace }) }, <PaginaColCampo conta={conta} />);
+        expect(sopraLaPagina()?.textContent).toContain(testi('it').downTitle);
+        expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
+
+        await inDue({ subito: suo, dopo: nonLetti(3, { lingua: 'es', persona: altra, workspace: subito.workspace }) }, <PaginaColCampo conta={conta} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(sopraLaPagina()?.textContent).toContain(testi('es').downTitle);
+        expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([false, '', 2]);
+
+        campo().value = 'UAT scritto di nuovo';
+        await inDue({ subito: suo, dopo: nonLetti(5, { lingua: 'es', persona: altra, workspace: datiAltroWorkspace.workspace }) }, <PaginaColCampo conta={conta} />);
+        expect(uno('aside.zr-side')?.textContent).toContain(datiAltroWorkspace.workspace.nome);
+        expect([campo().value, conta.montaggi]).toStrictEqual(['', 3]);
+    });
+
     it('per la stessa persona un `dopo` che dice di chi è non cambia niente: quando arriva la cornice è quella di sempre e la pagina non si rimonta — lo stesso nodo, il testo scritto, il fuoco —; se è riletto con un altro nome e un\'altra lingua la cornice li mostra, sempre senza rimontare (sprint 37 · T2.4)', async () => {
         const conta = { montaggi: 0 };
         const suo: DatiSubito = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };

@@ -87,7 +87,7 @@ export interface DatiDellaCornice {
 export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
- * risposto. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
+ * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
  * valgono su quelli di `subito`. Tutto facoltativo: un `dopo` che non lo dice (una pagina tenuta da prima) vale come prima.
  */
 export type DatiDopo = Partial<Omit<DatiDellaCornice, 'in_attesa'>>;
@@ -536,7 +536,6 @@ export function Cornice(props: CorniceProps) {
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
 function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
-    mostra(persona.email);
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -907,7 +906,12 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
     useLayoutEffect(() => {
+        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra` senza niente): la `key` è l'email, quindi
+        // questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
+        mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
+
+        return mostra;
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
