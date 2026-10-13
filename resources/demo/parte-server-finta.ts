@@ -1,5 +1,5 @@
 import { HttpCancelledError, type HttpClient } from '@inertiajs/core';
-import type { DatiDellaCornice } from '../js/cornice';
+import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
 
 // La parte server della pagina di prova del layout, finta: ciò che un frontend ha dietro Inertia. A ogni visita risponde, dopo
 // un attimo, la pagina che l'indirizzo dice, coi dati di una lettura nuova; e una lettura porta in `cornice` il segno
@@ -37,6 +37,40 @@ export function lettura<Props extends { cornice: DatiDellaCornice | null }>(prop
     }
 
     return letta;
+}
+
+/**
+ * Chi è entrato dopo, nella «sessione» della parte server finta: ciò che la sessione dice di lei, ciò che il backoffice dà per
+ * lei e, se non è nel workspace della pagina, il suo.
+ */
+export interface Entrata {
+    sessione: Pick<DatiDellaCornice, 'lingua' | 'persona'>;
+    backoffice: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'>;
+    workspace?: DatiDellaCornice['workspace'];
+}
+
+/**
+ * Ciò che la parte server ha letto, con la sessione di adesso: se è entrata un'altra persona i dati della cornice sono i suoi,
+ * nelle tre forme in cui una pagina li riceve (interi, della sessione, del backoffice), e se è su un altro workspace lo dicono
+ * tutte e tre. Le forme ridotte di `dopo` restano ridotte: senza aziende non prende i dati del backoffice, senza workspace
+ * (il backoffice non ha risposto) resta com'è. Se non è entrato nessun altro la lettura è quella data.
+ */
+export function conLaSessione<Props extends { cornice: DatiDellaCornice | null; subito?: DatiSubito | null | undefined; dopo?: DatiDopo | null | undefined }>(
+    letta: Props,
+    entrata: Entrata | undefined,
+): Props {
+    if (entrata === undefined) {
+        return letta;
+    }
+    const { sessione, backoffice, workspace } = entrata;
+    const altrove = workspace ? { workspace } : {};
+
+    return {
+        ...letta,
+        ...(letta.cornice ? { cornice: { ...letta.cornice, ...sessione, ...backoffice, ...altrove } } : {}),
+        ...(letta.subito ? { subito: { ...letta.subito, ...sessione, ...altrove } } : {}),
+        ...(letta.dopo?.workspace ? { dopo: { ...letta.dopo, ...(letta.dopo.aziende?.length ? backoffice : {}), ...altrove } } : {}),
+    };
 }
 
 /** Quanto aspetta la risposta di una visita: i millisecondi di `lenta` nel suo indirizzo, se sono un numero intero; se no `attesa`. */

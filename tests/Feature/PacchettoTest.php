@@ -617,7 +617,7 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'istanteDellaLettura', 'lettura'])
+        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -692,10 +692,43 @@ it('la pagina di prova del layout scarica prima la Corta col prefetch di Inertia
 });
 
 it('le rotte finte della pagina di prova del layout dicono quando sull\'orologio dei dati, e con ?segno=no non hanno un orologio (sprint 11 · T3.1)', function () {
-    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {';
+    // Dallo sprint 37 · T1 le rotte ricevono anche la persona della «sessione», dopo l'orologio.
+    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string } | undefined): void {';
 
-    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined);']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined);' => 1])
+    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined, ']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined, ' => 1])
         ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$conOrologio, 'aggiornati_il: ', 'segnate_il: ']))->toBe([$conOrologio => 1, 'aggiornati_il: ' => 1, 'segnate_il: ' => 1]);
+});
+
+// Sprint 37 · T1.1 (voci #1993, #1998, #1999): i comandi che servono alla prova nel browser di due persone su due workspace e
+// di una scheda rimasta ferma. Che cosa fa la «sessione» lo prova parte-server-finta.test.ts, che cosa rispondono le rotte
+// rotte-finte.test.ts; qui, che la pagina di prova li usa: ci sono solo con `?sessione`, e senza la pagina è quella di prima.
+it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su un altro workspace, rilegge il solo dopo e dice alle rotte finte chi è entrato (sprint 37 · T1.1)', function () {
+    $altrove = '<button type="button" data-uat="entra-altrove" onClick={() => localStorage.setItem(chiaveDellaSessione, \'altrove\')}>';
+    $rileggi = '<button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>';
+    $letta = '    return conLaSessione({ ...letta, ...dellaSessione, ...delBackoffice }, entrata());';
+    $delleRotte = '    const { cornice, subito } = conLaSessione(propsDi[paginaDellIndirizzo()], entrata());';
+    $chiEEntrato = "scelti.has('sessione') ? () => sessioneDelleRotte()?.persona : undefined);";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$altrove, 'data-uat="entra-altrove"', $rileggi, 'data-uat="rileggi-dopo"', "router.reload({ only: ['dopo'] });", 'chiediDopo();']))->toBe([
+        $altrove => 1,
+        'data-uat="entra-altrove"' => 1,
+        $rileggi => 1,
+        'data-uat="rileggi-dopo"' => 1,
+        "router.reload({ only: ['dopo'] });" => 1,
+        'chiediDopo();' => 1,
+    ])
+        // Le due letture della «sessione»: i dati di una visita e ciò che le rotte finte rispondono vengono dalla stessa.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato, "['altrove', {", 'workspace: ricerca,']))->toBe([
+            $letta => 1,
+            $delleRotte => 1,
+            'conLaSessione(' => 2,
+            $chiEEntrato => 1,
+            "['altrove', {" => 1,
+            'workspace: ricerca,' => 1,
+        ])
+        // Dietro `?sessione`, quattro volte in tutto: il collegamento alla «Due dati», i pulsanti di chi entra, «UAT rileggi dopo»
+        // e la persona data alle rotte finte.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
 });
 
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {

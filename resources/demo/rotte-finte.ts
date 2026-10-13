@@ -275,7 +275,38 @@ export const notifichePartite = {
  * `istante` è l'orologio della sua parte server, lo stesso che mette il segno nei dati: con quello le due rotte delle notifiche
  * dicono quando, e i loro istanti si confrontano con quelli dei dati; senza, non lo dicono.
  */
-export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {
+// Sprint 37 · T1 (voci #1998, #1999): le rotte vere rispondono coi dati di chi è nella sessione quando la richiesta arriva. Con
+// la persona della «sessione» (la dà la pagina di prova del layout con `?sessione`) lo fanno anche queste, e lo dicono nel
+// testo: in cima all'elenco c'è una notifica da leggere di chi è entrato adesso («UAT scheda di Ada»), e in cima ai risultati
+// una board sua («UAT Lancio di Ada»). Ognuna ha la sua notifica: letta da una persona, resta da leggere per l'altra.
+type NotificaDiProva = (typeof notificheDiProva)[number];
+const diUnaPersona = new Map<string, NotificaDiProva>();
+
+/** Il nome con cui i testi di prova dicono di chi sono: «Ada» per «UAT Ada Lovelace». */
+const nomeBreve = (nome: string) => nome.replace(/^UAT /, '').split(' ')[0] ?? nome;
+
+/** La notifica di quella persona: la stessa a ogni richiesta, così una lettura resta. */
+function notificaDi(nome: string): NotificaDiProva {
+    const breve = nomeBreve(nome);
+    const notifica = diUnaPersona.get(breve) ?? { id: `uat-di-${breve.toLowerCase()}`, creata_il: fa(1), letta: false, app: 'pm', tipo: 'com.zeiras.board.scheda.creata', autore_nome: null, risorsa_nome: `UAT scheda di ${breve}`, per_me: null, ids: { id: 'uat-scheda-1' } };
+    diUnaPersona.set(breve, notifica);
+
+    return notifica;
+}
+
+export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string } | undefined): void {
+    /** L'elenco di chi è nella «sessione» adesso: con la persona, la sua notifica e poi quelle di tutti. */
+    const elenco = (): NotificaDiProva[] => {
+        const persona = personaDellaSessione?.();
+
+        return persona ? [notificaDi(persona.nome), ...notificheDiProva] : notificheDiProva;
+    };
+    /** I risultati fra cui cerca chi è nella «sessione» adesso: con la persona, la sua board e poi quelli di tutti. */
+    const risultati = (): typeof risultatiDiProva => {
+        const breve = nomeBreve(personaDellaSessione?.()?.nome ?? '');
+
+        return breve === '' ? risultatiDiProva : [{ tipo: 'board.board', id: `uat-di-${breve.toLowerCase()}`, titolo: `UAT Lancio di ${breve}`, contesto: null }, ...risultatiDiProva];
+    };
     const fetchDelBrowser = window.fetch.bind(window);
     const cookieCsrf = 'XSRF-TOKEN';
     document.cookie = `${cookieCsrf}=uat-gettone-csrf%3D%3D; path=/`;
@@ -329,7 +360,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 // «ua» dà il risultato vecchio di una board, ma non dove nessun modulo è attivo: lì passa dal filtro come ogni parola.
                 data: parola === 'ua' && !senzaModuli
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
-                    : risultatiDiProva.filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
+                    : risultati().filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
             });
         }
@@ -350,7 +381,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
 
             // Senza orologio l'istante manca, e nel JSON la chiave non c'è. `workspace` è quello della «sessione», come lo dice
             // la parte server dalla `v1.12.0`: se la pagina di prova non lo dà, manca anche lui.
-            return json({ data: notificheDiProva, aggiornati_il: lettoIl, workspace: slugDellaSessione() });
+            return json({ data: elenco(), aggiornati_il: lettoIl, workspace: slugDellaSessione() });
         }
         if (percorso === '/cornice/notifiche/letture' && opzioni?.method === 'POST') {
             letture += 1;
@@ -371,7 +402,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             // Con `?altre=1` la prima che riesce si ferma a un tetto: la più recente fra quelle da segnare resta da leggere.
             riuscite += 1;
             const restano = altre && riuscite === 1;
-            const daSegnare = notificheDiProva.filter((notifica) => !notifica.letta && new Date(notifica.creata_il).getTime() <= finoAIl);
+            const daSegnare = elenco().filter((notifica) => !notifica.letta && new Date(notifica.creata_il).getTime() <= finoAIl);
             for (const notifica of restano ? daSegnare.slice(1) : daSegnare) {
                 notifica.letta = true;
             }
@@ -392,7 +423,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (typeof letta !== 'boolean') {
                 return json({ errore: 'dati_non_validi' }, 422);
             }
-            const notifica = notificheDiProva.find(({ id }) => id === daSegnare);
+            const notifica = elenco().find(({ id }) => id === daSegnare);
             if (notifica === undefined) {
                 return json({ errore: 'non_trovato' }, 404);
             }

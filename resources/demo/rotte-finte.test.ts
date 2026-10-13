@@ -859,3 +859,108 @@ describe('con `?accettazione=dopo` le quattro rotte finte rispondono 403 `accett
         expect((await rispostaDi(indirizzo, opzioni, '?accettazione=1&crm=1&da_leggere=1')).stato).toBe(200);
     });
 });
+
+// Sprint 37 · T1.1 (voci 1998 e 1999). Le rotte vere rispondono coi dati di chi è nella sessione quando la richiesta arriva: in
+// una scheda rimasta ferma su una pagina di un'altra persona, elenco e risultati sono di chi è entrato. Sulla pagina di prova
+// del layout, con `?sessione`, le rotte finte ricevono la persona della «sessione» e lo dicono nel testo: se elenco e risultati
+// fossero gli stessi per le due persone, la prova di una scheda ferma sarebbe verde per caso.
+describe('con la persona della «sessione» l\'elenco delle notifiche e i risultati della ricerca sono di chi è entrato, col nome nel testo', () => {
+    const fetchDiPrima = window.fetch;
+    const ada = { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' };
+    const grace = { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' };
+    type Riga = { id: string; letta: boolean; risorsa_nome: string | null; titolo?: string };
+
+    beforeEach(() => {
+        vi.resetModules();
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.fetch = fetchDiPrima;
+    });
+
+    /** Le rotte finte nel workspace `uat-marketing`, con la persona che `sessione.persona` dice in quel momento (o senza dirla: `null`). */
+    async function rotte(sessione: { persona: typeof ada | undefined } | null): Promise<void> {
+        (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL('https://uat.example.com/');
+        const { rotteFinte } = await import('./rotte-finte');
+        if (sessione === null) {
+            rotteFinte(() => 'uat-marketing');
+        } else {
+            rotteFinte(() => 'uat-marketing', undefined, () => sessione.persona);
+        }
+    }
+
+    /** Le righe di `data` nella risposta di una rotta, e il suo stato. */
+    async function righeDi(indirizzo: string, opzioni?: RequestInit): Promise<{ stato: number; righe: Riga[] }> {
+        const inArrivo = fetch(indirizzo, opzioni);
+        await vi.advanceTimersByTimeAsync(1500);
+        const risposta = await inArrivo;
+        const { data } = (await risposta.json()) as { data?: unknown };
+
+        return { stato: risposta.status, righe: Array.isArray(data) ? (data as Riga[]) : [] };
+    }
+
+    const cerca = (parola: string): RequestInit => ({ method: 'POST', body: JSON.stringify({ q: parola }) });
+    const nomi = (righe: Riga[]) => righe.map(({ risorsa_nome }) => risorsa_nome);
+    const titoli = (righe: Riga[]) => righe.map(({ titolo }) => titolo);
+
+    it('GET /cornice/notifiche ha in cima una notifica da leggere di chi è entrato adesso: «UAT scheda di Ada», poi «UAT scheda di Grace»; il resto dell\'elenco è lo stesso (sprint 37 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione);
+        const diAda = (await righeDi('/cornice/notifiche')).righe;
+        sessione.persona = grace;
+        const diGrace = (await righeDi('/cornice/notifiche')).righe;
+
+        expect(diAda[0]).toMatchObject({ id: 'uat-di-ada', letta: false, risorsa_nome: 'UAT scheda di Ada' });
+        expect(diGrace[0]).toMatchObject({ id: 'uat-di-grace', letta: false, risorsa_nome: 'UAT scheda di Grace' });
+        expect(nomi(diGrace)).not.toContain('UAT scheda di Ada');
+        expect(nomi(diAda)).not.toContain('UAT scheda di Grace');
+        expect(diAda.slice(1).map(({ id }) => id)).toStrictEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(diGrace.slice(1)).toStrictEqual(diAda.slice(1));
+    });
+
+    it('POST /cornice/ricerca dà fra i risultati una board di chi è entrato adesso: «UAT Lancio di Ada», poi «UAT Lancio di Grace»; gli altri sono gli stessi (sprint 37 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione);
+        const diAda = (await righeDi('/cornice/ricerca', cerca('lancio'))).righe;
+        sessione.persona = grace;
+        const diGrace = (await righeDi('/cornice/ricerca', cerca('lancio'))).righe;
+
+        expect(titoli(diAda)).toStrictEqual(['UAT Lancio di Ada', 'UAT Lancio Q1', 'UAT Lancio Q4', 'UAT Scrivere il brief del lancio']);
+        expect(titoli(diGrace)).toStrictEqual(['UAT Lancio di Grace', 'UAT Lancio Q1', 'UAT Lancio Q4', 'UAT Scrivere il brief del lancio']);
+        expect(diAda[0]).toStrictEqual({ tipo: 'board.board', id: 'uat-di-ada', titolo: 'UAT Lancio di Ada', contesto: null });
+        // Il nome si cerca come ogni titolo: chi è entrato trova la sua board, non quella dell'altra persona.
+        expect(titoli((await righeDi('/cornice/ricerca', cerca('di grace'))).righe)).toStrictEqual(['UAT Lancio di Grace']);
+        expect((await righeDi('/cornice/ricerca', cerca('di ada'))).righe).toStrictEqual([]);
+    });
+
+    it('ognuna ha la sua notifica: letta da una persona resta da leggere per l\'altra, e «Segna tutte come lette» segna quella di chi è nella sessione (sprint 37 · T1.1)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione);
+        expect((await righeDi('/cornice/notifiche/uat-di-ada/lettura', { method: 'PATCH', body: JSON.stringify({ letta: true }) })).stato).toBe(200);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-ada', letta: true });
+
+        sessione.persona = grace;
+        // La notifica di Ada non è nell'elenco di Grace: non la può segnare.
+        expect((await righeDi('/cornice/notifiche/uat-di-ada/lettura', { method: 'PATCH', body: JSON.stringify({ letta: true }) })).stato).toBe(404);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: false });
+        expect((await righeDi('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date().toISOString(), workspace: 'uat-marketing' }) })).stato).toBe(200);
+        expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: true });
+    });
+
+    it('senza la persona, o quando la «sessione» non ne ha una, elenco e risultati sono quelli di prima: nessuna riga col nome di qualcuno (sprint 37 · T1.1)', async () => {
+        await rotte(null);
+        const elenco = (await righeDi('/cornice/notifiche')).righe;
+        const risultati = (await righeDi('/cornice/ricerca', cerca('lancio'))).righe;
+        vi.resetModules();
+        await rotte({ persona: undefined });
+
+        expect(elenco.map(({ id }) => id)).toStrictEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(titoli(risultati)).toStrictEqual(['UAT Lancio Q1', 'UAT Lancio Q4', 'UAT Scrivere il brief del lancio']);
+        expect((await righeDi('/cornice/notifiche')).righe.map(({ id }) => id)).toStrictEqual(['uat-4', 'uat-3', 'uat-2', 'uat-1']);
+        expect(titoli((await righeDi('/cornice/ricerca', cerca('lancio'))).righe)).toStrictEqual(['UAT Lancio Q1', 'UAT Lancio Q4', 'UAT Scrivere il brief del lancio']);
+    });
+});

@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DatiDellaCornice } from '../js/cornice';
-import { clientFinto, colSegno, lettura } from './parte-server-finta';
+import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
+import { clientFinto, colSegno, conLaSessione, lettura, type Entrata } from './parte-server-finta';
 
 // Sprint 10 · T3 (voce #1453), dopo la review della PR. La UAT del layout gira sulla pagina di prova, e ciò che lì fa la parte
 // server lo fa questo file: se smette di mettere il segno a ogni lettura, se `?segno=no` non lo toglie più, o se risponde a una
@@ -243,6 +243,61 @@ describe('la parte server finta della pagina di prova del layout', () => {
 // Review della PR #69 (R10). README e guida dicono che cosa fa Inertia all'uscita: la cronologia cifrata, la risposta che la
 // toglie, la chiave nel `sessionStorage` della scheda. Si legge nel client installato per le pagine di prova: se una versione
 // nuova cambia quei nomi, o tiene la chiave altrove, questo caso è rosso e le frasi si riscrivono.
+// Sprint 37 · T1.1 (voci 1993 e 1998). La «sessione» della pagina di prova: chi è entrato dopo. Una parte server vera dà a ogni
+// risposta i dati di chi è nella sessione in quel momento, e il workspace è il suo: se la seconda persona restasse sempre nel
+// workspace della pagina, Indietro fra due persone su due workspace e un `dopo` riletto da un'altra persona su un altro
+// workspace non si potrebbero provare nel browser.
+describe('la sessione della parte server finta: i dati di una lettura sono di chi è entrato adesso', () => {
+    const grace = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' } };
+    const diGrace = { prodotti: { pm: 'disponibile', crm: 'attivo' }, aziende: [{ id: 'uat-9', nome: 'UAT Hopper', workspace: [{ nome: 'UAT Marketing', slug: 'uat-marketing' }] }], non_lette: 2 } satisfies Entrata['backoffice'];
+    const ricerca = { nome: 'UAT Ricerca', slug: 'uat-ricerca' };
+    const stessoWorkspace: Entrata = { sessione: grace, backoffice: diGrace };
+    const altrove: Entrata = { ...stessoWorkspace, workspace: ricerca };
+    const subito: DatiSubito = { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace, sessione_il: '2026-10-13T00:00:00.000001Z' };
+    const dopo: DatiDopo = { workspace: marketing.workspace, prodotti: marketing.prodotti, aziende: marketing.aziende, non_lette: 7, aggiornati_il: '2026-10-13T00:00:00.000002Z' };
+    /** Ciò che la parte server ha letto per una pagina: i dati interi, o i due dati. */
+    const letta = (pezzi: { cornice?: DatiDellaCornice | null; subito?: DatiSubito; dopo?: DatiDopo }) => ({ cornice: null, cartella: 'UAT Q4', ...pezzi });
+
+    it('se non è entrato nessun altro la lettura resta com\'è: lo stesso oggetto (sprint 37 · T1.1)', () => {
+        const diAda = letta({ cornice: marketing });
+
+        expect(conLaSessione(diAda, undefined)).toBe(diAda);
+    });
+
+    it('un\'altra persona nello stesso workspace: nome, lingua e dati del backoffice sono i suoi, il workspace è quello della pagina, e il resto arriva com\'è (sprint 37 · T1.1)', () => {
+        expect(conLaSessione(letta({ cornice: { ...marketing, aggiornati_il: 'uat-segno' } }), stessoWorkspace)).toStrictEqual({
+            cornice: { ...grace, workspace: marketing.workspace, ...diGrace, aggiornati_il: 'uat-segno' },
+            cartella: 'UAT Q4',
+        });
+        expect(conLaSessione(letta({ subito, dopo }), stessoWorkspace)).toStrictEqual({
+            cornice: null,
+            cartella: 'UAT Q4',
+            subito: { ...grace, workspace: marketing.workspace, sessione_il: subito.sessione_il },
+            dopo: { workspace: marketing.workspace, ...diGrace, aggiornati_il: dopo.aggiornati_il },
+        });
+    });
+
+    it('un\'altra persona su un altro workspace: lo dicono i dati interi, i dati della sessione e quelli del backoffice, tutti e tre (sprint 37 · T1.1)', () => {
+        expect(conLaSessione(letta({ cornice: marketing }), altrove).cornice).toStrictEqual({ ...grace, workspace: ricerca, ...diGrace });
+
+        const dueDati = conLaSessione(letta({ subito, dopo }), altrove);
+        expect(dueDati.subito).toStrictEqual({ ...grace, workspace: ricerca, sessione_il: subito.sessione_il });
+        // Deve fallire se `dopo` resta nel workspace della pagina mentre `subito` dice l'altro: non sarebbe la lettura di una sessione sola.
+        expect(dueDati.dopo).toStrictEqual({ workspace: ricerca, ...diGrace, aggiornati_il: dopo.aggiornati_il });
+    });
+
+    it('le forme ridotte di `dopo` restano ridotte: senza i dati del backoffice non ne prendono, e il workspace cambia solo dove c\'è (sprint 37 · T1.1)', () => {
+        const nonLetti: DatiDopo = { non_letti: true, aggiornati_il: 'uat-segno' };
+        const daAccettare: DatiDopo = { workspace: marketing.workspace, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: 'uat-segno', accettazione_richiesta: true };
+
+        expect(conLaSessione(letta({ subito, dopo: nonLetti }), altrove).dopo).toStrictEqual(nonLetti);
+        expect(conLaSessione(letta({ subito, dopo: daAccettare }), altrove).dopo).toStrictEqual({ ...daAccettare, workspace: ricerca });
+        expect(conLaSessione(letta({ subito, dopo: daAccettare }), stessoWorkspace).dopo).toStrictEqual(daAccettare);
+        // I soli dati della sessione, prima che `dopo` arrivi: niente `dopo` nemmeno dopo.
+        expect(Object.hasOwn(conLaSessione(letta({ subito }), altrove), 'dopo')).toBe(false);
+    });
+});
+
 describe('la cronologia cifrata di Inertia, come la dicono README e guida', () => {
     it('il client installato toglie la chiave della cronologia quando la pagina dice `clearHistory`, la tiene nel `sessionStorage` della scheda, e a una voce della cronologia richiede solo le props rimandate che le mancano (review della PR #69, R10; seconda lettura, N5)', () => {
         const client = readFileSync(resolve(process.cwd(), 'node_modules/@inertiajs/core/dist/index.js'), 'utf8');
