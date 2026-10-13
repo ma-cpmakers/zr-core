@@ -1001,6 +1001,55 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 
+    it('chi è entrato è ancora in attesa e torna con Indietro su una voce di prima senza `dopo`: quando arriva il `dopo` riletto la cornice mostra i suoi dati; e una voce che porta un `dopo` riletto prima non rimette i dati più vecchi al posto di quelli che la cornice ha (sprint 36 · T6, seconda lettura, N1 e N3)', async () => {
+        const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const diAdesso: DatiSubito & { sessione_il: string } = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const riletto: DatiDopo = { prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
+        await inDue({ subito: diAdesso }, <PaginaB key="2" />);
+
+        // Indietro su una voce lasciata prima che il suo `dopo` arrivasse: Inertia lo richiede, e quello riletto è di chi è entrato.
+        await inDue({ subito: diPrima }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(uno('.zr-bell-count')).toBeNull();
+        await inDue({ subito: diPrima, dopo: riletto }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // Un'altra voce di prima, riletta dopo; poi di nuovo la prima, che ora porta il `dopo` riletto allora: restano i dati più recenti.
+        await inDue({ subito: { ...diPrima, sessione_il: '2026-10-13T07:59:00.000000Z' }, dopo: { ...riletto, non_lette: 5, aggiornati_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaB key="2" />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+        await inDue({ subito: diPrima, dopo: riletto }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+    });
+
+    it('il limite dei due workspace che il README dichiara: sotto il layout Indietro su una pagina di chi c\'era prima in un altro workspace riporta la cornice di allora, e se alla voce manca il `dopo` quello riletto, di chi è entrato, sta sotto il nome di allora (sprint 36 · T6, seconda lettura, N4; la voce #1993 lo chiude)', async () => {
+        const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
+        const altrove = datiAltroWorkspace.workspace;
+        const diAdesso: DatiSubito & { sessione_il: string } = { lingua: 'es', persona: altra, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        const dopoDiAdesso: DatiDopo = { workspace: altrove, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        expect(avatar()).toBe(altra.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+
+        // Indietro sulla voce intera di chi c'era prima, in un altro workspace: torna la cornice di allora.
+        await inDue({ subito: diPrima, dopo: { ...dopo, aziende, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
+        expect(avatar()).toBe(dati.persona.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('7');
+
+        // Una voce senza `dopo`: quello riletto è di chi è entrato, col suo workspace, sotto il nome di allora.
+        await inDue({ subito: diAdesso, dopo: dopoDiAdesso }, <PaginaB key="2" />);
+        await inDue({ subito: diPrima }, <PaginaA key="1" />);
+        await inDue({ subito: diPrima, dopo: { ...dopoDiAdesso, aggiornati_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaA key="1" />);
+        expect(avatar()).toBe(dati.persona.nome);
+        expect(uno('aside.zr-side')?.textContent).toContain(altrove.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diAltra = { ...subito, persona: altra };
