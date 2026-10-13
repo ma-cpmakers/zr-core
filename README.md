@@ -1360,7 +1360,7 @@ Che cosa vede la persona:
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
   li tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
-  `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione in quell'istante,
+  `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento,
   come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
   I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
   e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l'istante del fallimento) — anche quando

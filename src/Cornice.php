@@ -140,8 +140,8 @@ final class Cornice
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
      * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno della lettura, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è
-     * (dalla `v2.7.0`): dopo `non_letti` e `aggiornati_il` porta lingua, persona e workspace come sono nella sessione in
-     * quell'istante — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`. I due segni
+     * (dalla `v2.7.0`): dopo `non_letti` e `aggiornati_il` porta lingua, persona e workspace come sono nella sessione dopo
+     * il fallimento — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`. I due segni
      * sono quello della lettura di io.mostra di questa richiesta — l'istante in cui è cominciata, come nei dati riusciti,
      * anche se l'ha fatta `lingua()` — e non quello in cui è fallita: un `non_letti` arrivato tardi non vale sopra i dati
      * di chi è entrato intanto. Niente di ciò che dà il backoffice. Così la cornice ridotta non

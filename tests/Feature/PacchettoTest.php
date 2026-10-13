@@ -5367,7 +5367,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
     // Sprint 41 · T6 (review della PR #75): le chiavi nuove in fondo (R6), il segno preso prima della lettura (S1), la pagina
     // che si rimonta (R3), il `non_letti` che non si unisce (R7), la sessione finita (R8), chi lo compone a mano (R5).
-    'non letti dice di chi è (sprint 41 · T4.5; T6, R6)' => ['readme', 'Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione in quell\'istante, come li legge `Cornice::subito()`'],
+    'non letti dice di chi è (sprint 41 · T4.5; T6, R6)' => ['readme', 'Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento, come li legge `Cornice::subito()`'],
     'non letti: i due segni (sprint 41 · T6, S1, N1 e N3)' => ['readme', 'I due segni, `aggiornati_il` e `sessione_il`, sono l\'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l\'istante del fallimento) — anche quando io.mostra l\'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i dati di chi è entrato mentre il backoffice non rispondeva'],
     'non letti: il segno della lettura (sprint 41 · T6, N3)' => ['readme', "dà `['non_letti' => true]` col segno della lettura (`aggiornati_il`)"],
     'non letti di un\'altra persona: la pagina si rimonta (sprint 41 · T6, R3)' => ['readme', 'la cornice si rifà, e la pagina con lei — ciò che la persona stava scrivendo si perde, come per un `dopo` di un\'altra persona —, e lo stesso con un `non_letti` di un altro workspace'],
@@ -5394,7 +5394,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
     'la guida: non_letti dice di chi è (sprint 41 · T4.5)' => ['guida', 'Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e `sessione_il`'],
     'la guida: non_letti di un\'altra persona (sprint 41 · T6, R3)' => ['guida', 'Se è di un\'altra persona, o di un altro workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde'],
-    'la guida: non_letti composto a mano (sprint 41 · T6, R5)' => ['guida', 'Se lo componi tu nella parte server, dallo nella stessa forma, con `sessione_il` preso prima di leggere; uno che dice solo `non_letti` vale come prima, sotto il nome dei dati della sessione'],
+    'la guida: non_letti composto a mano (sprint 41 · T6, R5)' => ['guida', 'Se lo componi tu nella parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale come prima, sotto il nome dei dati della sessione'],
     'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
