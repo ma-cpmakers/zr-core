@@ -19,7 +19,8 @@ use Zeiras\Core\Segno;
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
- * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata;
+ * l'id, l'istante dell'ultima azione che racconta, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo
+ * dell'evento che l'ha generata;
  * e, quando il backoffice li manda, il nome di chi ha fatto (`autore_nome`), quello della cosa (`risorsa_nome`) e se la
  * notifica è rivolta alla persona (`per_me`).
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
@@ -320,7 +321,8 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata, se è letta, il codice dell'app e il tipo dell'evento.
+     * Ciò che la cornice usa di una notifica di /v1: l'id, l'istante dell'ultima azione che racconta (quando è nata, se è una
+     * sola), se è letta, il codice dell'app e il tipo dell'evento.
      * `letta_il` e `app` ci sono sempre: `letta_il` è null finché la persona non la segna, `app` è null se l'evento non è di
      * un'app. Il `tipo` è una stringa, e passa com'è. Una risposta senza uno dei cinque non è una notifica, ed è un guasto: mai
      * una notifica non letta, mai una notifica senza app o senza tipo.
@@ -330,6 +332,13 @@ final class NotificheDellaCornice
      * manda è quello di prima, e valgono null. Se ci sono, con un'altra forma è lo stesso guasto: mai un valore tolto in silenzio.
      * Di `autore` passa solo il nome, come `autore_nome`: una chiave in più, messa domani dal backoffice, non arriva in pagina.
      * `per_me` null vuol dire «non si sa», e non è `false`: la cornice quella notifica la tiene anche in «Per me».
+     *
+     * Una notifica può raccontare più azioni: `creata_il` è l'istante della prima, `ultima_azione_il` quello dell'ultima, e
+     * l'elenco del backoffice è ordinato sull'ultima. Alla pagina, in `creata_il`, va l'istante dell'ultima azione: è l'ora che il
+     * pannello mostra, e l'istante fino a cui arriva «Segna tutte come lette» — il backoffice segna per `creata_il` fino a lì,
+     * cioè tutte le caricate (ognuna è nata prima della sua ultima azione) e nessuna nata dopo. Anche `ultima_azione_il` è
+     * facoltativa: un backoffice che non la manda è quello di prima, e l'istante è la `creata_il`; con un valore che non è un
+     * testo è lo stesso guasto. `azioni` e `board`, che il backoffice manda con lei, non passano.
      *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
      * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
@@ -344,12 +353,13 @@ final class NotificheDellaCornice
             || ! is_string($notifica['tipo'] ?? null)
             || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
             || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
-            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))) {
+            || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))
+            || ! (($notifica['ultima_azione_il'] ?? null) === null || is_string($notifica['ultima_azione_il']))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
         return [
-            'id' => $notifica['id'], 'creata_il' => $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
+            'id' => $notifica['id'], 'creata_il' => $notifica['ultima_azione_il'] ?? $notifica['creata_il'], 'letta' => $notifica['letta_il'] !== null,
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,

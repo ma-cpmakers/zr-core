@@ -230,6 +230,42 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         expect(uno('.zr-detail')).not.toBeNull();
     });
 
+    it('con «?rimedi=1&iframe=0» il dialogo ha in fondo un riquadro largo e alto zero; «UAT attendi» apre un dialogo senza pulsanti che si chiude da sé, e «UAT attendi e poi fatto» al suo posto ne apre uno con la «×» (sprint 32 · T5)', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await apri('?rimedi=1&iframe=0');
+            const pulsante = (testo: string) => [...document.querySelectorAll<HTMLElement>('#pagina #uat-rimedi button')].find((uno) => uno.textContent === testo) ?? null;
+            const titolo = () => uno('.zr-dialog h2')?.textContent ?? null;
+            const dopoQuattroSecondi = async () => act(async () => {
+                await vi.advanceTimersByTimeAsync(4000);
+            });
+
+            await clic(pulsante('UAT apri il dialogo'));
+            const ultimo = [...document.querySelectorAll('.zr-dialog button, .zr-dialog input, .zr-dialog iframe')].pop();
+            expect([ultimo?.tagName, ultimo?.getAttribute('width'), ultimo?.getAttribute('height')]).toStrictEqual(['IFRAME', '0', '0']);
+            await clic(pulsante('UAT annulla'));
+
+            await clic(pulsante('UAT attendi'));
+            expect([titolo(), document.querySelectorAll('.zr-dialog button, .zr-dialog input, .zr-dialog a').length]).toStrictEqual(['UAT attendi', 0]);
+            await dopoQuattroSecondi();
+            expect(uno('.zr-scrim')).toBeNull();
+
+            await clic(pulsante('UAT attendi e poi fatto'));
+            expect(titolo()).toBe('UAT attendi');
+            await dopoQuattroSecondi();
+            expect([titolo(), document.querySelectorAll('.zr-dialog').length, uno('.zr-dialog-head button')?.getAttribute('aria-label')]).toStrictEqual(['UAT fatto', 1, 'Chiudi']);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('con «?rimedi=1», senza `iframe`, il dialogo non ha un riquadro (sprint 32 · T5)', async () => {
+        await apri('?rimedi=1');
+        await clic([...document.querySelectorAll<HTMLElement>('#pagina #uat-rimedi button')].find((uno) => uno.textContent === 'UAT apri il dialogo') ?? null);
+        expect(uno('.zr-dialog')).not.toBeNull();
+        expect(uno('.zr-dialog iframe')).toBeNull();
+    });
+
     it.each([[''], ['?prodotto=pm']])('con «%s» la prova dei rimedi non c\'è (sprint 30 · T4)', async (query) => {
         await apri(query);
         expect(uno('.zr-shell')).not.toBeNull();

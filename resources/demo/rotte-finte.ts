@@ -58,6 +58,14 @@ const opportunita = new URLSearchParams(window.location.search).has('opportunita
 const schede = new URLSearchParams(window.location.search).has('schede');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
+// Con `?accorpata=1` in cima all'elenco c'è una notifica che racconta più azioni (sprint 32 · T3): è nata un'ora fa e l'ultima
+// azione è di due minuti fa. È come la dà la parte server: in `creata_il` c'è l'istante dell'ultima azione, e `ultima_azione_il`,
+// `azioni` e `board` del backoffice non ci sono.
+const accorpata = new URLSearchParams(window.location.search).has('accorpata');
+// Con `?nomi_crm=1` in cima all'elenco ci sono cinque notifiche del CRM con chi ha fatto (sprint 32 · T4): un'azienda e
+// un'opportunità col nome, che sta nel titolo, e sotto non c'è niente; un contatto e un'attività eliminata, di cui il backoffice
+// non dà il nome, e un'azienda senza nome, come quando il CRM è spento: queste tre hanno la frase con solo chi.
+const nomiCrm = new URLSearchParams(window.location.search).has('nomi_crm');
 
 /**
  * Gli `ids` delle tre note di `?crm=1`, come li dà la parte server: i soli del percorso che si apre. La prima è legata a
@@ -82,6 +90,22 @@ const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_m
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
 const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
+    // Solo con `?accorpata=1`, la più recente: una lista modificata più volte dalla stessa persona, da leggere. Non ha una destinazione.
+    ...(accorpata
+        ? [{ id: 'uat-a1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Da fare', per_me: null, ids: {} as Record<string, string> }]
+        : []),
+    // Solo con `?nomi_crm=1`: cinque del CRM con chi ha fatto, le prime due da leggere e col nome della cosa.
+    ...(nomiCrm
+        ? ([
+              ['uat-z1', 3, false, 'organizzazione.modificata', 'UAT Acme', { id: 'uat-azienda-1' }],
+              ['uat-z2', 3, false, 'trattativa.creata', 'UAT Rinnovo 2027', { id: 'uat-opp-1' }],
+              ['uat-z3', 4, true, 'persona.modificata', null, { id: 'uat-persona-1' }],
+              ['uat-z4', 4, true, 'attivita.eliminata', null, {}],
+              ['uat-z5', 4, true, 'organizzazione.creata', null, { id: 'uat-azienda-1' }],
+          ] as [id: string, minuti: number, letta: boolean, tipo: string, nome: string | null, ids: Record<string, string>][]).map(([id, minuti, letta, tipo, risorsa_nome, ids]) => (
+              { id, creata_il: fa(minuti), letta, app: 'crm', tipo: `com.zeiras.crm.${tipo}`, autore_nome: 'Giulia Bianchi', risorsa_nome, per_me: null, ids }
+          ))
+        : []),
     // Solo con `?schede=1`, la più recente: una scheda assegnata, col tipo com'è nel backoffice, senza `com.zeiras.` davanti, chi
     // l'ha assegnata e il nome della scheda, che per questo tipo il backoffice manda sempre. Un clic apre la scheda e la segna letta.
     ...(schede

@@ -7,7 +7,7 @@ import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 /** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
     id: string;
-    /** Un istante RFC 3339, con l'ora e il fuso. */
+    /** Un istante RFC 3339, con l'ora e il fuso: quello dell'ultima azione che la notifica racconta (quando è nata, se è una sola). */
     creata_il: string;
     letta: boolean;
     /** Il codice dell'app da cui viene (`pm`, `crm`…), com'è nel backoffice: `null` se non è di un'app. Di che prodotto è, e come si mostra, lo dice il registro. */

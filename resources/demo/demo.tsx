@@ -25,7 +25,9 @@ import { rotteFinte } from './rotte-finte';
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
 // assegnata, una menzione in un commento e una scheda eliminata, di Project Management; e la ricerca trova anche una scheda)
 // o `?frasi=1` (tre di Project Management: chi e che cosa in una frase, solo chi, e il titolo col nome sotto)
-// l'ultimo si legge anche in pagina, sotto le scelte.
+// l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
+// azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e
+// un'opportunità col nome nel titolo, e un contatto, un'attività eliminata e un'azienda senza nome con solo chi.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
 // nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts): fra le opportunità una è
 // aperta e ha solo pipeline e fase, l'altra è vinta e la sua seconda riga finisce con l'esito nella lingua. In ogni caso la ricerca
@@ -77,26 +79,37 @@ const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiorn
 
 /**
  * Con `?rimedi=1`: un `Dialog` e un `DetailPanel` da aprire, per provare coi tasti veri che Tab resta dentro (il dialogo
- * sempre, il pannello sotto 720 px). Il dialogo si apre anche da dentro il pannello: uno sopra l'altro.
+ * sempre, il pannello sotto 720 px). Il dialogo si apre anche da dentro il pannello: uno sopra l'altro. «UAT attendi» apre
+ * un dialogo senza niente su cui fermarsi, che dopo quattro secondi si chiude da sé; «UAT attendi e poi fatto» al suo posto
+ * ne apre un altro, con la «×». Con `&iframe=<lato>` il dialogo ha in fondo un `iframe` largo e alto quanto detto (anche 0).
  */
 function ProvaDeiRimedi() {
     const [dialogo, setDialogo] = useState(false);
     const [pannello, setPannello] = useState(false);
+    const [attesa, setAttesa] = useState<'no' | 'attendi' | 'fatto'>('no');
+    const lato = new URLSearchParams(window.location.search).get('iframe');
     const apriIlDialogo = <Button variant="secondary" onClick={() => setDialogo(true)}>UAT apri il dialogo</Button>;
+    const attendi = (poi: 'no' | 'fatto') => {
+        setAttesa('attendi');
+        setTimeout(() => setAttesa(poi), 4000);
+    };
 
     return (
         <div id="uat-rimedi" className="zr-stack">
             <p>{apriIlDialogo} <Button variant="secondary" onClick={() => setPannello(true)}>UAT apri il pannello</Button> <a href="#uat-dopo" id="uat-dopo">UAT dopo</a></p>
+            <p><Button variant="secondary" onClick={() => attendi('no')}>UAT attendi</Button> <Button variant="secondary" onClick={() => attendi('fatto')}>UAT attendi e poi fatto</Button></p>
             {pannello ? (
                 <DetailPanel label="UAT scheda" head="UAT Lancio corso" onClose={() => setPannello(false)} foot={<Button variant="secondary">UAT commenta</Button>}>
                     <p><input aria-label="UAT titolo" defaultValue="UAT Lancio corso" /></p>
                     <p>{apriIlDialogo}</p>
                 </DetailPanel>
             ) : null}
-            <Dialog open={dialogo} title="UAT nuova scheda" onClose={() => setDialogo(false)} footer={<><Button variant="secondary" onClick={() => setDialogo(false)}>UAT annulla</Button> <Button onClick={() => setDialogo(false)}>UAT salva</Button></>}>
+            <Dialog open={dialogo} title="UAT nuova scheda" onClose={() => setDialogo(false)} footer={<><Button variant="secondary" onClick={() => setDialogo(false)}>UAT annulla</Button> <Button onClick={() => setDialogo(false)}>UAT salva</Button>{lato !== null ? <iframe title="UAT riquadro" width={lato} height={lato} /> : null}</>}>
                 <p><input aria-label="UAT nome" /></p>
                 <p><Button variant="ghost" disabled>UAT spento</Button></p>
             </Dialog>
+            <Dialog open={attesa === 'attendi'} title="UAT attendi"><p>UAT quattro secondi</p></Dialog>
+            <Dialog open={attesa === 'fatto'} title="UAT fatto" onClose={() => setAttesa('no')}><p>UAT fatto</p></Dialog>
         </div>
     );
 }

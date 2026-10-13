@@ -288,7 +288,8 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * chi e che cosa (`notificationTitleWhoWhat.<tipo>`, coi posti `{who}` e `{what}`) e quella con solo chi
  * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
  * backoffice non dà il nome. Dallo sprint 31 (T1) anche i 18 tipi del CRM, con le parole di zr-crm: hanno la sola frase con chi
- * — il nome di un contatto è un dato personale, e delle altre cose il contratto non dà il nome —, tranne le due della pipeline.
+ * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome, e le assegnazioni non hanno ancora la frase col nome —, tranne le due della pipeline
+ * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate.
  * Con T2 anche i cinque del workspace e `com.zeiras.app.modificata`, con le parole di zr-home: ogni tipo che ha un titolo ha la
  * frase con solo chi. Di un membro il contratto non dà il nome; di un modulo dà il codice, e la cornice ne scrive il nome.
  * La tabella è scritta qui, non letta dai file delle lingue.
@@ -379,27 +380,27 @@ function frasiDelleNotificheConChi(): array
             'chi' => ['it' => '{who} ha modificato un contatto', 'en' => '{who} edited a contact', 'es' => '{who} ha modificado un contacto'],
         ],
         'com.zeiras.crm.organizzazione.creata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha creato l\'azienda «{what}»', 'en' => '{who} created the company “{what}”', 'es' => '{who} ha creado la empresa «{what}»'],
             'chi' => ['it' => '{who} ha creato un\'azienda', 'en' => '{who} created a company', 'es' => '{who} ha creado una empresa'],
         ],
         'com.zeiras.crm.organizzazione.modificata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha modificato l\'azienda «{what}»', 'en' => '{who} edited the company “{what}”', 'es' => '{who} ha modificado la empresa «{what}»'],
             'chi' => ['it' => '{who} ha modificato un\'azienda', 'en' => '{who} edited a company', 'es' => '{who} ha modificado una empresa'],
         ],
         'com.zeiras.crm.trattativa.creata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha creato l\'opportunità «{what}»', 'en' => '{who} created the opportunity “{what}”', 'es' => '{who} ha creado la oportunidad «{what}»'],
             'chi' => ['it' => '{who} ha creato un\'opportunità', 'en' => '{who} created an opportunity', 'es' => '{who} ha creado una oportunidad'],
         ],
         'com.zeiras.crm.trattativa.modificata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha modificato l\'opportunità «{what}»', 'en' => '{who} edited the opportunity “{what}”', 'es' => '{who} ha modificado la oportunidad «{what}»'],
             'chi' => ['it' => '{who} ha modificato un\'opportunità', 'en' => '{who} edited an opportunity', 'es' => '{who} ha modificado una oportunidad'],
         ],
         'com.zeiras.crm.attivita.creata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha creato l\'attività «{what}»', 'en' => '{who} created the activity “{what}”', 'es' => '{who} ha creado la actividad «{what}»'],
             'chi' => ['it' => '{who} ha creato un\'attività', 'en' => '{who} created an activity', 'es' => '{who} ha creado una actividad'],
         ],
         'com.zeiras.crm.attivita.modificata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ha modificato l\'attività «{what}»', 'en' => '{who} edited the activity “{what}”', 'es' => '{who} ha modificado la actividad «{what}»'],
             'chi' => ['it' => '{who} ha modificato un\'attività', 'en' => '{who} edited an activity', 'es' => '{who} ha modificado una actividad'],
         ],
         'com.zeiras.crm.attivita.eliminata' => [
@@ -1205,7 +1206,7 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e diciannove anche quella con chi e che cosa: 61 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e venticinque anche quella con chi e che cosa: 67 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1222,11 +1223,11 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(61)
+    expect($attese)->toHaveCount(67)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
         ->and($conLeFrasi)->toHaveCount(42)
-        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(19)
+        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(25)
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);

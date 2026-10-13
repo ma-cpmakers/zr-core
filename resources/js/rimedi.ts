@@ -52,10 +52,12 @@ function nascosto(elemento: HTMLElement): boolean {
 /**
  * Una fermata del Tab: non spento, non nascosto, non fuori dal giro (`tabindex="-1"`), non dentro un elemento `inert`. Di un
  * gruppo di scelte il Tab si ferma su una sola: quella scelta, se c'è. Un `iframe`, un `video` e un `audio` coi comandi lo
- * sono dove il browser li mette nel giro (`tabIndex` da 0 in su).
+ * sono dove il browser li mette nel giro (`tabIndex` da 0 in su). Un `iframe` largo o alto zero — un riquadro di servizio,
+ * che non si vede — non lo è: contato come ultima fermata lascerebbe al browser il Tab dal pulsante che lo precede, e da
+ * dentro un `iframe` il tasto non arriva alla pagina.
  */
 function eUnaFermata(elemento: HTMLElement): boolean {
-    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') !== null || nascosto(elemento)) {
+    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') !== null || nascosto(elemento) || (elemento.matches('iframe') && !(elemento.clientWidth && elemento.clientHeight))) {
         return false;
     }
     if (elemento instanceof HTMLInputElement && elemento.type === 'radio' && !elemento.checked && elemento.name !== '') {
@@ -63,6 +65,25 @@ function eUnaFermata(elemento: HTMLElement): boolean {
     }
 
     return true;
+}
+
+/**
+ * Il dialogo senza fermate a cui il rimedio ha dato il fuoco, e chi lo aveva prima. Quando quel dialogo esce dal documento il
+ * fuoco resta alla pagina: torna a chi lo aveva, se è ancora in pagina; a un elemento che lo ha preso nel frattempo non si
+ * toglie. Se intanto un altro dialogo trattiene il fuoco, torna a chi lo aveva solo se sta dentro quel dialogo: un pulsante
+ * dietro il velo non lo riprende, perché Invio lo premerebbe di nuovo.
+ */
+let preso: [dialogo: HTMLElement, loAveva: Element | null] | null = null;
+
+function fuocoAChiLoAveva(): void {
+    if (preso !== null && !preso[0].isConnected) {
+        const loAveva = preso[1];
+
+        preso = null;
+        if (document.activeElement === document.body && loAveva instanceof HTMLElement && (chiTrattieneIlFuoco() ?? document).contains(loAveva)) {
+            loAveva.focus();
+        }
+    }
 }
 
 /** Un `Dialog` aperto che non è un'anteprima, dentro il suo velo. */
@@ -106,6 +127,9 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
         // Niente su cui fermarsi: il fuoco non esce lo stesso, e va a chi trattiene. Il `Dialog` non ha un `tabindex`, e senza
         // non lo può prendere: resterebbe sul pulsante dietro il velo, che Invio premerebbe.
         tasto.preventDefault();
+        if (attivo !== dentro) {
+            preso = [dentro, attivo];
+        }
         dentro.tabIndex = -1;
         dentro.focus();
     } else if (attivo === null || !dentro.contains(attivo)) {
@@ -149,6 +173,7 @@ new MutationObserver((cambi) => {
             dialogoSopraIlPannello(aggiunto);
         });
     }
+    fuocoAChiLoAveva();
 }).observe(document, { childList: true, subtree: true });
 
 // Un dialogo già aperto quando il modulo arriva.

@@ -4813,10 +4813,65 @@ it('il README dice, nei due punti dei rimedi di tastiera di «La cornice», i ca
     'resta fuori: dentro un iframe' => ['Tab dentro un dialogo aperto', 'Restano fuori anche tre casi: da dentro un `iframe` i tasti sono della sua pagina, e Tab dall\'ultimo suo elemento esce dal dialogo (il Tab dopo rientra)'],
     'resta fuori: lo shadow DOM' => ['Tab dentro un dialogo aperto', 'gli elementi dentro uno shadow DOM non si contano'],
     'resta fuori: un tabindex positivo' => ['Tab dentro un dialogo aperto', 'un `tabindex` maggiore di zero non cambia il giro, che per la cornice è l\'ordine del documento'],
-    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video, il fuoco dopo il clic su una notifica.
+    // Review della PR #64 (R2, R3, R4): il `summary` con ciò che ha dentro, i comandi di un video. La riga del fuoco dopo il clic su
+    // una notifica è nel caso dello sprint 32 · T2.4, più sotto: la frase è cambiata.
     'il summary con ciò che ha dentro' => ['Tab dentro un dialogo aperto', 'tranne il `summary` che lo apre, con ciò che ha dentro'],
     'resta fuori: i comandi di un video' => ['Tab dentro un dialogo aperto', 'E un quarto, provato in Chrome: di un `video` o di un `audio` coi comandi la cornice conta una fermata sola, e quando è l\'ultima cosa del dialogo i comandi che il browser tiene al suo interno col Tab non si raggiungono'],
-    'dopo il clic su una notifica' => ['Il fuoco nel pannello delle notifiche', 'In ogni browser torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello'],
+]);
+
+// Sprint 32 · T1.3 (voce #1912; review della PR #64, R7 e R8): un riquadro che non si vede non è una fermata, e chiuso un dialogo
+// senza fermate il fuoco torna a chi lo aveva. Il README li dice nel punto del Tab, da quando e in che browser sono provati.
+
+it('il README dice, nel punto del Tab dentro un dialogo, i due casi chiusi dalla `v1.22.0` (sprint 32 · T1.3)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Tab dentro un dialogo aperto'), $frase))->toBe(true);
+})->with([
+    'un riquadro che non si vede' => ['Dalla `v1.22.0`: un `iframe` largo o alto zero — un riquadro di servizio, che non si vede — non conta come fermata, e Tab dal pulsante che lo precede torna alla prima invece di passare da lì e uscire dietro il velo'],
+    'il fuoco torna a chi lo aveva' => ['chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna all\'elemento che lo aveva prima che il dialogo lo prendesse, se è ancora in pagina e se nel frattempo non lo ha preso un altro (provati in Chrome)'],
+    // Review della PR #65 (R1, R7, R13): un altro dialogo aperto intanto, il `tabindex` che resta, un DOM senza geometria.
+    'un altro dialogo aperto intanto' => ['Se intanto si è aperto un altro dialogo, il fuoco torna solo a un elemento di quel dialogo: a un pulsante rimasto dietro il velo no, perché Invio lo premerebbe di nuovo (provato in Chrome)'],
+    'il tabindex che resta' => ['Al dialogo che ha preso il fuoco resta il `tabindex="-1"` che la cornice gli ha scritto (provato in Chrome), anche se poi guadagna un pulsante (questo in un browser non è provato); riaperto, è un elemento nuovo e non lo ha'],
+    'chiuso l\'altro dialogo' => ['Chiuso poi quell\'altro dialogo, il fuoco resta alla pagina: al pulsante di partenza non torna (provato in Chrome)'],
+    'un DOM senza geometria' => ['Un test del modulo con un `iframe` in fondo a un `Dialog` va riletto: in un DOM senza geometria (happy-dom, jsdom) larghezza e altezza sono sempre zero, e lì un `iframe` non è mai una fermata'],
+]);
+
+// Sprint 32 · T2.4 (voce #1912; review della PR #64, R12): dove va il fuoco dopo il clic su una notifica o su «Vedi tutte» il
+// README lo dice col browser in cui è provato (UAT, riga B5), e non di ogni browser. Che il fuoco ci vada lo prova
+// `cornice.test.tsx` (sprint 32 · T2.4), non questo caso, che lega solo la frase.
+
+it('il README dice, nel punto del fuoco nel pannello delle notifiche, dove va il fuoco dopo il clic su una notifica o su «Vedi tutte» e in quale browser è provato, e non lo dice più di ogni browser (sprint 32 · T2.4)', function () {
+    $punto = puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Il fuoco nel pannello delle notifiche');
+
+    expect(str_contains($punto, 'Torna sulla campanella anche dopo il clic su una notifica o su «Vedi tutte», che chiudono il pannello ed escono dal documento col fuoco: provato in Chrome, col clic vero; in Safari e in Firefox non è provato'))->toBe(true)
+        ->and(str_contains($punto, 'un campo cliccato fuori dal pannello — non si toglie (provato in Chrome)'))->toBe(true)
+        ->and(str_contains($punto, 'In ogni browser torna sulla campanella'))->toBe(false)
+        // Review della PR #65 (R3): il clic che non dà il fuoco è provato coi casi del pacchetto; dopo il clic sull'avatar, in Chrome.
+        ->and(str_contains($punto, 'Lo provano i casi del pacchetto, che imitano un clic che non dà il fuoco: in Safari e in Firefox non è provato'))->toBe(true)
+        ->and(str_contains($punto, 'A pannello aperto, il clic sull\'avatar chiude il pannello e apre il menu del profilo, e il fuoco va sulla prima voce del menu, che il `Menu` mette a fuoco da sé: provato in Chrome; in Safari, dove il clic non dà il fuoco all\'avatar, non è provato'))->toBe(true);
+});
+
+// Sprint 32 · T3.5 (voce #1913): una notifica del backoffice può raccontare più azioni. Il README dice, nella riga dell'elenco, che
+// `creata_il` è l'istante dell'ultima e da quale campo viene; nella riga delle letture, che cosa manda `fino_a`; nel punto delle
+// notifiche, che ora si vede.
+
+it('il README dice che una notifica che racconta più azioni mostra l\'ora dell\'ultima, da quale campo del backoffice viene e che cosa manda `fino_a` (sprint 32 · T3.5)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testo = match ($dove) {
+        'elenco' => rigaDellaRotta($readme, 'GET /cornice/notifiche'),
+        'letture' => rigaDellaRotta($readme, 'POST /cornice/notifiche/letture'),
+        default => puntoDellaCornice($readme, 'Le notifiche'),
+    };
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'che cos\'è creata_il' => ['elenco', 'dalla `v1.22.0` `creata_il` è l\'istante dell\'ultima azione che la notifica racconta'],
+    'da quale campo' => ['elenco', 'l\'istante dell\'ultima lo dice in `ultima_azione_il`; se non lo manda, è l\'istante in cui la notifica è nata, come prima'],
+    'ciò che non passa' => ['elenco', '`ultima_azione_il`, `azioni` e `board` del backoffice non arrivano in pagina'],
+    'che cosa manda fino_a' => ['letture', 'dalla `v1.22.0` la cornice manda in `fino_a` l\'istante dell\'ultima azione più recente fra le notifiche caricate'],
+    'fin dove segna' => ['letture', 'il backoffice segna quelle nate fino a lì, cioè tutte le caricate — ognuna è nata prima della sua ultima azione — e nessuna nata dopo il caricamento'],
+    'l\'ora nel pannello' => ['punto', 'Dalla `v1.22.0` una notifica che racconta più azioni mostra l\'ora dell\'ultima, non quella della prima'],
 ]);
 
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
@@ -5044,20 +5099,25 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima diciannove: i quattordici di Project Management che non sono una cosa eliminata, le due pipeline del CRM, il workspace creato e modificato, e il modulo attivato o disattivato'],
-    'perché gli altri no' => ['notifiche', 'Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline (il nome di un contatto è un dato personale)'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima venticinque: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
+    'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
+    'perché gli altri no' => ['notifiche', 'Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una nota il backoffice non dà il nome (quello di un contatto è un dato personale)'],
+    // Review della PR #65 (R5): di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo dà.
+    'le assegnazioni del CRM' => ['notifiche', 'Le quattro assegnazioni del CRM non hanno ancora la loro frase col nome: di un\'azienda, un\'opportunità o un\'attività assegnata il backoffice il nome lo dà, e sta nella riga sotto il titolo'],
     'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
     'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
     'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto'],
     'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
-    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
+    // Review della PR #65 (R4): dal contratto del 13/10/2026 la board c'è, ed è la parte server a non farla passare.
+    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: dal 13/10/2026 il backoffice la dà (`board`), ma la parte server non la fa arrivare in pagina'],
     // Sprint 30 · T2.6 (voce #1875): le difese dei due nomi, e ciò che resta al backoffice.
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
     'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
-    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuterà il backoffice alla scrittura'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: i caratteri di controllo, di direzione del testo e a larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d\'accesso non lo rifiuta: lo pulisce'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
@@ -5066,7 +5126,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM tutto tranne la pipeline: il nome di un contatto è un dato personale)'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

@@ -5,8 +5,8 @@
 // riga, senza le prime tre (il commento del formato, l'apertura della funzione, `var React = window.React;`) e senza la
 // registrazione in `window.Zeiras` in fondo, al cui posto vanno gli `export`. Qui si conosce una forma sola del bundle, e la si
 // controlla prima di comporre: se una cosa non torna un errore dice quale. Questo file lavora solo su testi, senza `node:fs`:
-// lo importano il comando (scripts/componenti.mjs, che legge e scrive i file) e un caso di vitest, che in happy-dom i file non
-// li legge.
+// lo importano il comando (scripts/componenti.mjs, che legge e scrive i file) e un caso di vitest, che i file li prende come
+// testo (`?raw`).
 
 const FORMATO = 4;
 const SPAZIO_DEI_NOMI = 'Zeiras';
