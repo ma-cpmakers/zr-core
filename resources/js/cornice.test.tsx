@@ -5799,6 +5799,61 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inSpagnolo]);
     });
 
+    it('stessa persona, lingua passata da `it` a `es` da un\'altra scheda: coi dati `in_attesa` della visita nuova la campanella aperta chiede le frasi di `es`, una volta sola, e mai quelle della lingua dei dati tenuti; le righe sono in spagnolo. Senza cambio di lingua la richiesta è una, di `it` (sprint 36 · T4.1, T4.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        // I dati tenuti restano: la cornice non è ridotta, e la campanella si apre.
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        expect(frasi.chiesti).toStrictEqual([]);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(frasi.chiesti).not.toContain('it');
+        expect(frasi.chiesti.filter((codice) => codice === 'es')).toHaveLength(1);
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
+    it('senza cambio di lingua la campanella aperta chiede le frasi di `it` una volta sola (sprint 36 · T4.3)', async () => {
+        const frasi = caricatore();
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(frasi.chiesti.filter((codice) => codice === 'it')).toHaveLength(1);
+        expect(frasi.chiesti).not.toContain('es');
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se le frasi di `es` non arrivano alla campanella aperta in attesa, «Riprova» richiede quelle di `es`, non quelle della lingua dei dati tenuti (sprint 36 · T4.2)', async () => {
+        const frasi = caricatore();
+        frasi.rotti.add('es');
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        expect(errore()).not.toBeNull();
+        expect(titoli()).toStrictEqual([]);
+        expect(frasi.chiesti).not.toContain('it');
+
+        frasi.rotti.clear();
+        const primaDiRiprova = frasi.chiesti.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        await act(prossimoGiro);
+
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toContain('es');
+        expect(frasi.chiesti).not.toContain('it');
+        expect(titoli()).toStrictEqual([inSpagnolo]);
+    });
+
     it('«Segna tutte come lette» c\'è con l\'elenco in pagina, e non c\'è mentre il pannello aspetta le frasi di una lingua nuova né quando non arrivano (sprint 33 · T3.4)', async () => {
         const frasi = caricatore();
         conLElenco();
