@@ -2348,6 +2348,55 @@ it('l\'email di quel 403 è presa prima di chiamare il backoffice: se durante la
     Http::assertSentCount(1);
 })->with(['elenco', 'lettura', 'letture']);
 
+// Sprint 38 · T4.2 (voce #2028): «Segna tutte come lette» dice per chi lo chiede. In una scheda rimasta ferma la sessione può
+// essere passata a un'altra persona dello stesso workspace: lo slug è lo stesso, e la rotta segnerebbe lette le notifiche di
+// chi è entrato, mai viste. `persona` nel corpo è l'email di chi la cornice mostra: si confronta con quella della sessione, e
+// basta. Non sceglie di chi segnare, non va al backoffice. Una richiesta che non la porta (un JS di prima) vale come prima.
+
+it('con una `persona` che non è l\'email della sessione risponde 409 persona_diversa con l\'email della sessione, e non chiama il backoffice: da una scheda ferma non si segnano le notifiche di chi è entrato dopo (sprint 38 · T4.2)', function (array $diversa, string $chiesta, string $dellaSessione) {
+    // Senza il middleware che toglie gli spazi: l'email si confronta com'è.
+    test()->withoutMiddleware(TrimStrings::class);
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => $chiesta]))->assertStatus(409);
+
+    expect($risposta->getContent())->toBe('{"errore":"persona_diversa","persona":"'.$dellaSessione.'"}');
+    Http::assertNothingSent();
+})->with([
+    'Ada a schermo, Grace nella sessione' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-ada@example.com', 'uat-grace@example.com'],
+    'la stessa con le maiuscole' => [[], 'UAT-Ada@example.com', 'uat-ada@example.com'],
+    'la stessa con uno spazio in fondo' => [[], 'uat-ada@example.com ', 'uat-ada@example.com'],
+]);
+
+it('con la `persona` della sessione, senza `persona`, o con una `persona` che non è un testo, la rotta risponde come prima: una chiamata al backoffice col solo fino_a, e né il corpo né la query né un\'intestazione scelgono di chi segnare (sprint 38 · T4.2)', function (array $inPiu) {
+    $gettoni = sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, false)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture?persona=uat-altra@example.org', lettureFinoA('2026-10-08T10:00:00.123Z') + $inPiu, ['X-Persona' => 'uat-altra@example.org']))
+        ->assertOk()->assertJsonPath('data', ['fino_a' => '2026-10-08T10:00:00.123Z', 'altre' => false]);
+    expect(chiamateAlBackoffice())->toBe([chiamataAlleLetture('2026-10-08T10:00:00.123Z', $gettoni['workspace'])]);
+})->with([
+    'la stessa email' => [['persona' => 'uat-ada@example.com']],
+    'senza persona: un JS di prima rimasto in una scheda' => [[]],
+    'null' => [['persona' => null]],
+    'un numero' => [['persona' => 7]],
+    'true' => [['persona' => true]],
+    'una lista' => [['persona' => ['uat-altra@example.org']]],
+]);
+
+it('le guardie di prima vengono prima e restano com\'erano: con un\'altra `persona` insieme a un altro workspace, o a un fino_a che non è un istante, la risposta è la loro e non dice `persona` (sprint 38 · T4.2)', function (array $corpo, int $stato, string $errore) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    lettureUnaDopoLAltra([lettureDopo(0, true)]);
+
+    senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
+    Http::assertNothingSent();
+})->with([
+    'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409, 'workspace_diverso'],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422, 'dati_non_validi'],
+    'senza workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z'], 422, 'dati_non_validi'],
+]);
+
 it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere accettazione_richiesta a nessuna delle tre rotte delle notifiche (sprint 24 · T1.5)', function (int $stato, ?string $codice, string $rotta) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => accettazioneRichiesta($stato, $codice)]);
