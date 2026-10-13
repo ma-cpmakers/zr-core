@@ -1157,8 +1157,9 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
 });
 
 // Sprint 34 · T1 (voce #1929). In Chromium un `import()` che non è arrivato resta fallito, per quell'indirizzo, finché la
-// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda diversa a ogni tentativo. L'indirizzo è
-// quello che dice l'errore del browser, e vale solo se è della stessa origine del JS. Qui al posto di `import()` c'è il caso.
+// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda, che cambia a ogni tentativo fallito.
+// L'indirizzo non è quello che dice l'errore del browser: si compone con la cartella del JS e col nome di file con cui il
+// messaggio finisce, subito dopo quella cartella. Qui al posto di `import()` c'è il caso.
 describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo (sprint 34 · T1)', () => {
     const ORIGINE = 'https://app.zeiras.test';
     const CARTELLA = `${ORIGINE}/build/assets/`;
@@ -1254,6 +1255,10 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         ['in un\'altra cartella', `${ORIGINE}/caricati/campanella.js`],
         ['nella cartella sopra', `${ORIGINE}/build/campanella.js`],
         ['in una cartella che comincia come quella dell\'ingresso', `${ORIGINE}/build/assets-altri/campanella.js`],
+        // Un frontend che mette i pezzi a richiesta in una cartella dentro quella dell'ingresso: il nome della cartella non è un file.
+        ['in una cartella dentro quella dell\'ingresso', `${CARTELLA}chunks/campanella-D5veh6YO.js`],
+        ['nella cartella dell\'ingresso, ma il messaggio non finisce col nome del file', `${PEZZO} e altro`],
+        ['nella cartella dell\'ingresso, con una coda sua', `${PEZZO}?v=3`],
     ])('un indirizzo della stessa origine %s non entra in `import()`: la richiesta dopo è l\'`import()` di prima (sprint 35 · T3.3)', async (_caso, indirizzo) => {
         const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
 
@@ -1262,23 +1267,23 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
     });
 
-    it.each([
-        ['e risale con `..`', `${CARTELLA}../../caricati/x.js`],
-        ['e risale con `..` in fondo', `${CARTELLA}..`],
-        ['e risale con `.` e `..`', `${CARTELLA}./../x.js`],
-        ['e risale con `%2e%2e`', `${CARTELLA}%2e%2e/%2E%2e/caricati/x.js`],
-        ['e risale con la barra rovescia', `${CARTELLA}..\\..\\caricati\\x.js`],
-        ['e risale con `..` dopo un nome', `${CARTELLA}x/../../../caricati/x.js`],
-        // Fino alla `v2.1.0` questo indirizzo era scartato intero; ora ne resta il file della cartella dell'ingresso.
-        ['dentro la coda di un indirizzo di un\'altra origine', `https://altro.example/x.js?da=${CARTELLA}../x.js`],
-        ['dopo un altro indirizzo', `https://altro.example/x.js?da=${PEZZO}`],
-    ])('un messaggio che dice la cartella dell\'ingresso %s non porta `import()` fuori dalla cartella (sprint 35 · T3.3)', async (_caso, indirizzo) => {
+    // Ciò che entra in `import()` è scritto riga per riga: niente, salvo dove il messaggio finisce con un file della cartella.
+    it.each<[string, string, string | undefined]>([
+        ['e risale con `..`', `${CARTELLA}../../caricati/x.js`, undefined],
+        ['e risale con `..` in fondo', `${CARTELLA}..`, undefined],
+        ['e risale con `.` e `..`', `${CARTELLA}./../x.js`, undefined],
+        ['e risale con `%2e%2e`', `${CARTELLA}%2e%2e/%2E%2e/caricati/x.js`, undefined],
+        ['e risale con la barra rovescia', `${CARTELLA}..\\..\\caricati\\x.js`, undefined],
+        ['e risale con `..` dopo un nome', `${CARTELLA}x/../../../caricati/x.js`, undefined],
+        ['dentro la coda di un indirizzo di un\'altra origine, e risale', `https://altro.example/x.js?da=${CARTELLA}../x.js`, undefined],
+        // Fino alla `v2.1.0` questo indirizzo era scartato intero; dalla `v2.2.0` ne resta il file della cartella dell'ingresso.
+        ['in fondo alla coda di un indirizzo di un\'altra origine', `https://altro.example/x.js?da=${PEZZO}`, `${PEZZO}?r=1`],
+    ])('un messaggio che dice la cartella dell\'ingresso %s non porta `import()` fuori dalla cartella (sprint 35 · T3.3)', async (_caso, indirizzo, atteso) => {
         const { importa, chiedi } = chiImporta(nonArrivato(indirizzo));
 
         await expect(chiedi()).rejects.toThrow();
         await chiedi();
-        const [[daQui]] = importa.mock.calls.slice(-1);
-        expect(daQui === undefined || new URL(daQui).href.startsWith(CARTELLA)).toBe(true);
+        expect(importa.mock.calls).toStrictEqual([[undefined], [atteso]]);
     });
 });
 
