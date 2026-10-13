@@ -1138,7 +1138,9 @@ Dalla `v2.1.0` i dati della cornice si possono dare in due parti, per il fronten
 prima del primo disegno. `Cornice::subito()` legge solo la sessione — lingua, persona, workspace — e non chiama mai il
 backoffice; `Cornice::dopo()` legge dal backoffice ciò che `Cornice::dati()` legge da lì — `prodotti`, `aziende`,
 `non_lette`, `aggiornati_il` e, per chi non ha accettato i documenti legali, `accettazione_richiesta` — e può arrivare
-più tardi. Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
+più tardi. `Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`, così se
+fra le due richieste la sessione è passata a un altro workspace (un'altra scheda) nome, slug e moduli sono dello stesso.
+Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
 Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
@@ -1159,11 +1161,15 @@ Che cosa vede la persona:
 
 - **finché `dopo` non arriva** la cornice è montata e ridotta: il nome della persona e quello del workspace al loro
   posto, nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso. Se la cornice ha
-  già i dati di quel workspace, da una pagina di prima, restano quelli finché non arrivano i nuovi;
+  già i dati di quel workspace, da una pagina di prima, restano quelli finché non arrivano i nuovi. Senza avviso la
+  pagina tiene la sua forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa
+  chiede già l'elenco, e il pannello lo mostra quando `dopo` arriva; invece una parola scritta nella ricerca in attesa
+  non parte: si cerca di nuovo quando `dopo` è arrivato;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
-  `['non_letti' => true]` e lascia nel log una riga d'avviso, col solo tipo dell'errore. La cornice resta ridotta, con
+  `['non_letti' => true]` col segno di quell'istante (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
+  dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
   la sessione finita la tratta il frontend come prima;
@@ -1172,6 +1178,12 @@ Che cosa vede la persona:
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
 una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Se c'è `cornice`, il layout
 usa quella e non guarda `subito` e `dopo`.
+
+Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un
+errore del frontend, un errore di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
+vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso. E un frontend che mette la lingua
+con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e `Cornice::dopo()` lo
+rilegge nella sua: io.mostra si legge due volte per visita.
 
 ## Il logo
 

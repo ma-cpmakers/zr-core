@@ -588,6 +588,7 @@ describe('la cornice in due dati, sotto il layout', () => {
     const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
     const sopraLaPagina = () => uno('.zr-main .zr-stack');
     const campo = () => uno('#uat-campo') as HTMLInputElement;
+    const sottoLaRicerca = () => tutti('.zr-search-note').map((nota) => nota.textContent);
 
     function PaginaColCampo({ conta }: { conta: { montaggi: number } }) {
         useEffect(() => {
@@ -605,7 +606,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         );
     }
 
-    it('con `subito` e senza `dopo` la cornice è montata e ridotta: persona e workspace al loro posto, nessun modulo nel menu, nessun avviso sopra la pagina, e la campanella dice il testo d\'attesa senza chiedere le notifiche (sprint 34 · T4.4)', async () => {
+    it('con `subito` e senza `dopo` la cornice è montata e ridotta: persona e workspace al loro posto, nessun modulo nel menu, nessun avviso sopra la pagina, e campanella e ricerca dicono il testo d\'attesa (sprint 34 · T4.4)', async () => {
         await inDue({ subito }, <PaginaA />);
         const t = testi('it');
 
@@ -619,7 +620,57 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.loading);
-        expect(richieste()).toStrictEqual([]);
+        expect(tutti('.zr-notif .zr-notif-item')).toHaveLength(0);
+        await scrivi('uat');
+        expect(sottoLaRicerca()).toStrictEqual([t.loading]);
+        expect(titoliDellaRicerca()).toStrictEqual([]);
+    });
+
+    it('la campanella aperta in attesa chiede l\'elenco una volta sola, e quando `dopo` arriva il pannello lo mostra senza chiuderlo e riaprirlo: mai «Nessuna notifica» col numero sulla campanella (review della PR #67, R2)', async () => {
+        await inDue({ subito }, <PaginaA />);
+        await clic(uno('.zr-bell'));
+        expect(richieste()).toStrictEqual(['GET /cornice/notifiche']);
+
+        await inDue({ subito, dopo }, <PaginaA />);
+
+        expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
+        expect(uno('.zr-notif')?.textContent).not.toContain(testi('it').notificationsEmpty);
+        expect(uno('.zr-bell')?.textContent).toContain('7');
+        expect(richieste()).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it('una pagina a tutta area lo è dal primo disegno, anche in attesa: `main.zr-main` non cambia forma quando `dopo` arriva; col margine solo quando sopra la pagina c\'è un avviso (review della PR #67, R4)', async () => {
+        const forma = () => uno('main.zr-main')?.className;
+        await inDue({ subito }, <PaginaCheDa key="1" cose={{ flush: true }} />);
+        expect(forma()).toBe('zr-main is-flush');
+
+        await inDue({ subito, dopo }, <PaginaCheDa key="1" cose={{ flush: true }} />);
+        expect(forma()).toBe('zr-main is-flush');
+
+        await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaCheDa key="1" cose={{ flush: true }} />);
+        expect(sopraLaPagina()).not.toBeNull();
+        expect(forma()).toBe('zr-main');
+    });
+
+    it('un `non_letti` letto prima dei dati che la cornice ha non la riduce: resta quella di sempre (Indietro su una visita di quando il backoffice non rispondeva); uno letto dopo sì (review della PR #67, R5)', async () => {
+        await inDue({ subito, dopo }, <PaginaA key="1" />);
+
+        await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T07:59:59.000000Z' } }, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(etichette()).toContain('CRM');
+        expect(sopraLaPagina()).toBeNull();
+
+        await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaB key="2" />);
+        expect(etichette()).not.toContain('CRM');
+        expect(sopraLaPagina()?.textContent).toContain(testi('it').downTitle);
+    });
+
+    it('il workspace di `dopo` vale su quello di `subito`: se fra le due richieste la sessione è passata a un altro workspace, moduli, nome e slug sono dello stesso workspace (review della PR #67, R6)', async () => {
+        await inDue({ subito, dopo: { ...dopo, workspace: datiAltroWorkspace.workspace } }, <PaginaA />);
+
+        expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
+        expect(uno('aside.zr-side')?.textContent).not.toContain('Marketing');
+        expect(tutti('a.zr-nav-item').map((voce) => voce.getAttribute('href')).filter((indirizzo) => indirizzo?.includes('/w/')).every((indirizzo) => indirizzo?.includes(`/w/${datiAltroWorkspace.workspace.slug}`))).toBe(true);
     });
 
     it('quando `dopo` arriva la cornice diventa quella di sempre e la pagina non si rimonta: il campo è lo stesso nodo, col testo scritto e col fuoco; la campanella chiede le notifiche (sprint 34 · T4.5)', async () => {
@@ -636,8 +687,10 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(campo()).toBe(nodo);
         expect([campo().value, document.activeElement === nodo, conta.montaggi]).toStrictEqual(['UAT scritto', true, 1]);
         expect(sopraLaPagina()).toBeNull();
+        expect(uno('.zr-bell')?.textContent).toContain('7');
         await clic(uno('.zr-bell'));
-        expect(richieste()).toStrictEqual(['GET /cornice/notifiche']);
+        await scrivi('uat');
+        expect(richieste()).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/ricerca {"q":"uat"}']);
     });
 
     it.each(['it', 'es', 'en'])('con `dopo` non letto, nella lingua "%s", la cornice resta ridotta con l\'avviso «Zeiras non risponde» sopra la pagina, senza pulsante; la campanella dice il suo testo; il testo scritto nel campo resta, e niente parla di documenti (sprint 34 · T4.6)', async (lingua) => {
@@ -656,8 +709,10 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.downOff);
+        await scrivi('uat');
+        expect(sottoLaRicerca()).toStrictEqual([t.downOff]);
         expect(richieste()).toStrictEqual([]);
-        expect(`${sopraLaPagina()?.textContent} ${uno('.zr-notif')?.textContent}`).not.toMatch(/document/i);
+        expect(`${sopraLaPagina()?.textContent} ${uno('.zr-notif')?.textContent} ${sottoLaRicerca().join(' ')}`).not.toMatch(/document/i);
     });
 
     it('con `dopo` che dice `accettazione_richiesta` lo stato ridotto è quello di sempre, con il suo avviso e il suo pulsante, e non quello di «Zeiras non risponde» (sprint 34 · T4.7)', async () => {

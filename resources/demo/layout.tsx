@@ -257,11 +257,16 @@ function DueDati({ visita, dopo }: Props) {
     );
 }
 
-/** Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`. */
+/** Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace, come `Cornice::dopo()`. */
 function dopoLetto(): NonNullable<Props['dopo']> {
-    const { prodotti, aziende, non_lette } = marketing;
+    const { workspace, prodotti, aziende, non_lette } = marketing;
+    const aggiornati_il = istanteDellaLettura();
 
-    return comeArrivaDopo === 'non_letti' ? { non_letti: true } : comeArrivaDopo === 'accettazione' ? { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true } : { prodotti, aziende, non_lette };
+    return comeArrivaDopo === 'non_letti'
+        ? { non_letti: true, aggiornati_il }
+        : comeArrivaDopo === 'accettazione'
+          ? { workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true }
+          : { workspace, prodotti, aziende, non_lette, aggiornati_il };
 }
 
 const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };

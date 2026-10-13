@@ -78,7 +78,7 @@ export interface DatiDellaCornice {
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
 export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace'>;
 /** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o il solo `non_letti` se il backoffice non ha risposto. */
-export type DatiDopo = Partial<Omit<DatiDellaCornice, keyof DatiSubito | 'in_attesa'>>;
+export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
 export interface GruppoDiVoci {
@@ -978,7 +978,11 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
                 // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama
-                // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. Le voci del modulo, il
+                // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. In attesa dei dati del
+                // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
+                // la campanella tiene i gestori dell'elenco: aperta in attesa lo chiede, e il pannello lo mostra quando arrivano
+                // (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). La ricerca no: nello stato ridotto la
+                // cornice la dimentica (sopra). Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
@@ -986,13 +990,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
-                onNotificationsOpen: ridotta ? undefined : carica,
-                onRetryNotifications: ridotta ? undefined : carica,
+                onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
+                onRetryNotifications: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
                 onSearch: ridotta ? undefined : cercaParola,
-                flush: ridotta ? undefined : pagina.flush,
-                children: <>{ridotta ? avvisoSopraLaPagina : null}{pagina.children}</>,
+                flush: avvisoSopraLaPagina ? undefined : pagina.flush,
+                children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
             user={dati.persona.nome}
