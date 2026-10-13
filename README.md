@@ -374,18 +374,20 @@ gettone CSRF, anche nella `GET` dell'elenco. Così da una scheda rimasta ferma, 
 nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la
 segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
 prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
-entrato. Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
+entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Restano fuori due
+cose. Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
 prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
 notifica la segna ancora a chi è entrato, finché la scheda non si ricarica. E dei dati della cornice senza l'email della
-persona: l'intestazione partirebbe vuota, e le quattro rotte la rifiutano con un 422 `dati_non_validi` — elenco, ricerca e
-letture danno errore, e la pagina non si ricarica (l'email è obbligatoria nel contratto del backoffice: «La cornice in due
-dati»). Chi installa la `v2.6.0` guarda due cose. Il JS e la parte server del pacchetto si aggiornano insieme, e la cache
+persona: l'intestazione partirebbe senza un'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l'email è un
+testo vuoto, 409 `persona_diversa` se manca o è `null` (parte il testo `undefined` o `null`). Elenco, ricerca e letture danno
+errore, e la pagina non si ricarica (l'email è obbligatoria nel contratto del backoffice: «La cornice in due dati»). Chi installa la `v2.6.0` guarda due cose. Il JS e la parte server del pacchetto si aggiornano insieme, e la cache
 delle rotte si rifà al deploy (`php artisan route:cache`): il confronto di «Segna tutte come lette» non lo fa più il
 controller ma la regola delle rotte, e con una cache delle rotte fatta prima dell'aggiornamento, o col JS nuovo davanti a
 una parte server fino alla `v2.5.1`, non lo fa nessuno, senza un errore che lo dica. E l'email della persona ora parte in
 un'intestazione di ognuna delle quattro richieste, anche della `GET` dell'elenco: uno strumento che registra le intestazioni
-delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura.
+delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura. Se invece qualcosa fra il browser e il frontend la
+toglie, la rotta non confronta: una richiesta che non dice la persona vale come prima.
 
 Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le quattro rotte rispondono 403
 `{errore: "accettazione_richiesta", persona}`: il codice e, dalla `v2.5.0`, l'email della persona della sessione
@@ -836,7 +838,8 @@ cornice === null ? pagina : (
   numero.
   Con due schede su due workspace la lettura parte lo stesso, ma il numero dei
   dati della pagina non scende: quella notifica non è fra le sue. Se la lettura fallisce la risorsa si è aperta lo
-  stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com'era. Con `window.location.assign`
+  stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com'era. Fa eccezione la risposta di
+  un'altra persona a una scheda rimasta ferma, che ricarica la pagina («Le rotte della cornice»). Con `window.location.assign`
   (il `naviga` di partenza) la pagina se ne va prima della risposta, e il numero nuovo lo possono portare i dati della
   pagina dopo: se quella li legge prima che il backoffice abbia segnato la notifica la contano ancora, fino alla visita
   successiva. Resta in pagina con un `naviga` che non la ricarica, come la visita di Inertia dentro lo stesso modulo. A chi usa
@@ -1231,7 +1234,7 @@ segna niente. Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422
 Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, nell'intestazione `Persona` e non più nel
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
 notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
-ricarica al suo posto, come per il 403 qui sopra.
+ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
