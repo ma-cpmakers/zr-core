@@ -296,6 +296,30 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica(prima ?? {}, 'it')).toEqual({ titolo: '\u{2068}Bruno Neri\u{2069} ha modificato la lista «\u{2068}UAT Da fare\u{2069}»' });
     });
 
+    // Sprint 34 · T2 (voce #1930): le notifiche con `azioni` e `board_nome` stanno dietro `?conto=1`, così le pagine di prova di
+    // prima restano com'erano. Sono come le dà la parte server dalla `v2.1.0`: undici chiavi.
+    it('con `?conto=1` in cima all\'elenco ci sono cinque notifiche con `azioni` e `board_nome`: il conto e la board, la sola board, il solo conto, il nome della cosa quando chi ha fatto non c\'è, e una board con un U+202E nel nome, che esce pulito (sprint 34 · T2.1, T2.2, T2.3, T2.4)', async () => {
+        await rotte(false, '?conto=1');
+        const { rigaDellaNotifica } = await import('../js/frasi');
+        const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+
+        const notifiche = ((await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean; tipo?: string }[]).slice(0, 5);
+
+        expect(notifiche.map(({ id, letta }) => [id, letta])).toEqual([['uat-k1', false], ['uat-k2', true], ['uat-k3', true], ['uat-k4', true], ['uat-k5', true]]);
+        for (const notifica of notifiche) {
+            expect(Object.keys(notifica).sort()).toEqual(['app', 'autore_nome', 'azioni', 'board_nome', 'creata_il', 'id', 'ids', 'letta', 'per_me', 'risorsa_nome', 'tipo']);
+        }
+        expect(notifiche.map((notifica) => rigaDellaNotifica(notifica, 'it'))).toEqual([
+            { titolo: `${isolato('Bruno Neri')} ha modificato la scheda «${isolato('UAT Bozza')}»`, sotto: `3 volte, nella board «${isolato('UAT Lancio')}»` },
+            { titolo: `${isolato('Bruno Neri')} ha creato la scheda «${isolato('UAT Brief')}»`, sotto: `Nella board «${isolato('UAT Lancio')}»` },
+            { titolo: `${isolato('Bruno Neri')} ha modificato la cartella «${isolato('UAT Clienti')}»`, sotto: '3 volte' },
+            { titolo: 'Scheda modificata', sotto: 'UAT Piano' },
+            { titolo: `${isolato('Bruno Neri')} ha modificato la lista «${isolato('UAT Da fare')}»`, sotto: `2 volte, nella board «${isolato('UAT oicnaL')}»` },
+        ]);
+        expect(rigaDellaNotifica(notifiche[0] ?? {}, 'en').sotto).toBe(`3 times, on the board “${isolato('UAT Lancio')}”`);
+        expect(rigaDellaNotifica(notifiche[0] ?? {}, 'es').sotto).toBe(`3 veces, en el tablero «${isolato('UAT Lancio')}»`);
+    });
+
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
     // pagine di prova di prima restano com'erano.
     it('con `?viste=1` in fondo all\'elenco ci sono tre notifiche delle viste di una board, di Project Management, lette: una creata, una modificata, una eliminata, di tipi che zr-core conosce; nessuna ha una destinazione (sprint 21 · T5.1, T5.2)', async () => {
@@ -393,6 +417,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
+        ['?conto=1', ['uat-k1', 'uat-k2', 'uat-k3', 'uat-k4', 'uat-k5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
     ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {

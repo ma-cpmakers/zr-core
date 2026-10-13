@@ -986,7 +986,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
-        const eUnaFrase = (chiave: string) => /^notificationTitle(Who(What)?)?\../.test(chiave);
+        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?)?|Under)\../.test(chiave);
 
         for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
             expect(typeof testiDelFile.notificationTitle).toBe('string');
@@ -1215,5 +1215,86 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         await expect(chiedi()).rejects.toBe(errore);
         await chiedi();
         expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+});
+
+// Sprint 34 · T2 (voce #1930). Una notifica può raccontare più azioni, e la cosa di cui parla può stare in una board: la parte
+// server li dà in `azioni` (un intero da 1 in su) e `board_nome`. Quando sotto il titolo non c'è il nome della cosa, la riga di
+// sotto dice quante volte (da due in su) e in quale board. Il nome della board lo ha scritto una persona: pulito e isolato.
+describe('la riga sotto il titolo: quante azioni, e in quale board (sprint 34 · T2)', () => {
+    const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+    const modificata = 'com.zeiras.board.scheda.modificata';
+    const eliminata = 'com.zeiras.board.scheda.eliminata';
+    const diAda = { tipo: modificata, autore_nome: 'Ada', risorsa_nome: 'Bozza' };
+    const titoloDiAda = `${isolato('Ada')} ha modificato la scheda «${isolato('Bozza')}»`;
+    const LINGUE = [['it', frasiItaliane], ['es', frasiSpagnole], ['en', frasiInglesi]] as const;
+    const riga = (notifica: Record<string, unknown>, lingua = 'it') => rigaConLeFrasi(frasiDi(lingua), notifica, lingua);
+    const frasiDi = (lingua: string): FrasiDelleNotifiche => ({ ...frasiInglesi, ...(LINGUE.find(([codice]) => codice === lingua)?.[1] ?? {}) });
+
+    it('con 3 azioni e la board «Lancio» sotto il titolo c\'è «3 volte, nella board «Lancio»», in spagnolo «en el tablero», in inglese “on the board”, mai “in the board” (T2.1)', () => {
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' })).toStrictEqual({ titolo: titoloDiAda, sotto: `3 volte, nella board «${isolato('Lancio')}»` });
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'es').sotto).toBe(`3 veces, en el tablero «${isolato('Lancio')}»`);
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'en').sotto).toBe(`3 times, on the board “${isolato('Lancio')}”`);
+        expect(LINGUE.map(([lingua]) => riga({ ...diAda, azioni: 12, board_nome: 'Lancio' }, lingua).sotto).join(' ')).not.toMatch(/in the board/i);
+    });
+
+    it('con una sola azione e la board c\'è solo la board; con 3 azioni e senza board solo il conto; con una sola e senza board niente, come prima: mai «1 volte» né «1 volta» (T2.2)', () => {
+        const attese = { it: [`Nella board «${isolato('Lancio')}»`, '3 volte'], es: [`En el tablero «${isolato('Lancio')}»`, '3 veces'], en: [`On the board “${isolato('Lancio')}”`, '3 times'] };
+        for (const [lingua] of LINGUE) {
+            expect([lingua, riga({ ...diAda, azioni: 1, board_nome: 'Lancio' }, lingua).sotto, riga({ ...diAda, azioni: 3, board_nome: null }, lingua).sotto]).toStrictEqual([lingua, ...attese[lingua]]);
+            // Senza la chiave della board è come con null: CRM, workspace, cartella, o una parte server di prima.
+            expect(riga({ ...diAda, azioni: 3 }, lingua).sotto).toBe(attese[lingua][1]);
+            expect(riga({ ...diAda, azioni: 1, board_nome: null }, lingua)).toStrictEqual(riga(diAda, lingua));
+            expect(Object.keys(riga({ ...diAda, azioni: 1, board_nome: null }, lingua))).toStrictEqual(['titolo']);
+        }
+        // Il conto si scrive da due in su, e solo se è un intero: ogni altro valore è una sola azione.
+        for (const azioni of [1, 0, -3, 2.5, '3', null, undefined, true, Number.NaN, Number.POSITIVE_INFINITY, [3]]) {
+            expect([azioni, riga({ ...diAda, azioni, board_nome: 'Lancio' }).sotto]).toStrictEqual([azioni, `Nella board «${isolato('Lancio')}»`]);
+            expect([azioni, Object.keys(riga({ ...diAda, azioni }))]).toStrictEqual([azioni, ['titolo']]);
+        }
+        expect(JSON.stringify(LINGUE.map(([lingua]) => [1, 2, 3].map((azioni) => riga({ ...diAda, azioni, board_nome: 'Lancio' }, lingua))))).not.toMatch(/\b1 (volt|ve[cz]|time)/);
+    });
+
+    it('quando sotto il titolo c\'è il nome della cosa resta il nome: senza chi ha fatto, e con la frase con solo chi; senza il nome sotto, conto e board (T2.3)', () => {
+        const conto = { azioni: 3, board_nome: 'Lancio' };
+        const sotto = `3 volte, nella board «${isolato('Lancio')}»`;
+
+        // Il titolo di prima, col nome sotto: come nella `v2.0.0`.
+        expect(riga({ tipo: modificata, autore_nome: null, risorsa_nome: 'Bozza', ...conto })).toStrictEqual({ titolo: 'Scheda modificata', sotto: 'Bozza' });
+        expect(riga({ tipo: 'com.zeiras.uat.ignoto', autore_nome: 'Ada', risorsa_nome: 'Bozza', ...conto })).toStrictEqual({ titolo: testi('it').notificationTitle, sotto: 'Bozza' });
+        // Una cosa eliminata non ha il nome: la frase con solo chi, e sotto il conto e la board.
+        expect(riga({ tipo: eliminata, autore_nome: 'Ada', risorsa_nome: null, ...conto })).toStrictEqual({ titolo: `${isolato('Ada')} ha eliminato una scheda`, sotto });
+        // Né chi né il nome: il titolo di prima, e sotto il conto e la board.
+        expect(riga({ tipo: modificata, ...conto })).toStrictEqual({ titolo: 'Scheda modificata', sotto });
+    });
+
+    it('il nome della board esce pulito e isolato; uno di soli caratteri che non si vedono è una board che manca; un segnaposto o un `$&` nel nome restano testo (T2.4)', () => {
+        const conLaBoard = (board_nome: unknown, azioni = 3) => riga({ ...diAda, azioni, board_nome }).sotto;
+
+        expect(conLaBoard('Lan\u{202E}cio')).toBe(`3 volte, nella board «${isolato('Lancio')}»`);
+        expect(conLaBoard('\u{202E}oicnaL')).not.toContain('\u{202E}');
+        expect(conLaBoard(' \tLancio\nQ4 ')).toBe(`3 volte, nella board «${isolato('Lancio Q4')}»`);
+        expect(conLaBoard('\u{2068}Lancio\u{2069}', 1)).toBe(`Nella board «${isolato('Lancio')}»`);
+        for (const vuota of ['', '   ', '\u{202E}', '\u{202E}\u{200B} \n', null, undefined, 7, ['Lancio'], { nome: 'Lancio' }]) {
+            expect([vuota, conLaBoard(vuota), conLaBoard(vuota, 1)]).toStrictEqual([vuota, '3 volte', undefined]);
+        }
+        expect(conLaBoard('{n} {board} {who}')).toBe(`3 volte, nella board «${isolato('{n} {board} {who}')}»`);
+        expect(conLaBoard('$& $1 $`')).toBe(`3 volte, nella board «${isolato('$& $1 $`')}»`);
+    });
+
+    it('il pannello e chi mostra le notifiche in una pagina sua hanno la stessa riga di sotto, in ogni lingua; senza le frasi della riga non c\'è niente, mai un segnaposto (T2.6)', async () => {
+        const { rigaDellaNotifica } = await import('./frasi');
+        const notifiche = [1, 2, 3, 40].flatMap((azioni) => ['Lancio', null].flatMap((board_nome) => [diAda, { tipo: eliminata, autore_nome: 'Ada' }, { tipo: modificata, risorsa_nome: 'Bozza' }, { tipo: modificata }].map((notifica) => ({ ...notifica, azioni, board_nome }))));
+
+        expect(notifiche).toHaveLength(32);
+        for (const lingua of ['it', 'es', 'en', 'es-AR', 'zz']) {
+            for (const notifica of notifiche) {
+                expect([lingua, notifica, riga(notifica, lingua.slice(0, 2))]).toStrictEqual([lingua, notifica, rigaDellaNotifica(notifica, lingua)]);
+            }
+        }
+        expect(rigaDellaNotifica({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda, sotto: `3 volte, nella board «${isolato('Lancio')}»` });
+        // Frasi arrivate senza quelle della riga di sotto (un file di prima, ancora in memoria): la riga non c'è.
+        const diPrima = Object.fromEntries(Object.entries(frasiItaliane).filter(([chiave]) => !chiave.startsWith('notificationUnder'))) as FrasiDelleNotifiche;
+        expect(rigaConLeFrasi(diPrima, { ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda });
     });
 });

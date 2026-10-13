@@ -97,6 +97,12 @@ export type FrasiDelleNotifiche = {
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
     /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
+    /**
+     * La riga sotto il titolo quando lì non c'è il nome della cosa: quante azioni la notifica racconta e in quale board sta la
+     * cosa (`notificationUnder.countBoard`, con `{n}` e `{board}`), il solo conto (`notificationUnder.count`), la sola board
+     * (`notificationUnder.board`).
+     */
+    [diSotto: `notificationUnder.${string}`]: string | undefined;
 };
 
 /** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */

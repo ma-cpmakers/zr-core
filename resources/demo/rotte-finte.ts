@@ -65,6 +65,10 @@ const frasi = new URLSearchParams(window.location.search).has('frasi');
 // azione è di due minuti fa. È come la dà la parte server: in `creata_il` c'è l'istante dell'ultima azione, e `ultima_azione_il`,
 // `azioni` e `board` del backoffice non ci sono.
 const accorpata = new URLSearchParams(window.location.search).has('accorpata');
+// Con `?conto=1` in cima all'elenco ci sono cinque notifiche di Project Management con `azioni` e `board_nome`, come li dà la
+// parte server dalla `v2.1.0` (sprint 34 · T2), per le righe che il pannello può scrivere sotto il titolo: il conto e la board;
+// la sola board; il solo conto; il nome della cosa, che resta quando chi ha fatto non c'è; e una board con un U+202E nel nome.
+const conto = new URLSearchParams(window.location.search).has('conto');
 // Con `?nomi_crm=1` in cima all'elenco ci sono cinque notifiche del CRM con chi ha fatto (sprint 32 · T4): un'azienda e
 // un'opportunità col nome, che sta nel titolo, e sotto non c'è niente; un contatto e un'attività eliminata, di cui il backoffice
 // non dà il nome, e un'azienda senza nome, come quando il CRM è spento: queste tre hanno la frase con solo chi.
@@ -96,6 +100,18 @@ const notificheDiProva = [
     // Solo con `?accorpata=1`, la più recente: una lista modificata più volte dalla stessa persona, da leggere. Non ha una destinazione.
     ...(accorpata
         ? [{ id: 'uat-a1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Da fare', per_me: null, ids: {} as Record<string, string> }]
+        : []),
+    // Solo con `?conto=1`, le più recenti, la prima da leggere: quante azioni, e in quale board.
+    ...(conto
+        ? ([
+              ['uat-k1', false, 'scheda.modificata', 'Bruno Neri', 'UAT Bozza', 3, 'UAT Lancio'],
+              ['uat-k2', true, 'scheda.creata', 'Bruno Neri', 'UAT Brief', 1, 'UAT Lancio'],
+              ['uat-k3', true, 'cartella.modificata', 'Bruno Neri', 'UAT Clienti', 3, null],
+              ['uat-k4', true, 'scheda.modificata', null, 'UAT Piano', 4, 'UAT Lancio'],
+              ['uat-k5', true, 'lista.modificata', 'Bruno Neri', 'UAT Da fare', 2, 'UAT \u{202E}oicnaL'],
+          ] as [id: string, letta: boolean, tipo: string, autore_nome: string | null, risorsa_nome: string, azioni: number, board_nome: string | null][]).map(([id, letta, tipo, autore_nome, risorsa_nome, azioni, board_nome]) => (
+              { id, creata_il: fa(1), letta, app: 'pm', tipo: `com.zeiras.board.${tipo}`, autore_nome, risorsa_nome, per_me: null, azioni, board_nome, ids: {} as Record<string, string> }
+          ))
         : []),
     // Solo con `?nomi_crm=1`: cinque del CRM con chi ha fatto, le prime due da leggere e col nome della cosa.
     ...(nomiCrm

@@ -338,12 +338,17 @@ final class NotificheDellaCornice
      * pannello mostra, e l'istante fino a cui arriva «Segna tutte come lette» — il backoffice segna per `creata_il` fino a lì,
      * cioè tutte le caricate (ognuna è nata prima della sua ultima azione) e nessuna nata dopo. Anche `ultima_azione_il` è
      * facoltativa: un backoffice che non la manda è quello di prima, e l'istante è la `creata_il`; con un valore che non è un
-     * testo è lo stesso guasto. `azioni` e `board`, che il backoffice manda con lei, non passano.
+     * testo è lo stesso guasto.
+     *
+     * Con lei il backoffice manda `azioni`, quante azioni la notifica racconta (un intero da 1 in su), e `board`, la board in cui
+     * sta la cosa (null, o un oggetto col `nome`). Sono facoltative come le altre: un backoffice che non le manda è quello di
+     * prima, e valgono 1 e null. Se ci sono, con un'altra forma è lo stesso guasto: mai un testo al posto del conto. Di `board`
+     * passa solo il nome, come `board_nome`: né l'id, né una chiave messa domani dal backoffice arrivano in pagina.
      *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
      * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -354,7 +359,9 @@ final class NotificheDellaCornice
             || ! (($notifica['autore'] ?? null) === null || (is_array($notifica['autore']) && is_string($notifica['autore']['nome'] ?? null)))
             || ! (($notifica['risorsa_nome'] ?? null) === null || is_string($notifica['risorsa_nome']))
             || ! (($notifica['per_me'] ?? null) === null || is_bool($notifica['per_me']))
-            || ! (($notifica['ultima_azione_il'] ?? null) === null || is_string($notifica['ultima_azione_il']))) {
+            || ! (($notifica['ultima_azione_il'] ?? null) === null || is_string($notifica['ultima_azione_il']))
+            || ! (! array_key_exists('azioni', $notifica) || (is_int($notifica['azioni']) && $notifica['azioni'] >= 1))
+            || ! (($notifica['board'] ?? null) === null || (is_array($notifica['board']) && is_string($notifica['board']['nome'] ?? null)))) {
             throw new BackofficeNonRisponde("La risposta di {$metodo} non è una notifica di /v1.");
         }
 
@@ -363,6 +370,7 @@ final class NotificheDellaCornice
             'app' => $notifica['app'], 'tipo' => $notifica['tipo'],
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
+            'azioni' => $notifica['azioni'] ?? 1, 'board_nome' => $notifica['board']['nome'] ?? null,
         ];
     }
 

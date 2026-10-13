@@ -107,5 +107,8 @@
     "notificationTitleWho.com.zeiras.workspace.membro.creato": "{who} joined the workspace",
     "notificationTitleWho.com.zeiras.workspace.membro.modificato": "{who} changed a member's role",
     "notificationTitleWho.com.zeiras.workspace.membro.eliminato": "{who} removed someone from the workspace",
-    "notificationTitleWho.com.zeiras.app.modificata": "{who} turned a module on or off"
+    "notificationTitleWho.com.zeiras.app.modificata": "{who} turned a module on or off",
+    "notificationUnder.countBoard": "{n} times, on the board “{board}”",
+    "notificationUnder.count": "{n} times",
+    "notificationUnder.board": "On the board “{board}”"
 }

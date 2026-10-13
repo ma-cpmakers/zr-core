@@ -28,6 +28,7 @@ import { rotteFinte } from './rotte-finte';
 // l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
 // azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e
 // un'opportunità col nome nel titolo, e un contatto, un'attività eliminata e un'azienda senza nome con solo chi.
+// Con `?conto=1` cinque di Project Management che dicono, sotto il titolo, quante azioni raccontano e in quale board sta la cosa.
 // Con `?senza_crm=1` il CRM nel workspace di prova è in arrivo, e non si può aprire; con `?crm_attivo=1` è attivo, e la ricerca
 // nomina anche le sue fonti (contatti, aziende, opportunità) e ne trova i risultati (rotte-finte.ts): fra le opportunità una è
 // aperta e ha solo pipeline e fase, l'altra è vinta e la sua seconda riga finisce con l'esito nella lingua. In ogni caso la ricerca

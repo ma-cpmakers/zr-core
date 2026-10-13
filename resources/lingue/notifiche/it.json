@@ -107,5 +107,8 @@
     "notificationTitleWho.com.zeiras.workspace.membro.creato": "{who} è ora nel workspace",
     "notificationTitleWho.com.zeiras.workspace.membro.modificato": "{who} ha cambiato il ruolo di un membro",
     "notificationTitleWho.com.zeiras.workspace.membro.eliminato": "{who} ha tolto una persona dal workspace",
-    "notificationTitleWho.com.zeiras.app.modificata": "{who} ha attivato o disattivato un modulo"
+    "notificationTitleWho.com.zeiras.app.modificata": "{who} ha attivato o disattivato un modulo",
+    "notificationUnder.countBoard": "{n} volte, nella board «{board}»",
+    "notificationUnder.count": "{n} volte",
+    "notificationUnder.board": "Nella board «{board}»"
 }

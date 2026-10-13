@@ -185,26 +185,43 @@ function nomeNelTitolo(nome: string | undefined): string | undefined {
     return caratteri.length > 60 ? `${caratteri.slice(0, 59).join('').trimEnd()}…` : nome;
 }
 
+/** I posti del conto e della board in una frase della riga di sotto: `{n}` quante azioni, `{board}` il nome della board. */
+const POSTI_DI_SOTTO = /\{n\}|\{board\}/g;
+
+/**
+ * Quante azioni racconta una notifica e in quale board sta la cosa, con le frasi di una lingua: la riga di sotto quando lì non
+ * c'è il nome della cosa. Il conto si scrive da due in su, e solo se è un intero: ogni altro valore è una sola azione, e
+ * «1 volta» non si scrive mai. Il nome della board lo ha scritto una persona: pulito (`nomePulito`) e isolato fra U+2068 e
+ * U+2069 come gli altri due nomi, e messo in un passaggio solo e da una funzione, così un segnaposto o un `$&` scritti dentro
+ * restano testo. Niente (`undefined`) con una sola azione e senza board, o se le frasi non hanno quella che serve.
+ */
+function contoEBoard(frasi: FrasiDelleNotifiche, notifica: { azioni?: unknown; board_nome?: unknown }): string | undefined {
+    const conto = Number.isInteger(notifica.azioni) && (notifica.azioni as number) > 1 ? String(notifica.azioni) : undefined;
+    const board = nomePulito(notifica.board_nome);
+    const frase = conto === undefined && board === undefined ? undefined : frasi[`notificationUnder.${conto === undefined ? 'board' : board === undefined ? 'count' : 'countBoard'}`];
+
+    return typeof frase === 'string' && frase !== '' ? frase.replace(POSTI_DI_SOTTO, (posto) => (posto === '{n}' ? (conto ?? '') : `\u2068${board ?? ''}\u2069`)) : undefined;
+}
+
 /**
  * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
  * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
- * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
- * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase.
+ * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e non sotto;
+ * o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase.
  * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
- * `risorsaDellaNotifica`. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
+ * `risorsaDellaNotifica`. Quando sotto il titolo non c'è il nome della cosa — è nel titolo, o manca — la riga di sotto dice
+ * quante azioni la notifica racconta e in quale board sta la cosa (`contoEBoard`), se c'è qualcosa da dire. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
  * isolati (`fraseConINomi`); quello di chi ha fatto, nel titolo, è al più di 60 caratteri (`nomeNelTitolo`). È la funzione del
  * pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli stessi testi a chi mostra le notifiche in una
  * pagina sua.
  */
-export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
+export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     const cosa = risorsaDellaNotifica(notifica, lingua);
     // Le frasi sono di un tipo che è un testo: senza, chi ha fatto non entra nel titolo.
     const chi = typeof notifica.tipo === 'string' ? nomeNelTitolo(nomePulito(notifica.autore_nome)) : undefined;
     const conCosa = chi === undefined || cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
-    if (conCosa !== undefined) {
-        return { titolo: conCosa };
-    }
-    const titolo = (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
+    const titolo = conCosa ?? (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
+    const sotto = (conCosa === undefined ? cosa : undefined) ?? contoEBoard(frasi, notifica);
 
-    return cosa === undefined ? { titolo } : { titolo, sotto: cosa };
+    return sotto === undefined ? { titolo } : { titolo, sotto };
 }
