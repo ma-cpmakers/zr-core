@@ -822,6 +822,19 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(etichette()).not.toContain('CRM');
     });
 
+    it('alla visita dopo, mentre il `dopo` nuovo non è ancora arrivato, persona e lingua sono quelle del `subito` nuovo: il menu del profilo non mostra chi c\'era prima; i moduli restano quelli tenuti (sprint 35 · T2.1)', async () => {
+        const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await inDue({ subito, dopo }, <PaginaA key="1" />);
+        expect(etichette()).toContain('CRM');
+
+        await inDue({ subito: { ...subito, lingua: 'es', persona: altra } }, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(etichette()).toContain('CRM');
+        expect(etichette()).toContain('Gestión de proyectos');
+        await clic(uno('.zr-avatar-btn'));
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
     it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
         await inDue({ cornice: datiAltroWorkspace, subito, dopo: { non_letti: true } }, <PaginaA />);
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
