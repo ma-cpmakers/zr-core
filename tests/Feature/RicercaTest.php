@@ -491,13 +491,13 @@ it('lo `workspace` della risposta della ricerca è quello della sessione prima d
 // risponde 403 col solo codice, come le tre rotte delle notifiche (NotificheTest): i documenti mancanti, il titolo e il
 // dettaglio del backoffice restano nella parte server. Il 403 è accettazioneRichiesta() di tests/Pest.php.
 
-it('davanti al 403 accettazione_richiesta del backoffice la ricerca risponde 403 col solo codice: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3)', function () {
+it('davanti al 403 accettazione_richiesta del backoffice la ricerca risponde 403 col codice e con `persona`, l\'email di chi è nella sessione, e nient\'altro: né i documenti mancanti, né il titolo, né il dettaglio (sprint 24 · T1.3; sprint 38 · T3.4)', function () {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => accettazioneRichiesta()]);
 
     $risposta = cerca('UAT')->assertForbidden();
 
-    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta"}');
+    expect($risposta->getContent())->toBe('{"errore":"accettazione_richiesta","persona":"uat-ada@example.com"}');
     Http::assertSentCount(1);
 });
 
@@ -516,13 +516,13 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 403 con un al
 // `troppe_richieste` la ricerca risponde 429 col solo codice e coi secondi di `Retry-After`, se il backoffice li dice: il titolo,
 // il dettaglio e ogni altra intestazione del backoffice restano nella parte server. Il 429 è troppeRichieste(), qui sopra.
 
-it('davanti al 429 troppe_richieste del backoffice la ricerca risponde 429 col solo codice e `Retry-After` coi secondi del backoffice: né il titolo, né il dettaglio, né un\'altra intestazione (sprint 25 · T3.3)', function (string $riprovaFra) {
+it('davanti al 429 troppe_richieste del backoffice la ricerca risponde 429 col codice, con `persona` e con `Retry-After` coi secondi del backoffice: né il titolo, né il dettaglio, né un\'altra intestazione (sprint 25 · T3.3; sprint 38 · T3.4)', function (string $riprovaFra) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => troppeRichieste($riprovaFra)]);
 
     $risposta = cerca('UAT')->assertStatus(429)->assertHeader('Retry-After', $riprovaFra);
 
-    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste"}')
+    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste","persona":"uat-ada@example.com"}')
         ->and((string) $risposta->baseResponse)->not->toContain('segno-');
     Http::assertSentCount(1);
 })->with([
@@ -530,13 +530,13 @@ it('davanti al 429 troppe_richieste del backoffice la ricerca risponde 429 col s
     'subito' => ['0'],
 ]);
 
-it('senza i secondi di `Retry-After`, o con un valore che non è un numero intero di secondi, la ricerca risponde lo stesso 429 col solo codice, e l\'intestazione non c\'è (sprint 25 · T3.3)', function (?string $riprovaFra) {
+it('senza i secondi di `Retry-After`, o con un valore che non è un numero intero di secondi, la ricerca risponde lo stesso 429, col codice e con `persona`, e l\'intestazione non c\'è (sprint 25 · T3.3; sprint 38 · T3.4)', function (?string $riprovaFra) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => troppeRichieste($riprovaFra)]);
 
     $risposta = cerca('UAT')->assertStatus(429)->assertHeaderMissing('Retry-After');
 
-    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste"}')
+    expect($risposta->getContent())->toBe('{"errore":"troppe_richieste","persona":"uat-ada@example.com"}')
         ->and((string) $risposta->baseResponse)->not->toContain('segno-');
     Http::assertSentCount(1);
 })->with([
@@ -545,6 +545,47 @@ it('senza i secondi di `Retry-After`, o con un valore che non è un numero inter
     'un numero con la virgola' => ['1.5'],
     'un numero negativo' => ['-3'],
     'un testo' => ['segno-di-un-testo'],
+]);
+
+// Sprint 38 · T3.4 (voce #2026): anche il 403 e il 429 della ricerca dicono di chi sono, come le risposte 200 dalla `v2.4.0`:
+// `persona` è l'email della persona della sessione, presa prima di chiamare il backoffice. Solo il codice e l'email.
+
+it('il 403 e il 429 della ricerca dicono di chi sono: `persona` è l\'email della persona della sessione, mai un valore della richiesta, e di lei non passano né l\'id né il nome (sprint 38 · T3.4)', function (int $stato, string $codice, array $diversa, string $email) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA, 'en', $diversa);
+    Http::fake(['*' => $stato === 429 ? troppeRichieste('37') : accettazioneRichiesta()]);
+
+    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
+
+    $risposta->assertStatus($stato);
+    Gettone::assenteDa($risposta);
+    expect($risposta->getContent())->toBe('{"errore":"'.$codice.'","persona":"'.$email.'"}')
+        ->and($risposta->headers->get('Retry-After'))->toBe($stato === 429 ? '37' : null);
+    Http::assertSentCount(1);
+})->with([
+    'il 403' => [403, 'accettazione_richiesta'],
+    'il 429' => [429, 'troppe_richieste'],
+])->with([
+    'Ada' => [['id' => 'uat-persona-1'], 'uat-ada@example.com'],
+    'Grace, entrata dopo' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-grace@example.com'],
+]);
+
+it('l\'email del 403 e del 429 della ricerca è presa prima di chiamare il backoffice: se durante la chiamata la sessione passa a un\'altra persona, la risposta dice chi ha cercato (sprint 38 · T3.4)', function (int $stato, string $codice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(function () use ($stato) {
+        sessioneAMano(WORKSPACE_DELLA_RICERCA, 'en', ['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com']);
+
+        return $stato === 429 ? troppeRichieste('37') : accettazioneRichiesta();
+    });
+
+    $risposta = cerca('UAT')->assertStatus($stato);
+
+    expect($risposta->getContent())->toBe('{"errore":"'.$codice.'","persona":"uat-ada@example.com"}')
+        // La sessione è passata davvero all'altra persona: senza, il caso non proverebbe l'ordine.
+        ->and(Sessione::utente()['email'] ?? null)->toBe('uat-grace@example.com');
+    Http::assertSentCount(1);
+})->with([
+    'il 403' => [403, 'accettazione_richiesta'],
+    'il 429' => [429, 'troppe_richieste'],
 ]);
 
 it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un altro codice o senza codice, e quel codice con un altro stato, non fanno rispondere troppe_richieste alla ricerca (sprint 25 · T3.3)', function (int $stato, ?string $codice) {

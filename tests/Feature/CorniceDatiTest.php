@@ -1324,7 +1324,7 @@ it('se un middleware del frontend chiama /v1 su una rotta della cornice senza pr
 
     // Una chiamata sola, quella del middleware: la rotta non è partita, e la sua risposta — `{"errore": …}` — non c'è.
     Http::assertSentCount(1);
-    expect($risposta->getContent())->not->toBe('{"errore":"accettazione_richiesta"}');
+    expect((string) $risposta->getContent())->not->toContain('"errore"');
 
     if (! zrAuthRispondeDaSeAQuel403()) {
         expect($risposta->getStatusCode())->toBe(500);
