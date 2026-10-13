@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 53,9 KB | 18,0 KB | 36,0 KB | 5,9 KB |
-| la cornice e due componenti per nome | 57,1 KB | 19,1 KB | 36,0 KB | 5,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 116,0 KB | 37,2 KB | 36,0 KB | 5,9 KB |
+| solo la cornice, dall'ingresso per le app | 53,9 KB | 18,0 KB | 37,0 KB | 5,9 KB |
+| la cornice e due componenti per nome | 57,1 KB | 19,1 KB | 37,0 KB | 5,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,0 KB | 37,2 KB | 37,0 KB | 5,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -549,11 +549,15 @@ cornice === null ? pagina : (
   scheda, e `risorsa_nome` è il titolo della scheda. Dalla `v1.16.0` ha un titolo anche la notifica che Project
   Management manda a chi viene menzionato in un commento: «Ti hanno menzionato in un commento». Non è un evento nemmeno
   lei: il suo `tipo` è `board.commento.menzione`, senza `com.zeiras.` davanti, e la chiave del titolo è
-  `notificationTitle.board.commento.menzione`. Con lei i titoli sono 42: i 36 tipi di evento del contratto, i cinque
+  `notificationTitle.board.commento.menzione`. Con lei i titoli erano 42: i 36 tipi di evento del contratto, i cinque
   «assegnata» e la menzione. Anche lei è nel contratto dal 12/10/2026: `app` `pm`, nei `dati` l'`id` della scheda e
   `commento_id`, l'id del commento, mai il testo, e `risorsa_nome` è il titolo della scheda. Dal 12/10/2026 il contratto
   ha 37 tipi di evento: il trentasettesimo, `com.zeiras.crm.persona.anonimizzata` (un contatto reso anonimo), non genera
-  notifiche e non ha un titolo. I titoli restano 42: 36 tipi di evento, i cinque «assegnata» e la menzione. Di che prodotto è
+  notifiche e non ha un titolo. I titoli restavano 42: 36 tipi di evento, i cinque «assegnata» e la menzione. Dalla `v2.3.0`
+  hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM:
+  `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita
+  modificato». Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la
+  menzione. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -613,7 +617,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantaquattro tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
@@ -763,7 +767,8 @@ cornice === null ? pagina : (
   tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
   dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
   tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
-  ha una anche una menzione in un commento), le mancano gli id di ogni percorso del suo tipo, o il
+  ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
+  non ne hanno una: il CRM non ha ancora detto che pagina aprono), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.

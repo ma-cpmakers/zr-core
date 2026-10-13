@@ -213,7 +213,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
     // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
     // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?motivi=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -376,6 +376,35 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
+    // Sprint 36 · T5 (voce #1970): i due tipi dei motivi di perdita del CRM stanno dietro `?motivi=1`, così le pagine di prova di
+    // prima restano com'erano.
+    it.each([['', false], ['&chi=1', true]])('con `?motivi=1%s` in fondo all\'elenco ci sono le due notifiche dei motivi di perdita del CRM, lette e senza id: hanno il titolo nelle tre lingue, con chi la frase, e nessuna destinazione nemmeno col CRM attivo (sprint 36 · T5.1, T5.2, T5.3)', async (inPiu, conChi) => {
+        await rotte(false, `?motivi=1${inPiu}`);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { rigaDellaNotifica } = await import('../js/frasi');
+        const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+
+        expect(notifiche.slice(-2).map(({ id, app, tipo, letta, autore_nome, risorsa_nome, ids }) => [id, app, tipo, letta, autore_nome, risorsa_nome, ids])).toEqual([
+            ['uat-m1', 'crm', 'com.zeiras.crm.motivo.creato', true, conChi ? 'Giulia Bianchi' : null, null, {}],
+            ['uat-m2', 'crm', 'com.zeiras.crm.motivo.modificato', true, conChi ? 'Giulia Bianchi' : null, null, {}],
+        ]);
+        expect(notifiche.slice(-2).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([null, null]);
+        expect(['it', 'en', 'es'].map((lingua) => notifiche.slice(-2).map((notifica) => rigaDellaNotifica(notifica, lingua)))).toEqual(conChi
+            ? [
+                  [{ titolo: `${isolato('Giulia Bianchi')} ha creato un motivo di perdita` }, { titolo: `${isolato('Giulia Bianchi')} ha modificato un motivo di perdita` }],
+                  [{ titolo: `${isolato('Giulia Bianchi')} created a loss reason` }, { titolo: `${isolato('Giulia Bianchi')} edited a loss reason` }],
+                  [{ titolo: `${isolato('Giulia Bianchi')} ha creado un motivo de pérdida` }, { titolo: `${isolato('Giulia Bianchi')} ha modificado un motivo de pérdida` }],
+              ]
+            : [
+                  [{ titolo: 'Nuovo motivo di perdita' }, { titolo: 'Motivo di perdita modificato' }],
+                  [{ titolo: 'New loss reason' }, { titolo: 'Loss reason changed' }],
+                  [{ titolo: 'Nuevo motivo de pérdida' }, { titolo: 'Motivo de pérdida modificado' }],
+              ]);
+    });
+
     // Sprint 34 · T3 (voce #1931): con `?chi=1` le quattro assegnate di `?opportunita=1` dicono chi; l'azienda e l'opportunità
     // portano anche il nome, e lo hanno nel titolo; un'attività senza nome e un contatto restano con la frase con solo chi.
     it('con `?opportunita=1&chi=1` l\'azienda e l\'opportunità assegnate hanno il nome nel titolo, nelle tre lingue; il contatto e l\'attività senza nome hanno la frase con solo chi, e il nome di un contatto, se arrivasse, non entra nel titolo (sprint 34 · T3.1, T3.2, T3.3)', async () => {
@@ -443,6 +472,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?crm=1&viste=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3']],
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
+        ['?motivi=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-m1', 'uat-m2']],
+        ['?opportunita=1&motivi=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`), 'uat-m1', 'uat-m2']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?conto=1', ['uat-k1', 'uat-k2', 'uat-k3', 'uat-k4', 'uat-k5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
