@@ -91,7 +91,8 @@ function lingueDellaCornice(): array
 
 /**
  * Cosa non torna fra i due file di ogni lingua (sprint 30 · T1.9): i testi della cornice stanno in resources/lingue, le frasi
- * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` — in
+ * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` e,
+ * dallo sprint 34 · T2, le tre della riga sotto il titolo, `notificationUnder.<quale>` — in
  * resources/lingue/notifiche, e la cornice le carica quando si apre la campanella. `notificationTitle` da solo è il titolo di
  * ripiego e resta fra i testi: serve anche a chi le frasi non le ha ancora.
  *
@@ -101,7 +102,7 @@ function lingueDellaCornice(): array
  */
 function problemiDeiDueFile(array $testi, array $frasi): array
 {
-    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notificationTitle(Who(What)?)?\../', $chiave) === 1;
+    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What)?)?|Under)\../', $chiave) === 1;
 
     $problemi = [];
     foreach (array_diff(array_keys($testi), array_keys($frasi)) as $codice) {
@@ -546,6 +547,22 @@ function italianoAtteso(): array
 }
 
 /**
+ * Le tre frasi della riga sotto il titolo di una notifica (sprint 34 · T2, voce #1930): quante azioni racconta e in quale board
+ * sta la cosa, il solo conto, la sola board. `{n}` è il conto, da due in su; `{board}` il nome della board, che la cornice
+ * pulisce e isola. Le parole sono di zr-board. Scritte qui, non lette dai file delle lingue.
+ *
+ * @return array<string, array{it: string, es: string, en: string}>
+ */
+function frasiSottoIlTitolo(): array
+{
+    return [
+        'notificationUnder.countBoard' => ['it' => '{n} volte, nella board «{board}»', 'es' => '{n} veces, en el tablero «{board}»', 'en' => '{n} times, on the board “{board}”'],
+        'notificationUnder.count' => ['it' => '{n} volte', 'es' => '{n} veces', 'en' => '{n} times'],
+        'notificationUnder.board' => ['it' => 'Nella board «{board}»', 'es' => 'En el tablero «{board}»', 'en' => 'On the board “{board}”'],
+    ];
+}
+
+/**
  * Cosa non torna nelle tre lingue di partenza: un testo che manca, una chiave che non è della cornice, un testo vuoto, un testo
  * italiano diverso da quello atteso (`italianoAtteso()`), un prodotto che ha per id una chiave dei testi dell'`AppShell` (il suo
  * nome finirebbe anche lì).
@@ -563,7 +580,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
-        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...$prodotti, ...tipiDiRisorsa(),
+        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...array_keys(frasiSottoIlTitolo()), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
         // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
         ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
@@ -835,7 +852,7 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
-        'es' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novedades en el workspace'],
+        'es' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novedades en el workspace', 'notificationUnder.count' => '{n} veces'],
         'en' => ['dashboard' => 'Dashboard', 'notificationTitle.com.zeiras.board.scheda.creata' => 'New card'],
     ];
     $frasi = [
@@ -848,6 +865,7 @@ it('il controllo dei due file trova una lingua con un file solo, una frase rimas
         'es: non ha il file delle frasi',
         'fr: non ha il file dei testi',
         'it: «notificationTitleWho.board.scheda.assegnata» è una frase delle notifiche e sta fra i testi',
+        'es: «notificationUnder.count» è una frase delle notifiche e sta fra i testi',
         'en: «notificationTitle.com.zeiras.board.scheda.creata» è una frase delle notifiche e sta fra i testi',
         'it: «notificationTitle» non è una frase delle notifiche e sta fra le frasi',
         'en: «unreadOne» non è una frase delle notifiche e sta fra le frasi',
@@ -1202,6 +1220,25 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
         // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
         ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
 });
+
+// Sprint 34 · T2 (voce #1930). La riga sotto il titolo di una notifica dice quante azioni racconta e in quale board sta la cosa:
+// tre frasi per lingua, nel file delle frasi delle notifiche.
+
+it('ogni lingua ha le tre frasi della riga sotto il titolo di una notifica, nel file delle frasi e non fra i testi, con le parole di zr-board e ogni segnaposto una volta sola (sprint 34 · T2.1, T2.2)', function (string $codice) {
+    $frasi = fileDelleLingue('notifiche/')[$codice] ?? [];
+    $sotto = array_filter($frasi, fn (string $chiave) => str_starts_with($chiave, 'notificationUnder'), ARRAY_FILTER_USE_KEY);
+    $attese = array_map(fn (array $perLingua): string => $perLingua[$codice], frasiSottoIlTitolo());
+    ksort($sotto);
+    ksort($attese);
+
+    expect($sotto)->toBe($attese)
+        ->and(array_filter(array_keys(fileDelleLingue('')[$codice] ?? []), fn (string $chiave) => str_starts_with($chiave, 'notificationUnder')))->toBe([])
+        // L'inglese dice «on the board», non «in the board».
+        ->and(str_contains(implode(' ', $sotto), 'in the board'))->toBe(false)
+        // Mai «1 volta»: il conto si scrive da due in su, e la frase ha solo il plurale.
+        ->and(array_map(fn (string $frase): array => [substr_count($frase, '{n}'), substr_count($frase, '{board}')], $attese))
+        ->toBe(['notificationUnder.board' => [0, 1], 'notificationUnder.count' => [1, 0], 'notificationUnder.countBoard' => [1, 1]]);
+})->with(['it', 'en', 'es']);
 
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
