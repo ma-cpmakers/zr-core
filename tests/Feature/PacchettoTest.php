@@ -4270,16 +4270,19 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
 // modificati. Dalla `v2.3.0` hanno un titolo e la frase con solo chi, e nessuna destinazione: i titoli sono 44, e i 42 passano
 // al passato. Il README lo dice nel punto «Le notifiche».
 
-it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi loro titoli, che il contratto ha 39 tipi di evento e i titoli sono 44, e che non hanno una destinazione (sprint 36 · T5.4)', function (string $frase) {
+it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi loro titoli, che il contratto ha 39 tipi di evento e i titoli sono 44, e che dalla v2.7.0 aprono le Impostazioni del CRM (sprint 36 · T5.4; sprint 41 · T2.1)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
 
     expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 44'))->toBe(1)
-        ->and(substr_count(suUnaRiga($readme), 'i titoli erano 42'))->toBe(1);
+        ->and(substr_count(suUnaRiga($readme), 'i titoli erano 42'))->toBe(1)
+        // Sprint 41 · T2.1: il README non dice più che il CRM non ha ancora detto la pagina.
+        ->and(substr_count(suUnaRiga($readme), 'il CRM non ha ancora detto che pagina aprono'))->toBe(0);
 })->with([
     'i due tipi e i titoli' => ['Dalla `v2.3.0` hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM: `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita modificato»'],
     'quanti sono i titoli' => ['Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la menzione'],
-    'nessuna destinazione' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, non ne hanno una: il CRM non ha ancora detto che pagina aprono'],
+    'la destinazione, dalla `v2.7.0` (sprint 41 · T2.1)' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi stanno, senza un id'],
+    'gli altri tipi dei motivi (sprint 41 · T2.2)' => ['un altro tipo dei motivi di perdita, che il registro non ha, resta senza'],
 ]);
 
 // Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il

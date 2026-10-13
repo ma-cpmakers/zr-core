@@ -2225,15 +2225,17 @@ describe('il pannello delle notifiche', () => {
         expect(await apertiDalPannello(dati, prodotto, elenco, dellElenco)).toStrictEqual(tipi.map(([, percorso]) => nelWorkspace + percorso));
     });
 
-    // Sprint 36 · T5.3 (voce #1970): i motivi di perdita del CRM hanno un titolo, non una destinazione. Un clic apre la pagina delle
-    // notifiche, come per ogni riga che non ha dove andare: mai il CRM a tentoni, nemmeno con un id.
-    it('un clic su una notifica di un motivo di perdita del CRM apre la pagina delle notifiche, non il CRM, con o senza id (sprint 36 · T5.3)', async () => {
+    // Sprint 41 · T2.1 (voce #1997): dalla `v2.7.0` un clic su un motivo di perdita creato o modificato apre le Impostazioni del
+    // CRM nel workspace dell'elenco, con o senza id. T2.2: un altro tipo dei motivi, che il registro non ha, apre la pagina delle
+    // notifiche come ogni riga che non ha dove andare.
+    it('un clic su una notifica di un motivo di perdita del CRM, creato o modificato, apre le Impostazioni del CRM; un altro tipo dei motivi la pagina delle notifiche (sprint 41 · T2.1, T2.2)', async () => {
         const deiMotivi = [
             { id: 'uat-n91', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.creato', ids: {} },
             { id: 'uat-n90', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.modificato', ids: { id: 'uat-motivo-1' } },
+            { id: 'uat-n89', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.eliminato', ids: {} },
         ];
 
-        expect(await apertiDalPannello(dati, 'crm', deiMotivi)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+        expect(await apertiDalPannello(dati, 'crm', deiMotivi)).toStrictEqual([`${nelCrm}/impostazioni`, `${nelCrm}/impostazioni`, paginaDelleNotifiche]);
     });
 
     it('un clic su una nota apre la cosa più specifica a cui è legata — l\'opportunità, poi il contatto, poi l\'azienda —, e senza un legame in forma la pagina delle notifiche (sprint 23 · T3.4)', async () => {

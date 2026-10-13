@@ -31,7 +31,7 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le diciotto destinazioni del CRM sono quelle del registro, e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
+    it('le venti destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
         expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['pm', 'crm']);
@@ -48,6 +48,8 @@ describe('la destinazione di una notifica', () => {
             { tipo: 'com.zeiras.crm.persona.modificata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.pipeline.creata', percorso: '/pipeline/{id}/impostazioni' },
             { tipo: 'com.zeiras.crm.pipeline.modificata', percorso: '/pipeline/{id}/impostazioni' },
+            { tipo: 'com.zeiras.crm.motivo.creato', percorso: '/impostazioni' },
+            { tipo: 'com.zeiras.crm.motivo.modificato', percorso: '/impostazioni' },
             { tipo: 'com.zeiras.crm.nota.creata', ...dellaNota },
             { tipo: 'com.zeiras.crm.nota.modificata', ...dellaNota },
             { tipo: 'com.zeiras.crm.nota.eliminata', ...dellaNota },
@@ -186,12 +188,22 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'crm', tipo, ids: {} }, { crm: 'in_arrivo' })).toBeUndefined();
     });
 
-    // Sprint 36 · T5.3 (voce #1970): i motivi di perdita del CRM hanno un titolo, non una destinazione: zr-crm non ha ancora detto
-    // che pagina aprono, e la riga non apre il CRM a tentoni, nemmeno con un id.
-    it.each([['com.zeiras.crm.motivo.creato'], ['com.zeiras.crm.motivo.modificato']])('una notifica di un motivo di perdita, di tipo «%s», non ha una destinazione, con o senza id (sprint 36 · T5.3)', (tipo) => {
+    // Sprint 41 · T2.1 (voce #1997): dalla `v2.7.0` un motivo di perdita creato o modificato apre le Impostazioni del CRM, dove i
+    // motivi stanno (zr-crm, 13/10/2026): `/impostazioni` dopo `/w/<slug>`, un percorso senza segnaposto, e quindi senza id.
+    it.each([['com.zeiras.crm.motivo.creato'], ['com.zeiras.crm.motivo.modificato']])('una notifica di un motivo di perdita, di tipo «%s», apre le Impostazioni del CRM nel workspace, con o senza id (sprint 41 · T2.1)', (tipo) => {
+        expect(apre({ app: 'crm', tipo, ids: {} })).toBe(`${CRM}/impostazioni`);
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-motivo-1' } })).toBe(`${CRM}/impostazioni`);
+        expect(apre({ app: 'crm', tipo, ids: null })).toBe(`${CRM}/impostazioni`);
+        expect(apre({ app: 'crm', tipo })).toBe(`${CRM}/impostazioni`);
+        // Il resto vale come per ogni destinazione: lo slug con la forma di uno slug, e un modulo che si può aprire.
+        expect(destinazioneDellaNotifica({ app: 'crm', tipo, ids: {} }, 'Acme', prodotti)).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: {} }, { crm: 'in_arrivo' })).toBeUndefined();
+    });
+
+    // Sprint 41 · T2.2: la riga vale per quei due tipi interi, non per ogni tipo dei motivi né per tutto il CRM.
+    it.each([['com.zeiras.crm.motivo.eliminato'], ['com.zeiras.crm.motivo'], ['crm.motivo.creato'], ['com.zeiras.crm.motivo.creato.x'], ['com.zeiras.crm.persona.eliminata']])('una notifica del CRM di tipo «%s», che il registro non ha, resta senza destinazione (sprint 41 · T2.2)', (tipo) => {
         expect(apre({ app: 'crm', tipo, ids: {} })).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-motivo-1' } })).toBeUndefined();
-        expect(apre({ app: 'crm', tipo })).toBeUndefined();
     });
 
     // Sprint 24 · T3 (voce #1748). Project Management ha le sue prime destinazioni: una scheda nuova, modificata o assegnata a
