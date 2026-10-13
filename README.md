@@ -1173,7 +1173,8 @@ resta in caricamento. Una risposta che non dice di chi è (una parte server di p
 stessa persona non cambia niente. Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta`
 e il 429 della ricerca portano `persona`. In una scheda rimasta ferma l'errore di chi è entrato non riduce la cornice e non
 ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica, come per una risposta coi dati. Lo
-stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`). Il 403
+stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`): se arriva prima che la
+risorsa si apra, la pagina si ricarica al suo posto. Il 403
 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima.
 Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l'email di chi mostra, e la
 rotta la confronta con quella della sessione. In una scheda rimasta ferma, se la sessione è passata a un'altra persona dello
@@ -1182,6 +1183,9 @@ restano da leggere, l'elenco a schermo non è dato per letto, e la pagina si ric
 una versione di prima, rimasto in una scheda) vale come prima: la rotta guarda solo il workspace.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
+Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
+restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
+lette» in corso. Niente di chi è entrato va a schermo.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e

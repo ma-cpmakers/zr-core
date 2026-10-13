@@ -175,9 +175,10 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
  * `.` o `..` il browser porterebbe la richiesta, col gettone CSRF, a un'altra rotta. Senza quella forma la richiesta non
  * parte, ed è una lettura non riuscita. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un
  * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
- * manca, o ha un'altra forma, non è un errore, è senza segno.
+ * manca, o ha un'altra forma, non è un errore, è senza segno. `email` è quella di chi la cornice mostra: il 403
+ * `accettazione_richiesta` di un'altra persona non torna a chi ha chiesto, e la pagina si ricarica (vedi `chiama`).
  */
-export async function segnaLetta(id: string, email?: string): Promise<{ il: string | undefined }> {
+export async function segnaLetta(id: string, email: string): Promise<{ il: string | undefined }> {
     // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
     // un'espressione regolare lo converte da sé, e `null` o un numero hanno la forma di un id.
     if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {

@@ -5359,6 +5359,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: a schermo' => ['readme', 'La cornice non la mostra sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello resta in caricamento'],
     'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
     'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    // Sprint 38 · T5 (seconda lettura della PR #71: N1, N2, N4): la lettura con un clic, il corpo di «Segna tutte come lette»,
+    // il ricaricamento che non avviene, e nella guida il `dopo` composto a mano.
+    'la scheda ferma: la lettura con un clic' => ['readme', 'Lo stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`): se arriva prima che la risorsa si apra, la pagina si ricarica al suo posto'],
+    'la scheda ferma: il corpo di «Segna tutte come lette»' => ['readme', 'e dalla `v2.5.0` l\'email di chi la cornice mostra (`persona`)'],
+    'la scheda ferma: il ricaricamento che non avviene' => ['readme', 'Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di restare — chi ha chiesto resta in attesa finché la pagina non si ricarica'],
+    'la guida: un dopo composto a mano' => ['guida', 'Lo fa per un `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui manca uno dei due si unisce ancora a `subito`'],
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
     'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],

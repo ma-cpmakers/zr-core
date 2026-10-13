@@ -31,7 +31,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta('uat-n69')).resolves.toStrictEqual({ il: unIstante });
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
             ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
@@ -41,7 +41,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        const lettura = segnaLetta('uat-n69');
+        const lettura = segnaLetta('uat-n69', 'ada@example.com');
         expect(fetchFinto).toHaveBeenCalledTimes(1);
         await lettura;
     });
@@ -54,7 +54,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await segnaLetta(id);
+        await segnaLetta(id, 'ada@example.com');
         expect(fetchFinto.mock.calls.map(([chiesto]) => chiesto)).toStrictEqual([indirizzo]);
     });
 
@@ -77,7 +77,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -94,7 +94,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id as string)).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id as string, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -107,7 +107,7 @@ describe('segnaLetta', () => {
     ])('una risposta con `letta: true` il cui istante %s non è un errore: è senza segno (sprint 22 · T2.5)', async (_come, conLIstante) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: { id: 'uat-n69', letta: true }, ...conLIstante })));
 
-        await expect(segnaLetta('uat-n69')).resolves.toStrictEqual({ il: undefined });
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: undefined });
     });
 
     it.each([
@@ -122,7 +122,7 @@ describe('segnaLetta', () => {
     ])('una risposta con %s è un errore, mai una lettura riuscita (sprint 22 · T2.3)', async (_come, dellaRotta) => {
         vi.stubGlobal('fetch', vi.fn(async () => dellaRotta));
 
-        await expect(segnaLetta('uat-n69')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
+        await expect(segnaLetta('uat-n69', 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
     });
 });
 
@@ -184,7 +184,7 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
     const chiamate: [string, () => Promise<unknown>][] = [
         ['caricaNotifiche', () => caricaNotifiche('ada@example.com')],
         ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com')],
-        ['segnaLetta', () => segnaLetta('uat-n69')],
+        ['segnaLetta', () => segnaLetta('uat-n69', 'ada@example.com')],
         ['cerca', () => cerca('lancio', new AbortController().signal, 'ada@example.com')],
     ];
     /** Come una chiamata finisce: con quell'errore, con un altro, o bene. */
