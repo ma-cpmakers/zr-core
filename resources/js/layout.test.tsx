@@ -619,7 +619,8 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(contenitore.textContent).not.toContain(t.downTitle);
 
         await clic(uno('.zr-bell'));
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.loading);
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t.loading);
+        expect(tutti('.zr-notif button').map((pulsante) => pulsante.textContent)).not.toContain(t.retry);
         expect(tutti('.zr-notif .zr-notif-item')).toHaveLength(0);
         await scrivi('uat');
         expect(sottoLaRicerca()).toStrictEqual([t.loading]);
@@ -670,7 +671,9 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
         expect(uno('aside.zr-side')?.textContent).not.toContain('Marketing');
-        expect(tutti('a.zr-nav-item').map((voce) => voce.getAttribute('href')).filter((indirizzo) => indirizzo?.includes('/w/')).every((indirizzo) => indirizzo?.includes(`/w/${datiAltroWorkspace.workspace.slug}`))).toBe(true);
+        const neiWorkspace = tutti('a.zr-nav-item').map((voce) => voce.getAttribute('href')).filter((indirizzo) => indirizzo?.includes('/w/'));
+        expect(neiWorkspace.length).toBeGreaterThan(0);
+        expect(neiWorkspace.every((indirizzo) => indirizzo?.includes(`/w/${datiAltroWorkspace.workspace.slug}`))).toBe(true);
     });
 
     it('quando `dopo` arriva la cornice diventa quella di sempre e la pagina non si rimonta: il campo è lo stesso nodo, col testo scritto e col fuoco; la campanella chiede le notifiche (sprint 34 · T4.5)', async () => {
@@ -708,11 +711,12 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(etichette()).not.toContain('CRM');
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
         await clic(uno('.zr-bell'));
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.downOff);
+        const nelPannello = uno('.zr-notif')?.textContent;
+        expect(nelPannello).toContain(t.downOff);
         await scrivi('uat');
         expect(sottoLaRicerca()).toStrictEqual([t.downOff]);
         expect(richieste()).toStrictEqual([]);
-        expect(`${sopraLaPagina()?.textContent} ${uno('.zr-notif')?.textContent} ${sottoLaRicerca().join(' ')}`).not.toMatch(/document/i);
+        expect(`${sopraLaPagina()?.textContent} ${nelPannello} ${sottoLaRicerca().join(' ')}`).not.toMatch(/document/i);
     });
 
     it('con `dopo` che dice `accettazione_richiesta` lo stato ridotto è quello di sempre, con il suo avviso e il suo pulsante, e non quello di «Zeiras non risponde» (sprint 34 · T4.7)', async () => {

@@ -77,7 +77,7 @@ export interface DatiDellaCornice {
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
 export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace'>;
-/** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o il solo `non_letti` se il backoffice non ha risposto. */
+/** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha risposto. */
 export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
@@ -980,9 +980,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama
                 // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. In attesa dei dati del
                 // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
-                // la campanella tiene i gestori dell'elenco: aperta in attesa lo chiede, e il pannello lo mostra quando arrivano
-                // (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). La ricerca no: nello stato ridotto la
-                // cornice la dimentica (sopra). Le voci del modulo, il
+                // la campanella tiene il gestore dell'apertura: aperta in attesa chiede l'elenco, e il pannello lo mostra quando
+                // arrivano (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). Quello di «Riprova» no: il
+                // pannello in attesa è nello stato d'errore, e l'`AppShell` ci scriverebbe il pulsante. La ricerca nemmeno: nello
+                // stato ridotto la cornice la dimentica (sopra). Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
@@ -990,8 +991,8 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
+                onRetryNotifications: ridotta ? undefined : carica,
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
-                onRetryNotifications: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
                 onSearch: ridotta ? undefined : cercaParola,
