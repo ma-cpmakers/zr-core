@@ -2321,7 +2321,9 @@ it('quel 403 dice di chi è: `persona` è l\'email della persona della sessione,
 
     $risposta = senzaGettone(match ($rotta) {
         'elenco' => $this->getJson('cornice/notifiche?persona=uat-altra@example.org&email=uat-altra@example.org', $intestazioni),
-        'lettura' => $this->patchJson('cornice/notifiche/uat-n3/lettura?persona=uat-altra@example.org', ['letta' => true, 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], $intestazioni),
+        // Dallo sprint 40 (T2, voce #2051) `persona` nel corpo non è più fra i valori che la rotta ignora: detta lì, o
+        // nell'intestazione `Persona`, si confronta con la sessione (`StessaPersonaTest.php`). Query ed `email` no.
+        'lettura' => $this->patchJson('cornice/notifiche/uat-n3/lettura?persona=uat-altra@example.org', ['letta' => true, 'email' => 'uat-altra@example.org'], $intestazioni),
         'letture' => $this->postJson('cornice/notifiche/letture?email=uat-altra@example.org', lettureFinoA('2026-10-08T10:00:00.000Z') + ['email' => 'uat-altra@example.org'], $intestazioni),
     })->assertForbidden();
 
