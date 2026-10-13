@@ -5094,19 +5094,22 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima venticinque: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
-    'perché gli altri no' => ['notifiche', 'Gli altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa eliminata, un membro del workspace, e del CRM i contatti, le note e le assegnazioni (il nome di un contatto è un dato personale)'],
+    'perché gli altri no' => ['notifiche', 'Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una nota il backoffice non dà il nome (quello di un contatto è un dato personale)'],
+    // Review della PR #65 (R5): di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo dà.
+    'le assegnazioni del CRM' => ['notifiche', 'Le quattro assegnazioni del CRM non hanno ancora la loro frase col nome: di un\'azienda, un\'opportunità o un\'attività assegnata il backoffice il nome lo dà, e sta nella riga sotto il titolo'],
     'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
     'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
     'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto'],
     'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
-    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: il contratto del 12/10/2026 non la dà'],
+    // Review della PR #65 (R4): dal contratto del 13/10/2026 la board c'è, ed è la parte server a non farla passare.
+    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: dal 13/10/2026 il backoffice la dà (`board`), ma la parte server non la fa arrivare in pagina'],
     // Sprint 30 · T2.6 (voce #1875): le difese dei due nomi, e ciò che resta al backoffice.
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
     'i nomi sono isolati nella frase' => ['notifiche', 'nella frase ognuno sta fra U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno'],
-    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuterà il backoffice alla scrittura'],
+    'ciò che resta al backoffice' => ['notifiche', 'Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`)'],
     'rigaDellaNotifica' => ['fuori', 'Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina sua'],
     'che cosa dà' => ['fuori', 'dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello'],
     'le due funzioni di prima restano' => ['fuori', '`titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono'],
@@ -5115,7 +5118,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM i contatti, le note e le assegnazioni: il nome di un contatto è un dato personale)'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM, che il nome lo tengono nella riga sotto'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

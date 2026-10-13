@@ -563,23 +563,25 @@ cornice === null ? pagina : (
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato. Le aziende, le
   opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta Rossi ha modificato l'azienda «Acme»»). Gli
-  altri hanno solo la seconda, perché il backoffice non ne dà il nome: una cosa eliminata, un membro del workspace, e
-  del CRM i contatti, le note e le assegnazioni (il nome di un contatto è un dato personale). Per un modulo c'è una
+  altri hanno solo la seconda. Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una
+  nota il backoffice non dà il nome (quello di un contatto è un dato personale). Le quattro assegnazioni del CRM non
+  hanno ancora la loro frase col nome: di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo
+  dà, e sta nella riga sotto il titolo. Per un modulo c'è una
   differenza: di un modulo il backoffice dà il codice (`pm`), e nella frase c'è il
   nome nella lingua della persona; con un codice che il registro non ha resta la frase con solo chi. E quando una
   persona entra nel workspace chi ha fatto, per il contratto, è lei: la frase è «Marta Rossi è ora nel workspace».
   La frase si sceglie scendendo: con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa; con
   `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi; senza `autore_nome`, o
   per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto. Il nome della cosa sta una volta
-  sola: quando è nella frase la seconda riga non c'è. La board su cui è successo non compare: il contratto del
-  12/10/2026 non la dà.
+  sola: quando è nella frase la seconda riga non c'è. La board su cui è successo non compare: dal 13/10/2026 il
+  backoffice la dà (`board`), ma la parte server non la fa arrivare in pagina.
   Dalla `v1.20.0` i due nomi, che ha scritto una persona, sono difesi prima di entrare in pagina. Restano testo: mai
   HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando. Sono puliti: senza i caratteri che cambiano
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
   che pulito è vuoto vale come un nome che manca, e l'avatar dice lo stesso nome pulito. E nella frase ognuno sta fra
   U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno: chi confronta un titolo con un
-  testo scritto a mano li conti. Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuterà
-  il backoffice alla scrittura.
+  testo scritto a mano li conti. Il nome non si taglia: una lunghezza massima e i caratteri di controllo li rifiuta
+  il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`).
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il

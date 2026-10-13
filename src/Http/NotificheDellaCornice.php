@@ -19,7 +19,8 @@ use Zeiras\Core\Segno;
 /**
  * Le notifiche del pannello della cornice, per il browser: la parte server le chiede al backoffice col gettone del workspace
  * in cui la persona è entrata, mai con quello dell'accesso (che non ha un workspace), e alla cornice dà solo ciò che usa:
- * l'id, quando è nata, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo dell'evento che l'ha generata;
+ * l'id, l'istante dell'ultima azione che racconta, se è letta, `app`, il codice dell'app da cui viene, e `tipo`, il tipo
+ * dell'evento che l'ha generata;
  * e, quando il backoffice li manda, il nome di chi ha fatto (`autore_nome`), quello della cosa (`risorsa_nome`) e se la
  * notifica è rivolta alla persona (`per_me`).
  * Di che prodotto è lo dice il registro di zr-core, nel browser: un codice che il registro non ha passa da qui com'è, e la
@@ -320,7 +321,8 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Ciò che la cornice usa di una notifica di /v1: l'id, quando è nata, se è letta, il codice dell'app e il tipo dell'evento.
+     * Ciò che la cornice usa di una notifica di /v1: l'id, l'istante dell'ultima azione che racconta (quando è nata, se è una
+     * sola), se è letta, il codice dell'app e il tipo dell'evento.
      * `letta_il` e `app` ci sono sempre: `letta_il` è null finché la persona non la segna, `app` è null se l'evento non è di
      * un'app. Il `tipo` è una stringa, e passa com'è. Una risposta senza uno dei cinque non è una notifica, ed è un guasto: mai
      * una notifica non letta, mai una notifica senza app o senza tipo.

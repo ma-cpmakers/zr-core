@@ -1372,7 +1372,7 @@ it('una delle tre chiavi con una forma che il contratto non ammette è un guasto
         ->and($risposta->json('data'))->toBeNull();
 })->with(notificheColChiECosaSbagliato());
 
-// Sprint 32 · T3 (voce #1913). Dal 12/10/2026 una notifica di /v1 può raccontare più azioni: `creata_il` è l'istante della prima,
+// Sprint 32 · T3 (voce #1913). Dal 13/10/2026 una notifica di /v1 può raccontare più azioni: `creata_il` è l'istante della prima,
 // `ultima_azione_il` quello dell'ultima (uguale a `creata_il` finché è una sola), `azioni` quante sono, e l'elenco del backoffice
 // è ordinato sull'ultima. Alla pagina la parte server dà, in `creata_il`, l'istante dell'ultima azione: è l'ora che il pannello
 // mostra, ed è fin lì che arriva «Segna tutte come lette». Le chiavi in pagina restano nove: `ultima_azione_il`, `azioni` e

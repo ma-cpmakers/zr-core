@@ -677,7 +677,7 @@ describe('rigaDellaNotifica', () => {
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
     const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare', 'Vendite'];
 
-    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli otto del CRM (pipeline, aziende, opportunità, attività) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri sedici del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1)', async (lingua) => {
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli otto del CRM (pipeline, aziende, opportunità, attività) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri dieci del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./index');
 
         expect(frasi).toHaveLength(41);
@@ -685,7 +685,8 @@ describe('rigaDellaNotifica', () => {
         expect(frasi.flatMap(([tipo, perLingua]) => (tipo.startsWith('com.zeiras.workspace.') && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.workspace.creato', 'com.zeiras.workspace.modificato']);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
         // Del CRM hanno la frase col nome della cosa la pipeline e, dallo sprint 32 (T4.1, T4.2), aziende, opportunità e attività create o
-        // modificate: il nome di un contatto è un dato personale, e di una nota, di un'attività eliminata e di un'assegnazione il backoffice non lo dà.
+        // modificate: il nome di un contatto è un dato personale, e di una nota e di un'attività eliminata il backoffice non lo dà; le
+        // quattro assegnazioni non hanno ancora la frase col nome (di un'azienda, un'opportunità o un'attività il backoffice lo dà: sta sotto).
         expect(frasi.filter(([tipo]) => /(^|\.)crm\./.test(tipo))).toHaveLength(18);
         expect(frasi.flatMap(([tipo, perLingua]) => (/(^|\.)crm\./.test(tipo) && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual([
             'com.zeiras.crm.organizzazione.creata', 'com.zeiras.crm.organizzazione.modificata', 'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
@@ -807,7 +808,7 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 67, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 67, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 

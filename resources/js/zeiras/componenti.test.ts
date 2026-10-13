@@ -10,7 +10,7 @@ import { Zeiras } from './index';
 // Sprint 25 · T1 (voce #1759). I componenti del design system come modulo ES: `componenti.js` esce da scripts/componenti.mjs, che
 // prende il corpo di resources/zeiras/bundle.js riga per riga e ne esporta per nome ciò che il bundle registra in `window.Zeiras`.
 // La cornice e `Zeiras` li prendono da lì: una copia sola del design system per app. Il bundle, le dichiarazioni e il file generato
-// si leggono qui come testo (`?raw`): in happy-dom `node:fs` non c'è. Ciò che il file deve contenere è scritto qui senza passare
+// si leggono qui come testo (`?raw`), senza `node:fs`. Ciò che il file deve contenere è scritto qui senza passare
 // dallo script: rigenerarlo con lo stesso script non vedrebbe uno script cambiato.
 
 const INIZIO_DELLA_REGISTRAZIONE = '  window.Zeiras = Object.assign(window.Zeiras || {}, {';
