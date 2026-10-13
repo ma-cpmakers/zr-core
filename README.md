@@ -1219,8 +1219,8 @@ Che cosa vede la persona:
   ripercorrano con Indietro e Avanti. Con Indietro su una pagina di chi c'era prima in un
   altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà. Se a quella
   voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome. Per la stessa
-  persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace,
-  col nome e la lingua di adesso
+  persona cambia una cosa sola: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace,
+  coi dati di allora, ma col nome e la lingua di adesso, non con quelli di allora
   (chi monta `Cornice` senza il layout era già così: lì i dati di una pagina più vecchia di un'altra persona non
   valgono in nessun workspace). Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
   pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
