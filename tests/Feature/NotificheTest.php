@@ -52,6 +52,12 @@ const SENZA_CHI_E_COSA = ['autore_nome' => null, 'risorsa_nome' => null, 'per_me
 const SENZA_ID = ['ids' => []];
 
 /**
+ * Il conto delle azioni e il nome della board di una notifica quando il backoffice non li manda (sprint 34 · T2, voce #1930):
+ * una sola azione, nessuna board. Nella risposta stanno dopo `per_me` e prima di `ids`.
+ */
+const UNA_SOLA_AZIONE = ['azioni' => 1, 'board_nome' => null];
+
+/**
  * Una notifica come la dava /v1 prima del #1670 (schema Notifica, senza `autore`, `risorsa_nome` e `per_me`): tipo, soggetto e
  * dati sono quelli dell'evento che l'ha generata, e `app` è il codice dell'app di quell'evento (`pm` per la board), o null se
  * l'evento non è di un'app.
@@ -218,9 +224,9 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -574,7 +580,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
-        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + SENZA_ID],
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
         'workspace' => 'uat-marketing',
     ]);
@@ -685,9 +691,9 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
     ], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + SENZA_ID,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + SENZA_ID,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing']);
 
     // Dell'evento esce il tipo; di `dati`, in `ids`, i soli id che servono ad aprire la risorsa (sprint 21 · T3.5), e queste non
@@ -1306,11 +1312,11 @@ it('GET /cornice/notifiche dà di ogni notifica undici chiavi: le cinque di prim
 
     $diPrima = ['creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'];
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true] + SENZA_ID,
-        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false] + SENZA_ID,
-        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + SENZA_ID,
-        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + SENZA_ID,
+        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true] + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false] + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing']);
 
     // Le stesse nove chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
@@ -1344,7 +1350,7 @@ it('una notifica a cui manca una sola delle tre chiavi non è un guasto: quella 
 
     expect($risposta->json('data.0'))->toBe([
         'id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata',
-    ] + $attesa + SENZA_ID);
+    ] + $attesa + UNA_SOLA_AZIONE + SENZA_ID);
 })->with([
     'senza autore' => ['autore', 'autore_nome'],
     'senza risorsa_nome' => ['risorsa_nome', 'risorsa_nome'],
