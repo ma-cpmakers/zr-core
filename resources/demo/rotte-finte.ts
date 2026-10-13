@@ -42,7 +42,10 @@
 // notifiche dicono quando, come la parte server: l'elenco l'istante in cui la richiesta è arrivata (`aggiornati_il`), «Segna
 // tutte come lette» quello in cui risponde (`segnate_il`); senza orologio, nessun istante. Le prova rotte-finte.test.ts. Non
 // entra nel pacchetto.
-const fa = (minuti: number) => new Date(Date.now() - minuti * 60_000).toISOString();
+// Un istante solo per tutte le notifiche di prova: con un `Date.now()` per notifica, due «di un minuto fa» prese a cavallo di un
+// millisecondo avevano due ore diverse, e l'elenco non era più dalla più recente (CI del 13/10/2026, un giro rosso su due).
+const ADESSO = Date.now();
+const fa = (minuti: number) => new Date(ADESSO - minuti * 60_000).toISOString();
 const ieri = new Date();
 ieri.setDate(ieri.getDate() - 1);
 ieri.setHours(12, 0, 0, 0);

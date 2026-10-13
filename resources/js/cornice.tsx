@@ -1,12 +1,18 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
-import { caricaFrasi, frasiPronte, linguaDeiTesti, nomeDellaVoce, nomePulito, rigaConLeFrasi, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
 import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
+
+// Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
+// chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
+// già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
+const caricaFrasi = (lingua: string) => chiediLaCampanella().then((arrivata) => arrivata.caricaFrasi(lingua));
+const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
 // il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
@@ -219,9 +225,8 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
  * che non lo dice (`null`, la chiave che manca), in «Per me» come in «Tutte» — `forMe` allora non arriva all'`AppShell`, e non
  * è mai `false` per una notifica di cui non si sa.
  */
-function nelPannello(notifica: NotificaDellaCornice, frasi: FrasiDelleNotifiche, lingua: string, adesso: Date): ShellNotification {
+function nelPannello(notifica: NotificaDellaCornice, riga: { titolo: string; sotto?: string }, lingua: string, adesso: Date): ShellNotification {
     const delProdotto = prodottoDelRegistro(notifica.app);
-    const riga = rigaConLeFrasi(frasi, notifica, lingua);
 
     return senzaUndefined({
         id: notifica.id,
@@ -791,6 +796,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // Le frasi della lingua dei dati, se sono in memoria. Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è
     // in errore se non sono arrivate (sopra).
     const frasi = frasiPronte(dati.lingua);
+    const riga = campanella?.rigaConLeFrasi;
     const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === dati.lingua && !frasiChieste.arrivate ? 'error' : 'loading';
 
     // La ricerca: una richiesta sola in volo. Una parola nuova annulla quella di prima, e conta solo l'ultima partita: una
@@ -964,7 +970,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
             // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
-            notifications={ridotta || frasi === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, frasi, dati.lingua, adesso))}
+            notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, dati.lingua), dati.lingua, adesso))}
             notificationsState={ridotta ? 'error' : statoDelPannello}
             searchResults={ridotta ? [] : risultati}
             searchState={ridotta ? 'error' : (ricerca?.stato ?? 'ready')}

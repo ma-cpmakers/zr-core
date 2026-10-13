@@ -9,8 +9,10 @@ import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, typ
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
+import * as dellaCampanella from './campanella';
+import { frasiARichiesta } from './campanella';
 import * as delleLingue from './lingue';
-import { frasiARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
@@ -2747,7 +2749,7 @@ describe('il pannello delle notifiche', () => {
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
     it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 42 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
-        const { titoloDellaNotifica } = await import('./index');
+        const { titoloDellaNotifica } = await import('./frasi');
         // I 42 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
@@ -5258,8 +5260,8 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
             '../lingue/notifiche/es.json': file('es', frasiSpagnole),
             '../lingue/notifiche/it.json': file('it', frasiItaliane),
         }, file('en', frasiInglesi));
-        vi.spyOn(delleLingue, 'caricaFrasi').mockImplementation(delCaso.carica);
-        vi.spyOn(delleLingue, 'frasiPronte').mockImplementation(delCaso.pronte);
+        vi.spyOn(dellaCampanella, 'caricaFrasi').mockImplementation(delCaso.carica);
+        vi.spyOn(dellaCampanella, 'frasiPronte').mockImplementation(delCaso.pronte);
 
         return {
             chiesti,
@@ -5331,6 +5333,93 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         await clic(errore()?.querySelector('button') ?? null);
         expect(fetchFinto).toHaveBeenCalledTimes(2);
         expect(frasi.chiesti.slice(primaDiRiprova)).toContain(rotto);
+        expect(errore()).toBeNull();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    // Sprint 33 · T1 (voce #1915). Dalla `v2.0.0` ciò che compone le righe e carica le frasi è un pezzo a richiesta
+    // (`./campanella`): la cornice lo chiede con `import()` quando si apre la campanella. Qui il pezzo vero, ma al posto di chi
+    // lo chiede c'è il caso, che dice quando arriva e se arriva. Una promessa respinta che nessuno gestisce ferma il giro di
+    // vitest: che i casi passino dice anche che in console non resta un errore non gestito.
+    function pezzo() {
+        let arrivato: typeof dellaCampanella | undefined;
+        let via: (() => void) | undefined;
+        const stato = { fermo: false, rotto: false };
+        const chiesto = vi.spyOn(delleLingue, 'chiediLaCampanella').mockImplementation(async () => {
+            if (stato.fermo) {
+                await new Promise<void>((lascia) => (via = lascia));
+            }
+            if (stato.rotto) {
+                throw new TypeError('Failed to fetch dynamically imported module');
+            }
+            arrivato = dellaCampanella;
+
+            return dellaCampanella;
+        });
+        vi.spyOn(delleLingue, 'campanella', 'get').mockImplementation(() => arrivato);
+
+        return {
+            chiesto,
+            stato,
+            lascia: async () => {
+                stato.fermo = false;
+                await act(async () => {
+                    via?.();
+                    await prossimoGiro();
+                });
+            },
+        };
+    }
+
+    it('il pezzo della campanella non si chiede al montaggio della cornice: si chiede quando si apre la campanella, e il titolo è la frase di sempre (sprint 33 · T1.2)', async () => {
+        const campanella = pezzo();
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(prossimoGiro);
+        expect(campanella.chiesto).not.toHaveBeenCalled();
+
+        await clic(uno('.zr-bell'));
+
+        expect(campanella.chiesto).toHaveBeenCalled();
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('finché il pezzo non arriva il pannello aspetta, anche con l\'elenco già arrivato: nessun titolo di ripiego; poi mostra le righe di sempre (sprint 33 · T1.4)', async () => {
+        const campanella = pezzo();
+        campanella.stato.fermo = true;
+        conLElenco();
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(inAttesa()).toBe(true);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+
+        await campanella.lascia();
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    it('se il pezzo non arriva il pannello mostra l\'errore con «Riprova», non resta in attesa, e la cornice resta quella di sempre; «Riprova» richiede elenco e pezzo (sprint 33 · T1.5)', async () => {
+        const campanella = pezzo();
+        campanella.stato.rotto = true;
+        const fetchFinto = conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(errore()?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(inAttesa()).toBe(false);
+        expect(titoli()).toStrictEqual([]);
+        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(uno('.zr-shell')).not.toBeNull();
+        expect(uno('.zr-bell-count')?.textContent).toBe('3');
+
+        campanella.stato.rotto = false;
+        const primaDiRiprova = campanella.chiesto.mock.calls.length;
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(campanella.chiesto.mock.calls.length).toBeGreaterThan(primaDiRiprova);
         expect(errore()).toBeNull();
         expect(titoli()).toStrictEqual([inItaliano]);
     });
