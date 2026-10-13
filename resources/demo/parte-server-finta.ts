@@ -47,6 +47,19 @@ function attesaDi(indirizzo: URL, attesa: number): number {
 }
 
 /**
+ * Le props che un ricaricamento parziale chiede (`only`), come le nomina Inertia nella richiesta: separate da virgole. Una
+ * parte server vera rimanda solo quelle, e le altre restano nella pagina quelle di prima. Una visita intera le ha tutte.
+ */
+function soloLeChieste(props: object, chieste: unknown): object {
+    if (typeof chieste !== 'string' || chieste === '') {
+        return props;
+    }
+    const nomi = chieste.split(',');
+
+    return Object.fromEntries(Object.entries(props).filter(([nome]) => nomi.includes(nome)));
+}
+
+/**
  * Il client HTTP da dare a Inertia (`http.setClient`): ogni visita arriva qui e si scrive in console. La parte server ha due
  * tempi. `leggi` gira subito, quando la visita arriva: lì si leggono i dati, col segno di quell'istante. Ciò che `leggi` dà
  * gira quando la risposta è pronta — dopo `attesa` millisecondi, o dopo quelli di `lenta=<ms>` nell'indirizzo — e dà la pagina
@@ -65,7 +78,8 @@ export function clientFinto(leggi: (indirizzo: URL) => () => { component: string
                 const consegna = leggi(indirizzo);
                 const pronta = setTimeout(() => {
                     try {
-                        risposta({ status: 200, data: JSON.stringify({ ...consegna(), url, version: null }), headers: { 'x-inertia': 'true' } });
+                        const { component, props } = consegna();
+                        risposta({ status: 200, data: JSON.stringify({ component, props: soloLeChieste(props, richiesta.headers?.['X-Inertia-Partial-Data']), url, version: null }), headers: { 'x-inertia': 'true' } });
                     } catch (errore) {
                         rifiuto(errore);
                     }

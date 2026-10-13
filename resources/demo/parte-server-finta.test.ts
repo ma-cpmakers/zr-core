@@ -109,6 +109,18 @@ describe('la parte server finta della pagina di prova del layout', () => {
         expect(scritte).toHaveBeenCalledWith('UAT visita', 'get', '/layout.html?pagina=corta');
     });
 
+    it('a un ricaricamento parziale rimanda solo le props chieste, come una parte server vera: le altre restano nella pagina quelle di prima (sprint 36 · T1)', async () => {
+        vi.spyOn(console, 'info').mockImplementation(() => {});
+        const { leggi } = parteServer();
+        const chiede = (soltanto: string) => clientFinto(leggi, 1).request({ ...visita(new AbortController().signal), headers: { 'X-Inertia-Partial-Data': soltanto } });
+
+        expect(JSON.parse((await chiede('cornice')).data).props).toEqual({ cornice: marketing });
+        expect(JSON.parse((await chiede('cornice,errors')).data).props).toEqual({ errors: {}, cornice: marketing });
+        expect(JSON.parse((await chiede('dopo')).data).props).toEqual({});
+        // Senza l'intestazione, o vuota, è una visita intera.
+        expect(JSON.parse((await chiede('')).data).props).toEqual({ errors: {}, cornice: marketing });
+    });
+
     it('una visita che Inertia annulla mentre aspetta la risposta è rifiutata con HttpCancelledError, come fa il client vero, e la sua pagina non si prepara (sprint 10 · T3.1, review della PR)', async () => {
         vi.spyOn(console, 'info').mockImplementation(() => {});
         const { leggi, consegna } = parteServer();

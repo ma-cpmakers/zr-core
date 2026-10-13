@@ -276,6 +276,32 @@ function dopoLetto(): NonNullable<Props['dopo']> {
 const altraPersona = scelti.get('persona') === 'altra';
 const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' } };
 
+// Sprint 36 · T1 (voci #1967, #1968): la «sessione» della parte server finta. È del browser, non della scheda
+// (`localStorage`): un'altra scheda, o i due pulsanti che ci sono solo con `?sessione`, fanno entrare un'altra persona nello
+// stesso workspace, e la visita dopo porta i suoi dati: nome e lingua, un'altra azienda, altri moduli, due non lette. Una
+// pagina ripresa con Indietro porta invece i dati di allora, come li tiene Inertia. Senza quella chiave la pagina è quella di
+// prima, schermate comprese.
+const chiaveDellaSessione = 'uat-persona';
+const delBackofficeDiUnAltra: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'> = {
+    prodotti: { pm: 'disponibile', crm: 'attivo' },
+    aziende: [{ id: 'uat-9', nome: 'UAT Hopper', workspace: [{ id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }], nuovo_workspace: false }],
+    non_lette: 2,
+};
+
+/** Ciò che il «server» ha letto, con la sessione di adesso: se è entrata un'altra persona, i dati della cornice sono i suoi. */
+function conLaSessione(letta: Props): Props {
+    if (localStorage.getItem(chiaveDellaSessione) !== 'altra') {
+        return letta;
+    }
+
+    return {
+        ...letta,
+        ...(letta.cornice ? { cornice: { ...letta.cornice, ...diUnAltra, ...delBackofficeDiUnAltra } } : {}),
+        ...(letta.subito ? { subito: { ...letta.subito, ...diUnAltra } } : {}),
+        ...(letta.dopo?.aziende?.length ? { dopo: { ...letta.dopo, ...delBackofficeDiUnAltra } } : {}),
+    };
+}
+
 const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };
 type Nome = keyof typeof pagine;
 
@@ -298,7 +324,7 @@ const attesaLenta = 6000;
  */
 function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
-    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona']) {
+    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona', 'sessione']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);
@@ -326,7 +352,7 @@ function leggi(nome: Nome): Props {
     const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
     chiestoDopo = false;
 
-    return { ...lettura(propsDi[nome], segno), ...delBackoffice };
+    return conLaSessione({ ...lettura(propsDi[nome], segno), ...delBackoffice });
 }
 
 /**
@@ -352,7 +378,7 @@ function Collegamenti() {
                 <a href={indirizzoDi('senza-dati')} data-uat="vai-senza-dati" onClick={apri('senza-dati')}>UAT alla Senza dati</a>{' · '}
                 <a href={indirizzoDi('percorso')} data-uat="vai-percorso" onClick={apri('percorso')}>UAT alla Percorso</a>{' · '}
                 <a href={indirizzoDi('nessuna-attiva')} data-uat="vai-nessuna-attiva" onClick={apri('nessuna-attiva')}>UAT alla Nessuna attiva</a>{' · '}
-                {altraPersona && <><a href={indirizzoDi('due-dati')} data-uat="vai-due-dati" onClick={apri('due-dati')}>UAT alla Due dati</a>{' · '}</>}
+                {(altraPersona || scelti.has('sessione')) && <><a href={indirizzoDi('due-dati')} data-uat="vai-due-dati" onClick={apri('due-dati')}>UAT alla Due dati</a>{' · '}</>}
                 <a href={indirizzoDi('lunga')} data-uat="vai-lunga-preserve-scroll" onClick={apri('lunga', true)}>UAT alla Lunga con preserveScroll</a>
             </p>
             {/* Una risposta letta adesso e arrivata dopo: la visita lenta, e la pagina che Inertia scarica prima e tiene trenta secondi. */}
@@ -361,6 +387,13 @@ function Collegamenti() {
                 <a href={indirizzoDi('lunga', attesaLenta)} data-uat="vai-lunga-lenta" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>{' · '}
                 <button type="button" data-uat="prefetch-corta" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>
             </p>
+            {/* Sprint 36 · T1: chi è entrato, per la parte server finta. Vale dalla visita dopo, in ogni scheda di questo browser. */}
+            {scelti.has('sessione') && (
+                <p>
+                    <button type="button" data-uat="entra-altra" onClick={() => localStorage.setItem(chiaveDellaSessione, 'altra')}>UAT entra un'altra persona</button>{' · '}
+                    <button type="button" data-uat="entra-prima" onClick={() => localStorage.removeItem(chiaveDellaSessione)}>UAT torna la prima persona</button>
+                </p>
+            )}
         </>
     );
 }
