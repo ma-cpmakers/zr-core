@@ -1459,8 +1459,10 @@ describe('il pannello delle notifiche', () => {
         const [, opzioni] = fetchFinto.mock.calls[1];
         expect(new Headers(opzioni?.headers).get('X-XSRF-TOKEN')).toBe('eyJpdiI6Ik1h==');
         expect(new Headers(opzioni?.headers).get('Content-Type')).toBe('application/json');
+        // Di chi è la pagina lo dice l'intestazione, non il corpo (sprint 40 · T3.1).
+        expect(new Headers(opzioni?.headers).get('Persona')).toBe('ada%40example.com');
         // Com'è nell'elenco, col suo fuso: né l'ora del browser («adesso» sono le 12:00) né l'istante riscritto.
-        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(opzioni)).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         // Prima della risposta non cambia niente, e un altro clic non manda una seconda richiesta.
         expect(campanella()).toBe('60');
         expect(nonLette()).toStrictEqual([true, true, false]);
@@ -1490,7 +1492,8 @@ describe('il pannello delle notifiche', () => {
         await act(prossimoGiro);
 
         expect(ricarica).toHaveBeenCalledTimes(1);
-        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
+        expect(new Headers(fetchFinto.mock.calls[1]?.[1]?.headers).get('Persona')).toBe('ada%40example.com');
         expect(campanella()).toBe('60');
         expect(nonLette()).toStrictEqual([true, true, false]);
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
@@ -1533,7 +1536,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa, workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: attesa, workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual(elenco.map(() => false));
     });
@@ -1548,7 +1551,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(segnaTutte()).toBeNull();
     });
@@ -1610,7 +1613,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(2)).toStrictEqual(['POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[2][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
     });
@@ -1686,7 +1689,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:59:30.250Z', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false, false]);
     });
@@ -1743,7 +1746,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(nonLette()).toStrictEqual([true, false, false, false]);
         expect(campanella()).toBe('1');
     });
@@ -1779,7 +1782,7 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
     });
 
     // Sprint 23 · T1. Con due schede su due workspace l'elenco in pagina può essere di un altro workspace rispetto ai dati: lì
@@ -1821,7 +1824,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
     });
 
     it('se i dati passano a un altro workspace a pannello aperto e la parte server dice di quale workspace è l\'elenco, il pulsante non c\'è finché in pagina c\'è l\'elenco del workspace di prima, e torna con l\'elenco del workspace dei dati (sprint 23 · T1.3)', async () => {
@@ -1844,7 +1847,7 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
     });
 
     // Sprint 24 · T4 (voce #1754; lettura della PR #51, R3). L'elenco chiesto coi dati di un workspace può essere, per la parte
@@ -1872,7 +1875,7 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()?.textContent).toBe('Segna tutte come lette');
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[2]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-vendite' });
     });
 
     it('se fra il clic e la risposta il pannello è stato ricaricato, alla risposta l\'elenco si ricarica ancora una volta: in pagina non resta un elenco chiesto prima della lettura (sprint 6 · T4.6)', async () => {
@@ -2130,7 +2133,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Project Management · 2 minuti fa', 'Project Management · 10 minuti fa']);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
     });
 
     // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
@@ -2413,7 +2416,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
         const opzioni = fetchFinto.mock.calls[1]?.[1];
         expect([opzioni?.method, opzioni?.body, opzioni?.keepalive]).toStrictEqual(['PATCH', '{"letta":true}', true]);
-        expect(['Accept', 'Content-Type', 'X-XSRF-TOKEN'].map((nome) => new Headers(opzioni?.headers).get(nome))).toStrictEqual(['application/json', 'application/json', 'eyJpdiI6Ik1h==']);
+        expect(['Accept', 'Content-Type', 'X-XSRF-TOKEN', 'Persona'].map((nome) => new Headers(opzioni?.headers).get(nome))).toStrictEqual(['application/json', 'application/json', 'eyJpdiI6Ik1h==', 'ada%40example.com']);
         expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
         // Con `window.location.assign` dopo l'apertura la pagina non c'è più: la richiesta deve essere già partita.
         expect(fetchFinto.mock.invocationCallOrder[1]).toBeLessThan(naviga.mock.invocationCallOrder[0] ?? 0);
@@ -3185,7 +3188,7 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
         expect(segnaTutte()).toBeNull();
@@ -3289,7 +3292,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual([
             'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
         ]);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         expect(campanella()).toBeNull();
         expect(nonLette()).toStrictEqual([false, false, false]);
         expect(segnaTutte()).toBeNull();
@@ -3347,7 +3350,7 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual([
             'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche', 'POST /cornice/notifiche/letture', 'GET /cornice/notifiche',
         ]);
-        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing', persona: 'ada@example.com' });
+        expect(corpoDi(fetchFinto.mock.calls[3][1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
         // La notifica nata dopo quell'istante non è stata segnata: resta non letta in pagina e sulla campanella.
         expect(nonLette()).toStrictEqual([true, false, false, false]);
         expect(campanella()).toBe('1');
