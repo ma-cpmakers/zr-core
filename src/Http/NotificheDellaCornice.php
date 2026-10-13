@@ -252,7 +252,8 @@ final class NotificheDellaCornice
      * da lì. `fino_a` della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del
      * workspace della pagina che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `persona` è l'email di
      * chi quella pagina mostra (dalla `v2.5.0`): se non è quella della sessione la rotta non chiama il backoffice e risponde
-     * 409 `persona_diversa` con `persona`, l'email della sessione; non va al backoffice nemmeno lei. `segnate_il` è l'istante
+     * 409 `persona_diversa` con `persona`, l'email della sessione; non va al backoffice nemmeno lei. Dalla `v2.6.0` il
+     * confronto lo fa StessaPersona, per tutte le rotte della cornice e prima dei controlli di questa. `segnate_il` è l'istante
      * preso dopo l'ultima risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può
      * non saperlo. Una chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta
      * segnato. La rotta tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di
@@ -276,22 +277,10 @@ final class NotificheDellaCornice
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
-        // Lo stesso per la persona: la sessione può essere passata a un'altra dello stesso workspace, con la pagina che chiede
-        // rimasta ferma. Lo slug è lo stesso, e qui segnerebbe lette le notifiche di chi è entrato, mai viste. `persona` del
-        // corpo si confronta e basta: di chi segnare lo dice sempre e solo la sessione. Una richiesta che non la porta (un JS
-        // di prima rimasto in una scheda) vale come prima. La risposta dice di chi è, come il 403 di sotto.
+        // Lo stesso per la persona — la sessione può essere passata a un'altra dello stesso workspace, con la pagina che chiede
+        // rimasta ferma — ma qui non c'è più: dalla `v2.6.0` la confronta StessaPersona, prima di arrivare alla rotta. L'email
+        // è presa qui, prima di chiamare il backoffice: la risposta dice di chi è, come il 403 di sotto.
         $persona = Sessione::utente()['email'] ?? null;
-        $chiesta = $richiesta->json('persona');
-
-        // Una `persona` che c'è e non è un testo non è «assente»: chi la manda dice di chi crede di segnare, e la rotta non
-        // può confrontarla. Non si segna niente. Che ci sia lo dice la chiave nel corpo, non il valore: `null` è presente.
-        if (! is_string($chiesta) && $richiesta->json()->has('persona')) {
-            return new JsonResponse(['errore' => 'dati_non_validi'], 422);
-        }
-
-        if (is_string($chiesta) && $chiesta !== $persona) {
-            return new JsonResponse(['errore' => 'persona_diversa', 'persona' => $persona], 409);
-        }
 
         // Per il client di zr-auth un tempo di 0 è «senza limite» — e lo diventa ogni valore che `(int)` porta a 0 —, e uno
         // sotto lo zero non è un tempo: il client lo rifiuta. Una chiamata senza un tetto può durare più di qualunque lock. È
