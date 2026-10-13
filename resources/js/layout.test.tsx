@@ -2,6 +2,7 @@ import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
+import { testi } from './lingue';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
 // layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
@@ -575,5 +576,122 @@ describe('la voce «Piano», sotto il layout', () => {
         // La cornice resta montata, col menu aperto: è la prop del layout a decidere, a ogni render.
         await visita(dati, <PaginaB key="2" />);
         expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', 'Esci']);
+    });
+});
+
+// Sprint 34 · T4 (voce #1932). La cornice in due dati: il layout prende `subito` (i dati della sessione, dal primo disegno) e
+// `dopo` (quelli del backoffice, che possono arrivare più tardi o non arrivare) al posto di `cornice`. La cornice è montata dal
+// primo disegno, e la pagina non si rimonta mai.
+describe('la cornice in due dati, sotto il layout', () => {
+    const subito = { lingua: 'it', persona: dati.persona, workspace: dati.workspace };
+    const dopo = { prodotti: dati.prodotti, non_lette: 7, aggiornati_il: '2026-10-13T08:00:00.000000Z' };
+    const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
+    const sopraLaPagina = () => uno('.zr-main .zr-stack');
+    const campo = () => uno('#uat-campo') as HTMLInputElement;
+
+    function PaginaColCampo({ conta }: { conta: { montaggi: number } }) {
+        useEffect(() => {
+            conta.montaggi += 1;
+        }, [conta]);
+
+        return <input id="uat-campo" type="text" defaultValue="" />;
+    }
+
+    function inDue(delLayout: Pick<LayoutDellaCorniceProps, 'subito' | 'dopo' | 'cornice'>, pagina: ReactElement): Promise<void> {
+        return mostra(
+            <LayoutDellaCornice onLogout={esciSenzaEffetto} {...delLayout}>
+                {pagina}
+            </LayoutDellaCornice>,
+        );
+    }
+
+    it('con `subito` e senza `dopo` la cornice è montata e ridotta: persona e workspace al loro posto, nessun modulo nel menu, nessun avviso sopra la pagina, e la campanella dice il testo d\'attesa senza chiedere le notifiche (sprint 34 · T4.4)', async () => {
+        await inDue({ subito }, <PaginaA />);
+        const t = testi('it');
+
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
+        expect(etichette()).toContain(t.dashboard);
+        expect(etichette()).not.toContain('CRM');
+        expect(sopraLaPagina()).toBeNull();
+        expect(contenitore.textContent).not.toContain(t.acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(t.downTitle);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.loading);
+        expect(richieste()).toStrictEqual([]);
+    });
+
+    it('quando `dopo` arriva la cornice diventa quella di sempre e la pagina non si rimonta: il campo è lo stesso nodo, col testo scritto e col fuoco; la campanella chiede le notifiche (sprint 34 · T4.5)', async () => {
+        const conta = { montaggi: 0 };
+        await inDue({ subito }, <PaginaColCampo conta={conta} />);
+        const [barra, nodo] = [uno('aside.zr-side'), campo()];
+        nodo.value = 'UAT scritto';
+        nodo.focus();
+
+        await inDue({ subito, dopo }, <PaginaColCampo conta={conta} />);
+
+        expect(etichette()).toContain('CRM');
+        expect(uno('aside.zr-side')).toBe(barra);
+        expect(campo()).toBe(nodo);
+        expect([campo().value, document.activeElement === nodo, conta.montaggi]).toStrictEqual(['UAT scritto', true, 1]);
+        expect(sopraLaPagina()).toBeNull();
+        await clic(uno('.zr-bell'));
+        expect(richieste()).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each(['it', 'es', 'en'])('con `dopo` non letto, nella lingua "%s", la cornice resta ridotta con l\'avviso «Zeiras non risponde» sopra la pagina, senza pulsante; la campanella dice il suo testo; il testo scritto nel campo resta, e niente parla di documenti (sprint 34 · T4.6)', async (lingua) => {
+        const conta = { montaggi: 0 };
+        await inDue({ subito: { ...subito, lingua } }, <PaginaColCampo conta={conta} />);
+        const nodo = campo();
+        nodo.value = 'UAT scritto';
+
+        await inDue({ subito: { ...subito, lingua }, dopo: { non_letti: true } }, <PaginaColCampo conta={conta} />);
+        const t = testi(lingua);
+
+        expect(sopraLaPagina()?.textContent).toContain(t.downTitle);
+        expect(sopraLaPagina()?.textContent).toContain(t.downText);
+        expect(sopraLaPagina()?.querySelector('button')).toBeNull();
+        expect(etichette()).not.toContain('CRM');
+        expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.downOff);
+        expect(richieste()).toStrictEqual([]);
+        expect(`${sopraLaPagina()?.textContent} ${uno('.zr-notif')?.textContent}`).not.toMatch(/document/i);
+    });
+
+    it('con `dopo` che dice `accettazione_richiesta` lo stato ridotto è quello di sempre, con il suo avviso e il suo pulsante, e non quello di «Zeiras non risponde» (sprint 34 · T4.7)', async () => {
+        await inDue({ subito, dopo: { prodotti: [], aziende: [], non_lette: 0, aggiornati_il: dopo.aggiornati_il, accettazione_richiesta: true } }, <PaginaA />);
+        const t = testi('it');
+
+        expect(sopraLaPagina()?.textContent).toContain(t.acceptanceTitle);
+        expect(sopraLaPagina()?.querySelector('button')?.textContent).toBe(t.acceptanceAction);
+        expect(contenitore.textContent).not.toContain(t.downTitle);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(t.acceptanceOff);
+    });
+
+    it('alla visita dopo, mentre il `dopo` nuovo non è ancora arrivato, la cornice tiene i dati che ha di quel workspace: i moduli restano; in un altro workspace riparte ridotta (sprint 34 · T4.5)', async () => {
+        await inDue({ subito, dopo }, <PaginaA key="1" />);
+        expect(etichette()).toContain('CRM');
+
+        await inDue({ subito }, <PaginaB key="2" />);
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(etichette()).toContain('CRM');
+
+        await inDue({ subito: { ...subito, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />);
+        expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
+        expect(etichette()).not.toContain('CRM');
+    });
+
+    it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
+        await inDue({ cornice: datiAltroWorkspace, subito, dopo: { non_letti: true } }, <PaginaA />);
+        expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
+        expect(sopraLaPagina()).toBeNull();
+        expect(etichette()).toContain('CRM');
+
+        await inDue({ cornice: null, subito: null, dopo }, <PaginaA />);
+        expect(uno('aside.zr-side')).toBeNull();
+        expect(uno('#uat-pagina-a')).not.toBeNull();
     });
 });

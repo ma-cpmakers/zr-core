@@ -59,6 +59,16 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      */
     acceptanceOff: string;
     /**
+     * Il titolo dell'avviso che la cornice mette sopra la pagina quando la parte server non ha potuto leggere il backoffice
+     * (`Cornice::dopo()` con `non_letti`, dalla `v2.1.0`): l'avviso non ha un pulsante, perché non c'è niente da fare se non
+     * riprovare.
+     */
+    downTitle: string;
+    /** La frase dello stesso avviso: che cosa manca, e che torna da sé. */
+    downText: string;
+    /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
+    downOff: string;
+    /**
      * Il pulsante «Salta al contenuto», il primo elemento della cornice da tastiera: porta il fuoco al contenuto della pagina.
      * L'`AppShell` non ne ha uno suo: finché non lo porta lo scrive la cornice, coi pezzi del design system (README, «La cornice»).
      */

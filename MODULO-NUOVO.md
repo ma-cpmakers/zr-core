@@ -292,6 +292,12 @@ accettato i documenti legali».
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
 richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 
+**In due dati**, dalla `v2.1.0`: se non vuoi che la pagina aspetti il backoffice prima del primo disegno, dai al layout
+`Cornice::subito()` (la sola sessione, nessuna chiamata) e, rimandata con `Inertia::defer`, `Cornice::dopo()`, come
+`subito` e `dopo` al posto di `cornice`. Finché `dopo` non arriva la cornice è ridotta e senza avviso; se il backoffice non
+risponde `Cornice::dopo()` non lancia e dà `non_letti`, la cornice resta ridotta con un avviso suo, e la tua pagina resta
+dov'è, con ciò che la persona stava scrivendo — README, «La cornice in due dati».
+
 ## 7. La cornice montata una volta sola
 
 **Scrivi**, nel file d'ingresso di Inertia (`resources/js/app.tsx`), il layout del frontend: un componente a livello di

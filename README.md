@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 52,8 KB | 17,6 KB | 36,0 KB | 5,9 KB |
-| la cornice e due componenti per nome | 56,1 KB | 18,7 KB | 36,0 KB | 5,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 114,9 KB | 36,8 KB | 36,0 KB | 5,9 KB |
+| solo la cornice, dall'ingresso per le app | 53,9 KB | 18,0 KB | 36,0 KB | 5,9 KB |
+| la cornice e due componenti per nome | 57,1 KB | 19,1 KB | 36,0 KB | 5,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 116,0 KB | 37,2 KB | 36,0 KB | 5,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -1131,6 +1131,47 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
 - **L'area della pagina** è una `scroll-region` di Inertia: a ogni visita torna in cima, con Indietro torna dov'era, e una
   visita con `preserveScroll` la lascia dov'è. Con `flush` l'area non scorre: a scorrere è un elemento della pagina, che
   porta da sé l'attributo `scroll-region` se vuole lo stesso.
+
+### La cornice in due dati
+
+Dalla `v2.1.0` i dati della cornice si possono dare in due parti, per il frontend che non vuole aspettare il backoffice
+prima del primo disegno. `Cornice::subito()` legge solo la sessione — lingua, persona, workspace — e non chiama mai il
+backoffice; `Cornice::dopo()` legge dal backoffice ciò che `Cornice::dati()` legge da lì — `prodotti`, `aziende`,
+`non_lette`, `aggiornati_il` e, per chi non ha accettato i documenti legali, `accettazione_richiesta` — e può arrivare
+più tardi. Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
+`cornice` non cambia niente.
+
+Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
+
+```php
+// Nel frontend, fra le props condivise con la pagina.
+'subito' => fn () => Cornice::subito(),
+'dopo' => Inertia::defer(fn () => Cornice::dopo()),
+```
+
+```tsx
+<LayoutDellaCornice subito={subito} dopo={dopo} product="pm" onLogout={esci}>
+    {children}
+</LayoutDellaCornice>
+```
+
+Che cosa vede la persona:
+
+- **finché `dopo` non arriva** la cornice è montata e ridotta: il nome della persona e quello del workspace al loro
+  posto, nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso. Se la cornice ha
+  già i dati di quel workspace, da una pagina di prima, restano quelli finché non arrivano i nuovi;
+- **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
+  scrivendo in un campo, il fuoco e lo scorrimento restano;
+- **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
+  `['non_letti' => true]` e lascia nel log una riga d'avviso, col solo tipo dell'errore. La cornice resta ridotta, con
+  l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
+  `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
+  la sessione finita la tratta il frontend come prima;
+- **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
+
+La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
+una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Se c'è `cornice`, il layout
+usa quella e non guarda `subito` e `dopo`.
 
 ## Il logo
 
