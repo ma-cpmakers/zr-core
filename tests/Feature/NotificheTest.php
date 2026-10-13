@@ -1811,9 +1811,10 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'una persona entrata nel workspace: il suo id resta qui' => [null, 'com.zeiras.workspace.membro.creato'],
     'un modulo acceso o spento' => [null, 'com.zeiras.app.modificata'],
     'un tipo del CRM che nel registro non c\'è' => ['crm', 'com.zeiras.crm.persona.eliminata'],
-    // Sprint 36 · T5.3: i motivi di perdita hanno un titolo, non una destinazione: zr-crm non l'ha ancora detta.
-    'un motivo di perdita del CRM creato' => ['crm', 'com.zeiras.crm.motivo.creato'],
-    'un motivo di perdita del CRM modificato' => ['crm', 'com.zeiras.crm.motivo.modificato'],
+    // Sprint 41 · T2.2: i motivi di perdita creati o modificati hanno una destinazione dalla `v2.7.0` (il loro caso è qui sotto);
+    // un altro tipo dei motivi no.
+    'un motivo di perdita del CRM eliminato, che il registro non ha' => ['crm', 'com.zeiras.crm.motivo.eliminato'],
+    'un motivo di perdita del CRM, in una notifica di Project Management' => ['pm', 'com.zeiras.crm.motivo.creato'],
     // Sprint 23 · T3: i nove tipi dello sprint 22 (T5.3) ora hanno una destinazione, e stanno nei casi in fondo al file. Qui
     // resta ciò che non ce l'ha: un tipo `eliminata` di una risorsa con una pagina sua, che aprirebbe una pagina che non c'è, e
     // un tipo scritto quasi come uno del registro — un «assegnata» arriva senza `com.zeiras.` davanti, un evento con.
@@ -1836,6 +1837,24 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'un tipo del CRM in una notifica della Dashboard' => ['home', 'com.zeiras.crm.persona.creata'],
     'il codice dell\'app con le maiuscole' => ['CRM', 'com.zeiras.crm.persona.creata'],
     'il codice dell\'app con uno spazio in fondo' => ['crm ', 'com.zeiras.crm.persona.creata'],
+]);
+
+// Sprint 41 · T2.1 (voce #1997): dalla `v2.7.0` un motivo di perdita del CRM creato o modificato apre le Impostazioni del CRM,
+// un percorso senza segnaposto: come per un'attività, `ids` è vuoto e l'id del motivo non va al browser.
+it('GET /cornice/notifiche dà a un motivo di perdita del CRM `ids` vuoto, anche se i suoi `dati` hanno degli id: le Impostazioni del CRM non chiedono un id (sprint 41 · T2.1)', function (string $tipo) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', ['id' => 'uat-motivo-1', 'pipeline_id' => 'uat-x-2'], $tipo, 'crm')], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+
+    expect($risposta->json('data.0.ids'))->toBe([])
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(1)
+        ->and(substr_count($corpo, 'uat-motivo'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-x'))->toBe(0);
+})->with([
+    'creato' => ['com.zeiras.crm.motivo.creato'],
+    'modificato' => ['com.zeiras.crm.motivo.modificato'],
 ]);
 
 it('per ogni notifica del registro la rotta dà gli id che il suo percorso chiede, e solo quelli: la parte server legge il registro del pacchetto, lo stesso del browser, e una destinazione nuova ha i suoi id senza un elenco in più da tenere allineato (sprint 21 · T3.5; review della PR #31, R1)', function () {

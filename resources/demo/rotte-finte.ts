@@ -198,8 +198,8 @@ const notificheDiProva = [
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
           ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', NOME_DI_UN_ASSEGNATA[tipo] ?? null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
-    // Solo con `?motivi=1`, dopo quelle di `?opportunita=1`: un motivo di perdita del CRM creato e uno modificato, letti. Il registro
-    // non dà loro una destinazione: nessun id.
+    // Solo con `?motivi=1`, dopo quelle di `?opportunita=1`: un motivo di perdita del CRM creato e uno modificato, letti. Dalla
+    // `v2.7.0` aprono le Impostazioni del CRM, un percorso senza segnaposto: nessun id.
     ...(motivi
         ? ['com.zeiras.crm.motivo.creato', 'com.zeiras.crm.motivo.modificato'].map((tipo, indice) => ({ id: `uat-m${indice + 1}`, creata_il: fa((36 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...detti('Giulia Bianchi', null, null), ids: {} as Record<string, string> }))
         : []),

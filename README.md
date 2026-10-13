@@ -815,7 +815,8 @@ cornice === null ? pagina : (
   dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
   tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
   ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
-  non ne hanno una: il CRM non ha ancora detto che pagina aprono), le mancano gli id di ogni percorso del suo tipo, o il
+  dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi
+  stanno, senza un id; un altro tipo dei motivi di perdita, che il registro non ha, resta senza), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.

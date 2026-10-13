@@ -25,7 +25,7 @@ import { rotteFinte } from './rotte-finte';
 // `?opportunita=1` (le nove dei tipi nuovi del CRM: opportunità, attività e ciò che viene assegnato) o `?schede=1` (una scheda
 // assegnata, una menzione in un commento e una scheda eliminata, di Project Management; e la ricerca trova anche una scheda)
 // o `?frasi=1` (tre di Project Management: chi e che cosa in una frase, solo chi, e il titolo col nome sotto)
-// o `?motivi=1` (le due dei motivi di perdita del CRM: un titolo, nessuna destinazione)
+// o `?motivi=1` (le due dei motivi di perdita del CRM: dalla `v2.7.0` aprono le Impostazioni del CRM)
 // l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
 // azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e
 // un'opportunità col nome nel titolo, e un contatto, un'attività eliminata e un'azienda senza nome con solo chi.
