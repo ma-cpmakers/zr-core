@@ -505,6 +505,11 @@ describe('la Cornice', () => {
         expect(etichette()).not.toContain('CRM');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')).toBeNull();
+
+        // Un segno che non ha la forma di quelli della parte server vale come nessun segno: vale la pagina.
+        const senzaForma: ColSegno = { ...diAdesso, lingua: dati.lingua, persona: dati.persona, sessione_il: '2026-10-13' };
+        await mostra(<Cornice dati={senzaForma} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
     });
 
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {

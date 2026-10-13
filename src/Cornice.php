@@ -108,7 +108,11 @@ final class Cornice
      * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi. null senza sessione o
      * senza workspace, come `dati()`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}}|null
+     * In fondo c'è il segno della sessione, `sessione_il` (dalla `v2.3.0`): l'istante in cui lingua e persona sono state lette.
+     * Nel browser dice se questi dati sono più vecchi di chi la cornice mostra: una pagina ripresa dalla cronologia con
+     * Indietro porta il `subito` di allora, e non riporta a schermo la persona di allora.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string}|null
      */
     public static function subito(): ?array
     {
@@ -123,6 +127,7 @@ final class Cornice
             'lingua' => $utente['lingua'],
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
+            'sessione_il' => Segno::adesso(),
         ];
     }
 

@@ -56,6 +56,13 @@ export interface DatiDellaCornice {
      */
     aggiornati_il?: string | undefined;
     /**
+     * Il segno della sessione: l'istante in cui la parte server ha letto lingua e persona dalla sessione, in `Cornice::subito()`
+     * (dalla `v2.3.0`). Dice alla cornice se la persona della pagina è più vecchia di quella che mostra: una voce della
+     * cronologia ripresa con Indietro porta il `subito` di allora, e non riporta a schermo chi c'era allora. Nei dati interi
+     * di `Cornice::dati()` non c'è, e lì vale il segno della lettura.
+     */
+    sessione_il?: string | undefined;
+    /**
      * `true` se la persona non ha ancora accettato i documenti legali in vigore (dalla `v1.14.0`): la parte server lo dice
      * quando il backoffice le risponde 403 `accettazione_richiesta`, e allora `prodotti` e `aziende` sono vuoti e le non lette
      * zero perché non li ha potuti leggere, non perché non ci siano. La cornice esce ridotta, con l'avviso che porta alla
@@ -76,9 +83,9 @@ export interface DatiDellaCornice {
 }
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
-export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace'>;
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
 /** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha risposto. */
-export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa'>>;
+export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa' | 'sessione_il'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
 export interface GruppoDiVoci {
@@ -369,12 +376,12 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
  * `questi` sono stati letti prima di `quelli`: sono dati dello stesso workspace, tutti e due col segno, e il segno di `questi`
  * è più indietro. Con lo stesso segno no: è la stessa lettura, e se il contenuto è un altro lo ha cambiato il frontend nel
  * browser. Senza un segno da una parte, o fra due workspace, non si può dire: `false`. Dei dati `in_attesa` sono letti prima di
- * quelli tenuti solo se sono della stessa persona, cioè della stessa email: quelli di un'altra valgono loro, ridotti come sono.
+ * quelli tenuti solo se la persona che la cornice mostra è la stessa di prima (`stessaPersona`), cioè la stessa email: con
+ * un'altra valgono loro, ridotti come sono. I due segni si confrontano senza chiedere prima se ci sono: un confronto con
+ * `undefined` è sempre falso, da una parte e dall'altra.
  */
-function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
-    const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
-
-    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa && questi.persona.email === quelli.persona.email : diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli);
+function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice, stessaPersona: boolean): boolean {
+    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa && stessaPersona : segno(questi.aggiornati_il)! < segno(quelli.aggiornati_il)!);
 }
 
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
@@ -502,14 +509,23 @@ export function Cornice(props: CorniceProps) {
     // senza segno o in un altro workspace: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
     // Si decide mentre si rende, non in un effetto: la cornice non si vede mai coi dati più vecchi, nemmeno per un render.
     const [tenuti, setTenuti] = useState(props.dati);
-    const dati = lettiPrima(props.dati, tenuti) ? tenuti : props.dati;
+
+    // Chi è entrato e la sua lingua li dice la pagina: la persona può aver cambiato nome o lingua da un'altra scheda, o la sessione
+    // può essere passata a un'altra. Tranne quando la pagina è più vecchia di chi la cornice mostra: lo dice il segno della
+    // sessione (`sessione_il`, o quello della lettura nei dati interi), e allora resta chi c'è. Con Indietro la voce della
+    // cronologia porta il `subito` di allora, anche quando il suo `dopo` è riletto: senza questo tornerebbero nome ed email di
+    // chi c'era allora. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    const [mostrato, setMostrato] = useState(props.dati);
+    const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+    const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
+
+    const dati = lettiPrima(props.dati, tenuti, chi.persona.email === mostrato.persona.email) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }
-
-    // In attesa restano i dati tenuti, ma chi è entrato e la sua lingua li dice la richiesta nuova: la persona può aver cambiato
-    // nome o lingua da un'altra scheda. Fuori dall'attesa vale il segno.
-    const chi = props.dati.in_attesa ? props.dati : dati;
+    if (chi !== mostrato) {
+        setMostrato(chi);
+    }
 
     // La `key` è l'email di chi è entrato: ciò che la cornice tiene (i dati di prima, l'elenco delle notifiche, la ricerca coi suoi
     // risultati e la sua parola, i pannelli aperti) è della persona che lo ha visto. Se la sessione passa a un'altra sullo stesso

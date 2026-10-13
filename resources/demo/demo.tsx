@@ -76,7 +76,7 @@ const propsScritteUndefined = {
     product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined, create: undefined,
     actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
 } satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;
-const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined, accettazione_richiesta: undefined, in_attesa: undefined, non_letti: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
+const datiScrittiUndefined = { aziende: undefined, non_lette: undefined, aggiornati_il: undefined, sessione_il: undefined, accettazione_richiesta: undefined, in_attesa: undefined, non_letti: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;
 
 /**
  * Con `?rimedi=1`: un `Dialog` e un `DetailPanel` da aprire, per provare coi tasti veri che Tab resta dentro (il dialogo

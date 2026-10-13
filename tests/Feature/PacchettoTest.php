@@ -3320,6 +3320,7 @@ function nomiDiAltriNellaGuida(): array
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
         'Inertia::defer' => 'Inertia, dal server',
+        'Inertia::clearHistory' => 'Inertia, dal server',
         'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
@@ -4961,8 +4962,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'chi rifà i moduli' => ['notifiche', 'Un caso che rifà i moduli (`vi.resetModules()`) la richiama dopo aver importato di nuovo la cornice'],
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
-    // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.449 byte con gzip. Sono 18 KB più 17 byte'],
+    // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
+    // Indietro, 54 in tutto.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.486 byte con gzip. Sono 18 KB più 54 byte'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
@@ -5253,6 +5255,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: parte da sola quando `dopo` è arrivato — l\'ultima di almeno due caratteri che l\'`AppShell` ha dato alla cornice —, e non parte se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
     'la parola cancellata in attesa' => ['readme', 'una parola cancellata prima dell\'arrivo viene cercata lo stesso, con l\'invito sotto il campo vuoto'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
+    // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
+    'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
+    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo` letto di nuovo'],
+    'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
+    'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
+    'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
     'il frontend può dirlo da sé' => ['readme', '`dopo={{ non_letti: true }}`'],
@@ -5294,6 +5302,16 @@ it('il README non dice più che ciò che la cornice tiene resta a schermo sotto 
 })->with([
     'è del workspace' => ['del workspace, non della persona'],
     'sotto il nome nuovo' => ['restano a schermo sotto il nome nuovo'],
+]);
+
+// Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.
+it('README e guida non dicono più che con Indietro il menu del profilo mostra la persona di allora (sprint 36 · T3.4)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'finché il suo dopo non arriva' => ['finché il suo `dopo` non arriva'],
+    'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
+    'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

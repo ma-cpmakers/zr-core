@@ -352,7 +352,11 @@ function leggi(nome: Nome): Props {
     const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
     chiestoDopo = false;
 
-    return conLaSessione({ ...lettura(propsDi[nome], segno), ...delBackoffice });
+    // Come `Cornice::subito()`: i dati della sessione portano l'istante in cui sono stati letti (salvo `?segno=no`).
+    const letta = lettura(propsDi[nome], segno);
+    const dellaSessione = letta.subito && segno ? { subito: { ...letta.subito, sessione_il: istanteDellaLettura() } } : {};
+
+    return conLaSessione({ ...letta, ...dellaSessione, ...delBackoffice });
 }
 
 /**

@@ -298,7 +298,10 @@ richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 `dopo` non arriva la cornice è ridotta e senza avviso, e dalla `v2.2.0` campanella e ricerca caricano: una parola scritta
 intanto si cerca quando `dopo` arriva (anche se nel frattempo l'hai cancellata), e il menu del profilo mostra la persona
 di `subito`. Dalla `v2.3.0`, se quella persona ha un'altra email rispetto a chi c'era prima, la cornice si rifà e la tua
-pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo. Se il pezzo della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa
+pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo. Con Indietro una pagina di prima non
+riporta nel menu del profilo chi c'era allora (`subito` porta il segno della sessione, `sessione_il`), ma il contenuto
+della tua pagina resta quello di allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia
+cifrata (README, «La cornice in due dati»). Se il pezzo della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa
 cartella del JS d'ingresso e l'indirizzo dell'ingresso non ha una coda sua: altrimenti serve ricaricare la pagina (README,
 «Le notifiche»). Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,

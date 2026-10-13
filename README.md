@@ -97,9 +97,9 @@ della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifi
 con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.449 byte con
-gzip. Sono 18 KB più 17 byte: dalla `v2.3.0` la cornice si rifà quando cambia la persona, e quei byte sono ciò che costa
-quella sola correzione. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
+tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.486 byte con
+gzip. Sono 18 KB più 54 byte: dalla `v2.3.0` la cornice si rifà quando cambia la persona (17 byte) e con Indietro non riporta
+a schermo chi c'era prima (37), e quei byte sono ciò che costano quelle due sole correzioni. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -1180,9 +1180,17 @@ Che cosa vede la persona:
   nessun numero di non lette di chi c'era prima, e nemmeno il suo elenco delle notifiche, i suoi risultati e la parola che
   aveva scritto nella ricerca. Con la stessa email e un altro nome o un'altra lingua i dati che ci sono restano, come
   prima. Vale anche con la `cornice` intera, e per chi monta `Cornice` senza il layout: un'altra email rifà la cornice. Una pagina ripresa
-  dalla cronologia con Indietro porta il `subito` di allora: il menu del profilo mostra la persona di quella pagina, e la
-  mostra anche dopo, sopra i dati di adesso, se il `dopo` che arriva è stato letto di nuovo; torna quella di adesso alla
-  visita dopo, o subito se anche il `dopo` è quello di allora (valgono i dati che la cornice ha già). Senza avviso la pagina tiene la sua
+  dalla cronologia con Indietro porta il `subito` di allora: dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il
+  segno dell'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la
+  persona. Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo`
+  letto di nuovo. Due limiti. Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua
+  persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da capo non sa chi c'era, e una
+  pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto. Il contenuto
+  della pagina, poi, la cornice non lo tocca mai: con Indietro è quello di allora anche se la persona è cambiata. Per
+  questo all'uscita il frontend toglie la cronologia: con la cronologia cifrata di Inertia (`inertia.history.encrypt` a
+  `true`, o `Inertia::encryptHistory()` nella richiesta; serve HTTPS) la risposta dell'uscita chiama
+  `Inertia::clearHistory()`, e una voce di prima non si legge più: Inertia la richiede alla parte server, che risponde con
+  la sessione di adesso. Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
   sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte
