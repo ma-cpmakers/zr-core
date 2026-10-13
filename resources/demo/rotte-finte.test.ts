@@ -351,25 +351,39 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
-    // Sprint 32 · T4 (voce #1914): un'azienda del CRM modificata, con chi ha fatto e il nome dell'azienda, sta dietro `?azienda=1`.
-    it('con `?azienda=1` in cima all\'elenco c\'è un\'azienda del CRM modificata, da leggere, con chi ha fatto e il nome dell\'azienda: il titolo li dice tutti e due nelle tre lingue, e sotto non c\'è niente (sprint 32 · T4.1)', async () => {
-        await rotte(false, '?azienda=1');
+    // Sprint 32 · T4 (voce #1914): cinque notifiche del CRM con chi ha fatto stanno dietro `?nomi_crm=1` — un'azienda e
+    // un'opportunità col nome, un contatto e un'attività eliminata, di cui il backoffice non dà il nome, e un'azienda senza nome.
+    it('con `?nomi_crm=1` in cima all\'elenco ci sono cinque notifiche del CRM con chi ha fatto: l\'azienda e l\'opportunità col nome lo hanno nel titolo, nelle tre lingue, e sotto niente; il contatto, l\'attività eliminata e l\'azienda senza nome hanno la frase con solo chi (sprint 32 · T4.1, T4.2)', async () => {
+        await rotte(false, '?nomi_crm=1');
         const { rigaDellaNotifica } = await import('../js/index');
 
-        const [prima, seconda] = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean; app?: string | null; tipo?: string; ids?: Record<string, string> }[];
-        const [CHI, COSA] = ['\u{2068}Giulia Bianchi\u{2069}', '\u{2068}UAT Acme\u{2069}'];
+        const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean; app?: string | null; tipo?: string; risorsa_nome?: string | null; ids?: Record<string, string> }[];
+        const [azienda, opportunita, contatto, eliminata, senzaNome, sesta] = notifiche;
+        const CHI = '\u{2068}Giulia Bianchi\u{2069}';
+        const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
 
-        expect([prima?.id, prima?.letta, prima?.app, prima?.tipo, prima?.ids]).toEqual(['uat-z1', false, 'crm', 'com.zeiras.crm.organizzazione.modificata', { id: 'uat-azienda-1' }]);
-        expect(seconda?.id).toBe('uat-4');
-        expect(Object.keys(prima ?? {}).sort()).toEqual(['app', 'autore_nome', 'creata_il', 'id', 'ids', 'letta', 'per_me', 'risorsa_nome', 'tipo']);
-        expect(rigaDellaNotifica(prima ?? {}, 'it')).toEqual({ titolo: `${CHI} ha modificato l'azienda «${COSA}»` });
-        expect(rigaDellaNotifica(prima ?? {}, 'es')).toEqual({ titolo: `${CHI} ha modificado la empresa «${COSA}»` });
-        expect(rigaDellaNotifica(prima ?? {}, 'en')).toEqual({ titolo: `${CHI} edited the company “${COSA}”` });
-        // Senza il nome dell'azienda (CRM spento, azienda eliminata, backoffice di prima) resta la frase con solo chi: mai le virgolette vuote (T4.2).
-        expect(rigaDellaNotifica({ ...prima, risorsa_nome: null }, 'it')).toEqual({ titolo: `${CHI} ha modificato un'azienda` });
-        expect(rigaDellaNotifica({ ...prima, risorsa_nome: '  ' }, 'it')).toEqual({ titolo: `${CHI} ha modificato un'azienda` });
-        // Un contatto non ha la frase col nome: il nome, se arriva, non entra nel titolo.
-        expect(rigaDellaNotifica({ ...prima, tipo: 'com.zeiras.crm.persona.modificata' }, 'it').titolo).toBe(`${CHI} ha modificato un contatto`);
+        expect(notifiche.slice(0, 5).map(({ id, letta, app, tipo, risorsa_nome, ids }) => [id, letta, app, tipo, risorsa_nome, ids])).toEqual([
+            ['uat-z1', false, 'crm', 'com.zeiras.crm.organizzazione.modificata', 'UAT Acme', { id: 'uat-azienda-1' }],
+            ['uat-z2', false, 'crm', 'com.zeiras.crm.trattativa.creata', 'UAT Rinnovo 2027', { id: 'uat-opp-1' }],
+            ['uat-z3', true, 'crm', 'com.zeiras.crm.persona.modificata', null, { id: 'uat-persona-1' }],
+            ['uat-z4', true, 'crm', 'com.zeiras.crm.attivita.eliminata', null, {}],
+            ['uat-z5', true, 'crm', 'com.zeiras.crm.organizzazione.creata', null, { id: 'uat-azienda-1' }],
+        ]);
+        expect(sesta?.id).toBe('uat-4');
+        expect(Object.keys(azienda ?? {}).sort()).toEqual(['app', 'autore_nome', 'creata_il', 'id', 'ids', 'letta', 'per_me', 'risorsa_nome', 'tipo']);
+        expect((['it', 'es', 'en'] as const).map((lingua) => rigaDellaNotifica(azienda ?? {}, lingua))).toEqual([
+            { titolo: `${CHI} ha modificato l'azienda «${isolato('UAT Acme')}»` }, { titolo: `${CHI} ha modificado la empresa «${isolato('UAT Acme')}»` }, { titolo: `${CHI} edited the company “${isolato('UAT Acme')}”` },
+        ]);
+        expect((['it', 'es', 'en'] as const).map((lingua) => rigaDellaNotifica(opportunita ?? {}, lingua))).toEqual([
+            { titolo: `${CHI} ha creato l'opportunità «${isolato('UAT Rinnovo 2027')}»` }, { titolo: `${CHI} ha creado la oportunidad «${isolato('UAT Rinnovo 2027')}»` }, { titolo: `${CHI} created the opportunity “${isolato('UAT Rinnovo 2027')}”` },
+        ]);
+        // Con solo chi: mai le virgolette vuote, e niente sotto il titolo (T4.2).
+        expect([contatto, eliminata, senzaNome].map((notifica) => rigaDellaNotifica(notifica ?? {}, 'it'))).toEqual([
+            { titolo: `${CHI} ha modificato un contatto` }, { titolo: `${CHI} ha eliminato un'attività` }, { titolo: `${CHI} ha creato un'azienda` },
+        ]);
+        // Un nome di soli spazi vale come un nome che manca; e il nome di un contatto, se arrivasse, non entra nel titolo.
+        expect(rigaDellaNotifica({ ...azienda, risorsa_nome: '  ' }, 'it')).toEqual({ titolo: `${CHI} ha modificato un'azienda` });
+        expect(rigaDellaNotifica({ ...contatto, risorsa_nome: 'UAT Mario Rossi' }, 'it').titolo).toBe(`${CHI} ha modificato un contatto`);
     });
 
     it.each([
@@ -379,7 +393,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
-        ['?azienda=1', ['uat-z1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
+        ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
     ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
         await rotte(false, query);
