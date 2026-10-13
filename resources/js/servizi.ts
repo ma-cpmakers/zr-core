@@ -116,6 +116,16 @@ async function chiama(indirizzo: string, opzioni: { method?: string; headers?: R
 }
 
 /**
+ * La risposta di una rotta che dice di chi è (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0`
+ * lo dicono l'elenco delle notifiche e la ricerca), per chi la cornice mostra (`email`). Se è di un'altra persona non torna a
+ * chi l'ha chiesta: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si ricarica — dopo, è di chi è
+ * entrato. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e niente di quella risposta va a
+ * schermo. Una risposta che non lo dice con un testo (una parte server di prima) vale com'è: nessun ricaricamento.
+ */
+const diChi = <T extends { persona?: unknown } | null>(email: string, corpo: T): T | Promise<never> =>
+    typeof corpo?.persona === 'string' && corpo.persona !== email ? new Promise<never>(() => location.reload()) : corpo;
+
+/**
  * Un istante della parte server, se ha la forma del suo segno: in UTC, coi microsecondi a sei cifre e `Z` in fondo
  * (`2026-10-09T21:31:05.123456Z`). Solo in quella forma due istanti si confrontano come testi, fino al microsecondo: ogni altro
  * valore è «senza segno».
@@ -129,9 +139,10 @@ export function segno(valore: unknown): string | undefined {
  * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
  * `workspace` è lo slug del workspace di cui sono, come lo dice la parte server (dalla `v1.12.0`): quello della sessione, che
  * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
+ * `email` è quella di chi la cornice mostra: un elenco di un'altra persona non torna (`diChi`).
  */
-export async function caricaNotifiche(): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
-    const corpo = (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
+export async function caricaNotifiche(email: string): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
+    const corpo = await diChi(email, (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown; persona?: unknown } | null);
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
@@ -199,16 +210,17 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
  * risultati, il workspace di cui sono, come lo dice la parte server (dalla
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
  * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
- * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro.
+ * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
+ * mostra: i risultati di un'altra persona non tornano (`diChi`).
  */
-export async function cerca(parola: string, segnale: AbortSignal): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
+export async function cerca(parola: string, segnale: AbortSignal, email: string): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
-    const corpo = (await chiama(indirizzo, {
+    const corpo = await diChi(email, (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ q: parola }),
         signal: segnale,
-    })) as { data?: unknown; workspace?: unknown } | null;
+    })) as { data?: unknown; workspace?: unknown; persona?: unknown } | null);
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }

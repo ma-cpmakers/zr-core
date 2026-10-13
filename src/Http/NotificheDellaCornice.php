@@ -127,12 +127,16 @@ final class NotificheDellaCornice
      * risorsa (`idsDellaNotifica()`): una notifica di un tipo che nel registro non ha una destinazione non ne ha, e se `dati` manca, o non è
      * un oggetto, `ids` è vuoto e non è un guasto. Delle rotte delle notifiche, il registro dei moduli lo usa solo questa. `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è letto: la
      * sessione ha un workspace solo, e una pagina rimasta su un altro (un'altra scheda) sa così di chi sono le notifiche che
-     * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta.
+     * riceve, e dove si apre la loro risorsa. Viene dalla sessione, mai dalla richiesta. `persona` è l'email della persona
+     * della sessione, quella di cui sono le notifiche (dalla `v2.4.0`): la sessione può essere passata a un'altra persona, e una
+     * pagina rimasta ferma sa così che l'elenco non è di chi mostra. È la stessa email che il browser ha già coi dati della
+     * cornice, e niente altro di lei: né l'id né il nome. Viene dalla sessione anche lei, presa prima di chiamare il backoffice.
      */
     public function elenco(): JsonResponse
     {
         $aggiornatiIl = Segno::adesso();
         $workspace = Sessione::workspace()['slug'] ?? null;
+        $persona = Sessione::utente()['email'] ?? null;
 
         try {
             $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
@@ -153,6 +157,7 @@ final class NotificheDellaCornice
             }, $notifiche),
             'aggiornati_il' => $aggiornatiIl,
             'workspace' => $workspace,
+            'persona' => $persona,
         ]);
     }
 

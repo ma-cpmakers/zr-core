@@ -57,7 +57,8 @@ export interface DatiDellaCornice {
     aggiornati_il?: string | undefined;
     /**
      * Il segno della sessione: l'istante in cui la parte server ha letto lingua e persona dalla sessione, in `Cornice::subito()`
-     * (dalla `v2.3.0`). Dice alla cornice se la persona della pagina è più vecchia di quella che mostra: una voce della
+     * (dalla `v2.3.0`) o dal backoffice, in `Cornice::dopo()` (dalla `v2.4.0`: lì è il segno di quella lettura, e vale su
+     * quello di `subito`). Dice alla cornice se la persona della pagina è più vecchia di quella che mostra: una voce della
      * cronologia ripresa con Indietro porta il `subito` di allora, e non riporta a schermo chi c'era allora. Nei dati interi
      * di `Cornice::dati()` non c'è, e lì vale il segno della lettura.
      */
@@ -84,8 +85,12 @@ export interface DatiDellaCornice {
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
 export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
-/** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha risposto. */
-export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa' | 'sessione_il'>>;
+/**
+ * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
+ * risposto. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
+ * valgono su quelli di `subito`. Tutto facoltativo: un `dopo` che non lo dice (una pagina tenuta da prima) vale come prima.
+ */
+export type DatiDopo = Partial<Omit<DatiDellaCornice, 'in_attesa'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
 export interface GruppoDiVoci {
@@ -650,7 +655,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         if (svuota) {
             setNotifiche({ stato: 'loading', elenco: [], richiesta: questa, workspace: undefined });
         }
-        const chiesto = caricaNotifiche();
+        const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
         const frasi = caricaFrasi(lingua);
         frasi.catch(() => undefined);
@@ -934,7 +939,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
-        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal).then(
+        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal, persona.email).then(
             ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'ready', risultati, workspace });

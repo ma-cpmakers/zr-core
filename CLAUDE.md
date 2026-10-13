@@ -89,9 +89,9 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
   numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
   build fatte nel caso, mai con un numero scritto a mano.
-- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 18.486 byte con gzip (dalla `v2.3.0`:
-  i 18 KB della `v2.0.0` più i 17 byte della cornice che si rifà quando cambia la persona e i 37 di Indietro, che non riporta
-  chi c'era prima: un'eccezione di zr-pm per quelle due sole correzioni). Fuori dall'ingresso stanno due pezzi a richiesta: ciò che compone le righe delle notifiche e carica le
+- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 18.554 byte con gzip (dalla `v2.4.0`:
+  i 18 KB della `v2.0.0` più i 17 byte della cornice che si rifà quando cambia la persona, i 37 di Indietro, che non riporta
+  chi c'era prima, e i 68 della scheda ferma, che non mostra elenco e risultati di un'altra persona: un'eccezione di zr-pm per quelle tre sole correzioni). Fuori dall'ingresso stanno due pezzi a richiesta: ciò che compone le righe delle notifiche e carica le
   frasi (`resources/js/campanella.ts`, chiesto all'apertura della campanella: nessun ingresso riesporta niente da lì) e i
   rimedi provvisori di tastiera (`resources/js/rimedi.ts`). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
@@ -111,5 +111,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 36 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 37 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

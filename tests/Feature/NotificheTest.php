@@ -227,7 +227,7 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
         ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing']);
+    ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
     Http::assertSentCount(1);
@@ -235,6 +235,23 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
         && parse_url($richiesta->url(), PHP_URL_QUERY) === null
         && $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']));
 });
+
+// Sprint 37 · T4 (voce #1999): l'elenco dice di chi è. In una scheda rimasta ferma la sessione può essere passata a un'altra
+// persona, e la rotta risponde con le notifiche di quella: `persona` è l'email della persona della sessione che ha risposto,
+// la stessa che il browser ha già coi dati della cornice. Viene dalla sessione, mai dalla richiesta; l'id e il nome no.
+it('GET /cornice/notifiche dice di chi è la risposta: `persona` è l\'email della persona della sessione, mai un valore della richiesta, e di lei non passano né l\'id né il nome (sprint 37 · T4.3)', function (array $diversa, string $email) {
+    Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche?persona=uat-altra@example.org&email=uat-altra@example.org', ['X-Persona' => 'uat-altra@example.org']))
+        ->assertOk()->assertExactJson(['data' => [], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => $email]);
+
+    expect((string) $risposta->getContent())->not->toContain('example.org')->not->toContain('UAT ')->not->toContain('uat-persona-')->not->toContain('"email"');
+})->with([
+    'Ada' => [['id' => 'uat-persona-1'], 'uat-ada@example.com'],
+    'Grace, entrata dopo' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-grace@example.com'],
+]);
 
 it('PATCH /cornice/notifiche/{id}/lettura gira letta al backoffice col gettone del workspace e risponde con ciò che il backoffice ha segnato, e con l\'istante della risposta (sprint 5 · T2.2; sprint 22 · T2.5)', function (bool $letta, ?string $lettaIl, bool $attesa) {
     Carbon::setTestNow(Carbon::parse('2026-10-10 01:15:07.000321', 'UTC'));
@@ -583,6 +600,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
         'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
         'workspace' => 'uat-marketing',
+        'persona' => 'uat-ada@example.com',
     ]);
 
     expect(strlen((string) $risposta->json('aggiornati_il')))->toBe(27)
@@ -665,7 +683,7 @@ it('la ricerca non porta un istante, e un errore del backoffice sull\'elenco o s
     senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]))
         ->assertOk()->assertExactJson(['data' => ['id' => 'uat-n3', 'letta' => true], 'segnata_il' => '2026-10-10T01:15:07.000321Z']);
     senzaGettone($this->postJson('cornice/ricerca', ['q' => 'uat']))
-        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio', 'contesto' => null]], 'workspace' => 'uat-marketing']);
+        ->assertOk()->assertExactJson(['data' => [['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio', 'contesto' => null]], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     foreach ([
         $this->getJson('cornice/notifiche'),
@@ -694,7 +712,7 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
         ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing']);
+    ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     // Dell'evento esce il tipo; di `dati`, in `ids`, i soli id che servono ad aprire la risorsa (sprint 21 · T3.5), e queste non
     // ne hanno: né il soggetto né i dati, con la chiave o col valore. Il soggetto di queste notifiche è `/v1/board/cartelle/…`,
@@ -1317,7 +1335,7 @@ it('GET /cornice/notifiche dà di ogni notifica undici chiavi: le cinque di prim
         ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
         ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_ID,
-    ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing']);
+    ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     // Le stesse undici chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
     foreach ($risposta->json('data') as $notifica) {
@@ -1328,7 +1346,9 @@ it('GET /cornice/notifiche dà di ogni notifica undici chiavi: le cinque di prim
     $corpo = (string) $risposta->getContent();
     expect(substr_count($corpo, '"autore"'))->toBe(0)
         ->and(substr_count($corpo, 'email'))->toBe(0)
-        ->and(substr_count($corpo, 'example.com'))->toBe(0)
+        // Una volta sola: è l'email della persona della sessione, in `persona` (sprint 37 · T4.3); quella dell'autore non passa.
+        ->and(substr_count($corpo, 'example.com'))->toBe(1)
+        ->and(json_encode($risposta->json('data')))->not->toContain('example.com')
         ->and(substr_count($corpo, 'uat-persona-7'))->toBe(0)
         ->and(substr_count($corpo, '"soggetto"'))->toBe(0)
         ->and(substr_count($corpo, '"dati"'))->toBe(0)
@@ -1936,7 +1956,7 @@ it('GET /cornice/notifiche dice di quale workspace è l\'elenco: lo slug del wor
     $risposta = senzaGettone($this->getJson($indirizzo, $intestazioni))->assertOk();
 
     expect($risposta->json('workspace'))->toBe($workspace['slug'])
-        ->and(array_keys($risposta->json()))->toBe(['data', 'aggiornati_il', 'workspace'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'aggiornati_il', 'workspace', 'persona'])
         ->and($risposta->json('data.*.id'))->toBe(['uat-n1']);
     Http::assertSentCount(1);
 })->with([

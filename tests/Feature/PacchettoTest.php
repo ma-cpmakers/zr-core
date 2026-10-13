@@ -617,7 +617,7 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'istanteDellaLettura', 'lettura'])
+        ->and($importati('./parte-server-finta'))->toBe(['clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -692,10 +692,43 @@ it('la pagina di prova del layout scarica prima la Corta col prefetch di Inertia
 });
 
 it('le rotte finte della pagina di prova del layout dicono quando sull\'orologio dei dati, e con ?segno=no non hanno un orologio (sprint 11 · T3.1)', function () {
-    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string): void {';
+    // Dallo sprint 37 · T1 le rotte ricevono anche la persona della «sessione», dopo l'orologio; da T4, con la sua email.
+    $conOrologio = 'export function rotteFinte(slugDellaSessione: () => string | undefined, istante?: () => string, personaDellaSessione?: () => { nome: string; email?: string } | undefined): void {';
 
-    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined);']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined);' => 1])
+    expect(scritteNellaPaginaDiProva('layout.tsx', ['rotteFinte(', 'segno ? istanteDellaLettura : undefined, ']))->toBe(['rotteFinte(' => 1, 'segno ? istanteDellaLettura : undefined, ' => 1])
         ->and(scritteNellaPaginaDiProva('rotte-finte.ts', [$conOrologio, 'aggiornati_il: ', 'segnate_il: ']))->toBe([$conOrologio => 1, 'aggiornati_il: ' => 1, 'segnate_il: ' => 1]);
+});
+
+// Sprint 37 · T1.1 (voci #1993, #1998, #1999): i comandi che servono alla prova nel browser di due persone su due workspace e
+// di una scheda rimasta ferma. Che cosa fa la «sessione» lo prova parte-server-finta.test.ts, che cosa rispondono le rotte
+// rotte-finte.test.ts; qui, che la pagina di prova li usa: ci sono solo con `?sessione`, e senza la pagina è quella di prima.
+it('la pagina di prova del layout, con ?sessione, fa entrare l\'altra persona su un altro workspace, rilegge il solo dopo e dice alle rotte finte chi è entrato (sprint 37 · T1.1)', function () {
+    $altrove = '<button type="button" data-uat="entra-altrove" onClick={() => localStorage.setItem(chiaveDellaSessione, \'altrove\')}>';
+    $rileggi = '<button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>';
+    $letta = '    return conLaSessione({ ...letta, ...dellaSessione, ...delBackoffice }, entrata());';
+    $delleRotte = '    const { cornice, subito } = conLaSessione(propsDi[paginaDellIndirizzo()], entrata());';
+    $chiEEntrato = "scelti.has('sessione') ? () => sessioneDelleRotte()?.persona : undefined);";
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$altrove, 'data-uat="entra-altrove"', $rileggi, 'data-uat="rileggi-dopo"', "router.reload({ only: ['dopo'] });", 'chiediDopo();']))->toBe([
+        $altrove => 1,
+        'data-uat="entra-altrove"' => 1,
+        $rileggi => 1,
+        'data-uat="rileggi-dopo"' => 1,
+        "router.reload({ only: ['dopo'] });" => 1,
+        'chiediDopo();' => 1,
+    ])
+        // Le due letture della «sessione»: i dati di una visita e ciò che le rotte finte rispondono vengono dalla stessa.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', [$letta, $delleRotte, 'conLaSessione(', $chiEEntrato, "['altrove', {", 'workspace: ricerca,']))->toBe([
+            $letta => 1,
+            $delleRotte => 1,
+            'conLaSessione(' => 2,
+            $chiEEntrato => 1,
+            "['altrove', {" => 1,
+            'workspace: ricerca,' => 1,
+        ])
+        // Dietro `?sessione`, quattro volte in tutto: il collegamento alla «Due dati», i pulsanti di chi entra, «UAT rileggi dopo»
+        // e la persona data alle rotte finte.
+        ->and(scritteNellaPaginaDiProva('layout.tsx', ["scelti.has('sessione')"]))->toBe(["scelti.has('sessione')" => 4]);
 });
 
 it('la parte server finta rifiuta una visita annullata con l\'errore dell\'Inertia che fa le visite: lo importa da @inertiajs/core, e nel lock ce n\'è una copia sola (sprint 10 · T3.1, review della PR)', function () {
@@ -970,7 +1003,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1037,7 +1070,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3630,7 +3663,7 @@ it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo work
         // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
         ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
@@ -3879,7 +3912,7 @@ it('il README dice che dalla v1.12.0 la ricerca porta il suo workspace e che un 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo, contesto}], workspace}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{tipo, id, titolo, contesto}], workspace, persona}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'la cornice apre lì' => ['rotta', 'è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca'],
     'dove si apre un risultato' => ['ricerca', 'Dalla `v1.12.0` lo `<slug>` è quello che la risposta dice (`workspace`), che non è sempre quello dei dati della pagina'],
@@ -4913,7 +4946,7 @@ it('il README dice il conto delle azioni e il nome della board: le due chiavi de
     expect($testo)->not->toBe('')
         ->and(str_contains($testo, $frase))->toBe(true);
 })->with([
-    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`'],
+    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`'],
     'che cosa sono le due chiavi' => ['elenco', 'dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`'],
     'da dove vengono' => ['elenco', 'sono `azioni` e `board.nome` del backoffice'],
     'il backoffice di prima' => ['elenco', 'un backoffice che non li manda è quello di prima, e valgono 1 e `null`'],
@@ -4982,8 +5015,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: tre file' => ['pesi', '«A richiesta» sono le frasi delle notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua'],
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
     // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
-    // Indietro, 54 in tutto.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.486 byte con gzip. Sono 18 KB più 54 byte'],
+    // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.554 byte con gzip. Sono 18 KB più 122 byte'],
+    'i pesi: la scheda ferma' => ['pesi', 'dalla `v2.4.0` in una scheda rimasta ferma non mostra l\'elenco e i risultati di un\'altra persona (68): quei byte sono ciò che costano quelle tre sole correzioni'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
@@ -5276,20 +5310,47 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
-    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di adesso, sopra i dati di adesso, sia in attesa sia quando arriva un `dopo` letto di nuovo'],
+    'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di nuovo, che è suo e lo dice'],
     'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
     'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],
-    'Indietro: fra due workspace' => ['readme', 'Fra due workspace il layout rifà la cornice, che così non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati'],
+    // Sprint 37 · T3.6 (voce #1993): il limite dei due workspace non c'è più.
+    'Indietro: fra due workspace' => ['readme', 'Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni workspace, e chi è mostrato lo tiene lui, sopra: è chi ha il segno più avanti, e non torna indietro, per quante voci si ripercorrano con Indietro e Avanti'],
+    'Indietro: fra due workspace, a schermo' => ['readme', 'Con Indietro su una pagina di chi c\'era prima in un altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà'],
+    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona cambia una cosa sola: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace, coi dati di allora, ma col nome e la lingua di adesso, non con quelli di allora'],
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
-    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto nome ed email di allora'],
-    'Indietro: dopo non dice di chi è' => ['readme', '`dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un\'altra persona, tiene i dati di quella sotto il `subito` di allora'],
+    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome'],
+    // Sprint 37 · T2.6 (voce #1998): `dopo` dice di chi è, e che cosa cambia per un frontend.
+    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione dopo quella lettura (la lingua e il nome riletti da io.mostra, l\'email dell\'ingresso) e, in fondo, `sessione_il`, il segno di quella lettura'],
+    'dopo dice di chi è: nel layout' => ['readme', 'se fra le due richieste la sessione è passata a un\'altra persona la cornice è la sua, coi suoi dati, e i dati di una persona non stanno sotto il nome di un\'altra'],
+    'dopo dice di chi è: per un frontend' => ['readme', 'Per un frontend che dà al layout `Cornice::dopo()` com\'è non c\'è niente da scrivere, e tre cose si vedono'],
+    'dopo dice di chi è: la scheda ferma' => ['readme', 'Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a un\'altra persona mostra la cornice di questa, rifatta, e la pagina con lei'],
+    'dopo dice di chi è: a mano' => ['readme', 'chi compone `dopo` a mano gli lascia `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`'],
+    'dopo dice di chi è: il limite che resta' => ['readme', 'un `dopo` senza `persona` e `sessione_il` — composto a mano, o di una voce della cronologia salvata prima della `v2.4.0` — vale come prima'],
+    'dopo dice di chi è: chi torna' => ['readme', 'se poi la sessione torna a chi c\'era, con Indietro su quella voce restano il suo nome e i suoi dati'],
+    'dopo dice di chi è: la pagina con lei' => ['readme', 'Solo se `dopo` è di un\'altra persona (un\'altra email: la sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei'],
+    'dopo dice di chi è: la lingua' => ['readme', 'Dalla `v2.4.0` quelli riletti arrivano già con `dopo`, e la cornice li mostra da quel momento'],
+    'la guida: dopo dice di chi è' => ['guida', 'Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno)'],
+    // Sprint 37 · T4.6 (voce #1999): in una scheda ferma l'elenco e i risultati di un'altra persona non vanno a schermo.
+    'la scheda ferma: le due rotte' => ['readme', 'Dalla `v2.4.0` anche l\'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l\'email della persona della sessione'],
+    'la scheda ferma: a schermo' => ['readme', 'La cornice non la mostra sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello resta in caricamento'],
+    'la scheda ferma: una parte server di prima' => ['readme', 'Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la stessa persona non cambia niente'],
+    'la scheda ferma: ciò che resta fuori' => ['readme', 'Resta fuori «Segna tutte come lette» da una scheda ferma che ha già il suo elenco a schermo: la rotta delle letture non dice di chi è'],
+    'la guida: la scheda ferma' => ['guida', 'In una scheda rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della ricerca di un\'altra persona: ricarica la pagina'],
+    // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
+    'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
+    'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
+    // Sprint 37 · T6 (review della PR #70: R7, R13): ciò che resta fuori lo dice anche la guida; l'email dei dati composti a mano.
+    'la guida: ciò che resta fuori' => ['guida', 'Resta fuori «Segna tutte come lette» da una scheda ferma con l\'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione'],
+    'i dati composti a mano: l\'email' => ['readme', 'Chi compone a mano i dati della cornice dà come email della persona quella della sessione: con un\'altra, campanella e ricerca ricaricano la pagina a ogni uso'],
+    'la guida: l\'email' => ['guida', 'La persona la riconosce dall\'email, che c\'è sempre: la garantisce il contratto del backoffice, non zr-auth, che la porta com\'è'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
-    'la guida: Indietro fra due workspace' => ['guida', 'una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
+    'la guida: Indietro fra due workspace' => ['guida', 'nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`'],
+    'la guida: il contenuto della pagina' => ['guida', 'Il contenuto della tua pagina, con Indietro, resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
     'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
@@ -5341,6 +5402,50 @@ it('README e guida non dicono più che con Indietro il menu del profilo mostra l
 })->with([
     'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
     'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
+]);
+
+// Sprint 37 · T2.6 (voce #1998): `Cornice::dopo()` dice di chi sono i suoi dati, e il README non dice più il contrario.
+it('il README non dice più che `dopo` non dice di chi è, né che i dati riletti stanno sopra i dati di adesso sotto il nome di allora (sprint 37 · T2.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'dopo non dice di chi è' => ['`dopo` non dice di chi è'],
+    'sopra i dati di adesso' => ['sopra i dati di adesso'],
+    'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
+    'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
+]);
+
+// Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.
+it('README e guida non dicono più il limite dei due workspace (sprint 37 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'non sa più chi ha mostrato' => ['non sa più chi ha mostrato'],
+    'riporta la cornice di allora' => ['riporta la cornice di allora'],
+    'una pagina di un altro workspace sì' => ['una pagina di un altro workspace sì'],
+    'questo limite non lo ha' => ['questo limite non lo ha'],
+]);
+
+// Sprint 37 · T5.2 (voce #2000): che l'email c'è sempre lo garantisce il contratto del backoffice. zr-auth la porta nella
+// sessione com'è e non la controlla: README e guida non lo dicono garante.
+it('README e guida non dicono che l\'email della persona la garantisce zr-auth (sprint 37 · T5.2)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'la garantisce zr-auth' => ['la garantisce zr-auth'],
+    'garantita da zr-auth' => ['garantita da zr-auth'],
+    'zr-auth garantisce' => ['zr-auth garantisce'],
+    'zr-auth la controlla' => ['zr-auth la controlla'],
+]);
+
+// Sprint 37 · T6 (review della PR #70: R6, R8): chi è mostrato non è «l'ultimo mostrato», e l'email di `dopo` non viene da io.mostra.
+it('README e guida non dicono più che il layout tiene chi è stato mostrato per ultimo, né che `dopo` porta la persona come l\'ha data io.mostra (sprint 37 · T6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'chi è stato mostrato per ultimo' => ['chi è stato mostrato per ultimo'],
+    'come le ha date io.mostra' => ['come le ha date io.mostra'],
+    // Seconda lettura (N2): su una pagina sua più vecchia di un altro workspace nome e lingua sono quelli di adesso.
+    'per la stessa persona niente cambia' => ['Per la stessa persona niente cambia'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project

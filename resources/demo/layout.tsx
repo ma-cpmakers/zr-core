@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } fr
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
-import { clientFinto, colSegno, istanteDellaLettura, lettura } from './parte-server-finta';
+import { clientFinto, colSegno, conLaSessione, istanteDellaLettura, lettura } from './parte-server-finta';
+import type { Entrata } from './parte-server-finta';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
 // La pagina di prova del layout, per la UAT: `LayoutDellaCornice` sotto Inertia vera, la versione dei frontend, senza server.
@@ -230,12 +231,17 @@ function NessunaAttiva({ visita }: Props) {
 const comeArrivaDopo = new URLSearchParams(window.location.search).get('dopo');
 let chiestoDopo = false;
 
+/** La richiesta dei soli dati del backoffice: un ricaricamento parziale di Inertia, a cui il «server» risponde con la sessione di adesso. */
+function chiediDopo() {
+    chiestoDopo = true;
+    router.reload({ only: ['dopo'] });
+}
+
 function DueDati({ visita, dopo }: Props) {
     const contatori = useContatori();
     useEffect(() => {
         if (dopo === undefined && comeArrivaDopo !== 'mai') {
-            chiestoDopo = true;
-            router.reload({ only: ['dopo'] });
+            chiediDopo();
         }
     }, [dopo]);
 
@@ -251,22 +257,31 @@ function DueDati({ visita, dopo }: Props) {
                     UAT campo di prova <input data-uat="campo" type="text" />
                 </label>
             </p>
+            {/* Sprint 37 · T1: la rilettura del solo `dopo` da una scheda rimasta ferma. La risposta è di chi è nella sessione adesso. */}
+            {scelti.has('sessione') && (
+                <p>
+                    <button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>
+                </p>
+            )}
             {contatori}
             <Collegamenti />
         </>
     );
 }
 
-/** Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace, come `Cornice::dopo()`. */
-function dopoLetto(): NonNullable<Props['dopo']> {
+/**
+ * Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace e
+ * con chi ha letto — lingua, persona e in fondo `sessione_il`, il segno di quella lettura —, come `Cornice::dopo()`.
+ */
+function dopoLetto({ lingua, persona }: Pick<DatiDellaCornice, 'lingua' | 'persona'>): NonNullable<Props['dopo']> {
     const { workspace, prodotti, aziende, non_lette } = marketing;
     const aggiornati_il = istanteDellaLettura();
 
     return comeArrivaDopo === 'non_letti'
         ? { non_letti: true, aggiornati_il }
         : comeArrivaDopo === 'accettazione'
-          ? { workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true }
-          : { workspace, prodotti, aziende, non_lette, aggiornati_il };
+          ? { lingua, persona, workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true, sessione_il: aggiornati_il }
+          : { lingua, persona, workspace, prodotti, aziende, non_lette, aggiornati_il, sessione_il: aggiornati_il };
 }
 
 // Sprint 35 · T2 (voce #1945): con `?persona=altra` i dati della sessione della «Due dati» sono di un'altra persona, in
@@ -281,6 +296,11 @@ const diUnAltra = { lingua: 'en', persona: { nome: 'UAT Grace Hopper', email: 'u
 // stesso workspace, e la visita dopo porta i suoi dati: nome e lingua, un'altra azienda, altri moduli, due non lette. Una
 // pagina ripresa con Indietro porta invece i dati di allora, come li tiene Inertia. Senza quella chiave la pagina è quella di
 // prima, schermate comprese.
+//
+// Sprint 37 · T1 (voci #1993, #1998, #1999): un terzo pulsante fa entrare l'altra persona su un altro workspace, «UAT
+// Ricerca», qualunque pagina apra: è il workspace della sua sessione, e lo dicono anche i dati riletti dal backoffice. Con
+// `?sessione` le rotte finte sanno chi è entrato: l'elenco delle notifiche e i risultati della ricerca sono i suoi, col nome nel
+// testo («UAT scheda di Ada», «UAT Lancio di Grace»), anche in una scheda rimasta ferma su una pagina dell'altra persona.
 const chiaveDellaSessione = 'uat-persona';
 const delBackofficeDiUnAltra: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette'> = {
     prodotti: { pm: 'disponibile', crm: 'attivo' },
@@ -288,19 +308,18 @@ const delBackofficeDiUnAltra: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'n
     non_lette: 2,
 };
 
-/** Ciò che il «server» ha letto, con la sessione di adesso: se è entrata un'altra persona, i dati della cornice sono i suoi. */
-function conLaSessione(letta: Props): Props {
-    if (localStorage.getItem(chiaveDellaSessione) !== 'altra') {
-        return letta;
-    }
-
-    return {
-        ...letta,
-        ...(letta.cornice ? { cornice: { ...letta.cornice, ...diUnAltra, ...delBackofficeDiUnAltra } } : {}),
-        ...(letta.subito ? { subito: { ...letta.subito, ...diUnAltra } } : {}),
-        ...(letta.dopo?.aziende?.length ? { dopo: { ...letta.dopo, ...delBackofficeDiUnAltra } } : {}),
-    };
-}
+const ricerca = { nome: 'UAT Ricerca', slug: 'uat-ricerca' };
+/** Chi può entrare al posto della prima persona, secondo ciò che i pulsanti scrivono nel `localStorage`: nello stesso workspace, o su un altro. */
+const entrate = new Map<string, Entrata>([
+    ['altra', { sessione: diUnAltra, backoffice: delBackofficeDiUnAltra }],
+    ['altrove', {
+        sessione: diUnAltra,
+        backoffice: { ...delBackofficeDiUnAltra, aziende: (delBackofficeDiUnAltra.aziende ?? []).map((azienda) => ({ ...azienda, workspace: [{ id: 'uat-ws-9', ...ricerca }] })) },
+        workspace: ricerca,
+    }],
+]);
+/** Chi è entrato adesso: nessuno, finché un pulsante non lo dice. */
+const entrata = () => entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '');
 
 const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };
 type Nome = keyof typeof pagine;
@@ -349,14 +368,14 @@ const paginaDellIndirizzo = () => paginaDi(window.location.search);
 /** Ciò che il «server» legge per una pagina, quando la visita gli arriva: i dati di una lettura nuova (col segno, salvo `?segno=no`). */
 function leggi(nome: Nome): Props {
     // La richiesta che la «Due dati» fa dopo il primo disegno porta anche ciò che il «server» ha letto dal backoffice.
-    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
+    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto(altraPersona ? diUnAltra : marketing) } : {};
     chiestoDopo = false;
 
     // Come `Cornice::subito()`: i dati della sessione portano l'istante in cui sono stati letti (salvo `?segno=no`).
     const letta = lettura(propsDi[nome], segno);
     const dellaSessione = letta.subito && segno ? { subito: { ...letta.subito, sessione_il: istanteDellaLettura() } } : {};
 
-    return conLaSessione({ ...letta, ...dellaSessione, ...delBackoffice });
+    return conLaSessione({ ...letta, ...dellaSessione, ...delBackoffice }, entrata());
 }
 
 /**
@@ -395,6 +414,7 @@ function Collegamenti() {
             {scelti.has('sessione') && (
                 <p>
                     <button type="button" data-uat="entra-altra" onClick={() => localStorage.setItem(chiaveDellaSessione, 'altra')}>UAT entra un'altra persona</button>{' · '}
+                    <button type="button" data-uat="entra-altrove" onClick={() => localStorage.setItem(chiaveDellaSessione, 'altrove')}>UAT entra un'altra persona su un altro workspace</button>{' · '}
                     <button type="button" data-uat="entra-prima" onClick={() => localStorage.removeItem(chiaveDellaSessione)}>UAT torna la prima persona</button>
                 </p>
             )}
@@ -434,9 +454,17 @@ function Layout({ cornice, subito, dopo, crumbs, children }: Pick<LayoutDellaCor
     );
 }
 
-// La «sessione» è nel workspace della pagina che l'indirizzo dice: cambia con la visita, anche con Indietro. Le due rotte delle
-// notifiche dicono quando sull'orologio dei dati, come la parte server; con `?segno=no` non hanno un orologio.
-rotteFinte(() => (propsDi[paginaDellIndirizzo()].cornice ?? propsDi[paginaDellIndirizzo()].subito)?.workspace.slug, segno ? istanteDellaLettura : undefined);
+/** Workspace e persona che la parte server darebbe adesso alla pagina che l'indirizzo dice: la «sessione» delle rotte finte. */
+function sessioneDelleRotte() {
+    const { cornice, subito } = conLaSessione(propsDi[paginaDellIndirizzo()], entrata());
+
+    return cornice ?? subito;
+}
+
+// La «sessione» è nel workspace della pagina che l'indirizzo dice: cambia con la visita, anche con Indietro; se è entrata
+// un'altra persona su un altro workspace, è nel suo. Le due rotte delle notifiche dicono quando sull'orologio dei dati, come la
+// parte server; con `?segno=no` non hanno un orologio. Con `?sessione` le rotte sanno anche chi è entrato adesso.
+rotteFinte(() => sessioneDelleRotte()?.workspace.slug, segno ? istanteDellaLettura : undefined, scelti.has('sessione') ? () => sessioneDelleRotte()?.persona : undefined);
 
 // La parte server, finta: ogni visita di Inertia arriva qui. I dati si leggono subito, quando la visita arriva, come fa una
 // parte server vera: il segno è di quell'istante, e una risposta che parte dopo porta i dati di allora. La risposta è la pagina

@@ -115,7 +115,7 @@ it('POST /cornice/ricerca cerca nel workspace del gettone con una sola richiesta
         ['tipo' => 'board.scheda', 'id' => '01k6w4c7e9g1j3m5p7r9t1v3x5', 'titolo' => 'Piano editoriale ottobre', 'contesto' => ['board' => 'Marketing', 'lista' => 'In corso']],
         ['tipo' => 'crm.persona', 'id' => '01k6wd5b3d5f7h9k1n3q5s7u9w', 'titolo' => 'Paolo Verdi', 'contesto' => ['organizzazione' => 'Verdi Impianti', 'ruolo' => 'Direttore']],
         ['tipo' => 'board.cartelle', 'id' => '01k6w2c4e6g8j0m2p4r6t8v0x2', 'titolo' => 'Marketing', 'contesto' => null],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
     expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'UAT là']]]);
 });
 
@@ -148,7 +148,7 @@ it('ciò che la risposta del backoffice ha in più non arriva al browser: l\'`in
         ['tipo' => 'board.board', 'id' => 'uat-b1', 'titolo' => 'UAT Lancio', 'contesto' => null],
         ['tipo' => 'uat-ignoto', 'id' => 'uat-x1', 'titolo' => 'UAT Tipo nuovo', 'contesto' => null],
         ['tipo' => 'board.cartelle', 'id' => 'uat-c1', 'titolo' => 'UAT Clienti', 'contesto' => null],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     expect($risposta->getContent())->not->toContain('indirizzo');
 });
@@ -166,7 +166,7 @@ it('di ogni risultato la rotta dà `contesto`: i testi che il backoffice ha dato
         ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => ['lista' => 'Da fare', 'board' => 'UAT Sito']],
         ['tipo' => 'crm.trattativa', 'id' => 'uat-t1', 'titolo' => 'UAT Opportunità', 'contesto' => ['pipeline' => 'UAT Vendite', 'fase' => 'Proposta', 'esito' => 'aperta']],
         ['tipo' => 'crm.organizzazione', 'id' => 'uat-o1', 'titolo' => 'UAT Azienda', 'contesto' => null],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     // Un oggetto, con le chiavi nell'ordine del backoffice (qui `lista` prima di `board`): l'ordine in cui mostrarle è della cornice.
     expect($risposta->getContent())->toContain('"contesto":{"lista":"Da fare","board":"UAT Sito"}')
@@ -181,7 +181,7 @@ it('di `contesto` passano solo le chiavi che il registro dà al tipo del risulta
 
     cerca('UAT')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => $perLaCornice],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 })->with([
     'un null accanto a un testo' => [['organizzazione' => null, 'ruolo' => 'Direttore'], ['ruolo' => 'Direttore']],
     'un testo vuoto accanto a un testo' => [['organizzazione' => 'UAT Impianti', 'ruolo' => ''], ['organizzazione' => 'UAT Impianti']],
@@ -219,9 +219,11 @@ it('un membro del workspace esce con tipo, id, titolo e il solo `ruolo` del cont
 
     $risposta = cerca('Marta')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => ['ruolo' => 'amministratore']],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
-    expect($risposta->getContent())->not->toContain('example.com')->not->toContain('email')->not->toContain('/v1/');
+    // L'email della persona della sessione c'è, in `persona` (sprint 37 · T4.3): quella del collega trovato no.
+    expect($risposta->getContent())->not->toContain('uat-marta')->not->toContain('email')->not->toContain('/v1/')
+        ->and(json_encode($risposta->json('data')))->not->toContain('example.com');
 })->with([
     'il contesto del contratto: il solo ruolo' => [['ruolo' => 'amministratore']],
     'con l\'email dopo il ruolo' => [['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com']],
@@ -235,7 +237,7 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', CONTESTO_CON_OGNI_CHIAVE)], 'successivo' => null])]);
 
-    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing"}');
+    expect(cerca('UAT')->assertOk()->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing","persona":"uat-ada@example.com"}');
 })->with([
     'una scheda' => ['board.scheda', '{"lista":"Da fare","board":"UAT Sito"}'],
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
@@ -271,7 +273,7 @@ it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco s
     cerca('UAT')->assertOk()->assertExactJson(['data' => [
         ['tipo' => 'crm.persona', 'id' => 'uat-p1', 'titolo' => 'UAT Persona', 'contesto' => ['reparto' => 'UAT Acquisti']],
         ['tipo' => 'board.scheda', 'id' => 'uat-s1', 'titolo' => 'UAT Scheda', 'contesto' => null],
-    ], 'workspace' => 'uat-marketing']);
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 });
 
 it('la parte server della ricerca non ha agganci per i test nel codice che va in produzione: di pubblico ha la sola rotta, e il file del registro non si sceglie né si legge qui: le voci le chiede a `Registro` (sprint 25 · T6, R1; sprint 26 · T3.2)', function () {
@@ -293,7 +295,7 @@ it('q di 2 e di 100 caratteri, anche non ASCII, arriva al backoffice (T5.1)', fu
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
 
-    cerca($q)->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing']);
+    cerca($q)->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
     Http::assertSentCount(1);
 })->with([
     'due' => ['ab'],
@@ -396,7 +398,7 @@ it('con una parola nel corpo e un\'altra nell\'indirizzo si cerca quella del cor
 
     $risposta = test()->postJson('cornice/ricerca?q=uat-indirizzo', ['q' => 'uat-corpo']);
 
-    $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing']);
+    $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
     Gettone::assenteDa($risposta);
     expect(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'uat-corpo']]]);
 });
@@ -419,7 +421,7 @@ it('POST /cornice/ricerca dice di quale workspace sono i risultati: lo slug del 
     Gettone::assenteDa($risposta);
 
     expect($risposta->json('workspace'))->toBe($workspace['slug'])
-        ->and(array_keys($risposta->json()))->toBe(['data', 'workspace'])
+        ->and(array_keys($risposta->json()))->toBe(['data', 'workspace', 'persona'])
         ->and($risposta->json('data.*.id'))->toBe(ID_DELL_ESEMPIO_DI_RICERCA)
         // Al backoffice va la parola e basta: ciò che il browser manda accanto a `q` resta qui.
         ->and(richiesteAlBackoffice())->toBe([['POST', '/v1/ricerca', null, ['q' => 'UAT']]]);
@@ -560,6 +562,23 @@ it('ogni altra risposta del backoffice resta l\'errore che era: un 429 con un al
     'un 429 senza codice' => [429, null],
     'quel codice con un 403' => [403, 'troppe_richieste'],
     'quel codice con un 503' => [503, 'troppe_richieste'],
+]);
+
+// Sprint 37 · T4 (voce #1999): la ricerca dice di chi è. `persona` è l'email della persona della sessione che ha risposto,
+// la stessa che il browser ha già coi dati della cornice: in una scheda rimasta ferma, dove la sessione è passata a un'altra
+// persona, la cornice sa così che i risultati non sono di chi mostra. Viene dalla sessione, mai dalla richiesta.
+it('POST /cornice/ricerca dice di chi è la risposta: `persona` è l\'email della persona della sessione, mai un valore della richiesta, e di lei non passano né l\'id né il nome (sprint 37 · T4.3)', function (array $diversa, string $email) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA, 'en', $diversa);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+
+    $risposta = test()->postJson('cornice/ricerca?persona=uat-altra@example.org', ['q' => 'lancio', 'persona' => 'uat-altra@example.org', 'email' => 'uat-altra@example.org'], ['X-Persona' => 'uat-altra@example.org']);
+
+    $risposta->assertOk()->assertExactJson(['data' => [], 'workspace' => 'uat-marketing', 'persona' => $email]);
+    Gettone::assenteDa($risposta);
+    expect((string) $risposta->getContent())->not->toContain('example.org')->not->toContain('UAT ')->not->toContain('uat-persona-')->not->toContain('"email"');
+})->with([
+    'Ada' => [['id' => 'uat-persona-1'], 'uat-ada@example.com'],
+    'Grace, entrata dopo' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-grace@example.com'],
 ]);
 
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per

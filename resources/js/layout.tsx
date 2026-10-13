@@ -1,5 +1,6 @@
-import { createContext, useContext, useLayoutEffect, useReducer } from 'react';
+import { createContext, useContext, useLayoutEffect, useReducer, useState } from 'react';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
+import { segno } from './servizi';
 
 // Il layout della cornice per i frontend con Inertia. Il modulo lo rende dal suo layout (un componente a livello di modulo,
 // dato a `createInertiaApp({ layout })`) e la cornice resta montata mentre la pagina cambia: il testo scritto nella ricerca, il
@@ -18,7 +19,8 @@ export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     subito?: DatiSubito | null | undefined;
     /**
      * I dati che la parte server legge dal backoffice (`Cornice::dopo()`): possono arrivare dopo il primo disegno (con Inertia,
-     * una prop rimandata), e quando arrivano la cornice diventa quella di sempre senza che la pagina si rimonti.
+     * una prop rimandata), e quando arrivano la cornice diventa quella di sempre senza che la pagina si rimonti. Dicono di
+     * chi sono (dalla `v2.4.0`): se fra `subito` e `dopo` la sessione è passata a un'altra persona, la cornice è la sua.
      */
     dopo?: DatiDopo | null | undefined;
 }
@@ -48,12 +50,42 @@ function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina):
 /** Come la pagina scrive nel layout ciò che dà alla cornice. Solo la funzione, che è sempre la stessa: mai lo stato, o la pagina si renderebbe a ogni cambio della cornice. */
 const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) => void) | null>(null);
 
+/** Il segno di chi questi dati mostrano, come lo legge `Cornice`: quello della sessione, o quello della lettura nei dati interi. */
+const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
-    const cornice = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
-    if (!cornice) {
+    // `dopo` sta sopra, con tutto ciò che porta: è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
+    // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
+    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
+
+    // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
+    // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai
+    // indietro: una pagina più vecchia è una voce della cronologia ripresa con Indietro o Avanti, e non dice chi è entrato.
+    // Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    const [entrato, entra] = useState(pagina);
+    // L'ultima pagina di chi è mostrato: una pagina di un'altra persona non la cambia, nemmeno nello stesso workspace.
+    const [vista, vedi] = useState(pagina);
+    if (!pagina) {
         return children;
     }
+    const chi = entrato && della(entrato) > della(pagina) ? entrato : pagina;
+    if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato)) {
+        entra(chi);
+    }
+    // Una pagina di un'altra persona (un'altra email) è più vecchia di chi è mostrato: i suoi dati non valgono. Se è di un
+    // altro workspace restano quelli visti, e la cornice non si rifà; nello stesso workspace lo decide `Cornice`, che lì è
+    // rimasta montata e sa leggere un `dopo` riletto adesso sotto il `subito` di allora.
+    const sua = pagina.persona.email === chi.persona.email;
+    const ultima = (sua ? pagina : vista) ?? pagina;
+    if (sua && (!vista || pagina.persona.email !== vista.persona.email || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
+        vedi(pagina);
+    }
+    const valgono = sua || pagina.workspace.slug === ultima.workspace.slug ? pagina : ultima;
+    // Una pagina sua più vecchia (Indietro su un altro workspace) porta i suoi dati, ma il nome, la lingua e il segno restano
+    // quelli di adesso: la cornice che si rifà lì sotto riparte da chi è mostrato, e una voce di un'altra persona più vecchia
+    // di lui non passa nemmeno dopo.
+    const cornice = valgono.persona.email === chi.persona.email && della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : valgono;
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.
@@ -61,7 +93,8 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
 
     // La `key` è lo slug del workspace: ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i
     // pannelli, le notifiche) è di quel workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con
-    // lei: niente del workspace di prima resta davanti a chi è passato a un altro.
+    // lei: niente del workspace di prima resta davanti a chi è passato a un altro. Lo slug è quello dei dati che valgono: con
+    // Indietro su una pagina di allora di un'altra persona resta quello di chi è entrato.
     return (
         <CorniceMontata key={cornice.workspace.slug} dati={cornice} {...dellaCornice}>
             {children}

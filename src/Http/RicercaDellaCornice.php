@@ -35,7 +35,9 @@ final class RicercaDellaCornice
      * che una persona cerca non deve stare nell'indirizzo di una richiesta, e un `q` dell'indirizzo non conta. Anche al
      * backoffice va nel corpo, da sola (`{q}`): l'indirizzo di quella richiesta non porta query, e niente di ciò che il browser
      * manda accanto a `q` la segue. `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è
-     * fatta, preso prima di chiamare il backoffice: viene dalla sessione, mai dalla richiesta.
+     * fatta, preso prima di chiamare il backoffice: viene dalla sessione, mai dalla richiesta. `persona` è l'email della
+     * persona della sessione, quella per cui la ricerca è fatta (dalla `v2.4.0`), presa allo stesso modo: una pagina rimasta
+     * ferma mentre la sessione passava a un'altra persona sa così che i risultati non sono di chi mostra. Né l'id né il nome.
      */
     public function cerca(Request $richiesta): JsonResponse
     {
@@ -47,6 +49,7 @@ final class RicercaDellaCornice
         }
 
         $workspace = Sessione::workspace()['slug'] ?? null;
+        $persona = Sessione::utente()['email'] ?? null;
 
         try {
             $risultati = Api::workspace()->post('/v1/ricerca', ['q' => $q])['data'] ?? null;
@@ -58,7 +61,7 @@ final class RicercaDellaCornice
             throw new BackofficeNonRisponde('La risposta di POST /v1/ricerca non è una lista di /v1.');
         }
 
-        return new JsonResponse(['data' => array_map(self::perLaCornice(...), $risultati), 'workspace' => $workspace]);
+        return new JsonResponse(['data' => array_map(self::perLaCornice(...), $risultati), 'workspace' => $workspace, 'persona' => $persona]);
     }
 
     /**
