@@ -244,12 +244,17 @@ describe('la parte server finta della pagina di prova del layout', () => {
 // toglie, la chiave nel `sessionStorage` della scheda. Si legge nel client installato per le pagine di prova: se una versione
 // nuova cambia quei nomi, o tiene la chiave altrove, questo caso è rosso e le frasi si riscrivono.
 describe('la cronologia cifrata di Inertia, come la dicono README e guida', () => {
-    it('il client installato conosce `clearHistory` e `encryptHistory` della pagina, e tiene la chiave della cronologia nel `sessionStorage` della scheda (review della PR #69, R10)', () => {
+    it('il client installato toglie la chiave della cronologia quando la pagina dice `clearHistory`, la tiene nel `sessionStorage` della scheda, e a una voce della cronologia richiede solo le props rimandate che le mancano (review della PR #69, R10; seconda lettura, N5)', () => {
         const client = readFileSync(resolve(process.cwd(), 'node_modules/@inertiajs/core/dist/index.js'), 'utf8');
 
-        expect(client).toContain('clearHistory');
         expect(client).toContain('encryptHistory');
         expect(client).toContain('window.sessionStorage.setItem(');
         expect(client).toContain('key: "historyKey"');
+        // La chiave si toglie quando arriva una pagina col segnale, non prima (seconda lettura, N5).
+        expect(client).toMatch(/if \(\w+\.clearHistory\) \{\s+history\.clear\(\);/);
+        // A una voce ripresa dalla cronologia si richiedono solo le props rimandate che le mancano: un `dopo` che ha già no.
+        expect(client).toMatch(/const missing = props\.filter\(\(prop\) => \w+\(pageProps, prop\) === void 0\);\s+if \(missing\.length > 0\) \{\s+pendingDeferred\[group\] = missing;/);
+        // A un caricamento da capo fatto con Indietro o Avanti vale la voce salvata, decifrata.
+        expect(client).toMatch(/static handleBackForward\(\) \{[\s\S]{0,260}history\.decrypt\(\)\.then\(\(data\) => \{[\s\S]{0,120}page\.set\(data,/);
     });
 });

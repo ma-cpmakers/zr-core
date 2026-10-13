@@ -5284,6 +5284,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: fra due workspace' => ['readme', 'Fra due workspace il layout rifà la cornice, che così non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati'],
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
+    // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
+    'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto nome ed email di allora'],
+    'Indietro: dopo non dice di chi è' => ['readme', '`dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un\'altra persona, tiene i dati di quella sotto il `subito` di allora'],
+    'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
+    'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
     'la guida: Indietro fra due workspace' => ['guida', 'una pagina di un altro workspace sì, e il contenuto della tua pagina resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],

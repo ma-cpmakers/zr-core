@@ -506,15 +506,16 @@ export function Cornice(props: CorniceProps) {
     const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
 
-    // La pagina è della persona mostrata fin qui (la stessa email): i suoi dati sono letti prima di quelli tenuti se sono dello
-    // stesso workspace e, col segno da tutte e due le parti, il loro è più indietro; con lo stesso segno no: è la stessa lettura,
-    // e un contenuto diverso lo ha messo il frontend nel browser. Senza un segno da una parte, o fra due workspace, non si può
-    // dire, e vale la pagina: un confronto con `undefined` è sempre falso. Dei dati `in_attesa` lasciano quelli tenuti, se
-    // questi non lo sono. La pagina è di un'altra persona: se è lei a essere entrata adesso valgono i suoi dati, ridotti come
-    // sono. Se è più vecchia di chi la cornice mostra (Indietro) i suoi dati valgono solo se sono stati letti dopo la sessione
-    // di adesso, cioè riletti (il `dopo` che Inertia richiede quando alla voce manca): quelli di allora no, nemmeno quando la
-    // voce della cronologia li porta interi e chi è entrato aspetta ancora i propri. Restano i tenuti, che sono di chi è entrato.
-    const dati = (props.dati.persona.email === mostrato.persona.email ? props.dati.workspace.slug === tenuti.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato && !(segno(props.dati.aggiornati_il)! > della(mostrato))) ? tenuti : props.dati;
+    // La pagina è della persona mostrata fin qui (la stessa email), o i suoi dati sono stati letti dopo la sessione di chi la
+    // cornice mostra (il `dopo` che Inertia richiede quando alla voce manca: è di chi è entrato, sotto il `subito` di allora).
+    // Allora sono letti prima di quelli tenuti se sono dello stesso workspace e, col segno da tutte e due le parti, il loro è
+    // più indietro; con lo stesso segno no: è la stessa lettura, e un contenuto diverso lo ha messo il frontend nel browser.
+    // Senza un segno da una parte, o fra due workspace, non si può dire, e vale la pagina: un confronto con `undefined` è sempre
+    // falso. Dei dati `in_attesa` lasciano quelli tenuti, se questi non lo sono. Altrimenti la pagina è di un'altra persona:
+    // se è lei a essere entrata adesso valgono i suoi dati, ridotti come sono; se è più vecchia di chi la cornice mostra
+    // (Indietro) i suoi dati sono quelli di allora e non valgono, nemmeno quando la voce della cronologia li porta interi e chi
+    // è entrato aspetta ancora i propri. Restano i tenuti, che sono di chi è entrato.
+    const dati = (props.dati.persona.email === mostrato.persona.email || segno(props.dati.aggiornati_il)! > della(mostrato) ? tenuti.workspace.slug === props.dati.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }

@@ -1193,10 +1193,15 @@ Che cosa vede la persona:
   la voce ha già non lo richiede. Questo vale sullo stesso workspace. Fra due workspace il layout rifà la cornice, che così
   non sa più chi ha mostrato: Indietro su una pagina di un altro workspace riporta la cornice di allora, persona e dati
   (chi monta `Cornice` senza il layout questo limite non lo ha: lì i dati di una pagina più vecchia di un'altra persona non
-  valgono in nessun workspace). Altri due limiti. Un `subito` composto a mano senza `sessione_il` vale come una pagina
-  nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da capo
-  non sa chi c'era, e una
-  pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto. Il contenuto
+  valgono in nessun workspace). Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e
+  sta sotto nome ed email di allora. Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
+  pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
+  capo non sa chi c'era, e una
+  pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia
+  lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato. E
+  `dopo` non dice di chi è: una voce lasciata prima che il suo `dopo` arrivasse, e riletta da un'altra persona, tiene i
+  dati di quella sotto il `subito` di allora; se poi la sessione torna a chi c'era, con Indietro su quella voce li vede
+  sotto il proprio nome. Il contenuto
   della pagina, poi, la cornice non lo tocca mai: con Indietro è quello di allora anche se la persona è cambiata. Per
   questo all'uscita il frontend toglie la cronologia: con la cronologia cifrata di Inertia (`inertia.history.encrypt` a
   `true`, o `Inertia::encryptHistory()` nella richiesta; serve HTTPS) la risposta dell'uscita chiama
@@ -1214,7 +1219,10 @@ Che cosa vede la persona:
   ```
 
   La cronologia che si toglie è quella della scheda che riceve la risposta dell'uscita: la chiave con cui Inertia la cifra
-  sta nel `sessionStorage` di quella scheda. In una scheda rimasta aperta mentre la sessione cambia da un'altra la
+  sta nel `sessionStorage` di quella scheda, e il client la toglie quando gli arriva una pagina di Inertia col segnale.
+  Se l'uscita rimanda a una pagina che non è di Inertia (l'ingresso), il segnale arriva con la prima pagina di Inertia
+  servita dopo: provalo nel tuo frontend prima di contarci. In una scheda rimasta aperta mentre la sessione cambia da
+  un'altra la
   cronologia resta leggibile: lì vale solo ciò che la cornice fa da sé, e il contenuto delle pagine di prima resta.
   Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
