@@ -239,7 +239,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // JS d'ingresso, dentro `import(` e fra virgolette (`pezzoARichiesta`, in `lingue.ts`). Una build che lo scrivesse in un
     // altro modo lascerebbe a «Riprova» l'`import()` di prima, che in Chromium non fa partire niente.
     it.each(app)('«%s»: nel JS d\'ingresso il nome del pezzo della campanella sta fra virgolette dentro `import(`, dove «Riprova» lo legge (sprint 39 · T4.2)', (_nome, costruita) => {
-        const nomi = [...costruita().js.matchAll(/import\((["'`])(.+?)\1/g)].map(([, , nome = '']) => nome.replace(/-[\w-]{8,}\.js$/, '-<impronta>.js'));
+        const nomi = [...costruita().js.matchAll(/import\(([\x22\x27\x60])(.+?)\1/g)].map(([, , nome = '']) => nome.replace(/-[\w-]{8,}\.js$/, '-<impronta>.js'));
 
         expect(nomi.sort()).toStrictEqual(['./campanella-<impronta>.js', './rimedi-<impronta>.js']);
     });
@@ -249,7 +249,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it.each(app)('«%s»: il pezzo della campanella importa il JS d\'ingresso col suo nome di file, senza una coda (sprint 39 · T4.5)', (_nome, costruita) => {
         const [campanella = ''] = costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
-        const importati = [...campanella.matchAll(/from\s*(["'`])(.+?)\1/g)].map(([, , nome]) => nome);
+        const importati = [...campanella.matchAll(/from\s*([\x22\x27\x60])(.+?)\1/g)].map(([, , nome]) => nome);
 
         expect(importati).toHaveLength(1);
         expect(importati[0]).toMatch(/^\.\/[\w-]+\.js$/);

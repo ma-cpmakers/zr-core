@@ -316,7 +316,8 @@ lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta 
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
 della campanella non arriva, «Riprova» lo richiede dovunque la tua build lo metta, anche se
-l'indirizzo del JS d'ingresso ha una coda sua (README, «Le notifiche»). Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
+l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche».
+Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
 

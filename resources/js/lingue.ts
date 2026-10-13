@@ -272,13 +272,14 @@ export let campanella: typeof import('./campanella') | undefined;
  * cioè il nome che la build ha dato al pezzo, risolto su `qui`, l'indirizzo del JS che contiene `importa`. Così in
  * `import()` entra solo il pezzo che `importa` avrebbe chiesto, dovunque la build lo metta e qualunque coda abbia `qui`.
  * Dove nel testo di `importa` non c'è un `import(` con un nome fra virgolette, la richiesta dopo è l'`import()` di prima
- * (`importa`). L'errore esce com'è.
+ * (`importa`). L'errore esce com'è. L'accento rovescio nell'espressione è scritto `\x60`: scritto com'è, chi toglie i
+ * commenti da questo file per le guardie (`senzaCommenti`) lo leggerebbe come l'inizio di un testo.
  */
 export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): () => Promise<Pezzo> {
     let tentativi = 0;
 
     return () => {
-        const nome = tentativi && /import\((["'`])(.+?)\1/.exec(String(importa));
+        const nome = tentativi && /import\((["'\x60])(.+?)\1/.exec(String(importa));
 
         return (nome ? daLi(`${new URL(nome[2]!, qui)}?r=${tentativi}`) : importa()).catch((errore: unknown) => {
             tentativi++;
