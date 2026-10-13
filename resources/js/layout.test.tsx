@@ -1025,7 +1025,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('5');
     });
 
-    it('il limite dei due workspace che il README dichiara: sotto il layout Indietro su una pagina di chi c\'era prima in un altro workspace riporta la cornice di allora, e se alla voce manca il `dopo` quello riletto, di chi è entrato, sta sotto il nome di allora (sprint 36 · T6, seconda lettura, N4; la voce #1993 lo chiude)', async () => {
+    it('il limite dei due workspace che il README dichiara: sotto il layout Indietro su una pagina di chi c\'era prima in un altro workspace riporta la cornice di allora, e se alla voce manca il `dopo` quello riletto, di chi è entrato, sta sotto il nome di allora (sprint 36 · T6, seconda lettura, N4; lo chiude la voce 1993 del backlog)', async () => {
         const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
         const altrove = datiAltroWorkspace.workspace;
         const diAdesso: DatiSubito & { sessione_il: string } = { lingua: 'es', persona: altra, workspace: altrove, sessione_il: '2026-10-13T08:00:03.000000Z' };
