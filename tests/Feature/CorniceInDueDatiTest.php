@@ -56,7 +56,7 @@ it('senza sessione, o con la sessione aperta ma senza workspace, Cornice::subito
     Http::assertNothingSent();
 });
 
-it('Cornice::dopo() dà ciò che Cornice::dati() legge dal backoffice — prodotti, aziende, non lette e il segno, in quest\'ordine — senza lingua, persona e workspace, con le letture di sempre (sprint 34 · T4.2)', function () {
+it('Cornice::dopo() dà ciò che Cornice::dati() legge dal backoffice — prodotti, aziende, non lette e il segno, in quest\'ordine — e prima il workspace di cui sono, senza lingua e persona, con le letture di sempre (sprint 34 · T4.2; review della PR #67, R6)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato();
@@ -64,8 +64,9 @@ it('Cornice::dopo() dà ciò che Cornice::dati() legge dal backoffice — prodot
     $dopo = Cornice::dopo();
 
     // Le letture di una Cornice::dati(): una per metodo, e i workspace sulle loro due pagine. dopo() non ne aggiunge.
-    expect($dopo)->toBe(array_diff_key(datiAttesi('2026-10-09T21:31:05.123456Z'), ['lingua' => true, 'persona' => true, 'workspace' => true]))
-        ->and(array_keys((array) $dopo))->toBe(['prodotti', 'aziende', 'non_lette', 'aggiornati_il'])
+    expect($dopo)->toBe(array_diff_key(datiAttesi('2026-10-09T21:31:05.123456Z'), ['lingua' => true, 'persona' => true]))
+        ->and(array_keys((array) $dopo))->toBe(['workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il'])
+        ->and(((array) $dopo)['workspace'])->toBe(((array) Cornice::subito())['workspace'])
         ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
 });
 
@@ -81,12 +82,13 @@ it('dopo una Cornice::dopo() la lingua e il nome di Cornice::subito() sono quell
         ->and([$poi['lingua'] ?? null, $poi['persona']['nome'] ?? null])->toBe(['es', 'UAT Ada Lovelace']);
 });
 
-it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà il solo non_letti, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
+it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
     backofficeDiChiHaAccettato([$percorso => nonRisponde($stato, $codice)]);
 
-    expect(Cornice::dopo())->toBe(['non_letti' => true])
+    expect(Cornice::dopo())->toBe(['non_letti' => true, 'aggiornati_il' => '2026-10-09T21:31:05.123456Z'])
         ->and(avvisiDellaRiga())->toBe(['zr-core, dati della cornice: il backoffice non ha risposto ('.$tipo.'): la cornice esce ridotta']);
 })->with([
     'io.mostra, la connessione cade' => ['/v1/io', 0, null, BackofficeNonRisponde::class],
@@ -123,13 +125,13 @@ it('con la sessione che scade mentre la cornice legge, GettoneRifiutato passa da
     expect(fn () => Cornice::dopo())->toThrow(GettoneRifiutato::class);
 });
 
-it('davanti al 403 accettazione_richiesta Cornice::dopo() dà i dati ridotti di Cornice::dati(), senza lingua, persona e workspace: nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; mai non_letti, e nessun avviso nel log (sprint 34 · T4.2, T4.7)', function (string $percorso) {
+it('davanti al 403 accettazione_richiesta Cornice::dopo() dà i dati ridotti di Cornice::dati(), senza lingua e persona: il workspace, nessuna app, nessuna azienda, zero non lette, il segno e accettazione_richiesta; mai non_letti, e nessun avviso nel log (sprint 34 · T4.2, T4.7)', function (string $percorso) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
     backofficeDiChiHaAccettato([$percorso => accettazioneRichiesta()]);
 
-    expect(Cornice::dopo())->toBe(['prodotti' => [], 'aziende' => [], 'non_lette' => 0, 'aggiornati_il' => '2026-10-09T21:31:05.123456Z', 'accettazione_richiesta' => true])
+    expect(Cornice::dopo())->toBe(['workspace' => datiAttesi('2026-10-09T21:31:05.123456Z')['workspace'], 'prodotti' => [], 'aziende' => [], 'non_lette' => 0, 'aggiornati_il' => '2026-10-09T21:31:05.123456Z', 'accettazione_richiesta' => true])
         ->and(avvisiDellaRiga())->toBe([]);
 })->with(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace']);
 

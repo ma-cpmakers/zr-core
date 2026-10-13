@@ -5232,6 +5232,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la sessione finita' => ['readme', '`GettoneRifiutato` passano, come da `Cornice::dati()`'],
     'la lingua di subito()' => ['readme', 'La lingua e il nome di `Cornice::subito()` sono quelli dell\'ingresso finché'],
     'chi manda solo cornice' => ['readme', 'chi manda solo `cornice` non cambia niente'],
+    // Review della PR #67 (R2, R3, R5, R6, R9): ciò che un frontend incontra, e il README non diceva.
+    'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
+    'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
+    'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
+    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte: si cerca di nuovo quando `dopo` è arrivato'],
+    'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
+    'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
+    'il frontend può dirlo da sé' => ['readme', '`dopo={{ non_letti: true }}`'],
+    'due letture per visita' => ['readme', 'io.mostra si legge due volte per visita'],
     'la guida: le due funzioni' => ['guida', 'rimandata con `Inertia::defer`, `Cornice::dopo()`'],
     'la guida: il rimando' => ['guida', 'README, «La cornice in due dati»'],
 ]);
