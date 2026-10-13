@@ -4270,16 +4270,19 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
 // modificati. Dalla `v2.3.0` hanno un titolo e la frase con solo chi, e nessuna destinazione: i titoli sono 44, e i 42 passano
 // al passato. Il README lo dice nel punto «Le notifiche».
 
-it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi loro titoli, che il contratto ha 39 tipi di evento e i titoli sono 44, e che non hanno una destinazione (sprint 36 · T5.4)', function (string $frase) {
+it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi loro titoli, che il contratto ha 39 tipi di evento e i titoli sono 44, e che dalla v2.7.0 aprono le Impostazioni del CRM (sprint 36 · T5.4; sprint 41 · T2.1)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
 
     expect(str_contains(puntoDelleNotifiche($readme), $frase))->toBe(true)
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 44'))->toBe(1)
-        ->and(substr_count(suUnaRiga($readme), 'i titoli erano 42'))->toBe(1);
+        ->and(substr_count(suUnaRiga($readme), 'i titoli erano 42'))->toBe(1)
+        // Sprint 41 · T2.1: il README non dice più che il CRM non ha ancora detto la pagina.
+        ->and(substr_count(suUnaRiga($readme), 'il CRM non ha ancora detto che pagina aprono'))->toBe(0);
 })->with([
     'i due tipi e i titoli' => ['Dalla `v2.3.0` hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM: `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita modificato»'],
     'quanti sono i titoli' => ['Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la menzione'],
-    'nessuna destinazione' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, non ne hanno una: il CRM non ha ancora detto che pagina aprono'],
+    'la destinazione, dalla `v2.7.0` (sprint 41 · T2.1)' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi stanno, senza un id'],
+    'gli altri tipi dei motivi (sprint 41 · T2.2)' => ['un altro tipo dei motivi di perdita, che il registro non ha, resta senza'],
 ]);
 
 // Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
@@ -5362,6 +5365,19 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Review della PR #67 (R2, R3, R5, R6, R9): ciò che un frontend incontra, e il README non diceva.
     'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
+    // Sprint 41 · T6 (review della PR #75): le chiavi nuove in fondo (R6), il segno preso prima della lettura (S1), la pagina
+    // che si rimonta (R3), il `non_letti` che non si unisce (R7), la sessione finita (R8), chi lo compone a mano (R5).
+    'non letti dice di chi è (sprint 41 · T4.5; T6, R6)' => ['readme', 'Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento, come li legge `Cornice::subito()`'],
+    'non letti: i due segni (sprint 41 · T6, S1, N1 e N3)' => ['readme', 'I due segni, `aggiornati_il` e `sessione_il`, sono l\'istante in cui la lettura è cominciata, come nei dati riusciti, e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l\'istante del fallimento) — anche quando io.mostra l\'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i dati di chi è entrato mentre il backoffice non rispondeva'],
+    'non letti: il segno della lettura (sprint 41 · T6, N3)' => ['readme', "dà `['non_letti' => true]` col segno della lettura (`aggiornati_il`)"],
+    'non letti di un\'altra persona: la pagina si rimonta (sprint 41 · T6, R3)' => ['readme', 'la cornice si rifà, e la pagina con lei — ciò che la persona stava scrivendo si perde, come per un `dopo` di un\'altra persona —, e lo stesso con un `non_letti` di un altro workspace'],
+    'non letti di chi c\'era prima non si unisce (sprint 41 · T6, R7)' => ['readme', 'Un `non_letti` di un\'altra persona più vecchio del `subito` che la pagina ha non si unisce, come un `dopo` intero: la cornice resta in attesa, senza avviso, finché non arriva un altro `dopo` (fino alla `v2.6.0` usciva «Zeiras non risponde»)'],
+    'non letti: la sessione finita (sprint 41 · T6, R8)' => ['readme', 'Se intanto la sessione è finita — chiusa, o col gettone scaduto — `Cornice::dopo()` dà `null`, come senza sessione, e nel log non scrive niente'],
+    'non letti composto a mano (sprint 41 · T4.5)' => ['readme', 'un `non_letti` composto a mano, che non dice di chi è, resta sotto il nome di `subito`'],
+    'non letti composto nella parte server (sprint 41 · T6, R5)' => ['readme', 'chi lo compone nella sua parte server lo dà come `Cornice::dopo()`, con chi è nella sessione e `sessione_il`'],
+    'la risposta in ritardo (sprint 41 · T5.1; T6, R5 e R9)' => ['readme', 'Dalla `v2.7.0` la pagina si ricarica solo se a schermo c\'è una cornice che non è di chi ha risposto: se una visita ha già portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi c\'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l\'elenco delle notifiche)'],
+    'la risposta in ritardo: senza cornice, e una terza persona (sprint 41 · T6, R1, S2 e N2)' => ['readme', 'Una pagina senza la cornice non si ricarica: lì non c\'è nessuno a schermo. Se chi ha risposto è una terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche quando a schermo c\'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione'],
+    'la risposta in ritardo: una cornice sola nel documento (sprint 41 · T6, N4)' => ['readme', 'La regola conta su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si smonta toglie chi è a schermo anche per l\'altra, e una scheda ferma lì non si ricarica'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
     // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
@@ -5376,6 +5392,9 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» riprova allo stesso indirizzo, senza coda: in Chromium non parte niente'],
     'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la cornice ha già i dati di quel workspace, resta coi dati di prima'],
     'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
+    'la guida: non_letti dice di chi è (sprint 41 · T4.5)' => ['guida', 'Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e `sessione_il`'],
+    'la guida: non_letti di un\'altra persona (sprint 41 · T6, R3)' => ['guida', 'Se è di un\'altra persona, o di un altro workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde'],
+    'la guida: non_letti composto a mano (sprint 41 · T6, R5)' => ['guida', 'Se lo componi tu nella parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale come prima, sotto il nome dei dati della sessione'],
     'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
@@ -5401,7 +5420,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'dopo dice di chi è: a mano' => ['readme', 'chi compone `dopo` a mano gli lascia `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`'],
     'dopo dice di chi è: il limite che resta' => ['readme', 'un `dopo` senza `persona` e `sessione_il` — composto a mano, o di una voce della cronologia salvata prima della `v2.4.0` — vale come prima'],
     'dopo dice di chi è: chi torna' => ['readme', 'se poi la sessione torna a chi c\'era, con Indietro su quella voce restano il suo nome e i suoi dati'],
-    'dopo dice di chi è: la pagina con lei' => ['readme', 'Solo se `dopo` è di un\'altra persona (un\'altra email: la sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei'],
+    // Sprint 41 · T6 (seconda lettura della PR #75, N5): anche un `dopo` di un altro workspace rifà la cornice.
+    'dopo dice di chi è: la pagina con lei' => ['readme', 'Solo se `dopo` è di un\'altra persona (un\'altra email: la sessione è passata a lei fra le due richieste), o di un altro workspace, la cornice si rifà, e la pagina con lei'],
     'dopo dice di chi è: la lingua' => ['readme', 'Dalla `v2.4.0` quelli riletti arrivano già con `dopo`, e la cornice li mostra da quel momento'],
     'la guida: dopo dice di chi è' => ['guida', 'Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno)'],
     // Sprint 37 · T4.6 (voce #1999): in una scheda ferma l'elenco e i risultati di un'altra persona non vanno a schermo.

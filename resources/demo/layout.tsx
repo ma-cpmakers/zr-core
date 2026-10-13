@@ -272,15 +272,16 @@ function DueDati({ visita, dopo }: Props) {
 }
 
 /**
- * Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace e
- * con chi ha letto — lingua, persona e in fondo `sessione_il`, il segno di quella lettura —, come `Cornice::dopo()`.
+ * Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno, col workspace e con chi ha letto
+ * — lingua, persona e in fondo `sessione_il`, il segno di quella lettura —, come `Cornice::dopo()`, che dalla `v2.7.0` dice di
+ * chi è anche `non_letti`.
  */
 function dopoLetto({ lingua, persona }: Pick<DatiDellaCornice, 'lingua' | 'persona'>): NonNullable<Props['dopo']> {
     const { workspace, prodotti, aziende, non_lette } = marketing;
     const aggiornati_il = istanteDellaLettura();
 
     return comeArrivaDopo === 'non_letti'
-        ? { non_letti: true, aggiornati_il }
+        ? { lingua, persona, workspace, non_letti: true, aggiornati_il, sessione_il: aggiornati_il }
         : comeArrivaDopo === 'accettazione'
           ? { lingua, persona, workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true, sessione_il: aggiornati_il }
           : { lingua, persona, workspace, prodotti, aziende, non_lette, aggiornati_il, sessione_il: aggiornati_il };

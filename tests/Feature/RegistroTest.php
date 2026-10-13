@@ -528,7 +528,7 @@ it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro d
 // si vede nella pagina della cosa più specifica a cui è attaccata — l'opportunità, poi il contatto, poi l'azienda (sprint 23 ·
 // T3; fino alla `v1.12.0` solo il contatto, `persona_id`) —, anche quando è stata eliminata.
 
-it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, col tipo intero: un contatto apre la sua pagina, una pipeline le sue impostazioni, un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
+it('nel registro le notifiche del CRM che aprono la loro risorsa sono venti, col tipo intero: un contatto apre la sua pagina, una pipeline le sue impostazioni, un motivo di perdita le Impostazioni del CRM, senza un id (sprint 41 · T2.1), un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
     $voci = registroDeiProdotti();
     $dellaNota = ['percorso' => '/opportunita/{trattativa_id}', 'altrimenti' => ['/contatti/{persona_id}', '/aziende/{organizzazione_id}']];
 
@@ -539,6 +539,9 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, 
             ['tipo' => 'com.zeiras.crm.persona.modificata', 'percorso' => '/contatti/{id}'],
             ['tipo' => 'com.zeiras.crm.pipeline.creata', 'percorso' => '/pipeline/{id}/impostazioni'],
             ['tipo' => 'com.zeiras.crm.pipeline.modificata', 'percorso' => '/pipeline/{id}/impostazioni'],
+            // Sprint 41 · T2.1 (voce #1997): i motivi di perdita stanno nelle Impostazioni del CRM (zr-crm, 13/10/2026).
+            ['tipo' => 'com.zeiras.crm.motivo.creato', 'percorso' => '/impostazioni'],
+            ['tipo' => 'com.zeiras.crm.motivo.modificato', 'percorso' => '/impostazioni'],
             ['tipo' => 'com.zeiras.crm.nota.creata'] + $dellaNota,
             ['tipo' => 'com.zeiras.crm.nota.modificata'] + $dellaNota,
             ['tipo' => 'com.zeiras.crm.nota.eliminata'] + $dellaNota,
@@ -557,7 +560,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono diciotto, 
             ['tipo' => 'crm.persona.assegnata', 'percorso' => '/contatti/{id}'],
             ['tipo' => 'crm.organizzazione.assegnata', 'percorso' => '/aziende/{id}'],
         ])
-        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; le diciotto del CRM restano com'erano.
+        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM restano com'erano (venti dalla `v2.7.0`).
         ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
@@ -582,7 +585,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
         ])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
-        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(18);
+        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(20);
 });
 
 it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ognuno con le regole di `percorso` e nessuno ripetuto, non accetta un\'altra chiave accanto, e sa che un tipo `crm.…` è del CRM e uno `board.…` di Project Management (sprint 23 · T3.6; sprint 24 · T3.5)', function () {

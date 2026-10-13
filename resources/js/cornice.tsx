@@ -4,7 +4,7 @@ import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePuli
 import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, caricaNotifiche, cerca, mostra, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -87,7 +87,7 @@ export interface DatiDellaCornice {
 export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
- * risposto. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
+ * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
  * valgono su quelli di `subito`. Tutto facoltativo: un `dopo` che non lo dice (una pagina tenuta da prima) vale come prima.
  */
 export type DatiDopo = Partial<Omit<DatiDellaCornice, 'in_attesa'>>;
@@ -421,7 +421,8 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
     }
     const deiDati = segno(dati.aggiornati_il);
 
-    return deiDati !== undefined && saputo.il !== undefined ? deiDati <= saputo.il : saputo.con === dati;
+    // Un confronto con `undefined` è sempre falso, e un segno, quando c'è, non è mai un testo vuoto.
+    return deiDati! <= saputo.il! || (!(deiDati && saputo.il) && saputo.con === dati);
 }
 
 /**
@@ -432,9 +433,7 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
  * invece sono stati letti prima che la rotta fosse chiesta, e non lo vedono di certo.
  */
 function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean {
-    const [deiDati, diAllora] = [segno(dati.aggiornati_il), segno(saputo.con.aggiornati_il)];
-
-    return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && deiDati !== undefined && diAllora !== undefined && deiDati <= diAllora);
+    return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && segno(dati.aggiornati_il)! <= segno(saputo.con.aggiornati_il)!);
 }
 
 /**
@@ -536,7 +535,7 @@ export function Cornice(props: CorniceProps) {
 }
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
-function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => window.location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
+function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -634,7 +633,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // E il workspace di cui è (`workspace`), come lo dice la parte server: quello della sessione, che non è sempre quello dei
     // dati della pagina (due schede su due workspace). `undefined` finché non si sa. Lo tiene anche `caricate`, con le non
     // lette dell'elenco: contano sulla campanella solo se l'elenco è del workspace dei dati (sotto).
-    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0, workspace: undefined });
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDellaCornice[]; richiesta: number; workspace?: string | undefined }>({ stato: 'ready', elenco: [], richiesta: 0 });
     const [caricate, setCaricate] = useState<Saputo & { nonLette: string[]; richiesta: number; workspace: string | undefined }>();
     // Che cosa dice il pulsante «Segna tutte come lette» (sotto): che la richiesta è in corso, dal clic alla risposta, e che ne
     // restano da segnare, dopo un `altre` e finché quel giro di letture non è finito — con una lettura completa, con un
@@ -653,7 +652,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
-            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa, workspace: undefined });
+            setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
         }
         const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
@@ -668,7 +667,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             },
             () => {
                 if (questa === ultimaRichiesta.current) {
-                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa, workspace: undefined });
+                    setNotifiche({ stato: 'error', elenco: [], richiesta: questa });
                 }
             },
         );
@@ -907,7 +906,12 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
     useLayoutEffect(() => {
+        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra` senza niente): la `key` è l'email, quindi
+        // questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
+        mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
+
+        return mostra;
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
@@ -944,7 +948,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
-        cerca(Array.from(parola).slice(0, 100).join(''), questa.signal, persona.email).then(
+        cerca([...parola].slice(0, 100).join(''), questa.signal, persona.email).then(
             ({ risultati, workspace }) => {
                 if (ricercaInVolo.current === questa) {
                     setRicerca({ stato: 'ready', risultati, workspace });
@@ -978,8 +982,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
-        if (notifica !== undefined && elencoDi !== undefined && risorsa !== undefined && !notifica.letta) {
-            leggi(notifica.id, elencoDi);
+        // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
+        if (risorsa !== undefined && !notifica!.letta) {
+            leggi(notifica!.id, elencoDi!);
         }
         naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
     };
@@ -998,7 +1003,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // quello di `zr-stack`, che lo mette fra due figli: il secondo è un `div` vuoto, finché l'`AppShell` non ha un posto suo
     // per un avviso (richiesta al design system).
     const vaiAllAccettazione = () => {
-        const qui = window.location.href;
+        const qui = location.href;
         naviga(dashboard.indirizzo + paginaDellAccettazione + (qui.startsWith('https://') && qui.length <= 2000 ? `?ritorno=${encodeURIComponent(qui)}` : ''));
     };
     // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di

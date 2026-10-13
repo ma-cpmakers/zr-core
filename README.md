@@ -815,7 +815,8 @@ cornice === null ? pagina : (
   dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
   tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
   ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
-  non ne hanno una: il CRM non ha ancora detto che pagina aprono), le mancano gli id di ogni percorso del suo tipo, o il
+  dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi
+  stanno, senza un id; un altro tipo dei motivi di perdita, che il registro non ha, resta senza), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
@@ -1237,6 +1238,14 @@ notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva 
 ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
+Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
+portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi
+c'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l'elenco
+delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Se chi ha risposto è una
+terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
+quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
+su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
+smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
 lette» in corso. Niente di chi è entrato va a schermo.
@@ -1344,13 +1353,26 @@ Che cosa vede la persona:
   sola ne vale due, parte, e la rotta la rifiuta con un 422;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
-  sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;
+  sessione è passata a lei fra le due richieste), o di un altro workspace, la cornice si rifà, e la pagina con lei;
 - **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
-  `['non_letti' => true]` col segno di quell'istante (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
+  `['non_letti' => true]` col segno della lettura (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
   `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
-  la sessione finita la tratta il frontend come prima;
+  li tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
+  `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento,
+  come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
+  I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
+  e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l'istante del fallimento) — anche quando
+  io.mostra l'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i
+  dati di chi è entrato mentre il backoffice non rispondeva. Se fra
+  `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
+  sua lingua, e non quelli di chi c'era prima: la cornice si rifà, e la pagina con lei — ciò che la persona stava
+  scrivendo si perde, come per un `dopo` di un'altra persona —, e lo stesso con un `non_letti` di un altro workspace.
+  Un `non_letti` di un'altra persona più vecchio del `subito` che la pagina ha non si unisce, come un `dopo` intero: la
+  cornice resta in attesa, senza avviso, finché non arriva un altro `dopo` (fino alla `v2.6.0` usciva «Zeiras non
+  risponde»). Se intanto la sessione è finita — chiusa, o col gettone scaduto — `Cornice::dopo()` dà `null`, come senza
+  sessione, e nel log non scrive niente;
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
@@ -1360,7 +1382,9 @@ usa quella e non guarda `subito` e `dopo`.
 
 Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un
 errore del frontend, un errore di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
-vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso. E un frontend che mette la lingua
+vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
+che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
+`Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
 con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e `Cornice::dopo()` lo
 rilegge nella sua: io.mostra si legge due volte per visita.
 

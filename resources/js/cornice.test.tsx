@@ -2225,15 +2225,17 @@ describe('il pannello delle notifiche', () => {
         expect(await apertiDalPannello(dati, prodotto, elenco, dellElenco)).toStrictEqual(tipi.map(([, percorso]) => nelWorkspace + percorso));
     });
 
-    // Sprint 36 · T5.3 (voce #1970): i motivi di perdita del CRM hanno un titolo, non una destinazione. Un clic apre la pagina delle
-    // notifiche, come per ogni riga che non ha dove andare: mai il CRM a tentoni, nemmeno con un id.
-    it('un clic su una notifica di un motivo di perdita del CRM apre la pagina delle notifiche, non il CRM, con o senza id (sprint 36 · T5.3)', async () => {
+    // Sprint 41 · T2.1 (voce #1997): dalla `v2.7.0` un clic su un motivo di perdita creato o modificato apre le Impostazioni del
+    // CRM nel workspace dell'elenco, con o senza id. T2.2: un altro tipo dei motivi, che il registro non ha, apre la pagina delle
+    // notifiche come ogni riga che non ha dove andare.
+    it('un clic su una notifica di un motivo di perdita del CRM, creato o modificato, apre le Impostazioni del CRM; un altro tipo dei motivi la pagina delle notifiche (sprint 41 · T2.1, T2.2)', async () => {
         const deiMotivi = [
             { id: 'uat-n91', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.creato', ids: {} },
             { id: 'uat-n90', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.modificato', ids: { id: 'uat-motivo-1' } },
+            { id: 'uat-n89', creata_il: '2026-10-06T11:55:00Z', letta: true, app: 'crm', tipo: 'com.zeiras.crm.motivo.eliminato', ids: {} },
         ];
 
-        expect(await apertiDalPannello(dati, 'crm', deiMotivi)).toStrictEqual([paginaDelleNotifiche, paginaDelleNotifiche]);
+        expect(await apertiDalPannello(dati, 'crm', deiMotivi)).toStrictEqual([`${nelCrm}/impostazioni`, `${nelCrm}/impostazioni`, paginaDelleNotifiche]);
     });
 
     it('un clic su una nota apre la cosa più specifica a cui è legata — l\'opportunità, poi il contatto, poi l\'azienda —, e senza un legame in forma la pagina delle notifiche (sprint 23 · T3.4)', async () => {
@@ -3730,6 +3732,67 @@ describe('il pannello delle notifiche', () => {
         // Il numero resta quello dei dati: niente dell'elenco di chi è entrato lo cambia.
         expect(campanella()).toBe('2');
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
+    // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
+    it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const lenta = inAttesa();
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // Una visita porta chi è entrato, sullo stesso workspace: la cornice si rifà, e poi arriva la risposta di prima.
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: grace.email }));
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('5');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    // Sprint 41 · T6 (review della PR 75, R1 e R2): «a schermo» è la cornice montata, non l'ultima disegnata. Se una visita porta
+    // una pagina senza la cornice non c'è più nessuno a schermo, e la risposta in ritardo non ricarica quella pagina.
+    it('una risposta in ritardo all\'elenco che arriva quando la cornice non è più a schermo — una visita ha portato una pagina senza cornice — non ricarica la pagina (sprint 41 · T6, R1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const lenta = inAttesa();
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
+        await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.senza-cornice')?.textContent).toBe('Una pagina senza la cornice');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    // Sprint 41 · T6 (review della PR 75, S2): conta chi ha risposto, non chi ha chiesto. Con tre persone nello stesso browser la
+    // risposta in ritardo dice una persona che non è né chi ha chiesto né chi è a schermo: la pagina si ricarica, e dopo è sua.
+    it('una risposta in ritardo all\'elenco che dice una terza persona — né chi ha chiesto né chi è a schermo — ricarica la pagina: niente di quella risposta va a schermo (sprint 41 · T6, S2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const lenta = inAttesa();
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
+        vi.stubGlobal('fetch', fetchFinto);
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // Una visita porta Grace; poi, da un'altra scheda, entra Carol, e la risposta di prima dice lei.
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'carol@example.com' }));
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+        expect(voci()).toHaveLength(0);
+        expect(campanella()).toBe('5');
     });
 
     // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è. In una scheda rimasta ferma il 403 `accettazione_richiesta` di

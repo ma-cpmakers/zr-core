@@ -378,7 +378,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
     // Sprint 36 · T5 (voce #1970): i due tipi dei motivi di perdita del CRM stanno dietro `?motivi=1`, così le pagine di prova di
     // prima restano com'erano.
-    it.each([['', false], ['&chi=1', true]])('con `?motivi=1%s` in fondo all\'elenco ci sono le due notifiche dei motivi di perdita del CRM, lette e senza id: hanno il titolo nelle tre lingue, con chi la frase, e nessuna destinazione nemmeno col CRM attivo (sprint 36 · T5.1, T5.2, T5.3)', async (inPiu, conChi) => {
+    it.each([['', false], ['&chi=1', true]])('con `?motivi=1%s` in fondo all\'elenco ci sono le due notifiche dei motivi di perdita del CRM, lette e senza id: hanno il titolo nelle tre lingue, con chi la frase, e dalla `v2.7.0` aprono le Impostazioni del CRM, se il CRM si può aprire (sprint 36 · T5.1, T5.2, T5.3)', async (inPiu, conChi) => {
         await rotte(false, `?motivi=1${inPiu}`);
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
@@ -391,7 +391,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
             ['uat-m1', 'crm', 'com.zeiras.crm.motivo.creato', true, conChi ? 'Giulia Bianchi' : null, null, {}],
             ['uat-m2', 'crm', 'com.zeiras.crm.motivo.modificato', true, conChi ? 'Giulia Bianchi' : null, null, {}],
         ]);
-        expect(notifiche.slice(-2).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([null, null]);
+        // Sprint 41 · T2.1: dalla `v2.7.0` aprono le Impostazioni del CRM; col CRM che non si può aprire, niente.
+        expect(notifiche.slice(-2).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual(['https://crm.zeiras.com/w/uat-marketing/impostazioni', 'https://crm.zeiras.com/w/uat-marketing/impostazioni']);
+        expect(notifiche.slice(-2).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo' }) ?? null)).toEqual([null, null]);
         expect(['it', 'en', 'es'].map((lingua) => notifiche.slice(-2).map((notifica) => rigaDellaNotifica(notifica, lingua)))).toEqual(conChi
             ? [
                   [{ titolo: `${isolato('Giulia Bianchi')} ha creato un motivo di perdita` }, { titolo: `${isolato('Giulia Bianchi')} ha modificato un motivo di perdita` }],
