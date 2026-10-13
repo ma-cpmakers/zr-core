@@ -839,10 +839,10 @@ cornice === null ? pagina : (
   Con due schede su due workspace la lettura parte lo stesso, ma il numero dei
   dati della pagina non scende: quella notifica non è fra le sue. Se la lettura fallisce la risorsa si è aperta lo
   stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com'era. Fa eccezione la risposta di
-  un'altra persona a una scheda rimasta ferma, che ricarica la pagina («Le rotte della cornice»). Con `window.location.assign`
-  (il `naviga` di partenza) la pagina se ne va prima della risposta, e il numero nuovo lo possono portare i dati della
-  pagina dopo: se quella li legge prima che il backoffice abbia segnato la notifica la contano ancora, fino alla visita
-  successiva. Resta in pagina con un `naviga` che non la ricarica, come la visita di Inertia dentro lo stesso modulo. A chi usa
+  un'altra persona a una scheda rimasta ferma, che ricarica la pagina («Le rotte della cornice»). Con
+  `window.location.assign` (il `naviga` di partenza) la pagina se ne va quando la destinazione arriva, e se è prima della
+  risposta il numero nuovo lo possono portare i dati della pagina dopo: se quella li legge prima che il backoffice abbia
+  segnato la notifica la contano ancora, fino alla visita successiva. Resta in pagina con un `naviga` che non la ricarica, come la visita di Inertia dentro lo stesso modulo. A chi usa
   un lettore di schermo il numero nuovo lo dice un avviso che non si vede (`role="status"`, con la classe
   `zr-visually-hidden`), accanto all'`AppShell`, che non ha un posto per dirlo: vuoto al caricamento, dice il nome della
   campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di
