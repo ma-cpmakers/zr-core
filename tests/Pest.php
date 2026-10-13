@@ -87,11 +87,12 @@ function senzaCommenti(string $codice): string
  * La lingua è quella del profilo all'ingresso: zr-auth la mette nella sessione com'è.
  *
  * @param  array{id: string, nome: string, slug: string}|null  $workspace
+ * @param  array<string, string>  $diversa  ciò che della persona è diverso da Ada (sprint 37 · T4.3)
  * @return array{accesso: string, workspace: string} i due gettoni
  */
-function sessioneAMano(?array $workspace, string $lingua = 'en'): array
+function sessioneAMano(?array $workspace, string $lingua = 'en', array $diversa = []): array
 {
-    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => $lingua, 'fuso_orario' => 'Europe/Rome'];
+    $utente = $diversa + ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => $lingua, 'fuso_orario' => 'Europe/Rome'];
     $gettoni = ['accesso' => 'zr_'.Str::random(48), 'workspace' => 'zr_'.Str::random(48)];
     $scade = now()->addHour()->toIso8601String();
     Sessione::apri(['id' => 'uat-accesso', 'gettone' => ['gettone' => $gettoni['accesso'], 'scade_il' => $scade, 'utente' => $utente]]);
