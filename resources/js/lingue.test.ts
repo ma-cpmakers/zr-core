@@ -1077,7 +1077,11 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
     it('un nome con un carattere che si vede resta com\'è, coi caratteri a larghezza zero che ha dentro: un\'emoji composta resta intera (sprint 33 · T4.2)', () => {
         const famiglia = '\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}';
 
-        expect([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', '\u{200B}A', '\u{3164}.', '\u{2800}\u{2801}'].map(nomePulito)).toStrictEqual([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', '\u{200B}A', '\u{3164}.', '\u{2800}\u{2801}']);
+        expect([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', 'Ada \u{2764}\u{FE0F}'].map(nomePulito)).toStrictEqual([famiglia, `Ada ${famiglia}`, 'Ada\u{200B}Neri', 'Ada \u{2764}\u{FE0F}']);
+        // Review della PR #66 (R6). In testa a un nome non tengono insieme niente, e l'avatar prende l'iniziale dal primo
+        // carattere: lì si tolgono, come gli spazi.
+        expect(['\u{200B}A', '\u{3164}.', '\u{2800}\u{2801}', ' \u{3164} \u{200B}Mario Rossi', `\u{3164}${famiglia}`].map(nomePulito)).toStrictEqual(['A', '.', '\u{2801}', 'Mario Rossi', famiglia]);
+        expect(riga({ tipo: modificata, autore_nome: `${'\u{3164}'.repeat(59)}Mario Rossi` }).titolo).toBe(`${isolato('Mario Rossi')} ha modificato una scheda`);
         expect(riga({ tipo: modificata, autore_nome: famiglia }).titolo).toBe(`${isolato(famiglia)} ha modificato una scheda`);
     });
 
@@ -1113,6 +1117,11 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
         it('si conta dopo la pulizia: gli spazi intorno, quelli di fila e i caratteri di direzione non contano (T2.1)', () => {
             expect(titoloDi(`  \u{202E}${'a'.repeat(30)} \n\t ${'a'.repeat(29)}\u{2069} \n`)).toBe(conIlNome(`${'a'.repeat(30)} ${'a'.repeat(29)}`));
             expect(titoloDi(` ${'a'.repeat(30)}  ${'a'.repeat(30)} `)).toBe(conIlNome(`${'a'.repeat(30)} ${'a'.repeat(28)}…`));
+        });
+
+        // Review della PR #66 (R8).
+        it('se il taglio cade dopo uno spazio, prima di «…» lo spazio non resta (T2.1)', () => {
+            expect(titoloDi(`${'a'.repeat(58)} ${'b'.repeat(10)}`)).toBe(conIlNome(`${'a'.repeat(58)}…`));
         });
 
         it('dove `Intl.Segmenter` manca si conta per punti di codice: un\'emoji di due unità non si spezza (T2.1)', () => {

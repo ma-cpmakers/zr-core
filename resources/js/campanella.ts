@@ -172,12 +172,17 @@ export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, ling
  * Il nome di chi ha fatto come sta nel titolo: oltre i 60 caratteri, i primi 59 e «…», così una notifica resta una riga che si
  * legge. Arriva già pulito (`nomePulito`), e si conta per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una
  * lettera con l'accento composto valgono uno e non si spezzano. Dove `Intl.Segmenter` manca si conta per punti di codice, e lì
- * un'emoji composta o un accento composto possono restare a metà. Il nome della cosa non passa di qui, e l'avatar nemmeno.
+ * un'emoji composta o un accento composto possono restare a metà. Prima del segno non resta uno spazio. Il nome della cosa
+ * non passa di qui, e l'avatar nemmeno.
  */
 function nomeNelTitolo(nome: string | undefined): string | undefined {
-    const caratteri = nome === undefined ? [] : Intl.Segmenter ? Array.from(new Intl.Segmenter().segment(nome), (carattere) => carattere.segment) : Array.from(nome);
+    // Un nome di 60 unità o meno non ha più di 60 caratteri: non si conta, ed è quasi ogni nome.
+    if (nome === undefined || nome.length <= 60) {
+        return nome;
+    }
+    const caratteri = Intl.Segmenter ? Array.from(new Intl.Segmenter().segment(nome), (carattere) => carattere.segment) : Array.from(nome);
 
-    return caratteri.length > 60 ? `${caratteri.slice(0, 59).join('')}…` : nome;
+    return caratteri.length > 60 ? `${caratteri.slice(0, 59).join('').trimEnd()}…` : nome;
 }
 
 /**

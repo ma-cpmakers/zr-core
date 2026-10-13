@@ -262,11 +262,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito finché la pagina non si ricarica')).toBe(1);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.201 byte: la misura, col taglio del nome di chi ha fatto e con le frasi guardate all\'arrivo (sprint 33 · T1.7, T2.4, T3.6)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 1.217 byte: la misura, col taglio del nome di chi ha fatto e con le frasi guardate all\'arrivo (sprint 33 · T1.7, T2.4, T3.6)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_201);
+        expect(gzip(campanella)).toBeLessThanOrEqual(1_217);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,2 KB (sprint 31 · T3.7)', () => {

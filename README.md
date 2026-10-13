@@ -44,7 +44,8 @@ ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una 
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
-una copia.
+una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
+notifiche in una pagina sua (vedi «Passare alla v2»).
 
 - **L'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi
   dell'ingresso di sempre tranne `Zeiras`. I componenti del design system si prendono per nome dal loro modulo,
@@ -92,7 +93,7 @@ notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno c
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
 di JS, i rimedi provvisori di tastiera (circa 1,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
-della campanella (circa 1 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
+della campanella (circa 1,2 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
 con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
@@ -125,9 +126,13 @@ Il design system è uno solo per app, quello di zr-core: il frontend non ne tien
 
 ### Passare alla v2
 
-La `v2.0.0` cambia una cosa sola per chi installa: le tre funzioni per chi mostra le notifiche in una pagina sua —
+La `v2.0.0` cambia un import per chi installa: le tre funzioni per chi mostra le notifiche in una pagina sua —
 `rigaDellaNotifica`, `titoloDellaNotifica` e `risorsaDellaNotifica` — non si importano più dai due ingressi
-(`…/resources/js` e `…/resources/js/app`) ma da `…/resources/js/frasi`. Nomi, argomenti e risultati sono quelli di prima.
+(`…/resources/js` e `…/resources/js/app`) ma da `…/resources/js/frasi`. Nomi e argomenti sono quelli di prima. I
+risultati cambiano in due casi, come nel pannello: il nome di chi ha fatto oltre i 60 caratteri esce tagliato nel titolo
+(`rigaDellaNotifica`), e un nome fatto solo di caratteri che non si vedono vale come un nome che manca (vedi «Le
+notifiche»). Chi importa `…/resources/js/frasi` da una pagina che sta nel JS d'ingresso si porta lì anche il pezzo della
+campanella: si importa da una pagina caricata a richiesta.
 
 ```diff
 -import { rigaDellaNotifica } from '../../vendor/zeiras/zr-core/resources/js/app';
@@ -585,7 +590,7 @@ cornice === null ? pagina : (
   testi. Se la lingua della persona
   cambia con l'elenco in pagina, i titoli passano alla lingua nuova quando le sue frasi sono arrivate; finché il pannello
   le aspetta, o se non arrivano, «Segna tutte come lette» non c'è. A pannello chiuso le frasi della lingua nuova non si
-  chiedono: le chiede la prossima apertura, con l'elenco.
+  chiedono: le chiede la prossima apertura, con l'elenco, e intanto la campanella tiene il suo numero.
   Nei test del frontend quei file non li serve nessuno, e un caso che apre la campanella troverebbe l'errore al posto
   dell'elenco: una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, come a una seconda
@@ -624,13 +629,16 @@ cornice === null ? pagina : (
   testo scritto a mano li conti. Dalla `v2.0.0` il nome di chi ha fatto, nel titolo, oltre i 60 caratteri è tagliato:
   i primi 59 e «…». Si conta dopo la pulizia, per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una
   lettera con l'accento composto valgono uno e non si spezzano; dove `Intl.Segmenter` manca si conta per punti di
-  codice, e lì un'emoji composta o un accento composto possono restare a metà. L'avatar dice il nome intero, e il nome
+  codice, e lì un'emoji composta o un accento composto possono restare a metà (`Intl.Segmenter` manca in Firefox prima
+  della 125, in Safari prima della 14.1 e in Chrome prima della 87). Se il taglio cade dopo uno spazio, prima del segno
+  lo spazio non resta. L'avatar dice il nome intero, e il nome
   della cosa resta intero dovunque stia. Il resto è del backoffice: i caratteri di controllo, di direzione del testo e
   a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza
   massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo rifiuta: lo
   pulisce. Dalla `v2.0.0` vale come un nome che manca anche un nome fatto solo di caratteri che non si vedono — a
   larghezza zero o riempitivi: U+200B, U+2060, U+00AD, U+3164, U+2800 —, anche misti a spazi: il titolo è senza chi,
-  con l'icona al posto dell'avatar. Da dentro un nome non si tolgono: U+200D tiene insieme un'emoji composta.
+  con l'icona al posto dell'avatar. In testa a un nome si tolgono, come gli spazi; da dentro e dalla coda no: U+200D
+  tiene insieme un'emoji composta.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il
@@ -808,7 +816,8 @@ cornice === null ? pagina : (
   primo risultato di ognuno, e dentro un gruppo i risultati nel suo ordine. Il gruppo dei membri è «Membri» (in inglese
   «Members», in spagnolo «Miembros»), con l'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il
   nome di un prodotto, né un tono. Dalla `v2.0.0` il titolo di un risultato è pulito come i nomi di una notifica: senza i
-  caratteri che cambiano la direzione del testo, con a capo e caratteri di controllo ridotti a uno spazio. Sotto il titolo sta la seconda riga: i testi di
+  caratteri che cambiano la direzione del testo, con a capo e caratteri di controllo ridotti a uno spazio; un risultato
+  senza un titolo che si vede non si mostra. Sotto il titolo sta la seconda riga: i testi di
   `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un
   contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e una cartella non hanno una
   seconda riga; un tipo che il registro non ha non si mostra. Sotto il nome di un membro sta il suo ruolo, nella lingua
@@ -1021,7 +1030,7 @@ Dalla `v1.20.0` `titoloDellaNotifica` e `rigaDellaNotifica` portano con sé le f
 sincrone e danno gli stessi testi del pannello; dalla `v2.0.0` si importano da `…/resources/js/frasi`, non più dai due
 ingressi (vedi «Passare alla v2»). Un'app che le usa in una pagina sua
 ha le frasi nel pezzo di quella pagina; un'app che non le usa non le porta, e ha solo quelle che la cornice carica a
-richiesta.
+richiesta. Se quella pagina sta nel JS d'ingresso, frasi e pezzo della campanella entrano nell'ingresso con lei.
 
 Ogni voce del registro porta due sì o no sullo stato del prodotto, e non dicono la stessa cosa. `presto` è della cornice:
 un prodotto «Presto» non c'è ancora, e la sua voce non porta da nessuna parte in nessun workspace, qualunque cosa dica il

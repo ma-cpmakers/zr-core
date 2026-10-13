@@ -225,22 +225,21 @@ const DI_DIREZIONE = /\p{Bidi_C}/gu;
 const SPAZI_E_CONTROLLI = /[ \p{Cc}\p{Zl}\p{Zp}]+/gu;
 
 /**
- * Un carattere che si vede: né uno spazio, né uno di quelli che un testo ignora (`Default_Ignorable_Code_Point`: larghezza
- * zero e riempitivi, come U+200B, U+2060, U+00AD, U+3164), né il braille vuoto, U+2800.
+ * Ciò che in testa a un nome non si vede: spazi, i caratteri che un testo ignora (`Default_Ignorable_Code_Point`: larghezza
+ * zero e riempitivi, come U+200B, U+2060, U+00AD, U+3164) e il braille vuoto, U+2800.
  */
-const SI_VEDE = /[^\s\p{DI}\u2800]/u;
+const IN_TESTA_NON_SI_VEDE = /^[\s\p{DI}\u2800]+/u;
 
 /**
  * Un nome del backoffice, pulito: lo ha scritto una persona, e fino a che il backoffice non lo rifiuta arriva com'è. Senza i
  * caratteri di direzione; a capo, tabulazioni e gli altri caratteri di controllo sono uno spazio, più spazi di fila uno solo, e
- * intorno nessuno. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto, o non ha un carattere
- * che si vede (`SI_VEDE`): è un nome che manca. Da dentro un nome i caratteri che non si vedono non si tolgono: U+200D tiene
- * insieme un'emoji composta.
+ * intorno nessuno. In testa non ha caratteri che non si vedono (`IN_TESTA_NON_SI_VEDE`): lì non tengono insieme niente, e
+ * l'avatar prende l'iniziale dal primo carattere. Da dentro un nome e dalla coda non si tolgono: U+200D tiene insieme un'emoji
+ * composta, U+FE0F la chiude. Niente (`undefined`) per ciò che non è un testo e per un nome che pulito è vuoto, come uno
+ * fatto solo di caratteri che non si vedono: è un nome che manca.
  */
 export function nomePulito(valore: unknown): string | undefined {
-    const pulito = typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').trim();
-
-    return (pulito && SI_VEDE.test(pulito) && pulito) || undefined;
+    return (typeof valore === 'string' && valore.replace(DI_DIREZIONE, '').replace(SPAZI_E_CONTROLLI, ' ').replace(IN_TESTA_NON_SI_VEDE, '').trim()) || undefined;
 }
 
 /** Il pezzo a richiesta con ciò che serve a pannello delle notifiche aperto (`./campanella`): niente finché non è arrivato. */
@@ -248,6 +247,8 @@ export let campanella: typeof import('./campanella') | undefined;
 
 /**
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
- * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede.
+ * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo chiama di nuovo
+ * `import()`. Che il browser lo richieda davvero non è detto: Chromium un `import()` fallito non lo rifà finché la pagina non
+ * si ricarica (README, «Le notifiche»).
  */
 export const chiediLaCampanella = () => import('./campanella').then((arrivata) => (campanella = arrivata));

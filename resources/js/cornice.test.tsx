@@ -3664,7 +3664,7 @@ describe('la ricerca', () => {
     });
 
     // Sprint 33 · T4.3 (voce #1910). Il titolo di un risultato lo ha scritto una persona, come i nomi di una notifica.
-    it('il titolo di un risultato della ricerca è pulito come la seconda riga: senza caratteri di direzione, con a capo e controlli ridotti a uno spazio; uno che pulito è vuoto è un titolo vuoto (sprint 33 · T4.3)', async () => {
+    it('il titolo di un risultato della ricerca è pulito come la seconda riga: senza caratteri di direzione, con a capo e controlli ridotti a uno spazio; un risultato senza un titolo che si vede non si mostra (sprint 33 · T4.3; review della PR #66, R5)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati([
             { tipo: 'board.scheda', id: '01k7b1s1', titolo: '\u{202E}Scrivere\n\til  brief\u{2066} ', contesto: { board: 'Lancio\u{202E} Q4' } },
             { tipo: 'board.scheda', id: '01k7b1s2', titolo: 'Brief \u{1F469}\u{200D}\u{1F4BB}' },
@@ -3673,8 +3673,8 @@ describe('la ricerca', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('brief');
 
-        expect(titoli()).toStrictEqual(['Scrivere il brief', 'Brief \u{1F469}\u{200D}\u{1F4BB}', '']);
-        expect(righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null)).toStrictEqual(['Lancio Q4', null, 'Brief']);
+        expect(titoli()).toStrictEqual(['Scrivere il brief', 'Brief \u{1F469}\u{200D}\u{1F4BB}']);
+        expect(righe().map((riga) => riga.querySelector('.zr-search-sub')?.textContent ?? null)).toStrictEqual(['Lancio Q4', null]);
         expect(uno('.zr-search-panel')?.textContent).not.toMatch(/[\p{Bidi_C}\p{Cc}]/u);
     });
 
@@ -5588,6 +5588,9 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         await mostra(<Cornice dati={inSpagnoloNeiDati} onLogout={esciSenzaEffetto} />);
         await act(prossimoGiro);
         expect(frasi.chiesti).not.toContain('es');
+        // Review della PR #66 (R3): i dati non dicono le non lette, e la campanella conta quelle caricate anche adesso che
+        // l'elenco non si può scrivere.
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
 
         await clic(uno('.zr-bell'));
         expect(frasi.chiesti).toContain('es');

@@ -316,7 +316,9 @@ function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDel
 function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
     const trovata = risorsePerTipo.get(risultato.tipo);
     const { id } = risultato;
-    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
+    // Il titolo lo ha scritto una persona: pulito come un nome. Senza un titolo che si vede il risultato non si mostra.
+    const title = nomePulito(risultato.titolo);
+    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id) || title === undefined) {
         return undefined;
     }
     const { dellaVoce, risorsa } = trovata;
@@ -326,8 +328,7 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     return senzaUndefined({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
-        // Lo ha scritto una persona: pulito come un nome, e vuoto se pulito non resta niente.
-        title: nomePulito(risultato.titolo) ?? '',
+        title,
         subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
         group: t[tipo],
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
@@ -698,7 +699,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         const elencoDiQuestoWorkspace = caricate !== undefined && (caricate.workspace === undefined || caricate.workspace === dati.workspace.slug);
         const nonLette = dati.non_lette === undefined ? undefined : Math.max(nonPiuRecentiDi(dati, segnate) ? 0 : dati.non_lette - tolteDaiDati, caricate !== undefined && elencoDiQuestiDati && elencoDiQuestoWorkspace ? caricate.nonLette.filter((id) => !lettaNellElenco(id)).length : 0);
 
-        // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate, che conta il design system.
+        // Con loro, il numero che la campanella mostra: quello dei dati o, senza, le non lette caricate.
         return { elenco, nonLette, sullaCampanella: nonLette ?? elenco.filter((notifica) => !notifica.letta).length };
     };
     const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
@@ -959,7 +960,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
-                unreadCount: ridotta ? 0 : nonLette,
+                // Senza il numero dei dati, quello delle non lette caricate: lo dà la cornice e non lo conta il design system
+                // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
+                unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
                 onNotificationsOpen: ridotta ? undefined : carica,
                 onRetryNotifications: ridotta ? undefined : carica,
