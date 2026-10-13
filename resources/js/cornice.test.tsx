@@ -752,6 +752,22 @@ describe('«Nuovo workspace» in fondo al selettore', () => {
 // fra le caricate. Sprint 12 · T3 (voce #1463): una notifica porta anche `tipo`, e il suo titolo è quello del tipo, dalle lingue;
 // un tipo che zr-core non conosce ha il titolo di ripiego. Con una sola non letta la campanella dice il singolare.
 describe('il pannello delle notifiche', () => {
+    it('coi dati `in_attesa` il pannello aperto è nello stato di caricamento: un `role="status"` col testo di caricamento, nessun `role="alert"` e nessun «Riprova»; coi dati `accettazione_richiesta` resta nell\'errore, col suo testo (sprint 35 · T1.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string) => risposta({ data: [] })));
+        const t = testi('it');
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(uno('.zr-notif [role="status"]')?.textContent).toBe(t.loading);
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(tutti('.zr-notif button').map((pulsante) => pulsante.textContent)).not.toContain(t.retry);
+
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t.acceptanceOff);
+        expect(uno('.zr-notif [role="status"]')).toBeNull();
+    });
+
     /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente; «adesso» è il 6 ottobre 2026 alle 12:00 UTC. */
     const adesso = new Date('2026-10-06T12:00:00Z');
     const notificheDelServer = [
@@ -4146,6 +4162,23 @@ describe('la ricerca', () => {
     // N secondi — al più 60 — la cornice non manda altre ricerche, qualunque cosa la persona scriva, e resta sull'errore; passati,
     // la prima parola scritta parte. Allo scadere non parte niente da solo. Un 429 che non dice i secondi, e ogni altro errore,
     // sono l'errore di oggi: la parola dopo parte.
+    it('coi dati `in_attesa` la ricerca con una parola è nello stato di caricamento e nessuna richiesta parte; quando arrivano i dati di sempre parte quella parola, una volta, e si leggono i suoi risultati (sprint 35 · T1.2, T1.3)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await scrivi('lancio');
+
+        expect(tutti('.zr-search-note').map((nota) => [nota.getAttribute('role'), nota.classList.contains('is-error')])).toStrictEqual([['status', false]]);
+        expect(partite(fetchFinto)).toStrictEqual([]);
+
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(giro);
+
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+        expect(tutti('.zr-search-panel [role="option"]').length).toBeGreaterThan(0);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchEmpty);
+    });
+
     describe('il freno del backoffice', () => {
         // Qui anche l'orologio è del test: i secondi del freno passano quando lo dice lui.
         beforeEach(() => {
