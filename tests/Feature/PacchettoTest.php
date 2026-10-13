@@ -5151,12 +5151,14 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima venticinque: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
+    // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
+    'le tre assegnate, da quando' => ['notifiche', 'quelle assegnate dalla `v2.1.0` («Marta Rossi ti ha assegnato l\'azienda «Acme»»)'],
     'perché gli altri no' => ['notifiche', 'Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una nota il backoffice non dà il nome (quello di un contatto è un dato personale)'],
-    // Review della PR #65 (R5): di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo dà.
-    'le assegnazioni del CRM' => ['notifiche', 'Le quattro assegnazioni del CRM non hanno ancora la loro frase col nome: di un\'azienda, un\'opportunità o un\'attività assegnata il backoffice il nome lo dà, e sta nella riga sotto il titolo'],
+    // Sprint 34 · T3.2, T3.3, T3.4 (voce #1931): il contatto assegnato resta senza nome, e senza il nome resta la frase con solo chi.
+    'le assegnazioni del CRM' => ['notifiche', 'per questo un contatto assegnato resta «Marta Rossi ti ha assegnato un contatto», e un\'azienda assegnata di cui il nome non arriva «Marta Rossi ti ha assegnato un\'azienda»'],
     'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
     'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
@@ -5184,13 +5186,29 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), delle quattro assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome'],
 ]);
 
 // Sprint 33 · T2.5 (voce #1890): dalla v2 il nome di chi ha fatto si taglia, e il README non dice più il contrario.
 it('il README non dice più che il nome di chi ha fatto non si taglia (sprint 33 · T2.5)', function () {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Il nome non si taglia'))->toBe(false);
 });
+
+// Sprint 34 · T3.4 (voce #1931): le assegnazioni di un'azienda, un'opportunità e un'attività hanno la frase col nome, e README
+// e guida non dicono più il contrario.
+it('README e guida non dicono più che le assegnazioni del CRM non hanno la frase col nome (sprint 34 · T3.4)', function (string $dove, string $frase) {
+    $testi = [
+        'notifiche' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Le notifiche'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(false);
+})->with([
+    'non hanno ancora la frase' => ['notifiche', 'non hanno ancora la loro frase col nome'],
+    'la prima venticinque' => ['notifiche', 'la prima venticinque'],
+    'la guida: il nome nella riga sotto' => ['guida', 'un\'attività assegnata il nome sta nella riga sotto'],
+]);
 
 // Sprint 34 · T1.6 (voce #1929): «Riprova» il pezzo della campanella lo richiede anche in Chromium, e il README non dice più
 // il contrario.

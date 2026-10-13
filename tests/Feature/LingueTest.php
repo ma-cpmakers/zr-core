@@ -289,8 +289,9 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * chi e che cosa (`notificationTitleWhoWhat.<tipo>`, coi posti `{who}` e `{what}`) e quella con solo chi
  * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
  * backoffice non dà il nome. Dallo sprint 31 (T1) anche i 18 tipi del CRM, con le parole di zr-crm: hanno la sola frase con chi
- * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome, e le assegnazioni non hanno ancora la frase col nome —, tranne le due della pipeline
- * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate.
+ * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome —, tranne le due della pipeline
+ * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate e, dallo sprint 34 (T3), le tre di un'azienda,
+ * un'opportunità o un'attività assegnata: l'assegnazione di un contatto resta con la sola frase con chi.
  * Con T2 anche i cinque del workspace e `com.zeiras.app.modificata`, con le parole di zr-home: ogni tipo che ha un titolo ha la
  * frase con solo chi. Di un membro il contratto non dà il nome; di un modulo dà il codice, e la cornice ne scrive il nome.
  * La tabella è scritta qui, non letta dai file delle lingue.
@@ -433,15 +434,15 @@ function frasiDelleNotificheConChi(): array
             'chi' => ['it' => '{who} ti ha assegnato un contatto', 'en' => '{who} assigned you a contact', 'es' => '{who} te ha asignado un contacto'],
         ],
         'crm.organizzazione.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'azienda «{what}»', 'en' => '{who} assigned you the company “{what}”', 'es' => '{who} te ha asignado la empresa «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'azienda', 'en' => '{who} assigned you a company', 'es' => '{who} te ha asignado una empresa'],
         ],
         'crm.trattativa.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'opportunità «{what}»', 'en' => '{who} assigned you the opportunity “{what}”', 'es' => '{who} te ha asignado la oportunidad «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'opportunità', 'en' => '{who} assigned you an opportunity', 'es' => '{who} te ha asignado una oportunidad'],
         ],
         'crm.attivita.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'attività «{what}»', 'en' => '{who} assigned you the activity “{what}”', 'es' => '{who} te ha asignado la actividad «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'attività', 'en' => '{who} assigned you an activity', 'es' => '{who} te ha asignado una actividad'],
         ],
         'com.zeiras.workspace.creato' => [
@@ -1243,7 +1244,7 @@ it('ogni lingua ha le tre frasi della riga sotto il titolo di una notifica, nel 
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e venticinque anche quella con chi e che cosa: 67 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 70 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1260,11 +1261,13 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(67)
+    expect($attese)->toHaveCount(70)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
         ->and($conLeFrasi)->toHaveCount(42)
-        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(25)
+        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
+        // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);
