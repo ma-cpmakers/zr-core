@@ -1,7 +1,8 @@
 import { act, useEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
+import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
@@ -833,6 +834,13 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(etichette()).toContain('Gestión de proyectos');
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
+    });
+
+    it('`DatiSubito` e `DatiDopo` escono da tutti e due gli ingressi, e sono i tipi di `subito` e `dopo` del layout (sprint 35 · T4.1)', () => {
+        expectTypeOf<DatiSubito>().toEqualTypeOf<NonNullable<LayoutDellaCorniceProps['subito']>>();
+        expectTypeOf<DatiDopo>().toEqualTypeOf<NonNullable<LayoutDellaCorniceProps['dopo']>>();
+        expectTypeOf<DatiSubitoDiApp>().toEqualTypeOf<DatiSubito>();
+        expectTypeOf<DatiDopoDiApp>().toEqualTypeOf<DatiDopo>();
     });
 
     it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
