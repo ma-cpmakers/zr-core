@@ -1009,8 +1009,8 @@ describe('il pannello delle notifiche', () => {
             modificata('uat-n66', { autore_nome: '  ', risorsa_nome: 'Lancio corso' }),
             modificata('uat-n67', { risorsa_nome: 'Lancio corso' }),
             modificata('uat-n68', { autore_nome: { nome: 'UAT oggetto' }, risorsa_nome: 'Lancio corso' }),
-            // Un tipo con la sola frase con chi (del CRM, sprint 31 · T1): il nome della cosa, se arriva, resta sotto. Poi un modulo, col suo nome nella frase al posto del codice (T2), e un tipo che zr-core non conosce, senza frasi.
-            conInPiu('uat-n69', { app: 'crm', tipo: 'crm.trattativa.assegnata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Rinnovo' }),
+            // Un tipo con la sola frase con chi (un contatto assegnato del CRM, sprint 31 · T1 e sprint 34 · T3.2): il nome della cosa, se arrivasse, resta sotto. Poi un modulo, col suo nome nella frase al posto del codice (T2), e un tipo che zr-core non conosce, senza frasi.
+            conInPiu('uat-n69', { app: 'crm', tipo: 'crm.persona.assegnata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'UAT Rinnovo' }),
             conInPiu('uat-n70', { app: null, tipo: 'com.zeiras.app.modificata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'pm' }),
             conInPiu('uat-n71', { tipo: 'com.zeiras.board.scheda.spostata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }),
         ]);
@@ -1020,7 +1020,7 @@ describe('il pannello delle notifiche', () => {
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
             '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', t.notificationTitle,
+            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un contatto", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', t.notificationTitle,
         ]);
         expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', null, 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
@@ -1031,7 +1031,7 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 31 · T1 (voce #1866). Anche le notifiche del CRM dicono chi ha fatto: la pipeline col suo nome nella frase, le altre
     // con solo chi. Senza chi — lo ha fatto il sistema, o la persona non è più nel workspace — resta il titolo di prima.
-    it('una notifica del CRM con chi ha per titolo la frase: la pipeline col suo nome e senza seconda riga, un contatto e un\'opportunità assegnata con solo chi; senza chi resta il titolo di prima (sprint 31 · T1.2, T1.3)', async () => {
+    it('una notifica del CRM con chi ha per titolo la frase: la pipeline col suo nome e senza seconda riga, un contatto e un\'opportunità assegnata senza nome con solo chi; un\'azienda, un\'opportunità e un\'attività assegnate col nome lo hanno nel titolo, e sotto niente; senza chi resta il titolo di prima (sprint 31 · T1.2, T1.3; sprint 34 · T3.1, T3.3)', async () => {
         const delCrm = (id: string, tipo: string, inPiu: Record<string, unknown>) => conInPiu(id, { app: 'crm', tipo, ...inPiu });
         await apriSu([
             delCrm('uat-n81', 'com.zeiras.crm.pipeline.modificata', { autore_nome: 'Giulia Bianchi', risorsa_nome: 'Vendite' }),
@@ -1041,13 +1041,20 @@ describe('il pannello delle notifiche', () => {
             delCrm('uat-n84', 'com.zeiras.crm.pipeline.modificata', { autore_nome: null, risorsa_nome: 'Vendite' }),
             delCrm('uat-n85', 'com.zeiras.crm.persona.creata', { autore_nome: '  ', risorsa_nome: null }),
             delCrm('uat-n86', 'crm.trattativa.assegnata', { risorsa_nome: null }),
+            // Sprint 34 · T3.1: le tre assegnazioni che hanno il nome lo dicono nel titolo; T3.3: senza il nome, mai le virgolette vuote.
+            delCrm('uat-n87', 'crm.organizzazione.assegnata', { autore_nome: 'Ada', risorsa_nome: 'Rossi Srl' }),
+            delCrm('uat-n88', 'crm.trattativa.assegnata', { autore_nome: 'Ada', risorsa_nome: 'Rossi Srl' }),
+            delCrm('uat-n89', 'crm.attivita.assegnata', { autore_nome: 'Ada', risorsa_nome: 'Rossi Srl' }),
+            delCrm('uat-n90', 'crm.organizzazione.assegnata', { autore_nome: 'Ada', risorsa_nome: '  ' }),
         ]);
 
         expect(titoli()).toStrictEqual([
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la pipeline «\u{2068}Vendite\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha creato un contatto', "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un'opportunità",
             'Pipeline modificata', 'Nuovo contatto', "Ti è stata assegnata un'opportunità",
+            "\u{2068}Ada\u{2069} ti ha assegnato l'azienda «\u{2068}Rossi Srl\u{2069}»", "\u{2068}Ada\u{2069} ti ha assegnato l'opportunità «\u{2068}Rossi Srl\u{2069}»", "\u{2068}Ada\u{2069} ti ha assegnato l'attività «\u{2068}Rossi Srl\u{2069}»",
+            "\u{2068}Ada\u{2069} ti ha assegnato un'azienda",
         ]);
-        expect(secondeRighe()).toStrictEqual([null, null, null, 'Vendite', null, null]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, 'Vendite', null, null, null, null, null, null]);
         expect(voci()[0].textContent?.split('Vendite')).toHaveLength(2);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»/);
     });

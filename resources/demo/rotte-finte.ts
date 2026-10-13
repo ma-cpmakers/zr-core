@@ -65,6 +65,10 @@ const frasi = new URLSearchParams(window.location.search).has('frasi');
 // azione è di due minuti fa. È come la dà la parte server: in `creata_il` c'è l'istante dell'ultima azione, e `ultima_azione_il`,
 // `azioni` e `board` del backoffice non ci sono.
 const accorpata = new URLSearchParams(window.location.search).has('accorpata');
+// Con `?conto=1` in cima all'elenco ci sono cinque notifiche di Project Management con `azioni` e `board_nome`, come li dà la
+// parte server dalla `v2.1.0` (sprint 34 · T2), per le righe che il pannello può scrivere sotto il titolo: il conto e la board;
+// la sola board; il solo conto; il nome della cosa, che resta quando chi ha fatto non c'è; e una board con un U+202E nel nome.
+const conto = new URLSearchParams(window.location.search).has('conto');
 // Con `?nomi_crm=1` in cima all'elenco ci sono cinque notifiche del CRM con chi ha fatto (sprint 32 · T4): un'azienda e
 // un'opportunità col nome, che sta nel titolo, e sotto non c'è niente; un contatto e un'attività eliminata, di cui il backoffice
 // non dà il nome, e un'azienda senza nome, come quando il CRM è spento: queste tre hanno la frase con solo chi.
@@ -88,6 +92,8 @@ const DI_UN_TIPO_NUOVO: Record<string, Record<string, string>> = {
     'crm.persona.assegnata': { id: 'uat-persona-1' },
     'crm.organizzazione.assegnata': { id: 'uat-azienda-1' },
 };
+/** Il nome delle due assegnate di `?opportunita=1` che lo hanno, con `?chi=1` (sprint 34 · T3): un'attività resta senza, e di un contatto il backoffice non lo dà. */
+const NOME_DI_UN_ASSEGNATA: Record<string, string> = { 'crm.organizzazione.assegnata': 'UAT Acme', 'crm.trattativa.assegnata': 'UAT Rinnovo 2027' };
 /** Chi ha fatto, su che cosa e per chi, quando il backoffice non li manda: la parte server li dà `null`. */
 const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null } = { autore_nome: null, risorsa_nome: null, per_me: null };
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
@@ -96,6 +102,18 @@ const notificheDiProva = [
     // Solo con `?accorpata=1`, la più recente: una lista modificata più volte dalla stessa persona, da leggere. Non ha una destinazione.
     ...(accorpata
         ? [{ id: 'uat-a1', creata_il: fa(2), letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Da fare', per_me: null, ids: {} as Record<string, string> }]
+        : []),
+    // Solo con `?conto=1`, le più recenti, la prima da leggere: quante azioni, e in quale board.
+    ...(conto
+        ? ([
+              ['uat-k1', false, 'scheda.modificata', 'Bruno Neri', 'UAT Bozza', 3, 'UAT Lancio'],
+              ['uat-k2', true, 'scheda.creata', 'Bruno Neri', 'UAT Brief', 1, 'UAT Lancio'],
+              ['uat-k3', true, 'cartella.modificata', 'Bruno Neri', 'UAT Clienti', 3, null],
+              ['uat-k4', true, 'scheda.modificata', null, 'UAT Piano', 4, 'UAT Lancio'],
+              ['uat-k5', true, 'lista.modificata', 'Bruno Neri', 'UAT Da fare', 2, 'UAT \u{202E}oicnaL'],
+          ] as [id: string, letta: boolean, tipo: string, autore_nome: string | null, risorsa_nome: string, azioni: number, board_nome: string | null][]).map(([id, letta, tipo, autore_nome, risorsa_nome, azioni, board_nome]) => (
+              { id, creata_il: fa(1), letta, app: 'pm', tipo: `com.zeiras.board.${tipo}`, autore_nome, risorsa_nome, per_me: null, azioni, board_nome, ids: {} as Record<string, string> }
+          ))
         : []),
     // Solo con `?nomi_crm=1`: cinque del CRM con chi ha fatto, le prime due da leggere e col nome della cosa.
     ...(nomiCrm
@@ -167,14 +185,14 @@ const notificheDiProva = [
         : []),
     // Solo con `?opportunita=1`, le nove notifiche dei tipi nuovi del CRM, più vecchie di tutte le altre: i cinque eventi di
     // opportunità e attività, poi le quattro che il CRM manda a chi diventa responsabile, col tipo com'è nel backoffice, senza
-    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`, che dà anche chi le ha assegnate). Portano l'id che il loro percorso chiede
+    // `com.zeiras.` davanti, e rivolte alla persona (`per_me`, con `?chi=1`, che dà anche chi le ha assegnate e, dell'azienda e dell'opportunità, il nome: sta nel titolo). Portano l'id che il loro percorso chiede
     // (`DI_UN_TIPO_NUOVO`): quello dell'opportunità, del contatto o dell'azienda; un'attività nessuno, perché apre «Da fare».
     ...(opportunita
         ? [
               'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
               'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.attivita.eliminata',
               'crm.persona.assegnata', 'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
-          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
+          ].map((tipo, indice) => ({ id: `uat-o${indice + 1}`, creata_il: fa((25 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...(tipo.endsWith('.assegnata') ? detti('Giulia Bianchi', NOME_DI_UN_ASSEGNATA[tipo] ?? null, true) : nonDetti), ids: { ...DI_UN_TIPO_NUOVO[tipo] } }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

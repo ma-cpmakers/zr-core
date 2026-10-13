@@ -62,7 +62,23 @@ export interface DatiDellaCornice {
      * pagina dell'accettazione. La parte server non manda mai `false`: vale come la chiave che manca.
      */
     accettazione_richiesta?: boolean | undefined;
+    /**
+     * `true` finché i dati letti dal backoffice non sono arrivati (dalla `v2.1.0`): lo mette `LayoutDellaCornice` quando ha
+     * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca che dicono `loading`. Se
+     * la cornice ha già dati letti di quel workspace restano quelli, finché non arrivano i nuovi.
+     */
+    in_attesa?: boolean | undefined;
+    /**
+     * `true` se la parte server non ha potuto leggere il backoffice (`Cornice::dopo()`, dalla `v2.1.0`): la cornice esce
+     * ridotta, con l'avviso `downTitle` sopra la pagina, senza pulsante. La parte server non manda mai `false`.
+     */
+    non_letti?: boolean | undefined;
 }
+
+/** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace'>;
+/** I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha risposto. */
+export type DatiDopo = Partial<Omit<DatiDellaCornice, 'lingua' | 'persona' | 'in_attesa'>>;
 
 /** Un gruppo di voci della navigazione di un prodotto, sotto il suo pulsante. */
 export interface GruppoDiVoci {
@@ -357,7 +373,7 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
 function lettiPrima(questi: DatiDellaCornice, quelli: DatiDellaCornice): boolean {
     const [diQuesti, diQuelli] = [segno(questi.aggiornati_il), segno(quelli.aggiornati_il)];
 
-    return questi.workspace.slug === quelli.workspace.slug && diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli;
+    return questi.workspace.slug === quelli.workspace.slug && (questi.in_attesa ? !quelli.in_attesa : diQuesti !== undefined && diQuelli !== undefined && diQuesti < diQuelli);
 }
 
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
@@ -507,7 +523,10 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     } else if (daAccettareCon !== undefined && !loDiceIlSegnale) {
         setDaAccettareCon(undefined);
     }
-    const ridotta = dati.accettazione_richiesta === true || loDiceIlSegnale;
+    const daAccettare = dati.accettazione_richiesta === true || loDiceIlSegnale;
+    // Ridotta anche finché i dati letti dal backoffice non arrivano (`in_attesa`) e quando la parte server non li ha potuti
+    // leggere (`non_letti`): senza moduli, con campanella e ricerca spente. L'accettazione vince su tutti e due.
+    const ridotta = daAccettare || !!(dati.in_attesa || dati.non_letti);
     // L'errore di una chiamata a una rotta della cornice: solo quel 403 porta allo stato ridotto. Che cos'altro fare
     // dell'errore lo decide chi ha chiamato, come prima.
     const seDaAccettare = (errore: unknown) => {
@@ -927,14 +946,17 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
         const qui = window.location.href;
         naviga(dashboard.indirizzo + paginaDellAccettazione + (qui.startsWith('https://') && qui.length <= 2000 ? `?ritorno=${encodeURIComponent(qui)}` : ''));
     };
-    const avvisoSopraLaPagina = (
+    // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di
+    // quello dell'accettazione: la pagina resta dov'è quando compare e quando se ne va.
+    const avvisoSopraLaPagina = daAccettare || dati.non_letti ? (
         <div className="zr-stack">
-            <Alert tone="warning" title={t.acceptanceTitle} action={<Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button>}>
-                {t.acceptanceText}
+            <Alert tone="warning" title={daAccettare ? t.acceptanceTitle : t.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button> : undefined}>
+                {daAccettare ? t.acceptanceText : t.downText}
             </Alert>
             <div />
         </div>
-    );
+    ) : null;
+    const spenta = daAccettare ? t.acceptanceOff : dati.in_attesa ? t.loading : t.downOff;
 
     const shell = (
         <AppShell
@@ -956,7 +978,12 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
                 // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama
-                // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. Le voci del modulo, il
+                // nessuna delle sue rotte. L'avviso sta sopra la pagina, nel margine: `flush` non vale. In attesa dei dati del
+                // backoffice (`in_attesa`) l'avviso non c'è, e allora `flush` vale — la pagina non cambia forma quando arrivano — e
+                // la campanella tiene il gestore dell'apertura: aperta in attesa chiede l'elenco, e il pannello lo mostra quando
+                // arrivano (l'`AppShell` avvisa solo al clic che apre: senza, resterebbe vuoto). Quello di «Riprova» no: il
+                // pannello in attesa è nello stato d'errore, e l'`AppShell` ci scriverebbe il pulsante. La ricerca nemmeno: nello
+                // stato ridotto la cornice la dimentica (sopra). Le voci del modulo, il
                 // «+» e il resto restano quelli che la pagina dà. La pagina è sempre il secondo figlio, con l'avviso o senza:
                 // è per questo che non si rimonta.
                 product: ridotta ? undefined : aperto?.id,
@@ -964,13 +991,13 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
-                onNotificationsOpen: ridotta ? undefined : carica,
                 onRetryNotifications: ridotta ? undefined : carica,
+                onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
                 onSearch: ridotta ? undefined : cercaParola,
-                flush: ridotta ? undefined : pagina.flush,
-                children: <>{ridotta ? avvisoSopraLaPagina : null}{pagina.children}</>,
+                flush: avvisoSopraLaPagina ? undefined : pagina.flush,
+                children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
             user={dati.persona.nome}
@@ -1001,7 +1028,7 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
             // accettato i documenti legali, la frase di zr-core al posto dei tre testi che pannello e ricerca mostrerebbero:
             // l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore della ricerca.
             labels={ridotta
-                ? { ...t, ...dellaRicerca, notificationsError: t.acceptanceOff, searchHint: t.acceptanceOff, searchError: t.acceptanceOff }
+                ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
                 : { ...t, ...dellaRicerca, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}

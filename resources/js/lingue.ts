@@ -59,6 +59,16 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      */
     acceptanceOff: string;
     /**
+     * Il titolo dell'avviso che la cornice mette sopra la pagina quando la parte server non ha potuto leggere il backoffice
+     * (`Cornice::dopo()` con `non_letti`, dalla `v2.1.0`): l'avviso non ha un pulsante, perché non c'è niente da fare se non
+     * riprovare.
+     */
+    downTitle: string;
+    /** La frase dello stesso avviso: che cosa manca, e che torna da sé. */
+    downText: string;
+    /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
+    downOff: string;
+    /**
      * Il pulsante «Salta al contenuto», il primo elemento della cornice da tastiera: porta il fuoco al contenuto della pagina.
      * L'`AppShell` non ne ha uno suo: finché non lo porta lo scrive la cornice, coi pezzi del design system (README, «La cornice»).
      */
@@ -97,6 +107,12 @@ export type FrasiDelleNotifiche = {
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
     /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
+    /**
+     * La riga sotto il titolo quando lì non c'è il nome della cosa: quante azioni la notifica racconta e in quale board sta la
+     * cosa (`notificationUnder.countBoard`, con `{n}` e `{board}`), il solo conto (`notificationUnder.count`), la sola board
+     * (`notificationUnder.board`).
+     */
+    [diSotto: `notificationUnder.${string}`]: string | undefined;
 };
 
 /** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */
@@ -246,9 +262,37 @@ export function nomePulito(valore: unknown): string | undefined {
 export let campanella: typeof import('./campanella') | undefined;
 
 /**
- * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
- * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo chiama di nuovo
- * `import()`. Che il browser lo richieda davvero non è detto: Chromium un `import()` fallito non lo rifà finché la pagina non
- * si ricarica (README, «Le notifiche»).
+ * Chi chiede un pezzo a richiesta, anche dopo che non è arrivato. In Chromium un `import()` che non è arrivato resta fallito,
+ * per quell'indirizzo, finché la pagina non si ricarica (provato il 13/10/2026 con la 151): chiamarlo di nuovo non fa
+ * partire niente. Per questo, dopo un pezzo non arrivato, la richiesta dopo lo importa dal suo indirizzo con una coda diversa
+ * a ogni tentativo (`?r=1`, `?r=2`), e il browser lo richiede; è lo stesso file, e ciò che importa lui — l'ingresso — resta
+ * quello già in pagina. L'indirizzo è quello che dice l'errore del browser, il primo nel suo messaggio e senza la coda, e
+ * vale solo se è di `origine`, quella di questo JS: un altro indirizzo letto da un messaggio non entra mai in `import()`.
+ * Dove l'errore non lo dice la richiesta dopo è l'`import()` di prima (`importa` senza niente). L'errore esce com'è.
  */
-export const chiediLaCampanella = () => import('./campanella').then((arrivata) => (campanella = arrivata));
+export function pezzoARichiesta<Pezzo>(importa: (daQui?: string) => Promise<Pezzo>, origine: string): () => Promise<Pezzo> {
+    let nonArrivato: string | undefined;
+    let tentativi = 0;
+
+    return () =>
+        importa(nonArrivato && `${nonArrivato}?r=${++tentativi}`).catch((errore: unknown) => {
+            const [indirizzo] = /https?:[^\s?#]+/.exec(String(errore)) ?? [];
+            if (indirizzo?.startsWith(`${origine}/`)) {
+                nonArrivato = indirizzo;
+            }
+            throw errore;
+        });
+}
+
+const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(
+    (daQui) => (daQui === undefined ? import('./campanella') : import(/* @vite-ignore */ daQui)),
+    new URL(import.meta.url).origin,
+);
+
+/**
+ * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
+ * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
+ * Chromium (`pezzoARichiesta`; README, «Le notifiche»). Arrivato, non si chiede più: dopo un tentativo fallito ogni richiesta
+ * avrebbe una coda nuova, e il browser lo scaricherebbe e lo valuterebbe da capo, con la memoria delle frasi vuota.
+ */
+export const chiediLaCampanella = async () => (campanella ??= await ilPezzoDellaCampanella());

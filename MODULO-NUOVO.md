@@ -57,7 +57,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   che cosa (chiave `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`) e una con solo chi
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca, ed è la sola per un tipo di cui il
   backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome
-  di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un'azienda, un'opportunità o un'attività assegnata il nome sta nella riga sotto, di un contatto non c'è — README, «La cornice», al punto «Le notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
+  di un contatto è un dato personale): per questo delle quattro
+  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
   (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li chiede con `fetch` quando si apre la campanella:
   nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto
@@ -290,6 +291,12 @@ accettato i documenti legali».
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
 richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
+
+**In due dati**, dalla `v2.1.0`: se non vuoi che la pagina aspetti il backoffice prima del primo disegno, dai al layout
+`Cornice::subito()` (la sola sessione, nessuna chiamata) e, rimandata con `Inertia::defer`, `Cornice::dopo()`, come
+`subito` e `dopo` al posto di `cornice`. Finché `dopo` non arriva la cornice è ridotta e senza avviso; se il backoffice non
+risponde `Cornice::dopo()` non lancia e dà `non_letti`, la cornice resta ridotta con un avviso suo, e la tua pagina resta
+dov'è, con ciò che la persona stava scrivendo — README, «La cornice in due dati».
 
 ## 7. La cornice montata una volta sola
 

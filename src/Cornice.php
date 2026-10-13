@@ -102,6 +102,64 @@ final class Cornice
     }
 
     /**
+     * La parte dei dati che sta nella sessione — lingua, persona, workspace —, per il frontend che non vuole aspettare il
+     * backoffice prima del primo disegno (dalla `v2.1.0`): il resto lo dà `dopo()`, che può arrivare più tardi. Non chiama mai
+     * il backoffice, nemmeno per rileggere la lingua: lingua e nome sono quelli dell'ingresso finché una `dopo()`, una
+     * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi. null senza sessione o
+     * senza workspace, come `dati()`.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}}|null
+     */
+    public static function subito(): ?array
+    {
+        $utente = Sessione::utente();
+        $workspace = Sessione::workspace();
+
+        if ($utente === null || $workspace === null) {
+            return null;
+        }
+
+        return [
+            'lingua' => $utente['lingua'],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
+            'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
+        ];
+    }
+
+    /**
+     * La parte dei dati che si legge dal backoffice, senza lingua e persona, che dà `subito()`: le stesse letture di `dati()`,
+     * e gli stessi dati ridotti davanti al 403 `accettazione_richiesta`. Il workspace resta: dice di quale workspace sono
+     * questi dati, letti in una richiesta che non è quella di `subito()` (fra le due la sessione può essere passata a un
+     * altro, da un'altra scheda), e nel browser vale su quello di `subito()`. Se il backoffice non risponde — la
+     * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno di quell'istante, lascia nel log una riga
+     * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Il segno serve al browser come
+     * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
+     * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
+     *
+     * @return array{workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|array{non_letti: true, aggiornati_il: string}|null
+     */
+    public static function dopo(): ?array
+    {
+        try {
+            $dati = self::dati();
+        } catch (BackofficeNonRisponde|ErroreApi $errore) {
+            if ($errore instanceof ErroreApi && $errore->stato < 500 && $errore->stato !== 429) {
+                throw $errore;
+            }
+            self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
+
+            return ['non_letti' => true, 'aggiornati_il' => Segno::adesso()];
+        }
+
+        if ($dati === null) {
+            return null;
+        }
+        unset($dati['lingua'], $dati['persona']);
+
+        return $dati;
+    }
+
+    /**
      * Ciò che dei dati si legge dopo io.mostra — lo stato di ogni app nel workspace (app.elenca) e le aziende della persona —,
      * con le non lette già contate. null se a una di quelle letture il backoffice risponde col 403 `accettazione_richiesta`
      * (Accettazione): da lì non lo si chiama più, e ciò che era già letto non esce.
@@ -235,13 +293,13 @@ final class Cornice
     }
 
     /**
-     * L'avviso per l'errore che `lingua()` prende e non lancia. Dell'errore dice solo il tipo: il suo messaggio può portare
-     * l'indirizzo del backoffice. Un log che non scrive non ferma la lingua della pagina.
+     * L'avviso per l'errore che `lingua()` o `dopo()` prendono e non lanciano. Dell'errore dice solo il tipo, al posto di
+     * `%s`: il suo messaggio può portare l'indirizzo del backoffice. Un log che non scrive non ferma la pagina.
      */
-    private static function avvisa(BackofficeNonRisponde|ErroreApi $errore): void
+    private static function avvisa(BackofficeNonRisponde|ErroreApi $errore, string $riga = 'lingua della pagina: la lettura di io.mostra è fallita (%s): resta la lingua della sessione'): void
     {
         try {
-            Log::warning('zr-core, lingua della pagina: la lettura di io.mostra è fallita ('.get_debug_type($errore).'): resta la lingua della sessione');
+            Log::warning('zr-core, '.sprintf($riga, get_debug_type($errore)));
         } catch (Throwable) {
             // La riga non lancia.
         }

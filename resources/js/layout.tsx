@@ -1,5 +1,5 @@
 import { createContext, useContext, useLayoutEffect, useReducer } from 'react';
-import { Cornice, type CorniceProps, type DatiDellaCornice } from './cornice';
+import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
 
 // Il layout della cornice per i frontend con Inertia. Il modulo lo rende dal suo layout (un componente a livello di modulo,
 // dato a `createInertiaApp({ layout })`) e la cornice resta montata mentre la pagina cambia: il testo scritto nella ricerca, il
@@ -11,6 +11,16 @@ import { Cornice, type CorniceProps, type DatiDellaCornice } from './cornice';
 export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     /** I dati della parte server (`Cornice::dati()`), come arrivano fra le props della pagina. Senza (`null`, o la prop che manca) la pagina si vede da sola. */
     cornice?: DatiDellaCornice | null | undefined;
+    /**
+     * Al posto di `cornice` (dalla `v2.1.0`): i dati che la parte server legge dalla sola sessione (`Cornice::subito()`), che
+     * ci sono dal primo disegno. Con questi la cornice è montata subito, ridotta finché `dopo` non arriva. Se c'è `cornice`, vale `cornice`.
+     */
+    subito?: DatiSubito | null | undefined;
+    /**
+     * I dati che la parte server legge dal backoffice (`Cornice::dopo()`): possono arrivare dopo il primo disegno (con Inertia,
+     * una prop rimandata), e quando arrivano la cornice diventa quella di sempre senza che la pagina si rimonti.
+     */
+    dopo?: DatiDopo | null | undefined;
 }
 
 const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'actions', 'flush'] as const;
@@ -38,8 +48,10 @@ function datoDallaPagina(prima: CorniceDellaPagina, adesso: CorniceDellaPagina):
 /** Come la pagina scrive nel layout ciò che dà alla cornice. Solo la funzione, che è sempre la stessa: mai lo stato, o la pagina si renderebbe a ogni cambio della cornice. */
 const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) => void) | null>(null);
 
-export function LayoutDellaCornice({ cornice, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
-    if (cornice === null || cornice === undefined) {
+export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
+    // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
+    const cornice = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
+    if (!cornice) {
         return children;
     }
 

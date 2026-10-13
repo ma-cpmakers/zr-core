@@ -2,7 +2,7 @@
 import '../zeiras/bundle.css';
 import '../css/zeiras-token.css';
 import { createInertiaApp, http, router } from '@inertiajs/react';
-import { useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
@@ -61,6 +61,9 @@ const vociDellaLunga: GruppoDiVoci[] = [
 /** Ciò che il «server» dà a ogni pagina: i dati della cornice, la cartella della «Percorso» e il numero della visita. */
 interface Props {
     cornice: DatiDellaCornice | null;
+    /** Solo la «Due dati»: i dati della sessione, e quelli del backoffice quando arrivano (sprint 34 · T4). */
+    subito?: LayoutDellaCorniceProps['subito'];
+    dopo?: LayoutDellaCorniceProps['dopo'];
     cartella?: string;
     visita?: number;
 }
@@ -219,7 +222,54 @@ function NessunaAttiva({ visita }: Props) {
     );
 }
 
-const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva };
+// Sprint 34 · T4 (voce #1932): la cornice in due dati. Il «server» dà subito i dati della sessione (`subito`) e non quelli del
+// backoffice (`dopo`): la pagina li chiede lei con un ricaricamento parziale di Inertia, come fa Inertia per una prop
+// rimandata, e arrivano dopo l'attesa della visita (`?lenta=`, in millisecondi). Con `?dopo=mai` non li chiede: la cornice
+// resta in attesa. Con `?dopo=non_letti` il backoffice non ha risposto, con `?dopo=accettazione` ha risposto col 403 di chi
+// non ha accettato i documenti legali. Il campo serve a vedere che ciò che si scrive resta quando `dopo` arriva.
+const comeArrivaDopo = new URLSearchParams(window.location.search).get('dopo');
+let chiestoDopo = false;
+
+function DueDati({ visita, dopo }: Props) {
+    const contatori = useContatori();
+    useEffect(() => {
+        if (dopo === undefined && comeArrivaDopo !== 'mai') {
+            chiestoDopo = true;
+            router.reload({ only: ['dopo'] });
+        }
+    }, [dopo]);
+
+    return (
+        <>
+            <h1>UAT Due dati</h1>
+            <p>
+                UAT visita {visita}. Il layout riceve subito e dopo al posto di cornice. I dati del backoffice:{' '}
+                <output data-uat="dopo">{dopo === undefined || dopo === null ? 'in attesa' : dopo.non_letti ? 'non letti' : dopo.accettazione_richiesta ? 'da accettare' : 'arrivati'}</output>.
+            </p>
+            <p>
+                <label>
+                    UAT campo di prova <input data-uat="campo" type="text" />
+                </label>
+            </p>
+            {contatori}
+            <Collegamenti />
+        </>
+    );
+}
+
+/** Ciò che il «server» legge dal backoffice per la «Due dati», secondo `?dopo=`: col segno e, se ha risposto, col workspace, come `Cornice::dopo()`. */
+function dopoLetto(): NonNullable<Props['dopo']> {
+    const { workspace, prodotti, aziende, non_lette } = marketing;
+    const aggiornati_il = istanteDellaLettura();
+
+    return comeArrivaDopo === 'non_letti'
+        ? { non_letti: true, aggiornati_il }
+        : comeArrivaDopo === 'accettazione'
+          ? { workspace, prodotti: [], aziende: [], non_lette: 0, aggiornati_il, accettazione_richiesta: true }
+          : { workspace, prodotti, aziende, non_lette, aggiornati_il };
+}
+
+const pagine = { lunga: Lunga, corta: Corta, 'altro-workspace': AltroWorkspace, 'senza-dati': SenzaDati, percorso: Percorso, 'nessuna-attiva': NessunaAttiva, 'due-dati': DueDati };
 type Nome = keyof typeof pagine;
 
 const propsDi: Record<Nome, Props> = {
@@ -229,6 +279,7 @@ const propsDi: Record<Nome, Props> = {
     'senza-dati': { cornice: null },
     percorso: { cornice: marketing, cartella: 'UAT Q4' },
     'nessuna-attiva': { cornice: marketing },
+    'due-dati': { cornice: null, subito: { lingua: marketing.lingua, persona: marketing.persona, workspace: marketing.workspace } },
 };
 
 /** Quanto aspetta la risposta di una visita lenta, in millisecondi: il tempo di fare altro sulla pagina prima che arrivi. */
@@ -240,7 +291,7 @@ const attesaLenta = 6000;
  */
 function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
-    for (const parametro of ['segno', 'non_lette']) {
+    for (const parametro of ['segno', 'non_lette', 'dopo']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);
@@ -264,7 +315,11 @@ const paginaDellIndirizzo = () => paginaDi(window.location.search);
 
 /** Ciò che il «server» legge per una pagina, quando la visita gli arriva: i dati di una lettura nuova (col segno, salvo `?segno=no`). */
 function leggi(nome: Nome): Props {
-    return lettura(propsDi[nome], segno);
+    // La richiesta che la «Due dati» fa dopo il primo disegno porta anche ciò che il «server» ha letto dal backoffice.
+    const delBackoffice = nome === 'due-dati' && chiestoDopo ? { dopo: dopoLetto() } : {};
+    chiestoDopo = false;
+
+    return { ...lettura(propsDi[nome], segno), ...delBackoffice };
 }
 
 /**
@@ -307,7 +362,7 @@ function Collegamenti() {
 // accetta `tsc` si ferma col file stretto, e se ne nasce una che qui manca si ferma anche con quello di base.
 type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;
 const propsScritteUndefined = {
-    cornice: undefined, product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined,
+    cornice: undefined, subito: undefined, dopo: undefined, product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined,
     create: undefined, actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
 } satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;
 
@@ -315,11 +370,13 @@ const propsScritteUndefined = {
  * Il layout della pagina di prova, come quello di un frontend: un componente a livello di modulo, dato a `createInertiaApp`.
  * Di ciò che Inertia gli passa (le props della pagina, e quelle di `Percorso.layout`) prende per nome i dati e il percorso.
  */
-function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'cornice' | 'crumbs' | 'children'>) {
+function Layout({ cornice, subito, dopo, crumbs, children }: Pick<LayoutDellaCorniceProps, 'cornice' | 'subito' | 'dopo' | 'crumbs' | 'children'>) {
     return (
         <LayoutDellaCornice
             {...propsScritteUndefined}
             cornice={cornice}
+            subito={subito}
+            dopo={dopo}
             product="pm"
             nav={vociDelLayout}
             active="oggi"
@@ -334,7 +391,7 @@ function Layout({ cornice, crumbs, children }: Pick<LayoutDellaCorniceProps, 'co
 
 // La «sessione» è nel workspace della pagina che l'indirizzo dice: cambia con la visita, anche con Indietro. Le due rotte delle
 // notifiche dicono quando sull'orologio dei dati, come la parte server; con `?segno=no` non hanno un orologio.
-rotteFinte(() => propsDi[paginaDellIndirizzo()].cornice?.workspace.slug, segno ? istanteDellaLettura : undefined);
+rotteFinte(() => (propsDi[paginaDellIndirizzo()].cornice ?? propsDi[paginaDellIndirizzo()].subito)?.workspace.slug, segno ? istanteDellaLettura : undefined);
 
 // La parte server, finta: ogni visita di Inertia arriva qui. I dati si leggono subito, quando la visita arriva, come fa una
 // parte server vera: il segno è di quell'istante, e una risposta che parte dopo porta i dati di allora. La risposta è la pagina

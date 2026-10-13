@@ -20,6 +20,10 @@ export interface NotificaDellaCornice {
     risorsa_nome?: string | null;
     /** `true` se è rivolta alla persona, `false` se è per tutto il workspace, `null` se il backoffice non lo sa: `null` non è `false`. */
     per_me?: boolean | null;
+    /** Quante azioni la notifica racconta: un intero da 1 in su. Una parte server di prima della `v2.1.0` non lo dà, ed è una sola. */
+    azioni?: number;
+    /** Il nome della board in cui sta la cosa (una scheda, una lista…), com'è nel backoffice: `null` se la cosa non sta in una board, o se il backoffice non lo dice. */
+    board_nome?: string | null;
     /**
      * Gli id che servono ad aprire la risorsa della notifica (`destinazioneDellaNotifica`), per chiave (`id`, `persona_id`…): dei
      * `dati` dell'evento la parte server dà solo quelli del percorso che si apre — il primo del suo tipo, nel registro, che

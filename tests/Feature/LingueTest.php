@@ -91,7 +91,8 @@ function lingueDellaCornice(): array
 
 /**
  * Cosa non torna fra i due file di ogni lingua (sprint 30 · T1.9): i testi della cornice stanno in resources/lingue, le frasi
- * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` — in
+ * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` e,
+ * dallo sprint 34 · T2, le tre della riga sotto il titolo, `notificationUnder.<quale>` — in
  * resources/lingue/notifiche, e la cornice le carica quando si apre la campanella. `notificationTitle` da solo è il titolo di
  * ripiego e resta fra i testi: serve anche a chi le frasi non le ha ancora.
  *
@@ -101,7 +102,7 @@ function lingueDellaCornice(): array
  */
 function problemiDeiDueFile(array $testi, array $frasi): array
 {
-    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notificationTitle(Who(What)?)?\../', $chiave) === 1;
+    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What)?)?|Under)\../', $chiave) === 1;
 
     $problemi = [];
     foreach (array_diff(array_keys($testi), array_keys($frasi)) as $codice) {
@@ -288,8 +289,9 @@ function chiaviDeiTitoliDelleNotifiche(): array
  * chi e che cosa (`notificationTitleWhoWhat.<tipo>`, coi posti `{who}` e `{what}`) e quella con solo chi
  * (`notificationTitleWho.<tipo>`, col solo `{who}`). Un tipo `….eliminata` ha solo la seconda: di una cosa eliminata il
  * backoffice non dà il nome. Dallo sprint 31 (T1) anche i 18 tipi del CRM, con le parole di zr-crm: hanno la sola frase con chi
- * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome, e le assegnazioni non hanno ancora la frase col nome —, tranne le due della pipeline
- * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate.
+ * — il nome di un contatto è un dato personale, di una nota il contratto non dà il nome —, tranne le due della pipeline
+ * e, dallo sprint 32 (T4), le sei di aziende, opportunità e attività create o modificate e, dallo sprint 34 (T3), le tre di un'azienda,
+ * un'opportunità o un'attività assegnata: l'assegnazione di un contatto resta con la sola frase con chi.
  * Con T2 anche i cinque del workspace e `com.zeiras.app.modificata`, con le parole di zr-home: ogni tipo che ha un titolo ha la
  * frase con solo chi. Di un membro il contratto non dà il nome; di un modulo dà il codice, e la cornice ne scrive il nome.
  * La tabella è scritta qui, non letta dai file delle lingue.
@@ -432,15 +434,15 @@ function frasiDelleNotificheConChi(): array
             'chi' => ['it' => '{who} ti ha assegnato un contatto', 'en' => '{who} assigned you a contact', 'es' => '{who} te ha asignado un contacto'],
         ],
         'crm.organizzazione.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'azienda «{what}»', 'en' => '{who} assigned you the company “{what}”', 'es' => '{who} te ha asignado la empresa «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'azienda', 'en' => '{who} assigned you a company', 'es' => '{who} te ha asignado una empresa'],
         ],
         'crm.trattativa.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'opportunità «{what}»', 'en' => '{who} assigned you the opportunity “{what}”', 'es' => '{who} te ha asignado la oportunidad «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'opportunità', 'en' => '{who} assigned you an opportunity', 'es' => '{who} te ha asignado una oportunidad'],
         ],
         'crm.attivita.assegnata' => [
-            'chiECosa' => null,
+            'chiECosa' => ['it' => '{who} ti ha assegnato l\'attività «{what}»', 'en' => '{who} assigned you the activity “{what}”', 'es' => '{who} te ha asignado la actividad «{what}»'],
             'chi' => ['it' => '{who} ti ha assegnato un\'attività', 'en' => '{who} assigned you an activity', 'es' => '{who} te ha asignado una actividad'],
         ],
         'com.zeiras.workspace.creato' => [
@@ -546,6 +548,22 @@ function italianoAtteso(): array
 }
 
 /**
+ * Le tre frasi della riga sotto il titolo di una notifica (sprint 34 · T2, voce #1930): quante azioni racconta e in quale board
+ * sta la cosa, il solo conto, la sola board. `{n}` è il conto, da due in su; `{board}` il nome della board, che la cornice
+ * pulisce e isola. Le parole sono di zr-board. Scritte qui, non lette dai file delle lingue.
+ *
+ * @return array<string, array{it: string, es: string, en: string}>
+ */
+function frasiSottoIlTitolo(): array
+{
+    return [
+        'notificationUnder.countBoard' => ['it' => '{n} volte, nella board «{board}»', 'es' => '{n} veces, en el tablero «{board}»', 'en' => '{n} times, on the board “{board}”'],
+        'notificationUnder.count' => ['it' => '{n} volte', 'es' => '{n} veces', 'en' => '{n} times'],
+        'notificationUnder.board' => ['it' => 'Nella board «{board}»', 'es' => 'En el tablero «{board}»', 'en' => 'On the board “{board}”'],
+    ];
+}
+
+/**
  * Cosa non torna nelle tre lingue di partenza: un testo che manca, una chiave che non è della cornice, un testo vuoto, un testo
  * italiano diverso da quello atteso (`italianoAtteso()`), un prodotto che ha per id una chiave dei testi dell'`AppShell` (il suo
  * nome finirebbe anche lì).
@@ -559,11 +577,11 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $prodotti ??= idDeiProdotti();
     $chiavi = [
         ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
-        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'skipToContent',
+        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'skipToContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
-        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...$prodotti, ...tipiDiRisorsa(),
+        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...array_keys(frasiSottoIlTitolo()), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
         // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
         ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
@@ -835,7 +853,7 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
-        'es' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novedades en el workspace'],
+        'es' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novedades en el workspace', 'notificationUnder.count' => '{n} veces'],
         'en' => ['dashboard' => 'Dashboard', 'notificationTitle.com.zeiras.board.scheda.creata' => 'New card'],
     ];
     $frasi = [
@@ -848,6 +866,7 @@ it('il controllo dei due file trova una lingua con un file solo, una frase rimas
         'es: non ha il file delle frasi',
         'fr: non ha il file dei testi',
         'it: «notificationTitleWho.board.scheda.assegnata» è una frase delle notifiche e sta fra i testi',
+        'es: «notificationUnder.count» è una frase delle notifiche e sta fra i testi',
         'en: «notificationTitle.com.zeiras.board.scheda.creata» è una frase delle notifiche e sta fra i testi',
         'it: «notificationTitle» non è una frase delle notifiche e sta fra le frasi',
         'en: «unreadOne» non è una frase delle notifiche e sta fra le frasi',
@@ -906,6 +925,26 @@ it('i quattro testi di chi non ha accettato i documenti legali ci sono nelle tre
     ]],
     'il pulsante dell\'avviso' => ['acceptanceAction', ['Vai ai documenti', 'Go to the documents', 'Ir a los documentos']],
     'campanella e ricerca spente' => ['acceptanceOff', ['Non disponibile finché non accetti i documenti.', 'Not available until you accept the documents.', 'No disponible hasta que aceptes los documentos.']],
+]);
+
+// Sprint 34 · T4 (voce #1932): quando la parte server non ha potuto leggere il backoffice (`Cornice::dopo()` con `non_letti`)
+// la cornice esce ridotta con un avviso suo, senza pulsante. I tre testi sono di zr-core, e non parlano di documenti: non è
+// lo stato di chi non ha accettato.
+it('i tre testi di quando Zeiras non risponde ci sono nelle tre lingue, sono di zr-core e nessuno parla di documenti (sprint 34 · T4.6)', function (string $chiave, array $attesi) {
+    $lingue = lingueDellaCornice();
+    $nelleTre = [$lingue['it'][$chiave] ?? null, $lingue['en'][$chiave] ?? null, $lingue['es'][$chiave] ?? null];
+
+    expect($nelleTre)->toBe($attesi)
+        ->and(chiaviDiAppShellLabels())->not->toContain($chiave)
+        ->and(array_filter($attesi, fn (string $testo): bool => preg_match('/document/iu', $testo) === 1))->toBe([]);
+})->with([
+    'il titolo dell\'avviso' => ['downTitle', ['Zeiras non risponde', 'Zeiras is not responding', 'Zeiras no responde']],
+    'la frase dell\'avviso' => ['downText', [
+        'Moduli, notifiche e ricerca tornano quando Zeiras risponde. Riprova fra poco.',
+        'Modules, notifications and search come back when Zeiras responds. Try again shortly.',
+        'Los módulos, las notificaciones y la búsqueda vuelven cuando Zeiras responda. Inténtalo de nuevo en breve.',
+    ]],
+    'campanella e ricerca spente' => ['downOff', ['Non disponibile finché Zeiras non risponde.', 'Not available until Zeiras responds.', 'No disponible hasta que Zeiras responda.']],
 ]);
 
 // Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ne ha uno:
@@ -1203,10 +1242,29 @@ it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e f
         ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
 });
 
+// Sprint 34 · T2 (voce #1930). La riga sotto il titolo di una notifica dice quante azioni racconta e in quale board sta la cosa:
+// tre frasi per lingua, nel file delle frasi delle notifiche.
+
+it('ogni lingua ha le tre frasi della riga sotto il titolo di una notifica, nel file delle frasi e non fra i testi, con le parole di zr-board e ogni segnaposto una volta sola (sprint 34 · T2.1, T2.2)', function (string $codice) {
+    $frasi = fileDelleLingue('notifiche/')[$codice] ?? [];
+    $sotto = array_filter($frasi, fn (string $chiave) => str_starts_with($chiave, 'notificationUnder'), ARRAY_FILTER_USE_KEY);
+    $attese = array_map(fn (array $perLingua): string => $perLingua[$codice], frasiSottoIlTitolo());
+    ksort($sotto);
+    ksort($attese);
+
+    expect($sotto)->toBe($attese)
+        ->and(array_filter(array_keys(fileDelleLingue('')[$codice] ?? []), fn (string $chiave) => str_starts_with($chiave, 'notificationUnder')))->toBe([])
+        // L'inglese dice «on the board», non «in the board».
+        ->and(str_contains(implode(' ', $sotto), 'in the board'))->toBe(false)
+        // Mai «1 volta»: il conto si scrive da due in su, e la frase ha solo il plurale.
+        ->and(array_map(fn (string $frase): array => [substr_count($frase, '{n}'), substr_count($frase, '{board}')], $attese))
+        ->toBe(['notificationUnder.board' => [0, 1], 'notificationUnder.count' => [1, 0], 'notificationUnder.countBoard' => [1, 1]]);
+})->with(['it', 'en', 'es']);
+
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e venticinque anche quella con chi e che cosa: 67 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 70 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1223,11 +1281,13 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(67)
+    expect($attese)->toHaveCount(70)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
         ->and($conLeFrasi)->toHaveCount(42)
-        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(25)
+        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
+        // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);

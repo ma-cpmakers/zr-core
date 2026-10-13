@@ -970,7 +970,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1037,7 +1037,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3319,6 +3319,7 @@ function nomiDiAltriNellaGuida(): array
         'prependToPriorityList' => 'Laravel',
         'postJson' => 'Laravel, nei test',
         'Inertia::location' => 'Inertia, dal server',
+        'Inertia::defer' => 'Inertia, dal server',
         'AppServiceProvider' => 'il provider del frontend, col nome che gli dà Laravel',
     ];
 }
@@ -3628,7 +3629,7 @@ it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo work
         // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
         ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, ids}], aggiornati_il, workspace}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
@@ -4869,10 +4870,57 @@ it('il README dice che una notifica che racconta più azioni mostra l\'ora dell\
 })->with([
     'che cos\'è creata_il' => ['elenco', 'dalla `v1.22.0` `creata_il` è l\'istante dell\'ultima azione che la notifica racconta'],
     'da quale campo' => ['elenco', 'l\'istante dell\'ultima lo dice in `ultima_azione_il`; se non lo manda, è l\'istante in cui la notifica è nata, come prima'],
-    'ciò che non passa' => ['elenco', '`ultima_azione_il`, `azioni` e `board` del backoffice non arrivano in pagina'],
+    // Sprint 34 · T2.8 (voce #1930): di `azioni` e di `board` passano il conto e il nome della board (il caso è più sotto).
+    'ciò che non passa' => ['elenco', '`ultima_azione_il` del backoffice non arriva in pagina'],
     'che cosa manda fino_a' => ['letture', 'dalla `v1.22.0` la cornice manda in `fino_a` l\'istante dell\'ultima azione più recente fra le notifiche caricate'],
     'fin dove segna' => ['letture', 'il backoffice segna quelle nate fino a lì, cioè tutte le caricate — ognuna è nata prima della sua ultima azione — e nessuna nata dopo il caricamento'],
     'l\'ora nel pannello' => ['punto', 'Dalla `v1.22.0` una notifica che racconta più azioni mostra l\'ora dell\'ultima, non quella della prima'],
+]);
+
+// Sprint 34 · T2.8 (voce #1930): dalla `v2.1.0` la riga sotto il titolo di una notifica dice quante azioni racconta e in quale
+// board sta la cosa. Il README dice, nella riga dell'elenco, le due chiavi che la parte server passa e che cosa è un guasto; nel
+// punto delle notifiche, la seconda riga e le tre frasi; fuori dalla cornice, che cosa legge `rigaDellaNotifica`. E non dice
+// più che `azioni` e `board` non passano, né che la board non compare.
+
+it('il README dice il conto delle azioni e il nome della board: le due chiavi dell\'elenco, la seconda riga con le tre frasi, e ciò che legge rigaDellaNotifica (sprint 34 · T2.8)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testo = match ($dove) {
+        'elenco' => rigaDellaRotta($readme, 'GET /cornice/notifiche'),
+        'fuori' => paragrafoFuoriDallaCornice($readme),
+        default => puntoDellaCornice($readme, 'Le notifiche'),
+    };
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace}`'],
+    'che cosa sono le due chiavi' => ['elenco', 'dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`'],
+    'da dove vengono' => ['elenco', 'sono `azioni` e `board.nome` del backoffice'],
+    'il backoffice di prima' => ['elenco', 'un backoffice che non li manda è quello di prima, e valgono 1 e `null`'],
+    'di board solo il nome' => ['elenco', 'di `board` passa solo il nome, mai l\'id'],
+    'i malfatti' => ['elenco', 'un `azioni` che non è un intero da 1 in su, o un `board` che non è `null` né un oggetto col `nome`, è un errore (5xx)'],
+    'la seconda riga' => ['punto', 'Dalla `v2.1.0`, quando sotto il titolo non c\'è il nome della cosa, la seconda riga dice quante azioni la notifica racconta e in quale board sta la cosa'],
+    'conto e board' => ['punto', '«3 volte, nella board «Lancio»» (`notificationUnder.countBoard`, coi segnaposto `{n}` e `{board}`)'],
+    'solo il conto' => ['punto', '«3 volte» senza board (`notificationUnder.count`)'],
+    'solo la board' => ['punto', '«Nella board «Lancio»» con una sola azione (`notificationUnder.board`)'],
+    'niente da dire' => ['punto', 'con una sola azione e senza board la seconda riga non c\'è'],
+    'il conto da due in su' => ['punto', 'Il conto si scrive da due in su'],
+    'il nome della board è difeso' => ['punto', 'Il nome della board è pulito e isolato come gli altri due nomi'],
+    'una board di soli invisibili' => ['punto', 'un nome che pulito è vuoto è una board che manca'],
+    'il nome della cosa resta' => ['punto', 'Quando sotto il titolo c\'è il nome della cosa — il titolo di prima, o la frase con solo chi — resta il nome'],
+    'ciò che legge rigaDellaNotifica' => ['fuori', 'Della notifica legge `tipo`, `autore_nome`, `risorsa_nome` e, dalla `v2.1.0`, `azioni` e `board_nome`'],
+]);
+
+it('il README non dice più che `azioni` e `board` non arrivano in pagina, né che la board non compare (sprint 34 · T2.8)', function (string $frase) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($readme)->not->toBe('')
+        ->and(str_contains($readme, $frase))->toBe(false);
+})->with([
+    'le tre chiavi che non passavano' => ['`azioni` e `board` del backoffice non arrivano in pagina'],
+    'la board fermata dalla parte server' => ['la parte server non la fa arrivare in pagina'],
+    'la board che non compare' => ['La board su cui è successo non compare'],
+    'la seconda riga che non c\'era' => ['quando è nella frase la seconda riga non c\'è'],
 ]);
 
 // Sprint 30 · T1.10 (voce #1875; review della PR #63, R3 e R4): le frasi delle notifiche sono file a sé, che la cornice chiede
@@ -4898,6 +4946,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'finché non arrivano' => ['notifiche', 'Finché non arrivano il pannello aspetta'],
     'se non arrivano' => ['notifiche', 'se non arrivano — una risposta che non è 200, la rete che cade, dieci secondi senza risposta — mostra l\'errore di caricamento con «Riprova», che richiede elenco e frasi: mai un elenco di titoli di ripiego'],
     'dopo un rilascio' => ['notifiche', 'Dopo un rilascio, una pagina aperta prima chiede i file col nome di prima: se non ci sono più, «Riprova» non riesce finché la pagina non si ricarica'],
+    // Sprint 34 · T1.6 (voce #1929): dopo un pezzo della campanella non arrivato «Riprova» lo richiede anche in Chromium.
+    'Riprova e il pezzo non arrivato' => ['notifiche', 'dalla `v2.1.0`, dopo un pezzo non arrivato «Riprova» lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede'],
+    'da dove viene l\'indirizzo del pezzo' => ['notifiche', 'L\'indirizzo è quello che dice l\'errore del browser, e vale solo se ha la stessa origine del JS'],
     'nei test di un frontend' => ['notifiche', 'una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria` che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice'],
     'non è un ingresso' => ['notifiche', '`prove` è per i test: non è un ingresso per le pagine'],
     // Seconda lettura della PR #63 (S1, S2, S8, S15).
@@ -5101,20 +5152,23 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima venticinque: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantadue tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
+    // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
+    'le tre assegnate, da quando' => ['notifiche', 'quelle assegnate dalla `v2.1.0` («Marta Rossi ti ha assegnato l\'azienda «Acme»»)'],
     'perché gli altri no' => ['notifiche', 'Di una cosa eliminata, di un membro del workspace, e del CRM di un contatto e di una nota il backoffice non dà il nome (quello di un contatto è un dato personale)'],
-    // Review della PR #65 (R5): di un'azienda, un'opportunità o un'attività assegnata il backoffice il nome lo dà.
-    'le assegnazioni del CRM' => ['notifiche', 'Le quattro assegnazioni del CRM non hanno ancora la loro frase col nome: di un\'azienda, un\'opportunità o un\'attività assegnata il backoffice il nome lo dà, e sta nella riga sotto il titolo'],
+    // Sprint 34 · T3.2, T3.3, T3.4 (voce #1931): il contatto assegnato resta senza nome, e senza il nome resta la frase con solo chi.
+    'le assegnazioni del CRM' => ['notifiche', 'per questo un contatto assegnato resta «Marta Rossi ti ha assegnato un contatto», e un\'azienda assegnata di cui il nome non arriva «Marta Rossi ti ha assegnato un\'azienda»'],
     'il nome di un modulo, non il codice' => ['notifiche', 'di un modulo il backoffice dà il codice (`pm`), e nella frase c\'è il nome nella lingua della persona'],
     'la discesa: chi e che cosa' => ['notifiche', 'con `autore_nome` e il nome della cosa il titolo è la frase con chi e che cosa'],
     'la discesa: solo chi' => ['notifiche', 'con `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi'],
     'la discesa: il titolo di prima' => ['notifiche', 'senza `autore_nome`, o per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto'],
-    'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase la seconda riga non c\'è'],
+    // Sprint 34 · T2.8 (voce #1930): quando il nome è nella frase la seconda riga può dire il conto delle azioni e la board.
+    'il nome una volta sola' => ['notifiche', 'Il nome della cosa sta una volta sola: quando è nella frase non è nella seconda riga'],
     'la riga di sotto non è più sempre il nome (T3.2, deve fallire se)' => ['notifiche', 'col nome della cosa («Lancio Q4»), tranne quando il nome è già nella frase del titolo'],
-    // Review della PR #65 (R4): dal contratto del 13/10/2026 la board c'è, ed è la parte server a non farla passare.
-    'la board non compare' => ['notifiche', 'La board su cui è successo non compare: dal 13/10/2026 il backoffice la dà (`board`), ma la parte server non la fa arrivare in pagina'],
+    // Review della PR #65 (R4): dal contratto del 13/10/2026 la board c'è. Dallo sprint 34 · T2 (voce #1930) il suo nome arriva
+    // in pagina, e sta nella seconda riga: il caso è più sopra, accanto a quello dell'ora dell'ultima azione.
     // Sprint 30 · T2.6 (voce #1875): le difese dei due nomi, e ciò che resta al backoffice.
     'i nomi restano testo' => ['notifiche', 'Restano testo: mai HTML, e un segnaposto o un `$&` scritto dentro un nome non è un comando'],
     'i nomi sono puliti' => ['notifiche', 'Sono puliti: senza i caratteri che cambiano la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio'],
@@ -5133,13 +5187,72 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la guida: lo fanno tutti i tipi' => ['guida', 'dalla `v1.21.0` lo fanno quelle di ogni tipo che zr-core conosce'],
     // Review della PR #64 (R5, R6): il nome del modulo nella frase; la guida dice chi ha solo la frase con chi, e perché.
     'il nome del modulo nella frase' => ['notifiche', 'Dalla `v1.21.0`, quando il backoffice dice anche chi ha fatto, il nome del prodotto sta nella frase del titolo'],
-    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale), e per le quattro assegnazioni del CRM: di un\'azienda, un\'opportunità o un\'attività assegnata il nome sta nella riga sotto, di un contatto non c\'è'],
+    'la guida: chi ha solo la frase con chi, e perché' => ['guida', 'ed è la sola per un tipo di cui il backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome di un contatto è un dato personale): per questo delle quattro assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome'],
 ]);
 
 // Sprint 33 · T2.5 (voce #1890): dalla v2 il nome di chi ha fatto si taglia, e il README non dice più il contrario.
 it('il README non dice più che il nome di chi ha fatto non si taglia (sprint 33 · T2.5)', function () {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Il nome non si taglia'))->toBe(false);
 });
+
+// Sprint 34 · T3.4 (voce #1931): le assegnazioni di un'azienda, un'opportunità e un'attività hanno la frase col nome, e README
+// e guida non dicono più il contrario.
+it('README e guida non dicono più che le assegnazioni del CRM non hanno la frase col nome (sprint 34 · T3.4)', function (string $dove, string $frase) {
+    $testi = [
+        'notifiche' => puntoDellaCornice((string) file_get_contents(__DIR__.'/../../README.md'), 'Le notifiche'),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(false);
+})->with([
+    'non hanno ancora la frase' => ['notifiche', 'non hanno ancora la loro frase col nome'],
+    'la prima venticinque' => ['notifiche', 'la prima venticinque'],
+    'la guida: il nome nella riga sotto' => ['guida', 'un\'attività assegnata il nome sta nella riga sotto'],
+]);
+
+// Sprint 34 · T4.10 (voce #1932): la cornice in due dati. Il README dice le due funzioni, l'esempio per un frontend con Inertia
+// (che zr-core non importa), che cosa vede la persona nei tre stati, e di chi sono lingua e nome di `subito()`; la guida rimanda lì.
+it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la prop rimandata, i tre stati e la lingua di subito(); la guida rimanda al README (sprint 34 · T4.10)', function (string $dove, string $frase) {
+    $testi = [
+        'readme' => suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'le due parti' => ['readme', 'Dalla `v2.1.0` i dati della cornice si possono dare in due parti'],
+    'subito() non chiama il backoffice' => ['readme', '`Cornice::subito()` legge solo la sessione — lingua, persona, workspace — e non chiama mai il backoffice'],
+    'Inertia è del frontend' => ['readme', 'zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend'],
+    'l\'esempio' => ['readme', "'dopo' => Inertia::defer(fn () => Cornice::dopo()),"],
+    'in attesa' => ['readme', 'nel menu la sola Dashboard, campanella e ricerca spente col testo `loading`, nessun avviso'],
+    'quando arriva' => ['readme', 'la pagina non si rimonta: ciò che la persona stava scrivendo in un campo, il fuoco e lo scorrimento restano'],
+    'non letti' => ['readme', "`Cornice::dopo()` non lancia: dà `['non_letti' => true]`"],
+    'l\'avviso' => ['readme', 'con l\'avviso «Zeiras non risponde» sopra la pagina, senza pulsante'],
+    'la sessione finita' => ['readme', '`GettoneRifiutato` passano, come da `Cornice::dati()`'],
+    'la lingua di subito()' => ['readme', 'La lingua e il nome di `Cornice::subito()` sono quelli dell\'ingresso finché'],
+    'chi manda solo cornice' => ['readme', 'chi manda solo `cornice` non cambia niente'],
+    // Review della PR #67 (R2, R3, R5, R6, R9): ciò che un frontend incontra, e il README non diceva.
+    'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
+    'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
+    'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
+    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte: si cerca di nuovo quando `dopo` è arrivato'],
+    'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
+    'se la richiesta non arriva' => ['readme', 'Se la richiesta rimandata non arriva al browser la cornice resta in attesa'],
+    'il frontend può dirlo da sé' => ['readme', '`dopo={{ non_letti: true }}`'],
+    'due letture per visita' => ['readme', 'io.mostra si legge due volte per visita'],
+    'la guida: le due funzioni' => ['guida', 'rimandata con `Inertia::defer`, `Cornice::dopo()`'],
+    'la guida: il rimando' => ['guida', 'README, «La cornice in due dati»'],
+]);
+
+// Sprint 34 · T1.6 (voce #1929): «Riprova» il pezzo della campanella lo richiede anche in Chromium, e il README non dice più
+// il contrario.
+it('il README non dice più che in Chromium il pezzo della campanella non si richiede fino al ricaricamento (sprint 34 · T1.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il browser non lo richiede' => ['il browser il pezzo non lo richiede'],
+    'l\'errore resta' => ['e l\'errore resta fino al ricaricamento'],
+]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
 // Management.

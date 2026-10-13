@@ -81,6 +81,9 @@
     "notificationTitleWhoWhat.com.zeiras.crm.trattativa.modificata": "{who} ha modificado la oportunidad «{what}»",
     "notificationTitleWhoWhat.com.zeiras.crm.attivita.creata": "{who} ha creado la actividad «{what}»",
     "notificationTitleWhoWhat.com.zeiras.crm.attivita.modificata": "{who} ha modificado la actividad «{what}»",
+    "notificationTitleWhoWhat.crm.organizzazione.assegnata": "{who} te ha asignado la empresa «{what}»",
+    "notificationTitleWhoWhat.crm.trattativa.assegnata": "{who} te ha asignado la oportunidad «{what}»",
+    "notificationTitleWhoWhat.crm.attivita.assegnata": "{who} te ha asignado la actividad «{what}»",
     "notificationTitleWho.com.zeiras.crm.persona.creata": "{who} ha creado un contacto",
     "notificationTitleWho.com.zeiras.crm.persona.modificata": "{who} ha modificado un contacto",
     "notificationTitleWho.com.zeiras.crm.organizzazione.creata": "{who} ha creado una empresa",
@@ -107,5 +110,8 @@
     "notificationTitleWho.com.zeiras.workspace.membro.creato": "{who} ya está en el workspace",
     "notificationTitleWho.com.zeiras.workspace.membro.modificato": "{who} ha cambiado el rol de un miembro",
     "notificationTitleWho.com.zeiras.workspace.membro.eliminato": "{who} ha quitado a una persona del workspace",
-    "notificationTitleWho.com.zeiras.app.modificata": "{who} ha activado o desactivado un módulo"
+    "notificationTitleWho.com.zeiras.app.modificata": "{who} ha activado o desactivado un módulo",
+    "notificationUnder.countBoard": "{n} veces, en el tablero «{board}»",
+    "notificationUnder.count": "{n} veces",
+    "notificationUnder.board": "En el tablero «{board}»"
 }

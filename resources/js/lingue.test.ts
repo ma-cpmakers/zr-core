@@ -6,7 +6,7 @@ import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
-import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -653,9 +653,9 @@ describe('rigaDellaNotifica', () => {
         ['com.zeiras.crm.pipeline.creata', { it: ['Giulia Bianchi ha creato la pipeline «Lancio corso»', 'Giulia Bianchi ha creato una pipeline'], en: ['Giulia Bianchi created the pipeline “Lancio corso”', 'Giulia Bianchi created a pipeline'], es: ['Giulia Bianchi ha creado la pipeline «Lancio corso»', 'Giulia Bianchi ha creado una pipeline'] }],
         ['com.zeiras.crm.pipeline.modificata', { it: ['Giulia Bianchi ha modificato la pipeline «Lancio corso»', 'Giulia Bianchi ha modificato una pipeline'], en: ['Giulia Bianchi edited the pipeline “Lancio corso”', 'Giulia Bianchi edited a pipeline'], es: ['Giulia Bianchi ha modificado la pipeline «Lancio corso»', 'Giulia Bianchi ha modificado una pipeline'] }],
         ['crm.persona.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un contatto'], en: [null, 'Giulia Bianchi assigned you a contact'], es: [null, 'Giulia Bianchi te ha asignado un contacto'] }],
-        ['crm.organizzazione.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'azienda'], en: [null, 'Giulia Bianchi assigned you a company'], es: [null, 'Giulia Bianchi te ha asignado una empresa'] }],
-        ['crm.trattativa.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'opportunità'], en: [null, 'Giulia Bianchi assigned you an opportunity'], es: [null, 'Giulia Bianchi te ha asignado una oportunidad'] }],
-        ['crm.attivita.assegnata', { it: [null, 'Giulia Bianchi ti ha assegnato un\'attività'], en: [null, 'Giulia Bianchi assigned you an activity'], es: [null, 'Giulia Bianchi te ha asignado una actividad'] }],
+        ['crm.organizzazione.assegnata', { it: ['Giulia Bianchi ti ha assegnato l\'azienda «Lancio corso»', 'Giulia Bianchi ti ha assegnato un\'azienda'], en: ['Giulia Bianchi assigned you the company “Lancio corso”', 'Giulia Bianchi assigned you a company'], es: ['Giulia Bianchi te ha asignado la empresa «Lancio corso»', 'Giulia Bianchi te ha asignado una empresa'] }],
+        ['crm.trattativa.assegnata', { it: ['Giulia Bianchi ti ha assegnato l\'opportunità «Lancio corso»', 'Giulia Bianchi ti ha assegnato un\'opportunità'], en: ['Giulia Bianchi assigned you the opportunity “Lancio corso”', 'Giulia Bianchi assigned you an opportunity'], es: ['Giulia Bianchi te ha asignado la oportunidad «Lancio corso»', 'Giulia Bianchi te ha asignado una oportunidad'] }],
+        ['crm.attivita.assegnata', { it: ['Giulia Bianchi ti ha assegnato l\'attività «Lancio corso»', 'Giulia Bianchi ti ha assegnato un\'attività'], en: ['Giulia Bianchi assigned you the activity “Lancio corso”', 'Giulia Bianchi assigned you an activity'], es: ['Giulia Bianchi te ha asignado la actividad «Lancio corso»', 'Giulia Bianchi te ha asignado una actividad'] }],
         // Sprint 31 · T2 (voce #1866). I cinque tipi del workspace, con le parole di zr-home: di un membro il backoffice non dà il nome.
         // `com.zeiras.app.modificata` ha le sue frasi e un caso suo, più sotto: il suo `{what}` è il nome di un modulo, non un nome scritto da una persona.
         ['com.zeiras.workspace.creato', { it: ['Giulia Bianchi ha creato il workspace «Lancio corso»', 'Giulia Bianchi ha creato il workspace'], en: ['Giulia Bianchi created the workspace “Lancio corso”', 'Giulia Bianchi created the workspace'], es: ['Giulia Bianchi ha creado el workspace «Lancio corso»', 'Giulia Bianchi ha creado el workspace'] }],
@@ -678,7 +678,7 @@ describe('rigaDellaNotifica', () => {
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
     const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare', 'Vendite'];
 
-    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli otto del CRM (pipeline, aziende, opportunità, attività) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri dieci del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2)', async (lingua) => {
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli undici del CRM (pipeline, aziende, opportunità e attività, e le tre assegnate) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri sette del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2; sprint 34 · T3.1, T3.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./frasi');
 
         expect(frasi).toHaveLength(41);
@@ -686,12 +686,13 @@ describe('rigaDellaNotifica', () => {
         expect(frasi.flatMap(([tipo, perLingua]) => (tipo.startsWith('com.zeiras.workspace.') && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.workspace.creato', 'com.zeiras.workspace.modificato']);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
         // Del CRM hanno la frase col nome della cosa la pipeline e, dallo sprint 32 (T4.1, T4.2), aziende, opportunità e attività create o
-        // modificate: il nome di un contatto è un dato personale, e di una nota e di un'attività eliminata il backoffice non lo dà; le
-        // quattro assegnazioni non hanno ancora la frase col nome (di un'azienda, un'opportunità o un'attività il backoffice lo dà: sta sotto).
+        // modificate: il nome di un contatto è un dato personale, e di una nota e di un'attività eliminata il backoffice non lo dà. Dallo
+        // sprint 34 (T3.1) anche un'azienda, un'opportunità e un'attività assegnate; il contatto assegnato resta con la sola frase con chi (T3.2).
         expect(frasi.filter(([tipo]) => /(^|\.)crm\./.test(tipo))).toHaveLength(18);
         expect(frasi.flatMap(([tipo, perLingua]) => (/(^|\.)crm\./.test(tipo) && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual([
             'com.zeiras.crm.organizzazione.creata', 'com.zeiras.crm.organizzazione.modificata', 'com.zeiras.crm.trattativa.creata', 'com.zeiras.crm.trattativa.modificata',
             'com.zeiras.crm.attivita.creata', 'com.zeiras.crm.attivita.modificata', 'com.zeiras.crm.pipeline.creata', 'com.zeiras.crm.pipeline.modificata',
+            'crm.organizzazione.assegnata', 'crm.trattativa.assegnata', 'crm.attivita.assegnata',
         ]);
         for (const [tipo, perLingua] of frasi) {
             const [conCosa, soloChi] = [perLingua[lingua][0] === null ? null : coiNomiIsolati(perLingua[lingua][0], ...NOMI_DEI_CASI), coiNomiIsolati(perLingua[lingua][1], ...NOMI_DEI_CASI)];
@@ -809,12 +810,12 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 67, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 70, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
         expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).sort());
-        expect(chiavi).toHaveLength(67);
+        expect(chiavi).toHaveLength(70);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
             expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);
@@ -986,7 +987,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
-        const eUnaFrase = (chiave: string) => /^notificationTitle(Who(What)?)?\../.test(chiave);
+        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?)?|Under)\../.test(chiave);
 
         for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
             expect(typeof testiDelFile.notificationTitle).toBe('string');
@@ -1152,5 +1153,149 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
         expect(riga({ tipo: modificata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha modificato la scheda «${isolato(nome)}»` });
         expect(riga({ tipo: eliminata, autore_nome: nome, risorsa_nome: nome })).toStrictEqual({ titolo: `${isolato(nome)} ha eliminato una scheda`, sotto: nome });
         expect(nomePulito(nome)).toBe(nome);
+    });
+});
+
+// Sprint 34 · T1 (voce #1929). In Chromium un `import()` che non è arrivato resta fallito, per quell'indirizzo, finché la
+// pagina non si ricarica: la richiesta dopo importa lo stesso indirizzo con una coda diversa a ogni tentativo. L'indirizzo è
+// quello che dice l'errore del browser, e vale solo se è della stessa origine del JS. Qui al posto di `import()` c'è il caso.
+describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo (sprint 34 · T1)', () => {
+    const ORIGINE = 'https://app.zeiras.test';
+    const PEZZO = `${ORIGINE}/build/assets/campanella-D5veh6YO.js`;
+    const nonArrivato = (indirizzo: string) => new TypeError(`Failed to fetch dynamically imported module: ${indirizzo}`);
+
+    /** Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. */
+    function chiImporta(...errori: unknown[]) {
+        const importa = vi.fn(async (_daQui?: string) => {
+            if (errori.length > 0) {
+                throw errori.shift();
+            }
+
+            return 'il pezzo';
+        });
+
+        return { importa, chiedi: pezzoARichiesta(importa, ORIGINE) };
+    }
+
+    it('il pezzo che arriva al primo colpo si importa senza un indirizzo e senza coda, e a ogni richiesta allo stesso modo (T1.4)', async () => {
+        const { importa, chiedi } = chiImporta();
+
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+
+    it('dopo un pezzo non arrivato la richiesta dopo importa il suo indirizzo con una coda, diversa a ogni tentativo, e l\'errore che esce è quello del browser (T1.1, T1.2)', async () => {
+        const [primo, secondo] = [nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`)];
+        const { importa, chiedi } = chiImporta(primo, secondo);
+
+        await expect(chiedi()).rejects.toBe(primo);
+        await expect(chiedi()).rejects.toBe(secondo);
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(importa.mock.calls).toStrictEqual([[undefined], [`${PEZZO}?r=1`], [`${PEZZO}?r=2`]]);
+    });
+
+    it('un errore dopo che non dice l\'indirizzo non fa dimenticare quello di prima', async () => {
+        const { importa, chiedi } = chiImporta(nonArrivato(PEZZO), new TypeError('Importing a module script failed.'));
+
+        await expect(chiedi()).rejects.toThrow();
+        await expect(chiedi()).rejects.toThrow();
+        await chiedi();
+        expect(importa.mock.calls.at(-1)).toStrictEqual([`${PEZZO}?r=2`]);
+    });
+
+    it.each([
+        ['non dice un indirizzo', new TypeError('Importing a module script failed.')],
+        ['dice un indirizzo di un\'altra origine', nonArrivato('https://altro.example/campanella.js')],
+        ['dice un indirizzo che comincia come l\'origine ma è di un altro host', nonArrivato(`${ORIGINE}.altro.example/campanella.js`)],
+        ['dice l\'origine dentro la coda di un altro indirizzo', nonArrivato(`https://altro.example/x.js?da=${PEZZO}`)],
+        ['non è un errore', undefined],
+    ])('se l\'errore %s la richiesta dopo è l\'`import()` di prima: nessun indirizzo letto da un messaggio entra in `import()`', async (_caso, errore) => {
+        const { importa, chiedi } = chiImporta(errore);
+
+        await expect(chiedi()).rejects.toBe(errore);
+        await chiedi();
+        expect(importa.mock.calls).toStrictEqual([[undefined], [undefined]]);
+    });
+});
+
+// Sprint 34 · T2 (voce #1930). Una notifica può raccontare più azioni, e la cosa di cui parla può stare in una board: la parte
+// server li dà in `azioni` (un intero da 1 in su) e `board_nome`. Quando sotto il titolo non c'è il nome della cosa, la riga di
+// sotto dice quante volte (da due in su) e in quale board. Il nome della board lo ha scritto una persona: pulito e isolato.
+describe('la riga sotto il titolo: quante azioni, e in quale board (sprint 34 · T2)', () => {
+    const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+    const modificata = 'com.zeiras.board.scheda.modificata';
+    const eliminata = 'com.zeiras.board.scheda.eliminata';
+    const diAda = { tipo: modificata, autore_nome: 'Ada', risorsa_nome: 'Bozza' };
+    const titoloDiAda = `${isolato('Ada')} ha modificato la scheda «${isolato('Bozza')}»`;
+    const LINGUE = [['it', frasiItaliane], ['es', frasiSpagnole], ['en', frasiInglesi]] as const;
+    const riga = (notifica: Record<string, unknown>, lingua = 'it') => rigaConLeFrasi(frasiDi(lingua), notifica, lingua);
+    const frasiDi = (lingua: string): FrasiDelleNotifiche => ({ ...frasiInglesi, ...(LINGUE.find(([codice]) => codice === lingua)?.[1] ?? {}) });
+
+    it('con 3 azioni e la board «Lancio» sotto il titolo c\'è «3 volte, nella board «Lancio»», in spagnolo «en el tablero», in inglese “on the board”, mai “in the board” (T2.1)', () => {
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' })).toStrictEqual({ titolo: titoloDiAda, sotto: `3 volte, nella board «${isolato('Lancio')}»` });
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'es').sotto).toBe(`3 veces, en el tablero «${isolato('Lancio')}»`);
+        expect(riga({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'en').sotto).toBe(`3 times, on the board “${isolato('Lancio')}”`);
+        expect(LINGUE.map(([lingua]) => riga({ ...diAda, azioni: 12, board_nome: 'Lancio' }, lingua).sotto).join(' ')).not.toMatch(/in the board/i);
+    });
+
+    it('con una sola azione e la board c\'è solo la board; con 3 azioni e senza board solo il conto; con una sola e senza board niente, come prima: mai «1 volte» né «1 volta» (T2.2)', () => {
+        const attese = { it: [`Nella board «${isolato('Lancio')}»`, '3 volte'], es: [`En el tablero «${isolato('Lancio')}»`, '3 veces'], en: [`On the board “${isolato('Lancio')}”`, '3 times'] };
+        for (const [lingua] of LINGUE) {
+            expect([lingua, riga({ ...diAda, azioni: 1, board_nome: 'Lancio' }, lingua).sotto, riga({ ...diAda, azioni: 3, board_nome: null }, lingua).sotto]).toStrictEqual([lingua, ...attese[lingua]]);
+            // Senza la chiave della board è come con null: CRM, workspace, cartella, o una parte server di prima.
+            expect(riga({ ...diAda, azioni: 3 }, lingua).sotto).toBe(attese[lingua][1]);
+            expect(riga({ ...diAda, azioni: 1, board_nome: null }, lingua)).toStrictEqual(riga(diAda, lingua));
+            expect(Object.keys(riga({ ...diAda, azioni: 1, board_nome: null }, lingua))).toStrictEqual(['titolo']);
+        }
+        // Il conto si scrive da due in su, e solo se è un intero: ogni altro valore è una sola azione.
+        for (const azioni of [1, 0, -3, 2.5, '3', null, undefined, true, Number.NaN, Number.POSITIVE_INFINITY, [3]]) {
+            expect([azioni, riga({ ...diAda, azioni, board_nome: 'Lancio' }).sotto]).toStrictEqual([azioni, `Nella board «${isolato('Lancio')}»`]);
+            expect([azioni, Object.keys(riga({ ...diAda, azioni }))]).toStrictEqual([azioni, ['titolo']]);
+        }
+        expect(JSON.stringify(LINGUE.map(([lingua]) => [1, 2, 3].map((azioni) => riga({ ...diAda, azioni, board_nome: 'Lancio' }, lingua))))).not.toMatch(/\b1 (volt|ve[cz]|time)/);
+    });
+
+    it('quando sotto il titolo c\'è il nome della cosa resta il nome: senza chi ha fatto, e con la frase con solo chi; senza il nome sotto, conto e board (T2.3)', () => {
+        const conto = { azioni: 3, board_nome: 'Lancio' };
+        const sotto = `3 volte, nella board «${isolato('Lancio')}»`;
+
+        // Il titolo di prima, col nome sotto: come nella `v2.0.0`.
+        expect(riga({ tipo: modificata, autore_nome: null, risorsa_nome: 'Bozza', ...conto })).toStrictEqual({ titolo: 'Scheda modificata', sotto: 'Bozza' });
+        expect(riga({ tipo: 'com.zeiras.uat.ignoto', autore_nome: 'Ada', risorsa_nome: 'Bozza', ...conto })).toStrictEqual({ titolo: testi('it').notificationTitle, sotto: 'Bozza' });
+        // Una cosa eliminata non ha il nome: la frase con solo chi, e sotto il conto e la board.
+        expect(riga({ tipo: eliminata, autore_nome: 'Ada', risorsa_nome: null, ...conto })).toStrictEqual({ titolo: `${isolato('Ada')} ha eliminato una scheda`, sotto });
+        // Né chi né il nome: il titolo di prima, e sotto il conto e la board.
+        expect(riga({ tipo: modificata, ...conto })).toStrictEqual({ titolo: 'Scheda modificata', sotto });
+    });
+
+    it('il nome della board esce pulito e isolato; uno di soli caratteri che non si vedono è una board che manca; un segnaposto o un `$&` nel nome restano testo (T2.4)', () => {
+        const conLaBoard = (board_nome: unknown, azioni = 3) => riga({ ...diAda, azioni, board_nome }).sotto;
+
+        expect(conLaBoard('Lan\u{202E}cio')).toBe(`3 volte, nella board «${isolato('Lancio')}»`);
+        expect(conLaBoard('\u{202E}oicnaL')).not.toContain('\u{202E}');
+        expect(conLaBoard(' \tLancio\nQ4 ')).toBe(`3 volte, nella board «${isolato('Lancio Q4')}»`);
+        expect(conLaBoard('\u{2068}Lancio\u{2069}', 1)).toBe(`Nella board «${isolato('Lancio')}»`);
+        for (const vuota of ['', '   ', '\u{202E}', '\u{202E}\u{200B} \n', null, undefined, 7, ['Lancio'], { nome: 'Lancio' }]) {
+            expect([vuota, conLaBoard(vuota), conLaBoard(vuota, 1)]).toStrictEqual([vuota, '3 volte', undefined]);
+        }
+        expect(conLaBoard('{n} {board} {who}')).toBe(`3 volte, nella board «${isolato('{n} {board} {who}')}»`);
+        expect(conLaBoard('$& $1 $`')).toBe(`3 volte, nella board «${isolato('$& $1 $`')}»`);
+    });
+
+    it('il pannello e chi mostra le notifiche in una pagina sua hanno la stessa riga di sotto, in ogni lingua; senza le frasi della riga non c\'è niente, mai un segnaposto (T2.6)', async () => {
+        const { rigaDellaNotifica } = await import('./frasi');
+        const notifiche = [1, 2, 3, 40].flatMap((azioni) => ['Lancio', null].flatMap((board_nome) => [diAda, { tipo: eliminata, autore_nome: 'Ada' }, { tipo: modificata, risorsa_nome: 'Bozza' }, { tipo: modificata }].map((notifica) => ({ ...notifica, azioni, board_nome }))));
+
+        expect(notifiche).toHaveLength(32);
+        for (const lingua of ['it', 'es', 'en', 'es-AR', 'zz']) {
+            for (const notifica of notifiche) {
+                expect([lingua, notifica, riga(notifica, lingua.slice(0, 2))]).toStrictEqual([lingua, notifica, rigaDellaNotifica(notifica, lingua)]);
+            }
+        }
+        expect(rigaDellaNotifica({ ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda, sotto: `3 volte, nella board «${isolato('Lancio')}»` });
+        // Frasi arrivate senza quelle della riga di sotto (un file di prima, ancora in memoria): la riga non c'è.
+        const diPrima = Object.fromEntries(Object.entries(frasiItaliane).filter(([chiave]) => !chiave.startsWith('notificationUnder'))) as FrasiDelleNotifiche;
+        expect(rigaConLeFrasi(diPrima, { ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda });
     });
 });

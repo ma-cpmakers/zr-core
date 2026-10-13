@@ -296,6 +296,30 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica(prima ?? {}, 'it')).toEqual({ titolo: '\u{2068}Bruno Neri\u{2069} ha modificato la lista «\u{2068}UAT Da fare\u{2069}»' });
     });
 
+    // Sprint 34 · T2 (voce #1930): le notifiche con `azioni` e `board_nome` stanno dietro `?conto=1`, così le pagine di prova di
+    // prima restano com'erano. Sono come le dà la parte server dalla `v2.1.0`: undici chiavi.
+    it('con `?conto=1` in cima all\'elenco ci sono cinque notifiche con `azioni` e `board_nome`: il conto e la board, la sola board, il solo conto, il nome della cosa quando chi ha fatto non c\'è, e una board con un U+202E nel nome, che esce pulito (sprint 34 · T2.1, T2.2, T2.3, T2.4)', async () => {
+        await rotte(false, '?conto=1');
+        const { rigaDellaNotifica } = await import('../js/frasi');
+        const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+
+        const notifiche = ((await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; letta: boolean; tipo?: string }[]).slice(0, 5);
+
+        expect(notifiche.map(({ id, letta }) => [id, letta])).toEqual([['uat-k1', false], ['uat-k2', true], ['uat-k3', true], ['uat-k4', true], ['uat-k5', true]]);
+        for (const notifica of notifiche) {
+            expect(Object.keys(notifica).sort()).toEqual(['app', 'autore_nome', 'azioni', 'board_nome', 'creata_il', 'id', 'ids', 'letta', 'per_me', 'risorsa_nome', 'tipo']);
+        }
+        expect(notifiche.map((notifica) => rigaDellaNotifica(notifica, 'it'))).toEqual([
+            { titolo: `${isolato('Bruno Neri')} ha modificato la scheda «${isolato('UAT Bozza')}»`, sotto: `3 volte, nella board «${isolato('UAT Lancio')}»` },
+            { titolo: `${isolato('Bruno Neri')} ha creato la scheda «${isolato('UAT Brief')}»`, sotto: `Nella board «${isolato('UAT Lancio')}»` },
+            { titolo: `${isolato('Bruno Neri')} ha modificato la cartella «${isolato('UAT Clienti')}»`, sotto: '3 volte' },
+            { titolo: 'Scheda modificata', sotto: 'UAT Piano' },
+            { titolo: `${isolato('Bruno Neri')} ha modificato la lista «${isolato('UAT Da fare')}»`, sotto: `2 volte, nella board «${isolato('UAT oicnaL')}»` },
+        ]);
+        expect(rigaDellaNotifica(notifiche[0] ?? {}, 'en').sotto).toBe(`3 times, on the board “${isolato('UAT Lancio')}”`);
+        expect(rigaDellaNotifica(notifiche[0] ?? {}, 'es').sotto).toBe(`3 veces, en el tablero «${isolato('UAT Lancio')}»`);
+    });
+
     // Sprint 21 · T5 (voce #1706): le viste salvate di una board sono di Project Management. Stanno dietro `?viste=1`, così le
     // pagine di prova di prima restano com'erano.
     it('con `?viste=1` in fondo all\'elenco ci sono tre notifiche delle viste di una board, di Project Management, lette: una creata, una modificata, una eliminata, di tipi che zr-core conosce; nessuna ha una destinazione (sprint 21 · T5.1, T5.2)', async () => {
@@ -351,6 +375,32 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
 
+    // Sprint 34 · T3 (voce #1931): con `?chi=1` le quattro assegnate di `?opportunita=1` dicono chi; l'azienda e l'opportunità
+    // portano anche il nome, e lo hanno nel titolo; un'attività senza nome e un contatto restano con la frase con solo chi.
+    it('con `?opportunita=1&chi=1` l\'azienda e l\'opportunità assegnate hanno il nome nel titolo, nelle tre lingue; il contatto e l\'attività senza nome hanno la frase con solo chi, e il nome di un contatto, se arrivasse, non entra nel titolo (sprint 34 · T3.1, T3.2, T3.3)', async () => {
+        await rotte(false, '?opportunita=1&chi=1');
+        const { rigaDellaNotifica } = await import('../js/frasi');
+
+        const notifiche = (await rispostaDi('/cornice/notifiche')).corpo.data as { id: string; tipo?: string; risorsa_nome?: string | null }[];
+        const [contatto, azienda, opportunita, attivita] = ['uat-o6', 'uat-o7', 'uat-o8', 'uat-o9'].map((id) => notifiche.find((notifica) => notifica.id === id) ?? {});
+        const CHI = '\u{2068}Giulia Bianchi\u{2069}';
+        const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
+
+        expect([contatto, azienda, opportunita, attivita].map((notifica) => ('risorsa_nome' in notifica ? notifica.risorsa_nome : undefined))).toEqual([null, 'UAT Acme', 'UAT Rinnovo 2027', null]);
+        expect((['it', 'es', 'en'] as const).map((lingua) => rigaDellaNotifica(azienda ?? {}, lingua))).toEqual([
+            { titolo: `${CHI} ti ha assegnato l'azienda «${isolato('UAT Acme')}»` }, { titolo: `${CHI} te ha asignado la empresa «${isolato('UAT Acme')}»` }, { titolo: `${CHI} assigned you the company “${isolato('UAT Acme')}”` },
+        ]);
+        expect((['it', 'es', 'en'] as const).map((lingua) => rigaDellaNotifica(opportunita ?? {}, lingua))).toEqual([
+            { titolo: `${CHI} ti ha assegnato l'opportunità «${isolato('UAT Rinnovo 2027')}»` }, { titolo: `${CHI} te ha asignado la oportunidad «${isolato('UAT Rinnovo 2027')}»` }, { titolo: `${CHI} assigned you the opportunity “${isolato('UAT Rinnovo 2027')}”` },
+        ]);
+        expect((['it', 'es', 'en'] as const).map((lingua) => rigaDellaNotifica({ ...attivita, risorsa_nome: 'UAT Richiamare' }, lingua).titolo)).toEqual([
+            `${CHI} ti ha assegnato l'attività «${isolato('UAT Richiamare')}»`, `${CHI} te ha asignado la actividad «${isolato('UAT Richiamare')}»`, `${CHI} assigned you the activity “${isolato('UAT Richiamare')}”`,
+        ]);
+        // Senza il nome: la frase con solo chi, mai le virgolette vuote (T3.3). Il contatto resta senza anche se un nome arrivasse (T3.2).
+        expect([contatto, attivita].map((notifica) => rigaDellaNotifica(notifica ?? {}, 'it'))).toEqual([{ titolo: `${CHI} ti ha assegnato un contatto` }, { titolo: `${CHI} ti ha assegnato un'attività` }]);
+        expect(rigaDellaNotifica({ ...contatto, risorsa_nome: 'UAT Mario Rossi' }, 'it').titolo).toBe(`${CHI} ti ha assegnato un contatto`);
+    });
+
     // Sprint 32 · T4 (voce #1914): cinque notifiche del CRM con chi ha fatto stanno dietro `?nomi_crm=1` — un'azienda e
     // un'opportunità col nome, un contatto e un'attività eliminata, di cui il backoffice non dà il nome, e un'azienda senza nome.
     it('con `?nomi_crm=1` in cima all\'elenco ci sono cinque notifiche del CRM con chi ha fatto: l\'azienda e l\'opportunità col nome lo hanno nel titolo, nelle tre lingue, e sotto niente; il contatto, l\'attività eliminata e l\'azienda senza nome hanno la frase con solo chi (sprint 32 · T4.1, T4.2)', async () => {
@@ -393,6 +443,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
+        ['?conto=1', ['uat-k1', 'uat-k2', 'uat-k3', 'uat-k4', 'uat-k5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1&viste=1&opportunita=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`), 'uat-v1', 'uat-v2', 'uat-v3', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`)]],
     ])('con «%s» l\'elenco delle notifiche d\'esempio è quello della scelta, dalla più recente: le viste solo con `?viste`, quelle del CRM solo con `?crm`, le nove nuove solo con `?opportunita` (sprint 21 · T5.1; sprint 22 · T5.1)', async (query, attese) => {
