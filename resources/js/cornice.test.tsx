@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { act, Fragment, useEffect, useLayoutEffect, type ReactElement } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
@@ -4634,8 +4635,14 @@ describe('la ricerca', () => {
             const occhio = new MutationObserver(leggi);
             occhio.observe(document.body, { subtree: true, childList: true, characterData: true });
 
-            await mostra(arrivati);
+            // Senza `act`: ciò che si legge subito dopo è ciò che il browser disegnerebbe per primo, prima degli effetti che
+            // vengono dopo il disegno. Una correzione fatta lì lascerebbe «Nessun risultato» a schermo per un disegno.
+            const ambiente = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+            ambiente.IS_REACT_ACT_ENVIRONMENT = false;
+            flushSync(() => radice.render(arrivati));
             leggi();
+            ambiente.IS_REACT_ACT_ENVIRONMENT = true;
+            expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
             await act(giro);
             leggi();
             // I 300 ms dell'`AppShell` scadono qui: non parte una seconda richiesta.
@@ -4690,8 +4697,11 @@ describe('la ricerca', () => {
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
             await act(async () => campo().blur());
 
-            await mostra(inAttesa);
-            await mostra(arrivati);
+            // Un altro workspace, di cui la cornice non tiene i dati: aspetta davvero, e la ricerca è nello stato di caricamento.
+            const altrove = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' } };
+            await mostra(<Cornice dati={{ ...altrove, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+            expect(uno('.zr-search-panel')?.textContent).toContain(testi('it').searchLoading);
+            await mostra(<Cornice dati={altrove} onLogout={esciSenzaEffetto} />);
             await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
 
             expect(campo().value).toBe('lancio');

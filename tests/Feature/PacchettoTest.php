@@ -5325,8 +5325,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il workspace di dopo()' => ['readme', '`Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`'],
     'il segno di non letti' => ['readme', 'un `non_letti` letto prima dei dati che la cornice ha non la riduce'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
-    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: parte da sola quando `dopo` è arrivato — l\'ultima di almeno due caratteri che l\'`AppShell` ha dato alla cornice —, e non parte se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
-    'la parola cancellata in attesa' => ['readme', 'una parola cancellata prima dell\'arrivo viene cercata lo stesso, con l\'invito sotto il campo vuoto'],
+    // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
+    'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel campo in quel momento, se ha almeno due caratteri e la persona è ancora lì (il campo ha il fuoco), e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
+    'la parola cancellata in attesa' => ['readme', 'Dalla `v2.5.1` una parola cancellata prima dell\'arrivo non viene più cercata, e sotto una parola battuta un attimo prima dell\'arrivo si legge il caricamento, non «Nessun risultato»: parte all\'arrivo, una volta sola'],
+    'la ricerca in attesa: il limite che resta' => ['readme', 'una parola scritta in attesa e lasciata uscendo dal campo prima dell\'arrivo non parte, e parte quando la persona la ritocca'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
@@ -5503,6 +5505,16 @@ it('README e guida non dicono più che «Segna tutte come lette» da una scheda 
     'resta fuori' => ['Resta fuori «Segna tutte come lette»'],
     'la rotta non dice di chi è' => ['la rotta delle letture non dice di chi è'],
     'segna le notifiche di chi è nella sessione' => ['segna le notifiche di chi è nella sessione'],
+]);
+
+// Sprint 39 · T3.4 (voce #1971): i due limiti della ricerca in attesa che la `v2.5.1` chiude.
+it('README e guida non dicono più i due limiti chiusi della ricerca in attesa (sprint 39 · T3.4)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'la parola cancellata' => ['viene cercata lo stesso'],
+    'i 300 ms' => ['fino ad allora sotto il campo si legge «Nessun risultato»'],
+    'la parola tenuta' => ['che l\'`AppShell` ha dato alla cornice'],
 ]);
 
 // Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.

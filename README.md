@@ -1280,12 +1280,13 @@ Che cosa vede la persona:
   cronologia resta leggibile: lì vale solo ciò che la cornice fa da sé, e il contenuto delle pagine di prima resta.
   Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
-  e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
-  sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte
-  se al posto dei dati arriva `non_letti` o l'accettazione dei documenti legali. Due limiti, dell'`AppShell`: sotto i due
-  caratteri non avvisa la cornice, e una parola cancellata prima dell'arrivo viene cercata lo stesso, con l'invito sotto il
-  campo vuoto; e una parola scritta meno di 300 ms prima dell'arrivo parte allo scadere dei suoi 300 ms, e fino ad allora
-  sotto il campo si legge «Nessun risultato»;
+  e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: quando
+  `dopo` è arrivato la cornice cerca ciò che c'è nel campo in quel momento, se ha almeno due caratteri e la persona è
+  ancora lì (il campo ha il fuoco), e non cerca niente se al posto dei dati arriva `non_letti` o l'accettazione dei
+  documenti legali. Dalla `v2.5.1` una parola cancellata prima dell'arrivo non viene più cercata, e sotto una parola
+  battuta un attimo prima dell'arrivo si legge il caricamento, non «Nessun risultato»: parte all'arrivo, una volta sola.
+  Un limite resta: una parola scritta in attesa e lasciata uscendo dal campo prima dell'arrivo non parte, e parte quando
+  la persona la ritocca;
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
   sessione è passata a lei fra le due richieste) la cornice si rifà, e la pagina con lei;
