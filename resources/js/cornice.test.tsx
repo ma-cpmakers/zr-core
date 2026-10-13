@@ -3686,6 +3686,47 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
+    // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è. In una scheda rimasta ferma il 403 `accettazione_richiesta` di
+    // chi è entrato non riduce la cornice sotto il nome di chi è mostrato: la pagina si ricarica, e dopo è di chi è entrato.
+    it('in una scheda rimasta ferma il 403 `accettazione_richiesta` di un\'altra persona non riduce la cornice sotto il nome di chi è mostrato, nemmeno per un disegno: una richiesta sola, la pagina si ricarica e il pannello resta in caricamento (sprint 38 · T3.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', persona: 'grace@example.com' }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        const ridotte: boolean[] = [];
+        const guarda = new MutationObserver(() => ridotte.push(contenitore.textContent?.includes('Ci sono documenti da accettare') ?? false));
+        guarda.observe(contenitore, { childList: true, subtree: true, characterData: true });
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(ridotte).not.toContain(true);
+        expect(uno('main .zr-alert')).toBeNull();
+        expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+        expect(campanella()).toBe('2');
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('quel 403 %s riduce la cornice come prima, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T3.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
+        expect(campanella()).toBeNull();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+    });
+
     it.each<[string, Record<string, unknown>]>([
         ['della stessa persona', { persona: dati.persona.email }],
         ['che non dice di chi è (una parte server di prima)', {}],
@@ -4707,6 +4748,57 @@ describe('la ricerca', () => {
         expect(righe()).toHaveLength(0);
         expect(inCaricamento()).toBe('Sto cercando…');
         expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+    });
+
+    // Sprint 38 · T3 (voce #2026): anche il 429 dice di chi è. In una scheda rimasta ferma il freno di chi è entrato non ferma
+    // la ricerca di chi è mostrato e non mette il suo errore sotto il nome di prima: la pagina si ricarica.
+    /** Il 429 della ricerca coi suoi 30 secondi, con ciò che la parte server dice di chi è. */
+    const frenataDi = (conLaPersona: Record<string, unknown>) => ({
+        ok: false,
+        status: 429,
+        headers: new Headers({ 'Retry-After': '30' }),
+        json: async () => ({ errore: 'troppe_richieste', ...conLaPersona }),
+    }) as unknown as Response;
+
+    it('in una scheda rimasta ferma il 429 di un\'altra persona non ferma la ricerca di chi è mostrato e non mostra il suo errore, nemmeno per un disegno: una richiesta sola, la pagina si ricarica, e un\'altra parola parte (sprint 38 · T3.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => frenataDi({ persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const avvisi: number[] = [];
+        const guarda = new MutationObserver(() => avvisi.push(tutti('.zr-search-panel [role="alert"]').length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await scrivi('lancio');
+        await act(giro);
+        guarda.disconnect();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(Math.max(0, ...avvisi)).toBe(0);
+        expect(inCaricamento()).toBe('Sto cercando…');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+
+        // I secondi erano di un'altra persona: la ricerca di chi è mostrato non è ferma.
+        await scrivi('lancio q4');
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio'), ricercaDi('lancio q4')]);
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+        ['della stessa persona', { persona: dati.persona.email }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+    ])('quel 429 %s ferma la ricerca come prima: il suo errore, nessun\'altra richiesta e nessun ricaricamento (sprint 38 · T3.3)', async (_come, conLaPersona) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => frenataDi(conLaPersona));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        await act(giro);
+        expect(uno('.zr-search-panel [role="alert"]')).not.toBeNull();
+        await scrivi('lancio q4');
+
+        expect(ricarica).not.toHaveBeenCalled();
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 

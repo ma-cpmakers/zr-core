@@ -340,4 +340,44 @@ describe('una risposta che dice di chi è', () => {
         expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
+
+    // Sprint 38 · T3 (voce #2026): anche un errore dice di chi è (`persona`, dalla `v2.5.0` nel corpo del 403
+    // `accettazione_richiesta` e del 429 della ricerca). Di un'altra persona non diventa un errore di chi ha chiesto: la
+    // cornice non si riduce e la ricerca non si ferma sotto il nome di prima, e la pagina si ricarica.
+    const diErrore = (stato: number, corpo: Record<string, unknown>) => ({
+        ok: false,
+        status: stato,
+        headers: new Headers(stato === 429 ? { 'Retry-After': '30' } : {}),
+        json: async () => corpo,
+    }) as unknown as Response;
+    const errori: [string, number, string, typeof AccettazioneRichiesta | typeof TroppeRichieste][] = [
+        ['il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta],
+        ['il 429 coi secondi', 429, 'troppe_richieste', TroppeRichieste],
+    ];
+    const conErrore = chiamate.flatMap(([nome, , chiama]) => errori.map(([quale, stato, codice, classe]) => [nome, quale, stato, codice, classe, chiama] as const));
+
+    it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(conErrore.flatMap(([nome, quale, stato, codice, classe, chiama]) => ([
+        ['della stessa persona', { persona: 'ada@example.com' }],
+        ['che non dice di chi è (una parte server di prima)', {}],
+        ['con `persona` null', { persona: null }],
+        ['con una `persona` che è un numero', { persona: 12 }],
+    ] as [string, Record<string, unknown>][]).map(([come, conLaPersona]) => [nome, quale, come, stato, { errore: codice, ...conLaPersona }, classe, chiama] as const)))('%s: %s %s resta l\'errore di sempre, con una richiesta sola e senza ricaricare la pagina (sprint 38 · T3.3)', async (_nome, _quale, _come, stato, corpo, classe, chiama) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async () => diErrore(stato, corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+
+        await expect(chiama('ada@example.com')).rejects.toBeInstanceOf(classe);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
 });

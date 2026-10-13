@@ -306,7 +306,8 @@ sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la su
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. In una scheda
 rimasta ferma, dalla stessa versione, la cornice non mostra le notifiche e i risultati della
-ricerca di un'altra persona: ricarica la pagina. La persona la riconosce dall'email, che c'è sempre: la garantisce il
+ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il
+freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
 contratto del backoffice, non zr-auth, che la porta com'è. Resta fuori «Segna tutte come lette» da una scheda ferma con
 l'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata

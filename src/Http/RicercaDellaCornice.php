@@ -20,9 +20,9 @@ use Zeiras\Core\Registro;
  * tipo. Un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Coi
  * risultati la risposta dice di quale workspace sono (`workspace`): la sessione ha un workspace solo, e una pagina rimasta su
  * un altro (un'altra scheda) sa così dove si apre ciò che ha trovato. Se la persona non ha ancora accettato i documenti legali
- * in vigore il backoffice risponde 403 `accettazione_richiesta`, e la rotta lo stesso, col solo codice (Accettazione); se il
- * backoffice frena le ricerche della persona risponde 429 `troppe_richieste`, e la rotta lo stesso, col solo codice e i
- * secondi di `Retry-After`.
+ * in vigore il backoffice risponde 403 `accettazione_richiesta`, e la rotta lo stesso, col codice (Accettazione); se il
+ * backoffice frena le ricerche della persona risponde 429 `troppe_richieste`, e la rotta lo stesso, col codice e i secondi
+ * di `Retry-After`. Tutti e due dicono di chi sono, come i risultati: `persona`, l'email di chi è nella sessione.
  */
 final class RicercaDellaCornice
 {
@@ -54,7 +54,7 @@ final class RicercaDellaCornice
         try {
             $risultati = Api::workspace()->post('/v1/ricerca', ['q' => $q])['data'] ?? null;
         } catch (ErroreApi $errore) {
-            return self::frenata($errore) ?? Accettazione::rispostaA($errore);
+            return self::frenata($errore, $persona) ?? Accettazione::rispostaA($errore, $persona);
         }
 
         if (! is_array($risultati) || ! array_is_list($risultati)) {
@@ -66,17 +66,17 @@ final class RicercaDellaCornice
 
     /**
      * Il freno di ricerca.crea, che conta le ricerche di una persona: 429 `troppe_richieste`, riconosciuto dallo stato e dal
-     * codice insieme. Al browser va un 429 col solo codice, nella forma degli errori delle rotte, e `Retry-After` coi secondi
-     * che il backoffice ha detto, se li ha detti: il titolo e il dettaglio restano nella parte server. Null se l'errore è un
-     * altro.
+     * codice insieme. Al browser va un 429 col codice, nella forma degli errori delle rotte, con `persona` — l'email della
+     * persona della sessione, letta prima di chiamare il backoffice: di chi è il freno — e `Retry-After` coi secondi che il
+     * backoffice ha detto, se li ha detti: il titolo e il dettaglio restano nella parte server. Null se l'errore è un altro.
      */
-    private static function frenata(ErroreApi $errore): ?JsonResponse
+    private static function frenata(ErroreApi $errore, ?string $persona): ?JsonResponse
     {
         if ($errore->stato !== 429 || $errore->codice !== self::TROPPE_RICHIESTE) {
             return null;
         }
 
-        return new JsonResponse(['errore' => self::TROPPE_RICHIESTE], 429, $errore->riprovaFra === null ? [] : ['Retry-After' => (string) $errore->riprovaFra]);
+        return new JsonResponse(['errore' => self::TROPPE_RICHIESTE, 'persona' => $persona], 429, $errore->riprovaFra === null ? [] : ['Retry-After' => (string) $errore->riprovaFra]);
     }
 
     /**

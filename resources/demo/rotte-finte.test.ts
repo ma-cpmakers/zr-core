@@ -986,7 +986,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         const inArrivo = fetch('/cornice/notifiche');
         await vi.advanceTimersByTimeAsync(1500);
         const risposta = await inArrivo;
-        expect([risposta.status, await risposta.json()]).toStrictEqual([403, { errore: 'accettazione_richiesta' }]);
+        // Come la rotta vera dalla `v2.5.0` (sprint 38 · T3.4): il 403 dice di chi è.
+        expect([risposta.status, await risposta.json()]).toStrictEqual([403, { errore: 'accettazione_richiesta', persona: grace.email }]);
         expect((await righeDi('/cornice/ricerca', cerca('lancio'))).stato).toBe(403);
         expect((await righeDi('/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: new Date().toISOString(), workspace: 'uat-marketing' }) })).stato).toBe(403);
 
@@ -1003,6 +1004,34 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect((await righeDi('/cornice/notifiche')).stato).toBe(403);
     });
 
+    it('il 403 di `?accettazione=dopo` dice di chi è, come le rotte vere: `persona` è l\'email di chi è nella «sessione» adesso, sulle quattro rotte; senza la persona non lo dice (sprint 38 · T3.4)', async () => {
+        const leQuattro: [string, RequestInit?][] = [
+            ['/cornice/notifiche'],
+            ['/cornice/notifiche/uat-c1/lettura', { method: 'PATCH', body: JSON.stringify({ letta: true }) }],
+            ['/cornice/notifiche/letture', { method: 'POST', body: JSON.stringify({ fino_a: '2026-10-10T00:00:00.000Z', workspace: 'uat-marketing' }) }],
+            ['/cornice/ricerca', cerca('lancio')],
+        ];
+        const corpi = async () => {
+            const tutti: unknown[] = [];
+            for (const [indirizzo, opzioni] of leQuattro) {
+                const inArrivo = fetch(indirizzo, opzioni);
+                await vi.advanceTimersByTimeAsync(1500);
+                const risposta = await inArrivo;
+                tutti.push([risposta.status, await risposta.json()]);
+            }
+
+            return tutti;
+        };
+        const sessione: { persona: typeof ada | undefined } = { persona: ada };
+        await rotte(sessione, '?accettazione=dopo');
+
+        expect(await corpi()).toStrictEqual(leQuattro.map(() => [403, { errore: 'accettazione_richiesta', persona: ada.email }]));
+        sessione.persona = grace;
+        expect(await corpi()).toStrictEqual(leQuattro.map(() => [403, { errore: 'accettazione_richiesta', persona: grace.email }]));
+        sessione.persona = undefined;
+        expect(await corpi()).toStrictEqual(leQuattro.map(() => [403, { errore: 'accettazione_richiesta' }]));
+    });
+
     it('con `?ricerca_frenata=5&per_altra` il 429 è della prima ricerca di chi è entrato dopo, non di chi era nella «sessione» al caricamento (sprint 38 · T1.1)', async () => {
         const sessione = { persona: ada };
         await rotte(sessione, '?ricerca_frenata=5&per_altra');
@@ -1013,7 +1042,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         const inArrivo = fetch('/cornice/ricerca', cerca('lancio'));
         await vi.advanceTimersByTimeAsync(1500);
         const frenata = await inArrivo;
-        expect([frenata.status, frenata.headers.get('Retry-After'), await frenata.json()]).toStrictEqual([429, '5', { errore: 'troppe_richieste' }]);
+        // Come la rotta vera dalla `v2.5.0` (sprint 38 · T3.4): il 429 dice di chi è.
+        expect([frenata.status, frenata.headers.get('Retry-After'), await frenata.json()]).toStrictEqual([429, '5', { errore: 'troppe_richieste', persona: grace.email }]);
         // Una volta sola, come senza `per_altra`.
         expect(titoli((await righeDi('/cornice/ricerca', cerca('lancio'))).righe)[0]).toBe('UAT Lancio di Grace');
     });

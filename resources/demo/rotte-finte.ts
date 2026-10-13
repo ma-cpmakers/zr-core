@@ -252,7 +252,7 @@ let giaFrenata = false;
 const arriva = new URLSearchParams(window.location.search).has('arriva');
 const altre = new URLSearchParams(window.location.search).has('altre');
 // Con `?accettazione=dopo` la persona non ha accettato i documenti legali in vigore, e lo dicono le rotte: come la parte server
-// dalla `v1.14.0`, le quattro rispondono 403 col solo codice, dopo la loro attesa. I dati della pagina restano quelli di sempre.
+// dalla `v1.14.0`, le quattro rispondono 403 col codice, dopo la loro attesa (dalla `v2.5.0` anche con `persona`, come il 429). I dati della pagina restano quelli di sempre.
 const daAccettare = new URLSearchParams(window.location.search).get('accettazione') === 'dopo';
 // Sprint 38 · T1 (voci 2026, 2028): con `?per_altra` il 403 di `?accettazione=dopo` e il 429 di `?ricerca_frenata` valgono solo
 // per chi è entrato dopo: alla persona che era nella «sessione» quando la pagina si è caricata le rotte rispondono come sempre.
@@ -363,10 +363,10 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             if (ricercaFrenata !== null && !giaFrenata && toccaAChiCE()) {
                 giaFrenata = true;
 
-                return new Response(JSON.stringify({ errore: 'troppe_richieste' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': ricercaFrenata } });
+                return new Response(JSON.stringify({ errore: 'troppe_richieste', persona: personaDellaSessione?.()?.email }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': ricercaFrenata } });
             }
             if (daAccettare && toccaAChiCE()) {
-                return json({ errore: 'accettazione_richiesta' }, 403);
+                return json({ errore: 'accettazione_richiesta', persona: personaDellaSessione?.()?.email }, 403);
             }
             if (errore === 'ricerca') {
                 return json({ errore: 'uat_errore' }, 502);
@@ -388,7 +388,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         const lettoIl = percorso === '/cornice/notifiche' ? istante?.() : undefined;
         await new Promise((fatto) => setTimeout(fatto, 800));
         if (daAccettare && toccaAChiCE()) {
-            return json({ errore: 'accettazione_richiesta' }, 403);
+            return json({ errore: 'accettazione_richiesta', persona: personaDellaSessione?.()?.email }, 403);
         }
         if (percorso === '/cornice/notifiche') {
             caricamenti += 1;

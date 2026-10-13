@@ -1720,7 +1720,7 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
     // Lettura della PR #56, R1: una lista chiusa, quella del registro.
     'la riga: il contesto di un risultato' => ['rotta', 'dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un\'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server'],
     'la riga: il tratto al backoffice' => ['rotta', 'dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l\'indirizzo di quella richiesta non porta query'],
-    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
+    'la riga: il freno del backoffice' => ['rotta', 'se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste", persona}` (`persona`, dalla `v2.5.0`: l\'email della persona della sessione, di chi è il freno) con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l\'errore della ricerca'],
     // Sprint 26 · T4.5 (lettura della PR #56, R8): che cosa fa la cornice, nel browser, con quei secondi.
     'la riga: la cornice aspetta i secondi del freno' => ['rotta', 'e la cornice mostra l\'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo'],
     // Lettura della PR #59, R3: il freno non regge a un rimontaggio.
@@ -4486,7 +4486,7 @@ it('il README dice, in «La parte server», che cosa dà `Cornice::dati()` a chi
     'le chiamate del frontend: chi decide' => ['lì la persona resta dov\'è, e che cosa mostrarle lo decide il frontend. Per le visite il frontend non scrive un rimando suo'],
     // Seconda lettura della PR #52, S10 (sprint 25 · T5.6).
     'le chiamate del frontend: la quarta forma (S10)' => ['La quarta forma è della pagina dell\'accettazione stessa (l\'host e il percorso di `zr-auth.accettazione`, con o senza la lingua davanti): lì risponde quel 403 anche a una visita e a una visita di Inertia, perché un rimando la manderebbe a sé stessa'],
-    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta"}`, col solo codice'],
+    'le rotte' => ['le quattro rotte rispondono 403 `{errore: "accettazione_richiesta", persona}`: il codice e, dalla `v2.5.0`, l\'email della persona della sessione (`persona`: di chi è quell\'errore); titolo, dettaglio e documenti mancanti del backoffice restano nella parte server'],
     // Lettura della PR #52, R10.
     'nessun middleware sulle rotte della cornice' => ['Su quelle rotte nessun middleware del frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di zr-auth'],
     // Seconda lettura della PR #52, S2 (sprint 25 · T5.2): da quale versione di zr-auth.
@@ -5370,6 +5370,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
     'la guida: Indietro fra due workspace' => ['guida', 'nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`'],
+    // Sprint 38 · T3.6 (voce #2026): in una scheda ferma anche gli errori di chi è entrato non vanno sotto il nome di prima.
+    'la scheda ferma: gli errori' => ['readme', 'Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta` e il 429 della ricerca portano `persona`'],
+    'la scheda ferma: gli errori a schermo' => ['readme', 'In una scheda rimasta ferma l\'errore di chi è entrato non riduce la cornice e non ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica'],
+    'la scheda ferma: il 403 di zr-auth' => ['readme', 'Il 403 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima'],
+    'la guida: gli errori in una scheda ferma' => ['guida', 'Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima'],
     'la guida: il contenuto della pagina' => ['guida', 'Il contenuto della tua pagina, con Indietro, resta sempre quello di allora'],
     'la guida: Indietro' => ['guida', 'all\'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata (README, «La cornice in due dati»)'],
     'a tutta area' => ['readme', 'una pagina a tutta area (`flush`) lo è dal primo disegno'],
@@ -5413,6 +5418,15 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**comporre `dopo` a mano**',
         '**resta in attesa di un `dopo` di chi è entrato**',
     ]],
+]);
+
+// Sprint 38 · T3.6 (voce #2026): dalla `v2.5.0` il 403 `accettazione_richiesta` e il 429 della ricerca dicono anche di chi
+// sono (`persona`). Il README non dice più che portano il solo codice.
+it('il README non dice più che quel 403 e quel 429 portano il solo codice: dalla `v2.5.0` dicono anche di chi sono (sprint 38 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il 403' => ['`{errore: "accettazione_richiesta"}`, col solo codice'],
+    'il 429' => ['la rotta risponde `429` `{errore: "troppe_richieste"}` con `Retry-After`'],
 ]);
 
 // Sprint 35 · T4.2 (voce #1945): dalla `v2.1.0` le chiavi di una notifica della parte server sono undici, con `azioni` e

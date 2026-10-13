@@ -31,7 +31,7 @@ use Zeiras\Core\Segno;
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
  * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Se la
  * persona non ha ancora accettato i documenti legali in vigore il backoffice risponde 403 `accettazione_richiesta`, e le tre
- * rotte lo stesso, col solo codice (Accettazione).
+ * rotte lo stesso, col codice e con `persona`, l'email di chi è nella sessione (Accettazione).
  *
  * L'elenco, «segna tutte» e la lettura di una notifica dicono anche quando, col segno della parte server (`Segno::adesso()`,
  * lo stesso orologio e la stessa forma dei dati della cornice): l'elenco quando la lettura è cominciata, `aggiornati_il`;
@@ -141,7 +141,7 @@ final class NotificheDellaCornice
         try {
             $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
         } catch (ErroreApi $errore) {
-            return Accettazione::rispostaA($errore);
+            return Accettazione::rispostaA($errore, $persona);
         }
 
         if (! is_array($notifiche) || ! array_is_list($notifiche)) {
@@ -222,6 +222,8 @@ final class NotificheDellaCornice
         }
 
         $percorso = '/v1/io/notifiche/'.rawurlencode($notifica).'/lettura';
+        // Di chi è la risposta, se è quel 403: l'email della sessione, presa prima di chiamare il backoffice.
+        $persona = Sessione::utente()['email'] ?? null;
 
         try {
             $segnata = self::perLaCornice(Api::workspace()->patch($percorso, ['letta' => $letta])['data'] ?? null, "PATCH {$percorso}");
@@ -231,7 +233,7 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'non_trovato'], 404);
             }
 
-            return Accettazione::rispostaA($errore);
+            return Accettazione::rispostaA($errore, $persona);
         }
 
         if ($segnata['id'] !== $notifica) {
@@ -288,6 +290,8 @@ final class NotificheDellaCornice
         }
 
         $chiamate = 0;
+        // Di chi è la risposta, se è quel 403: l'email della sessione, presa prima di chiamare il backoffice.
+        $persona = Sessione::utente()['email'] ?? null;
 
         try {
             // Il ciclo finisce su ogni strada: il backoffice dice che non ne restano, il tetto delle chiamate, quello del
@@ -302,7 +306,7 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'dati_non_validi'], 422);
             }
 
-            return Accettazione::rispostaA($errore);
+            return Accettazione::rispostaA($errore, $persona);
         }
 
         return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a'], 'altre' => $segnate['altre']], 'segnate_il' => Segno::adesso()]);

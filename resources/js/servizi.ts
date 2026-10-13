@@ -81,26 +81,27 @@ export class TroppeRichieste extends Error {
 }
 
 /**
- * I codici dell'errore, se la risposta ha un corpo JSON che li porta: quello che una rotta della cornice dà al suo errore
- * (`errore`), e quello che dà zr-auth quando risponde da sé (`codice`).
+ * Una chiamata a una rotta della cornice. Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
+ * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
+ * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta` e il 429 della ricerca). Con `email`, quella di chi la
+ * cornice mostra, una risposta di un'altra persona non torna a chi l'ha chiesta, né coi dati né con un errore: la sessione è
+ * passata a un'altra persona con la pagina ferma, e la pagina si ricarica — dopo, è di chi è entrato. La promessa non si
+ * chiude: fino al ricaricamento chi ha chiesto resta in attesa, e niente di quella risposta va a schermo, nemmeno la cornice
+ * ridotta o il freno della ricerca. Una risposta che non lo dice con un testo (una parte server di prima) vale com'è: nessun
+ * ricaricamento. Una risposta 200 senza un corpo JSON torna `null`, e l'errore lo dà chi ha chiamato.
  */
-async function codiciDi(risposta: Response): Promise<unknown[]> {
-    try {
-        const corpo = (await risposta.json()) as { errore?: unknown; codice?: unknown } | null;
-
-        return [corpo?.errore, corpo?.codice];
-    } catch {
-        return [];
-    }
-}
-
-async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}): Promise<unknown> {
+async function chiama(indirizzo: string, opzioni: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal; keepalive?: boolean } = {}, email?: string): Promise<unknown> {
     const risposta = await fetch(indirizzo, { ...opzioni, headers: { Accept: 'application/json', ...opzioni.headers } });
+    const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
+    if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
+        return new Promise<never>(() => location.reload());
+    }
     if (!risposta.ok) {
         const esito = `${opzioni.method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
-        // Il corpo si legge solo di un 403, e solo quel codice cambia l'errore: un 403 con un altro codice (la sessione senza
-        // workspace), o lo stesso codice con un altro stato, restano l'errore di sempre.
-        if (risposta.status === 403 && (await codiciDi(risposta)).includes('accettazione_richiesta')) {
+        // Solo quel codice cambia l'errore di un 403 — quello che una rotta della cornice dà al suo errore (`errore`), o quello
+        // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace), o lo
+        // stesso codice con un altro stato, restano l'errore di sempre.
+        if (risposta.status === 403 && [corpo?.errore, corpo?.codice].includes('accettazione_richiesta')) {
             throw new AccettazioneRichiesta(esito);
         }
         if (risposta.status === 429) {
@@ -112,18 +113,8 @@ async function chiama(indirizzo: string, opzioni: { method?: string; headers?: R
         throw new Error(esito);
     }
 
-    return risposta.json();
+    return corpo;
 }
-
-/**
- * La risposta di una rotta che dice di chi è (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0`
- * lo dicono l'elenco delle notifiche e la ricerca), per chi la cornice mostra (`email`). Se è di un'altra persona non torna a
- * chi l'ha chiesta: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si ricarica — dopo, è di chi è
- * entrato. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e niente di quella risposta va a
- * schermo. Una risposta che non lo dice con un testo (una parte server di prima) vale com'è: nessun ricaricamento.
- */
-const diChi = <T extends { persona?: unknown } | null>(email: string, corpo: T): T | Promise<never> =>
-    typeof corpo?.persona === 'string' && corpo.persona !== email ? new Promise<never>(() => location.reload()) : corpo;
 
 /**
  * Un istante della parte server, se ha la forma del suo segno: in UTC, coi microsecondi a sei cifre e `Z` in fondo
@@ -139,10 +130,10 @@ export function segno(valore: unknown): string | undefined {
  * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
  * `workspace` è lo slug del workspace di cui sono, come lo dice la parte server (dalla `v1.12.0`): quello della sessione, che
  * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
- * `email` è quella di chi la cornice mostra: un elenco di un'altra persona non torna (`diChi`).
+ * `email` è quella di chi la cornice mostra: un elenco, o un errore, di un'altra persona non torna (`chiama`).
  */
 export async function caricaNotifiche(email: string): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
-    const corpo = await diChi(email, (await chiama('/cornice/notifiche')) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown; persona?: unknown } | null);
+    const corpo = (await chiama('/cornice/notifiche', {}, email)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
@@ -211,16 +202,16 @@ export async function segnaLetta(id: string): Promise<{ il: string | undefined }
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
  * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
  * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
- * mostra: i risultati di un'altra persona non tornano (`diChi`).
+ * mostra: i risultati, o un errore, di un'altra persona non tornano (`chiama`).
  */
 export async function cerca(parola: string, segnale: AbortSignal, email: string): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
-    const corpo = await diChi(email, (await chiama(indirizzo, {
+    const corpo = (await chiama(indirizzo, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...gettoneCsrf() },
         body: JSON.stringify({ q: parola }),
         signal: segnale,
-    })) as { data?: unknown; workspace?: unknown; persona?: unknown } | null);
+    }, email)) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
