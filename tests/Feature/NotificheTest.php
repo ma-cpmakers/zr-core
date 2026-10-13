@@ -884,7 +884,7 @@ it('la guardia del workspace e le due validazioni stanno prima di ogni chiamata 
     Http::assertNothingSent();
 })->with([
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409, 'workspace_diverso'],
-    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com'], 422, 'dati_non_validi'],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422, 'dati_non_validi'],
     'senza workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z'], 422, 'dati_non_validi'],
 ]);
 
@@ -976,7 +976,7 @@ it('quando POST /cornice/notifiche/letture risponde 422 o 409 senza chiamare il 
         ->and(lockLibero($sessione))->toBe(false);
     $rimasto->release();
 })->with([
-    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com'], 422],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422],
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
 ]);
 
@@ -1125,7 +1125,7 @@ it('in ritardo, una richiesta sbagliata riceve il suo 422 o il suo 409, non il 5
 
     Http::assertNothingSent();
 })->with([
-    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com'], 422],
+    'un fino_a che non è un istante' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing'], 422],
     'un altro workspace' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite'], 409],
 ]);
 
@@ -1246,8 +1246,8 @@ it('se il lock della sessione è di un\'altra richiesta per più dell\'attesa di
     Http::assertNothingSent();
     $altra->release();
 })->with([
-    'una richiesta giusta' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']],
-    'un fino_a che non è un istante: senza il blocco sarebbe un 422' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']],
+    'una richiesta giusta' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-marketing']],
+    'un fino_a che non è un istante: senza il blocco sarebbe un 422' => [['fino_a' => 'ieri', 'workspace' => 'uat-marketing']],
     'un altro workspace: senza il blocco sarebbe un 409' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite']],
 ]);
 

@@ -1216,6 +1216,113 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect([uno('.zr-ws-switch') !== null, etichette().includes('CRM'), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, true, '7']);
     });
 
+    // Sprint 37 · T6 (review della PR #70: R1 = S1, R2 = S2, R3, R5, R12): più di un Indietro fra due persone e due workspace.
+    // Una voce della cronologia: il `subito` di una persona su un workspace al secondo detto, col `dopo` letto un secondo dopo.
+    const voce = (persona: DatiSubito['persona'], workspace: DatiSubito['workspace'], secondo: number, nonLette: number): { subito: DatiSubito; dopo: DatiDopo } => {
+        const il = (quando: number) => `2026-10-13T08:00:${String(quando).padStart(2, '0')}.000000Z`;
+
+        return { subito: { lingua: 'it', persona, workspace, sessione_il: il(secondo) }, dopo: { lingua: 'it', persona, workspace, prodotti: { pm: 'attivo' }, non_lette: nonLette, aggiornati_il: il(secondo + 1), sessione_il: il(secondo + 1) } };
+    };
+    // La stessa voce con la `cornice` intera (un dato solo): il suo segno è quello della lettura.
+    const intera = (persona: DatiSubito['persona'], workspace: DatiSubito['workspace'], secondo: number, nonLette: number): { cornice: DatiDellaCornice } => ({
+        cornice: { lingua: 'it', persona, workspace, prodotti: { pm: 'attivo' }, non_lette: nonLette, aggiornati_il: `2026-10-13T08:00:${String(secondo).padStart(2, '0')}.000000Z` },
+    });
+    // Chi c'è a schermo: l'avatar, il workspace della barra, le non lette, e nome ed email nel menu del profilo, aperto.
+    const aSchermo = async (persona: DatiSubito['persona'], workspace: DatiSubito['workspace'], nonLette: string, nonSuo: DatiSubito['workspace']) => {
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(persona.nome);
+        expect(uno('aside.zr-side')?.textContent).toContain(workspace.nome);
+        expect(uno('aside.zr-side')?.textContent).not.toContain(nonSuo.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe(nonLette);
+        if (!uno('.zr-profile-head')) {
+            await clic(uno('.zr-avatar-btn'));
+        }
+        expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([persona.nome, persona.email]);
+    };
+
+    it.each([
+        ['coi due dati', voce],
+        ['con la `cornice` intera', intera],
+    ])('con tre voci, due Indietro di fila non riportano chi c\'era prima: dopo una pagina sua più vecchia sullo stesso workspace, quella su un altro workspace non rifà la cornice coi suoi dati (%s; sprint 37 · T6, R1)', async (_come, fai) => {
+        const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
+        const [q, r, s] = [fai(altra, altrove, 0, 1), fai(altra, qui, 10, 2), fai(dati.persona, qui, 20, 3)];
+        await inDue(q, <PaginaA key="1" />);
+        await inDue(r, <PaginaB key="2" />);
+        await inDue(s, <PaginaA key="3" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        const barra = uno('aside.zr-side');
+
+        // Indietro sulla voce di chi c'era prima sullo stesso workspace, poi su quella dell'altro workspace.
+        await inDue(r, <PaginaB key="2" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        await inDue(q, <PaginaA key="1" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        expect(uno('aside.zr-side')).toBe(barra);
+
+        // Avanti fino in fondo.
+        await inDue(r, <PaginaB key="2" />);
+        await inDue(s, <PaginaA key="3" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        expect(uno('aside.zr-side')).toBe(barra);
+    });
+
+    it('chi è mostrato non torna indietro: dopo Indietro su una pagina sua più vecchia, Avanti sulla voce di un\'altra persona in un altro workspace non rifà la cornice per lei (sprint 37 · T6, R2)', async () => {
+        const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
+        const [c1, o2, c3] = [voce(dati.persona, qui, 0, 1), voce(altra, altrove, 10, 2), voce(dati.persona, qui, 20, 3)];
+        await inDue(c1, <PaginaA key="1" />);
+        await inDue(o2, <PaginaB key="2" />);
+        await inDue(c3, <PaginaA key="3" />);
+
+        await inDue(o2, <PaginaB key="2" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        await inDue(c1, <PaginaA key="1" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        await inDue(o2, <PaginaB key="2" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+    });
+
+    it('lo stesso quando la pagina sua più vecchia è di un altro workspace e la cornice si è rifatta lì: Avanti sulla voce di un\'altra persona in quel workspace non la mostra (sprint 37 · T6, S2)', async () => {
+        const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
+        const [y1, x2, y3] = [voce(dati.persona, altrove, 0, 1), voce(altra, altrove, 10, 2), voce(dati.persona, qui, 20, 3)];
+        await inDue(y1, <PaginaA key="1" />);
+        await inDue(x2, <PaginaB key="2" />);
+        await inDue(y3, <PaginaA key="3" />);
+
+        await inDue(x2, <PaginaB key="2" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        await inDue(y1, <PaginaA key="1" />);
+        await aSchermo(dati.persona, altrove, '1', qui);
+        await inDue(x2, <PaginaB key="2" />);
+        await aSchermo(dati.persona, altrove, '1', qui);
+    });
+
+    it('una pagina sua resta sua: dopo Indietro su una voce di un\'altra persona, Indietro su una pagina sua di un altro workspace mostra la cornice di quel workspace, coi suoi dati (sprint 37 · T6, R3)', async () => {
+        const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
+        const [a0, b1, a2] = [voce(dati.persona, altrove, 0, 1), voce(altra, qui, 10, 2), voce(dati.persona, qui, 20, 3)];
+        await inDue(a0, <PaginaA key="1" />);
+        await inDue(b1, <PaginaB key="2" />);
+        await inDue(a2, <PaginaA key="3" />);
+
+        await inDue(b1, <PaginaB key="2" />);
+        await aSchermo(dati.persona, qui, '3', altrove);
+        await inDue(a0, <PaginaA key="1" />);
+        await aSchermo(dati.persona, altrove, '1', qui);
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+    });
+
+    it('su una pagina sua più vecchia di un altro workspace il nome e la lingua restano quelli di adesso, non quelli di allora (sprint 37 · T6)', async () => {
+        const [qui, altrove] = [dati.workspace, datiAltroWorkspace.workspace];
+        const allora = voce(dati.persona, altrove, 0, 1);
+        const adesso = voce({ nome: 'Ada King', email: dati.persona.email }, qui, 20, 3);
+        await inDue(allora, <PaginaA key="1" />);
+        await inDue({ subito: { ...adesso.subito, lingua: 'es' }, dopo: { ...adesso.dopo, lingua: 'es' } }, <PaginaB key="2" />);
+
+        await inDue(allora, <PaginaA key="1" />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada King');
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect([uno('aside.zr-side')?.textContent?.includes(altrove.nome), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, '1']);
+    });
+
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diAltra = { ...subito, persona: altra };

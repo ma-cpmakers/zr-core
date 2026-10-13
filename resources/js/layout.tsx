@@ -59,21 +59,33 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
     const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(dopo ?? { in_attesa: true }) } : undefined);
 
-    // Chi la cornice ha mostrato per ultimo sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice
-    // si rifà e non lo sa più. Una pagina di un'altra persona (un'altra email), di un altro workspace e più vecchia di chi è
-    // stato mostrato (il segno della sessione, o quello della lettura nei dati interi) è una voce della cronologia ripresa con
-    // Indietro: i suoi dati non valgono, restano quelli visti, e la cornice non si rifà. Nello stesso workspace lo decide
-    // `Cornice`, che lì è rimasta montata. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
+    // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai
+    // indietro: una pagina più vecchia è una voce della cronologia ripresa con Indietro o Avanti, e non dice chi è entrato.
+    // Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    const [entrato, entra] = useState(pagina);
+    // L'ultima pagina di chi è mostrato: una pagina di un'altra persona non la cambia, nemmeno nello stesso workspace.
     const [vista, vedi] = useState(pagina);
-    const diAllora = pagina && vista && pagina.persona.email !== vista.persona.email && pagina.workspace.slug !== vista.workspace.slug && della(vista) > della(pagina);
-    const cornice = diAllora ? vista : pagina;
-    // I dati si compongono a ogni render: quelli visti cambiano solo quando cambia chi sono, di quale workspace o il loro segno.
-    if (pagina && !diAllora && (!vista || pagina.persona.email !== vista.persona.email || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
-        vedi(pagina);
-    }
-    if (!cornice) {
+    if (!pagina) {
         return children;
     }
+    const chi = entrato && della(entrato) > della(pagina) ? entrato : pagina;
+    if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato)) {
+        entra(chi);
+    }
+    // Una pagina di un'altra persona (un'altra email) è più vecchia di chi è mostrato: i suoi dati non valgono. Se è di un
+    // altro workspace restano quelli visti, e la cornice non si rifà; nello stesso workspace lo decide `Cornice`, che lì è
+    // rimasta montata e sa leggere un `dopo` riletto adesso sotto il `subito` di allora.
+    const sua = pagina.persona.email === chi.persona.email;
+    const ultima = (sua ? pagina : vista) ?? pagina;
+    if (sua && (!vista || pagina.persona.email !== vista.persona.email || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
+        vedi(pagina);
+    }
+    const valgono = sua || pagina.workspace.slug === ultima.workspace.slug ? pagina : ultima;
+    // Una pagina sua più vecchia (Indietro su un altro workspace) porta i suoi dati, ma il nome, la lingua e il segno restano
+    // quelli di adesso: la cornice che si rifà lì sotto riparte da chi è mostrato, e una voce di un'altra persona più vecchia
+    // di lui non passa nemmeno dopo.
+    const cornice = valgono.persona.email === chi.persona.email && della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : valgono;
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.

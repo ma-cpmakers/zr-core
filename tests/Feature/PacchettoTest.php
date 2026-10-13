@@ -5316,15 +5316,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
     'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],
     // Sprint 37 · T3.6 (voce #1993): il limite dei due workspace non c'è più.
-    'Indietro: fra due workspace' => ['readme', 'Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni workspace, e chi è stato mostrato per ultimo lo tiene lui, sopra'],
+    'Indietro: fra due workspace' => ['readme', 'Dalla `v2.4.0` vale anche fra due workspace: il layout rifà la cornice a ogni workspace, e chi è mostrato lo tiene lui, sopra: è chi ha il segno più avanti, e non torna indietro, per quante voci si ripercorrano con Indietro e Avanti'],
     'Indietro: fra due workspace, a schermo' => ['readme', 'Con Indietro su una pagina di chi c\'era prima in un altro workspace la cornice resta quella di chi è entrato, col suo workspace e i suoi dati, e non si rifà'],
-    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace'],
+    'Indietro: fra due workspace, la stessa persona' => ['readme', 'Per la stessa persona niente cambia: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace, col nome e la lingua di adesso'],
     'Indietro: l\'esempio dell\'uscita' => ['readme', "'history' => ['encrypt' => true], // la rotta dell'uscita, chiusa la sessione Inertia::clearHistory(); return redirect('/');"],
     'Indietro: la scheda lasciata aperta' => ['readme', 'In una scheda rimasta aperta mentre la sessione cambia da un\'altra la cronologia resta leggibile'],
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
     'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome'],
     // Sprint 37 · T2.6 (voce #1998): `dopo` dice di chi è, e che cosa cambia per un frontend.
-    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come le ha date io.mostra in quella lettura e, in fondo, `sessione_il`, il segno di quella lettura'],
+    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione dopo quella lettura (la lingua e il nome riletti da io.mostra, l\'email dell\'ingresso) e, in fondo, `sessione_il`, il segno di quella lettura'],
     'dopo dice di chi è: nel layout' => ['readme', 'se fra le due richieste la sessione è passata a un\'altra persona la cornice è la sua, coi suoi dati, e i dati di una persona non stanno sotto il nome di un\'altra'],
     'dopo dice di chi è: per un frontend' => ['readme', 'Per un frontend che dà al layout `Cornice::dopo()` com\'è non c\'è niente da scrivere, e tre cose si vedono'],
     'dopo dice di chi è: la scheda ferma' => ['readme', 'Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a un\'altra persona mostra la cornice di questa, rifatta, e la pagina con lei'],
@@ -5343,6 +5343,9 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
     'l\'email: zr-auth non la controlla' => ['readme', 'zr-auth la porta nella sessione com\'è, e non la controlla'],
+    // Sprint 37 · T6 (review della PR #70: R7, R13): ciò che resta fuori lo dice anche la guida; l'email dei dati composti a mano.
+    'la guida: ciò che resta fuori' => ['guida', 'Resta fuori «Segna tutte come lette» da una scheda ferma con l\'elenco già a schermo: quel clic segna le notifiche di chi è nella sessione'],
+    'i dati composti a mano: l\'email' => ['readme', 'Chi compone a mano i dati della cornice dà come email della persona quella della sessione: con un\'altra, campanella e ricerca ricaricano la pagina a ogni uso'],
     'la guida: l\'email' => ['guida', 'La persona la riconosce dall\'email, che c\'è sempre: la garantisce il contratto del backoffice, non zr-auth, che la porta com\'è'],
     'Indietro: il caricamento da capo' => ['readme', 'con Inertia lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato'],
     'Indietro: quando arriva il segnale' => ['readme', 'Se l\'uscita rimanda a una pagina che non è di Inertia (l\'ingresso), il segnale arriva con la prima pagina di Inertia servita dopo'],
@@ -5432,6 +5435,15 @@ it('README e guida non dicono che l\'email della persona la garantisce zr-auth (
     'garantita da zr-auth' => ['garantita da zr-auth'],
     'zr-auth garantisce' => ['zr-auth garantisce'],
     'zr-auth la controlla' => ['zr-auth la controlla'],
+]);
+
+// Sprint 37 · T6 (review della PR #70: R6, R8): chi è mostrato non è «l'ultimo mostrato», e l'email di `dopo` non viene da io.mostra.
+it('README e guida non dicono più che il layout tiene chi è stato mostrato per ultimo, né che `dopo` porta la persona come l\'ha data io.mostra (sprint 37 · T6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'chi è stato mostrato per ultimo' => ['chi è stato mostrato per ultimo'],
+    'come le ha date io.mostra' => ['come le ha date io.mostra'],
 ]);
 
 // Sprint 31 · T2.4 (voce #1866). Le frasi con chi le hanno tutti i tipi: README e guida non dicono più che sono solo di Project
