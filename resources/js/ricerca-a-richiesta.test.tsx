@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cornice } from './cornice';
 import type { DatiDellaCornice } from './index';
 import { testi } from './lingue';
-// @ts-expect-error il pezzo e chi lo chiede arrivano col commit dopo: questo è il commit coi soli casi rossi
 import * as dellaRicerca from './ricerca';
 import * as deiServizi from './servizi';
 
@@ -73,7 +72,6 @@ async function scrivi(parola: string, colFuoco = true): Promise<void> {
 function pezzoInRitardo() {
     let arrivato: typeof dellaRicerca | undefined;
     const inAttesa: (() => void)[] = [];
-    // @ts-expect-error il pezzo e chi lo chiede arrivano col commit dopo: questo è il commit coi soli casi rossi
     const chiesto = vi.spyOn(deiServizi, 'chiediLaRicerca').mockImplementation(async () => {
         if (arrivato === undefined) {
             await new Promise<void>((lascia) => inAttesa.push(lascia));
@@ -82,7 +80,6 @@ function pezzoInRitardo() {
 
         return dellaRicerca;
     });
-    // @ts-expect-error il pezzo e chi lo chiede arrivano col commit dopo: questo è il commit coi soli casi rossi
     vi.spyOn(deiServizi, 'ricerca', 'get').mockImplementation(() => arrivato);
 
     return {

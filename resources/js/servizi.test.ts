@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { cerca } from './ricerca';
+import { AccettazioneRichiesta, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.

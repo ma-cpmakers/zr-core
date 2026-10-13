@@ -758,8 +758,10 @@ it('la forma di un id e quella di un segnaposto sono scritte uguali nella parte 
         ->and($delServer('FORMA_DI_UN_ID'))->toBe('/\A'.NotificheDellaCornice::ID.'\z/')
         // La forma di uno slug è scritta una volta sola, in `forme.ts`, e chi la usa la importa da lì.
         ->and(substr_count($sorgente('forme.ts'), 'export const FORMA_DI_UNO_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;'))->toBe(1)
-        ->and(substr_count($sorgente('notifiche.ts').$sorgente('servizi.ts'), "import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';"))->toBe(2)
-        ->and(substr_count($sorgente('notifiche.ts').$sorgente('servizi.ts').$sorgente('cornice.tsx'), '[a-z0-9]+(-[a-z0-9]+)*'))->toBe(0)
+        // Dalla `v2.8.0` la richiesta della ricerca, che guarda lo slug dei risultati, sta nel suo pezzo a richiesta (`ricerca.ts`).
+        ->and(substr_count($sorgente('notifiche.ts').$sorgente('ricerca.ts'), "import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';"))->toBe(2)
+        ->and(substr_count($sorgente('servizi.ts'), "import { FORMA_DI_UN_ID } from './forme';"))->toBe(1)
+        ->and(substr_count($sorgente('notifiche.ts').$sorgente('servizi.ts').$sorgente('ricerca.ts').$sorgente('cornice.tsx'), '[a-z0-9]+(-[a-z0-9]+)*'))->toBe(0)
         ->and(str_contains($sorgente('servizi.ts'), "from './notifiche'"))->toBe(false);
 });
 

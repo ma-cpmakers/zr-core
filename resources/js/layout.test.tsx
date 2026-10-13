@@ -1,9 +1,10 @@
 import { act, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
+import { chiediLaRicerca } from './servizi';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
 // layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
@@ -99,6 +100,11 @@ function PaginaColPercorso({ conta }: { conta: { montaggi: number } }) {
 
 let contenitore: HTMLDivElement;
 let radice: Root;
+
+// Dalla `v2.8.0` la ricerca è un pezzo a richiesta (`./ricerca`): qui è arrivato prima di ogni caso, come in `cornice.test.tsx`.
+beforeAll(async () => {
+    await chiediLaRicerca();
+});
 
 beforeEach(() => {
     contenitore = document.createElement('div');

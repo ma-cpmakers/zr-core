@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { act, Fragment, useEffect, useLayoutEffect, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
 import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
@@ -15,6 +15,7 @@ import { frasiARichiesta } from './campanella';
 import * as delleLingue from './lingue';
 import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
+import { chiediLaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
 
@@ -50,6 +51,13 @@ const aziende: NonNullable<DatiDellaCornice['aziende']> = [
 
 let contenitore: HTMLDivElement;
 let radice: Root;
+
+// Dalla `v2.8.0` la ricerca è un pezzo a richiesta (`./ricerca`), che la cornice chiede al primo fuoco nel campo o alla prima
+// parola. Qui è arrivato prima di ogni caso: una parola parte al giro dopo, e un caso che dice «nessuna richiesta» non lo dice
+// perché il pezzo è ancora in viaggio. Il pezzo in ritardo, o che cambia persona nel mezzo, è in `ricerca-a-richiesta.test.tsx`.
+beforeAll(async () => {
+    await chiediLaRicerca();
+});
 
 beforeEach(() => {
     contenitore = document.createElement('div');
@@ -4709,6 +4717,8 @@ describe('la ricerca', () => {
             flushSync(() => radice.render(arrivati));
             leggi();
             ambiente.IS_REACT_ACT_ENVIRONMENT = true;
+            // Il pezzo della ricerca è già arrivato, e la parola parte al giro dopo: lo si aspetta, senza far passare il tempo.
+            await chiediLaRicerca();
             expect(partite(fetchFinto)).toStrictEqual([ricercaDi('ada')]);
             await act(giro);
             leggi();
