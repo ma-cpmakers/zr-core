@@ -3,9 +3,7 @@ import { resolve } from 'node:path';
 import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
-import { clientFinto, colSegno, conLaSessione, lettura, type Entrata } from './parte-server-finta';
-// @ts-expect-error Sprint 40 · T5: i casi rossi. La «sessione» coi suoi stati arriva col codice del task.
-import { chiaveDellaSessione, sessioneFinta } from './parte-server-finta';
+import { chiaveDellaSessione, clientFinto, colSegno, conLaSessione, lettura, sessioneFinta, type Entrata } from './parte-server-finta';
 
 // Sprint 10 · T3 (voce #1453), dopo la review della PR. La UAT del layout gira sulla pagina di prova, e ciò che lì fa la parte
 // server lo fa questo file: se smette di mettere il segno a ogni lettura, se `?segno=no` non lo toglie più, o se risponde a una

@@ -41,11 +41,12 @@ export function lettura<Props extends { cornice: DatiDellaCornice | null }>(prop
 
 /**
  * Chi è entrato dopo, nella «sessione» della parte server finta: ciò che la sessione dice di lei, ciò che il backoffice dà per
- * lei e, se non è nel workspace della pagina, il suo.
+ * lei e, se non è nel workspace della pagina, il suo. Senza la persona è quella che c'era, con un'altra lingua, e ciò che il
+ * backoffice non dà per lei resta quello della pagina.
  */
 export interface Entrata {
-    sessione: Pick<DatiDellaCornice, 'lingua' | 'persona'>;
-    backoffice: Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette' | 'accettazione_richiesta'>;
+    sessione: Pick<DatiDellaCornice, 'lingua'> & Partial<Pick<DatiDellaCornice, 'persona'>>;
+    backoffice: Partial<Pick<DatiDellaCornice, 'prodotti' | 'aziende' | 'non_lette' | 'accettazione_richiesta'>>;
     workspace?: DatiDellaCornice['workspace'];
 }
 
@@ -72,6 +73,29 @@ export function conLaSessione<Props extends { cornice: DatiDellaCornice | null; 
         ...(letta.subito ? { subito: { ...letta.subito, ...sessione, ...altrove } } : {}),
         ...(letta.dopo?.workspace ? { dopo: { ...letta.dopo, ...sessione, ...(letta.dopo.aziende?.length ? backoffice : {}), ...altrove } } : {}),
     };
+}
+
+/** Dove la pagina di prova scrive chi è entrato: nel `localStorage`, che è del browser e non della scheda. */
+export const chiaveDellaSessione = 'uat-persona';
+
+/**
+ * La «sessione» della parte server finta nei suoi stati: chi è entrato adesso, secondo ciò che i pulsanti della pagina di prova
+ * hanno scritto nel `localStorage`. Senza un valore, o con uno che non è di questi, c'è la prima persona e la lettura resta
+ * com'è. `altra`: un'altra persona nello stesso workspace. `altrove`: la stessa su un altro workspace, che è anche quello delle
+ * sue aziende. `lingua`: la persona che c'è, con un'altra lingua e nient'altro di diverso.
+ */
+export function sessioneFinta(altra: Entrata, altrove: NonNullable<Entrata['workspace']>, altraLingua: string): () => Entrata | undefined {
+    const entrate = new Map<string, Entrata>([
+        ['altra', altra],
+        ['altrove', {
+            ...altra,
+            backoffice: { ...altra.backoffice, aziende: (altra.backoffice.aziende ?? []).map((azienda) => ({ ...azienda, workspace: [{ id: 'uat-ws-9', ...altrove }] })) },
+            workspace: altrove,
+        }],
+        ['lingua', { sessione: { lingua: altraLingua }, backoffice: {} }],
+    ]);
+
+    return () => entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '');
 }
 
 /** Quanto aspetta la risposta di una visita: i millisecondi di `lenta` nel suo indirizzo, se sono un numero intero; se no `attesa`. */
