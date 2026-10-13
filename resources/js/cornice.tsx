@@ -847,8 +847,9 @@ export function Cornice({ dati: dellaPagina, product, nav = [], active, onLogout
     // L'`AppShell` aspetta 300 ms dall'ultimo tasto e poi chiama la `onSearch` che aveva a quel tasto, non l'ultima: se nel
     // mezzo la cornice è passata allo stato ridotto, la ricerca di prima arriva qui lo stesso. Che cosa vale adesso lo dice un
     // ref, scritto a ogni disegno andato in pagina: nello stato ridotto nessuna richiesta parte.
-    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora — ma la cornice la tiene, l'ultima: la
-    // parola è stato dell'`AppShell`, e la cornice la conosce solo da qui. Quando i dati arrivano parte lei, una volta; se al
+    // In attesa la parola non parte — i dati che servono alla ricerca non ci sono ancora — ma la cornice la tiene, l'ultima che
+    // l'`AppShell` le ha dato: la parola è stato dell'`AppShell`, che sotto i due caratteri non avvisa, e la cornice la conosce
+    // solo da qui (una parola cancellata resta tenuta: README, «La cornice in due dati»). Quando i dati arrivano parte lei; se al
     // loro posto arriva `non_letti` o l'accettazione la cornice la dimentica, e così a ogni disegno che non è in attesa: mai la
     // parola di una visita di prima.
     const daCercare = useRef<string>(undefined);

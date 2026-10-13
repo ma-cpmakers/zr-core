@@ -298,6 +298,7 @@ const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(
 /**
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
  * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
- * Chromium (`pezzoARichiesta`; README, «Le notifiche»). Arrivato, non si chiede più.
+ * Chromium dove `pezzoARichiesta` sa comporre l'indirizzo (README, «Le notifiche», coi casi in cui non sa). Arrivato, non si
+ * chiede più.
  */
 export const chiediLaCampanella = async () => (campanella ??= await ilPezzoDellaCampanella());

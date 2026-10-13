@@ -297,7 +297,9 @@ richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 `subito` e `dopo` al posto di `cornice` (i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi). Finché
 `dopo` non arriva la cornice è ridotta e senza avviso, e dalla `v2.2.0` campanella e ricerca caricano: una parola scritta
 intanto si cerca quando `dopo` arriva (anche se nel frattempo l'hai cancellata), e il menu del profilo mostra la persona
-di `subito`. Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
+di `subito`. Se il pezzo della campanella non arriva, «Riprova» lo richiede solo se la tua build lo mette nella stessa
+cartella del JS d'ingresso e l'indirizzo dell'ingresso non ha una coda sua: altrimenti serve ricaricare la pagina (README,
+«Le notifiche»). Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti`, la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
 

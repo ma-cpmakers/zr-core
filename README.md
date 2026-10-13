@@ -1172,9 +1172,12 @@ Che cosa vede la persona:
   caricamento, non in quello d'errore: il pannello aperto e il riquadro sotto una parola dicono che stanno caricando,
   senza «Riprova». Se la cornice ha già i dati di quel workspace, da una pagina di prima, restano quelli finché non
   arrivano i nuovi; dalla `v2.2.0` la persona e la lingua sono quelle di `subito` della richiesta nuova: se la sessione
-  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Una pagina ripresa dalla cronologia con
-  Indietro porta il `subito` di allora: finché il suo `dopo` non arriva, il menu del profilo mostra la persona di quella
-  pagina. Senza avviso la pagina tiene la sua
+  è cambiata da un'altra scheda, il menu del profilo non mostra chi c'era prima. Il resto di ciò che la cornice tiene è
+  del workspace, non della persona: aziende e workspace, moduli, il numero delle non lette, l'elenco delle notifiche già
+  aperto e i risultati di una ricerca restano a schermo sotto il nome nuovo, finché `dopo` non arriva. Una pagina ripresa
+  dalla cronologia con Indietro porta il `subito` di allora: il menu del profilo mostra la persona di quella pagina, e la
+  mostra anche dopo, sopra i dati di adesso, se il `dopo` che arriva è stato letto di nuovo; torna quella di adesso alla
+  visita dopo, o subito se anche il `dopo` è quello di allora (valgono i dati che la cornice ha già). Senza avviso la pagina tiene la sua
   forma: una pagina a tutta area (`flush`) lo è dal primo disegno. E la campanella aperta in attesa chiede già l'elenco,
   e il pannello lo mostra quando `dopo` arriva; una parola scritta nella ricerca in attesa non parte subito: parte da
   sola quando `dopo` è arrivato — l'ultima di almeno due caratteri che l'`AppShell` ha dato alla cornice —, e non parte
