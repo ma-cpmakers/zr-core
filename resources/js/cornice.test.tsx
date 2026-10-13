@@ -969,6 +969,17 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
     });
 
+    // Sprint 33 · T2 (voce #1890). Il taglio del nome è del titolo: l'avatar dice il nome intero, pulito.
+    it('un nome di chi ha fatto oltre i 60 caratteri è tagliato nel titolo, e l\'avatar dice il nome intero pulito (sprint 33 · T2.1, T2.2)', async () => {
+        const lungo = `Maria ${'Anna '.repeat(12)}Rossi`;
+        await apriSu([conInPiu('uat-n5a', { autore_nome: ` ${lungo}\n` })]);
+        const avatar = voci()[0].querySelector('.zr-avatar');
+
+        expect(lungo).toHaveLength(71);
+        expect(voci()[0].querySelector('.zr-notif-title')?.textContent).toBe(`\u{2068}${lungo.slice(0, 59)}…\u{2069} ha creato una cartella`);
+        expect([avatar?.getAttribute('aria-label'), avatar?.getAttribute('title'), avatar?.textContent]).toStrictEqual([lungo, lungo, 'MR']);
+    });
+
     // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: quando il backoffice dà il nome
     // di chi, il titolo è una frase delle lingue; il nome della cosa, se c'è, sta nella frase e non anche sotto.
     it('una notifica di Project Management con chi e che cosa ha per titolo la frase, senza seconda riga; con solo chi la frase senza il nome della cosa; senza chi resta com\'era; un tipo senza frasi resta com\'era anche con chi (sprint 29 · T2.1, T2.2, T2.3, T2.5)', async () => {
@@ -1078,7 +1089,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 30 · T2 (voce #1875). I caratteri sono scritti col loro codice, mai incollati.
-    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, intero, e l\'avatar dice lo stesso nome pulito (sprint 30 · T2.1, T2.2, T2.3)', async () => {
+    it('nel pannello un nome con un carattere di direzione, con un a capo o lunghissimo non rovescia e non rompe la frase: nel titolo è pulito e isolato, oltre i 60 caratteri tagliato, e l\'avatar dice lo stesso nome pulito, intero (sprint 30 · T2.1, T2.2, T2.3; sprint 33 · T2.1, T2.2)', async () => {
         const lungo = `Maria ${'Addolorata '.repeat(6)}De Rossi`;
         await apriSu([
             conInPiu('uat-n61', { tipo: 'com.zeiras.board.scheda.modificata', autore_nome: 'Giulia\u{202E} Bianchi', risorsa_nome: '\u{202E}Lancio\ncorso' }),
@@ -1092,7 +1103,7 @@ describe('il pannello delle notifiche', () => {
         expect(lungo).toHaveLength(80);
         expect(titoli()).toStrictEqual([
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»',
-            `\u{2068}${lungo}\u{2069} ha modificato una scheda`,
+            `\u{2068}${lungo.slice(0, 59)}…\u{2069} ha modificato una scheda`,
             '\u{2068}Ada Neri\u{2069} ha eliminato una scheda',
             'Scheda modificata',
         ]);

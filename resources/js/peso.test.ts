@@ -223,6 +223,12 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, true], [true, false]]);
     });
 
+    // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
+    it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
+        expect(volte(costruita().js, 'Segmenter')).toBe(0);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [true, true]]);
+    });
+
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
         expect(costruita().js).not.toContain(DEI_RIMEDI);
         expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
@@ -256,11 +262,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito finché la pagina non si ricarica')).toBe(1);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.015 byte: la misura (sprint 33 · T1.7)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 1.109 byte: la misura, col taglio del nome di chi ha fatto (sprint 33 · T1.7, T2.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_015);
+        expect(gzip(campanella)).toBeLessThanOrEqual(1_109);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,2 KB (sprint 31 · T3.7)', () => {

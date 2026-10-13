@@ -615,10 +615,14 @@ cornice === null ? pagina : (
   la direzione del testo, e con a capo, tabulazioni e gli altri caratteri di controllo ridotti a uno spazio; un nome
   che pulito è vuoto vale come un nome che manca, e l'avatar dice lo stesso nome pulito. E nella frase ognuno sta fra
   U+2068 e U+2069, i due caratteri che lo isolano dalla direzione del testo intorno: chi confronta un titolo con un
-  testo scritto a mano li conti. Il nome non si taglia: i caratteri di controllo, di direzione del testo e a
-  larghezza zero li rifiuta il backoffice alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la
-  lunghezza massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo
-  rifiuta: lo pulisce.
+  testo scritto a mano li conti. Dalla `v2.0.0` il nome di chi ha fatto, nel titolo, oltre i 60 caratteri è tagliato:
+  i primi 59 e «…». Si conta dopo la pulizia, per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una
+  lettera con l'accento composto valgono uno e non si spezzano; dove `Intl.Segmenter` manca si conta per punti di
+  codice, e lì un'emoji composta o un accento composto possono restare a metà. L'avatar dice il nome intero, e il nome
+  della cosa resta intero dovunque stia. Il resto è del backoffice: i caratteri di controllo, di direzione del testo e
+  a larghezza zero li rifiuta alla scrittura (dal 13/10/2026: `422`, regola `carattere_non_ammesso`), e la lunghezza
+  massima è quella di ogni campo nel contratto (`maxLength`); il nome che dice un provider d'accesso non lo rifiuta: lo
+  pulisce.
   Finché il backoffice non manda i tre dati il pannello resta com'era — il solo
   titolo, l'icona, ogni notifica in tutte e due le schede —, e anche dopo `per_me` è `null` finché il backoffice non
   conosce il destinatario diretto di una notifica: fino ad allora «Per me» e «Tutte» mostrano le stesse notifiche. Se il

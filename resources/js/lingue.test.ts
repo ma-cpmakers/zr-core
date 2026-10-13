@@ -1073,18 +1073,58 @@ describe('il nome nella frase: pulito e isolato (sprint 30 · T2)', () => {
         expect([undefined, null, 7, true, {}, ['Ada']].map(nomePulito)).toStrictEqual(Array(6).fill(undefined));
     });
 
-    // Il taglio del nome a 60 caratteri (AC T2.4 del refining) non è in questa versione: il suo codice non stava nel tetto del JS
-    // d'ingresso (peso.test.ts) e non si può caricare a richiesta, perché lo usano anche le funzioni per le pagine. Decisione di
-    // zr-pm del 12/10/2026: è una voce a sé. Fino ad allora un nome lungo sta intero, e il tetto di lunghezza è del backoffice.
-    it('un nome lungo sta intero nel titolo, isolato, e nessun carattere si spezza: un\'emoji, una lettera con l\'accento composto', () => {
+    // Sprint 33 · T2 (voce #1890). Nel titolo il nome di chi ha fatto, oltre i 60 caratteri, è tagliato: i primi 59 e «…». Si conta
+    // dopo la pulizia, e per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una lettera con l'accento composto
+    // valgono uno e non si spezzano. Il taglio sta nel pezzo della campanella, non nel JS d'ingresso (`peso.test.ts`).
+    describe('il nome di chi ha fatto oltre i 60 caratteri (sprint 33 · T2)', () => {
         const titoloDi = (nome: string) => riga({ tipo: modificata, autore_nome: nome }).titolo;
+        const conIlNome = (nome: string) => `${isolato(nome)} ha modificato una scheda`;
         const famiglia = '\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}';
-        const lungo = `${'a'.repeat(100)}${famiglia}${'e\u{0301}'.repeat(100)}`;
+        const accentata = 'e\u{0301}';
 
-        expect(titoloDi('a'.repeat(255))).toBe(`${isolato('a'.repeat(255))} ha modificato una scheda`);
-        expect(titoloDi(lungo)).toBe(`${isolato(lungo)} ha modificato una scheda`);
-        expect(nomePulito(lungo)).toBe(lungo);
-        expect(riga({ tipo: modificata, autore_nome: 'Ada', risorsa_nome: 'c'.repeat(255) }).titolo).toBe(`${isolato('Ada')} ha modificato la scheda «${isolato('c'.repeat(255))}»`);
+        it('di 60 sta intero; di 61 o più sta coi primi 59 e «…» (T2.1)', () => {
+            expect(titoloDi('a'.repeat(60))).toBe(conIlNome('a'.repeat(60)));
+            expect(titoloDi('a'.repeat(61))).toBe(conIlNome(`${'a'.repeat(59)}…`));
+            expect(titoloDi('a'.repeat(255))).toBe(conIlNome(`${'a'.repeat(59)}…`));
+        });
+
+        it.each([
+            ['un\'emoji composta', famiglia],
+            ['una lettera con l\'accento composto', accentata],
+        ])('%s vale un carattere e non si spezza (T2.1)', (_, carattere) => {
+            expect(titoloDi(`${'a'.repeat(59)}${carattere}`)).toBe(conIlNome(`${'a'.repeat(59)}${carattere}`));
+            expect(titoloDi(`${'a'.repeat(58)}${carattere}aa`)).toBe(conIlNome(`${'a'.repeat(58)}${carattere}…`));
+            expect(titoloDi(carattere.repeat(60))).toBe(conIlNome(carattere.repeat(60)));
+            expect(titoloDi(carattere.repeat(61))).toBe(conIlNome(`${carattere.repeat(59)}…`));
+        });
+
+        it('si conta dopo la pulizia: gli spazi intorno, quelli di fila e i caratteri di direzione non contano (T2.1)', () => {
+            expect(titoloDi(`  \u{202E}${'a'.repeat(30)} \n\t ${'a'.repeat(29)}\u{2069} \n`)).toBe(conIlNome(`${'a'.repeat(30)} ${'a'.repeat(29)}`));
+            expect(titoloDi(` ${'a'.repeat(30)}  ${'a'.repeat(30)} `)).toBe(conIlNome(`${'a'.repeat(30)} ${'a'.repeat(28)}…`));
+        });
+
+        it('dove `Intl.Segmenter` manca si conta per punti di codice: un\'emoji di due unità non si spezza (T2.1)', () => {
+            const segmenter = Intl.Segmenter;
+            Reflect.set(Intl, 'Segmenter', undefined);
+            try {
+                expect(titoloDi('a'.repeat(60))).toBe(conIlNome('a'.repeat(60)));
+                expect(titoloDi(`${'a'.repeat(58)}\u{1F600}aa`)).toBe(conIlNome(`${'a'.repeat(58)}\u{1F600}…`));
+                expect(titoloDi('\u{1F600}'.repeat(61))).toBe(conIlNome(`${'\u{1F600}'.repeat(59)}…`));
+            } finally {
+                Reflect.set(Intl, 'Segmenter', segmenter);
+            }
+            expect(Intl.Segmenter).toBe(segmenter);
+        });
+
+        it('il nome della cosa non si taglia, nel titolo e nella seconda riga; `nomePulito` non taglia (T2.2, T2.3)', () => {
+            const cosa = 'c'.repeat(255);
+
+            expect(riga({ tipo: modificata, autore_nome: 'Ada', risorsa_nome: cosa })).toStrictEqual({ titolo: `${isolato('Ada')} ha modificato la scheda «${isolato(cosa)}»` });
+            expect(riga({ tipo: modificata, autore_nome: 'a'.repeat(61), risorsa_nome: cosa })).toStrictEqual({ titolo: `${isolato(`${'a'.repeat(59)}…`)} ha modificato la scheda «${isolato(cosa)}»` });
+            expect(riga({ tipo: eliminata, autore_nome: 'a'.repeat(61), risorsa_nome: cosa })).toStrictEqual({ titolo: `${isolato(`${'a'.repeat(59)}…`)} ha eliminato una scheda`, sotto: cosa });
+            expect(riga({ tipo: modificata, risorsa_nome: cosa }).sotto).toBe(cosa);
+            expect(nomePulito('a'.repeat(255))).toBe('a'.repeat(255));
+        });
     });
 
     it.each(['{{cosa}}', '%s', '{what}', '{who}', '$&', '$1', '$\'', '<b>x</b>', '&lt;'])('un nome «%s» resta nel titolo carattere per carattere (T2.5)', (nome) => {

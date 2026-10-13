@@ -146,19 +146,32 @@ export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, ling
 }
 
 /**
+ * Il nome di chi ha fatto come sta nel titolo: oltre i 60 caratteri, i primi 59 e «…», così una notifica resta una riga che si
+ * legge. Arriva già pulito (`nomePulito`), e si conta per caratteri come li vede chi legge (`Intl.Segmenter`): un'emoji o una
+ * lettera con l'accento composto valgono uno e non si spezzano. Dove `Intl.Segmenter` manca si conta per punti di codice, e lì
+ * un'emoji composta o un accento composto possono restare a metà. Il nome della cosa non passa di qui, e l'avatar nemmeno.
+ */
+function nomeNelTitolo(nome: string | undefined): string | undefined {
+    const caratteri = nome === undefined ? [] : Intl.Segmenter ? Array.from(new Intl.Segmenter().segment(nome), (carattere) => carattere.segment) : Array.from(nome);
+
+    return caratteri.length > 60 ? `${caratteri.slice(0, 59).join('')}…` : nome;
+}
+
+/**
  * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
  * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
  * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e sotto non c'è
  * niente; o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase.
  * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
  * `risorsaDellaNotifica`. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
- * isolati (`fraseConINomi`). È la funzione del pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli
- * stessi testi a chi mostra le notifiche in una pagina sua.
+ * isolati (`fraseConINomi`); quello di chi ha fatto, nel titolo, è al più di 60 caratteri (`nomeNelTitolo`). È la funzione del
+ * pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli stessi testi a chi mostra le notifiche in una
+ * pagina sua.
  */
 export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     const cosa = risorsaDellaNotifica(notifica, lingua);
     // Le frasi sono di un tipo che è un testo: senza, chi ha fatto non entra nel titolo.
-    const chi = typeof notifica.tipo === 'string' ? nomePulito(notifica.autore_nome) : undefined;
+    const chi = typeof notifica.tipo === 'string' ? nomeNelTitolo(nomePulito(notifica.autore_nome)) : undefined;
     const conCosa = chi === undefined || cosa === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa);
     if (conCosa !== undefined) {
         return { titolo: conCosa };
