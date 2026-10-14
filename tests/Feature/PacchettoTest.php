@@ -5488,11 +5488,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: dopo i 5 secondi' => ['readme', '«Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche» con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo, nemmeno nell\'errore, e prima dei 5 secondi niente cambia'],
     // Sprint 43 · T3 (voce #2053): il tetto delle ricariche è l'età della pagina, niente è scritto nel browser, e i casi che restano.
     'la scheda ferma: il tetto delle ricariche' => ['readme', 'Dalla `v2.9.0` la ricarica ha un tetto, ed è l\'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica davanti a una risposta di un\'altra persona'],
-    'la scheda ferma: sotto il tetto niente è disegnato' => ['readme', 'chi ha chiesto ha subito l\'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso. Di quella risposta niente è disegnato e niente è tenuto, come quando la pagina si ricarica'],
+    'la scheda ferma: sotto il tetto niente è disegnato' => ['readme', 'chi ha chiesto ha l\'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso, dalla `v2.10.0` dopo 5 secondi come sopra i 30 (nella `v2.9.0` senza aspettare). Di quella risposta niente è disegnato e niente è tenuto, come quando la pagina si ricarica'],
     'la scheda ferma: niente nel browser' => ['readme', 'Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né `localStorage`, né il nome della finestra, né un cookie —: guarda l\'orologio della pagina (`performance.now()`), e all\'uscita non c\'è niente da togliere'],
-    'la scheda ferma: i due casi che restano' => ['readme', 'Restano due casi. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E una pagina che riceve la risposta di un\'altra persona nei suoi primi 30 secondi dà l\'errore senza ricaricarsi'],
+    'la scheda ferma: i due casi che restano' => ['readme', 'Restano due casi. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E il clic su una notifica apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un\'altra persona è arrivata'],
     'Indietro senza segno: il tetto non la copre' => ['readme', 'Il tetto che dalla `v2.9.0` hanno le ricariche davanti a una risposta di un\'altra persona non copre questa: fermata, lascerebbe la pagina vuota, senza un «Riprova»'],
-    'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi non si ricarica, dà subito l\'errore e resta con la cornice di chi c\'era prima'],
+    'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la cornice di chi c\'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c\'è già chi ha risposto'],
     // Sprint 43 · T4 (voce #2052): con la stessa persona vale la lingua del dato più recente.
     'la lingua del dato più recente' => ['readme', 'Dalla `v2.9.0`, con la stessa persona, vale la lingua del dato più recente anche se `dopo` non è riletto: una pagina che rilegge il solo `subito` dopo che la persona ha cambiato lingua ha i testi della cornice nella lingua nuova'],
     'la lingua: da subito passa solo lei' => ['readme', 'Da `subito` passa la sola lingua, e solo se `dopo` dice di chi è e il segno della sessione c\'è da tutte e due le parti: senza, vale `dopo` come prima'],
@@ -5501,12 +5501,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // tetto e l'orologio; l'orologio a ogni ricarica chiamata; le due cornici; ciò che resta a schermo sotto il tetto; la guida.
     'la lingua: il caso che resta' => ['readme', 'Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di prima: se la lingua è cambiata fuori da questa sessione, la cornice resta in quella di prima finché `dopo` non è riletto o la pagina non fa una visita'],
     'la lingua: sotto un subito riletto' => ['readme', 'coi suoi dati e il suo nome, senza attesa; dalla `v2.9.0` la lingua è quella di `subito`, il più recente dei due'],
-    'la scheda ferma: le frasi di prima col tetto' => ['readme', 'Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una pagina caricata da meno di 30 secondi non partono, e la richiesta dà subito il suo errore; se la pagina non si ricarica, lo dà dopo 5 secondi'],
+    'la scheda ferma: le frasi di prima col tetto' => ['readme', 'Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una pagina caricata da meno di 30 secondi non partono prima che li compia — dalla `v2.10.0` partono allora, da sole —, e se la pagina non si ricarica la richiesta dà il suo errore dopo 5 secondi'],
     'la lettura con un clic: il tetto' => ['readme', 'Dalla `v2.9.0` anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte'],
     'la scheda ferma: l\'orologio a ogni ricarica' => ['readme', 'L\'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza niente di chi è entrato'],
     'la scheda ferma: le due cornici e l\'orologio' => ['readme', 'Con due cornici nel documento vale il limite detto qui sopra: lì la pagina non si ricarica, nessun orologio parte, e chi ha chiesto resta in attesa'],
-    'la scheda ferma: sotto il tetto resta chi c\'era' => ['readme', 'Fino ad allora resta a schermo la cornice di chi c\'era prima, e niente la ricarica da sola allo scadere dei 30 secondi'],
-    'la scheda ferma: provato in un browser' => ['readme', 'Provato in Chromium 151: l\'età della pagina riparte da zero a ogni ricarica'],
+    'la scheda ferma: sotto il tetto non resta chi c\'era' => ['readme', 'Dalla `v2.10.0` la cornice di chi c\'era prima non resta a schermo oltre i 30 secondi: una pagina che ha ricevuto la risposta di un\'altra persona nei suoi primi 30 secondi si ricarica da sola quando li compie, senza un clic e senza un\'altra richiesta'],
+    'la scheda ferma: provato in un browser' => ['readme', 'Provato in Chromium 151, con la `v2.9.0`: l\'età della pagina riparte da zero a ogni ricarica'],
     'la guida: per ricordare il tetto' => ['guida', 'Per ricordare il tetto il pacchetto non scrive niente nel browser: guarda l\'età della pagina'],
     'la guida: non contare sulla ricarica' => ['guida', 'non contare sulla ricarica per togliere dalla tua pagina i dati di prima'],
     'la guida: un dopo composto a mano' => ['guida', 'Lo fa per un `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui manca uno dei due si unisce ancora a `subito`'],
@@ -5535,8 +5535,12 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
     // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): sotto il tetto la destinazione del clic si apre anche dopo il 409;
     // il `subito` riletto porta la lingua nuova solo se la sessione l'ha già; la ricarica lenta non è provata in un browser.
-    'la lettura con un clic: sotto il tetto la destinazione si apre' => ['readme', 'su una pagina caricata da meno di 30 secondi non parte, e allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua'],
-    'la scheda ferma: sotto il tetto la risorsa si apre' => ['readme', 'Dalla `v2.9.0`, su una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano: la risorsa si apre anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato'],
+    'la lettura con un clic: sotto il tetto la destinazione si apre' => ['readme', 'su una pagina caricata da meno di 30 secondi non parte prima che li compia, e allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua'],
+    'la scheda ferma: sotto il tetto la risorsa si apre' => ['readme', 'Dalla `v2.9.0`, su una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia: la risorsa si apre anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato'],
+    // Sprint 44 · T2 (voce #2058): sotto il tetto la pagina si ricarica da sola quando compie 30 secondi, e riguarda chi è a schermo.
+    'la scheda ferma: allo scadere, chi è a schermo' => ['readme', 'Allo scadere la cornice riguarda chi è a schermo: se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì'],
+    'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
+    'chi compone i dati a mano: l\'errore dopo 5 secondi' => ['readme', 'e fra una ricarica e l\'altra danno il loro errore, dalla `v2.10.0` dopo 5 secondi'],
     'la lingua: solo se la sessione l\'ha già' => ['readme', 'Il `subito` riletto porta la lingua nuova solo se la sessione l\'ha già: `Cornice::subito()` non chiama il backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
     'la lingua: senza, niente cambia' => ['readme', 'senza, e senza un\'altra richiesta che l\'abbia riletta dopo il `dopo` che la pagina ha, il `subito` riletto ha la lingua di prima e niente cambia'],
     'la scheda ferma: la ricarica lenta non è provata' => ['readme', 'senza niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser)'],
@@ -5738,6 +5742,19 @@ it('README e guida non dicono più i due limiti chiusi della ricerca in attesa (
     'la parola cancellata' => ['viene cercata lo stesso'],
     'i 300 ms' => ['fino ad allora sotto il campo si legge «Nessun risultato»'],
     'la parola tenuta' => ['che l\'`AppShell` ha dato alla cornice'],
+]);
+
+// Sprint 44 · T2.7 (voce #2058): sotto i 30 secondi l'errore non esce più subito, e allo scadere la pagina si ricarica da sola.
+it('README e guida non dicono più che sotto i 30 secondi l\'errore esce subito, né che niente ricarica la pagina allo scadere (sprint 44 · T2.7)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false)
+        ->and(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'l\'errore sotto i 30 secondi, nel capoverso della scheda ferma' => ['la richiesta dà subito il suo errore'],
+    'l\'errore sotto i 30 secondi, nel capoverso del tetto' => ['chi ha chiesto ha subito l\'errore di sempre'],
+    'niente la ricarica da sola' => ['niente la ricarica da sola allo scadere dei 30 secondi'],
+    'l\'errore senza ricaricarsi' => ['dà l\'errore senza ricaricarsi'],
+    '«Riprova» dopo i 30 secondi' => ['«Riprova» o la richiesta dopo la ricaricano'],
+    'la guida: l\'errore sotto i 30 secondi' => ['dà subito l\'errore e resta con la cornice di chi c\'era prima'],
 ]);
 
 // Sprint 37 · T3.6 (voce #1993): fra due workspace la cornice non riporta più chi c'era prima.
