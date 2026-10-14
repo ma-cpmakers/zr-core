@@ -55,13 +55,17 @@ const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.a
 
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
-    // `dopo` sta sopra, con tutto ciò che porta: è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
+    // `dopo` sta sopra, con tutto ciò che porta (dalla `v2.9.0` meno la lingua, se `subito` è della stessa persona ed è più recente: qui sotto): è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
     // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
     // Un `dopo` di un'altra persona letto con una sessione più vecchia di quella di `subito` è di chi c'era prima (la pagina
     // ha riletto il solo `subito`): non si unisce, e la cornice aspetta il `dopo` di chi è entrato. Uno più recente sì, e la
     // cornice diventa di chi dice lui; senza un segno o senza la persona da una parte vale come sempre.
     const suo = subito && dopo?.persona && dopo.persona.email !== subito.persona.email && segno(dopo.sessione_il)! < segno(subito.sessione_il)! ? undefined : dopo;
-    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }) } : undefined);
+    // Con la stessa persona vale la lingua del dato più recente (dalla `v2.9.0`): chi ha cambiato lingua e rilegge il solo
+    // `subito` ha i testi nella lingua nuova senza aspettare `dopo`. Da `subito` passa la sola lingua, e solo se `dopo` dice
+    // che è della stessa persona e i due segni ci sono: un confronto con `undefined` è falso, e vale `dopo` come sempre.
+    const piuRecente = subito && suo?.persona?.email === subito.persona.email && segno(suo?.sessione_il)! < segno(subito.sessione_il)! && { lingua: subito.lingua };
+    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...piuRecente } : undefined);
 
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
     // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai

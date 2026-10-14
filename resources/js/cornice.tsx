@@ -87,7 +87,7 @@ export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspac
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
  * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
- * valgono su quelli di `subito`. Tutto facoltativo: un `dopo` che non lo dice (una pagina tenuta da prima) vale come prima.
+ * valgono su quelli di `subito` (dalla `v2.9.0` la lingua è quella del più recente dei due, se sono della stessa persona). Tutto facoltativo: un `dopo` che non lo dice (una pagina tenuta da prima) vale come prima.
  */
 export type DatiDopo = Partial<Omit<DatiDellaCornice, 'in_attesa'>>;
 

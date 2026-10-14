@@ -136,7 +136,8 @@ final class Cornice
      * al 403 `accettazione_richiesta`. Dice di chi sono (dalla `v2.4.0`): porta lingua e persona come sono nella sessione
      * dopo quella lettura (la lingua e il nome riletti da io.mostra, l'email dell'ingresso) e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
      * non è quella di `subito()`, e fra le due la sessione può essere passata a un'altra persona o a un altro workspace, da
-     * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`,
+     * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`
+     * (dalla `v2.9.0` la lingua è quella del più recente dei due, con la stessa persona),
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
      * connessione, un 5xx, un 429 — non lancia: dà `non_letti` col segno della lettura, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è

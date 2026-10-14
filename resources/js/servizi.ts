@@ -107,8 +107,15 @@ export function mostra(email?: string): void {
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
- * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
- * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Una risposta che non lo dice
+ * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
+ * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Se dopo 5 secondi la pagina è
+ * ancora lì — un `beforeunload` che annulla il ricaricamento, o una pagina nuova che tarda — la promessa si chiude con un errore senza niente dentro (dalla
+ * `v2.9.0`): né i dati, né `persona`, né la classe dell'errore di chi è entrato, e chi ha chiamato dice il suo errore di
+ * sempre. Se la pagina non si ricarica perché non deve (nessuno a schermo, o c'è già chi ha risposto) nessun orologio parte, e
+ * la promessa resta aperta: chi l'ha chiesta non è più a schermo. La ricarica ha un tetto, l'età della pagina (dalla
+ * `v2.9.0`): una pagina caricata da meno di 30 secondi non si ricarica — subito dopo una ricarica, se la risposta dice ancora
+ * un'altra persona, rifarla non cambia niente — e la promessa si chiude subito con lo stesso errore senza niente dentro. Niente
+ * è scritto nel browser per ricordarlo: l'orologio è quello della pagina (`performance.now()`). Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
@@ -117,7 +124,7 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>(() => aSchermo && corpo.persona !== aSchermo && location.reload());
+        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (performance.now() < 3e4 ? no() : (location.reload(), setTimeout(no, 5e3))));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
@@ -170,8 +177,8 @@ export async function caricaNotifiche(email: string): Promise<{ elenco: Notifica
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
  * altro (un'altra scheda) la parte server non segna niente. `persona` è l'email di chi la cornice mostra, e dalla `v2.6.0` parte
  * nell'intestazione come per le altre richieste, non più nel corpo: se la sessione è passata a un'altra persona (una scheda
- * rimasta ferma) la parte server non segna niente nemmeno lì, lo dice con l'email di chi è entrato, e la pagina si ricarica
- * (`chiama`). Una risposta senza `fino_a` è un errore come le altre. Dà
+ * rimasta ferma) la parte server non segna niente nemmeno lì, lo dice con l'email di chi è entrato, e la pagina si ricarica,
+ * col tetto e l'orologio di `chiama`. Una risposta senza `fino_a` è un errore come le altre. Dà
  * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
  * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
  * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano.

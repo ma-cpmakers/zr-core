@@ -397,8 +397,10 @@ gettone CSRF, anche nella `GET` dell'elenco. Così da una scheda rimasta ferma, 
 nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la
 segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
 prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
-entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Restano fuori due
-cose. Un JS di prima della `v2.6.0` rimasto in una
+entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Dalla `v2.9.0`
+anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte, e allora la
+destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua.
+Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
 prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
 notifica la segna ancora a chi è entrato, finché la scheda non si ricarica. E dei dati della cornice senza l'email della
@@ -1249,10 +1251,23 @@ di quella lettura. Nel layout valgono anche loro su quelli di
 `subito`: se fra le due richieste la sessione è passata a un'altra persona la cornice è la sua, coi suoi dati, e i dati
 di una persona non stanno sotto il nome di un'altra. Per un frontend che dà al layout `Cornice::dopo()` com'è non c'è
 niente da scrivere, e tre cose si vedono. La lingua e il nome della cornice, quando `dopo` arriva, sono quelli riletti
-da io.mostra, i più recenti. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
+da io.mostra, i più recenti. Dalla `v2.9.0`, con la stessa persona, vale la lingua del dato più recente anche se
+`dopo` non è riletto: una pagina che rilegge il solo `subito` dopo che la persona ha cambiato lingua ha i testi della
+cornice nella lingua nuova (a una visita era già così, perché `dopo` è richiesto di nuovo), e moduli, workspace e numero
+delle notifiche restano quelli del `dopo` che c'è finché non è riletto (provato in Chromium 151 sulla pagina di prova del
+layout). Il `subito` riletto porta la lingua nuova solo se la sessione l'ha già: `Cornice::subito()` non chiama il
+backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`. Con `Cornice::lingua()` prima
+del controller la rilegge la stessa richiesta; senza, e senza un'altra richiesta che l'abbia riletta dopo il `dopo` che la
+pagina ha, il `subito` riletto ha la lingua di prima e niente cambia. Da `subito` passa la sola
+lingua, e solo se `dopo` dice di chi è e il segno della sessione c'è da tutte e due le parti: senza, vale `dopo` come
+prima. Un caso resta: il segno di `dopo` è l'istante in cui la sua lettura comincia, e la sua lingua è quella riletta da
+io.mostra alla fine. Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di
+prima: se la lingua è cambiata fuori da questa sessione, la cornice resta in quella di prima finché `dopo` non è riletto
+o la pagina non fa una visita. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
-email della persona quella della sessione: con un'altra, campanella e ricerca ricaricano la pagina a ogni uso.
+email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
+`v2.9.0` al più una volta ogni 30 secondi (prima a ogni uso), e fra una ricarica e l'altra danno il loro errore.
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
@@ -1260,7 +1275,9 @@ Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: l
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche
 sullo stesso workspace: quando lì si apre la campanella o si cerca, la risposta è di chi è entrato. La cornice non la mostra
 sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello
-resta in caricamento. Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la
+resta in caricamento. Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una
+pagina caricata da meno di 30 secondi non partono, e la richiesta dà subito il suo errore; se la pagina non si ricarica,
+lo dà dopo 5 secondi. Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la
 stessa persona non cambia niente. Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta`
 e il 429 della ricerca portano `persona`. In una scheda rimasta ferma l'errore di chi è entrato non riduce la cornice e non
 ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica, come per una risposta coi dati. Lo
@@ -1278,7 +1295,9 @@ segna niente. Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422
 Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, nell'intestazione `Persona` e non più nel
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
 notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
-ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
+ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
+una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano: la risorsa si apre anche se sono arrivati
+prima, con la sessione di chi è entrato, e niente è segnato.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
@@ -1290,8 +1309,29 @@ quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser
 su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
 smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
-restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
-lette» in corso. Niente di chi è entrato va a schermo.
+restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
+errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
+con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo, nemmeno nell'errore, e prima dei 5 secondi
+niente cambia: il pannello in caricamento, «Segna tutte come lette» in corso. Fino alla `v2.8.0` chi aveva chiesto restava
+in attesa finché la pagina non si ricaricava. L'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è
+annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza
+niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser). Con due cornici nel documento
+vale il limite detto qui sopra: lì la pagina non si ricarica,
+nessun orologio parte, e chi ha chiesto resta in attesa. Provato in Chromium 151 con una pagina che nega il
+ricaricamento: passati i 5 secondi «Segna tutte come lette» torna premibile, e il pannello e la ricerca dicono il loro errore.
+Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica
+davanti a una risposta di un'altra persona. Subito dopo una ricarica, se la risposta lo dice ancora — dei dati composti a
+mano con un'altra email —, ricaricare di nuovo non cambierebbe niente: chi ha chiesto ha
+subito l'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso. Di quella risposta niente è disegnato e
+niente è tenuto, come quando la pagina si ricarica. Da 30 secondi in poi la pagina si ricarica come prima: al più una
+ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né
+`localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
+all'uscita non c'è niente da togliere. Restano due casi. Una richiesta partita più di 30 secondi dopo una ricarica che non
+ha cambiato niente ne dà un'altra. E una pagina che riceve la risposta di un'altra persona nei suoi primi 30 secondi dà
+l'errore senza ricaricarsi: passati i 30 secondi, «Riprova» o la richiesta dopo la ricaricano. Fino ad allora resta a
+schermo la cornice di chi c'era prima, e niente la ricarica da sola allo scadere dei 30 secondi. Provato in Chromium 151:
+l'età della pagina riparte da zero a ogni ricarica; dopo una ricarica, una risposta di un'altra persona nei primi 30
+secondi dà l'errore entro un secondo e nessuna ricarica, e passati i 30 secondi «Riprova» ricarica la pagina, una volta.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
@@ -1318,7 +1358,8 @@ Se succede — alla pagina arriva il `subito` di chi è entrato e fra le props r
 i dati di prima non vanno sotto il nome nuovo: un `dopo` di un'altra persona, letto con una sessione più vecchia di
 quella di `subito`, non vale, e **la cornice resta in attesa di un `dopo` di chi è entrato**: ridotta, col suo nome e la
 sua lingua, finché la pagina non lo rilegge o non fa una visita. Per la stessa persona il `dopo` vale anche sotto un
-`subito` riletto dopo di lui, coi suoi dati, il suo nome e la sua lingua, senza attesa. Un `dopo` che non dice di chi è,
+`subito` riletto dopo di lui, coi suoi dati e il suo nome, senza attesa; dalla `v2.9.0` la lingua è quella di `subito`,
+il più recente dei due. Un `dopo` che non dice di chi è,
 o un segno che manca da una delle due parti, si unisce a `subito` come prima della `v2.5.0`.
 
 I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e
@@ -1359,7 +1400,8 @@ Che cosa vede la persona:
   in un altro). Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un'altra persona
   la pagina si ricarica; ricaricata, la cornice parte da chi dice la pagina e non ricarica più. Un tetto alle ricariche non
   c'è: una pagina che a ogni caricamento desse senza segno prima una persona e poi un'altra — un `subito` di una e un `dopo`
-  dell'altra — si ricaricherebbe ogni volta. Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
+  dell'altra — si ricaricherebbe ogni volta. Il tetto che dalla `v2.9.0` hanno le ricariche davanti a una risposta di
+  un'altra persona non copre questa: fermata, lascerebbe la pagina vuota, senza un «Riprova». Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
   cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia

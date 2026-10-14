@@ -304,7 +304,8 @@ pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
-`dopo` com'è. **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
+`dopo` com'è. Dalla `v2.9.0`, con la stessa persona, i testi della cornice seguono la lingua del dato più recente:
+se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo` (a una visita era già così). Vale se la sessione ha già la lingua nuova: `Cornice::subito()` non la chiede al backoffice, la rileggono `Cornice::lingua()`, `dopo()` e `dati()`. **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un
 `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui
@@ -313,7 +314,11 @@ rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati 
 ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il
 freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
 contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
-scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.6.0` nemmeno il clic su una
+scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.9.0` si ricarica al più una volta ogni
+30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi non si ricarica, dà subito
+l'errore e resta con la cornice di chi c'era prima finché una richiesta dopo i 30 secondi non la ricarica: non contare sulla
+ricarica per togliere dalla tua pagina i dati di prima. Per ricordare il tetto il pacchetto non scrive niente nel browser:
+guarda l'età della pagina. Dalla `v2.6.0` nemmeno il clic su una
 notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l'intestazione `Persona`, e la sua parte server
 risponde 409 `persona_diversa` a quella di un'altra persona. Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
