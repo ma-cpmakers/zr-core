@@ -83,8 +83,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 52,9 KB | 17,8 KB | 38,9 KB | 7,0 KB |
-| la cornice e due componenti per nome | 56,1 KB | 18,9 KB | 38,9 KB | 7,0 KB |
+| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 38,9 KB | 7,0 KB |
+| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 38,9 KB | 7,0 KB |
 | la stessa cornice, dall'ingresso di sempre | 115,0 KB | 37,0 KB | 38,8 KB | 7,0 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
