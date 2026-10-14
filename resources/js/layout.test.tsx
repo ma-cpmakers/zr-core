@@ -1,9 +1,10 @@
 import { act, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
+import { chiediLaRicerca } from './servizi';
 
 // Sprint 9 · T1 e T2 (voce #1398). `LayoutDellaCornice` reso in un DOM finto come lo rende Inertia: a ogni visita lo stesso
 // layout, la pagina con una `key` nuova e i dati della parte server di quella pagina (`cornice`). La cornice resta montata
@@ -99,6 +100,11 @@ function PaginaColPercorso({ conta }: { conta: { montaggi: number } }) {
 
 let contenitore: HTMLDivElement;
 let radice: Root;
+
+// Dalla `v2.8.0` la ricerca è un pezzo a richiesta (`./ricerca`): qui è arrivato prima di ogni caso, come in `cornice.test.tsx`.
+beforeAll(async () => {
+    await chiediLaRicerca();
+});
 
 beforeEach(() => {
     contenitore = document.createElement('div');
@@ -894,7 +900,7 @@ describe('la cornice in due dati, sotto il layout', () => {
     });
 
     it('alla visita dopo, se il `subito` nuovo dice un\'altra persona (un\'altra email) e il `dopo` nuovo non è ancora arrivato, la cornice è quella ridotta di un primo caricamento: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima, e il menu del profilo dice chi è entrato; all\'arrivo di `dopo` moduli e non lette sono i suoi (sprint 36 · T2.1, T2.3)', async () => {
-        const diAltra = { ...subito, lingua: 'es', persona: altra };
+        const diAltra = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
         await inDue({ subito, dopo: { ...dopo, aziende } }, <PaginaA key="1" />);
         expect(etichette()).toContain('CRM');
         expect(uno('.zr-ws-switch')).not.toBeNull();
@@ -1640,7 +1646,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
-        const diAltra = { ...subito, persona: altra };
+        const diAltra = { ...subito, persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
         await inDue({ subito, dopo }, <PaginaA key="1" />);
         await scrivi('uat');
@@ -1670,8 +1676,8 @@ describe('la cornice in due dati, sotto il layout', () => {
     });
 
     it('la parola che una persona ha scritto in attesa non parte quando arrivano i dati di un\'altra, e nel campo non resta (sprint 36 · T2.2)', async () => {
-        const diAltra = { ...subito, persona: altra };
-        await inDue({ subito }, <PaginaA key="1" />);
+        const diAltra = { ...subito, persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        await inDue({ subito: { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' } }, <PaginaA key="1" />);
         await scrivi('uat');
         expect(richieste()).toStrictEqual([]);
 
@@ -1682,16 +1688,92 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(richieste()).toStrictEqual([]);
     });
 
+    // Sprint 42 · T4 (voce #1975). Una `cornice` intera senza il segno della lettura: la cornice non può dire se la pagina di
+    // un'altra persona è di prima o di dopo, non ne mostra niente e ricarica la pagina.
+    it('con la `cornice` intera senza il segno della lettura, con Indietro sulla voce di chi c\'era prima niente di suo va a schermo — né nome, né workspace, né numero, né la pagina — e la pagina si ricarica (sprint 42 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    // Sprint 42 · T5 (rilievo S1 della review). La voce di chi c'era prima può essere di un altro workspace: lì la `key` del
+    // layout cambia e `Cornice` si monta da capo, senza sapere chi mostrava. Lo sa il layout, ed è lui a non mostrarne niente.
+    it.each([
+        ['da tutte e due le parti', {}, {}],
+        ['solo da chi è mostrato', {}, { aggiornati_il: '2026-10-13T08:00:00.000000Z' }],
+        ['solo dalla pagina', { aggiornati_il: '2026-10-13T08:00:03.000000Z' }, {}],
+    ])('con la `cornice` intera e il segno della lettura che manca %s, con Indietro sulla voce di chi c\'era prima in un altro workspace niente di suo va a schermo e la pagina si ricarica (sprint 42 · T4.1)', async (_dove, diChiCe, dellaVoce) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        // A ogni disegno, non solo alla fine: la pagina dice di chi è la cornice in cui è disegnata, ogni volta che lo è.
+        const disegnataSotto: (string | null)[] = [];
+        function LaPagina() {
+            useLayoutEffect(() => {
+                disegnataSotto.push(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label') ?? null);
+            });
+
+            return <p>UAT pagina</p>;
+        }
+        await visita({ ...dati, persona: altra, non_lette: 1, ...diChiCe }, <LaPagina key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await visita({ ...datiAltroWorkspace, ...dellaVoce }, <LaPagina key="1" />);
+
+        expect(new Set(disegnataSotto)).toStrictEqual(new Set([altra.nome]));
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    // Lo stesso coi due dati: il `subito` di una voce di allora, composto a mano senza `sessione_il`, col `dopo` ancora da leggere.
+    it('con `subito` senza il segno della sessione, con Indietro sulla voce di chi c\'era prima in un altro workspace niente di suo va a schermo e la pagina si ricarica (sprint 42 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await inDue({ subito: { ...subito, persona: altra, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await inDue({ subito }, <PaginaA key="1" />);
+
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    it('con la `cornice` intera senza il segno della lettura, la stessa persona che passa a un altro workspace e torna con Indietro vede la cornice intera, e la pagina non si ricarica (sprint 42 · T4.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+        await visita(datiAltroWorkspace, <PaginaB key="2" />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        expect(ricarica).not.toHaveBeenCalled();
+        ricarica.mockRestore();
+    });
+
     it('con la `cornice` intera, una visita che porta un\'altra persona sullo stesso workspace toglie l\'elenco del pannello aperto, i risultati e la parola della ricerca di chi c\'era prima, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
-        await visita(dati, <PaginaA key="1" />);
+        await visita({ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }, <PaginaA key="1" />);
         await scrivi('uat');
         expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
         await clic(uno('.zr-bell'));
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
 
-        await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);
+        await visita({ ...dati, persona: altra, non_lette: 1, aggiornati_il: '2026-10-13T08:00:03.000000Z' }, <PaginaB key="2" />);
         expect(uno('#uat-pagina-b')).not.toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('1');
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('');

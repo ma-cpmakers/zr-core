@@ -66,12 +66,19 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
     // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai
     // indietro: una pagina più vecchia è una voce della cronologia ripresa con Indietro o Avanti, e non dice chi è entrato.
-    // Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    // Senza un segno da una parte vale la pagina, se è della stessa persona: un confronto con `undefined` è sempre falso.
     const [entrato, entra] = useState(pagina);
     // L'ultima pagina di chi è mostrato: una pagina di un'altra persona non la cambia, nemmeno nello stesso workspace.
     const [vista, vedi] = useState(pagina);
     if (!pagina) {
         return children;
+    }
+    // Senza il segno da una delle due parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi è
+    // mostrato, e con Indietro sarebbe di chi c'era prima. Nello stesso workspace lo guarda `Cornice`, che resta montata; in un
+    // altro la `key` cambia, la cornice si rifà e non sa più chi mostrava: lo sa il layout, che non ne mostra niente, nemmeno
+    // la pagina, e ricarica (dalla `v2.8.0`). Ricaricata, è di chi è entrato.
+    if (entrato && pagina.persona.email !== entrato.persona.email && !(della(pagina) && della(entrato))) {
+        return location.reload() as undefined;
     }
     const chi = entrato && della(entrato) > della(pagina) ? entrato : pagina;
     if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato)) {

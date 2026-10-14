@@ -64,7 +64,9 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto
   dell'elenco. Una riga nel file di preparazione dei test, `beforeAll(() => frasiInMemoria())`, con `frasiInMemoria`
   che sta in `vendor/zeiras/zr-core/resources/js/prove.ts`, mette le frasi in memoria alla cornice, e dalla `v2.0.0` anche
-  il pezzo di JS che compone le righe, che la cornice chiede all'apertura della campanella. Se un caso rifà i
+  il pezzo di JS che compone le righe, che la cornice chiede all'apertura della campanella. Dalla `v2.8.0` dà alla cornice
+  anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo: senza quella riga, in un tuo caso
+  la richiesta della ricerca non parte allo scadere dei 300 ms dall'ultimo tasto ma poco dopo (README, «Passare alla v2.8»). Se un caso rifà i
   moduli (`vi.resetModules()`), la richiama dopo l'import. Anche `frasiInMemoria` si prende con un import nuovo, dopo
   `vi.resetModules()`: quella importata in cima al file mette le frasi nel modulo di prima. In un caso, dopo
   `vi.resetModules()`: `const { frasiInMemoria } = await import('../../vendor/zeiras/zr-core/resources/js/prove'); await frasiInMemoria();` Mentre
@@ -325,7 +327,8 @@ della campanella non arriva, «Riprova» lo richiede dovunque la tua build lo me
 l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche». Due cose, dette lì: il JS
 che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta),
 e dove la tua build non scrive il nome del pezzo com'è «Riprova» riprova allo stesso indirizzo, senza coda: in
-Chromium non parte niente.
+Chromium non parte niente. Dalla `v2.8.0` la prima vale anche per la ricerca, che ha un pezzo suo: con una coda sul JS
+della cornice la pagina si monta di nuovo al primo fuoco nel campo della ricerca.
 Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima
 pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la
 cornice ha già i dati di quel workspace, resta coi dati di prima. Se la tua parte server non è riuscita a leggerlo
@@ -412,6 +415,10 @@ modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomi
 porta un codice vuole anche `codici` (passo 8). Un risultato di
 un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
 ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
+
+Dalla `v2.8.0` il codice della ricerca arriva al primo uso, quando la persona mette il fuoco nel campo: per il tuo modulo
+non c'è niente da scrivere. Se non arriva, sotto il campo c'è l'errore della ricerca, e si riprova scrivendo
+un'altra parola, o la stessa.
 
 **Prova**: Ctrl/Cmd+K, due caratteri: arrivano i risultati, o il testo «nessun risultato» — e fin qui hai provato solo
 che la ricerca funziona. Che trovi le tue cose lo prova il titolo di una tua risorsa: compare sotto il nome del suo tipo,

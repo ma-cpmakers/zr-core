@@ -2,7 +2,8 @@
 // cookie, e il gettone del backoffice resta nella parte server. Una risposta che non è un 2xx, o non ha la forma attesa, è un
 // errore: mai una lista vuota.
 
-import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
+import { FORMA_DI_UN_ID } from './forme';
+import { pezzoARichiesta } from './lingue';
 
 /** Una notifica come la dà GET /cornice/notifiche. Chi ha fatto, su che cosa e per chi ci sono quando il backoffice li manda. */
 export interface NotificaDellaCornice {
@@ -85,7 +86,7 @@ export class TroppeRichieste extends Error {
  * (dalla `v2.7.0`; chiamata senza niente, toglie). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
  * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo.
  */
-let aSchermo: string | undefined;
+export let aSchermo: string | undefined;
 
 export function mostra(email?: string): void {
     aSchermo = email;
@@ -111,7 +112,7 @@ export function mostra(email?: string): void {
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
-async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
+export async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
@@ -213,28 +214,18 @@ export async function segnaLetta(id: string, email: string): Promise<{ il: strin
     return { il: segno(corpo.segnata_il) };
 }
 
-/**
- * Le risorse del workspace che rispondono a `parola`, nell'ordine del backoffice: POST /cornice/ricerca. La parola sta nel
- * corpo, mai nell'indirizzo di questa richiesta: ciò che una persona cerca non deve restare dove restano gli indirizzi del
- * browser (dalla `v1.15.0` sta nel corpo anche dal server del modulo al backoffice). `segnale` annulla la richiesta. Coi
- * risultati, il workspace di cui sono, come lo dice la parte server (dalla
- * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
- * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
- * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
- * mostra: i risultati, o un errore, di un'altra persona non tornano (`chiama`).
- */
-export async function cerca(parola: string, segnale: AbortSignal, email: string): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
-    const indirizzo = '/cornice/ricerca';
-    const corpo = (await chiama(indirizzo, email, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
-    if (!Array.isArray(corpo?.data)) {
-        throw new Error(`POST ${indirizzo}: data`);
-    }
-    if (typeof corpo.workspace !== 'string' || !FORMA_DI_UNO_SLUG.test(corpo.workspace)) {
-        throw new Error(`POST ${indirizzo}: workspace`);
-    }
+/** Il pezzo a richiesta con la ricerca della cornice (`./ricerca`, dalla `v2.8.0`): niente finché non è arrivato. */
+export let ricerca: typeof import('./ricerca') | undefined;
 
-    return { risultati: corpo.data as RisultatoDellaRicerca[], workspace: corpo.workspace };
-}
+const ilPezzoDellaRicerca = pezzoARichiesta<typeof import('./ricerca')>(() => import('./ricerca'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
+
+/**
+ * Chiede il pezzo della ricerca, e quando è arrivato lo tiene (`ricerca`). La cornice lo chiede al primo fuoco nel campo della
+ * ricerca, o alla prima parola, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo
+ * richiede, come per la campanella (`pezzoARichiesta`, in `lingue.ts`). Arrivato, non si chiede più. Sta qui e non in `lingue.ts`, che è anche di chi prende solo le frasi (`resources/js/frasi`):
+ * lì un pezzo della ricerca non serve.
+ */
+export const chiediLaRicerca = async () => (ricerca ??= await ilPezzoDellaRicerca());
 
 /** Il gettone CSRF di Laravel: il cookie `XSRF-TOKEN` della pagina, rimandato nell'header `X-XSRF-TOKEN` (senza, 419). */
 function gettoneCsrf(): Record<string, string> {

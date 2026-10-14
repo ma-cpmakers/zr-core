@@ -1,10 +1,9 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellSearchResult, ShellWorkspace, Tone } from '../zeiras/index';
+import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
-import { FORMA_DI_UN_ID } from './forme';
 import { destinazioneDellaNotifica } from './notifiche';
-import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type CodiceDelContesto, type IdDiProdotto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, cerca, mostra, segnaLetta, segnaLetteFinoA, segno, TroppeRichieste, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
+import { AccettazioneRichiesta, caricaNotifiche, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -151,12 +150,6 @@ function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
     return id;
 }
 
-/**
- * Di che voce del registro è ogni tipo di risorsa, e come si mostra: un tipo sta in una voce sola. La voce è un prodotto, o la
- * Dashboard per ciò che non è di un modulo (il membro del workspace).
- */
-const risorsePerTipo = new Map(registro.flatMap((dellaVoce) => (dellaVoce.risorse ?? []).map((risorsa) => [risorsa.tipo, { dellaVoce, risorsa }] as const)));
-
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
@@ -289,94 +282,6 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     return scelta;
 }
 
-/**
- * Ciò che unisce due testi in una riga. Non è un testo delle lingue, ed è scritto qui apposta: è il segno che il design system
- * scrive da sé fra due testi di una riga dell'`AppShell` (il prodotto e l'ora di una notifica), e la seconda riga di un
- * risultato, che sta nello stesso `AppShell`, li unisce allo stesso modo. Un caso di `cornice.test.tsx` lo lega a quello del
- * design system: se lì cambia, il caso è rosso e questo si cambia con lui.
- */
-const FRA_DUE_TESTI = ' · ';
-
-/**
- * La seconda riga di un risultato della ricerca: i testi di `contesto` che il registro dice per il suo tipo (le chiavi di
- * `risorsa.contesto`), nel loro ordine e senza gli spazi intorno, uniti da « · ». Solo quelli che ci sono: `contesto` arriva dal
- * backoffice, e una chiave può mancare, essere `null`, vuota o non essere un testo — allora non conta, e non lascia un « · »
- * appeso. Dove il registro dice che una chiave porta un codice (`risorsa.codici`: il ruolo di un membro del workspace, l'esito
- * di un'opportunità chiusa) si legge il testo che quel codice ha nella lingua (`t`), mai il codice: un valore che non è uno di
- * quei codici non conta (l'esito `aperta` di un'opportunità aperta, che resta con pipeline e fase). Una chiave
- * senza codici porta un testo, e si mostra com'è arrivato, pulito come un nome (`nomePulito`: il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
- * senza `contesto`, o per un tipo che nel registro non ha chiavi.
- */
-function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDelProdotto, t: TestiDellaCornice): string | undefined {
-    const chiavi = risorsa.contesto;
-    if (typeof contesto !== 'object' || contesto === null || chiavi === undefined) {
-        return undefined;
-    }
-    const presenti = chiavi.flatMap((chiave) => {
-        const testo = nomePulito(Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined);
-        if (testo === undefined) {
-            return [];
-        }
-        // I codici di una chiave sono solo quelli che il registro le dà: non una proprietà che ogni oggetto eredita.
-        const codici = risorsa.codici !== undefined && Object.hasOwn(risorsa.codici, chiave) ? risorsa.codici[chiave] : undefined;
-        if (codici === undefined) {
-            return [testo];
-        }
-
-        return codici.includes(testo) ? [t[`searchContext.${tipo}.${chiave}.${testo}` as `searchContext.${CodiceDelContesto}`]] : [];
-    });
-
-    return presenti.length === 0 ? undefined : presenti.join(FRA_DUE_TESTI);
-}
-
-/**
- * Un risultato della ricerca nella cornice. Il contratto dà tipo, id, titolo e, dalla `v1.15.0`, `contesto`: la voce è
- * quella che nel registro ha quel tipo fra le sue risorse (un tipo sta in una voce sola), mai un campo della risposta. Il
- * gruppo è il nome del tipo nella lingua dei testi, la seconda riga i testi di `contesto` che il registro dice per il tipo
- * (`secondaRiga`), nome e tono sono del prodotto, l'icona del tipo; l'indirizzo è quello della voce nel workspace dei
- * risultati (`slug`: quello che la risposta della ricerca dice, non quello dei dati della pagina) seguito dal percorso del
- * tipo. Un membro del workspace è della voce della Dashboard, che non è un prodotto: non ha un nome a destra né un tono, come
- * una notifica che non è di un prodotto, e si apre in app. Un tipo che il registro non ha non si mostra: mai un indirizzo
- * inventato. E non si mostra un risultato il cui id non ha la forma di un id: arriva dal backoffice, e in un indirizzo non
- * entra com'è (`encodeURIComponent` non tocca i punti, e `..` ne farebbe un altro). La forma si guarda solo di un testo:
- * `RegExp.test` converte ciò che riceve, e un id che manca, `null` o un numero passerebbe come «undefined», «null», «12».
- */
-function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: TestiDellaCornice, slug: string): ShellSearchResult | undefined {
-    const trovata = risorsePerTipo.get(risultato.tipo);
-    const { id } = risultato;
-    // Il titolo lo ha scritto una persona: pulito come un nome. Senza un titolo che si vede il risultato non si mostra.
-    const title = nomePulito(risultato.titolo);
-    if (trovata === undefined || typeof id !== 'string' || !FORMA_DI_UN_ID.test(id) || title === undefined) {
-        return undefined;
-    }
-    const { dellaVoce, risorsa } = trovata;
-    const tipo = `${dellaVoce.id}.${risorsa.tipo}` as TipoDiRisorsa;
-    const delProdotto = prodottoDelRegistro(dellaVoce.id);
-
-    return senzaUndefined({
-        // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
-        id: `${tipo}.${id}`,
-        title,
-        subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
-        group: t[tipo],
-        product: delProdotto && nomeDellaVoce(delProdotto, lingua),
-        icon: risorsa.icona,
-        tone: dellaVoce.tono,
-        container: risorsa.contenitore,
-        href: nelWorkspace(dellaVoce.indirizzo, slug) + risorsa.percorso.replace('{id}', () => encodeURIComponent(id)),
-    });
-}
-
-/**
- * I risultati di un gruppo vicini, perché l'`AppShell` ne apre uno a ogni cambio di gruppo: i gruppi nell'ordine del primo
- * risultato di ognuno, e dentro un gruppo l'ordine del backoffice.
- */
-function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
-    const gruppi = [...new Set(risultati.map((risultato) => risultato.group))];
-
-    return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
-}
-
 /** Una cosa che la cornice ha saputo da una rotta: i dati che aveva quando l'ha chiesta, e l'istante che la parte server ha dato alla risposta, se lo dà. */
 interface Saputo {
     con: DatiDellaCornice;
@@ -404,10 +309,10 @@ interface LettaConUnClic extends Saputo {
 export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready'; risultati: RisultatoDellaRicerca[]; workspace: string };
 
 /**
- * Quanti secondi, al più, la cornice tiene ferma la ricerca dopo un 429 del backoffice, qualunque cosa dica `Retry-After`: la
- * cornice resta montata fra le pagine, e un valore sbagliato non deve spegnere la ricerca per un'ora.
+ * Chiede il pezzo della ricerca (`./ricerca`) al primo fuoco nel campo: chi sta per scrivere lo trova arrivato, e chi non
+ * cerca non lo scarica. Se non arriva qui non succede niente: lo richiede la prima parola (`cercaParola`).
  */
-const TETTO_DEL_FRENO = 60;
+const alFuoco = () => void chiediLaRicerca().catch(() => undefined);
 
 /**
  * I dati non sono più recenti di ciò che la cornice ha saputo da una rotta: sono dello stesso workspace e, se c'è un istante
@@ -505,9 +410,17 @@ export function Cornice(props: CorniceProps) {
     // può essere passata a un'altra. Tranne quando la pagina è più vecchia di chi la cornice mostra: lo dice il segno della
     // sessione (`sessione_il`, o quello della lettura nei dati interi), e allora resta chi c'è. Con Indietro la voce della
     // cronologia porta il `subito` di allora, anche quando il suo `dopo` è riletto: senza questo tornerebbero nome ed email di
-    // chi c'era allora. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    // chi c'era allora. Senza un segno da una parte vale la pagina, se è della stessa persona: un confronto con `undefined` è
+    // sempre falso.
     const [mostrato, setMostrato] = useState(props.dati);
     const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+    // Senza il segno da tutte e due le parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi la
+    // cornice mostra: con Indietro sarebbe di chi c'era prima, per intero. Non se ne mostra niente, nemmeno per un disegno — si
+    // esce prima di tenere qualcosa —, e la pagina si ricarica: ricaricata, è di chi è entrato (dalla `v2.8.0`). La stessa
+    // persona senza segno resta com'era: vale la pagina.
+    if (!(props.dati.persona.email === mostrato.persona.email || (della(props.dati) && della(mostrato)))) {
+        return location.reload() as undefined;
+    }
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
 
     // La pagina è della persona mostrata fin qui (la stessa email), o i suoi dati sono stati letti dopo la sessione di chi la
@@ -888,7 +801,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     const ridottaAdesso = useRef(ridotta);
     const diPrima = useRef<string>(undefined);
     useLayoutEffect(() => {
-        const parola = document.querySelector<HTMLInputElement>('.zr-top .zr-search input')?.value.trim();
+        const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
+        const parola = campo?.value.trim();
+        // La stessa funzione a ogni disegno: sul campo resta un ascolto solo.
+        campo?.addEventListener('focus', alFuoco);
         if (ridottaAdesso.current !== 'loading') {
             diPrima.current = parola;
         }
@@ -922,7 +838,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         setRicerca(undefined);
     }
     // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
-    // — al più `TETTO_DEL_FRENO` secondi dopo — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
+    // — al più `TETTO_DEL_FRENO` secondi dopo (`ricerca.ts`) — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
     // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo non mostra il caricamento, e nemmeno «Nessun
     // risultato» per una parola che non è partita (dopo lo stato ridotto, che la ricerca la dimentica). Il freno è della
     // persona, non di una richiesta: vale anche quando il 429 è di una richiesta che non è più l'ultima, e allora quella in
@@ -948,24 +864,15 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questa = new AbortController();
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
-        cerca([...parola].slice(0, 100).join(''), questa.signal, persona.email).then(
-            ({ risultati, workspace }) => {
-                if (ricercaInVolo.current === questa) {
-                    setRicerca({ stato: 'ready', risultati, workspace });
-                }
-            },
-            (errore: unknown) => {
-                seDaAccettare(errore);
-                if (errore instanceof TroppeRichieste) {
-                    frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
-                    nelFreno();
-                } else if (ricercaInVolo.current === questa) {
-                    setRicerca({ stato: 'error' });
-                }
-            },
+        // La richiesta, la sua risposta e il freno stanno nel pezzo a richiesta (`./ricerca`, dalla `v2.8.0`): se il fuoco non lo
+        // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. All'arrivo parte l'ultima
+        // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`).
+        chiediLaRicerca().then(
+            (arrivata) => arrivata.cercaPer(parola, questa, persona.email, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno),
+            () => ricercaInVolo.current === questa && setRicerca({ stato: 'error' }),
         );
     };
-    const risultati = perGruppo(ricerca?.stato === 'ready' ? ricerca.risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, ricerca.workspace) ?? []) : []);
+    const risultati = ricerca?.stato === 'ready' ? laRicerca!.risultatiDellaRicerca(ricerca.risultati, lingua, t, ricerca.workspace) : [];
     const voci = [prodotti, ...nav];
 
     // Le voci del menu del profilo: «Esci» è del frontend, le altre sono pagine di app.zeiras.com.

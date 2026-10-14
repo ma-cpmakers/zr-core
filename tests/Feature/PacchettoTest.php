@@ -5077,9 +5077,48 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
     // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.554 byte con gzip. Sono 18 KB più 122 byte'],
-    'i pesi: la scheda ferma' => ['pesi', 'dalla `v2.4.0` in una scheda rimasta ferma non mostra l\'elenco e i risultati di un\'altra persona (68): quei byte sono ciò che costano quelle tre sole correzioni'],
+    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto scende a 18.229 byte, il peso di oggi più
+    // i 48 byte misurati per le quattro correzioni che lo aspettano.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con gzip. Dalla `v2.8.0` è sceso di 325 byte'],
+    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non riportano chi c\'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
+]);
+
+// Sprint 42 · T3 (voce #2054): dalla `v2.8.0` la ricerca della cornice è un pezzo a richiesta. Il README dice quando la cornice
+// lo chiede, che cosa si vede se non arriva e come si riprova, e che cosa cambia nei test di un frontend; la guida lo dice a un
+// modulo che nasce.
+
+it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo chiede, che cosa si vede se non arriva, come si riprova e che cosa cambia nei test di un frontend, e la guida lo dice a un modulo che nasce (sprint 42 · T3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v2\.8$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'passaggio' => suUnaRiga($passaggio[1] ?? ''),
+        'pesi' => suUnaRiga($readme),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'quando si chiede' => ['ricerca', 'la cornice lo chiede con `import()` al primo fuoco nel campo della ricerca, o alla prima parola se il fuoco nel campo non c\'è stato, mai quando si monta'],
+    'prima dell\'arrivo' => ['ricerca', 'Chi scrive prima che il pezzo sia arrivato vede «Sto cercando…», e all\'arrivo parte una richiesta sola, con l\'ultima parola che il campo ha dato alla cornice: quella che c\'era 300 ms dopo l\'ultimo tasto'],
+    // Sprint 42 · T5 (review): la lettera battuta negli ultimi 300 ms, il pezzo richiesto senza un'attesa, il file tolto, la coda.
+    'una lettera negli ultimi 300 ms' => ['ricerca', 'Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo'],
+    'fra una richiesta del pezzo e l\'altra' => ['ricerca', 'fra una richiesta del pezzo e l\'altra non c\'è un\'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive'],
+    'un file tolto da una build nuova' => ['ricerca', 'Un file che una build nuova ha tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata'],
+    'il JS della cornice con una coda' => ['ricerca', 'al primo fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`)'],
+    'se non arriva' => ['ricerca', 'sotto il campo c\'è l\'errore della ricerca, lo stesso avviso di una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte'],
+    'si riprova scrivendo' => ['ricerca', 'Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta'],
+    'il freno' => ['ricerca', 'Un pezzo non arrivato non accende il freno del `429`'],
+    'il pulsante che non c\'è' => ['ricerca', 'Un pulsante per riprovare nel riquadro della ricerca l\'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo'],
+    'il passaggio: niente nel codice' => ['passaggio', 'La `v2.8.0` non cambia niente nel codice di chi installa'],
+    'il passaggio: nei test' => ['passaggio', 'un caso che scrive nel campo, lascia passare i 300 ms dall\'ultimo tasto e guarda subito le richieste partite non ne trova'],
+    'il passaggio: la riga che c\'è già' => ['passaggio', '`beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca'],
+    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,0 KB con gzip)'],
+    'la guida: la riga dei test' => ['guida', 'Dalla `v2.8.0` dà alla cornice anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo'],
+    'la guida: se non arriva' => ['guida', 'Se non arriva, sotto il campo c\'è l\'errore della ricerca, e si riprova scrivendo un\'altra parola, o la stessa'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {
@@ -5400,7 +5439,18 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
     'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di nuovo, che è suo e lo dice'],
-    'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
+    // Sprint 42 · T4 (voce #1975): senza il segno della lettura la pagina di un'altra persona non va a schermo, e si ricarica.
+    'Indietro: senza il segno' => ['readme', 'se la pagina è di un\'altra persona e il segno manca da una delle due parti, la cornice non ne mostra niente, nemmeno il contenuto, e ricarica la pagina, che torna di chi è entrato'],
+    'Indietro: senza il segno, a una visita' => ['readme', 'Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un\'altra persona la pagina si ricarica; ricaricata, la cornice parte da chi dice la pagina e non ricarica più'],
+    'Indietro: senza il segno, la stessa persona' => ['readme', 'Della stessa persona, senza il segno, vale la pagina come prima'],
+    // Sprint 42 · T5 (review): sotto il layout anche in un altro workspace; nessun tetto alle ricariche; le due frasi che lo contraddicevano.
+    'Indietro: senza il segno, in un altro workspace' => ['readme', 'sotto il layout anche quando la voce di chi c\'era prima è di un altro workspace, dove la cornice si rifà: lì lo guarda il layout (provato in Chromium 151 sulle pagine di prova, con `?segno=no`, nello stesso workspace e in un altro)'],
+    'Indietro: senza il segno, nessun tetto alle ricariche' => ['readme', 'Un tetto alle ricariche non c\'è: una pagina che a ogni caricamento desse senza segno prima una persona e poi un\'altra — un `subito` di una e un `dopo` dell\'altra — si ricaricherebbe ogni volta'],
+    'senza il segno vale la pagina, se è della stessa persona' => ['readme', 'vale ciò che dà la pagina, se è della persona che la cornice mostra (di un\'altra, dalla `v2.8.0`, la pagina si ricarica: vedi «La cornice in due dati»)'],
+    'passare alla v2.8: i dati senza il segno' => ['readme', 'se quei dati portano un\'altra persona rispetto a chi la cornice mostra, la cornice non disegna niente e chiama `location.reload()` (vedi «La cornice in due dati»). Un caso che cambia persona con dati senza segno trova lo schermo vuoto: ai dati del caso si dà il segno, da tutte e due le parti'],
+    'passare alla v2.8: senza una coda' => ['readme', 'In una pagina vera non c\'è niente da fare, se il JS che contiene la cornice non è servito con una coda (vedi «La ricerca»)'],
+    'la guida: la coda vale anche per la ricerca' => ['guida', 'Dalla `v2.8.0` la prima vale anche per la ricerca, che ha un pezzo suo: con una coda sul JS della cornice la pagina si monta di nuovo al primo fuoco nel campo della ricerca'],
+    'Indietro: i limiti' => ['readme', 'Restano due limiti. La cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
     'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],

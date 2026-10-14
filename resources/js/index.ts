@@ -7,9 +7,9 @@
 // dalla `v2.0.0` non si esportano da qui: si importano da `./frasi`. Un ingresso che li riesporta si riporta nel JS d'ingresso
 // ciò che la cornice chiede a richiesta (`./campanella`).
 export { Zeiras } from './zeiras';
-export { nomeDellaVoce } from './lingue';
 export { destinazioneDellaNotifica } from './notifiche';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { tonoDelWorkspace } from './tono';
 export { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci } from './cornice';
+export { nomeDellaVoce } from './lingue';
 export { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type LayoutDellaCorniceProps } from './layout';
