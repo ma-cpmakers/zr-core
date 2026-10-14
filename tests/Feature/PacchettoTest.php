@@ -5495,12 +5495,22 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la cornice di chi c\'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c\'è già chi ha risposto'],
     // Sprint 43 · T4 (voce #2052): con la stessa persona vale la lingua del dato più recente.
     'la lingua del dato più recente' => ['readme', 'Dalla `v2.9.0`, con la stessa persona, vale la lingua del dato più recente anche se `dopo` non è riletto: una pagina che rilegge il solo `subito` dopo che la persona ha cambiato lingua ha i testi della cornice nella lingua nuova'],
-    'la lingua: da subito passa solo lei' => ['readme', 'Da `subito` passa la sola lingua, e solo se `dopo` dice di chi è e il segno della sessione c\'è da tutte e due le parti: senza, vale `dopo` come prima'],
+    'la lingua: da subito passa solo lei' => ['readme', 'Da `subito` passano la sola lingua e il suo segno, e solo se `dopo` dice di chi è e il segno della lingua c\'è da tutte e due le parti: senza, vale `dopo` come prima'],
     'la guida: la lingua del dato più recente' => ['guida', 'Dalla `v2.9.0`, con la stessa persona, i testi della cornice seguono la lingua del dato più recente: se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo`'],
     // Sprint 43 · T5 (review della PR 77): la lingua di un `subito` riletto mentre `dopo` è in lettura; le frasi di prima col
     // tetto e l'orologio; l'orologio a ogni ricarica chiamata; le due cornici; ciò che resta a schermo sotto il tetto; la guida.
-    'la lingua: il caso che resta' => ['readme', 'Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di prima: se la lingua è cambiata fuori da questa sessione, la cornice resta in quella di prima finché `dopo` non è riletto o la pagina non fa una visita'],
-    'la lingua: sotto un subito riletto' => ['readme', 'coi suoi dati e il suo nome, senza attesa; dalla `v2.9.0` la lingua è quella di `subito`, il più recente dei due'],
+    'la lingua: sotto un subito riletto' => ['readme', 'coi suoi dati e il suo nome, senza attesa; la lingua è quella di `subito` se è sua la lingua confermata dopo (dalla `v2.11.0`, col segno della lingua; nella `v2.9.0` e nella `v2.10.0` col segno della sessione)'],
+    // Sprint 45 · T3.6 (voce #2060): la lingua ha un suo segno, e il caso che restava aperto si chiude.
+    'la lingua: il suo segno' => ['readme', 'Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`: `Cornice::subito()` e `Cornice::dopo()` lo portano dopo `sessione_il`, in fondo (anche `non_letti`), ed è l\'istante in cui è cominciata la lettura di io.mostra che ha confermato la lingua della sessione per quella persona'],
+    'la lingua: il segno, mai adesso' => ['readme', 'In `dopo` è quello della sua lettura, se io.mostra ha risposto, altrimenti quello che la sessione ricorda; in `subito` quello che la sessione ricorda, mai l\'istante di adesso'],
+    'la lingua: nella sessione, di chi è' => ['readme', 'La parte server lo ricorda nella sessione, alla chiave `zr-core.lingua`, con l\'id della persona: di un\'altra persona entrata nello stesso browser non esce, e senza una lettura che l\'abbia confermata non c\'è'],
+    'la lingua: decide il suo segno' => ['readme', 'Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no'],
+    'la lingua: il caso chiuso' => ['readme', 'un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno della sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima'],
+    'la lingua: Indietro' => ['readme', 'E con Indietro su una pagina della stessa persona letta dopo quella a schermo, ma con la lingua confermata prima, la lingua resta quella nuova, nello stesso workspace e in un altro'],
+    'la lingua: un dopo a mano senza segno' => ['readme', 'Un `dopo` composto a mano senza `lingua_il` porta la sua lingua, come prima della `v2.9.0`'],
+    'la lingua: il segno non va indietro' => ['readme', 'Anche `lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di quelle letture'],
+    'la lingua: anche non_letti' => ['readme', 'Dalla `v2.11.0` dopo `sessione_il` c\'è anche `lingua_il`, come in `Cornice::subito()`: quello di questa lettura se io.mostra ha risposto, altrimenti quello ricordato'],
+    'la guida: il segno della lingua' => ['guida', 'Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`, e vale quella confermata più di recente: un `subito` riletto mentre `dopo` è ancora in lettura, o una pagina di prima ripresa con Indietro, non riportano la lingua di prima (README, «La cornice in due dati»)'],
     'la scheda ferma: le frasi di prima col tetto' => ['readme', 'Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una pagina caricata da meno di 30 secondi non partono prima che li compia — dalla `v2.10.0` partono allora, da sole —, e se la pagina non si ricarica la richiesta dà il suo errore dopo 5 secondi'],
     'la lettura con un clic: il tetto' => ['readme', 'Dalla `v2.9.0` anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte'],
     'la scheda ferma: l\'orologio a ogni ricarica' => ['readme', 'L\'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza niente di chi è entrato'],
@@ -5610,6 +5620,43 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
 ]);
 
+// Sprint 45 · T2.7 (voce #2001): il cookie del segno, detto a chi installa: che cosa porta, gli attributi, che cosa non vale,
+// lo scopo per l'informativa, che cosa serve e che cosa resta. La guida lo rimanda all'informativa.
+it('il README dice il cookie del segno — nome, scopo per l\'informativa, contenuto, attributi e durata, che cosa serve e che cosa resta —, e la guida lo rimanda all\'informativa (sprint 45 · T2.7)', function (string $dove, string $frase) {
+    $testi = [
+        'readme' => suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'il titolo' => ['readme', '### Il cookie del segno'],
+    'il nome e che cosa fa' => ['readme', 'L\'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è l\'orologio della parte server se è più avanti di quello, e altrimenti quello più un microsecondo'],
+    'due richieste non hanno mai lo stesso segno' => ['readme', 'Due richieste diverse, una dopo l\'altra, non hanno mai lo stesso segno: lo stesso segno c\'è dentro una richiesta, dove due letture nello stesso istante hanno lo stesso, e in due richieste in volo insieme'],
+    'che cosa porta' => ['readme', 'solo l\'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del frontend): niente della persona né del workspace'],
+    'gli attributi e la durata' => ['readme', '`Path=/`, nessun `Domain` (il prefisso `__Host-` lo lega all\'host del modulo), `Secure`, `HttpOnly`, `SameSite=Lax`; scade con la sessione'],
+    'che cosa non vale' => ['readme', 'manomesso, firmato con un\'altra chiave, in un\'altra forma, vuoto o mancante, il segno è l\'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie'],
+    'oltre i cinque minuti, come prima' => ['readme', 'Per quel browser, allora, è come fino alla `v2.10.0`: la pagina di chi entra da un server indietro di più di cinque minuti può valere come una pagina vecchia'],
+    'al massimo cinque minuti avanti' => ['readme', 'il cookie vale solo se è avanti dell\'orologio della parte server di cinque minuti al massimo. Oltre, il segno è l\'orologio, la risposta riscrive il cookie, e nel log resta un avviso che non dice l\'istante del cookie'],
+    'per l\'informativa' => ['readme', 'è un cookie tecnico, necessario al funzionamento della cornice'],
+    'che cosa serve' => ['readme', 'lo manda `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`'],
+    'che cosa resta: due richieste insieme' => ['readme', 'due richieste in volo insieme leggono lo stesso cookie, e i loro segni sono gli orologi dei loro server, nel loro ordine, o lo stesso segno, il cookie più un microsecondo, se il cookie è più avanti di tutti e due'],
+    'che cosa resta: un browser che non lo tiene' => ['readme', 'un browser che non tiene il cookie — i cookie rifiutati, o un indirizzo `http://`: il prefisso `__Host-` lo vuole `Secure`, e su `http://localhost` alcuni browser lo tengono e Safari no (non provato in un browser) — vale come prima della `v2.11.0`'],
+    'che cosa resta: un server avanti' => ['readme', 'un server avanti di cinque minuti al massimo porta il suo orologio agli altri, per quel browser, finché l\'orologio vero non lo raggiunge'],
+    'la guida: il cookie' => ['guida', 'Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l\'ultimo dato sta nel cookie `__Host-zr-core-segno`'],
+    'la guida: l\'informativa' => ['guida', 'citalo nell\'informativa sui cookie del modulo, come cookie tecnico'],
+]);
+
+// Dalla review della PR #79 (R1, S1; zr-pm, Decisione: 12931): a parità di segno non si torna, e un orologio avanti non è
+// più «non frenato» e basta.
+it('il README non dice più che a parità di segno la cornice prende la pagina che arriva, né che il cookie frena un orologio indietro e non uno avanti (sprint 45 · T2.8, T2.9)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'la parità' => ['A parità di segno la cornice prende la pagina che arriva'],
+    'l\'orologio avanti' => ['il cookie frena un orologio indietro, non uno avanti'],
+    'il più avanti fra i due' => ['un segno nuovo è il più avanti fra l\'orologio della parte server e quello'],
+]);
+
 // Sprint 38 · T2.5 (voce #2027): le tre cose che un frontend non fa con `subito` e `dopo`, e che cosa fa la cornice se
 // succede. In grassetto, tutte e tre, e dove il frontend scrive le due props: non in una nota in fondo.
 it('README e guida dicono in grassetto le tre cose che un frontend non fa con `subito` e `dopo`, e che la cornice resta in attesa: accanto all\'esempio e nel capoverso «In due dati», una volta sola (sprint 38 · T2.5)', function (string $file, string $da, string $a, array $inGrassetto) {
@@ -5640,6 +5687,16 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**comporre `dopo` a mano**',
         '**resta in attesa di un `dopo` di chi è entrato**',
     ]],
+]);
+
+// Sprint 45 · T3.6 (voce #2060): dalla `v2.11.0` la lingua ha un suo segno, e il caso che fino alla `v2.10.0` restava aperto
+// — un `subito` riletto mentre `dopo` è in lettura riportava la lingua di prima — è chiuso. Il README non lo dice più aperto.
+it('il README non dice più che resta aperto il caso della lingua di un `subito` riletto mentre `dopo` è in lettura (sprint 45 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il caso che resta' => ['Un caso resta: il segno di `dopo` è l\'istante in cui la sua lettura comincia'],
+    'la lingua di prima' => ['la cornice resta in quella di prima finché `dopo` non è riletto'],
+    'il più recente dei due' => ['la lingua è quella di `subito`, il più recente dei due'],
 ]);
 
 // Sprint 38 · T3.6 (voce #2026): dalla `v2.5.0` il 403 `accettazione_richiesta` e il 429 della ricerca dicono anche di chi

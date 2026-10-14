@@ -305,7 +305,10 @@ non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` por
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai
 `dopo` com'è. Dalla `v2.9.0`, con la stessa persona, i testi della cornice seguono la lingua del dato più recente:
-se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo` (a una visita era già così). Vale se la sessione ha già la lingua nuova: `Cornice::subito()` non la chiede al backoffice, la rileggono `Cornice::lingua()`, `dopo()` e `dati()`. **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
+se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo` (a una visita era già così). Vale se la sessione ha già la lingua nuova: `Cornice::subito()` non la chiede al backoffice, la rileggono `Cornice::lingua()`, `dopo()` e `dati()`.
+Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`, e vale quella confermata più di recente: un `subito` riletto mentre `dopo`
+è ancora in lettura, o una pagina di prima ripresa con Indietro, non riportano la lingua di prima (README, «La cornice in due dati»).
+**Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un
 `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui
@@ -347,6 +350,10 @@ Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e wo
 workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde. Se lo componi tu nella
 parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale
 come prima, sotto il nome dei dati della sessione.
+
+Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
+che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
+a te: citalo nell'informativa sui cookie del modulo, come cookie tecnico.
 
 ## 7. La cornice montata una volta sola
 

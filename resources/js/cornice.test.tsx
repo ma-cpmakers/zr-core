@@ -441,6 +441,24 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
+    // Sprint 45 · T2 (voce #2001): col cookie del segno i dati di chi è entrato, letti da un nodo con l'orologio indietro, non hanno
+    // un segno più vecchio degli ultimi dati (dalla review della PR #79 il segno è l'ultimo più un microsecondo). A parità di
+    // segno, la regola del browser, valgono i dati che arrivano.
+    it('i dati di un\'altra persona con lo stesso segno dei dati mostrati sono suoi: la cornice è di chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const stesso = '2026-10-14T12:00:00.000000Z';
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        await mostra(<Cornice dati={{ ...dati, non_lette: 4, aggiornati_il: stesso }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 2, aggiornati_il: stesso }} onLogout={esciSenzaEffetto} />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
     it('coi dati `in_attesa` della stessa persona (la stessa email), se la cornice ha già i dati di quel workspace, il nome e la lingua sono quelli dei dati nuovi; moduli, aziende, workspace e non lette restano quelli tenuti, e fuori dall\'attesa la persona è quella dei dati che valgono (sprint 35 · T2.1; sprint 36 · T2.4)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
         const rinominata = { nome: 'Augusta King', email: dati.persona.email };

@@ -63,6 +63,13 @@ export interface DatiDellaCornice {
      */
     sessione_il?: string | undefined;
     /**
+     * Il segno della lingua (dalla `v2.11.0`): l'istante in cui è cominciata la lettura di io.mostra che ha confermato la lingua
+     * della sessione per quella persona, in `Cornice::subito()` e in `Cornice::dopo()`. Con la stessa persona `LayoutDellaCornice`
+     * mostra la lingua del dato in cui è più avanti: un `subito` riletto mentre `dopo` è in lettura porta la sessione di adesso
+     * ma la lingua di prima, e non la riporta a schermo. Senza, o in un'altra forma, da una parte, vale la lingua di `dopo`.
+     */
+    lingua_il?: string | undefined;
+    /**
      * `true` se la persona non ha ancora accettato i documenti legali in vigore (dalla `v1.14.0`): la parte server lo dice
      * quando il backoffice le risponde 403 `accettazione_richiesta`, e allora `prodotti` e `aziende` sono vuoti e le non lette
      * zero perché non li ha potuti leggere, non perché non ci siano. La cornice esce ridotta, con l'avviso che porta alla
@@ -83,7 +90,7 @@ export interface DatiDellaCornice {
 }
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
-export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il'>;
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il' | 'lingua_il'>;
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
  * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
