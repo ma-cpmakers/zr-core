@@ -100,6 +100,11 @@ function sessioneAMano(?array $workspace, string $lingua = 'en', array $diversa 
         Sessione::entra(['gettone' => $gettoni['workspace'], 'scade_il' => $scade, 'utente' => $utente, 'workspace' => $workspace, 'ruolo' => 'membro']);
     }
 
+    // Come la pagina di quella persona: la cornice dice sempre di chi è la pagina che chiede (l'intestazione `Persona`), e dalla
+    // `v2.13.0` una richiesta che non lo dice riceve 422 (StessaPersona). Un caso che vuole un'altra persona, o nessuna, lo dice.
+    $email = $utente['email'];
+    is_string($email) && $email !== '' ? test()->withHeader('Persona', rawurlencode($email)) : test()->withoutHeader('Persona');
+
     return $gettoni;
 }
 

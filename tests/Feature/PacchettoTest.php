@@ -1425,6 +1425,17 @@ it('il README non dice più che il giro finito altrove lo dice la campanella a z
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'quando la campanella non conta più non lette'))->toBe(false);
 });
 
+it('il README e la guida non dicono più che una richiesta che non dice la persona risponde come prima, né che il clic di un JS di prima la segna ancora a chi è entrato (sprint 52 · T1.4)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(str_contains($readme, 'Una richiesta che non la dice risponde come prima'))->toBe(false)
+        ->and(str_contains($readme, 'la rotta non confronta: una richiesta che non dice la persona vale come prima'))->toBe(false)
+        ->and(str_contains($readme, 'la segna ancora a chi è entrato'))->toBe(false)
+        ->and(str_contains($guida, 'a una richiesta che non la dice la rotta risponde come prima'))->toBe(false)
+        ->and(str_contains($guida, 'segna ancora a chi è entrato'))->toBe(false);
+});
+
 it('il README non dice più che il titolo di una notifica è uno per tutte (sprint 12 · T3.6)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     // Il README di prima, con la frase della v1.2.2 al posto di quella del tipo: il controllo la vede, anche dove va a capo.
@@ -5558,12 +5569,18 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'le due cornici: la cornice di chi ha risposto montata prima (sprint 50 · T3.4)' => ['readme', 'se la cornice di chi ha risposto si monta prima che quella di prima sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica'],
     // Sprint 50 · T6 (review, R6, R7, R12, R14): i limiti che restano, detti accanto alla regola.
     'le due cornici della stessa persona (sprint 50 · T6, R7)' => ['readme', 'Lo stesso con due cornici della stessa persona, smontata una delle due: la cornice riconosce chi è a schermo dall\'email, e non sa quale delle due si è smontata'],
-    'il clic in attesa della lettura (sprint 50 · T6, R12)' => ['readme', 'Nell\'attesa niente lo dice a schermo: il pannello si chiude e la notifica resta non letta, e un secondo clic, sulla stessa notifica o su un\'altra, fa un\'altra lettura: all\'arrivo la cornice le apre tutte e due, una dopo l\'altra, e resta quella della risposta arrivata per ultima'],
+    // Sprint 52 · T4 (voce #2082): un secondo clic sulla stessa notifica con la lettura in volo non fa niente.
+    'il clic in attesa della lettura (sprint 50 · T6, R12; sprint 52 · T4)' => ['readme', 'Nell\'attesa niente lo dice a schermo: il pannello si chiude e la notifica resta non letta. Dalla `v2.13.0` un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto, non fa niente: nessun\'altra lettura, e all\'arrivo la risorsa si apre una volta'],
+    // Sprint 52 · T5 (voce #2079): l'evento prima della ricarica, e che cosa il pacchetto non fa.
+    'l\'evento prima della ricarica (sprint 52 · T5)' => ['readme', 'subito prima di ricaricare la pagina per un cambio di persona — una risposta di un\'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» — la cornice manda sulla `window` un evento `zr-core:altra-persona`'],
+    'l\'evento prima della ricarica: il pacchetto non scrive niente (sprint 52 · T5.2)' => ['readme', 'Il pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina si è aggiornata'],
+    'il clic su un\'altra notifica in attesa della lettura (sprint 52 · T4)' => ['readme', 'Un secondo clic su un\'altra notifica fa la sua lettura: all\'arrivo la cornice le apre tutte e due, una dopo l\'altra, e resta quella della risposta arrivata per ultima. La cornice ricorda una lettura sola, l\'ultima partita, e la dimentica alla prima risposta'],
     'il clic che apre senza aspettare, e l\'eccezione (sprint 50 · T6, R14)' => ['readme', 'la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi, dove il clic la aspetta'],
-    'le richieste insieme del pezzo (sprint 50 · T6, R6; seconda lettura, N1)' => ['readme', 'per l\'attesa e per la coda ognuna, se il pezzo non arriva, conta come un tentativo fallito: con k richieste partite mentre il pezzo è in viaggio l\'attesa dopo è quella di k tentativi falliti in più, e la coda salta k−1 numeri'],
+    // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
+    'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
     'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte'],
-    'il 403 senza workspace e una sessione senza email (PR #78, R7; sprint 51 · T1.4)' => ['readme', 'Con una sessione senza email una richiesta che dice la persona riceve il 409, e una che non la dice il 403.'],
+    'il 403 senza workspace e una sessione senza email (PR #78, R7; sprint 51 · T1.4)' => ['readme', 'Con una sessione senza email una richiesta che dice la persona riceve il 409, e una che non la dice il 422 `persona_mancante` (fino alla `v2.12` il 403).'],
     // UAT dello sprint 44 (U1-U5, in Chromium 151): la ricarica allo scadere è provata in un browser.
     'la scheda ferma: la ricarica allo scadere, provata' => ['readme', 'La ricarica allo scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova'],
     'le rotte: il 403 senza workspace, sessione senza email (PR #78, seconda lettura; sprint 51 · T1.4)' => ['readme', 'Nella `v2.10` e nella `v2.11` il 403 portava `persona`, l\'email della sessione'],
@@ -5585,8 +5602,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: gli errori a schermo' => ['readme', 'In una scheda rimasta ferma l\'errore di chi è entrato non riduce la cornice e non ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica'],
     'la scheda ferma: il 403 di zr-auth' => ['readme', 'Il 403 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima'],
     // Sprint 44 · T4.5 (voce #2061): il 403 di chi è entrato senza workspace dice di chi è la sessione.
-    'la scheda ferma: il 403 senza workspace (sprint 51 · T1.4)' => ['readme', 'Dalla `v2.12.0` a quella scheda risponde prima la regola della persona, col 409 `persona_diversa`, e la scheda si ricarica con le stesse regole delle altre risposte di un\'altra persona; il 403 arriva solo alla persona della sessione, o a una richiesta che non dice la persona, e porta il solo codice (né nome, né lingua, né workspace, né un\'email)'],
-    'le rotte: il 403 senza workspace (sprint 51 · T1.4)' => ['readme', 'con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`, che dalla `v2.12.0` arriva solo alla persona della sessione, o a una richiesta che non dice la persona, e non dice di chi è: a una pagina di un\'altra persona risponde prima il 409 `persona_diversa`'],
+    'la scheda ferma: il 403 senza workspace (sprint 51 · T1.4)' => ['readme', 'Dalla `v2.12.0` a quella scheda risponde prima la regola della persona, col 409 `persona_diversa`, e la scheda si ricarica con le stesse regole delle altre risposte di un\'altra persona; il 403 arriva solo alla persona della sessione (una richiesta che non dice la persona riceve prima, dalla `v2.13.0`, il 422 `persona_mancante`), e porta il solo codice (né nome, né lingua, né workspace, né un\'email)'],
+    'le rotte: il 403 senza workspace (sprint 51 · T1.4)' => ['readme', 'con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`, che dalla `v2.12.0` arriva solo alla persona della sessione (dalla `v2.13.0` una richiesta che non dice la persona riceve prima il 422 `persona_mancante`), e non dice di chi è: a una pagina di un\'altra persona risponde prima il 409 `persona_diversa`'],
     'la guida: il 403 senza workspace (sprint 51 · T1.4)' => ['guida', 'Dalla `v2.12.0` nessuna delle due risposte dice chi è entrato: niente email.'],
     // Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non è più un limite; ciò che resta, detto.
     'la scheda ferma: segna tutte' => ['readme', 'Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l\'email di chi mostra, e la rotta la confronta con quella della sessione'],
@@ -5596,7 +5613,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: la visita che ha portato chi è entrato (sprint 51 · T5, R1)' => ['readme', 'Dalla `v2.12.0` questo vale solo per una risposta che dice chi ha risposto: le quattro richieste mandano `Persona`, e l\'unica risposta di un\'altra persona che ricevono è il 409 `persona_diversa`, che non lo dice più'],
     'la guida: la ricarica allo scadere (sprint 51 · T5, R1)' => ['guida', 'allora si ricarica da sola, se a schermo non c\'è già chi ha risposto (dalla `v2.12.0` anche se c\'è: il 409 non dice più chi è)'],
     'la scheda ferma: ciò che resta' => ['readme', 'Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una richiesta'],
-    'la scheda ferma: la riga della rotta (sprint 51 · T1.4)' => ['readme', '409 `{errore: "persona_diversa", persona: ""}`, senza chiamare il backoffice, e non si segna niente (fino alla `v2.11` `persona` era l\'email della sessione); una richiesta senza `persona` vale come prima'],
+    'la scheda ferma: la riga della rotta (sprint 51 · T1.4)' => ['readme', '409 `{errore: "persona_diversa", persona: ""}`, senza chiamare il backoffice, e non si segna niente (fino alla `v2.11` `persona` era l\'email della sessione); senza la chiave `persona` conta l\'intestazione `Persona`, e senza né l\'una né l\'altra, dalla `v2.13.0`, 422'],
     // Sprint 39 · T1.3 (voce #2038): una `persona` che c'è e non è un testo non vale come assente.
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
     // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
@@ -5632,14 +5649,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe senza un\'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l\'email è un testo vuoto, 409 `persona_diversa` se manca o è `null`'],
     'la scheda ferma: JS e parte server insieme' => ['readme', 'Il JS e la parte server del pacchetto si aggiornano insieme, e la cache delle rotte si rifà al deploy'],
     'la scheda ferma: l\'email in un\'intestazione' => ['readme', 'uno strumento che registra le intestazioni delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura'],
-    'la scheda ferma: l\'intestazione tolta per strada' => ['readme', 'Se invece qualcosa fra il browser e il frontend la toglie, la rotta non confronta: una richiesta che non dice la persona vale come prima'],
-    'la scheda ferma: un JS di prima' => ['readme', 'Un JS di prima della `v2.6.0` rimasto in una scheda non dice la persona in tre richieste — l\'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come prima'],
-    'la scheda ferma: ciò che un JS di prima segna ancora' => ['readme', 'il suo clic su una notifica la segna ancora a chi è entrato, finché la scheda non si ricarica'],
+    'la scheda ferma: l\'intestazione tolta per strada' => ['readme', 'Se invece qualcosa fra il browser e il frontend la toglie, fino alla `v2.12` la rotta non confrontava e la richiesta valeva come prima; dalla `v2.13.0` è un 422 `persona_mancante` con `persona` vuota, che la cornice prende per «un\'altra persona»: la scheda si ricarica, al più una volta ogni 30 secondi e solo quando parte una richiesta'],
+    'la scheda ferma: un JS di prima' => ['readme', 'Un JS di prima della `v2.6.0` rimasto in una scheda non dice la persona in tre richieste — l\'elenco, la ricerca, la lettura con un clic — e prima della `v2.5.0` nemmeno in «Segna tutte come lette»'],
+    'la scheda ferma: un JS di prima riceve il 422 (sprint 52 · T1.4)' => ['readme', 'dalla `v2.13.0` gli risponde 422 `{errore: "persona_mancante", persona: ""}`, e non legge né segna niente'],
+    'la scheda ferma: chi si ricarica davanti al 422 (sprint 52 · T1.4)' => ['readme', 'quello della `v2.5.x`, davanti all\'elenco, alla ricerca o al clic su una notifica, la prende per «un\'altra persona» e ricarica la scheda'],
     'la scheda ferma: nel pannello' => ['readme', 'che dalla `v2.6.0` non è più nel corpo: sta nell\'intestazione `Persona`'],
     'la guida: il clic su una notifica' => ['guida', 'Dalla `v2.6.0` nemmeno il clic su una notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l\'intestazione `Persona`'],
     // Review della PR #74, R2 e R6: ciò che resta fuori, e chi chiama da sé una rotta della cornice.
     'la guida: chi chiama da sé una rotta' => ['guida', 'Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`'],
-    'la guida: ciò che resta fuori' => ['guida', 'un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica, e dei dati della cornice senza l\'email'],
+    'la guida: ciò che resta fuori (sprint 52 · T1.4)' => ['guida', 'Così un JS di prima della `v2.6.0` rimasto in una scheda non segna più a chi è entrato: mostra un errore, o si ricarica. Resta fuori una cosa, detta nello stesso punto: i dati della cornice senza l\'email.'],
     'la riga della rotta: una persona che non è un testo' => ['readme', 'non vale come assente: 422 `{errore: "dati_non_validi"}`, senza chiamare il backoffice, e non si segna niente; dalla `v2.6.0` la persona si guarda prima del workspace e degli altri controlli della rotta'],
     // Sprint 40 · T2 (voce #2051): la regola della persona è di tutte e quattro le rotte, e l'ordine dei rifiuti è scritto.
     'la regola della persona: le quattro rotte' => ['readme', 'Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro'],
@@ -5647,7 +5665,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la regola della persona: il 409 (sprint 51 · T1.4)' => ['readme', 'la rotta risponde 409 `{errore: "persona_diversa", persona: ""}`, senza chiamare il backoffice e senza dati. Dalla `v2.12.0` `persona` è un testo vuoto, che non è l\'email di nessuno'],
     'la regola della persona: tutti e due i posti' => ['readme', 'Se la dice in tutti e due i posti valgono tutti e due: basta che uno non sia quello della sessione'],
     'la regola della persona: il 422' => ['readme', 'un valore che non è un testo, anche `null`, o un testo vuoto — è un 422 `{errore: "dati_non_validi"}`'],
-    'la regola della persona: non detta' => ['readme', 'Una richiesta che non la dice risponde come prima'],
+    'la regola della persona: non detta (sprint 52 · T1.4)' => ['readme', 'dalla `v2.13.0` riceve 422 `{errore: "persona_mancante", persona: ""}` e non arriva alla rotta: non legge, non cerca, non segna'],
     'la regola della persona: l\'ordine (sprint 51 · T1.4)' => ['readme', 'il 401 della guardia, la persona (prima il 422, poi il 409), il 403 `gettone_senza_workspace`, e solo dopo i 422 della rotta e il 409 `workspace_diverso`'],
     'la scheda ferma: il 409 non dice chi ha risposto (sprint 51 · T1.4)' => ['readme', 'davanti a quello, se a schermo c\'è una cornice, la pagina si ricarica anche quando una visita ha già portato un\'altra persona'],
     'la regola della persona: chi sceglie' => ['readme', 'Di chi sono i dati lo dice sempre e solo la sessione: ciò che la richiesta dice si confronta e basta'],

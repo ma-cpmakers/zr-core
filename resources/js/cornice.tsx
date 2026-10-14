@@ -209,7 +209,7 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
 function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
     const tone = tonoDelWorkspace(workspace.id);
 
-    return { slug: workspace.slug, name: workspace.nome, ...(tone && { tone }) };
+    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone });
 }
 
 /**
@@ -218,10 +218,10 @@ function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: 
  */
 function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
     const data = new Date(istante);
-    if (Number.isNaN(data.getTime())) {
+    if (isNaN(+data)) {
         return undefined;
     }
-    const secondi = (adesso.getTime() - data.getTime()) / 1000;
+    const secondi = (+adesso - +data) / 1000;
     const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto' });
     if (secondi < 60) {
         return relativa.format(0, 'second');
@@ -229,7 +229,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
     if (secondi < 3600) {
         return relativa.format(-Math.floor(secondi / 60), 'minute');
     }
-    const mezzanotte = (giorno: Date) => new Date(giorno.getFullYear(), giorno.getMonth(), giorno.getDate()).getTime();
+    const mezzanotte = (giorno: Date) => new Date(giorno).setHours(0, 0, 0, 0);
     const giorni = Math.round((mezzanotte(adesso) - mezzanotte(data)) / 86_400_000);
     if (giorni === 0) {
         return relativa.format(-Math.floor(secondi / 3600), 'hour');
@@ -279,7 +279,7 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     let scelta: string | undefined;
     let istante = -Infinity;
     for (const { creata_il: creataIl } of elenco) {
-        const questo = new Date(creataIl).getTime();
+        const questo = +new Date(creataIl);
         if (questo > istante) {
             scelta = creataIl;
             istante = questo;
@@ -357,9 +357,9 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
  * il `main` resta l'elemento attivo: l'attributo resta, o al ritorno il `main` non terrebbe più il fuoco.
  */
 function fuocoAlContenuto(dalSalto: HTMLElement | null): void {
-    const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main') ?? null;
+    const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main');
 
-    if (main === null) {
+    if (!main) {
         return;
     }
     if (!main.hasAttribute('tabindex')) {
@@ -530,7 +530,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
     const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     const companies = delWorkspace
-        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => nelSelettore(ws)) }))
+        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))
         : undefined;
     // «Nuovo workspace» in fondo al selettore solo se la parte server dice che la persona può crearne uno in quell'azienda: proprio
     // `true`, perché i dati di una parte server di prima non lo dicono. Apre la pagina di zr-home nel workspace dei dati, che è
@@ -902,15 +902,20 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // richiesta parte prima dell'apertura. Su una pagina di 30 secondi o più l'apertura non la aspetta; su una più giovane
     // (dalla `v2.11.5`) la aspetta, e la risposta di un'altra persona — la pagina si ricarica quando compie 30 secondi, vedi
     // `chiama` — non apre la risorsa con la sessione di chi è entrato.
+    const letturaInVolo = useRef('');
     const apriNotifica = (aperta: ShellNotification) => {
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined && !notifica!.letta) {
+            if (letturaInVolo.current === notifica!.id) {
+                return;
+            }
             const lettura = leggi(notifica!.id, elencoDi!);
             if (performance.now() < 3e4) {
-                lettura.then(() => naviga(risorsa));
+                letturaInVolo.current = notifica!.id;
+                lettura.then(() => ((letturaInVolo.current = ''), naviga(risorsa)));
                 return;
             }
         }

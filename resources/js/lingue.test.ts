@@ -1394,6 +1394,43 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         await expect(chiedi()).resolves.toBe('il pezzo');
         expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=2`]);
     });
+
+    // Sprint 52 · T3 (voce #2081). Il primo fuoco nel campo della ricerca e la prima parola chiedono il pezzo insieme: se non
+    // arriva, per l'attesa e per la coda è un tentativo fallito solo. Conta il fallimento della richiesta partita col numero
+    // di tentativi di adesso; quello di una richiesta partita insieme a lei, che arriva dopo, no.
+    it('due richieste partite insieme, che non arrivano, contano un fallimento solo: la richiesta dopo aspetta 1 secondo e ha la coda `?r=1` (sprint 52 · T3.1)', async () => {
+        const ora = orologio();
+        const errori = [nonArrivato(PEZZO), nonArrivato(PEZZO)];
+        const { chiamate, chiedi } = chiImporta([...errori]);
+
+        await Promise.allSettled([chiedi(), chiedi()]);
+        expect(chiamate).toStrictEqual([undefined, undefined]);
+
+        ora.adesso = 999;
+        await expect(chiedi()).rejects.toThrow();
+        expect(chiamate).toHaveLength(2);
+        ora.adesso = 1_000;
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(chiamate).toStrictEqual([undefined, undefined, `${PEZZO}?r=1`]);
+    });
+
+    it('anche dopo un fallimento due richieste partite insieme, che non arrivano, sono un tentativo solo: l\'attesa dopo è di 2 secondi e non di 4, e la coda `?r=2` (sprint 52 · T3.1)', async () => {
+        const ora = orologio();
+        const errori = [nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`), nonArrivato(`${PEZZO}?r=1`)];
+        const { chiamate, chiedi } = chiImporta([...errori]);
+
+        await expect(chiedi()).rejects.toBe(errori[0]);
+        ora.adesso = 1_000;
+        await Promise.allSettled([chiedi(), chiedi()]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=1`]);
+
+        ora.adesso = 2_999;
+        await expect(chiedi()).rejects.toThrow();
+        expect(chiamate).toHaveLength(3);
+        ora.adesso = 3_000;
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(chiamate.at(-1)).toBe(`${PEZZO}?r=2`);
+    });
 });
 
 // Sprint 34 · T2 (voce #1930). Una notifica può raccontare più azioni, e la cosa di cui parla può stare in una board: la parte

@@ -344,7 +344,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         // prima di ogni loro controllo. Lo dice l'intestazione `Persona` — l'email passata da `encodeURIComponent`: così la
         // manda la cornice — o `persona` nel corpo JSON, e valgono tutti e due. Detta e non confrontabile (non un testo, anche
         // `null`, o un testo vuoto) è un 422; se non è l'email di chi è nella «sessione» adesso, un 409 con quell'email e
-        // nient'altro. Non detta, o se la pagina di prova non dice chi è nella «sessione», la rotta risponde come prima.
+        // nient'altro. Non detta, dalla `v2.13.0` (sprint 52 · T1) un 422 `persona_mancante` con `persona` vuota. Se la pagina
+        // di prova non dice chi è nella «sessione», la rotta risponde come prima.
         const diUnAltro = (): Response | undefined => {
             const dette: unknown[] = [];
             const intestazione = new Headers(opzioni?.headers).get('Persona');
@@ -369,6 +370,9 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 return json({ errore: 'dati_non_validi' }, 422);
             }
             const diAdesso = personaDellaSessione?.()?.email;
+            if (diAdesso !== undefined && !dette.length) {
+                return json({ errore: 'persona_mancante', persona: '' }, 422);
+            }
 
             return diAdesso !== undefined && dette.some((detta) => detta !== diAdesso) ? json({ errore: 'persona_diversa', persona: '' }, 409) : undefined;
         };

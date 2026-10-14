@@ -128,7 +128,8 @@ export function mostra(email?: string, era = aSchermo): void {
  * risposta dice ancora un'altra persona, rifarla non cambia niente. Dalla `v2.10.0` si ricarica da sola quando li compie: la
  * ricarica la chiede un orologio — su una pagina di 30 secondi o più scade al primo giro: un ritardo negativo vale zero —,
  * e allo scadere riguarda chi è a schermo. Se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una
- * pagina rimasta senza cornice sì. Il 409 con `persona` vuota non dice chi ha risposto: con una cornice a schermo la pagina
+ * pagina rimasta senza cornice sì. Subito prima di ricaricarla manda sulla `window` l'evento `zr-core:altra-persona` (dalla
+ * `v2.13.0`): il frontend, se vuole, dopo la ricarica dice perché la pagina si è aggiornata (README). Il 409 con `persona` vuota non dice chi ha risposto: con una cornice a schermo la pagina
  * si ricarica anche se una visita ha già portato un'altra persona. Fino allo scadere l'orologio tiene della risposta solo chi ha risposto (`chi`, dalla `v2.11.3`):
  * il resto si butta subito. L'orologio dei 5 secondi parte per primo: scambiati, due pezzi a richiesta passano il
  * loro tetto. Niente
@@ -142,7 +143,7 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     const chi = corpo?.persona;
     if (email && typeof chi === 'string' && chi !== email) {
-        return new Promise<never>((_, no) => aSchermo && chi !== aSchermo && (setTimeout(no, 5e3), setTimeout(() => chi !== aSchermo && location.reload(), 3e4 - performance.now())));
+        return new Promise<never>((_, no) => aSchermo && chi !== aSchermo && (setTimeout(no, 5e3), setTimeout(() => chi !== aSchermo && (dispatchEvent(new Event('zr-core:altra-persona')), location.reload()), 3e4 - performance.now())));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;

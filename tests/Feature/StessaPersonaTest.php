@@ -39,7 +39,9 @@ function rotteDellaCorniceDalRouter(): array
  */
 function allaCornice(string $metodo, string $indirizzo, array $corpo = [], array $intestazioni = [], bool $corpoDiTutte = true): TestResponse
 {
-    $risposta = test()->json($metodo, $indirizzo, ($corpoDiTutte ? CORPO_PER_OGNI_ROTTA : []) + $corpo, $intestazioni);
+    // Qui le intestazioni sono quelle del caso e basta: non quella che `sessioneAMano` mette a ogni richiesta (la pagina della
+    // persona della sessione).
+    $risposta = test()->withoutHeader('Persona')->json($metodo, $indirizzo, ($corpoDiTutte ? CORPO_PER_OGNI_ROTTA : []) + $corpo, $intestazioni);
     Gettone::assenteDa($risposta);
 
     return $risposta;
@@ -87,7 +89,7 @@ it('ogni rotta della cornice, letta dal router, a una richiesta che dice una per
     'la stessa con uno spazio in fondo' => [[], ['Persona' => 'uat-grace%40example.com%20']],
 ]);
 
-it('una richiesta che non dice la persona, o che dice quella della sessione, arriva al backoffice da ogni rotta: né il 409 né il 422 della regola (sprint 40 · T2.1, T2.3)', function (array $corpo, array $intestazioni) {
+it('una richiesta che dice la persona della sessione arriva al backoffice da ogni rotta: né il 409 né il 422 della regola (sprint 40 · T2.1, T2.3; sprint 52 · T1.2, T1.3)', function (array $corpo, array $intestazioni) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
     Http::fake();
 
@@ -100,13 +102,51 @@ it('una richiesta che non dice la persona, o che dice quella della sessione, arr
             ->and($avuta->getContent())->not->toContain('persona_diversa')->not->toContain('dati_non_validi');
     }
 })->with([
-    'non la dice' => [[], []],
     'nell\'intestazione' => [[], ['Persona' => 'uat-grace%40example.com']],
     'nel corpo' => [['persona' => 'uat-grace@example.com'], []],
     'in tutti e due i posti' => [['persona' => 'uat-grace@example.com'], ['Persona' => 'uat-grace%40example.com']],
-    // Né la query né un'intestazione con un altro nome dicono la persona.
-    'un\'altra in un\'intestazione che non è quella' => [[], ['X-Persona' => 'uat-ada%40example.com', 'X-Zeiras-Persona' => 'uat-ada%40example.com']],
 ]);
+
+// Sprint 52 · T1 (voce #2080): una richiesta che non dice la persona non arriva più alla rotta. Il JS della cornice la dice
+// sempre dalla `v2.6.0`: chi non la dice è un JS di prima rimasto in una scheda, che non sa di chi è la pagina che chiede. Il
+// 422 porta `persona` vuota apposta: il JS della `v2.5.x` la prende per «un'altra persona» (elenco e ricerca) e ricarica la scheda.
+it('una richiesta che non dice la persona — né l\'intestazione Persona né `persona` nel corpo; un\'intestazione con un altro nome o la query non contano — riceve da ogni rotta 422 persona_mancante con `persona` vuota e nient\'altro, e il backoffice non è chiamato (sprint 52 · T1.1, T1.2)', function (array $intestazioni, string $query) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    Http::fake();
+    $senza = '{"errore":"persona_mancante","persona":""}';
+
+    $altre = [];
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo.$query, [], $intestazioni);
+        if ($avuta->getStatusCode() !== 422 || $avuta->getContent() !== $senza) {
+            $altre[] = "{$metodo} {$indirizzo}";
+        }
+    }
+    expect($altre)->toBe([]);
+    Http::assertNothingSent();
+
+    // Nei due versi: la stessa richiesta con la persona della sessione arriva al backoffice.
+    allaCornice('POST', 'cornice/notifiche/letture'.$query, ['persona' => 'uat-grace@example.com'], $intestazioni);
+    Http::assertSentCount(1);
+})->with([
+    'non la dice' => [[], ''],
+    'in un\'intestazione che non è quella' => [['X-Persona' => 'uat-grace%40example.com', 'X-Zeiras-Persona' => 'uat-grace%40example.com'], ''],
+    'nella query' => [[], '?persona=uat-grace%40example.com&email=uat-grace%40example.com'],
+]);
+
+it('«Segna tutte come lette» senza la persona riceve 422 persona_mancante e non segna niente; con la persona della sessione nel corpo, o solo nell\'intestazione, segna (sprint 52 · T1.2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    Http::fake();
+    $corpo = ['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-marketing'];
+
+    allaCornice('POST', 'cornice/notifiche/letture', $corpo, [], false)->assertStatus(422)->assertExactJson(['errore' => 'persona_mancante', 'persona' => '']);
+    Http::assertNothingSent();
+
+    allaCornice('POST', 'cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com'], [], false);
+    Http::assertSentCount(1);
+    allaCornice('POST', 'cornice/notifiche/letture', $corpo, ['Persona' => 'uat-grace%40example.com'], false);
+    Http::assertSentCount(2);
+});
 
 it('una persona detta che non si può confrontare — non un testo, anche null, o un testo vuoto — è un 422 dati_non_validi su ogni rotta, e il backoffice non è chiamato: non vale come non detta (sprint 40 · T2.3)', function (array $corpo, array $intestazioni, bool $comArriva = false) {
     if ($comArriva) {
@@ -184,20 +224,22 @@ it('l\'intestazione porta l\'email come la scrive `encodeURIComponent`, e la rot
     'senza la chiocciola codificata' => ['uat-grace@example.com', 'uat-grace@example.com', true],
 ]);
 
-it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene prima della persona, che dalla `v2.12.0` viene prima del 403 senza workspace, dei 422 della rotta e del 409 workspace_diverso (sprint 40 · T2.5; sprint 51 · T1.2)', function () {
+it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene prima della persona, che dalla `v2.12.0` viene prima del 403 senza workspace, dei 422 della rotta e del 409 workspace_diverso (sprint 40 · T2.5; sprint 51 · T1.2; sprint 52 · T1.3)', function () {
     Http::fake();
     $diAda = ['Persona' => 'uat-ada%40example.com'];
 
     // Senza sessione: 401, anche con una persona che non si può confrontare.
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         allaCornice($metodo, $indirizzo, ['persona' => null], $diAda)->assertUnauthorized();
+        allaCornice($metodo, $indirizzo)->assertUnauthorized();
     }
 
     // Con la sessione ma senza workspace risponde prima la persona (dalla `v2.12.0`): il 422 di quella che non si confronta, il
-    // 409 di un'altra; il 403 è solo di chi è nella sessione, o di una richiesta che non lo dice.
+    // 409 di un'altra, e dalla `v2.13.0` il 422 di una richiesta che non la dice; il 403 è solo di chi è nella sessione.
     sessioneAMano(null, 'en', GRACE_NELLA_SESSIONE);
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         allaCornice($metodo, $indirizzo, [], $diAda)->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
+        allaCornice($metodo, $indirizzo)->assertStatus(422)->assertExactJson(['errore' => 'persona_mancante', 'persona' => '']);
         allaCornice($metodo, $indirizzo, ['persona' => 7], ['Persona' => 'uat-grace%40example.com'])->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
         allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-grace%40example.com'])->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
     }
@@ -223,8 +265,9 @@ it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene
 // Sprint 44 · T4 (voce #2061), sprint 51 · T1 (voce #2078): chi è entrato senza workspace (prima della scelta) in una scheda
 // rimasta ferma di un'altra persona: dalla `v2.12.0` quella scheda riceve il 409 `persona_diversa` della regola della persona,
 // che viene prima di `ConWorkspace`, e si ricarica come per ogni risposta di un'altra persona. Il 403 arriva solo a chi è
-// nella sessione, o a una richiesta che non dice la persona, e non dice di chi è la sessione: niente email di chi è entrato.
-it('con la sessione ma senza workspace la richiesta di un\'altra persona riceve 409 persona_diversa con `persona` vuota e niente altro, quella della persona della sessione o senza persona 403 gettone_senza_workspace e niente altro; senza sessione il 401 non dice la persona; il backoffice non si chiama (sprint 44 · T4.1, T4.3, T4.4; sprint 51 · T1.2)', function () {
+// nella sessione (dalla `v2.13.0` una richiesta che non dice la persona riceve il 422 prima), e non dice di chi è la sessione:
+// niente email di chi è entrato.
+it('con la sessione ma senza workspace la richiesta di un\'altra persona riceve 409 persona_diversa con `persona` vuota e niente altro, quella della persona della sessione 403 gettone_senza_workspace e niente altro, quella senza persona 422 persona_mancante; senza sessione il 401 non dice la persona; il backoffice non si chiama (sprint 44 · T4.1, T4.3, T4.4; sprint 51 · T1.2; sprint 52 · T1.3)', function () {
     Http::fake();
     $diAda = ['Persona' => 'uat-ada%40example.com'];
     $diGrace = ['Persona' => 'uat-grace%40example.com'];
@@ -237,20 +280,19 @@ it('con la sessione ma senza workspace la richiesta di un\'altra persona riceve 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         // Il corpo intero, carattere per carattere: né nome, né lingua, né workspace, né un'email.
         expect(allaCornice($metodo, $indirizzo, [], $diAda)->assertStatus(409)->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
-        foreach (['della persona della sessione' => $diGrace, 'senza persona' => []] as $intestazioni) {
-            expect(allaCornice($metodo, $indirizzo, [], $intestazioni)->assertForbidden()->getContent())->toBe('{"errore":"gettone_senza_workspace"}');
-        }
+        expect(allaCornice($metodo, $indirizzo, [], $diGrace)->assertForbidden()->getContent())->toBe('{"errore":"gettone_senza_workspace"}')
+            ->and(allaCornice($metodo, $indirizzo)->assertStatus(422)->getContent())->toBe('{"errore":"persona_mancante","persona":""}');
     }
     Http::assertNothingSent();
 });
 
-it('con una sessione senza email e senza workspace una richiesta che dice una persona riceve il 409, e una che non la dice il 403 senza `persona` (review della PR #78, R7; sprint 51 · T1.2)', function () {
+it('con una sessione senza email e senza workspace una richiesta che dice una persona riceve il 409, e una che non la dice il 422 persona_mancante (review della PR #78, R7; sprint 51 · T1.2; sprint 52 · T1.1)', function () {
     sessioneAMano(null, 'en', ['email' => null] + GRACE_NELLA_SESSIONE);
     Http::fake();
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         expect(allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-grace%40example.com'])->assertStatus(409)->getContent())->toBe('{"errore":"persona_diversa","persona":""}')
-            ->and(allaCornice($metodo, $indirizzo)->assertForbidden()->getContent())->toBe('{"errore":"gettone_senza_workspace"}');
+            ->and(allaCornice($metodo, $indirizzo)->assertStatus(422)->getContent())->toBe('{"errore":"persona_mancante","persona":""}');
     }
     Http::assertNothingSent();
 });
