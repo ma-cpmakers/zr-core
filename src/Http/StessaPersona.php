@@ -19,8 +19,8 @@ use Zeiras\Auth\Sessione;
  * valgono tutti e due. Una persona detta che non si può confrontare — non un testo, anche `null`, o un testo vuoto — è un 422:
  * non vale come non detta. Una richiesta che non la dice (un JS di prima della `v2.6.0` rimasto in una scheda) non sa di chi è
  * la pagina che chiede: dalla `v2.13.0` è un 422 `persona_mancante` con `persona` vuota, e non arriva alla rotta. La `persona`
- * vuota è per quel JS: quello della `v2.5.x`, davanti all'elenco o alla ricerca, la prende per «un'altra persona» e ricarica
- * la scheda, che dopo ha il JS del frontend di adesso. Un'intestazione con un altro nome o la query non la dicono.
+ * vuota è per quel JS: quello della `v2.5.x`, davanti all'elenco, alla ricerca o al clic su una notifica, la prende per
+ * «un'altra persona» e ricarica la scheda, che dopo ha il JS del frontend di adesso. Un'intestazione con un altro nome o la query non la dicono.
  *
  * Ciò che la richiesta dice si confronta e basta: di chi sono i dati lo dice sempre e solo la sessione. Gira dopo la guardia
  * di zr-auth (401) e, dalla `v2.12.0`, prima di ConWorkspace (403): senza workspace una scheda di un'altra persona riceve il
