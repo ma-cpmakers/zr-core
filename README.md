@@ -918,8 +918,8 @@ cornice === null ? pagina : (
   nome, senza la coda, e il browser lo scarica e lo esegue una seconda volta: se è anche il JS che monta la pagina, al primo
   fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel
   campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`). Se non è il JS che monta la pagina, la
-  ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di `npm run
-  demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: dieci secondi dopo la parola la
+  ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di
+  `npm run demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: dieci secondi dopo la parola la
   ricerca era ancora in caricamento; servita senza coda, la stessa pagina dà il risultato entro due secondi). Un pulsante
   per riprovare nel riquadro della ricerca
   l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
