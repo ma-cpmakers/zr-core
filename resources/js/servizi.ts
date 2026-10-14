@@ -214,12 +214,14 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
 
 /**
  * Segna letta una notifica della persona: PATCH /cornice/notifiche/<id>/lettura con `{"letta": true}`. La cornice la chiama col
- * clic che apre la risorsa di una notifica non letta, e subito dopo apre un'altra pagina: la richiesta parte nello stesso giro
- * di chi la chiama, e con `keepalive` il browser la porta in fondo anche se la pagina se ne va. L'id sta nel suo pezzo
+ * clic che apre la risorsa di una notifica, letta o no, e apre la risorsa solo alla risposta (dalla `v2.14.0`): la richiesta
+ * parte nello stesso giro di chi la chiama, e con `keepalive` il browser la porta in fondo anche se la pagina se ne va. L'id sta nel suo pezzo
  * dell'indirizzo, e prima di chiedere deve avere la forma che la rotta vuole: `encodeURIComponent` non tocca i punti, e con
  * `.` o `..` il browser porterebbe la richiesta, col gettone CSRF, a un'altra rotta. Senza quella forma la richiesta non
  * parte, ed è una lettura non riuscita. Solo una risposta che dice `letta: true` è una lettura riuscita: ogni altra è un
- * errore, come una che non è un 2xx. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
+ * errore, come una che non è un 2xx. E dalla `v2.14.0` anche quella, se quando arriva chi l'ha chiesta non è più a schermo
+ * (`aSchermo`: una visita ha portato la cornice di un'altra persona, o non c'è più nessuna cornice): chi l'ha chiesta non
+ * apre la risorsa con la sessione di un altro. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
  * manca, o ha un'altra forma, non è un errore, è senza segno. `email` è quella di chi la cornice mostra: se la sessione è
  * passata a un'altra persona la parte server non segna la notifica a chi è entrato (409 `persona_diversa`, dalla `v2.6.0`), e
  * né quel 409 né il 403 `accettazione_richiesta` di un'altra persona tornano a chi ha chiesto: la pagina, se è ancora lì, si
@@ -233,7 +235,7 @@ export async function segnaLetta(id: string, email: string): Promise<{ il: strin
     }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
     const corpo = (await chiama(indirizzo, email, 'PATCH', { letta: true }, { keepalive: true })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
-    if (corpo?.data?.letta !== true) {
+    if (corpo?.data?.letta !== true || email !== aSchermo) {
         throw new Error(`PATCH ${indirizzo}: letta`);
     }
 

@@ -3772,15 +3772,23 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'il clic segna letta, e da quando' => ['punto', 'Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta'],
     // Review della PR #44, R3: `segnaLetta` non è più fra parentesi come se si importasse (sotto, il caso della review).
     'la richiesta' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando'],
-    'l\'apertura non aspetta' => ['punto', 'la risorsa si apre senza aspettare la risposta'],
-    'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
+    // Sprint 53 · T1 (voce #2083): dalla `v2.14.0` l'apertura aspetta la lettura a ogni età della pagina.
+    'l\'apertura aspetta la lettura (sprint 53 · T1)' => ['punto', 'Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina, e la risorsa si apre alla risposta'],
+    // Sprint 53 · T3 (voce #2085): una già letta con una destinazione chiede la lettura anche lei.
+    'quando no (sprint 53 · T3)' => ['punto', 'Una notifica il cui clic apre la pagina delle notifiche non chiede niente'],
+    'anche una già letta (sprint 53 · T3)' => ['punto', 'Dalla `v2.14.0` anche il clic su una notifica già letta che ha una destinazione chiede la lettura'],
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
     // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
     'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],
     // Review della PR #51, R1: dalla `v1.13.0` non scende nemmeno per i dati del clic, se l'elenco del clic era più vecchio di loro.
     'solo con un elenco non più vecchio dei dati (review della PR #51, R1)' => ['punto', 'Dalla `v1.13.0` scende solo se l\'elenco in pagina al clic non era più vecchio dei dati del clic'],
     'quando un elenco non è più vecchio (review della PR #51, R1)' => ['punto', 'L\'elenco non è più vecchio dei dati quando il suo `aggiornati_il` non viene prima del loro; se uno dei due segni manca, solo quando è stato chiesto con quello stesso oggetto `dati`'],
-    'se la lettura fallisce' => ['punto', 'Se la lettura fallisce la risorsa si è aperta lo stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era'],
+    // Sprint 53 · T4 (review R1): dalla `v2.14.0` un errore della lettura non apre niente.
+    'se la lettura fallisce' => ['punto', 'Se la lettura fallisce in pagina non cambia niente: la notifica resta da leggere, e il numero com\'era (fino alla `v2.13` la risorsa si apriva lo stesso)'],
+    'un altro clic riprova (sprint 53 · T2.4, review R9)' => ['punto', 'La notifica resta da leggere, e un altro clic chiede di nuovo la lettura'],
+    'una chiamata in più, e perché (sprint 53 · T3.4, review R9)' => ['punto', 'così una scheda rimasta aperta non la apre con la sessione di un\'altra persona entrata altrove. È una chiamata al backoffice in più per ogni clic su una già letta'],
+    'i test di chi passa alla v2.14.0 (sprint 53 · T4, review R7)' => ['punto', 'Per i test di un frontend che passa alla `v2.14.0` cambiano due cose. Un clic su una notifica che ha una destinazione, anche già letta, apre solo se la `PATCH` finta della lettura risponde `{"data": {"letta": true}}`'],
+    'i test di chi passa alla v2.14.0: l\'apertura dopo la risposta (sprint 53 · T4, review R7)' => ['punto', 'E l\'apertura arriva dopo la risposta, non nello stesso giro del clic'],
     'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
     'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
@@ -3808,13 +3816,16 @@ it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende 
     'R2: i moduli dei dati valgono solo per il loro workspace' => ['paragrafo', '`dati.prodotti` vale solo se quello slug è `dati.workspace.slug`'],
     'R2: per un altro workspace' => ['paragrafo', 'il pannello dà ogni voce del `registro`, tranne `home`, come `disponibile`'],
     'R3: segnaLetta è della cornice' => ['punto', 'La funzione che lo fa, `segnaLetta`, è della cornice e l\'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta'],
-    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e la risorsa si apre lo stesso'],
+    // Sprint 53 · T2 (voce #2084): senza la lettura la risorsa non si apre, e un errore non apre niente.
+    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e dalla `v2.14.0` la risorsa non si apre'],
+    'l\'errore della lettura non apre (sprint 53 · T2)' => ['punto', 'Dalla `v2.14.0` la risorsa si apre solo se la lettura riesce, cioè se la rotta risponde `letta: true`'],
+    'l\'errore non si vede (sprint 53 · T2)' => ['punto', 'A schermo niente dice che il clic non è andato: l\'`AppShell` chiude il pannello al clic'],
     'R7: la risposta finta senza workspace' => ['punto', 'Una risposta finta di `GET /cornice/notifiche` senza `workspace` manda ogni clic alla pagina delle notifiche: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
     'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
     'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],
     'R7: dove cercare' => ['punto', 'Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend'],
     'R8: quelli che hanno una destinazione, diciotto del CRM dalla `v1.13.0` e tre di Project Management dalla `v1.14.0` (sprint 23 · T3.7; sprint 24 · T3.5)' => ['punto', 'dalla `v1.13.0` ci sono diciotto tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»; dalla `v1.14.0` tre di Project Management'],
-    'R9: possono' => ['punto', 'il numero nuovo lo possono portare i dati della pagina dopo'],
+    'R9: possono' => ['punto', 'fino alla `v2.13` la destinazione poteva arrivare prima della risposta'],
 ]);
 
 it('il README non dice più ciò che la review della PR #44 ha trovato falso, e l\'ingresso non esporta `segnaLetta`, come il README dice (review della PR #44, R1, R2, R3, R9)', function () {
@@ -5574,8 +5585,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 52 · T5 (voce #2079): l'evento prima della ricarica, e che cosa il pacchetto non fa.
     'l\'evento prima della ricarica (sprint 52 · T5)' => ['readme', 'subito prima di ricaricare la pagina per un cambio di persona — una risposta di un\'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» — la cornice manda sulla `window` un evento `zr-core:altra-persona`'],
     'l\'evento prima della ricarica: il pacchetto non scrive niente (sprint 52 · T5.2)' => ['readme', 'Il pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina si è aggiornata'],
-    'il clic su un\'altra notifica in attesa della lettura (sprint 52 · T4)' => ['readme', 'Un secondo clic su un\'altra notifica fa la sua lettura: all\'arrivo la cornice le apre tutte e due, una dopo l\'altra, e resta quella della risposta arrivata per ultima. La cornice ricorda una lettura sola, l\'ultima partita, e la dimentica alla prima risposta'],
-    'il clic che apre senza aspettare, e l\'eccezione (sprint 50 · T6, R14)' => ['readme', 'la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi, dove il clic la aspetta'],
+    // Sprint 53 · T1 (review R1 della PR #86): una lettura sola in volo per cornice, e A→B→A apre A una volta.
+    'una lettura sola in volo (sprint 53 · T1)' => ['readme', 'la cornice tiene una lettura sola in volo: un clic su una notifica qualsiasi, mentre è in volo, non fa niente'],
+    'A→B→A (sprint 53 · T1)' => ['readme', 'Con A, B e di nuovo A parte la lettura di A sola, e alla risposta si apre A, una volta.'],
+    'il clic che apriva senza aspettare, e l\'eccezione (sprint 50 · T6, R14; sprint 53 · T1)' => ['readme', 'fino alla `v2.13` si apriva senza aspettarla, salvo su una pagina caricata da meno di 30 secondi, dove dalla `v2.11.5` il clic la aspettava'],
     // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
     'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
@@ -5636,14 +5649,18 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: fuori dal corpo' => ['readme', 'L\'email non sta mai nell\'indirizzo, e nel corpo di «Segna tutte come lette» non c\'è più'],
     'la scheda ferma: il clic su una notifica' => ['readme', 'nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la segnava letta a lui'],
     // Review della PR #74, R1: misurato in Chromium con la `naviga` di sempre, la destinazione si apre solo se arriva prima del 409.
-    'la scheda ferma: la destinazione del clic' => ['readme', 'La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione'],
-    'la scheda ferma: la risorsa, nel capoverso della scheda ferma' => ['readme', 'La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si ricarica al suo posto'],
+    'la scheda ferma: la destinazione del clic' => ['readme', 'Fino alla `v2.13` la destinazione di quel clic si chiedeva subito, senza aspettare la risposta, e si apriva solo se arrivava prima del 409: se il 409 arrivava con la pagina ancora lì, la pagina si ricaricava al posto della destinazione'],
+    'la scheda ferma: la risorsa, nel capoverso della scheda ferma' => ['readme', 'Fino alla `v2.13` la sua risorsa si apriva solo se arrivava prima di quel 409: se no la pagina si ricaricava al suo posto'],
     // Seconda lettura, N2: una frase su ciò che fa il browser dice in quale è provata.
-    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza; riprovato il 14/10/2026 con la `v2.10.0`, in cui quella ricarica la chiede un orologio, su una pagina caricata da più di 30 secondi)'],
+    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed era di chi era entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza; riprovato il 14/10/2026 con la `v2.10.0`, in cui quella ricarica la chiede un orologio, su una pagina caricata da più di 30 secondi)'],
     'la scheda ferma: la risorsa, in quale browser' => ['readme', 'come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»)'],
-    'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'Fa eccezione la risposta di un\'altra persona a una scheda rimasta ferma, che ricarica la pagina'],
+    'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'La risposta di un\'altra persona a una scheda rimasta ferma ricarica la pagina'],
     // Terza lettura, N5: con la `naviga` di partenza la pagina non se ne va sempre prima della risposta.
-    'la lettura con un clic: quando la pagina se ne va' => ['readme', 'la pagina se ne va quando la destinazione arriva, e se è prima della risposta il numero nuovo lo possono portare i dati della pagina dopo'],
+    'la lettura con un clic: quando la pagina se ne va' => ['readme', 'la pagina se ne va alla risposta, e il numero nuovo arriva coi dati della pagina dopo'],
+    // Sprint 53 · T4 (review R4, R5, R6, R8; sicurezza S1): il confine della lettura in volo, e chi deve essere a schermo.
+    'la lettura in volo: anche «Vedi tutte» (review R4)' => ['readme', 'e nemmeno quello su «Vedi tutte» o su una notifica senza destinazione, che altrimenti aprono subito la pagina delle notifiche; alla risposta o all\'errore la dimentica'],
+    'la lettura in volo: senza un tempo massimo (review R6)' => ['readme', 'La lettura non ha un tempo massimo: se la rete la tiene appesa, nessun clic sulle notifiche apre niente finché la pagina non si ricarica.'],
+    'la lettura: chi ha fatto il clic è ancora a schermo (review R5, sicurezza S1)' => ['readme', 'E la risorsa si apre solo se chi ha fatto il clic è ancora a schermo quando la lettura risponde'],
     // Review della PR #74, R3, S2, S3: i dati senza email, e le due cose che guarda chi installa.
     // Seconda lettura, N1: un 422 solo se l'email è un testo vuoto; se manca o è `null` parte un testo, ed è un 409.
     'la scheda ferma: dei dati senza email' => ['readme', 'l\'intestazione partirebbe senza un\'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l\'email è un testo vuoto, 409 `persona_diversa` se manca o è `null`'],
