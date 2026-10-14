@@ -894,8 +894,21 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
             rotteFinte(() => 'uat-marketing');
         } else {
             rotteFinte(() => 'uat-marketing', undefined, () => sessione.persona);
+            // Come la pagina di chi è nella «sessione»: la cornice dice sempre di chi è la pagina che chiede (`Persona`), e dalla
+            // `v2.13.0` una richiesta che non lo dice riceve 422. Un caso che vuole un'altra persona la dice; uno che non ne
+            // vuole nessuna chiede a `senzaPersona`.
+            senzaPersona = window.fetch;
+            window.fetch = (indirizzo, opzioni) => {
+                const headers = new Headers(opzioni?.headers);
+                if (!headers.has('Persona') && sessione.persona) {
+                    headers.set('Persona', encodeURIComponent(sessione.persona.email));
+                }
+
+                return senzaPersona(indirizzo, { ...opzioni, headers });
+            };
         }
     }
+    let senzaPersona: typeof fetch;
 
     /** Le righe di `data` nella risposta di una rotta, e il suo stato. */
     async function righeDi(indirizzo: string, opzioni?: RequestInit): Promise<{ stato: number; righe: Riga[] }> {
@@ -1205,6 +1218,30 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect(await esiti(leQuattroDi(dice(grace.email), { persona: ada.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro));
         expect(await esiti(leQuattroDi(dice(ada.email), { persona: grace.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro));
         expect(await stati(leQuattroDi(dice(grace.email), { persona: grace.email }).slice(1))).toStrictEqual([200, 200, 200]);
+    });
+
+    it('una richiesta che non dice la persona è un 422 `persona_mancante` con `persona` vuota su ogni rotta e non segna niente, come le rotte vere dalla `v2.13.0` (sprint 52 · T1.4)', async () => {
+        const sessione = { persona: ada };
+        await rotte(sessione);
+        const senza = async (richieste: [string, RequestInit][]) => {
+            const tutti: [number, unknown][] = [];
+            for (const [indirizzo, opzioni] of richieste) {
+                const inArrivo = senzaPersona(indirizzo, opzioni);
+                await vi.advanceTimersByTimeAsync(1500);
+                const risposta = await inArrivo;
+                tutti.push([risposta.status, await risposta.json()]);
+            }
+
+            return tutti;
+        };
+
+        expect(await senza(leQuattroDi())).toStrictEqual(leQuattroDi().map(() => [422, { errore: 'persona_mancante', persona: '' }]));
+        // Niente è stato segnato: la notifica letta dalla quarta e quelle di «Segna tutte» sono ancora da leggere.
+        expect((await righeDi('/cornice/notifiche')).righe.find(({ id }) => id === 'uat-4')?.letta).toBe(false);
+        // Un'intestazione con un altro nome non la dice.
+        expect(await senza(leQuattroDi({ 'X-Persona': encodeURIComponent(ada.email) }).slice(0, 1))).toStrictEqual([[422, { errore: 'persona_mancante', persona: '' }]]);
+        // Dove la pagina di prova non dice chi è nella «sessione» le rotte rispondono come prima: lo provano gli altri gruppi di
+        // questo file, che chiedono senza `Persona`.
     });
 
     it('la persona si guarda prima dei controlli di ogni rotta, come nella parte server: a chi c\'era prima il 409 `persona_diversa` anche con una parola corta, un altro workspace, un istante sbagliato, un `letta` che non è un booleano, una notifica che non c\'è; solo il 405 viene prima (sprint 40 · T3.3)', async () => {

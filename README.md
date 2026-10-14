@@ -375,8 +375,9 @@ esce.
 | `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo, contesto}], workspace, persona}`: ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell'ordine del backoffice, la prima pagina (oggi, col loro `tipo`: le schede `board.scheda`, i contatti `crm.persona`, le aziende `crm.organizzazione`, le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`); dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server; dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice (`proprietario`, `amministratore`, `membro`): l'email di un membro non esce mai; dalla `v1.18.0` di un'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com'è arrivato: quali esiti si mostrano lo sa la cornice; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che cerca può essere rimasta su un altro workspace); è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l'indirizzo di quella richiesta non porta query; se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste", persona}` (`persona`, dalla `v2.5.0`: l'email della persona della sessione, di chi è il freno) con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo; il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi; dalla `v2.4.0` `persona` è l'email della persona della sessione, quella per cui la ricerca è fatta: viene dalla sessione, e la cornice non mostra i risultati di un'altra persona |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`, che dalla
-`v2.12.0` arriva solo alla persona della sessione, o a una richiesta che non dice la persona, e non dice di chi è: a una
-pagina di un'altra persona risponde prima il 409 `persona_diversa` (sotto la tabella). Nella `v2.10` e nella `v2.11` il 403
+`v2.12.0` arriva solo alla persona della sessione (dalla `v2.13.0` una richiesta che non dice la persona riceve prima il 422
+`persona_mancante`), e non dice di chi è: a una pagina di un'altra persona risponde prima il 409 `persona_diversa` (sotto la
+tabella). Nella `v2.10` e nella `v2.11` il 403
 portava `persona`, l'email della sessione. Un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
 sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
@@ -389,7 +390,10 @@ rotta risponde 409 `{errore: "persona_diversa", persona: ""}`, senza chiamare il
 `persona` è un testo vuoto, che non è l'email di nessuno: per la cornice vuol dire «un'altra persona», e il JS di una scheda
 che non è più di chi è nella sessione non sa chi è entrato (fino alla `v2.11` era l'email della sessione). Se la dice in tutti e due i posti valgono tutti e due: basta che uno non sia quello della sessione. Una persona detta
 che non si può confrontare — un valore che non è un testo, anche `null`, o un testo vuoto — è un 422
-`{errore: "dati_non_validi"}`: non vale come non detta. Una richiesta che non la dice risponde come prima. L'ordine dei
+`{errore: "dati_non_validi"}`: non vale come non detta. Una richiesta che non la dice — né l'intestazione né `persona` nel
+corpo: un'intestazione con un altro nome e la query non contano — dalla `v2.13.0` riceve 422
+`{errore: "persona_mancante", persona: ""}` e non arriva alla rotta: non legge, non cerca, non segna (fino alla `v2.12`
+rispondeva come prima). L'ordine dei
 rifiuti è lo stesso per tutte: il 401 della guardia, la persona (prima il 422, poi il 409), il 403
 `gettone_senza_workspace`, e solo dopo i 422 della rotta e il 409 `workspace_diverso`; fino alla `v2.11` il 403 veniva prima
 della persona. Di chi sono i dati lo dice sempre e solo la sessione: ciò
@@ -409,10 +413,13 @@ anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di
 Dalla `v2.11.5`, su quella pagina, il clic aspetta la risposta, e davanti al 409 la destinazione non si apre: niente è
 segnato a chi è entrato, e niente si apre con la sua sessione (dalla `v2.9.0` alla `v2.11.4` si apriva). Dalla `v2.10.0`,
 se la pagina è ancora lì quando compie 30 secondi, si ricarica allora.
-Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
-scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
-prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
-notifica la segna ancora a chi è entrato, finché la scheda non si ricarica. E dei dati della cornice senza l'email della
+Un JS di prima della `v2.6.0` rimasto in una
+scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e prima della `v2.5.0` nemmeno
+in «Segna tutte come lette». Fino alla `v2.12` la rotta gli rispondeva come prima, e il suo clic su una notifica la segnava a
+chi era entrato; dalla `v2.13.0` gli risponde 422 `{errore: "persona_mancante", persona: ""}`, e non legge né segna niente.
+La `persona` vuota è per quel JS: quello della `v2.5.x`, davanti all'elenco o alla ricerca, la prende per «un'altra persona»
+e ricarica la scheda, che dopo ha il JS del frontend di adesso; uno di prima, o il clic su una notifica, mostra l'errore della
+campanella o della ricerca finché la scheda non si ricarica. Resta fuori una cosa, i dati della cornice senza l'email della
 persona: l'intestazione partirebbe senza un'email, e le quattro rotte la rifiutano: 422 `dati_non_validi` se l'email è un
 testo vuoto, 409 `persona_diversa` se manca o è `null` (parte il testo `undefined` o `null`). Elenco, ricerca e letture danno
 errore, e la pagina non si ricarica (l'email è obbligatoria nel contratto del backoffice: «La cornice in due dati»). Chi installa la `v2.6.0` guarda due cose. Il JS e la parte server del pacchetto si aggiornano insieme, e la cache
@@ -421,7 +428,8 @@ controller ma la regola delle rotte, e con una cache delle rotte fatta prima del
 una parte server fino alla `v2.5.1`, non lo fa nessuno, senza un errore che lo dica. E l'email della persona ora parte in
 un'intestazione di ognuna delle quattro richieste, anche della `GET` dell'elenco: uno strumento che registra le intestazioni
 delle richieste la tiene, e `Persona` si aggiunge a quelle che oscura. Se invece qualcosa fra il browser e il frontend la
-toglie, la rotta non confronta: una richiesta che non dice la persona vale come prima.
+toglie, fino alla `v2.12` la rotta non confrontava e la richiesta valeva come prima; dalla `v2.13.0` è un 422
+`persona_mancante`, e la cornice mostra l'errore.
 
 Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le quattro rotte rispondono 403
 `{errore: "accettazione_richiesta", persona}`: il codice e, dalla `v2.5.0`, l'email della persona della sessione
@@ -1382,10 +1390,10 @@ che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima. Chi
 workspace riceve dalle quattro rotte il 403 `gettone_senza_workspace`: nella `v2.10` e nella `v2.11` portava `persona`,
 l'email della sessione, e una scheda rimasta ferma di chi c'era prima si ricaricava da lì. Dalla `v2.12.0` a quella scheda
 risponde prima la regola della persona, col 409 `persona_diversa`, e la scheda si ricarica con le stesse regole delle altre
-risposte di un'altra persona; il 403 arriva solo alla persona della sessione, o a una richiesta che non dice la persona, e
-porta il solo codice (né nome, né lingua, né workspace, né un'email): per la persona a schermo è l'errore di sempre, senza
+risposte di un'altra persona; il 403 arriva solo alla persona della sessione (una richiesta che non dice la persona riceve
+prima, dalla `v2.13.0`, il 422 `persona_mancante`), e porta il solo codice (né nome, né lingua, né workspace, né un'email): per la persona a schermo è l'errore di sempre, senza
 ricarica, e il backoffice non si chiama. Con una sessione senza email una richiesta che dice la persona riceve il 409, e una
-che non la dice il 403. Fino alla `v2.9.0` quella scheda dava solo il suo errore.
+che non la dice il 422 `persona_mancante` (fino alla `v2.12` il 403). Fino alla `v2.9.0` quella scheda dava solo il suo errore.
 Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l'email di chi mostra, e la
 rotta la confronta con quella della sessione. In una scheda rimasta ferma, se la sessione è passata a un'altra persona dello
 stesso workspace, la rotta non segna niente e risponde 409 `persona_diversa` (fino alla `v2.11` con l'email di chi è

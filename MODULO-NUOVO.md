@@ -327,9 +327,9 @@ risponde 409 `persona_diversa` a quella di un'altra persona, anche senza un work
 403 `gettone_senza_workspace`), e la tua scheda rimasta ferma si ricarica. Dalla `v2.12.0` nessuna delle due risposte dice
 chi è entrato: niente email. Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
-come lì è scritto: a una richiesta che non la dice la rotta risponde come prima. Restano fuori due cose, dette nello stesso
-punto: un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica,
-e dei dati della cornice senza l'email. Una scheda ferma mostra ciò che aveva finché da
+come lì è scritto: dalla `v2.13.0` a una richiesta che non la dice la rotta risponde 422 `persona_mancante`, senza leggere
+né segnare niente. Così un JS di prima della `v2.6.0` rimasto in una scheda non segna più a chi è entrato: mostra un errore,
+o si ricarica. Resta fuori una cosa, detta nello stesso punto: i dati della cornice senza l'email. Una scheda ferma mostra ciò che aveva finché da
 lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
 (README, «La cornice in due dati»), dove trovi l'esempio e che cosa resta a una scheda lasciata aperta. Se il pezzo
