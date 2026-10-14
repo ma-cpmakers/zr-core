@@ -1,6 +1,7 @@
 <?php
 
 use Composer\InstalledVersions;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -1348,7 +1349,8 @@ it('il README dice, in «La parte server», quale lingua c\'è nella sessione �
     'quando la riga dà null' => ['Con una sessione, quindi, `Cornice::lingua()` dà `null` quando la lingua che la sessione ha dopo la lettura non ha la forma di una lingua'],
     'null fino alla 0.12.11 e dalla 0.12.12' => ['fino alla 0.12.11 anche per una malfatta appena arrivata dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall\'ingresso'],
     'una ben fatta che non è di Zeiras' => ['per una lingua del profilo ben fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la forma di una lingua'],
-    'il test del modulo' => ['zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'],
+    // Review della PR #89, R2: dalla `v2.16.0` zr-core chiede la 0.12.31, e un test del modulo non ha più due versioni da guardare.
+    'il test del modulo' => ['Fino alla `v2.15` zr-core accettava tutte e due le versioni; dalla `v2.16.0` chiede la 0.12.31, e vale la seconda: un test del modulo su una lingua che non è di Zeiras non ha più da guardare quale zr-auth è installata'],
     'la forma la guarda solo la riga' => ['E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()[\'lingua\']` e `Cornice::dati()[\'lingua\']` sono la lingua della sessione com\'è, anche malfatta'],
     'chi resta col suo codice guarda la forma' => ['Chi resta col suo codice e la dà a `App::setLocale`, all\'attributo `lang` della pagina o al nome di un file ne guarda prima la forma'],
     // Seconda lettura della PR #24, S1: anche la frase su ciò che il controller cambia nel profilo vale con le due versioni.
@@ -1639,7 +1641,9 @@ it('CLAUDE.md dice perché il vincolo parte dalla 0.12.31, e né CLAUDE.md né i
 });
 
 it('README e guida dicono che sulla rotta della richiesta rimandata il frontend non mette niente, che la protegge `SessioneChiusa` di zr-auth dalla 0.12.31, e le quattro condizioni (sprint 55 · T1.1, T1.2, T1.3)', function (string $dove, string $frase) {
-    $testo = $dove === 'guida' ? suUnaRiga(guidaDelModuloNuovo()) : sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La cornice');
+    // Del README la sola «La cornice in due dati», fino al titolo dopo: è lì che la guida rimanda (review della PR #89, R4).
+    preg_match('/^### La cornice in due dati$(.*?)(?=^##)/ms', (string) file_get_contents(__DIR__.'/../../README.md'), $inDueDati);
+    $testo = $dove === 'guida' ? suUnaRiga(guidaDelModuloNuovo()) : suUnaRiga($inDueDati[1] ?? '');
 
     expect($testo)->not->toBe('')
         ->and(str_contains($testo, $frase))->toBe(true)
@@ -1654,7 +1658,20 @@ it('README e guida dicono che sulla rotta della richiesta rimandata il frontend 
     'README: l\'ordine del gruppo (T1.1)' => ['readme', 'l\'ordine del gruppo `web` non si riordina'],
     'README: i secondi (T1.1)' => ['readme', '`zr-auth.sessione_chiusa_secondi` (300) non è più corto della richiesta più lenta'],
     'guida (T1.3)' => ['guida', 'Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSessione()`: la protegge `SessioneChiusa` di zr-auth dalla 0.12.31'],
+    'guida: il rimando (T1.3; review della PR #89, R4)' => ['guida', '(le quattro condizioni: README, «La cornice in due dati»)'],
+    'README: lo store non impostato (sicurezza della PR #89, S4)' => ['readme', 'non impostato è lo store della cache predefinito, e vale lo stesso per quello'],
 ]);
+
+// Review della PR #89, R5: ciò che il README dice di zr-auth dalla 0.12.31 c'è nella zr-auth installata, e il giro «minima»
+// della CI installa proprio la 0.12.31: se `SessioneChiusa` fosse arrivata dopo, questo caso lì sarebbe rosso.
+it('la zr-auth installata ha `SessioneChiusa`, per prima nel gruppo `web`, e `zr-auth.sessione_chiusa_secondi` a 300 (review della PR #89, R5)', function () {
+    $kernel = app(Kernel::class);
+    assert($kernel instanceof Illuminate\Foundation\Http\Kernel);
+
+    expect(class_exists('Zeiras\\Auth\\Http\\Middleware\\SessioneChiusa'))->toBe(true)
+        ->and($kernel->getMiddlewareGroups()['web'][0] ?? null)->toBe('Zeiras\\Auth\\Http\\Middleware\\SessioneChiusa')
+        ->and(config('zr-auth.sessione_chiusa_secondi'))->toBe(300);
+});
 
 it('il README dice, in «La parte server», da quale versione zr-core chiede la 0.12.31 e perché (sprint 55 · T1.4)', function () {
     $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');

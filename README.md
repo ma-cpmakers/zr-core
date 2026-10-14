@@ -335,8 +335,8 @@ sessione tiene la sua con tutte e due le versioni. Con una sessione, quindi, `Co
 che la sessione ha dopo la lettura non ha la forma di una lingua: fino alla 0.12.11 anche per una malfatta appena arrivata
 dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall'ingresso. E per una lingua del profilo ben
 fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la
-forma di una lingua. zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda
-quale zr-auth è installata. Dalla `v2.11.4` la cornice non dà a `Sessione::aggiorna` la lingua di una lettura più vecchia
+forma di una lingua. Fino alla `v2.15` zr-core accettava tutte e due le versioni; dalla `v2.16.0` chiede la 0.12.31, e
+vale la seconda: un test del modulo su una lingua che non è di Zeiras non ha più da guardare quale zr-auth è installata. Dalla `v2.11.4` la cornice non dà a `Sessione::aggiorna` la lingua di una lettura più vecchia
 di quella che l'ha confermata: vedi `lingua_il`, più sotto.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
@@ -832,11 +832,14 @@ cornice === null ? pagina : (
   finendo dopo, rimette la sessione di prima — dopo un cambio di workspace la persona si ritrova in quello di prima; dopo
   un'uscita torna la sessione coi gettoni di prima: se l'uscita li ha chiusi nel backoffice, la prima chiamata la
   richiude; se all'uscita il backoffice non ha risposto — la sessione si chiude lo stesso — possono valere ancora, fino
-  alla loro scadenza. «Segna tutte come lette» è la richiesta della cornice che dura di più — fino a circa 15 secondi,
+  alla loro scadenza. Dalla `v2.16.0` zr-core chiede zr-auth dalla 0.12.31, dove l'ingresso, il cambio di workspace e
+  l'uscita segnano chiusa la sessione di prima, e una richiesta partita con quella non la rimette in vita: per loro il
+  limite è chiuso, alle quattro condizioni che «La cornice in due dati» dice; resta per il cambio di lingua. «Segna tutte come lette» è la richiesta della cornice che dura di più — fino a circa 15 secondi,
   solo con più di 5000 non lette — e dalla `v1.6.0` tiene il blocco della sessione di Laravel (`Route::block`) per tutta
   la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che
   aprono, cambiano o chiudono la sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o
-  `Sessione::chiudi()`: non solo l'uscita e l'ingresso in un workspace — e sulle sue rotte lente, non su tutte: è il
+  `Sessione::chiudi()`: non solo l'uscita e l'ingresso in un workspace — e sulle sue rotte lente, non su tutte (non su
+  quella della richiesta rimandata della cornice in due dati: vedi lì): è il
   criterio di zr-auth (il suo README, «Il blocco della sessione»; il ricevitore dell'ingresso di zr-auth lo ha già); messo
   da una parte sola non ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
   oltre risponde 503 con `Retry-After: 1` — un'uscita mentre «Segna tutte come lette» gira, o «Segna tutte come lette»
@@ -1413,7 +1416,8 @@ controller della pagina cambia dopo `Cornice::lingua()` — una notifica segnata
 richiesta rimandata che usa quella lettura arriva alla campanella con la visita dopo.
 
 Sulla rotta della richiesta rimandata il frontend non mette niente: né un middleware suo, né `bloccaSessione()` di zr-auth,
-che terrebbe fermo un processo fino a 10 secondi e metterebbe in fila le richieste della persona. Quella richiesta arriva
+che terrebbe il blocco della sessione fino a 10 secondi e metterebbe in fila le richieste della persona: ognuna aspetterebbe
+al più 3 secondi, e poi riceverebbe 503. Quella richiesta arriva
 quando la pagina è già in mano alla persona, e `Cornice::dopo()` scrive nella sessione la lingua e il nome riletti
 (`Sessione::aggiorna`): Laravel, a fine richiesta, salva la sessione che aveva letto all'inizio, sotto l'id di allora, e
 senza una protezione una richiesta rimandata lenta, finita dopo che la persona è uscita o è passata a un altro workspace,
@@ -1423,7 +1427,8 @@ segnano chiuso il vecchio, e una richiesta partita con l'id chiuso non lo rimett
 lo cambia solo entrando, cambiando workspace o uscendo, mai dentro la stessa sessione (risposta di zr-backoffice del
 14/10/2026, letta nel codice di zr-auth). La protezione vale a quattro condizioni, tutte dalla parte del frontend: la rotta
 della richiesta rimandata, cioè la pagina stessa, sta nel gruppo `web`; `session.block_store` è uno store condiviso fra i
-processi, mai `array`, che spegne la protezione senza dirlo; l'ordine del gruppo `web` non si riordina (`SessioneChiusa`
+processi, mai `array`, che spegne la protezione senza dirlo (non impostato è lo store della cache predefinito, e vale lo
+stesso per quello); l'ordine del gruppo `web` non si riordina (`SessioneChiusa`
 ne è il primo); e `zr-auth.sessione_chiusa_secondi` (300) non è più corto della richiesta più lenta. Resta ciò che vale
 per ogni sessione di Laravel: fra due richieste della stessa sessione in volo insieme vince quella che finisce per
 ultima, e la lingua e il nome si riallineano alla pagina dopo.
