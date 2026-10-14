@@ -107,8 +107,12 @@ export function mostra(email?: string): void {
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
- * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. La promessa non si chiude: fino al ricaricamento chi ha chiesto resta in attesa, e
- * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Una risposta che non lo dice
+ * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
+ * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Se dopo 5 secondi la pagina è
+ * ancora lì — un `beforeunload` che annulla il ricaricamento — la promessa si chiude con un errore senza niente dentro (dalla
+ * `v2.9.0`): né i dati, né `persona`, né la classe dell'errore di chi è entrato, e chi ha chiamato dice il suo errore di
+ * sempre. Se la pagina non si ricarica perché non deve (nessuno a schermo, o c'è già chi ha risposto) nessun orologio parte, e
+ * la promessa resta aperta: chi l'ha chiesta non è più a schermo. Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
@@ -117,7 +121,7 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>(() => aSchermo && corpo.persona !== aSchermo && location.reload());
+        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (location.reload(), setTimeout(no, 5e3)));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;

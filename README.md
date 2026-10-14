@@ -1290,8 +1290,11 @@ quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser
 su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
 smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
-restare — chi ha chiesto resta in attesa finché la pagina non si ricarica: il pannello in caricamento, «Segna tutte come
-lette» in corso. Niente di chi è entrato va a schermo.
+restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
+errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
+con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo, nemmeno nell'errore, e prima dei 5 secondi
+niente cambia: il pannello in caricamento, «Segna tutte come lette» in corso. Fino alla `v2.8.0` chi aveva chiesto restava
+in attesa finché la pagina non si ricaricava.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e

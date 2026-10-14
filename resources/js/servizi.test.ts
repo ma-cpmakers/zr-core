@@ -322,7 +322,7 @@ describe('una risposta che dice di chi è', () => {
     /** Come finisce una chiamata entro qualche giro: chiusa, con un errore, o ancora in attesa. */
     const esitoDi = (chiesto: Promise<unknown>) => Promise.race([chiesto.then(() => 'chiusa', () => 'errore'), new Promise((fatto) => setTimeout(() => fatto('in attesa'), 20))]);
 
-    it.each(chiamate)('%s: una risposta di un\'altra persona non torna a chi l\'ha chiesta — né chiusa né con un errore — e la pagina si ricarica, una volta (sprint 37 · T4.1, T4.2)', async (_nome, corpo, chiama) => {
+    it.each(chiamate)('%s: una risposta di un\'altra persona non torna a chi l\'ha chiesta — né chiusa né con un errore, prima dei 5 secondi — e la pagina si ricarica, una volta (sprint 37 · T4.1, T4.2)', async (_nome, corpo, chiama) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async () => risposta({ ...corpo, persona: 'grace@example.com' }));
         vi.stubGlobal('fetch', fetchFinto);
@@ -379,7 +379,7 @@ describe('una risposta che dice di chi è', () => {
         ['segnaLetta', 'il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta, (email: string) => segnaLetta('uat-n69', email)] as const,
     ];
 
-    it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
+    it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore, prima dei 5 secondi — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }));
         vi.stubGlobal('fetch', fetchFinto);
@@ -422,7 +422,7 @@ describe('una risposta che dice di chi è', () => {
     it.each<[string, Response]>([
         ['il 409 `persona_diversa` di un\'altra persona', diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' })],
         ['una risposta riuscita che dice un\'altra persona', risposta({ data: { fino_a: '2026-10-06T11:55:00.000Z' }, persona: 'grace@example.com' })],
-    ])('segnaLetteFinoA: %s non torna a chi ha chiesto — né chiusa né con un errore — e la pagina si ricarica, una volta (sprint 38 · T4.1)', async (_quale, laRisposta) => {
+    ])('segnaLetteFinoA: %s non torna a chi ha chiesto — né chiusa né con un errore, prima dei 5 secondi — e la pagina si ricarica, una volta (sprint 38 · T4.1)', async (_quale, laRisposta) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async () => laRisposta);
         vi.stubGlobal('fetch', fetchFinto);

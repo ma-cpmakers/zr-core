@@ -5483,7 +5483,9 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // il ricaricamento che non avviene, e nella guida il `dopo` composto a mano.
     'la scheda ferma: la lettura con un clic' => ['readme', 'Lo stesso per il 403 della lettura di una notifica con un clic (`PATCH /cornice/notifiche/{id}/lettura`): se arriva prima che la risorsa si apra, la pagina si ricarica al suo posto'],
     'la scheda ferma: il corpo di «Segna tutte come lette»' => ['readme', 'e dalla `v2.5.0` l\'email di chi la cornice mostra (`persona`)'],
-    'la scheda ferma: il ricaricamento che non avviene' => ['readme', 'Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di restare — chi ha chiesto resta in attesa finché la pagina non si ricarica'],
+    'la scheda ferma: il ricaricamento che non avviene' => ['readme', 'Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un errore'],
+    // Sprint 43 · T2 (voce #2036): che cosa si vede dopo i 5 secondi, e che prima niente cambia.
+    'la scheda ferma: dopo i 5 secondi' => ['readme', '«Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche» con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo, nemmeno nell\'errore, e prima dei 5 secondi niente cambia'],
     'la guida: un dopo composto a mano' => ['guida', 'Lo fa per un `dopo` che dice di chi è e quando (`persona` e `sessione_il`, come lo dà `Cornice::dopo()`): uno composto a mano a cui manca uno dei due si unisce ancora a `subito`'],
     // Sprint 37 · T5.2 (voce #2000): la persona si riconosce dall'email, e chi garantisce che c'è è il contratto del backoffice.
     'l\'email: chi la garantisce' => ['readme', 'la cornice riconosce la persona dall\'email. L\'email c\'è sempre perché la garantisce il contratto del backoffice: nelle API `/v1` l\'email di una persona è obbligatoria, in ogni gettone'],
