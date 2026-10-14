@@ -280,16 +280,25 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.554 byte: 18 KB più i 17 byte della cornice che si rifà quando cambia la persona, i 37 di Indietro e i 68 della scheda ferma; i 32 byte in più dei rimedi di tastiera sono finiti con la v2 (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5)', () => {
+    // Sprint 42 · T3 (voce #2054, T2.5). Con la ricerca in un pezzo a richiesta l'ingresso pesa 18.181 byte, e il tetto scende: è
+    // quel peso più i 48 byte misurati per le quattro correzioni che aspettano (#1975, #2036, #2053, #2052), non oltre.
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.229 byte: i 18.181 misurati con la ricerca in un pezzo a richiesta, più i 16 byte di Indietro senza il segno della lettura, i 6 dell\'attesa che finisce e i 26 del tetto delle ricariche (sprint 42 · T2.5)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_554);
+        expect(TETTO_DELL_INGRESSO).toBe(18_229);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.554 byte, non più quelli di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.229 byte, non più quelli di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '18.554 byte') > 0, volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '18.229 byte') > 0, volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0]);
+    });
+
+    it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {
+        const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
+
+        expect(ricerca).not.toBe('');
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_004);
     });
 
     it('il README ha «Passare alla v2» con l\'import di prima e quello nuovo, e dice che cosa fa Chromium quando il pezzo non arriva (sprint 33 · T1.5, T1.7)', () => {

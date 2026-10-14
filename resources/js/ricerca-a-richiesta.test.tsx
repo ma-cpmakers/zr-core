@@ -176,3 +176,90 @@ describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cerc
         expect(cercate()).toStrictEqual([['POST', JSON.stringify({ q: 'ada' }), 'ada%40example.com']]);
     });
 });
+
+// Sprint 42 · T3 (voce #2054). Il pezzo che non arriva: una rete caduta, un file che una build nuova ha tolto.
+const avviso = () => contenitore.querySelector('.zr-search-panel [role="alert"]')?.textContent ?? null;
+const sottoIlCampo = () => contenitore.querySelector('.zr-search-panel')?.textContent ?? '';
+
+/** Il pezzo della ricerca che non arriva le prime `volte` che è chiesto (chi lo chiede è respinto con `errore`), e dopo arriva. */
+function pezzoCheNonArriva(volte: number, errore: () => unknown = () => new TypeError('Failed to fetch dynamically imported module')) {
+    let arrivato: typeof dellaRicerca | undefined;
+    let respinte = 0;
+    const chiesto = vi.spyOn(deiServizi, 'chiediLaRicerca').mockImplementation(async () => {
+        if (arrivato === undefined && respinte < volte) {
+            respinte++;
+            throw errore();
+        }
+        arrivato = dellaRicerca;
+
+        return dellaRicerca;
+    });
+    vi.spyOn(deiServizi, 'ricerca', 'get').mockImplementation(() => arrivato);
+
+    return chiesto;
+}
+
+describe('il pezzo della ricerca non arriva (T3.1)', () => {
+    // Un fallimento del pezzo non è una risposta della rotta: qualunque cosa porti, non accende il freno del 429 e non manda
+    // la cornice nello stato ridotto di chi deve accettare i documenti.
+    it.each<[caso: string, errore: () => unknown]>([
+        ['la rete è caduta', () => new TypeError('Failed to fetch dynamically imported module')],
+        ['chi lo chiede è respinto con un `TroppeRichieste` da 60 secondi', () => new deiServizi.TroppeRichieste('429', 60)],
+        ['chi lo chiede è respinto con un `AccettazioneRichiesta`', () => new deiServizi.AccettazioneRichiesta('403')],
+    ])('%s: sotto il campo l\'avviso con l\'errore della ricerca, non «Sto cercando…» né «Nessun risultato», e nessuna richiesta; la parola dopo richiede il pezzo e, arrivato, parte', async (_caso, errore) => {
+        const chiesto = pezzoCheNonArriva(1, errore);
+        await mostra(dati);
+
+        await scrivi('ada', false);
+
+        expect(chiesto).toHaveBeenCalledTimes(1);
+        expect(avviso()).toBe(testi('it').searchError);
+        expect(inCaricamento()).toBeNull();
+        expect(sottoIlCampo()).not.toContain(testi('it').searchEmpty);
+        expect(cercate()).toStrictEqual([]);
+        // Nemmeno dopo: non è un caricamento che non finisce, e niente parte da solo.
+        await passano(10_000);
+        expect(avviso()).toBe(testi('it').searchError);
+        expect(chiesto).toHaveBeenCalledTimes(1);
+
+        await scrivi('adal', false);
+
+        expect(chiesto).toHaveBeenCalledTimes(2);
+        expect(cercate()).toStrictEqual([['POST', JSON.stringify({ q: 'adal' }), 'ada%40example.com']]);
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
+        expect(avviso()).toBeNull();
+    });
+});
+
+describe('dopo il pezzo che non è arrivato si riprova scrivendo (T3.2)', () => {
+    it('ogni parola richiede il pezzo, anche la stessa riscritta, e a ogni fallimento torna l\'avviso; il fuoco che lo ha chiesto per primo non mostra niente; all\'arrivo si cerca ciò che è nel campo', async () => {
+        const chiesto = pezzoCheNonArriva(3);
+        await mostra(dati);
+
+        await act(async () => campo().focus());
+        expect(chiesto).toHaveBeenCalledTimes(1);
+        expect(avviso()).toBeNull();
+
+        await scrivi('ada');
+        expect(chiesto).toHaveBeenCalledTimes(2);
+        expect(avviso()).toBe(testi('it').searchError);
+
+        // Cancellata fino a una lettera: sotto i due caratteri l'`AppShell` non cerca, e il pezzo non è chiesto.
+        await scrivi('a');
+        expect(chiesto).toHaveBeenCalledTimes(2);
+        expect(avviso()).toBeNull();
+
+        await scrivi('ada');
+        expect(chiesto).toHaveBeenCalledTimes(3);
+        expect(avviso()).toBe(testi('it').searchError);
+        expect(cercate()).toStrictEqual([]);
+
+        await scrivi('adal');
+        expect(chiesto).toHaveBeenCalledTimes(4);
+        expect(cercate()).toStrictEqual([['POST', JSON.stringify({ q: 'adal' }), 'ada%40example.com']]);
+        expect(campo().value).toBe('adal');
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
+        expect(avviso()).toBeNull();
+        expect(inCaricamento()).toBeNull();
+    });
+});

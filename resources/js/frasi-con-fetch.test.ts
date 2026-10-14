@@ -178,6 +178,18 @@ describe('`frasiInMemoria`, per i test di chi installa il pacchetto (sprint 30 �
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
+    // Sprint 42 · T3 (voce #2054). Dalla `v2.8.0` anche la ricerca è un pezzo a richiesta: `frasiInMemoria` dà alla cornice anche
+    // quello, così in un test di chi installa la ricerca parte 300 ms dopo l'ultimo tasto, come prima, senza un giro in più.
+    it('dà alla cornice anche il pezzo della ricerca: dopo, la cornice lo ha senza chiederlo (sprint 42 · T3)', async () => {
+        const { frasiInMemoria } = await import('./prove');
+        const deiServizi = await import('./servizi');
+        expect(deiServizi.ricerca).toBeUndefined();
+
+        await frasiInMemoria();
+
+        expect(deiServizi.ricerca).toBe(await import('./ricerca'));
+    });
+
     it('se le frasi non si caricano rimette lo stesso il `fetch` di prima', async () => {
         const fetchFinto = vi.fn(async () => risposta({}));
         vi.stubGlobal('fetch', fetchFinto);
