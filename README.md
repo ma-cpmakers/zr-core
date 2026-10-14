@@ -1249,7 +1249,11 @@ di quella lettura. Nel layout valgono anche loro su quelli di
 `subito`: se fra le due richieste la sessione è passata a un'altra persona la cornice è la sua, coi suoi dati, e i dati
 di una persona non stanno sotto il nome di un'altra. Per un frontend che dà al layout `Cornice::dopo()` com'è non c'è
 niente da scrivere, e tre cose si vedono. La lingua e il nome della cornice, quando `dopo` arriva, sono quelli riletti
-da io.mostra, i più recenti. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
+da io.mostra, i più recenti. Dalla `v2.9.0`, con la stessa persona, vale la lingua del dato più recente anche prima che
+`dopo` arrivi: chi ha cambiato lingua ha i testi della cornice nella lingua nuova col `subito` della visita, e moduli,
+workspace e numero delle notifiche restano quelli del `dopo` che c'è finché non è riletto. Da `subito` passa la sola
+lingua, e solo se `dopo` dice di chi è e il segno della sessione c'è da tutte e due le parti: senza, vale `dopo` come
+prima. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
 email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
