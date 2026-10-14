@@ -1734,6 +1734,21 @@ describe('la cornice in due dati, sotto il layout', () => {
         ricarica.mockRestore();
     });
 
+    // Lo stesso coi due dati: il `subito` di una voce di allora, composto a mano senza `sessione_il`, col `dopo` ancora da leggere.
+    it('con `subito` senza il segno della sessione, con Indietro sulla voce di chi c\'era prima in un altro workspace niente di suo va a schermo e la pagina si ricarica (sprint 42 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await inDue({ subito: { ...subito, persona: altra, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await inDue({ subito }, <PaginaA key="1" />);
+
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
     it('con la `cornice` intera senza il segno della lettura, la stessa persona che passa a un altro workspace e torna con Indietro vede la cornice intera, e la pagina non si ricarica (sprint 42 · T4.2)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
