@@ -350,8 +350,8 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(TETTO_DELL_INGRESSO).toBe(17_789);
     });
 
-    // Sprint 50 · T6 (review, R9). Il tetto è la misura, non la misura più un margine: un ingresso che scende di 100 byte o più
-    // vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
+    // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
+    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
     // (T1.4: 515 alla misura di T1): qui la stessa app, costruita col modulo dei componenti senza i segni.
     it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
         expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);

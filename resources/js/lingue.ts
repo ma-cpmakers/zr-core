@@ -281,7 +281,8 @@ export let campanella: typeof import('./campanella') | undefined;
  * 2^(n−1) secondi, e mai più di 60, dal fallimento. Nell'attesa non importa niente ed è respinta con l'errore di prima, che
  * per chi chiede è un pezzo non arrivato come gli altri. L'orologio è quello della pagina (`performance.now()`): niente è
  * scritto nel browser. Chi chiede con `senzaAttesa` — «Riprova» del pannello delle notifiche, che la persona preme — non aspetta.
- * Due richieste partite insieme che non arrivano contano come due fallimenti: l'attesa dopo è quella del secondo (README).
+ * Ogni richiesta partita mentre il pezzo è in viaggio, se non arriva, conta come un fallimento:
+ * con k richieste insieme l'attesa dopo è quella di k fallimenti in più, e la coda salta k−1 numeri (README).
  */
 export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): (senzaAttesa?: boolean) => Promise<Pezzo> {
     let tentativi = 0;

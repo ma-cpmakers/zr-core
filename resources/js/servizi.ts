@@ -83,7 +83,7 @@ export class TroppeRichieste extends Error {
 
 /**
  * Chi la cornice mostra adesso, con l'email, o nessuno: lo dice la cornice quando si monta, e lo toglie quando si smonta
- * (dalla `v2.7.0`; chiamata senza niente, toglie). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
+ * (dalla `v2.7.0`; per togliere, `mostra(undefined, era)`). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
  * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo. Con due cornici è
  * l'ultima montata, e una cornice che si smonta toglie solo sé stessa (`era`, la sua email, dalla `v2.11.5`): se dopo di lei
  * se n'è montata un'altra, a schermo resta quella. Le forme sono due, e i tipi non ne lasciano una terza: `mostra(email)`

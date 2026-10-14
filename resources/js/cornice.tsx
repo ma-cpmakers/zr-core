@@ -832,7 +832,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
     useLayoutEffect(() => {
-        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra` senza niente), se è ancora lei: con una
+        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra(undefined, era)`), se è ancora lei: con una
         // seconda cornice montata dopo, a schermo resta quella (dalla `v2.11.5`). La `key` è l'email, quindi questa cornice è di
         // una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
