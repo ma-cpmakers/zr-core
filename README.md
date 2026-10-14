@@ -398,8 +398,9 @@ nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic 
 segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
 prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
 entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Dalla `v2.9.0`
-anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte, e allora la
-destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua.
+anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte prima che li compia, e
+allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è
+la sua. Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora.
 Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
 prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
@@ -1267,7 +1268,8 @@ o la pagina non fa una visita. Una scheda rimasta ferma che rilegge il solo `dop
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
 email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
-`v2.9.0` al più una volta ogni 30 secondi (prima a ogni uso), e fra una ricarica e l'altra danno il loro errore.
+`v2.9.0` al più una volta ogni 30 secondi (prima a ogni uso), e fra una ricarica e l'altra danno il loro errore, dalla
+`v2.10.0` dopo 5 secondi.
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
@@ -1276,8 +1278,9 @@ persona della sessione. In una scheda rimasta ferma, senza visitare niente, la s
 sullo stesso workspace: quando lì si apre la campanella o si cerca, la risposta è di chi è entrato. La cornice non la mostra
 sotto il nome di prima, nemmeno per un disegno: ricarica la pagina, che da lì è di chi è entrato, e fino ad allora il pannello
 resta in caricamento. Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una
-pagina caricata da meno di 30 secondi non partono, e la richiesta dà subito il suo errore; se la pagina non si ricarica,
-lo dà dopo 5 secondi. Una risposta che non dice di chi è (una parte server di prima della `v2.4.0`) vale come prima, e per la
+pagina caricata da meno di 30 secondi non partono prima che li compia — dalla `v2.10.0` partono allora, da sole —, e se
+la pagina non si ricarica la richiesta dà il suo errore dopo 5 secondi. Una risposta che non dice di chi è (una parte
+server di prima della `v2.4.0`) vale come prima, e per la
 stessa persona non cambia niente. Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta`
 e il 429 della ricerca portano `persona`. In una scheda rimasta ferma l'errore di chi è entrato non riduce la cornice e non
 ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica, come per una risposta coi dati. Lo
@@ -1296,8 +1299,8 @@ Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, n
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
 notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
 ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
-una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano: la risorsa si apre anche se sono arrivati
-prima, con la sessione di chi è entrato, e niente è segnato.
+una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia: la risorsa si apre
+anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
@@ -1320,18 +1323,21 @@ vale il limite detto qui sopra: lì la pagina non si ricarica,
 nessun orologio parte, e chi ha chiesto resta in attesa. Provato in Chromium 151 con una pagina che nega il
 ricaricamento: passati i 5 secondi «Segna tutte come lette» torna premibile, e il pannello e la ricerca dicono il loro errore.
 Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica
-davanti a una risposta di un'altra persona. Subito dopo una ricarica, se la risposta lo dice ancora — dei dati composti a
-mano con un'altra email —, ricaricare di nuovo non cambierebbe niente: chi ha chiesto ha
-subito l'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso. Di quella risposta niente è disegnato e
+davanti a una risposta di un'altra persona prima di compierli. Subito dopo una ricarica, se la risposta lo dice ancora —
+dei dati composti a mano con un'altra email —, ricaricare di nuovo non cambierebbe niente: chi ha chiesto ha
+l'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso, dalla `v2.10.0` dopo 5 secondi come sopra i 30
+(nella `v2.9.0` senza aspettare). Di quella risposta niente è disegnato e
 niente è tenuto, come quando la pagina si ricarica. Da 30 secondi in poi la pagina si ricarica come prima: al più una
 ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né
 `localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
-all'uscita non c'è niente da togliere. Restano due casi. Una richiesta partita più di 30 secondi dopo una ricarica che non
-ha cambiato niente ne dà un'altra. E una pagina che riceve la risposta di un'altra persona nei suoi primi 30 secondi dà
-l'errore senza ricaricarsi: passati i 30 secondi, «Riprova» o la richiesta dopo la ricaricano. Fino ad allora resta a
-schermo la cornice di chi c'era prima, e niente la ricarica da sola allo scadere dei 30 secondi. Provato in Chromium 151:
-l'età della pagina riparte da zero a ogni ricarica; dopo una ricarica, una risposta di un'altra persona nei primi 30
-secondi dà l'errore entro un secondo e nessuna ricarica, e passati i 30 secondi «Riprova» ricarica la pagina, una volta.
+all'uscita non c'è niente da togliere. Dalla `v2.10.0` la cornice di chi c'era prima non resta a schermo oltre i 30
+secondi: una pagina che ha ricevuto la risposta di un'altra persona nei suoi primi 30 secondi si ricarica da sola quando li
+compie, senza un clic e senza un'altra richiesta. Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
+portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano due casi. Una
+richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
+apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona
+è arrivata. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
+scadere dei 30 secondi: non provato in un browser.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
