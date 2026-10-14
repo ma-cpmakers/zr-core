@@ -4305,6 +4305,8 @@ it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi l
 })->with([
     'i due tipi e i titoli' => ['Dalla `v2.3.0` hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM: `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita modificato»'],
     'quanti sono i titoli' => ['Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la menzione'],
+    // Sprint 50 · T6: dal 14/10/2026 il contratto ha un tipo di evento in più, che non genera notifiche.
+    'il quarantesimo tipo, senza titolo (sprint 50 · T6)' => ['Dal 14/10/2026 il contratto ha 40 tipi di evento: il quarantesimo, `com.zeiras.crm.campo.modificato` (le impostazioni di un campo del CRM cambiate), non genera notifiche e non ha un titolo. I titoli restano 44'],
     'la destinazione, dalla `v2.7.0` (sprint 41 · T2.1)' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi stanno, senza un id'],
     'gli altri tipi dei motivi (sprint 41 · T2.2)' => ['un altro tipo dei motivi di perdita, che il registro non ha, resta senza'],
 ]);
