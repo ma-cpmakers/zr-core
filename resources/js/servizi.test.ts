@@ -445,6 +445,68 @@ describe('una risposta che dice di chi è', () => {
         expect(ricarica).not.toHaveBeenCalled();
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
+
+    // Sprint 43 · T2 (voce #2036): se il ricaricamento non avviene — un `beforeunload` che lo annulla, una pagina che non può
+    // ricaricarsi — chi ha chiesto non resta in attesa per sempre: dopo 5 secondi la chiamata si chiude con un errore, che non
+    // porta niente della risposta di chi è entrato. Prima dei 5 secondi niente cambia; e se la ricarica non parte (nessuno a
+    // schermo, o a schermo c'è già chi ha risposto) nessun orologio parte, e chi ha chiesto resta in attesa come prima.
+    describe('se la pagina non si ricarica', () => {
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        /** Come sta una chiamata, guardata quando serve: in attesa, chiusa (con che cosa), o con un errore (quale). */
+        const segui = (chiesto: Promise<unknown>) => {
+            const esito: { come: string; con?: unknown } = { come: 'in attesa' };
+            chiesto.then(
+                (dati) => Object.assign(esito, { come: 'chiusa', con: dati }),
+                (errore: unknown) => Object.assign(esito, { come: 'errore', con: errore }),
+            );
+            return esito;
+        };
+        const diUnAltra: [string, () => Response, () => Promise<unknown>][] = [
+            ...chiamate.map(([nome, corpo, chiama]) => [`${nome}, la risposta riuscita`, () => risposta({ ...corpo, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
+            ...conErrore.map(([nome, quale, stato, codice, , chiama]) => [`${nome}, ${quale}`, () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
+            ['segnaLetteFinoA, il 409 `persona_diversa`', () => diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' }), segna],
+        ];
+
+        it.each(diUnAltra)('%s di un\'altra persona: a 4.999 ms dalla ricarica chi ha chiesto è ancora in attesa, a 5.000 ms ha un errore senza niente dentro; la ricarica è chiamata una volta (sprint 43 · T2.1, T2.2)', async (_nome, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => laRisposta());
+            vi.stubGlobal('fetch', fetchFinto);
+
+            const esito = segui(chiama());
+            await vi.advanceTimersByTimeAsync(4_999);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+            expect(ricarica).toHaveBeenCalledTimes(1);
+
+            await vi.advanceTimersByTimeAsync(1);
+            // Né i dati, né `persona`, né i secondi del freno, né la classe dell'errore di chi è entrato.
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => ([
+            ['a schermo c\'è già chi ha risposto', 'grace@example.com'],
+            ['a schermo non c\'è nessuna cornice', undefined],
+        ] as [string, string | undefined][]).map(([come, chi]) => [nome, come, chi, laRisposta, chiama] as const)))('%s di un\'altra persona, se %s: la pagina non si ricarica, nessun orologio parte e chi ha chiesto resta in attesa, anche dopo un minuto (sprint 43 · T2.3)', async (_nome, _come, chi, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            mostra(chi);
+
+            const esito = segui(chiama());
+            await vi.advanceTimersByTimeAsync(0);
+            expect(vi.getTimerCount()).toBe(0);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+            expect(ricarica).not.toHaveBeenCalled();
+        });
+    });
 });
 
 // Sprint 40 · T3 (voce #2051): ogni richiesta della cornice alla sua parte server dice di chi è la pagina che chiede, e la

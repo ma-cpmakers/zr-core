@@ -1584,6 +1584,39 @@ describe('il pannello delle notifiche', () => {
         ricarica.mockRestore();
     });
 
+    // Sprint 43 · T2 (voce #2036): se il ricaricamento non avviene «Segna tutte come lette» non resta fermo per sempre. Dopo 5
+    // secondi la richiesta si chiude con un errore, e il pulsante si può premere di nuovo: niente è dato per letto.
+    it('in una scheda rimasta ferma, se la pagina non si ricarica, «Segna tutte come lette» torna premibile dopo 5 secondi: prima un secondo clic non manda niente, dopo manda un\'altra POST; numero ed elenco restano com\'erano (sprint 43 · T2.1, T2.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        const premi = (dopo: number) => act(async () => {
+            (segnaTutte() as HTMLElement).click();
+            await vi.advanceTimersByTimeAsync(dopo);
+        });
+        const unaPost = 'POST /cornice/notifiche/letture';
+        try {
+            await premi(4_998);
+            await premi(1);
+            expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', unaPost]);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+
+            await act(() => vi.advanceTimersByTimeAsync(1));
+            expect(uno('.zr-notif [role="alert"]')).toBeNull();
+            expect(campanella()).toBe('60');
+            expect(nonLette()).toStrictEqual([true, true, false]);
+            expect(contenitore.textContent).not.toMatch(/grace/i);
+
+            await premi(0);
+            expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', unaPost, unaPost]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it.each<[string, Record<string, unknown>]>([
         ['della stessa persona', { persona: dati.persona.email }],
         ['che non dice di chi è', {}],
@@ -3818,6 +3851,37 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
     });
 
+    // Sprint 43 · T2 (voce #2036): se il ricaricamento non avviene il pannello non resta in caricamento per sempre. Dopo 5 secondi
+    // la richiesta si chiude con un errore, e il pannello dice il suo, con «Riprova»: niente di chi è entrato va a schermo.
+    it('in una scheda rimasta ferma, se la pagina non si ricarica, a 4.999 ms il pannello è ancora in caricamento e a 5.000 ms dice il suo errore con «Riprova»: dell\'elenco di chi è entrato non c\'è niente, e il numero resta quello dei dati (sprint 43 · T2.1, T2.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = rotteDiUnaPersona({ persona: 'grace@example.com' });
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await act(async () => {
+                (uno('.zr-bell') as HTMLElement).click();
+                await vi.advanceTimersByTimeAsync(4_999);
+            });
+            expect(uno('.zr-notif [role="status"]')).not.toBeNull();
+            expect(uno('.zr-notif [role="alert"]')).toBeNull();
+
+            await act(() => vi.advanceTimersByTimeAsync(1));
+            const errore = uno('.zr-notif [role="alert"]');
+            expect(errore?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+            expect(errore?.querySelector('button')?.textContent).toBe('Riprova');
+            expect(uno('.zr-notif [role="status"]')).toBeNull();
+            expect(voci()).toHaveLength(0);
+            expect(campanella()).toBe('2');
+            expect(contenitore.textContent).not.toMatch(/grace/i);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
@@ -5124,6 +5188,27 @@ describe('la ricerca', () => {
         expect(righe()).toHaveLength(0);
         expect(inCaricamento()).toBe('Sto cercando…');
         expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+    });
+
+    // Sprint 43 · T2 (voce #2036): se il ricaricamento non avviene la ricerca non resta in caricamento per sempre. Dopo 5 secondi
+    // la richiesta si chiude con un errore, e la ricerca dice il suo: dei risultati di chi è entrato non c'è niente.
+    it('in una scheda rimasta ferma, se la pagina non si ricarica, a 4.999 ms la ricerca è ancora in caricamento e a 5.000 ms dice il suo errore: dei risultati di chi è entrato non c\'è niente (sprint 43 · T2.1, T2.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('lancio');
+        await act(() => vi.advanceTimersByTimeAsync(4_999));
+        expect(inCaricamento()).toBe('Sto cercando…');
+        expect(uno('.zr-search-panel [role="alert"]')).toBeNull();
+
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
+        expect(righe()).toHaveLength(0);
+        expect(contenitore.textContent).not.toMatch(/grace/i);
+        expect(ricarica).toHaveBeenCalledTimes(1);
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 
