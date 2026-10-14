@@ -20,7 +20,8 @@ use Zeiras\Auth\Sessione;
  * La lingua e il nome della sessione sono quelli dell'ingresso: un cambio fatto dopo nel profilo non ci arriva da solo. Per
  * questo a ogni lettura la risposta di io.mostra, che la cornice legge già per le non lette, va a `Sessione::aggiorna` di
  * zr-auth (dalla 0.12), che mette nella sessione la lingua e il nome del profilo che prende (la lingua, dalla 0.12.12, solo se
- * è una di Zeiras), e i dati li portano da quella stessa lettura.
+ * è una di Zeiras; e dalla `v2.11.4` non quella di una lettura più vecchia di quella che l'ha confermata:
+ * `conLaLinguaRicordata()`), e i dati li portano da quella stessa lettura.
  * Un modulo che mette la lingua della pagina prima del controller la prende da `lingua()`, che fa quella stessa lettura: in una
  * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`).
  *
@@ -111,7 +112,8 @@ final class Cornice
      * La parte dei dati che sta nella sessione — lingua, persona, workspace —, per il frontend che non vuole aspettare il
      * backoffice prima del primo disegno (dalla `v2.1.0`): il resto lo dà `dopo()`, che può arrivare più tardi. Non chiama mai
      * il backoffice, nemmeno per rileggere la lingua: lingua e nome sono quelli dell'ingresso finché una `dopo()`, una
-     * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi. null senza sessione o
+     * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi (la lingua no, se quella
+     * lettura era più vecchia di quella che l'ha confermata: `conLaLinguaRicordata()`). null senza sessione o
      * senza workspace, come `dati()`.
      *
      * In fondo c'è il segno della sessione, `sessione_il` (dalla `v2.3.0`): l'istante in cui lingua e persona sono state lette.
@@ -146,7 +148,8 @@ final class Cornice
     /**
      * La parte dei dati che si legge dal backoffice: le stesse letture di `dati()`, e gli stessi dati, anche ridotti davanti
      * al 403 `accettazione_richiesta`. Dice di chi sono (dalla `v2.4.0`): porta lingua e persona come sono nella sessione
-     * dopo quella lettura (la lingua e il nome riletti da io.mostra, l'email dell'ingresso) e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
+     * dopo quella lettura (la lingua e il nome riletti da io.mostra — la lingua no, se la lettura è più vecchia di quella che l'ha
+     * confermata: vedi `conLaLinguaRicordata()` —, l'email dell'ingresso) e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
      * non è quella di `subito()`, e fra le due la sessione può essere passata a un'altra persona o a un altro workspace, da
      * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`
      * (dalla `v2.9.0` la lingua è quella del più recente dei due, con la stessa persona),
@@ -165,7 +168,8 @@ final class Cornice
      *
      * In fondo, dopo `sessione_il`, c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`), come in `subito()`: quello
      * ricordato per la persona della sessione, che la lettura di questa richiesta porta avanti solo se io.mostra ha risposto
-     * per lei e la lettura è più avanti (`ricordaLaLingua()`); una lettura più vecchia lo lascia com'è. Niente se non c'è.
+     * per lei e la lettura è più avanti (`ricordaLaLingua()`); una lettura più vecchia lo lascia com'è, e dalla `v2.11.4` lascia
+     * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
@@ -327,7 +331,7 @@ final class Cornice
 
         try {
             $io = self::ioMostra();
-            Sessione::aggiorna($io);
+            Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
             self::ricordaLaLingua($io, $segno);
             $esito = $io['notifiche_non_lette'];
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
@@ -347,7 +351,8 @@ final class Cornice
     /**
      * Ricorda nella sessione il segno di una lettura di io.mostra che ha confermato la lingua: solo se io.mostra ha risposto con
      * l'id della persona della sessione (`Sessione::aggiorna` torna true solo se qualcosa cambia, e non lo dice), e solo se è
-     * più avanti di quello già ricordato per lei: una lettura più vecchia, finita dopo, non lo porta indietro. Due richieste in
+     * più avanti di quello già ricordato per lei: una lettura più vecchia, finita dopo, non lo porta indietro, e la sua lingua non
+     * entra nella sessione (`conLaLinguaRicordata()`, dalla `v2.11.4`). Due richieste in
      * volo insieme no: Laravel salva la sessione intera alla fine di ognuna, e l'ultima che finisce riscrive la lingua e il suo
      * segno di quando era partita, una coppia che resta coerente, e che il `dopo` successivo rimette avanti.
      *
@@ -364,8 +369,33 @@ final class Cornice
     }
 
     /**
-     * Il segno della lingua ricordato per la persona della sessione, come chiave da mettere nei dati; niente se non c'è, o se è
-     * di un'altra persona (ne è entrata un'altra nello stesso browser).
+     * La risposta di io.mostra da dare a `Sessione::aggiorna`: com'è, salvo la lingua quando io.mostra ha risposto per la persona
+     * della sessione e la lettura non è più avanti del segno della lingua ricordato per lei — una lettura più vecchia, finita dopo
+     * una più nuova. Allora la lingua è quella che la sessione ha, confermata dalla lettura ricordata, e lingua e segno restano
+     * una coppia (dalla `v2.11.4`: prima la lingua superata entrava nella sessione sotto il segno più nuovo, e il browser a pari
+     * segno la teneva). Senza un segno ricordato per la persona, o con una risposta per un'altra, la risposta passa com'è; il
+     * resto della risposta — il nome, le non lette — passa com'è sempre.
+     *
+     * @param  array<string, mixed>  $io  i `data` di io.mostra
+     * @return array<string, mixed>
+     */
+    private static function conLaLinguaRicordata(array $io, string $segno): array
+    {
+        $ricordato = self::linguaIl()['lingua_il'] ?? null;
+        $utente = Sessione::utente();
+        $chi = $io['utente'] ?? null;
+
+        if ($ricordato === null || strcmp($segno, $ricordato) > 0 || ! is_array($chi) || ($chi['id'] ?? null) !== ($utente['id'] ?? null) || ! is_string($utente['lingua'] ?? null)) {
+            return $io;
+        }
+
+        return [...$io, 'utente' => [...$chi, 'lingua' => $utente['lingua']]];
+    }
+
+    /**
+     * Il segno della lingua ricordato per la persona della sessione, come chiave da mettere nei dati; niente se non c'è, se è
+     * di un'altra persona (ne è entrata un'altra nello stesso browser), o se sta avanti dell'orologio più di cinque minuti
+     * (`Segno::troppoAvanti()`, dalla `v2.11.4`: l'ha ricordato un server con l'orologio avanti, e la lettura lo sostituisce).
      *
      * @return array{lingua_il?: string}
      */
@@ -374,7 +404,7 @@ final class Cornice
         $ricordato = session(self::LINGUA);
         $id = Sessione::utente()['id'] ?? null;
 
-        return is_string($id) && is_array($ricordato) && ($ricordato['persona'] ?? null) === $id && is_string($ricordato['il'] ?? null)
+        return is_string($id) && is_array($ricordato) && ($ricordato['persona'] ?? null) === $id && is_string($ricordato['il'] ?? null) && ! Segno::troppoAvanti($ricordato['il'])
             ? ['lingua_il' => $ricordato['il']]
             : [];
     }

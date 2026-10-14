@@ -266,7 +266,8 @@ Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non que
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
 lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non
 lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende: quali
-prende lo decide zr-auth (per la lingua vedi «Quale lingua c'è nella sessione», più sotto). Cambiano solo quei due: email,
+prende lo decide zr-auth (per la lingua vedi «Quale lingua c'è nella sessione», più sotto). Dalla `v2.11.4` la lingua di una
+lettura più vecchia di quella che l'ha confermata non le arriva (vedi `lingua_il`, più sotto). Cambiano solo quei due: email,
 workspace, ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome della sessione
 dopo `Sessione::aggiorna`, da quella stessa richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare
 `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e
@@ -337,7 +338,8 @@ che la sessione ha dopo la lettura non ha la forma di una lingua: fino alla 0.12
 dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall'ingresso. E per una lingua del profilo ben
 fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la
 forma di una lingua. zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda
-quale zr-auth è installata.
+quale zr-auth è installata. Dalla `v2.11.4` la cornice non dà a `Sessione::aggiorna` la lingua di una lettura più vecchia
+di quella che l'ha confermata: vedi `lingua_il`, più sotto.
 
 La riga va dove si mette la lingua di una pagina, non su ogni richiesta: su una richiesta che non mostra una pagina — le
 rotte della cornice (`/cornice/…`), le rotte JSON del modulo — basta la lingua della sessione, e la riga costerebbe una
@@ -1320,7 +1322,14 @@ sessione. In `dopo` e in `subito` è quello che la sessione ricorda, mai l'istan
 porta avanti solo se io.mostra ha risposto per quella persona ed è più avanti di quello ricordato, e una lettura più
 vecchia lo lascia com'è. La parte server lo ricorda nella sessione, alla chiave
 `zr-core.lingua`, con l'id della persona: di un'altra persona entrata nello stesso browser non esce, e senza una lettura
-che l'abbia confermata non c'è. Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
+che l'abbia confermata non c'è. Dalla `v2.11.4` una lettura più vecchia non cambia nemmeno la lingua della sessione: resta
+quella confermata dalla lettura ricordata, e lingua e segno restano una coppia (fino alla `v2.11.3` la lingua superata
+entrava nella sessione sotto il segno più nuovo, e a pari segno con `subito` la cornice la teneva). Il nome e le non
+lette, quella lettura li porta come sempre. Resta il limite di due richieste in volo insieme: Laravel salva la sessione
+intera alla fine di ognuna, e quella che finisce per ultima riscrive la lingua e il segno di quando era partita, una
+coppia coerente ma vecchia, che il `dopo` successivo rimette avanti. Un segno della lingua ricordato avanti dell'orologio
+di più di cinque minuti (l'ha dato un server del frontend con l'orologio avanti) non vale, come il cookie del segno: la
+lettura lo sostituisce col suo. Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
 lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no. Così si chiude il caso che
 fino alla `v2.10.0` restava aperto: un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno della
 sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima. E con Indietro su una pagina

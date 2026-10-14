@@ -67,6 +67,15 @@ final class Segno
         return $segno;
     }
 
+    /**
+     * Se un segno ricordato sta avanti dell'orologio più di `AVANTI_AL_MASSIMO` minuti: l'ha dato un server del frontend con
+     * l'orologio avanti, e non vale, come il cookie (dalla `v2.11.4`, per il segno della lingua che `Cornice` ricorda).
+     */
+    public static function troppoAvanti(string $segno): bool
+    {
+        return strcmp($segno, self::forma(Carbon::now('UTC')->addMinutes(self::AVANTI_AL_MASSIMO))) > 0;
+    }
+
     /** Un istante nella forma dei segni. */
     private static function forma(Carbon $istante): string
     {
