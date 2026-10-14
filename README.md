@@ -431,11 +431,12 @@ sua: al browser arriva un 500, e la cornice mostra l'errore di sempre: nel panne
 
 Dalla `v2.11.0` i segni della parte server — `sessione_il` di `Cornice::subito()`, `aggiornati_il` e `sessione_il` di
 `Cornice::dopo()`, `aggiornati_il` dei dati interi e dell'elenco delle notifiche, `segnata_il` e `segnate_il` — non vanno
-mai indietro per lo stesso browser. L'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è
+indietro per lo stesso browser, fra server sfasati di cinque minuti al massimo. L'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è
 l'orologio della parte server se è più avanti di quello, e altrimenti quello più un microsecondo: con due server del
 frontend sfasati, o con l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia
-(fino alla `v2.10.0` la cornice la scartava, e restava chi c'era prima). Due richieste diverse non hanno mai lo stesso
-segno: lo stesso segno c'è solo dentro una richiesta, dove due letture nello stesso istante hanno lo stesso. Anche
+(fino alla `v2.10.0` la cornice la scartava, e restava chi c'era prima). Due richieste diverse, una dopo l'altra, non
+hanno mai lo stesso segno: lo stesso segno c'è dentro una richiesta, dove due letture nello stesso istante hanno lo
+stesso, e in due richieste in volo insieme (sotto, «Che cosa resta»). Anche
 `lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di quelle letture.
 
 - **Che cosa porta**: solo l'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del
@@ -450,17 +451,19 @@ segno: lo stesso segno c'è solo dentro una richiesta, dove due letture nello st
 - **Al massimo cinque minuti avanti**: il cookie vale solo se è avanti dell'orologio della parte server di cinque minuti
   al massimo. Oltre, il segno è l'orologio, la risposta riscrive il cookie, e nel log resta un avviso che non dice
   l'istante del cookie: uno sfasamento di secondi o di minuti fra i server è assorbito, un server avanti di ore o di anni
-  non porta il suo orologio agli altri.
+  non porta il suo orologio agli altri. Per quel browser, allora, è come fino alla `v2.10.0`: la pagina di chi entra da
+  un server indietro di più di cinque minuti può valere come una pagina vecchia.
 - **Per l'informativa**: è un cookie tecnico, necessario al funzionamento della cornice; non serve a profilare, non va a
   terzi e non esce dall'host del modulo. Va citato col suo nome e il suo scopo nell'informativa sui cookie del modulo.
 - **Che cosa serve**: le risposte che danno un segno lo mettono nella coda dei cookie di Laravel, e lo manda
   `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`: il frontend non scrive niente. Una pagina fuori dal gruppo
   `web` dà i segni senza il cookie, come prima.
-- **Che cosa resta**: due richieste in volo insieme leggono lo stesso cookie, e l'ordine dei loro segni è quello degli
-  orologi; un browser che non tiene il cookie — i cookie rifiutati, o un indirizzo `http://`: il prefisso `__Host-` lo
+- **Che cosa resta**: due richieste in volo insieme leggono lo stesso cookie, e i loro segni sono gli orologi dei loro
+  server, nel loro ordine, o lo stesso segno, il cookie più un microsecondo, se il cookie è più avanti di tutti e due; un
+  browser che non tiene il cookie — i cookie rifiutati, o un indirizzo `http://`: il prefisso `__Host-` lo
   vuole `Secure`, e su `http://localhost` alcuni browser lo tengono e Safari no (non provato in un browser) — vale come
-  prima della `v2.11.0`. I server del frontend devono avere comunque l'ora allineata: un server avanti di meno di cinque
-  minuti porta il suo orologio agli altri, per quel browser, finché l'orologio vero non lo raggiunge, e nel frattempo i
+  prima della `v2.11.0`. I server del frontend devono avere comunque l'ora allineata: un server avanti di cinque minuti al
+  massimo porta il suo orologio agli altri, per quel browser, finché l'orologio vero non lo raggiunge, e nel frattempo i
   segni di quel browser avanzano di un microsecondo a richiesta.
 
 ## La cornice

@@ -339,3 +339,15 @@ it('un cookie firmato bene cinque minuti esatti avanti dell\'orologio vale ancor
     expect(dalBrowser('GET', 'uat-segno/solo', null, $buono)->assertOk()->json())->toBe(['2026-10-14T12:05:00.000001Z'])
         ->and(segnoAvvisiNelLog())->toBe([]);
 });
+
+it('una richiesta che chiede più segni, con un cookie oltre i cinque minuti, lascia nel log un avviso solo, e i suoi segni sono l\'orologio (sprint 45 · T2.9; seconda lettura della review della PR #79, N5)', function () {
+    segnoLogInMemoria();
+    Route::middleware('web')->get('uat-segno/due', fn () => [Segno::adesso(), Segno::adesso()]);
+    Carbon::setTestNow(Carbon::parse('2026-10-14 12:06:00', 'UTC'));
+    $buono = valoreDelSegno(dalBrowser('GET', 'uat-segno/solo')->assertOk());
+
+    Carbon::setTestNow(Carbon::parse(SEGNO_ALLE_DODICI));
+
+    expect(dalBrowser('GET', 'uat-segno/due', null, $buono)->assertOk()->json())->toBe([SEGNO_ALLE_DODICI, SEGNO_ALLE_DODICI])
+        ->and(count(segnoAvvisiNelLog()))->toBe(1);
+});

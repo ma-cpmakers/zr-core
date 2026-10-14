@@ -966,8 +966,9 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
     });
 
-    // Sprint 45 · T2 (voce #2001): col cookie del segno, un nodo con l'orologio indietro dà alla pagina di chi è entrato lo stesso
-    // segno dell'ultima data al browser, non uno più vecchio. A parità di segno vale la pagina che arriva: è di chi è entrato.
+    // Sprint 45 · T2 (voce #2001): col cookie del segno, un nodo con l'orologio indietro dà alla pagina di chi è entrato l'ultimo
+    // segno dato al browser più un microsecondo, non uno più vecchio. Il browser, a parità di segno, prende la pagina che arriva:
+    // fino alla correzione della review della PR #79 era il segno che il nodo dava, e la regola resta.
     // Nello stesso workspace la `Cornice` resta montata e decide lei; in un altro la `key` cambia e decide il layout (review della
     // PR #79, R3): il caso si prova nei due.
     it.each([

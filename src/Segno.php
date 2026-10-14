@@ -15,9 +15,9 @@ use Throwable;
  * più vecchio di quello che sa già. Per questo vengono tutti da qui: un orologio solo, quello della parte server, e una
  * forma sola.
  *
- * Dalla `v2.11.0` un segno non va mai indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
+ * Dalla `v2.11.0` un segno non va indietro per lo stesso browser, fra server sfasati di cinque minuti al massimo: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
  * firmato con la chiave dell'applicazione, e un segno nuovo è l'orologio se è più avanti di quello, e altrimenti quello più
- * un microsecondo: due richieste diverse non hanno mai lo stesso segno. Con due server del frontend sfasati, o con
+ * un microsecondo: due richieste una dopo l'altra non hanno mai lo stesso segno. Con due server del frontend sfasati, o con
  * l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia. Il cookie porta solo
  * l'istante e la sua firma: niente della persona né del workspace. Uno che non torna — manomesso, firmato con un'altra
  * chiave, in un'altra forma, vuoto, più di cinque minuti avanti dell'orologio — o che manca non vale: il segno è

@@ -441,9 +441,10 @@ describe('la Cornice', () => {
             .toStrictEqual(['Ada Lovelace', 'ada@example.com']);
     });
 
-    // Sprint 45 · T2 (voce #2001): col cookie del segno i dati di chi è entrato, letti da un nodo con l'orologio indietro, hanno lo
-    // stesso segno degli ultimi dati, non uno più vecchio. A parità di segno valgono i dati che arrivano.
-    it('i dati di un\'altra persona con lo stesso segno dei dati mostrati — il nodo con l\'orologio indietro, frenato dal cookie del segno — sono suoi: la cornice è di chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async () => {
+    // Sprint 45 · T2 (voce #2001): col cookie del segno i dati di chi è entrato, letti da un nodo con l'orologio indietro, non hanno
+    // un segno più vecchio degli ultimi dati (dalla review della PR #79 il segno è l'ultimo più un microsecondo). A parità di
+    // segno, la regola del browser, valgono i dati che arrivano.
+    it('i dati di un\'altra persona con lo stesso segno dei dati mostrati sono suoi: la cornice è di chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const stesso = '2026-10-14T12:00:00.000000Z';
         const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
