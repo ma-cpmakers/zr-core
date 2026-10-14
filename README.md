@@ -1390,6 +1390,19 @@ email della persona quella della sessione: con un'altra, campanella e ricerca no
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
+Dalla `v2.15.0` la richiesta rimandata costa una lettura di io.mostra in meno. Se prima del controller della pagina c'è
+`Cornice::lingua()`, la sua lettura di io.mostra, quando riesce, resta nella sessione (alla chiave
+`zr-core.io-mostra-rimandata`), e `Cornice::dopo()`, nella richiesta rimandata, la usa invece di rifarla: le non lette,
+`aggiornati_il` e `sessione_il` sono quelli di quella lettura, e le chiamate a /v1 della pagina sono quattro invece di
+cinque. Vale a quattro condizioni, tutte dalla parte server: la stessa persona, lo stesso workspace, il segno ancora
+quello che la sessione ricorda per la lingua di quella persona (una lettura fatta dopo, in un'altra richiesta, lo porta
+avanti), e al più 10 secondi dal suo segno. E vale una volta sola: `Cornice::dopo()` la toglie dalla sessione, che la
+usi o no. Una lettura fallita non resta, e la richiesta rimandata rilegge. La toglie anche il cambio di workspace, alla
+prima richiesta che chiede la cornice nel workspace nuovo, e l'uscita, che chiude la sessione. `Cornice::lingua()` e
+`Cornice::dati()` non la prendono: leggono come sempre. Il frontend non fa niente, e dal browser non passa nessun dato
+in più. Con due schede della stessa persona nello stesso workspace, la richiesta rimandata dell'una può prendere la
+lettura fatta per la pagina dell'altra: sono dati della stessa persona, di meno di 10 secondi, col loro segno.
+
 Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l'email della
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche
 sullo stesso workspace: quando lì si apre la campanella o si cerca, la risposta è di chi è entrato. La cornice non la mostra

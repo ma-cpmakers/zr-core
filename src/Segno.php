@@ -77,6 +77,15 @@ final class Segno
     }
 
     /** Un istante nella forma dei segni. */
+    /**
+     * Se un segno è più vecchio dell'orologio di più di `$secondi` secondi (dalla `v2.15.0`, per la lettura di io.mostra che
+     * `Cornice` tiene per la richiesta rimandata): a `$secondi` esatti non lo è.
+     */
+    public static function piuVecchioDi(string $segno, int $secondi): bool
+    {
+        return strcmp($segno, self::forma(Carbon::now('UTC')->subSeconds($secondi))) < 0;
+    }
+
     private static function forma(Carbon $istante): string
     {
         return $istante->format('Y-m-d\TH:i:s.u\Z');

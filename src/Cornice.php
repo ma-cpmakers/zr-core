@@ -43,6 +43,15 @@ final class Cornice
      */
     private const LINGUA = 'zr-core.lingua';
 
+    /**
+     * La lettura di io.mostra riuscita che `lingua()` ha fatto per la pagina, nella sessione, per la richiesta rimandata della
+     * stessa pagina (dalla `v2.15.0`): `dopo()` la prende una volta sola, e la toglie che la usi o no (`perLaRimandata()`).
+     */
+    private const RIMANDATA = 'zr-core.io-mostra-rimandata';
+
+    /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
+    private const SECONDI_DELLA_RIMANDATA = 10;
+
     /** La forma di una lingua: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_` (`it`, `pt-BR`, `zh-Hans-CN`). */
     private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
 
@@ -132,6 +141,8 @@ final class Cornice
         $utente = Sessione::utente();
         $workspace = Sessione::workspace();
 
+        self::tenuta();
+
         if ($utente === null || $workspace === null) {
             return null;
         }
@@ -180,6 +191,7 @@ final class Cornice
         // metterci secondi a non rispondere, e col segno della fine un `non_letti` in ritardo varrebbe nel browser sopra i
         // dati di chi è entrato intanto. Questo è il ripiego: di norma il segno è quello che `lettura()` tiene (sotto).
         $prima = Segno::adesso();
+        self::perLaRimandata();
 
         try {
             $dati = self::dati();
@@ -268,7 +280,9 @@ final class Cornice
 
         $workspace = Sessione::workspace();
 
-        if ($workspace !== null) {
+        if ($workspace === null) {
+            session()->forget(self::RIMANDATA);
+        } else {
             self::lettura($utente, $workspace, false);
             // Come in `dati()`: se intanto la sessione è scaduta resta la persona letta all'inizio.
             $utente = Sessione::utente() ?? $utente;
@@ -345,7 +359,47 @@ final class Cornice
         $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati];
         request()->attributes->set(self::LETTURA, $lettura);
 
+        // La lettura della pagina, se è riuscita, resta per la sua richiesta rimandata; una fallita non resta, e toglie quella di prima.
+        if (! $perIDati) {
+            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito]) : session()->forget(self::RIMANDATA);
+        }
+
         return $lettura;
+    }
+
+    /**
+     * La lettura tenuta per la richiesta rimandata, se è della persona e del workspace della sessione; se non lo è più (un
+     * cambio di workspace, un'altra persona entrata, nessuna sessione) la toglie dalla sessione e dà null.
+     *
+     * @return array{di: array{0: mixed, 1: array<string, mixed>}, segno: string, esito: int}|null
+     */
+    private static function tenuta(): ?array
+    {
+        $tenuta = session(self::RIMANDATA);
+
+        if (is_array($tenuta) && ($tenuta['di'] ?? null) === [Sessione::utente()['id'] ?? null, Sessione::workspace()]) {
+            return $tenuta;
+        }
+
+        session()->forget(self::RIMANDATA);
+
+        return null;
+    }
+
+    /**
+     * Nella richiesta rimandata, la lettura che `lingua()` ha fatto per la pagina diventa quella di questa richiesta, e i dati
+     * non rileggono io.mostra: se è della persona e del workspace della sessione, se il suo segno è ancora quello che la
+     * sessione ricorda per la lingua di quella persona (una lettura dopo, in un'altra richiesta, lo porta avanti) e se ha al più
+     * `SECONDI_DELLA_RIMANDATA` secondi. Vale una volta sola: la toglie dalla sessione sempre.
+     */
+    private static function perLaRimandata(): void
+    {
+        $tenuta = self::tenuta();
+        session()->forget(self::RIMANDATA);
+
+        if ($tenuta !== null && ! request()->attributes->has(self::LETTURA) && $tenuta['segno'] === (self::linguaIl()['lingua_il'] ?? null) && ! Segno::piuVecchioDi($tenuta['segno'], self::SECONDI_DELLA_RIMANDATA)) {
+            request()->attributes->set(self::LETTURA, [...$tenuta, 'nei_dati' => false]);
+        }
     }
 
     /**
