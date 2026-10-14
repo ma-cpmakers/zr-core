@@ -3809,7 +3809,10 @@ it('il README dice ciò che la review della PR #44 ha chiesto: il numero scende 
     'R2: i moduli dei dati valgono solo per il loro workspace' => ['paragrafo', '`dati.prodotti` vale solo se quello slug è `dati.workspace.slug`'],
     'R2: per un altro workspace' => ['paragrafo', 'il pannello dà ogni voce del `registro`, tranne `home`, come `disponibile`'],
     'R3: segnaLetta è della cornice' => ['punto', 'La funzione che lo fa, `segnaLetta`, è della cornice e l\'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta'],
-    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e la risorsa si apre lo stesso'],
+    // Sprint 53 · T2 (voce #2084): senza la lettura la risorsa non si apre, e un errore non apre niente.
+    'R6: la forma dell\'id' => ['punto', 'Se l\'id della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e dalla `v2.14.0` la risorsa non si apre'],
+    'l\'errore della lettura non apre (sprint 53 · T2)' => ['punto', 'Dalla `v2.14.0` la risorsa si apre solo se la lettura riesce, cioè se la rotta risponde `letta: true`'],
+    'l\'errore non si vede (sprint 53 · T2)' => ['punto', 'A schermo niente dice che il clic non è andato: l\'`AppShell` chiude il pannello al clic'],
     'R7: la risposta finta senza workspace' => ['punto', 'Una risposta finta di `GET /cornice/notifiche` senza `workspace` manda ogni clic alla pagina delle notifiche: le si aggiunge `workspace`, con lo slug dei dati della pagina'],
     'R7: la richiesta in più' => ['punto', 'Un clic su una notifica non letta che apre la sua risorsa fa partire una richiesta in più, la `PATCH` della lettura'],
     'R7: i due elementi' => ['punto', 'chi conta i figli del contenitore della `Cornice`, o ne prende l\'unico, ne trova due'],

@@ -920,7 +920,14 @@ cornice === null ? pagina : (
   il clic la aspettava: più sotto, «La cornice in due dati»). La funzione che lo fa, `segnaLetta`, è della cornice
   e l'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta. Se l'id
   della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e
-  la risorsa si apre lo stesso. Una notifica già letta, e
+  dalla `v2.14.0` la risorsa non si apre (fino alla `v2.13` si apriva lo stesso). Dalla `v2.14.0` la risorsa si apre solo se
+  la lettura riesce, cioè se la rotta risponde `letta: true`: su un errore — la rete, un 5xx, un 429, un 403, una risposta
+  senza `letta: true` — non si apre niente, anche quando l'errore è della persona a schermo, perché nel browser un 5xx
+  della rotta non si distingue da quello di un proxy davanti a lei. La notifica resta da leggere, e un altro clic chiede di
+  nuovo la lettura. A schermo niente dice che il clic non è andato: l'`AppShell` chiude il pannello al clic, e la cornice
+  non ha un posto per dirlo (né un testo nuovo, che l'ingresso non ha lo spazio per portare). Il 403
+  `accettazione_richiesta` porta come sempre alla cornice ridotta. Fino alla `v2.13` un errore della persona a schermo
+  apriva la risorsa lo stesso. Una notifica già letta, e
   una il cui clic apre la pagina delle notifiche, non chiedono niente. Il numero sulla campanella scende di uno quando la
   parte server risponde `letta: true`, non al clic, e solo per i dati che la pagina aveva al clic: dei dati letti dopo
   il clic non si può sapere se la contano già letta — il loro segno è preso prima della lettura dal backoffice,

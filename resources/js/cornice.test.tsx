@@ -2344,13 +2344,15 @@ describe('il pannello delle notifiche', () => {
      * pagina (`workspace`, dalla `v1.12.0`), come succede con una scheda sola.
      */
     async function apertiDalPannello(datiDellaPagina: DatiDellaCornice, prodotto?: string, elenco: { id: string }[] = conGliId, dellElenco: Record<string, unknown> = { workspace: datiDellaPagina.workspace.slug }): Promise<unknown[]> {
-        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, ...dellElenco })));
+        // La lettura con un clic riesce: dalla `v2.14.0` la risorsa si apre solo allora (sprint 53 · T2).
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo.endsWith('/lettura') ? risposta({ data: { letta: true } }) : risposta({ data: elenco, ...dellElenco }))));
         const naviga = vi.fn();
         await mostra(<Cornice dati={datiDellaPagina} product={prodotto} naviga={naviga} onLogout={esciSenzaEffetto} />);
         for (let indice = 0; indice < elenco.length; indice++) {
             await clic(uno('.zr-bell'));
             expect(voci()).toHaveLength(elenco.length);
             await clic(voci()[indice] ?? null);
+            await act(prossimoGiro);
             expect(uno('.zr-notif')).toBeNull();
         }
 
@@ -2770,7 +2772,7 @@ describe('il pannello delle notifiche', () => {
         ['la risposta non ha `data`', async () => risposta({ segnata_il: '2026-10-06T12:00:08.123456Z' })],
         ['la risposta non è un oggetto', async () => risposta(null)],
         ['la risposta non è JSON', async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('uat: non è JSON'); } }) as unknown as Response],
-    ] satisfies [string, (id: string) => Promise<Response>][])('se la lettura fallisce — %s — la risorsa si è aperta lo stesso e in pagina non cambia niente: né il numero, né la notifica, né l\'avviso, e nessun errore resta non gestito (sprint 22 · T2.3)', async (_come, allaLettura) => {
+    ] satisfies [string, (id: string) => Promise<Response>][])('se la lettura fallisce — %s — la risorsa non si apre (dallo sprint 53 · T2.1: fino alla v2.13 si apriva lo stesso) e in pagina non cambia niente: né il numero, né la notifica, né l\'avviso, e nessun errore resta non gestito (sprint 22 · T2.3)', async (_come, allaLettura) => {
         const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], allaLettura);
         vi.stubGlobal('fetch', fetchFinto);
         const naviga = vi.fn();
@@ -2778,7 +2780,7 @@ describe('il pannello delle notifiche', () => {
 
         await apre(0);
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
-        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(naviga).not.toHaveBeenCalled();
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
 
         // Riaperto il pannello, con l'elenco che la parte server dà ancora: quella notifica è ancora da leggere.
@@ -2892,14 +2894,14 @@ describe('il pannello delle notifiche', () => {
     // Review della PR #44, R6. L'id di una notifica arriva dal backoffice, e la parte server controlla solo che sia un testo:
     // con `.` o `..` il browser manderebbe la `PATCH`, col gettone CSRF, a un'altra rotta. La lettura non parte, e il resto
     // del clic non cambia.
-    it.each(['.', '..'])('un clic su una notifica non letta il cui id è «%s» apre la sua risorsa, e la lettura non parte: il numero resta com\'è (review della PR #44, R6)', async (id) => {
+    it.each(['.', '..'])('un clic su una notifica non letta il cui id è «%s» non apre la sua risorsa, e la lettura non parte: il numero resta com\'è (review della PR #44, R6; dallo sprint 53 · T2.1 senza la lettura niente si apre, fino alla v2.13 si apriva)', async (id) => {
         const fetchFinto = rotteDelClic([{ data: [{ ...delContatto, id }, dellaPipeline, dellaNota, dellaScheda], lettoIl: alSecondo(5) }]);
         vi.stubGlobal('fetch', fetchFinto);
         const naviga = vi.fn();
         await mostra(<Cornice dati={letti(alSecondo(3), 3)} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
 
         await apre(0);
-        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(naviga).not.toHaveBeenCalled();
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
     });
@@ -5924,7 +5926,7 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(pulsantiDelPannello()).toStrictEqual([]);
     });
 
-    it('lo dice anche la lettura di una notifica con un clic: se la rotta risponde 403 `accettazione_richiesta` la risorsa si apre lo stesso, e la cornice passa allo stato ridotto (sprint 24 · T2.5)', async () => {
+    it('lo dice anche la lettura di una notifica con un clic: se la rotta risponde 403 `accettazione_richiesta` la cornice passa allo stato ridotto, e la risorsa non si apre (sprint 24 · T2.5; dallo sprint 53 · T2.3: fino alla v2.13 si apriva lo stesso)', async () => {
         const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
         const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche' ? risposta({ data: [delContatto], workspace: 'acme-marketing' }) : daAccettare()));
         vi.stubGlobal('fetch', fetchFinto);
@@ -5934,7 +5936,8 @@ describe('chi non ha accettato i documenti legali', () => {
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-notif-list .zr-notif-item'));
         expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
-        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        await act(prossimoGiro);
+        expect(naviga).not.toHaveBeenCalled();
         expect(cornice()).toStrictEqual(ridotta);
     });
 
@@ -6019,8 +6022,7 @@ describe('chi non ha accettato i documenti legali', () => {
     // mostra — riuscita o no: un errore della stessa persona non ferma l'apertura, e la notifica resta da leggere.
     it.each<[string, () => Response, string]>([
         ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), '6'],
-        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), '7'],
-    ])('su una pagina caricata da meno di 30 secondi, il clic su una notifica non letta con una destinazione la apre quando la lettura di chi la cornice mostra risponde, %s: non prima, e una volta sola (sprint 50 · T4.2, T4.3)', async (_come, laRisposta, numero) => {
+    ])('su una pagina caricata da meno di 30 secondi, il clic su una notifica non letta con una destinazione la apre quando la lettura di chi la cornice mostra risponde, %s: non prima, e una volta sola (sprint 50 · T4.2; la riga del 500, T4.3, dallo sprint 53 · T2.1 non apre: è fra i casi di T2.1)', async (_come, laRisposta, numero) => {
         const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
         const lettura = inAttesa();
         const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
@@ -6046,10 +6048,10 @@ describe('chi non ha accettato i documenti legali', () => {
     // Sprint 52 · T4 (voce #2082): sotto il tetto un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto,
     // non fa un'altra lettura e non apre la risorsa un'altra volta. Alla risposta la lettura non è più in volo: dopo un errore
     // un altro clic la richiede, dopo una lettura riuscita la notifica è letta e il clic la apre senza leggere.
-    it.each<[string, () => Response, number]>([
-        ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), 1],
-        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), 2],
-    ])('su una pagina caricata da meno di 30 secondi, due clic sulla stessa notifica prima che la lettura risponda fanno una lettura sola e, alla risposta, %s, una sola apertura (sprint 52 · T4.1)', async (_come, laRisposta, letturePoi) => {
+    it.each<[string, () => Response, number, string[][]]>([
+        ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), 1, [['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]],
+        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), 2, []],
+    ])('su una pagina caricata da meno di 30 secondi, due clic sulla stessa notifica prima che la lettura risponda fanno una lettura sola e, alla risposta, %s, al più un\'apertura: una alla lettura riuscita, nessuna all\'errore (sprint 52 · T4.1; sprint 53 · T2.1)', async (_come, laRisposta, letturePoi, aperte) => {
         // Il pannello si chiude al clic, e riaperto chiede l'elenco: dopo una lettura riuscita la parte server la dà letta.
         const sulServer = { letta: false };
         const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
@@ -6077,7 +6079,7 @@ describe('chi non ha accettato i documenti legali', () => {
         sulServer.letta = arrivata.ok;
         await lettura.arriva(arrivata);
         await act(prossimoGiro);
-        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(naviga.mock.calls).toStrictEqual(aperte);
 
         await unClic();
         expect(letture()).toBe(letturePoi);
@@ -6166,6 +6168,66 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(readme.includes('e la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi')).toBe(false);
         expect(readme.includes('Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina')).toBe(true);
         expect(readme.includes('la cornice tiene una lettura sola in volo')).toBe(true);
+    });
+
+    // Sprint 53 · T2 (voce #2084): la destinazione si apre solo con la lettura riuscita. Un errore — anche della persona a
+    // schermo: nel browser un 5xx della rotta non si distingue da quello di un proxy — non apre niente, la notifica resta da
+    // leggere e un altro clic riprova. A schermo niente lo dice: l'`AppShell` chiude il pannello al clic.
+    it.each<[string, () => Promise<Response>]>([
+        ['un errore di rete', () => Promise.reject(new TypeError('Failed to fetch'))],
+        ['un 500 senza corpo', () => Promise.resolve(new Response('', { status: 500 }))],
+        ['un 502 della rotta, con la persona a schermo', () => Promise.resolve(risposta({ errore: 'backoffice_non_risponde', persona: diSempre.persona.email }, 502))],
+        ['un 429 col suo Retry-After', () => Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '30' } }))],
+        ['un 200 senza `letta: true`', () => Promise.resolve(risposta({ data: { letta: false }, persona: diSempre.persona.email }))],
+    ])('su %s alla lettura con un clic la destinazione non si apre, la notifica resta da leggere e un altro clic chiede di nuovo la lettura (sprint 53 · T2.1, T2.2)', async (_quale, laRisposta) => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : laRisposta()));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        const letture = () => fetchFinto.mock.calls.filter(([indirizzo]) => indirizzo !== '/cornice/notifiche').length;
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        const prima = cornice().numero;
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        await act(prossimoGiro);
+        expect(letture()).toBe(1);
+        expect(naviga).not.toHaveBeenCalled();
+        expect(cornice().numero).toBe(prima);
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif-list .zr-notif-item')?.classList.contains('is-unread')).toBe(true);
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        await act(prossimoGiro);
+        expect(letture()).toBe(2);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('al 403 `accettazione_richiesta` della lettura con un clic la cornice va nello stato ridotto e la destinazione non si apre (sprint 53 · T2.3)', async () => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email })
+            : risposta({ errore: 'accettazione_richiesta' }, 403)));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        await act(prossimoGiro);
+        expect(naviga).not.toHaveBeenCalled();
+        expect(cornice()).toStrictEqual(ridotta);
+    });
+
+    it('il README dice che su un errore della lettura il clic non apre niente, senza un testo, e che si riprova col clic (sprint 53 · T2.4)', () => {
+        const readme = readFileSync(resolve(process.cwd(), 'README.md'), 'utf8').replace(/\s+/g, ' ');
+        expect(readme.includes('Dalla `v2.14.0` la risorsa si apre solo se la lettura riesce')).toBe(true);
+        expect(readme.includes('un altro clic chiede di nuovo la lettura')).toBe(true);
+        expect(readme.includes('A schermo niente dice che il clic non è andato')).toBe(true);
+        expect(readme.includes('la richiesta non parte, e la risorsa si apre lo stesso')).toBe(false);
     });
 
     // Sprint 50 · T4 (voce #2059): il clic non aspetta niente quando non c'è una lettura da chiedere. Da 30 secondi in poi il

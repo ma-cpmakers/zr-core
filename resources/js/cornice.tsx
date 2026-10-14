@@ -679,8 +679,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     const unaSola = sullaCampanella === 1;
     // La richiesta parte qui, nello stesso giro del clic. Se fallisce non cambia niente in pagina; alla risposta resta ciò che la
     // rotta ha detto, coi dati e l'elenco del clic. Dà una promessa che si chiude all'esito, riuscito o no — con un errore della
-    // persona a schermo —, e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un
-    // errore senza niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
+    // persona a schermo —, con l'id della notifica — un testo mai vuoto — solo se la lettura è riuscita (dalla `v2.14.0`: chi la
+    // aspetta apre la risorsa solo allora), e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un errore senza
+    // niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
     const [daDire, setDaDire] = useState<string>();
     const leggi = (id: string, workspace: string) => {
         const questi = dati;
@@ -690,6 +691,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             ({ il }) => {
                 setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
                 setDaDire(id);
+
+                return id;
             },
             // La notifica resta da leggere, e il numero com'era.
             (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
@@ -912,7 +915,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         if (risorsa !== undefined && !notifica!.letta) {
             if (!letturaInVolo.current) {
                 letturaInVolo.current = true;
-                leggi(notifica!.id, elencoDi!).then(() => ((letturaInVolo.current = false), naviga(risorsa)));
+                leggi(notifica!.id, elencoDi!).then((letta) => ((letturaInVolo.current = false), letta && naviga(risorsa)));
             }
             return;
         }
