@@ -5101,10 +5101,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
     // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
-    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto scende a 18.229 byte, il peso di oggi più
-    // i 48 byte misurati per le quattro correzioni che lo aspettano.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con gzip. Dalla `v2.8.0` è sceso di 325 byte'],
-    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non riportano chi c\'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre'],
+    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
+    // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.789 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);

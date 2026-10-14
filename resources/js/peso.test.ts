@@ -68,8 +68,12 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * che finisce dopo la ricarica (#2036, 6), il tetto delle ricariche (#2053, 26) e la lingua del primo disegno (#2052, 0) —,
  * e niente oltre (zr-pm, 13/10/2026, nota 12843 del progetto). È un numero scritto, non il peso di oggi: scende di 325 byte.
  * Sprint 42 · T4: la prima delle quattro è entrata, coi suoi 16 byte (ingresso 18.197).
+ *
+ * Sprint 50 · T5.4 (voce #2056): i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d'ingresso
+ * (T1, voce #2073), e il tetto scende a ciò che l'ingresso pesa a fine sprint, con le correzioni di T3, T4 e T5 dentro: 17.789
+ * byte, 440 meno di prima, senza margine.
  */
-const TETTO_DELL_INGRESSO = 18_181 + 16 + 6 + 26;
+const TETTO_DELL_INGRESSO = 17_789;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -332,18 +336,18 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
-    // Sprint 42 · T3 (voce #2054, T2.5). Con la ricerca in un pezzo a richiesta l'ingresso pesa 18.181 byte, e il tetto scende: è
-    // quel peso più i 48 byte misurati per le quattro correzioni che aspettano (#1975, #2036, #2053, #2052), non oltre.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.229 byte: i 18.181 misurati con la ricerca in un pezzo a richiesta, più i 16 byte di Indietro senza il segno della lettura, i 6 dell\'attesa che finisce e i 26 del tetto delle ricariche (sprint 42 · T2.5)', () => {
+    // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
+    // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.789 byte: la misura a fine sprint 50, con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro (sprint 42 · T2.5; sprint 50 · T5.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_229);
+        expect(TETTO_DELL_INGRESSO).toBe(17_789);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.229 byte, non più quelli di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.789 byte, non più quelli di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '18.229 byte') > 0, volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.789 byte') > 0, volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {

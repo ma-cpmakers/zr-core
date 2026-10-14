@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
@@ -1188,6 +1188,17 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
     const PEZZO = `${CARTELLA}campanella-D5veh6YO.js`;
     const nonArrivato = (indirizzo: string) => new TypeError(`Failed to fetch dynamically imported module: ${indirizzo}`);
 
+    // Sprint 50 · T5 (voce #2056): dopo un pezzo non arrivato la richiesta dopo aspetta. Nei casi che non guardano l'attesa
+    // l'orologio della pagina fa un minuto e un secondo a ogni lettura: ogni richiesta arriva quando l'attesa è finita.
+    beforeEach(() => {
+        let adesso = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => (adesso += 61_000));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     /**
      * Chi importa, al posto di `import()`: respinge con gli errori dati, uno per tentativo, e poi dà il pezzo. `testo` è la
      * funzione che importa il pezzo come la scrive la build, col nome che ha dato al file; `qui` l'indirizzo del JS che la
@@ -1331,6 +1342,56 @@ describe('un pezzo a richiesta che non arriva si richiede con un altro indirizzo
         await expect(chiedi()).rejects.toBe(errore);
         await expect(chiedi()).rejects.toBe(errore);
         await chiedi();
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=2`]);
+    });
+
+    /** L'orologio della pagina fermo dove dice il caso. */
+    function orologio() {
+        const ora = { adesso: 0 };
+        vi.spyOn(performance, 'now').mockImplementation(() => ora.adesso);
+
+        return ora;
+    }
+
+    it('dopo ogni pezzo non arrivato la richiesta dopo aspetta 1 secondo dal fallimento, poi 2, 4 e così via, fino a 60 e non di più: nell\'attesa non importa niente ed è respinta con l\'errore di prima; arrivato il pezzo niente aspetta (sprint 50 · T5.1, T5.2)', async () => {
+        const ora = orologio();
+        const errori = Array.from({ length: 9 }, (_, n) => nonArrivato(n ? `${PEZZO}?r=${n}` : PEZZO));
+        const { chiamate, chiedi } = chiImporta([...errori]);
+
+        await expect(chiedi()).rejects.toBe(errori[0]);
+        for (const [n, secondi] of [1, 2, 4, 8, 16, 32, 60, 60].entries()) {
+            const fallito = ora.adesso;
+            ora.adesso = fallito + secondi * 1_000 - 1;
+            await expect(chiedi()).rejects.toBe(errori[n]);
+            expect(chiamate).toHaveLength(n + 1);
+
+            ora.adesso = fallito + secondi * 1_000;
+            await expect(chiedi()).rejects.toBe(errori[n + 1]);
+            expect(chiamate).toHaveLength(n + 2);
+            expect(chiamate.at(-1)).toBe(`${PEZZO}?r=${n + 1}`);
+        }
+
+        ora.adesso += 60_000;
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        await expect(chiedi()).resolves.toBe('il pezzo');
+        expect(chiamate.slice(-2)).toStrictEqual([`${PEZZO}?r=9`, `${PEZZO}?r=9`]);
+    });
+
+    it('chi chiede senza attesa — «Riprova» del pannello delle notifiche — importa subito, anche nell\'attesa, e un altro fallimento allunga l\'attesa di chi chiede dopo (sprint 50 · T5.5)', async () => {
+        const ora = orologio();
+        const errori = [nonArrivato(PEZZO), nonArrivato(`${PEZZO}?r=1`)];
+        const { chiamate, chiedi } = chiImporta([...errori]);
+
+        await expect(chiedi()).rejects.toBe(errori[0]);
+        ora.adesso = 500;
+        await expect(chiedi(true)).rejects.toBe(errori[1]);
+        expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`]);
+
+        ora.adesso = 2_499;
+        await expect(chiedi()).rejects.toBe(errori[1]);
+        expect(chiamate).toHaveLength(2);
+        ora.adesso = 2_500;
+        await expect(chiedi()).resolves.toBe('il pezzo');
         expect(chiamate).toStrictEqual([undefined, `${PEZZO}?r=1`, `${PEZZO}?r=2`]);
     });
 });

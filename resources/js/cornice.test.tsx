@@ -6830,6 +6830,22 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
+    // Sprint 50 · T5 (voce #2056): dopo un pezzo non arrivato chi lo chiede aspetta (`pezzoARichiesta`), ma «Riprova» no: lo
+    // chiede senza attesa. L'apertura della campanella lo chiede come sempre.
+    it('l\'apertura della campanella chiede il pezzo con la sua attesa, «Riprova» senza (sprint 50 · T5.5)', async () => {
+        const campanella = pezzo();
+        campanella.stato.rotto = true;
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(campanella.chiesto.mock.calls.map(([subito]) => Boolean(subito))).toStrictEqual([false]);
+
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(campanella.chiesto.mock.calls.map(([subito]) => Boolean(subito))).toStrictEqual([false, true]);
+        expect(errore()).not.toBeNull();
+    });
+
     it('alla seconda apertura l\'elenco si richiede e le frasi no: restano in memoria (T1.6)', async () => {
         const frasi = caricatore();
         const fetchFinto = conLElenco();

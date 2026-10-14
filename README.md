@@ -99,10 +99,9 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con
-gzip. Dalla `v2.8.0` è sceso di 325 byte: la ricerca è uscita dal JS d'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel
-peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non
-riportano chi c'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre. Hanno
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.789 byte con
+gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
+d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -701,7 +700,10 @@ cornice === null ? pagina : (
   lo chiede allo stesso indirizzo con una coda in più (`?r=1`, poi `?r=2`), e il browser lo richiede. È lo stesso file:
   serve che chi dà la build ignori la coda, come fa di solito un server di file. La coda cambia a ogni tentativo fallito, non a ogni
   richiesta: due richieste fatte insieme chiedono lo stesso indirizzo, che per il browser è una richiesta sola (provato in
-  Chromium). Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
+  Chromium). Dalla `v2.11.5` fra un tentativo fallito e il successivo c'è un'attesa: dopo l'n-esimo il pezzo non si richiede
+  prima di 2^(n−1) secondi dal fallimento (1, 2, 4… e mai più di 60), e nell'attesa chi lo chiede ha subito l'errore di
+  prima — per la ricerca, che ha la stessa attesa, il suo avviso. «Riprova», che la persona preme, non aspetta; la
+  campanella aperta di nuovo sì. Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
   della cornice, là dove lei importa il pezzo, risolto sull'indirizzo di quel JS. In `import()` entra solo il pezzo della
   campanella, qualunque cosa dica l'errore, e «Riprova» lo richiede anche se l'indirizzo del JS d'ingresso ha una coda sua
   (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, anche una

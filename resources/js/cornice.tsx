@@ -10,7 +10,7 @@ import { Alert, AppShell, Button } from './zeiras/componenti';
 // Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
 // chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
 // già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
-const caricaFrasi = (lingua: string) => chiediLaCampanella().then((arrivata) => arrivata.caricaFrasi(lingua));
+const caricaFrasi = (lingua: string, subito?: unknown) => chiediLaCampanella(subito).then((arrivata) => arrivata.caricaFrasi(lingua));
 const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -568,7 +568,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
     // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
-    const chiedi = (svuota: boolean) => {
+    const chiedi = (svuota: boolean, subito?: unknown) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
@@ -576,7 +576,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
         const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
-        const frasi = caricaFrasi(lingua);
+        const frasi = caricaFrasi(lingua, subito);
         frasi.catch(() => undefined);
         chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
             ({ elenco, il, workspace }) => {
@@ -617,11 +617,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
     const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
-    // da lì.
-    const carica = () => {
+    // da lì. «Riprova» chiede il pezzo della campanella senza l'attesa che segue un pezzo non arrivato (`subito`).
+    const carica = (subito?: unknown) => {
         setNeRestano(undefined);
         setFrasiChieste(undefined);
-        chiedi(true);
+        chiedi(true, subito);
     };
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
@@ -980,7 +980,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
-                onRetryNotifications: ridotta ? undefined : carica,
+                onRetryNotifications: ridotta ? undefined : () => carica(true),
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),
