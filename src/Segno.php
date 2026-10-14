@@ -93,7 +93,7 @@ final class Segno
     {
         $adesso = Carbon::now('UTC');
 
-        return strcmp($istante, self::forma($adesso->copy()->subSeconds($secondi))) >= 0 && strcmp($istante, self::forma($adesso)) <= 0;
+        return strcmp($istante, self::forma($adesso->copy()->subSeconds($secondi))) >= 0 && $adesso->isAfter('2000-01-01');
     }
 
     /** Un istante nella forma dei segni. */
