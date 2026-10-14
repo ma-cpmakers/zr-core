@@ -966,6 +966,25 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
     });
 
+    // Sprint 45 · T2 (voce #2001): col cookie del segno, un nodo con l'orologio indietro dà alla pagina di chi è entrato lo stesso
+    // segno dell'ultima data al browser, non uno più vecchio. A parità di segno vale la pagina che arriva: è di chi è entrato.
+    it('la pagina di chi è entrato con lo stesso segno della pagina di prima — il nodo con l\'orologio indietro, frenato dal cookie del segno — è sua: avatar, moduli e non lette dicono chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const stesso = '2026-10-14T12:00:00.000000Z';
+        await inDue({ subito: { ...subito, sessione_il: stesso }, dopo: { ...dopo, aggiornati_il: stesso, sessione_il: stesso } }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: stesso };
+        await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace: subito.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: stesso, sessione_il: stesso } }, <PaginaB key="2" />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
     it('il verso in avanti resta anche coi segni: un `subito` con la sessione letta dopo e un\'altra persona la mostra da subito, e la cornice riparte ridotta senza niente di chi c\'era prima (sprint 36 · T3.3)', async () => {
         const diPrima: DatiSubito & { sessione_il: string } = { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' };
         const diAdesso: DatiSubito & { sessione_il: string } = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };

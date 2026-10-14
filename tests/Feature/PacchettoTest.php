@@ -5610,6 +5610,29 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
 ]);
 
+// Sprint 45 · T2.7 (voce #2001): il cookie del segno, detto a chi installa: che cosa porta, gli attributi, che cosa non vale,
+// lo scopo per l'informativa, che cosa serve e che cosa resta. La guida lo rimanda all'informativa.
+it('il README dice il cookie del segno — nome, scopo per l\'informativa, contenuto, attributi e durata, che cosa serve e che cosa resta —, e la guida lo rimanda all\'informativa (sprint 45 · T2.7)', function (string $dove, string $frase) {
+    $testi = [
+        'readme' => suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'il titolo' => ['readme', '### Il cookie del segno'],
+    'il nome e che cosa fa' => ['readme', 'L\'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è il più avanti fra l\'orologio della parte server e quello'],
+    'che cosa porta' => ['readme', 'solo l\'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del frontend): niente della persona né del workspace'],
+    'gli attributi e la durata' => ['readme', '`Path=/`, nessun `Domain` (il prefisso `__Host-` lo lega all\'host del modulo), `Secure`, `HttpOnly`, `SameSite=Lax`; scade con la sessione'],
+    'che cosa non vale' => ['readme', 'manomesso, firmato con un\'altra chiave, in un\'altra forma, vuoto o mancante, il segno è l\'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie'],
+    'per l\'informativa' => ['readme', 'è un cookie tecnico, necessario al funzionamento della cornice'],
+    'che cosa serve' => ['readme', 'lo manda `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`'],
+    'che cosa resta: due richieste insieme' => ['readme', 'due richieste in volo insieme leggono lo stesso cookie, e l\'ordine dei loro segni è quello degli orologi'],
+    'che cosa resta: un browser che non lo tiene' => ['readme', 'un browser che non tiene il cookie — un indirizzo `http://` che non è `localhost`, i cookie rifiutati — vale come prima della `v2.11.0`'],
+    'la guida: il cookie' => ['guida', 'Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l\'ultimo dato sta nel cookie `__Host-zr-core-segno`'],
+    'la guida: l\'informativa' => ['guida', 'citalo nell\'informativa sui cookie del modulo, come cookie tecnico'],
+]);
+
 // Sprint 38 · T2.5 (voce #2027): le tre cose che un frontend non fa con `subito` e `dopo`, e che cosa fa la cornice se
 // succede. In grassetto, tutte e tre, e dove il frontend scrive le due props: non in una nota in fondo.
 it('README e guida dicono in grassetto le tre cose che un frontend non fa con `subito` e `dopo`, e che la cornice resta in attesa: accanto all\'esempio e nel capoverso «In due dati», una volta sola (sprint 38 · T2.5)', function (string $file, string $da, string $a, array $inGrassetto) {
