@@ -84,12 +84,14 @@ export class TroppeRichieste extends Error {
 /**
  * Chi la cornice mostra adesso, con l'email, o nessuno: lo dice la cornice quando si monta, e lo toglie quando si smonta
  * (dalla `v2.7.0`; chiamata senza niente, toglie). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
- * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo.
+ * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo. Con due cornici è
+ * l'ultima montata, e una cornice che si smonta toglie solo sé stessa (`era`, la sua email, dalla `v2.11.5`): se dopo di lei
+ * se n'è montata un'altra, a schermo resta quella. Senza `era` vale chi è a schermo, cioè si scrive sempre.
  */
 export let aSchermo: string | undefined;
 
-export function mostra(email?: string): void {
-    aSchermo = email;
+export function mostra(email?: string, era = aSchermo): void {
+    if (era == aSchermo) aSchermo = email;
 }
 
 /**

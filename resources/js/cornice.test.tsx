@@ -4050,6 +4050,40 @@ describe('il pannello delle notifiche', () => {
         }
     });
 
+    // Sprint 50 · T3 (voce 2065): due cornici nel documento. Una cornice che si smonta toglie chi è a schermo solo se è ancora lei:
+    // se dopo di lei se n'è montata un'altra, a schermo resta quella. Così, allo scadere dei 30 secondi, la pagina di chi ha
+    // risposto non si ricarica anche quando la sua cornice è stata montata prima che quella di prima si smontasse; e una pagina
+    // rimasta senza nessuna cornice si ricarica, come dalla `v2.10.0`.
+    it.each<[string, boolean, number]>([
+        ['la cornice di chi ha risposto montata prima che quella di prima si smonti: la sua pagina non si ricarica', true, 0],
+        ['nessuna cornice montata dopo quella di prima: la pagina si ricarica', false, 1],
+    ])('su una pagina caricata da meno di 30 secondi, dopo l\'elenco di un\'altra persona, con %s (sprint 50 · T3.1, T3.2)', async (_come, conLAltra, volte) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        vi.stubGlobal('fetch', rotteDiUnaPersona({ persona: grace.email }));
+        caricataDa(10_000);
+        const diPrima = <Cornice key="di-prima" dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />;
+        const diGrace = <Cornice key="di-grace" dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />;
+        await mostra(<>{[diPrima]}</>);
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await clicEPassano(uno('.zr-bell'), 5_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            if (conLAltra) {
+                await mostra(<>{[diPrima, diGrace]}</>);
+                await mostra(<>{[diGrace]}</>);
+                expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+            } else {
+                await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
+            }
+
+            await act(() => vi.advanceTimersByTimeAsync(25_000));
+            expect(ricarica).toHaveBeenCalledTimes(volte);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {

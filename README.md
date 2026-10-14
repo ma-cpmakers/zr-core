@@ -1394,10 +1394,12 @@ a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi 
 (più sotto). Se chi ha risposto è una
 terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
 quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
-su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
-smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica. Se invece l'orologio dei 30
-secondi è già partito, allo scadere quel limite fa ricaricare la pagina anche quando a schermo c'è già la cornice di chi ha
-risposto: per la cornice nessuno è a schermo.
+su una cornice sola nel documento. Con due, a schermo è quella montata per ultima, e una cornice che si smonta toglie chi
+è a schermo solo se è ancora lei (dalla `v2.11.5`): se la cornice di chi ha risposto si monta prima che quella di prima
+sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica. Resta un limite:
+smontata la cornice montata per ultima mentre l'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non
+si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c'è la cornice
+di chi ha risposto.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
