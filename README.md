@@ -398,8 +398,9 @@ nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic 
 segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
 prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
 entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Dalla `v2.9.0`
-anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte. Restano fuori due
-cose. Un JS di prima della `v2.6.0` rimasto in una
+anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte, e allora la
+destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua.
+Restano fuori due cose. Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e la rotta gli risponde come
 prima: elenco e ricerca dicono di chi sono, e quel JS ricarica la pagina se è dalla `v2.4.0` in poi, ma il suo clic su una
 notifica la segna ancora a chi è entrato, finché la scheda non si ricarica. E dei dati della cornice senza l'email della
@@ -1254,7 +1255,10 @@ da io.mostra, i più recenti. Dalla `v2.9.0`, con la stessa persona, vale la lin
 `dopo` non è riletto: una pagina che rilegge il solo `subito` dopo che la persona ha cambiato lingua ha i testi della
 cornice nella lingua nuova (a una visita era già così, perché `dopo` è richiesto di nuovo), e moduli, workspace e numero
 delle notifiche restano quelli del `dopo` che c'è finché non è riletto (provato in Chromium 151 sulla pagina di prova del
-layout). Da `subito` passa la sola
+layout). Il `subito` riletto porta la lingua nuova solo se la sessione l'ha già: `Cornice::subito()` non chiama il
+backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`. Con `Cornice::lingua()` prima
+del controller la rilegge la stessa richiesta; senza, e senza un'altra richiesta che l'abbia riletta dopo il `dopo` che la
+pagina ha, il `subito` riletto ha la lingua di prima e niente cambia. Da `subito` passa la sola
 lingua, e solo se `dopo` dice di chi è e il segno della sessione c'è da tutte e due le parti: senza, vale `dopo` come
 prima. Un caso resta: il segno di `dopo` è l'istante in cui la sua lettura comincia, e la sua lingua è quella riletta da
 io.mostra alla fine. Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di
@@ -1291,7 +1295,9 @@ segna niente. Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422
 Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, nell'intestazione `Persona` e non più nel
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
 notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
-ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»).
+ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
+una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano: la risorsa si apre anche se sono arrivati
+prima, con la sessione di chi è entrato, e niente è segnato.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
@@ -1309,7 +1315,8 @@ con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo
 niente cambia: il pannello in caricamento, «Segna tutte come lette» in corso. Fino alla `v2.8.0` chi aveva chiesto restava
 in attesa finché la pagina non si ricaricava. L'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è
 annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza
-niente di chi è entrato. Con due cornici nel documento vale il limite detto qui sopra: lì la pagina non si ricarica,
+niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser). Con due cornici nel documento
+vale il limite detto qui sopra: lì la pagina non si ricarica,
 nessun orologio parte, e chi ha chiesto resta in attesa. Provato in Chromium 151 con una pagina che nega il
 ricaricamento: passati i 5 secondi «Segna tutte come lette» torna premibile, e il pannello e la ricerca dicono il loro errore.
 Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica

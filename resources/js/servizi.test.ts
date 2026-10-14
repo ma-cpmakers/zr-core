@@ -519,7 +519,7 @@ describe('una risposta che dice di chi è', () => {
 
     // Sprint 43 · T3 (voce #2053): la ricarica davanti a una risposta di un'altra persona ha un tetto, e il tetto è l'età della
     // pagina: una pagina caricata da meno di 30 secondi non si ricarica — se la risposta dice ancora un'altra persona subito
-    // dopo una ricarica (dati composti a mano, una pagina in cache), ricaricare di nuovo non cambia niente —, e chi ha chiesto
+    // dopo una ricarica (dei dati composti a mano con un'altra email), ricaricare di nuovo non cambia niente —, e chi ha chiesto
     // ha subito un errore senza niente dentro. Da 30 secondi in poi si ricarica come prima. Il pacchetto non scrive niente
     // nel browser per ricordarselo.
     describe('il tetto delle ricariche', () => {

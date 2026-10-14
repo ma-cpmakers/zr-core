@@ -5533,6 +5533,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
     // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
     'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): sotto il tetto la destinazione del clic si apre anche dopo il 409;
+    // il `subito` riletto porta la lingua nuova solo se la sessione l'ha già; la ricarica lenta non è provata in un browser.
+    'la lettura con un clic: sotto il tetto la destinazione si apre' => ['readme', 'su una pagina caricata da meno di 30 secondi non parte, e allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua'],
+    'la scheda ferma: sotto il tetto la risorsa si apre' => ['readme', 'Dalla `v2.9.0`, su una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano: la risorsa si apre anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato'],
+    'la lingua: solo se la sessione l\'ha già' => ['readme', 'Il `subito` riletto porta la lingua nuova solo se la sessione l\'ha già: `Cornice::subito()` non chiama il backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
+    'la lingua: senza, niente cambia' => ['readme', 'senza, e senza un\'altra richiesta che l\'abbia riletta dopo il `dopo` che la pagina ha, il `subito` riletto ha la lingua di prima e niente cambia'],
+    'la scheda ferma: la ricarica lenta non è provata' => ['readme', 'senza niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser)'],
+    'la guida: la lingua, se la sessione l\'ha già' => ['guida', 'Vale se la sessione ha già la lingua nuova: `Cornice::subito()` non la chiede al backoffice, la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
     'la scheda ferma: fuori dal corpo' => ['readme', 'L\'email non sta mai nell\'indirizzo, e nel corpo di «Segna tutte come lette» non c\'è più'],
     'la scheda ferma: il clic su una notifica' => ['readme', 'nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la segnava letta a lui'],
     // Review della PR #74, R1: misurato in Chromium con la `naviga` di sempre, la destinazione si apre solo se arriva prima del 409.

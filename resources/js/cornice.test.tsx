@@ -5803,6 +5803,39 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(cornice()).toStrictEqual(prima);
     });
 
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1): sotto il tetto la ricarica non parte, e niente toglie la navigazione che
+    // il clic ha già chiesto. La risorsa si apre anche se la risposta di un'altra persona è arrivata; niente è segnato.
+    it.each<[string, Record<string, unknown>, number]>([
+        ['il 409 `persona_diversa`', { errore: 'persona_diversa' }, 409],
+        ['il 403 `accettazione_richiesta`', { errore: 'accettazione_richiesta' }, 403],
+    ])('su una pagina caricata da meno di 30 secondi, alla lettura di una notifica con un clic %s di un\'altra persona non ricarica la pagina: la risorsa si apre, una PATCH sola, e la cornice resta com\'era, senza avviso (sprint 43 · T5, N1)', async (_quale, errore, stato) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email })
+            : risposta({ ...errore, persona: 'grace@example.com' }, stato)));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        const prima = cornice();
+        const avvisi: boolean[] = [];
+        const guarda = new MutationObserver(() => avvisi.push(avviso() !== null));
+        guarda.observe(contenitore, { childList: true, subtree: true, characterData: true });
+
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(naviga).toHaveBeenCalledTimes(1);
+        expect(naviga.mock.calls[0]?.[0]).toContain('/contatti/uat-persona-1');
+        expect(avvisi).not.toContain(true);
+        expect(cornice()).toStrictEqual(prima);
+    });
+
     it.each<[string, Record<string, unknown>]>([
         ['della stessa persona', { persona: diSempre.persona.email }],
         ['che non dice di chi è (una parte server di prima)', {}],
