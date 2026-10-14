@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cerca } from './ricerca';
 import { AccettazioneRichiesta, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
@@ -304,8 +306,14 @@ describe('il 429 con `Retry-After` di una rotta della cornice', () => {
 describe('una risposta che dice di chi è', () => {
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è a schermo, e chi è a schermo lo dice la cornice quando si monta (dalla review: non a ogni disegno).
     // In questi casi è Ada, che è anche chi chiede: la scheda rimasta ferma.
+    // Sprint 43 · T3 (voce #2053): la pagina dei casi è una scheda ferma, caricata da un minuto (l'orologio di `performance.now()`):
+    // una pagina caricata da meno di 30 secondi non si ricarica, e ha i suoi casi più sotto.
+    /** Da quanto è caricata la pagina, in millisecondi. */
+    const caricataDa = (millisecondi: number) => vi.spyOn(performance, 'now').mockReturnValue(millisecondi);
+
     beforeEach(() => {
         mostra('ada@example.com');
+        caricataDa(60_000);
     });
 
     afterEach(() => {
@@ -446,6 +454,21 @@ describe('una risposta che dice di chi è', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
+    /** Come sta una chiamata, guardata quando serve: in attesa, chiusa (con che cosa), o con un errore (quale). */
+    const segui = (chiesto: Promise<unknown>) => {
+        const esito: { come: string; con?: unknown } = { come: 'in attesa' };
+        chiesto.then(
+            (dati) => Object.assign(esito, { come: 'chiusa', con: dati }),
+            (errore: unknown) => Object.assign(esito, { come: 'errore', con: errore }),
+        );
+        return esito;
+    };
+    const diUnAltra: [string, () => Response, () => Promise<unknown>][] = [
+        ...chiamate.map(([nome, corpo, chiama]) => [`${nome}, la risposta riuscita`, () => risposta({ ...corpo, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
+        ...conErrore.map(([nome, quale, stato, codice, , chiama]) => [`${nome}, ${quale}`, () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
+        ['segnaLetteFinoA, il 409 `persona_diversa`', () => diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' }), segna],
+    ];
+
     // Sprint 43 · T2 (voce #2036): se il ricaricamento non avviene — un `beforeunload` che lo annulla, una pagina che non può
     // ricaricarsi — chi ha chiesto non resta in attesa per sempre: dopo 5 secondi la chiamata si chiude con un errore, che non
     // porta niente della risposta di chi è entrato. Prima dei 5 secondi niente cambia; e se la ricarica non parte (nessuno a
@@ -458,21 +481,6 @@ describe('una risposta che dice di chi è', () => {
         afterEach(() => {
             vi.useRealTimers();
         });
-
-        /** Come sta una chiamata, guardata quando serve: in attesa, chiusa (con che cosa), o con un errore (quale). */
-        const segui = (chiesto: Promise<unknown>) => {
-            const esito: { come: string; con?: unknown } = { come: 'in attesa' };
-            chiesto.then(
-                (dati) => Object.assign(esito, { come: 'chiusa', con: dati }),
-                (errore: unknown) => Object.assign(esito, { come: 'errore', con: errore }),
-            );
-            return esito;
-        };
-        const diUnAltra: [string, () => Response, () => Promise<unknown>][] = [
-            ...chiamate.map(([nome, corpo, chiama]) => [`${nome}, la risposta riuscita`, () => risposta({ ...corpo, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
-            ...conErrore.map(([nome, quale, stato, codice, , chiama]) => [`${nome}, ${quale}`, () => diErrore(stato, { errore: codice, persona: 'grace@example.com' }), () => chiama('ada@example.com')] as [string, () => Response, () => Promise<unknown>]),
-            ['segnaLetteFinoA, il 409 `persona_diversa`', () => diErrore(409, { errore: 'persona_diversa', persona: 'grace@example.com' }), segna],
-        ];
 
         it.each(diUnAltra)('%s di un\'altra persona: a 4.999 ms dalla ricarica chi ha chiesto è ancora in attesa, a 5.000 ms ha un errore senza niente dentro; la ricarica è chiamata una volta (sprint 43 · T2.1, T2.2)', async (_nome, laRisposta, chiama) => {
             const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
@@ -505,6 +513,88 @@ describe('una risposta che dice di chi è', () => {
             await vi.advanceTimersByTimeAsync(60_000);
             expect(esito).toStrictEqual({ come: 'in attesa' });
             expect(ricarica).not.toHaveBeenCalled();
+        });
+    });
+
+    // Sprint 43 · T3 (voce #2053): la ricarica davanti a una risposta di un'altra persona ha un tetto, e il tetto è l'età della
+    // pagina: una pagina caricata da meno di 30 secondi non si ricarica — se la risposta dice ancora un'altra persona subito
+    // dopo una ricarica (dati composti a mano, una pagina in cache), ricaricare di nuovo non cambia niente —, e chi ha chiesto
+    // ha subito un errore senza niente dentro. Da 30 secondi in poi si ricarica come prima. Il pacchetto non scrive niente
+    // nel browser per ricordarselo.
+    describe('il tetto delle ricariche', () => {
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        /** Ciò che il browser tiene fra una pagina e l'altra, e che il tetto non tocca. */
+        const nelBrowser = () => [sessionStorage.length, localStorage.length, window.name, document.cookie];
+
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => [0, 29_999].map((eta) => [nome, eta, laRisposta, chiama] as const)))('%s di un\'altra persona su una pagina caricata da %i ms: la pagina non si ricarica, e chi ha chiesto ha subito un errore senza niente dentro, senza un orologio (sprint 43 · T3.1, T3.4)', async (_nome, eta, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => laRisposta());
+            vi.stubGlobal('fetch', fetchFinto);
+            caricataDa(eta);
+
+            const esito = segui(chiama());
+            await vi.advanceTimersByTimeAsync(0);
+            // Né i dati, né `persona`, né i secondi del freno, né la classe dell'errore di chi è entrato.
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+            expect(ricarica).not.toHaveBeenCalled();
+            expect(vi.getTimerCount()).toBe(0);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(diUnAltra)('%s di un\'altra persona su una pagina caricata da 30.000 ms: la pagina si ricarica, una volta, e chi ha chiesto resta in attesa fino ai 5 secondi (sprint 43 · T3.2)', async (_nome, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            caricataDa(30_000);
+
+            const esito = segui(chiama());
+            await vi.advanceTimersByTimeAsync(4_999);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(1);
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+        });
+
+        it('il tetto non resta per sempre e non scrive niente nel browser: la stessa pagina a 29.999 ms non si ricarica, a 30.000 ms sì, e archivi, nome della finestra e cookie restano com\'erano (sprint 43 · T3.3, T3.6)', async () => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, persona: 'grace@example.com' })));
+            const prima = nelBrowser();
+            const scritture = vi.spyOn(Storage.prototype, 'setItem');
+
+            caricataDa(29_999);
+            segui(caricaNotifiche('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(0);
+            expect(ricarica).not.toHaveBeenCalled();
+
+            caricataDa(30_000);
+            segui(caricaNotifiche('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(0);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(nelBrowser()).toStrictEqual(prima);
+            expect(scritture).not.toHaveBeenCalled();
+        });
+
+        it('una risposta della persona a schermo torna com\'è anche su una pagina appena caricata: il tetto guarda solo le risposte di un\'altra persona (sprint 43 · T3.2)', async () => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, aggiornati_il: unIstante, workspace: 'uat-vendite', persona: 'ada@example.com' })));
+            caricataDa(0);
+
+            await expect(caricaNotifiche('ada@example.com')).resolves.toStrictEqual({ elenco, il: unIstante, workspace: 'uat-vendite' });
+            expect(ricarica).not.toHaveBeenCalled();
+        });
+        it('nessun file del pacchetto che si installa nomina un archivio del browser o il nome della finestra: il tetto è l\'età della pagina, e niente resta dopo l\'uscita (sprint 43 · T3.6)', () => {
+            const cartella = fileURLToPath(import.meta.url).replace(/[^/]+$/, '');
+            const sorgenti = readdirSync(cartella).filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file));
+            const conUnArchivio = sorgenti.filter((file) => /sessionStorage|localStorage|window\.name/.test(readFileSync(cartella + file, 'utf8')));
+
+            expect(sorgenti).toContain('servizi.ts');
+            expect(conUnArchivio).toStrictEqual([]);
         });
     });
 });

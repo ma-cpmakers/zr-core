@@ -68,6 +68,20 @@ beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [] })));
 });
 
+// Sprint 43 · T3 (voce #2053): la pagina dei casi è caricata da più di un minuto, come una scheda rimasta ferma: una pagina
+// caricata da meno di 30 secondi non si ricarica davanti a una risposta di un'altra persona, e ha i suoi casi. L'orologio
+// resta quello vero, spostato: scorre, come serve a React e al freno della ricerca.
+const orologioDellaPagina = performance.now.bind(performance);
+/** Da quanto è caricata la pagina, in millisecondi: da lì l'orologio scorre. */
+const caricataDa = (millisecondi: number) => {
+    const partenza = orologioDellaPagina();
+    return vi.spyOn(performance, 'now').mockImplementation(() => millisecondi + orologioDellaPagina() - partenza);
+};
+
+beforeEach(() => {
+    caricataDa(60_000);
+});
+
 afterEach(async () => {
     await act(async () => radice.unmount());
     contenitore.remove();
@@ -3882,6 +3896,35 @@ describe('il pannello delle notifiche', () => {
         }
     });
 
+    // Sprint 43 · T3 (voce #2053): la ricarica ha un tetto, l'età della pagina. Su una pagina caricata da meno di 30 secondi la
+    // risposta di un'altra persona non ricarica — subito dopo una ricarica non cambierebbe niente — e il pannello dice il suo
+    // errore: dell'elenco di chi è entrato niente è disegnato e niente è tenuto, e «Riprova» lo richiede.
+    it('su una pagina caricata da meno di 30 secondi l\'elenco di un\'altra persona non ricarica la pagina e non va a schermo, nemmeno per un disegno: il pannello dice subito il suo errore, e «Riprova» richiede l\'elenco senza mostrare quello di prima (sprint 43 · T3.1, T3.4)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = rotteDiUnaPersona({ persona: 'grace@example.com' });
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        const disegnate: number[] = [];
+        const guarda = new MutationObserver(() => disegnate.push(voci().length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await clic(uno('.zr-bell'));
+        const errore = uno('.zr-notif [role="alert"]');
+        expect(errore?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(uno('.zr-notif [role="status"]')).toBeNull();
+        expect(campanella()).toBe('2');
+        expect(contenitore.textContent).not.toMatch(/grace/i);
+
+        await clic(errore?.querySelector('button') ?? null);
+        guarda.disconnect();
+        expect(Math.max(0, ...disegnate)).toBe(0);
+        expect(voci()).toHaveLength(0);
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche']);
+    });
+
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
@@ -5209,6 +5252,30 @@ describe('la ricerca', () => {
         expect(righe()).toHaveLength(0);
         expect(contenitore.textContent).not.toMatch(/grace/i);
         expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
+    });
+
+    // Sprint 43 · T3 (voce #2053): su una pagina caricata da meno di 30 secondi i risultati di un'altra persona non ricaricano
+    // la pagina, e la ricerca dice il suo errore: di quei risultati niente è disegnato.
+    it('su una pagina caricata da meno di 30 secondi i risultati di un\'altra persona non ricaricano la pagina e non vanno a schermo, nemmeno per un disegno: la ricerca dice subito il suo errore (sprint 43 · T3.1, T3.4)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const disegnate: number[] = [];
+        const guarda = new MutationObserver(() => disegnate.push(righe().length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await scrivi('lancio');
+        await act(giro);
+        guarda.disconnect();
+
+        expect(uno('.zr-search-panel [role="alert"]')?.textContent).toBe('La ricerca non ha risposto. Riprova tra poco.');
+        expect(Math.max(0, ...disegnate)).toBe(0);
+        expect(righe()).toHaveLength(0);
+        expect(contenitore.textContent).not.toMatch(/grace/i);
+        expect(ricarica).not.toHaveBeenCalled();
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 
