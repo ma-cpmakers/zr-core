@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -59,7 +60,7 @@ it('senza sessione, o con la sessione aperta ma senza workspace, Cornice::subito
     Http::assertNothingSent();
 });
 
-it('Cornice::dopo() dà ciò che Cornice::dati() dà, nello stesso ordine e con le letture di sempre — chi ha letto (lingua e persona), il workspace di cui sono, prodotti, aziende, non lette e il segno — e in fondo sessione_il, l\'istante in cui quella persona è stata letta (sprint 34 · T4.2; review della PR #67, R6; sprint 37 · T2.3)', function () {
+it('Cornice::dopo() dà ciò che Cornice::dati() dà, nello stesso ordine e con le letture di sempre — chi ha letto (lingua e persona), il workspace di cui sono, prodotti, aziende, non lette e il segno — poi sessione_il, l\'istante in cui quella persona è stata letta, e in fondo lingua_il, l\'istante della lettura che ha confermato la lingua (sprint 34 · T4.2; review della PR #67, R6; sprint 37 · T2.3; sprint 45 · T3.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato();
@@ -67,8 +68,8 @@ it('Cornice::dopo() dà ciò che Cornice::dati() dà, nello stesso ordine e con 
     $dopo = Cornice::dopo();
 
     // Le letture di una Cornice::dati(): una per metodo, e i workspace sulle loro due pagine. dopo() non ne aggiunge.
-    expect($dopo)->toBe([...datiAttesi('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z'])
-        ->and(array_keys((array) $dopo))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il', 'sessione_il'])
+    expect($dopo)->toBe([...datiAttesi('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z', 'lingua_il' => '2026-10-09T21:31:05.123456Z'])
+        ->and(array_keys((array) $dopo))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il', 'sessione_il', 'lingua_il'])
         ->and(((array) $dopo)['workspace'])->toBe(((array) Cornice::subito())['workspace'])
         ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
 });
@@ -108,7 +109,7 @@ it('dopo una Cornice::dopo() la lingua e il nome di Cornice::subito() sono quell
         ->and([$poi['lingua'] ?? null, $poi['persona']['nome'] ?? null])->toBe(['es', 'UAT Ada Lovelace']);
 });
 
-it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante e con chi è nella sessione — lingua, persona, workspace e in fondo sessione_il —, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5; sprint 41 · T4.1)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
+it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante e con chi è nella sessione — lingua, persona, workspace, sessione_il e, se io.mostra ha risposto, in fondo lingua_il —, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5; sprint 41 · T4.1; sprint 45 · T3.1)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
@@ -121,6 +122,8 @@ it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Co
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
+        // Se io.mostra ha risposto la lingua è confermata da quella lettura.
+        ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-09T21:31:05.123456Z']),
     ])
         ->and(avvisiDellaRiga())->toBe(['zr-core, dati della cornice: il backoffice non ha risposto ('.$tipo.'): la cornice esce ridotta']);
 })->with([
@@ -176,6 +179,7 @@ it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_l
         'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
+        'lingua_il' => '2026-10-09T21:31:05.123456Z',
     ])
         ->and(array_keys((array) $dopo))->not->toContain('prodotti', 'aziende', 'non_lette', 'accettazione_richiesta')
         ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1])
@@ -203,6 +207,7 @@ it('col backoffice che non risponde i due segni di non_letti, sessione_il e aggi
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
+        ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-09T21:31:05.123456Z']),
     ]);
 })->with([
     'io.mostra' => ['/v1/io'],
@@ -237,6 +242,7 @@ it('se Cornice::lingua() ha già letto io.mostra in questa richiesta, i segni di
         'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
+        ...($statoDiIo === 200 ? ['lingua_il' => '2026-10-09T21:31:05.123456Z'] : []),
     ])
         ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
 })->with([
@@ -307,9 +313,112 @@ it('davanti al 403 accettazione_richiesta Cornice::dopo() dà i dati ridotti di 
     logDellaRiga();
     backofficeDiChiHaAccettato([$percorso => accettazioneRichiesta()]);
 
-    expect(Cornice::dopo())->toBe([...datiRidotti('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z'])
+    expect(Cornice::dopo())->toBe([
+        ...datiRidotti('2026-10-09T21:31:05.123456Z'),
+        'sessione_il' => '2026-10-09T21:31:05.123456Z',
+        ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-09T21:31:05.123456Z']),
+    ])
         ->and(avvisiDellaRiga())->toBe([]);
 })->with(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace']);
+
+// Sprint 45 · T3 (voce #2060). La lingua ha un suo segno: `lingua_il`, l'inizio della lettura di io.mostra che ha confermato
+// la lingua della sessione per quella persona (io.mostra ha risposto con l'id della sessione). `subito()` lo dà ricordato,
+// mai l'istante di adesso: un `subito` riletto mentre `dopo` è in lettura porta la lingua di prima, e col segno di adesso
+// varrebbe nel browser sopra la lingua nuova. Di un'altra persona non esce mai.
+it('Cornice::subito() porta in fondo, dopo sessione_il, lingua_il: l\'istante in cui è cominciata la lettura di io.mostra che ha confermato la lingua della sessione, non quello di adesso; prima di una lettura non c\'è (sprint 45 · T3.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
+
+    $prima = Cornice::subito();
+    Cornice::dopo();
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000001', 'UTC'));
+    $poi = Cornice::subito();
+
+    expect(array_keys((array) $prima))->toBe(['lingua', 'persona', 'workspace', 'sessione_il'])
+        ->and($poi)->toBe([
+            'lingua' => 'es',
+            'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+            'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+            'sessione_il' => '2026-10-09T21:31:09.000001Z',
+            'lingua_il' => '2026-10-09T21:31:05.123456Z',
+        ]);
+});
+
+it('una lettura dopo, che conferma ancora la lingua, porta lingua_il al suo inizio; una che fallisce lascia quello ricordato, anche in non_letti (sprint 45 · T3.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    // Un Http::fake dopo l'altro terrebbe la prima risposta: io.mostra risponde ciò che `$io` è quando la chiamata arriva.
+    $io = ioMostra(3);
+    backofficeDiChiHaAccettato(['/v1/io' => function (Request $richiesta) use (&$io) {
+        return match (true) {
+            is_array($io) => Http::response($io),
+            $io instanceof Closure => $io($richiesta),
+            default => $io,
+        };
+    }]);
+    Cornice::dopo();
+
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:07.000000', 'UTC'));
+    $seconda = (array) Cornice::dopo();
+
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000001', 'UTC'));
+    $io = nonRisponde(502, null);
+    $caduta = (array) Cornice::dopo();
+
+    expect($seconda['lingua_il'] ?? null)->toBe('2026-10-09T21:31:07.000000Z')
+        ->and($caduta['non_letti'] ?? null)->toBeTrue()
+        ->and($caduta['sessione_il'] ?? null)->toBe('2026-10-09T21:31:09.000001Z')
+        ->and($caduta['lingua_il'] ?? null)->toBe('2026-10-09T21:31:07.000000Z')
+        ->and(((array) Cornice::subito())['lingua_il'] ?? null)->toBe('2026-10-09T21:31:07.000000Z');
+});
+
+it('una risposta di io.mostra con l\'id di un\'altra persona non conferma la lingua: niente lingua_il, né in Cornice::dopo() né in Cornice::subito() (sprint 45 · T3.1)', function (mixed $id) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    $io = ioMostraCon(['lingua' => 'es'], 3, $id === null ? ['id'] : []);
+    if ($id !== null) {
+        $io['data']['utente']['id'] = $id;
+    }
+    backofficeDiChiHaAccettato(['/v1/io' => $io]);
+
+    expect(array_key_exists('lingua_il', (array) Cornice::dopo()))->toBeFalse()
+        ->and(array_key_exists('lingua_il', (array) Cornice::subito()))->toBeFalse();
+})->with([
+    'un\'altra persona' => ['uat-grace'],
+    'senza id' => [null],
+]);
+
+it('dopo l\'ingresso di un\'altra persona nello stesso browser, la lingua_il ricordata per chi c\'era prima non esce: né in Cornice::subito(), né in non_letti; la prima lettura che conferma la lingua della persona nuova dà la sua (sprint 45 · T3.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    $io = ioMostra(3);
+    backofficeDiChiHaAccettato(['/v1/io' => function (Request $richiesta) use (&$io) {
+        return match (true) {
+            is_array($io) => Http::response($io),
+            $io instanceof Closure => $io($richiesta),
+            default => $io,
+        };
+    }]);
+    Cornice::dopo();
+
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000001', 'UTC'));
+    $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
+    $subito = (array) Cornice::subito();
+    $io = nonRisponde(0, null);
+    $caduta = (array) Cornice::dopo();
+
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:11.000000', 'UTC'));
+    $io = ioMostraCon($grace);
+    $riuscita = (array) Cornice::dopo();
+
+    expect($subito['persona']['nome'] ?? null)->toBe('UAT Grace')
+        ->and(array_key_exists('lingua_il', $subito))->toBeFalse()
+        ->and($caduta['persona']['nome'] ?? null)->toBe('UAT Grace')
+        ->and(array_key_exists('lingua_il', $caduta))->toBeFalse()
+        ->and($riuscita['lingua_il'] ?? null)->toBe('2026-10-09T21:31:11.000000Z');
+});
 
 it('la parte server della cornice non usa Inertia: nessuna classe importata e nessuna chiamata, la prop rimandata la scrive il frontend (sprint 34 · T4.10)', function () {
     $file = glob(__DIR__.'/../../src/{*,*/*}.php', GLOB_BRACE) ?: [];
