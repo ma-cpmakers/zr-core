@@ -370,7 +370,7 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
             }
             const diAdesso = personaDellaSessione?.()?.email;
 
-            return diAdesso !== undefined && dette.some((detta) => detta !== diAdesso) ? json({ errore: 'persona_diversa', persona: diAdesso }, 409) : undefined;
+            return diAdesso !== undefined && dette.some((detta) => detta !== diAdesso) ? json({ errore: 'persona_diversa', persona: '' }, 409) : undefined;
         };
         if (percorso.split('?')[0] === '/cornice/ricerca') {
             // Come la parte server: la parola si legge solo dal corpo di una POST, da 2 a 100 caratteri senza gli spazi ai bordi.
