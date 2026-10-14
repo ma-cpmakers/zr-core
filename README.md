@@ -1408,7 +1408,9 @@ richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
 portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi
 c'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l'elenco
-delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Questo vale per ciò che c'è
+delle notifiche). Dalla `v2.12.0` questo vale solo per una risposta che dice chi ha risposto: le quattro richieste mandano
+`Persona`, e l'unica risposta di un'altra persona che ricevono è il 409 `persona_diversa`, che non lo dice più: con una
+cornice a schermo quel 409 ricarica la pagina anche quando una visita ha già portato chi è entrato (più sotto). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Questo vale per ciò che c'è
 a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi già partito guarda di nuovo allo scadere
 (più sotto). Se chi ha risposto è una
 terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche

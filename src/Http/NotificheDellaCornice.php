@@ -252,7 +252,7 @@ final class NotificheDellaCornice
      * da lì. `fino_a` della risposta è l'istante del backoffice, in UTC, non quello chiesto. `workspace` è lo slug del
      * workspace della pagina che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `persona` è l'email di
      * chi quella pagina mostra (dalla `v2.5.0`): se non è quella della sessione la rotta non chiama il backoffice e risponde
-     * 409 `persona_diversa` con `persona`, l'email della sessione; non va al backoffice nemmeno lei. Dalla `v2.6.0` il
+     * 409 `persona_diversa` con `persona` (dalla `v2.12.0` un testo vuoto: non dice chi è entrato); non va al backoffice nemmeno lei. Dalla `v2.6.0` il
      * confronto lo fa StessaPersona, per tutte le rotte della cornice e prima dei controlli di questa. `segnate_il` è l'istante
      * preso dopo l'ultima risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può
      * non saperlo. Una chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta
