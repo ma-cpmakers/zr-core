@@ -1,6 +1,7 @@
 <?php
 
 use Composer\InstalledVersions;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -136,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1)', function () {
+it('composer.json chiede zr-auth ^0.12.31 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -150,7 +151,9 @@ it('composer.json chiede zr-auth ^0.12.4 e nessuna minore più vecchia, e la CI 
     // prende lingua e nome anche da una risposta senza `utente.id`. Sotto la 0.12 no: `Sessione::aggiorna` non c'è, e una guardia
     // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026). Dallo sprint 17 la patch più
     // bassa la installa a ogni run il giro «minima», che la legge da qui: chi abbassa il vincolo la vede provata, o rossa.
-    expect($vincolo)->toBe('^0.12.4')
+    // Dalla `v2.16.0` dalla 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c'è da
+    // quella (Decisione 13268 di zr-pm; sprint 55 · T1.4).
+    expect($vincolo)->toBe('^0.12.31')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
@@ -1346,7 +1349,8 @@ it('il README dice, in «La parte server», quale lingua c\'è nella sessione �
     'quando la riga dà null' => ['Con una sessione, quindi, `Cornice::lingua()` dà `null` quando la lingua che la sessione ha dopo la lettura non ha la forma di una lingua'],
     'null fino alla 0.12.11 e dalla 0.12.12' => ['fino alla 0.12.11 anche per una malfatta appena arrivata dal profilo, dalla 0.12.12 solo per una malfatta che la sessione aveva già dall\'ingresso'],
     'una ben fatta che non è di Zeiras' => ['per una lingua del profilo ben fatta che non è di Zeiras (`pt-BR`) fino alla 0.12.11 dà quella, dalla 0.12.12 la lingua che la sessione aveva, se ha la forma di una lingua'],
-    'il test del modulo' => ['zr-core accetta tutte e due le versioni: un test del modulo su una lingua che non è di Zeiras guarda quale zr-auth è installata'],
+    // Review della PR #89, R2: dalla `v2.16.0` zr-core chiede la 0.12.31, e un test del modulo non ha più due versioni da guardare.
+    'il test del modulo' => ['Fino alla `v2.15` zr-core accettava tutte e due le versioni; dalla `v2.16.0` chiede la 0.12.31, e vale la seconda: un test del modulo su una lingua che non è di Zeiras non ha più da guardare quale zr-auth è installata'],
     'la forma la guarda solo la riga' => ['E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessione::utente()[\'lingua\']` e `Cornice::dati()[\'lingua\']` sono la lingua della sessione com\'è, anche malfatta'],
     'chi resta col suo codice guarda la forma' => ['Chi resta col suo codice e la dà a `App::setLocale`, all\'attributo `lang` della pagina o al nome di un file ne guarda prima la forma'],
     // Seconda lettura della PR #24, S1: anche la frase su ciò che il controller cambia nel profilo vale con le due versioni.
@@ -1616,22 +1620,64 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.4, una volta, e nessuno dice più quello di prima (sprint 16 · T4.5)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.31, una volta, e nessuno dice più quello di prima (sprint 16 · T4.5; sprint 55 · T1.4)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
 
-    expect(substr_count($testo, '^0.12.4'))->toBe(1)
+    expect(substr_count($testo, '^0.12.31'))->toBe(1)
+        ->and(substr_count($testo, '^0.12.4'))->toBe(0)
         ->and(substr_count($testo, '^0.12.1'))->toBe(0)
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and(substr_count(str_replace('^0.12.4', '^0.12.1', $testo), '^0.12.1'))->toBe(1);
+        ->and(substr_count(str_replace('^0.12.31', '^0.12.4', $testo), '^0.12.4'))->toBe(1);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.4, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.31, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa (per questo dalla `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte come lette» l\'hanno provato solo giri con quella).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` parte dalla 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella; decisione di zr-pm).'))->toBe(1)
+        ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
         ->and(str_contains($claude, 'per questo parte dalla 0.12.1'))->toBe(false)
         ->and(str_contains($readme, 'Nemmeno la 0.12.0 basta'))->toBe(false);
+});
+
+it('README e guida dicono che sulla rotta della richiesta rimandata il frontend non mette niente, che la protegge `SessioneChiusa` di zr-auth dalla 0.12.31, e le quattro condizioni (sprint 55 · T1.1, T1.2, T1.3)', function (string $dove, string $frase) {
+    // Del README la sola «La cornice in due dati», fino al titolo dopo: è lì che la guida rimanda (review della PR #89, R4).
+    preg_match('/^### La cornice in due dati$(.*?)(?=^##)/ms', (string) file_get_contents(__DIR__.'/../../README.md'), $inDueDati);
+    $testo = $dove === 'guida' ? suUnaRiga(guidaDelModuloNuovo()) : suUnaRiga($inDueDati[1] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true)
+        // Il controllo nei due versi: senza la frase, il caso la vede mancare.
+        ->and(str_contains(str_replace($frase, '', $testo), $frase))->toBe(false);
+})->with([
+    'README: niente sulla rotta (T1.1)' => ['readme', 'Sulla rotta della richiesta rimandata il frontend non mette niente: né un middleware suo, né `bloccaSessione()` di zr-auth'],
+    'README: la protezione e la versione (T1.1, T1.2)' => ['readme', 'La protezione è `SessioneChiusa` di zr-auth, dalla 0.12.31, ed è per questo che dalla `v2.16.0` zr-core chiede zr-auth dalla 0.12.31'],
+    'README: che cosa succede senza (T1.2)' => ['readme', 'senza una protezione una richiesta rimandata lenta, finita dopo che la persona è uscita o è passata a un altro workspace, rimetterebbe in vita la sessione di prima'],
+    'README: la rotta nel gruppo web (T1.1)' => ['readme', 'la rotta della richiesta rimandata, cioè la pagina stessa, sta nel gruppo `web`'],
+    'README: lo store dei blocchi (T1.1)' => ['readme', '`session.block_store` è uno store condiviso fra i processi, mai `array`'],
+    'README: l\'ordine del gruppo (T1.1)' => ['readme', 'l\'ordine del gruppo `web` non si riordina'],
+    'README: i secondi (T1.1)' => ['readme', '`zr-auth.sessione_chiusa_secondi` (300) non è più corto della richiesta più lenta'],
+    'guida (T1.3)' => ['guida', 'Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSessione()`: la protegge `SessioneChiusa` di zr-auth dalla 0.12.31'],
+    'guida: il rimando (T1.3; review della PR #89, R4)' => ['guida', '(le quattro condizioni: README, «La cornice in due dati»)'],
+    'README: lo store non impostato (sicurezza della PR #89, S4)' => ['readme', 'non impostato è lo store della cache predefinito, e vale lo stesso per quello'],
+]);
+
+// Review della PR #89, R5: ciò che il README dice di zr-auth dalla 0.12.31 c'è nella zr-auth installata, e il giro «minima»
+// della CI installa proprio la 0.12.31: se `SessioneChiusa` fosse arrivata dopo, questo caso lì sarebbe rosso.
+it('la zr-auth installata ha `SessioneChiusa`, per prima nel gruppo `web`, e `zr-auth.sessione_chiusa_secondi` a 300 (review della PR #89, R5)', function () {
+    $kernel = app(Kernel::class);
+    assert($kernel instanceof Illuminate\Foundation\Http\Kernel);
+
+    expect(class_exists('Zeiras\\Auth\\Http\\Middleware\\SessioneChiusa'))->toBe(true)
+        ->and($kernel->getMiddlewareGroups()['web'][0] ?? null)->toBe('Zeiras\\Auth\\Http\\Middleware\\SessioneChiusa')
+        ->and(config('zr-auth.sessione_chiusa_secondi'))->toBe(300);
+});
+
+it('il README dice, in «La parte server», da quale versione zr-core chiede la 0.12.31 e perché (sprint 55 · T1.4)', function () {
+    $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'La parte server');
+
+    expect(str_contains($sezione, 'Dalla `v2.16.0` serve la 0.12.31: è quella che protegge la richiesta rimandata della cornice in due dati (`SessioneChiusa`, vedi «La cornice in due dati»), e con una più vecchia Composer lascia zr-core alla `v2.15.0`.'))->toBe(true)
+        ->and(str_contains($sezione, 'bloccaSessione'))->toBe(false);
 });
 
 it('il README non dice più la risposta della v1.2.2 alle letture, senza altre (sprint 12 · T4.6)', function () {
@@ -1801,7 +1847,7 @@ it('il README dice che dalla v1.15.0 la parola va nel corpo anche al backoffice,
 // deve far rosso un giro. A una chiamata che non conosce il finto lancia `RichiestaSconosciuta`; a una che conosce risponde, qui
 // `401`, perché parte senza gettone. Un giro della CI installa la patch più bassa che il vincolo accetta, l'altro l'ultima: il
 // caso prova questi due punti. Da quale versione il finto risponde lo dice il README, letto nei tag di zr-auth: qui non si prova.
-it('il `BackofficeFinto` della zr-auth installata non conosce ricerca.crea (`POST /v1/ricerca`) nel giro con la patch più bassa che il vincolo accetta, e le risponde nell\'altro, quello con l\'ultima: lo dice una chiamata al finto (sprint 26 · T2.2)', function () {
+it('il `BackofficeFinto` della zr-auth installata risponde a ricerca.crea (`POST /v1/ricerca`) dalla 0.12.18, e il vincolo parte da più su: in tutti e due i giri le risponde, lo dice una chiamata al finto (sprint 26 · T2.2; sprint 55 · T1.4)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $piuBasse = array_values(minimiDiZrAuthIn($composer['require']['zeiras/zr-auth']));
     $installata = ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v');
@@ -1816,7 +1862,9 @@ it('il `BackofficeFinto` della zr-auth installata non conosce ricerca.crea (`POS
 
     expect($installata)->toMatch('/^\d+\.\d+\.\d+$/')
         ->and($piuBasse)->not->toBe([])
-        ->and($risposta)->toBe(in_array($installata, $piuBasse, true) ? null : 401);
+        // Dalla `v2.16.0` il vincolo parte dalla 0.12.31: il giro con la patch più bassa ha anche lui un finto che risponde.
+        ->and(array_map(fn (string $patch): bool => version_compare($patch, '0.12.18', '>='), $piuBasse))->each->toBe(true)
+        ->and($risposta)->toBe(version_compare($installata, '0.12.18', '>=') ? 401 : null);
 });
 
 it('né il README né i file che si installano dicono più che al backoffice la parola va nell\'indirizzo, e la parte server nomina ricerca.crea (sprint 25 · T3.5)', function (string $file, string $frase, bool $ceLHa) {
@@ -5600,7 +5648,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
     'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
-    'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte'],
+    // Sprint 55 · T3.5 (voce #2063): dalla `v2.16.0` con la coda la ricerca arriva; com'era fino alla `v2.15`, detto al passato.
+    'la ricerca: perché non arrivava con la coda (PR #78, R5; sprint 55 · T3.5)' => ['readme', 'e non li prende dalla seconda copia del codice delle richieste per la cornice, dove nessuno è a schermo; e il freno del `429` lo riconosce dai secondi, non dalla classe dell\'errore, che in quella copia è un\'altra'],
     'il 403 senza workspace e una sessione senza email (PR #78, R7; sprint 51 · T1.4)' => ['readme', 'Con una sessione senza email una richiesta che dice la persona riceve il 409, e una che non la dice il 422 `persona_mancante` (fino alla `v2.12` il 403).'],
     // UAT dello sprint 44 (U1-U5, in Chromium 151): la ricarica allo scadere è provata in un browser.
     'la scheda ferma: la ricarica allo scadere, provata' => ['readme', 'La ricarica allo scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova'],
@@ -5649,7 +5698,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
     'chi compone i dati a mano: l\'errore dopo 5 secondi' => ['readme', 'e fra una ricarica e l\'altra danno il loro errore, dalla `v2.10.0` dopo 5 secondi'],
     // Sprint 44 · T3.3 (voce #2057, rilievo N5 della seconda lettura dello sprint 42): la coda sul JS della cornice che non monta la pagina, vista in Chromium.
-    'la ricerca: la coda su un JS che non monta la pagina' => ['readme', 'Se non è il JS che monta la pagina, la ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di `npm run demo`'],
+    'la ricerca: la coda su un JS che non monta la pagina (sprint 55 · T3.5)' => ['readme', 'Se non è il JS che monta la pagina, dalla `v2.16.0` la ricerca arriva: il pezzo riceve dalla cornice chi è a schermo e la funzione che chiama la parte server'],
+    'la ricerca: la seconda esecuzione resta (sprint 55 · T3.5)' => ['readme', 'Il JS che contiene la cornice si scarica e si esegue lo stesso una seconda volta, con ciò che segue se è anche quello che monta la pagina'],
     'la lingua: solo se la sessione l\'ha già' => ['readme', 'Il `subito` riletto porta la lingua nuova solo se la sessione l\'ha già: `Cornice::subito()` non chiama il backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
     'la lingua: senza, niente cambia' => ['readme', 'senza, e senza un\'altra richiesta che l\'abbia riletta dopo il `dopo` che la pagina ha, il `subito` riletto ha la lingua di prima e niente cambia'],
     'la scheda ferma: la ricarica lenta non è provata' => ['readme', 'senza niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser)'],
@@ -5777,6 +5827,16 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**comporre `dopo` a mano**',
         '**resta in attesa di un `dopo` di chi è entrato**',
     ]],
+]);
+
+// Sprint 55 · T3.5 (voce #2063): dalla `v2.16.0` col JS della cornice servito con una coda da un JS che non monta la pagina la
+// ricerca arriva. Il README non dice più che resta in caricamento, né che è l'eccezione al «non un caricamento che non finisce».
+it('il README non dice più che con la coda la ricerca resta su «Sto cercando…» (sprint 55 · T3.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'resta su «Sto cercando…»' => ['la ricerca non arriva: resta su «Sto cercando…»'],
+    'l\'eccezione' => ['È l\'eccezione al «non un caricamento che non finisce» detto sopra'],
+    'la richiesta che non parte' => ['nessuno è a schermo: la richiesta della ricerca non parte'],
 ]);
 
 // Sprint 45 · T3.6 (voce #2060): dalla `v2.11.0` la lingua ha un suo segno, e il caso che fino alla `v2.10.0` restava aperto

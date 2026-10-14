@@ -73,7 +73,8 @@ export class AccettazioneRichiesta extends Error {}
  * è un intero da 1 in su — `0`, un numero con la virgola, una data —, resta l'errore di sempre, e così ogni altro stato.
  */
 export class TroppeRichieste extends Error {
-    readonly secondi: number;
+    // Scritto dal costruttore: `declare` non dichiara il campo una seconda volta nel JS, e la proprietà è la stessa.
+    declare readonly secondi: number;
 
     constructor(esito: string, secondi: number) {
         super(esito);
@@ -154,9 +155,11 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
             throw new AccettazioneRichiesta(esito);
         }
         if (risposta.status === 429) {
-            const riprovaFra = risposta.headers.get('Retry-After') ?? '';
-            if (/^\d+$/.test(riprovaFra) && Number(riprovaFra) >= 1) {
-                throw new TroppeRichieste(esito, Number(riprovaFra));
+            // Senza l'header è `null`, che `test` legge come «null»: non è un intero, e l'errore resta quello di sempre. Un intero è
+            // da 1 in su se non è zero (`+'00'` è 0).
+            const riprovaFra = risposta.headers.get('Retry-After') as string;
+            if (/^\d+$/.test(riprovaFra) && +riprovaFra) {
+                throw new TroppeRichieste(esito, +riprovaFra);
             }
         }
         throw new Error(esito);

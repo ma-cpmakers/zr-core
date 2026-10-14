@@ -3,8 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cerca } from './ricerca';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { cerca as cercaCon } from './ricerca';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+
+// Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
+const cerca = (parola: string, segnale: AbortSignal, email: string) => cercaCon(parola, segnale, email, chiama);
 
 // A schermo `chi`, o nessuno: senza nessuno è la cornice che c'era che si smonta, e toglie sé stessa (dalla `v2.11.5` chi toglie
 // dice chi è: `mostra(undefined, era)`).

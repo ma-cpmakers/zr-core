@@ -73,11 +73,12 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
   che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.12.4`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
+- `zeiras/zr-auth` `^0.12.31`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:
   la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12). Una minore nuova entra in `composer.json` e nella matrice di
-  `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa (per questo dalla
-  `v1.6.0` parte dalla 0.12.4: il blocco della sessione su «Segna tutte come lette» l'hanno provato solo giri con quella).
+  `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice
+  chiede per stare sicura (dalla `v2.16.0` parte dalla 0.12.31: la richiesta rimandata della cornice in due dati la protegge
+  `SessioneChiusa`, che c'è da quella; decisione di zr-pm).
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
@@ -112,5 +113,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 54 aperto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 55 aperto.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

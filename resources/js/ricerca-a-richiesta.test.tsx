@@ -209,6 +209,27 @@ describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cerc
 
         expect(cercate()).toStrictEqual([['POST', JSON.stringify({ q: 'ada' }), 'ada%40example.com']]);
     });
+
+    // Review della PR #89, R3 (sprint 55 · T3.4): chi è a schermo la cornice lo passa al pezzo quando il pezzo arriva, non come
+    // era quando la parola è stata scritta. Qui la cornice che ha cercato resta montata e niente la annulla: a fermarla è solo
+    // quel valore, perché nel frattempo è montata la cornice di un'altra persona.
+    it('montata nel frattempo la cornice di un\'altra persona, all\'arrivo la parola della prima non parte, anche se la prima resta montata', async () => {
+        const pezzo = pezzoInRitardo();
+        await mostra(dati);
+        await scrivi('ada');
+        const altroContenitore = document.createElement('div');
+        document.body.append(altroContenitore);
+        const altraRadice = createRoot(altroContenitore);
+        await act(async () => altraRadice.render(laCornice({ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' } })));
+
+        await pezzo.arriva();
+        await passano(1_000);
+
+        expect(cercate()).toStrictEqual([]);
+        expect(contenitore.querySelector('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
+        await act(async () => altraRadice.unmount());
+        altroContenitore.remove();
+    });
 });
 
 // Sprint 47 · T2 (voce #2055). La cornice smontata col pezzo in viaggio: il layout la rifà quando cambia il workspace, con la
