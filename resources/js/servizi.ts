@@ -103,18 +103,24 @@ export function mostra(email?: string): void {
  * Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
  * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
  * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
- * che dalla `v2.6.0` è di tutte e quattro le rotte). Con `email` una risposta di un'altra persona non torna a chi
+ * che dalla `v2.6.0` è di tutte e quattro le rotte, e dalla `v2.10.0` il 403 `gettone_senza_workspace`). Con `email` una risposta di un'altra persona non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
- * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
+ * ricarica una pagina senza la cornice (ciò che è a schermo quando arriva la risposta: allo scadere dei 30 secondi vale ciò
+ * che è detto sotto); se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
  * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Se dopo 5 secondi la pagina è
- * ancora lì — un `beforeunload` che annulla il ricaricamento, o una pagina nuova che tarda — la promessa si chiude con un errore senza niente dentro (dalla
+ * ancora lì — un `beforeunload` che annulla il ricaricamento, una pagina nuova che tarda, o una pagina che non ha ancora
+ * l'età per ricaricarsi — la promessa si chiude con un errore senza niente dentro (dalla
  * `v2.9.0`): né i dati, né `persona`, né la classe dell'errore di chi è entrato, e chi ha chiamato dice il suo errore di
  * sempre. Se la pagina non si ricarica perché non deve (nessuno a schermo, o c'è già chi ha risposto) nessun orologio parte, e
  * la promessa resta aperta: chi l'ha chiesta non è più a schermo. La ricarica ha un tetto, l'età della pagina (dalla
- * `v2.9.0`): una pagina caricata da meno di 30 secondi non si ricarica — subito dopo una ricarica, se la risposta dice ancora
- * un'altra persona, rifarla non cambia niente — e la promessa si chiude subito con lo stesso errore senza niente dentro. Niente
+ * `v2.9.0`): una pagina caricata da meno di 30 secondi non si ricarica prima di compierli — subito dopo una ricarica, se la
+ * risposta dice ancora un'altra persona, rifarla non cambia niente. Dalla `v2.10.0` si ricarica da sola quando li compie: la
+ * ricarica la chiede un orologio — su una pagina di 30 secondi o più scade al primo giro: un ritardo negativo vale zero —,
+ * e allo scadere riguarda chi è a schermo. Se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una
+ * pagina rimasta senza cornice sì. L'orologio dei 5 secondi parte per primo: scambiati, due pezzi a richiesta passano il
+ * loro tetto. Niente
  * è scritto nel browser per ricordarlo: l'orologio è quello della pagina (`performance.now()`). Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
@@ -124,13 +130,13 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (performance.now() < 3e4 ? no() : (location.reload(), setTimeout(no, 5e3))));
+        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (setTimeout(no, 5e3), setTimeout(() => corpo.persona !== aSchermo && location.reload(), 3e4 - performance.now())));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
         // Solo quel codice cambia l'errore di un 403 — quello che una rotta della cornice dà al suo errore (`errore`), o quello
-        // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace), o lo
-        // stesso codice con un altro stato, restano l'errore di sempre.
+        // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace, quando è
+        // della persona a schermo: di un'altra vale ciò che è sopra), o lo stesso codice con un altro stato, restano l'errore di sempre.
         if (risposta.status === 403 && [corpo?.errore, corpo?.codice].includes('accettazione_richiesta')) {
             throw new AccettazioneRichiesta(esito);
         }

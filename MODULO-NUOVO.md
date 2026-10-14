@@ -315,12 +315,13 @@ ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi e
 freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
 contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
 scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.9.0` si ricarica al più una volta ogni
-30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi non si ricarica, dà subito
-l'errore e resta con la cornice di chi c'era prima finché una richiesta dopo i 30 secondi non la ricarica: non contare sulla
-ricarica per togliere dalla tua pagina i dati di prima. Per ricordare il tetto il pacchetto non scrive niente nel browser:
+30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la
+cornice di chi c'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c'è già chi
+ha risposto —: non contare sulla ricarica per togliere dalla tua pagina i dati di prima. Per ricordare il tetto il pacchetto non scrive niente nel browser:
 guarda l'età della pagina. Dalla `v2.6.0` nemmeno il clic su una
 notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l'intestazione `Persona`, e la sua parte server
-risponde 409 `persona_diversa` a quella di un'altra persona. Per la cornice tu non scrivi niente: la regola la registra
+risponde 409 `persona_diversa` a quella di un'altra persona; dalla `v2.10.0` dice di chi è anche il 403
+`gettone_senza_workspace` di chi è entrato senza un workspace, e la tua scheda rimasta ferma si ricarica lo stesso. Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
 come lì è scritto: a una richiesta che non la dice la rotta risponde come prima. Restano fuori due cose, dette nello stesso
 punto: un JS di prima della `v2.6.0` rimasto in una scheda segna ancora a chi è entrato, finché la scheda non si ricarica,

@@ -1384,6 +1384,23 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(contenitore.textContent).toContain(testi('es').downTitle);
     });
 
+    // Sprint 44 · T3.1 (voce #2057, rilievo N2 della seconda lettura dello sprint 42): un `dopo` composto a mano che dice di
+    // chi è ma non quando, sotto il `subito` di un'altra persona col segno, non si scarta. Il confronto con un segno che manca
+    // è falso: la cornice è di chi dice `dopo`, per intero, e di chi dice `subito` non resta niente.
+    it('un `dopo` composto a mano con la persona e senza `sessione_il`, sotto il `subito` di un\'altra persona col segno: la cornice mostra nome ed email di chi dice `dopo`, e niente di chi dice `subito` (sprint 44 · T3.1)', async () => {
+        const diAltra: DatiSubito = { ...subito, persona: altra, sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const aMano: DatiDopo = { ...dopo, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:01.000000Z' };
+        const nelProfilo = () => tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent);
+
+        await inDue({ subito: diAltra, dopo: aMano }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        expect(etichette()).toContain('CRM');
+        await clic(uno('.zr-avatar-btn'));
+        expect(nelProfilo()).toStrictEqual([dati.persona.nome, dati.persona.email]);
+        expect(document.body.textContent).not.toContain(altra.nome);
+        expect(document.body.textContent).not.toContain(altra.email);
+    });
+
     // Sprint 41 · T4 (voce 2029). `non_letti` dice di chi è, come `Cornice::dopo()` dalla `v2.7.0`: col backoffice che non
     // risponde la parte server dà comunque chi è nella sessione, e la cornice ridotta non resta col nome di chi c'era prima.
     it('un `non_letti` che dice di chi è vale sopra il `subito` di chi c\'era prima: se la sessione è passata a un\'altra persona la cornice ridotta porta il suo nome e la sua email, nella sua lingua (sprint 41 · T4.2)', async () => {
@@ -1830,6 +1847,34 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(ricarica).toHaveBeenCalled();
         expect(contenitore.textContent).toBe('');
         expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    // Sprint 44 · T3.2 (voce #2057, rilievo N6 della seconda lettura dello sprint 42): fra le due voci, una pagina senza la
+    // `cornice` non fa dimenticare al layout chi mostrava. La visita dopo, coi dati di un'altra persona senza il segno della
+    // lettura, ricarica la pagina, e di quella persona niente è disegnato.
+    it('dopo una pagina senza la `cornice`, una visita coi dati di un\'altra persona senza il segno della lettura ricarica la pagina, una volta, e di quella persona niente è disegnato (sprint 44 · T3.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const disegnataSotto: (string | null)[] = [];
+        function LaPagina() {
+            useLayoutEffect(() => {
+                disegnataSotto.push(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label') ?? null);
+            });
+
+            return <p>UAT pagina</p>;
+        }
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        await visita(null, <p key="0">UAT pagina senza la cornice</p>);
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await visita({ ...dati, persona: altra, non_lette: 1 }, <LaPagina key="2" />);
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(disegnataSotto).toStrictEqual([]);
+        expect(document.body.textContent).not.toContain(altra.nome);
+        expect(document.body.textContent).not.toContain(altra.email);
         ricarica.mockRestore();
     });
 
