@@ -502,10 +502,11 @@ describe('una risposta che dice di chi è', () => {
         it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => ([
             ['a schermo c\'è già chi ha risposto', 'grace@example.com'],
             ['a schermo non c\'è nessuna cornice', undefined],
-        ] as [string, string | undefined][]).map(([come, chi]) => [nome, come, chi, laRisposta, chiama] as const)))('%s di un\'altra persona, se %s: la pagina non si ricarica, nessun orologio parte e chi ha chiesto resta in attesa, anche dopo un minuto (sprint 43 · T2.3)', async (_nome, _come, chi, laRisposta, chiama) => {
+        ] as [string, string | undefined][]).flatMap(([come, chi]) => [60_000, 29_999, 0].map((eta) => [nome, come, eta, chi, laRisposta, chiama] as const))))('%s di un\'altra persona, se %s, su una pagina caricata da %i ms: la pagina non si ricarica, nessun orologio parte e chi ha chiesto resta in attesa, anche dopo un minuto — nemmeno il tetto dei 30 secondi chiude con un errore la richiesta di una cornice che non c\'è più (sprint 43 · T2.3)', async (_nome, _come, eta, chi, laRisposta, chiama) => {
             const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
             vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
             mostra(chi);
+            caricataDa(eta);
 
             const esito = segui(chiama());
             await vi.advanceTimersByTimeAsync(0);
@@ -590,10 +591,13 @@ describe('una risposta che dice di chi è', () => {
         });
         it('nessun file del pacchetto che si installa nomina un archivio del browser o il nome della finestra: il tetto è l\'età della pagina, e niente resta dopo l\'uscita (sprint 43 · T3.6)', () => {
             const cartella = fileURLToPath(import.meta.url).replace(/[^/]+$/, '');
-            const sorgenti = readdirSync(cartella).filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file));
-            const conUnArchivio = sorgenti.filter((file) => /sessionStorage|localStorage|window\.name/.test(readFileSync(cartella + file, 'utf8')));
+            // Tutto ciò che sta sotto `resources/js`, anche nelle sue cartelle (il modulo dei componenti del design system), e non
+            // solo gli archivi: nemmeno una base di dati del browser, né un cookie scritto (quello del CSRF è solo letto).
+            const sorgenti = readdirSync(cartella, { recursive: true, encoding: 'utf8' }).filter((file) => /\.(tsx?|js)$/.test(file) && !/\.test\.tsx?$/.test(file));
+            const conUnArchivio = sorgenti.filter((file) => /sessionStorage|localStorage|indexedDB|window\.name|document\.cookie\s*=(?!=)/.test(readFileSync(cartella + file, 'utf8')));
 
             expect(sorgenti).toContain('servizi.ts');
+            expect(sorgenti).toContain('zeiras/componenti.js');
             expect(conUnArchivio).toStrictEqual([]);
         });
     });

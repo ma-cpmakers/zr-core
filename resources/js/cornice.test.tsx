@@ -3925,6 +3925,36 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche']);
     });
 
+    it('su una pagina caricata da meno di 30 secondi, dopo l\'elenco di un\'altra persona, il pannello chiuso e riaperto richiede l\'elenco: se la risposta è di chi la cornice mostra, a schermo vanno le sue notifiche, e dell\'elenco di prima niente è rimasto (sprint 43 · T3.4)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const fetchFinto = vi.fn<(indirizzo: string, opzioni?: RequestInit) => Promise<Response>>()
+            .mockImplementationOnce(async () => risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }))
+            .mockImplementationOnce(async () => risposta({ data: notificheDelServer.slice(0, 1), workspace: dati.workspace.slug, persona: dati.persona.email }));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        const disegnate: number[] = [];
+        const guarda = new MutationObserver(() => disegnate.push(voci().length));
+        guarda.observe(contenitore, { childList: true, subtree: true });
+
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif [role="alert"]')).not.toBeNull();
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+        await clic(uno('.zr-bell'));
+        await act(prossimoGiro);
+        guarda.disconnect();
+
+        // L'elenco di chi è entrato aveva più di una voce: una sola a schermo, quella di chi la cornice mostra, in ogni disegno.
+        expect(notificheDelServer.length).toBeGreaterThan(1);
+        expect(voci()).toHaveLength(1);
+        expect(Math.max(0, ...disegnate)).toBe(1);
+        expect(uno('.zr-notif [role="alert"]')).toBeNull();
+        expect(contenitore.textContent).not.toMatch(/grace/i);
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', 'GET /cornice/notifiche']);
+    });
+
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {

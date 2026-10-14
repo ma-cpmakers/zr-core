@@ -1231,6 +1231,33 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(lingueASchermo()).toStrictEqual(['it']);
             delDopoDiPrima();
         });
+
+        // Un segno che non ha la forma di un istante della parte server è un segno che manca, da una parte e dall'altra: i due
+        // senza i microsecondi, letti come testi, direbbero «`subito` è più avanti».
+        it.each<[string, unknown, unknown]>([
+            ['il segno di `subito` è `null`', null, prima],
+            ['il segno di `subito` è un testo vuoto', '', prima],
+            ['il segno di `subito` non ha la forma di un istante', '2026-10-13T08:00:05Z', prima],
+            ['il segno di `dopo` è `null`', poi, null],
+            ['il segno di `dopo` è un testo vuoto', poi, ''],
+            ['il segno di `dopo` non ha la forma di un istante', poi, '2026-10-13T08:00:01Z'],
+        ])('se %s vale la lingua di `dopo`, come fino alla `v2.8.0`: un segno che non è un istante è un segno che manca (sprint 43 · T4.3)', async (_caso, diSubito, diDopo) => {
+            await inDue({ subito: { ...subito, lingua: 'es', sessione_il: diSubito as string }, dopo: letto({ sessione_il: diDopo as string }) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['it']);
+            delDopoDiPrima();
+        });
+
+        // Dei dati composti a mano contro il tipo, senza l'email della persona in `subito`: il confronto delle due email non
+        // deve leggere un `dopo` che non c'è. La pagina non cade, e la cornice è quella ridotta di prima.
+        it.each<[string, DatiDopo | undefined]>([
+            ['nessun `dopo`', undefined],
+            ['un `dopo` di un\'altra persona, più vecchio', letto({ persona: { nome: 'UAT Grace Hopper', email: 'grace@example.com' }, sessione_il: prima })],
+        ])('un `subito` composto a mano senza l\'email della persona, con %s: la pagina non cade e la cornice è ridotta, senza moduli, come fino alla `v2.8.0` (sprint 43 · T4.3)', async (_caso, ilDopo) => {
+            const senzaEmail = { ...subito, persona: { nome: dati.persona.nome }, sessione_il: poi } as never;
+            await inDue({ subito: senzaEmail, dopo: ilDopo }, <PaginaA key="1" />);
+            expect(uno('#uat-pagina-a')).not.toBeNull();
+            expect(etichette()).not.toContain('CRM');
+        });
     });
 
     it('nello stesso workspace, per più passaggi e col menu del profilo aperto: a ogni `subito` riletto da solo che dice un\'altra persona la cornice è la sua e in attesa, senza niente di chi c\'era prima, e all\'arrivo del suo `dopo` è la sua per intero — da una persona all\'altra e ritorno (sprint 38 · T2.1, T2.2)', async () => {
