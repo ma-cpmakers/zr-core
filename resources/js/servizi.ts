@@ -262,7 +262,8 @@ export const chiediLaRicerca = async () => (ricerca ??= await ilPezzoDellaRicerc
 /** Il gettone CSRF di Laravel: il cookie `XSRF-TOKEN` della pagina, rimandato nell'header `X-XSRF-TOKEN` (senza, 419). */
 function gettoneCsrf(): Record<string, string> {
     const nome = 'XSRF-TOKEN';
-    const cookie = document.cookie.split(';').map((parte) => parte.trim()).find((parte) => parte.startsWith(`${nome}=`));
+    // `document.cookie` separa le coppie con «; », senza spazi attorno a nome e valore (RFC 6265, §5.4).
+    const cookie = document.cookie.split('; ').find((parte) => parte.startsWith(`${nome}=`));
 
     return cookie ? { 'X-XSRF-TOKEN': decodeURIComponent(cookie.slice(nome.length + 1)) } : {};
 }

@@ -199,7 +199,7 @@ type SenzaUndefined<T> = { [K in keyof T as undefined extends T[K] ? never : K]:
  * stesso modo una chiave che manca e una che vale `undefined`: nessun valore cambia, e non arriva una chiave in più.
  */
 function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
-    return Object.fromEntries(Object.entries(oggetto).filter(([, valore]) => valore !== undefined)) as SenzaUndefined<T>;
+    return Object.fromEntries(Object.entries(oggetto).filter((voce) => voce[1] !== undefined)) as SenzaUndefined<T>;
 }
 
 /**
@@ -224,13 +224,14 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
     if (secondi < 60) {
         return relativa.format(0, 'second');
     }
+    // `~~(-x)` è `-Math.floor(x)` per x da 1 in su, com'è qui, in meno byte (dalla `v2.17.1`).
     if (secondi < 3600) {
-        return relativa.format(-Math.floor(secondi / 60), 'minute');
+        return relativa.format(~~(-secondi / 60), 'minute');
     }
     const mezzanotte = (giorno: Date) => new Date(giorno).setHours(0, 0, 0, 0);
     const giorni = Math.round((mezzanotte(adesso) - mezzanotte(data)) / 86_400_000);
     if (giorni === 0) {
-        return relativa.format(-Math.floor(secondi / 3600), 'hour');
+        return relativa.format(~~(-secondi / 3600), 'hour');
     }
     if (giorni === 1) {
         return relativa.format(-1, 'day');

@@ -135,7 +135,7 @@ export function fileDelleLingue<Uno>(file: Record<string, Uno>) {
         fileDi(lingua: string): string | undefined {
             const codice = codiceDi(lingua);
 
-            return [codice, ...codice.split('-', 1)].find((scelto) => perCodice.has(scelto));
+            return [codice, codice.split('-')[0]!].find((scelto) => perCodice.has(scelto));
         },
     };
 }
@@ -169,7 +169,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
             const testi = { ...ripiego };
             for (const chiave of Object.keys(ripiego) as (keyof TestiDellaCornice)[]) {
                 const testo = scelti[chiave];
-                if (typeof testo === 'string' && testo.trim() !== '') {
+                if (typeof testo === 'string' && testo.trim()) {
                     testi[chiave] = testo;
                 }
             }
