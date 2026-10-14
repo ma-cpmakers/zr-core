@@ -389,7 +389,8 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
     return (
         <div
             ref={contenitore}
-            {...(colFuoco ? { style: { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } } : { className: 'zr-visually-hidden' })}
+            className={colFuoco ? undefined : 'zr-visually-hidden'}
+            style={colFuoco ? { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } : undefined}
             onFocus={() => setColFuoco(true)}
             onBlur={() => setColFuoco(false)}
         >

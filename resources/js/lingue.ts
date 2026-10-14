@@ -161,11 +161,11 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
         testi(lingua: string): Readonly<TestiDellaCornice> {
             const file = fileDi(lingua);
             const pronti = composti.get(file ?? '');
-            if (pronti !== undefined) {
+            if (pronti) {
                 return pronti;
             }
 
-            const scelti = (file !== undefined && perCodice.get(file)) || {};
+            const scelti = perCodice.get(file!) || {};
             const testi = { ...ripiego };
             for (const chiave of Object.keys(ripiego) as (keyof TestiDellaCornice)[]) {
                 const testo = scelti[chiave];
