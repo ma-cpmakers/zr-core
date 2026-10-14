@@ -109,7 +109,7 @@ it('dopo una Cornice::dopo() la lingua e il nome di Cornice::subito() sono quell
         ->and([$poi['lingua'] ?? null, $poi['persona']['nome'] ?? null])->toBe(['es', 'UAT Ada Lovelace']);
 });
 
-it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante e con chi è nella sessione — lingua, persona, workspace, sessione_il e, se io.mostra ha risposto, in fondo lingua_il —, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio (sprint 34 · T4.2; review della PR #67, R5; sprint 41 · T4.1; sprint 45 · T3.1)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
+it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Cornice::dopo() non lancia e dà non_letti col segno di quell\'istante e con chi è nella sessione — lingua, persona, workspace, sessione_il e, se io.mostra ha risposto, in fondo lingua_il —, e nient\'altro, da qualunque delle letture arrivi; nel log una riga d\'avviso col tipo dell\'errore e mai il suo messaggio; dalla `v2.17.0` lo stesso a un 4xx che non è un 401 né un 403 (sprint 34 · T4.2; review della PR #67, R5; sprint 41 · T4.1; sprint 45 · T3.1; sprint 56 · T2.1)', function (string $percorso, int $stato, ?string $codice, string $tipo) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
@@ -135,6 +135,12 @@ it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Co
     'app.elenca, un 429' => ['/v1/app', 429, 'troppe_richieste', ErroreApi::class],
     'io.aziende.elenca, la connessione cade' => ['/v1/io/aziende', 0, null, BackofficeNonRisponde::class],
     'io.workspace.elenca, un 503 di /v1' => ['/v1/io/workspace', 503, 'non_disponibile', ErroreApi::class],
+    // Sprint 56 · T2.1 (voce #2105): un 4xx che non parla di accesso è la cornice ridotta, non la pagina d'errore.
+    'io.mostra, un 404' => ['/v1/io', 404, 'non_trovato', ErroreApi::class],
+    'app.elenca, un 404' => ['/v1/app', 404, 'non_trovato', ErroreApi::class],
+    'app.elenca, un 409' => ['/v1/app', 409, 'conflitto', ErroreApi::class],
+    'io.aziende.elenca, un 422' => ['/v1/io/aziende', 422, 'non_valido', ErroreApi::class],
+    'io.workspace.elenca, un 404' => ['/v1/io/workspace', 404, 'non_trovato', ErroreApi::class],
 ]);
 
 // Sprint 41 · T4 (voce #2029). `non_letti` dice di chi è: fra la subito() di una pagina e la sua dopo() la sessione può essere
@@ -283,16 +289,78 @@ it('se il gettone scade mentre il backoffice non risponde, Cornice::dopo() dà n
         ->and(avvisiDellaRiga())->toBe([]);
 });
 
-it('un errore di /v1 che non è «il backoffice non risponde» passa da Cornice::dopo() com\'è, come da Cornice::dati(): non diventa non_letti (sprint 34 · T4.2)', function (string $percorso, int $stato, string $codice) {
+// Sprint 56 · T2.2 (voce #2105; Decisione di zr-pm 13319): un 401 o un 403 dicono che la persona non ha (più) accesso, e la
+// cornice ridotta lo nasconderebbe. Fino alla `v2.16.0` passavano da qui anche gli altri 4xx (il 404 di app.elenca).
+it('un 401 o un 403 che non è l\'accettazione passano da Cornice::dopo() com\'è, come da Cornice::dati(): non diventano non_letti (sprint 34 · T4.2; sprint 56 · T2.2)', function (string $percorso, int $stato, string $codice) {
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato([$percorso => nonRisponde($stato, $codice)]);
 
     expect(fn () => Cornice::dopo())->toThrow(fn (ErroreApi $errore) => expect([$errore->stato, $errore->codice])->toBe([$stato, $codice]));
 })->with([
     'io.mostra, 403 gettone_senza_workspace' => ['/v1/io', 403, 'gettone_senza_workspace'],
-    'app.elenca, 404' => ['/v1/app', 404, 'non_trovato'],
     'app.elenca, un 403 che somiglia all\'accettazione e non lo è' => ['/v1/app', 403, 'permesso_negato'],
+    'io.aziende.elenca, un 403' => ['/v1/io/aziende', 403, 'permesso_negato'],
+    'io.mostra, un 401 cliente_non_riconosciuto' => ['/v1/io', 401, 'cliente_non_riconosciuto'],
 ]);
+
+// Sprint 56 · T2.1 (voce #2105): col 4xx, come col 5xx, se intanto la sessione è finita non c'è nessuno di cui dire non_letti.
+it('se mentre il backoffice risponde 404 la sessione finisce, Cornice::dopo() dà null come senza sessione e nel log non c\'è niente (sprint 56 · T2.1)', function () {
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato(['/v1/app' => function () {
+        Sessione::chiudi();
+
+        return nonRisponde(404, 'non_trovato');
+    }]);
+
+    expect(Cornice::dopo())->toBeNull()
+        ->and(avvisiDellaRiga())->toBe([]);
+});
+
+// Sprint 56 · T2.3 (voce #2105): una risposta che la cornice non sa leggere è «il backoffice non risponde», come quella di
+// io.mostra senza le non lette: mai un TypeError o un ErrorException, e mai un `nome` che non è un testo al browser.
+dataset('risposte guaste', [
+    'app.elenca, un elemento che non è un oggetto' => ['/v1/app', ['data' => ['pm'], 'successivo' => null]],
+    'app.elenca, senza lo stato' => ['/v1/app', ['data' => [['codice' => 'pm']], 'successivo' => null]],
+    'app.elenca, un codice che non è un testo' => ['/v1/app', ['data' => [['codice' => 7, 'stato' => 'attivo']], 'successivo' => null]],
+    'io.aziende.elenca, senza il nome' => ['/v1/io/aziende', ['data' => [['id' => 'az-b']], 'successivo' => null]],
+    'io.aziende.elenca, il nome null' => ['/v1/io/aziende', ['data' => [['id' => 'az-b', 'nome' => null]], 'successivo' => null]],
+    'io.workspace.elenca, senza lo slug' => ['/v1/io/workspace', ['data' => [['id' => 'ws-x', 'nome' => 'UAT X', 'azienda_id' => 'az-b']], 'successivo' => null]],
+    'io.workspace.elenca, un\'azienda che non è un testo' => ['/v1/io/workspace', ['data' => [['id' => 'ws-x', 'nome' => 'UAT X', 'slug' => 'uat-x', 'azienda_id' => ['az-b']]], 'successivo' => null]],
+]);
+
+it('a una risposta che non sa leggere Cornice::dopo() non lancia: dà non_letti con chi è nella sessione, e nel log la riga d\'avviso con BackofficeNonRisponde (sprint 56 · T2.3)', function (string $percorso, array $guasta) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 15:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato([$percorso => $guasta]);
+
+    expect(Cornice::dopo())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-14T15:31:05.123456Z',
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '2026-10-14T15:31:05.123456Z',
+        'lingua_il' => '2026-10-14T15:31:05.123456Z',
+    ])
+        ->and(avvisiDellaRiga())->toBe(['zr-core, dati della cornice: il backoffice non ha risposto ('.BackofficeNonRisponde::class.'): la cornice esce ridotta']);
+})->with('risposte guaste');
+
+it('a una risposta che non sa leggere Cornice::dati() lancia BackofficeNonRisponde, come quando il backoffice non risponde (sprint 56 · T2.3)', function (string $percorso, array $guasta) {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([$percorso => $guasta]);
+
+    expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
+})->with('risposte guaste');
+
+// Sprint 56 · T2.4 (voce #2105): `Cornice::dati()` non cambia sui 4xx, che passano com'è.
+it('Cornice::dati() a un 4xx del backoffice lancia l\'ErroreApi com\'è: non_letti è solo di Cornice::dopo() (sprint 56 · T2.4)', function (string $percorso) {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato([$percorso => nonRisponde(404, 'non_trovato')]);
+
+    expect(fn () => Cornice::dati())->toThrow(fn (ErroreApi $errore) => expect([$errore->stato, $errore->codice])->toBe([404, 'non_trovato']));
+})->with(['/v1/io', '/v1/app', '/v1/io/workspace']);
 
 it('con la sessione che scade mentre la cornice legge, GettoneRifiutato passa da Cornice::dopo(): non diventa non_letti (sprint 34 · T4.2)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 10:00:00', 'UTC'));
