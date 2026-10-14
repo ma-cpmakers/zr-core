@@ -3,8 +3,10 @@
 namespace Zeiras\Core;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Cookie;
+use Throwable;
 
 /**
  * Il segno di un istante della parte server: quando una lettura è cominciata, quando una lettura è stata segnata. Lo portano
@@ -14,11 +16,12 @@ use Symfony\Component\HttpFoundation\Cookie;
  * forma sola.
  *
  * Dalla `v2.11.0` un segno non va mai indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
- * firmato con la chiave dell'applicazione, e un segno nuovo è il più avanti fra l'orologio e quello. Con due server del
- * frontend sfasati, o con l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia.
- * Il cookie porta solo l'istante e la sua firma: niente della persona né del workspace. Uno che non torna — manomesso,
- * firmato con un'altra chiave, in un'altra forma, vuoto — o che manca non vale: il segno è l'orologio, come prima, e la
- * risposta riscrive il cookie. Lo manda `AddQueuedCookiesToResponse` del gruppo `web`.
+ * firmato con la chiave dell'applicazione, e un segno nuovo è l'orologio se è più avanti di quello, e altrimenti quello più
+ * un microsecondo: due richieste diverse non hanno mai lo stesso segno. Con due server del frontend sfasati, o con
+ * l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia. Il cookie porta solo
+ * l'istante e la sua firma: niente della persona né del workspace. Uno che non torna — manomesso, firmato con un'altra
+ * chiave, in un'altra forma, vuoto, più di cinque minuti avanti dell'orologio — o che manca non vale: il segno è
+ * l'orologio, come prima, e la risposta riscrive il cookie. Lo manda `AddQueuedCookiesToResponse` del gruppo `web`.
  */
 final class Segno
 {
@@ -29,20 +32,32 @@ final class Segno
     private const DATO = 'zr-core.segno';
 
     /** La forma di un segno: quella di `adesso()`, e nient'altro. */
-    private const FORMA = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/';
+    private const FORMA = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\z/';
+
+    /**
+     * Di quanti minuti, al massimo, il segno del cookie può stare avanti dell'orologio. Oltre, un server del frontend ha
+     * l'orologio avanti: uno sfasamento di secondi o di minuti si assorbe, uno di ore o di anni non si porta agli altri server.
+     */
+    private const AVANTI_AL_MASSIMO = 5;
 
     /**
      * L'istante di adesso, in UTC qualunque sia il fuso dell'applicazione, coi microsecondi sempre a sei cifre e `Z` in fondo
-     * (`2026-10-09T21:31:05.123456Z`): così due segni si ordinano anche come stringhe. Se a questo browser è già stato dato
-     * un segno più avanti — in questa richiesta, o in una di prima col cookie —, è quello.
+     * (`2026-10-09T21:31:05.123456Z`): così due segni si ordinano anche come stringhe. Se in questa richiesta è già stato dato
+     * un segno più avanti, è quello; se il cookie porta il segno di una richiesta di prima, e l'orologio non è più avanti,
+     * è quello più un microsecondo.
      */
     public static function adesso(): string
     {
         $chiave = self::chiave();
-        $orologio = Carbon::now('UTC')->format('Y-m-d\TH:i:s.u\Z');
+        $adesso = Carbon::now('UTC');
+        $orologio = self::forma($adesso);
         $dato = request()->attributes->get(self::DATO);
-        $ricordato = is_string($dato) ? $dato : ($chiave === null ? null : self::dalCookie($chiave));
-        $segno = $ricordato !== null && strcmp($ricordato, $orologio) > 0 ? $ricordato : $orologio;
+        if (is_string($dato)) {
+            $segno = strcmp($dato, $orologio) > 0 ? $dato : $orologio;
+        } else {
+            $ricordato = $chiave === null ? null : self::dalCookie($chiave, $adesso);
+            $segno = $ricordato !== null && strcmp($ricordato, $orologio) >= 0 ? self::forma(Carbon::parse($ricordato)->utc()->addMicrosecond()) : $orologio;
+        }
 
         request()->attributes->set(self::DATO, $segno);
         if ($chiave !== null) {
@@ -52,8 +67,17 @@ final class Segno
         return $segno;
     }
 
-    /** L'istante che il cookie della richiesta porta, se la sua firma è di questa chiave; altrimenti null. */
-    private static function dalCookie(string $chiave): ?string
+    /** Un istante nella forma dei segni. */
+    private static function forma(Carbon $istante): string
+    {
+        return $istante->format('Y-m-d\TH:i:s.u\Z');
+    }
+
+    /**
+     * L'istante che il cookie della richiesta porta, se la sua firma è di questa chiave e non è avanti dell'orologio più di
+     * `AVANTI_AL_MASSIMO` minuti; altrimenti null.
+     */
+    private static function dalCookie(string $chiave, Carbon $adesso): ?string
     {
         $valore = request()->cookies->get(self::COOKIE);
         if (! is_string($valore)) {
@@ -68,7 +92,27 @@ final class Segno
 
         $istante = $parti[0].'.'.$parti[1];
 
-        return preg_match(self::FORMA, $istante) === 1 && hash_equals(self::firma($istante, $chiave), $parti[2]) ? $istante : null;
+        if (preg_match(self::FORMA, $istante) !== 1 || ! hash_equals(self::firma($istante, $chiave), $parti[2])) {
+            return null;
+        }
+
+        if (strcmp($istante, self::forma($adesso->copy()->addMinutes(self::AVANTI_AL_MASSIMO))) > 0) {
+            self::avvisa();
+
+            return null;
+        }
+
+        return $istante;
+    }
+
+    /** L'avviso per un cookie troppo avanti: dice che cosa vuol dire, non l'istante che porta. La riga non lancia. */
+    private static function avvisa(): void
+    {
+        try {
+            Log::warning('zr-core, il cookie del segno è avanti dell\'orologio di più di '.self::AVANTI_AL_MASSIMO.' minuti: un server del frontend ha l\'orologio avanti. Il segno è l\'orologio, e il cookie si riscrive.');
+        } catch (Throwable) {
+            // La riga non lancia.
+        }
     }
 
     /** Il cookie col segno: dura quanto la sessione, come il suo. */

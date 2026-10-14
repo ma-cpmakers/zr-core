@@ -346,7 +346,9 @@ final class Cornice
     /**
      * Ricorda nella sessione il segno di una lettura di io.mostra che ha confermato la lingua: solo se io.mostra ha risposto con
      * l'id della persona della sessione (`Sessione::aggiorna` torna true solo se qualcosa cambia, e non lo dice), e solo se è
-     * più avanti di quello già ricordato per lei, perché due richieste in volo non lo portino indietro.
+     * più avanti di quello già ricordato per lei: una lettura più vecchia, finita dopo, non lo porta indietro. Due richieste in
+     * volo insieme no: Laravel salva la sessione intera alla fine di ognuna, e l'ultima che finisce riscrive la lingua e il suo
+     * segno di quando era partita, una coppia che resta coerente, e che il `dopo` successivo rimette avanti.
      *
      * @param  array<string, mixed>  $io  i `data` di io.mostra
      */

@@ -1286,6 +1286,13 @@ describe('la cornice in due dati, sotto il layout', () => {
             delDopoDiPrima();
         });
 
+        // Dalla review della PR #79 (S1): due dati composti a mano contro il tipo, `subito` senza l'email e `dopo` senza la persona.
+        // Due email che mancano non sono la stessa persona: la lingua di `subito` non passa.
+        it('se `dopo` non dice di chi è e `subito` non ha l\'email, vale la lingua di `dopo`, anche col segno della lingua di `subito` più avanti (sprint 45 · T3.5)', async () => {
+            await inDue({ subito: { ...subito, lingua: 'es', persona: { nome: dati.persona.nome }, sessione_il: poi, lingua_il: poi } as never, dopo: senzaPersona(letto({ sessione_il: prima, lingua_il: prima })) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['it']);
+        });
+
         // Un segno che non ha la forma di un istante della parte server è un segno che manca, da una parte e dall'altra: i due
         // senza i microsecondi, letti come testi, direbbero «`subito` è più avanti».
         it.each<[string, unknown, unknown]>([

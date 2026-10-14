@@ -67,7 +67,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // di adesso e la lingua di prima, non la riporta. Da `subito` passano la sola lingua e il suo segno, e solo se `dopo` dice
     // che è della stessa persona e i due segni ci sono: un confronto con `undefined` è falso, e vale `dopo` come sempre. Il segno
     // della lingua della pagina è quello del dato da cui viene la lingua.
-    const piuRecente = subito && suo?.persona?.email === subito.persona.email && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
+    const piuRecente = subito && subito.persona.email && suo?.persona?.email === subito.persona.email && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
     const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...(suo && (piuRecente || { lingua_il: suo.lingua_il })) } : undefined);
 
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non

@@ -431,12 +431,12 @@ sua: al browser arriva un 500, e la cornice mostra l'errore di sempre: nel panne
 
 Dalla `v2.11.0` i segni della parte server — `sessione_il` di `Cornice::subito()`, `aggiornati_il` e `sessione_il` di
 `Cornice::dopo()`, `aggiornati_il` dei dati interi e dell'elenco delle notifiche, `segnata_il` e `segnate_il` — non vanno
-mai indietro per lo stesso browser. L'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è il più
-avanti fra l'orologio della parte server e quello: con due server del frontend sfasati, o con l'orologio riportato
-indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia (fino alla `v2.10.0` la cornice la scartava,
-e restava chi c'era prima). A parità di segno la cornice prende la pagina che arriva, e nella stessa richiesta due letture
-nello stesso istante hanno lo stesso segno. Anche `lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di
-quelle letture.
+mai indietro per lo stesso browser. L'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è
+l'orologio della parte server se è più avanti di quello, e altrimenti quello più un microsecondo: con due server del
+frontend sfasati, o con l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia
+(fino alla `v2.10.0` la cornice la scartava, e restava chi c'era prima). Due richieste diverse non hanno mai lo stesso
+segno: lo stesso segno c'è solo dentro una richiesta, dove due letture nello stesso istante hanno lo stesso. Anche
+`lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di quelle letture.
 
 - **Che cosa porta**: solo l'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del
   frontend): niente della persona né del workspace — né l'email, né un id, né lo slug, né un nome.
@@ -447,15 +447,21 @@ quelle letture.
 - **Un cookie che non torna non vale**: manomesso, firmato con un'altra chiave, in un'altra forma, vuoto o mancante, il
   segno è l'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie. Senza `APP_KEY` il cookie non c'è, e il
   segno è l'orologio.
+- **Al massimo cinque minuti avanti**: il cookie vale solo se è avanti dell'orologio della parte server di cinque minuti
+  al massimo. Oltre, il segno è l'orologio, la risposta riscrive il cookie, e nel log resta un avviso che non dice
+  l'istante del cookie: uno sfasamento di secondi o di minuti fra i server è assorbito, un server avanti di ore o di anni
+  non porta il suo orologio agli altri.
 - **Per l'informativa**: è un cookie tecnico, necessario al funzionamento della cornice; non serve a profilare, non va a
   terzi e non esce dall'host del modulo. Va citato col suo nome e il suo scopo nell'informativa sui cookie del modulo.
 - **Che cosa serve**: le risposte che danno un segno lo mettono nella coda dei cookie di Laravel, e lo manda
   `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`: il frontend non scrive niente. Una pagina fuori dal gruppo
   `web` dà i segni senza il cookie, come prima.
 - **Che cosa resta**: due richieste in volo insieme leggono lo stesso cookie, e l'ordine dei loro segni è quello degli
-  orologi; un browser che non tiene il cookie — un indirizzo `http://` che non è `localhost`, i cookie rifiutati — vale
-  come prima della `v2.11.0`. I server del frontend devono avere comunque l'ora allineata: il cookie frena un orologio
-  indietro, non uno avanti.
+  orologi; un browser che non tiene il cookie — i cookie rifiutati, o un indirizzo `http://`: il prefisso `__Host-` lo
+  vuole `Secure`, e su `http://localhost` alcuni browser lo tengono e Safari no (non provato in un browser) — vale come
+  prima della `v2.11.0`. I server del frontend devono avere comunque l'ora allineata: un server avanti di meno di cinque
+  minuti porta il suo orologio agli altri, per quel browser, finché l'orologio vero non lo raggiunge, e nel frattempo i
+  segni di quel browser avanzano di un microsecondo a richiesta.
 
 ## La cornice
 

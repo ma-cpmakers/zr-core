@@ -14,7 +14,7 @@ use Zeiras\Core\Cornice;
 use Zeiras\Core\Segno;
 
 // Sprint 45 · T2 (voce #2001). I segni della parte server non vanno mai indietro per lo stesso browser: l'ultimo segno dato
-// sta in un cookie firmato del pacchetto, `__Host-zr-core-segno`, e un segno nuovo è il più avanti fra l'orologio e quello.
+// sta in un cookie firmato del pacchetto, `__Host-zr-core-segno`, e un segno nuovo non è mai più indietro di quello.
 // Con due nodi sfasati, o l'orologio riportato indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia.
 // Un cookie che non torna — manomesso, firmato con un'altra chiave, in un'altra forma, vuoto — o che manca non vale: il
 // segno è l'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie. Dalla review della PR #79 (zr-pm,
