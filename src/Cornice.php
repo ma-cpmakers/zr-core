@@ -379,11 +379,12 @@ final class Cornice
      */
     private static function conLaLinguaRicordata(array $io, string $segno): array
     {
-        $ricordato = self::linguaIl()['lingua_il'] ?? null;
+        $grezzo = session('zr-core.lingua');
+        $ricordato = is_array($grezzo) && is_string($grezzo['il'] ?? null) ? $grezzo['il'] : null;
         $utente = Sessione::utente();
         $chi = $io['utente'] ?? null;
 
-        if ($ricordato === null || ! is_array($chi) || ($chi['id'] ?? null) !== ($utente['id'] ?? null) || ! is_string($utente['lingua'] ?? null)) {
+        if ($ricordato === null || strcmp($segno, $ricordato) > 0 || ! is_array($chi) || ($chi['id'] ?? null) !== ($utente['id'] ?? null) || ! is_string($utente['lingua'] ?? null)) {
             return $io;
         }
 
