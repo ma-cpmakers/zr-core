@@ -1,14 +1,15 @@
 // La ricerca della cornice, in un pezzo a richiesta (dalla `v2.8.0`): la richiesta a POST /cornice/ricerca, che cosa si fa della
 // risposta, e come un risultato diventa una riga dell'`AppShell`. La cornice lo chiede al primo fuoco nel campo della ricerca, o
 // alla prima parola (`chiediLaRicerca`, in `servizi.ts`): nel JS d'ingresso restano il campo, i suoi testi e gli stati. Nessun
-// ingresso riesporta niente da qui.
+// ingresso riesporta niente da qui. Dalla `v2.16.0` la `chiama` e chi è a schermo li passa la cornice (`cercaPer`): col JS della
+// cornice servito con una coda il `servizi` che questo pezzo importa può essere un'altra copia, dove a schermo non c'è nessuno.
 
 import type { ShellSearchResult } from '../zeiras/index';
 import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 import { nomeDellaVoce, nomePulito, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, prodottoDelRegistro, registro, type CodiceDelContesto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
 import type { StatoDellaRicerca } from './cornice';
-import { aSchermo, chiama, TroppeRichieste, type RisultatoDellaRicerca } from './servizi';
+import type { chiama, RisultatoDellaRicerca } from './servizi';
 
 /** Senza le chiavi che non hanno un valore: l'`AppShell` distingue una prop che manca da una `undefined`. */
 const senzaUndefined = <T>(oggetto: { [K in keyof T]: T[K] | undefined }) => Object.fromEntries(Object.entries(oggetto).filter(([, valore]) => valore !== undefined)) as T;
@@ -23,9 +24,9 @@ const senzaUndefined = <T>(oggetto: { [K in keyof T]: T[K] | undefined }) => Obj
  * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
  * mostra: i risultati, o un errore, di un'altra persona non tornano (`chiama`).
  */
-export async function cerca(parola: string, segnale: AbortSignal, email: string): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
+export async function cerca(parola: string, segnale: AbortSignal, email: string, chiama_: typeof chiama): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
-    const corpo = (await chiama(indirizzo, email, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
+    const corpo = (await chiama_(indirizzo, email, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
@@ -144,16 +145,18 @@ const TETTO_DEL_FRENO = 60;
  * l'errore, o il freno dopo un 429 (`frenataFinoA`, `nelFreno`). Alla parte server vanno i primi 100 caratteri. La cornice lo
  * chiama quando il pezzo è arrivato, che può essere dopo: una richiesta annullata nel frattempo (una parola nuova, lo stato
  * ridotto, la cornice smontata, anche se rifatta con la stessa persona) non parte, e non parte quella di chi non è più a
- * schermo (`aSchermo`: la cornice di un'altra persona, o nessuna).
+ * schermo (`aSchermo`: la cornice di un'altra persona, o nessuna). `aSchermo` e `chiama_` sono quelli della cornice, letti
+ * quando il pezzo arriva, mai quelli del `servizi` di questo pezzo (dalla `v2.16.0`); e il freno si riconosce dai `secondi` di
+ * un 429 (`TroppeRichieste`), non dalla classe, che con un'altra copia del modulo è un'altra.
  * Di una richiesta che non è più l'ultima (`inVolo`) l'esito non entra nello stato, tranne il freno, che è della persona.
  */
 
-export function cercaPer(parola: string, questa: AbortController, email: string, inVolo: { current: AbortController | undefined }, frenataFinoA: { current: number }, mostra: (stato: StatoDellaRicerca) => void, seDaAccettare: (errore: unknown) => void, nelFreno: () => void): Promise<void> | undefined {
+export function cercaPer(parola: string, questa: AbortController, email: string, inVolo: { current: AbortController | undefined }, frenataFinoA: { current: number }, mostra: (stato: StatoDellaRicerca) => void, seDaAccettare: (errore: unknown) => void, nelFreno: () => void, aSchermo: string | undefined, chiama_: typeof chiama): Promise<void> | undefined {
     if (questa.signal.aborted || email !== aSchermo) {
         return undefined;
     }
 
-    return cerca([...parola].slice(0, 100).join(''), questa.signal, email).then(
+    return cerca([...parola].slice(0, 100).join(''), questa.signal, email, chiama_).then(
         ({ risultati, workspace }) => {
             if (inVolo.current === questa) {
                 mostra({ stato: 'ready', risultati, workspace });
@@ -161,8 +164,9 @@ export function cercaPer(parola: string, questa: AbortController, email: string,
         },
         (errore: unknown) => {
             seDaAccettare(errore);
-            if (errore instanceof TroppeRichieste) {
-                frenataFinoA.current = performance.now() + Math.min(errore.secondi, TETTO_DEL_FRENO) * 1000;
+            const secondi = (errore as { secondi?: number } | undefined)?.secondi;
+            if (secondi) {
+                frenataFinoA.current = performance.now() + Math.min(secondi, TETTO_DEL_FRENO) * 1000;
                 nelFreno();
             } else if (inVolo.current === questa) {
                 mostra({ stato: 'error' });

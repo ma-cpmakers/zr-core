@@ -5631,7 +5631,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
     'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
-    'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte'],
+    // Sprint 55 · T3.5 (voce #2063): dalla `v2.16.0` con la coda la ricerca arriva; com'era fino alla `v2.15`, detto al passato.
+    'la ricerca: perché non arrivava con la coda (PR #78, R5; sprint 55 · T3.5)' => ['readme', 'e non li prende dalla seconda copia del codice delle richieste per la cornice, dove nessuno è a schermo; e il freno del `429` lo riconosce dai secondi, non dalla classe dell\'errore, che in quella copia è un\'altra'],
     'il 403 senza workspace e una sessione senza email (PR #78, R7; sprint 51 · T1.4)' => ['readme', 'Con una sessione senza email una richiesta che dice la persona riceve il 409, e una che non la dice il 422 `persona_mancante` (fino alla `v2.12` il 403).'],
     // UAT dello sprint 44 (U1-U5, in Chromium 151): la ricarica allo scadere è provata in un browser.
     'la scheda ferma: la ricarica allo scadere, provata' => ['readme', 'La ricarica allo scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova'],
@@ -5680,7 +5681,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
     'chi compone i dati a mano: l\'errore dopo 5 secondi' => ['readme', 'e fra una ricarica e l\'altra danno il loro errore, dalla `v2.10.0` dopo 5 secondi'],
     // Sprint 44 · T3.3 (voce #2057, rilievo N5 della seconda lettura dello sprint 42): la coda sul JS della cornice che non monta la pagina, vista in Chromium.
-    'la ricerca: la coda su un JS che non monta la pagina' => ['readme', 'Se non è il JS che monta la pagina, la ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di `npm run demo`'],
+    'la ricerca: la coda su un JS che non monta la pagina (sprint 55 · T3.5)' => ['readme', 'Se non è il JS che monta la pagina, dalla `v2.16.0` la ricerca arriva: il pezzo riceve dalla cornice chi è a schermo e la funzione che chiama la parte server'],
+    'la ricerca: la seconda esecuzione resta (sprint 55 · T3.5)' => ['readme', 'Il JS che contiene la cornice si scarica e si esegue lo stesso una seconda volta, con ciò che segue se è anche quello che monta la pagina'],
     'la lingua: solo se la sessione l\'ha già' => ['readme', 'Il `subito` riletto porta la lingua nuova solo se la sessione l\'ha già: `Cornice::subito()` non chiama il backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
     'la lingua: senza, niente cambia' => ['readme', 'senza, e senza un\'altra richiesta che l\'abbia riletta dopo il `dopo` che la pagina ha, il `subito` riletto ha la lingua di prima e niente cambia'],
     'la scheda ferma: la ricarica lenta non è provata' => ['readme', 'senza niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser)'],
@@ -5808,6 +5810,16 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**comporre `dopo` a mano**',
         '**resta in attesa di un `dopo` di chi è entrato**',
     ]],
+]);
+
+// Sprint 55 · T3.5 (voce #2063): dalla `v2.16.0` col JS della cornice servito con una coda da un JS che non monta la pagina la
+// ricerca arriva. Il README non dice più che resta in caricamento, né che è l'eccezione al «non un caricamento che non finisce».
+it('il README non dice più che con la coda la ricerca resta su «Sto cercando…» (sprint 55 · T3.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'resta su «Sto cercando…»' => ['la ricerca non arriva: resta su «Sto cercando…»'],
+    'l\'eccezione' => ['È l\'eccezione al «non un caricamento che non finisce» detto sopra'],
+    'la richiesta che non parte' => ['nessuno è a schermo: la richiesta della ricerca non parte'],
 ]);
 
 // Sprint 45 · T3.6 (voce #2060): dalla `v2.11.0` la lingua ha un suo segno, e il caso che fino alla `v2.10.0` restava aperto

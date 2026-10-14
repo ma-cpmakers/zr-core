@@ -1001,12 +1001,14 @@ cornice === null ? pagina : (
   quello della campanella: il JS che contiene la cornice non si serve con una coda (`app.js?v=3`). Il pezzo lo importa col suo
   nome, senza la coda, e il browser lo scarica e lo esegue una seconda volta: se è anche il JS che monta la pagina, al primo
   fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel
-  campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`). Se non è il JS che monta la pagina, la
-  ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di
-  `npm run demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: dieci secondi dopo la parola la
-  ricerca era ancora in caricamento; servita senza coda, la stessa pagina dà il risultato entro due secondi). È l'eccezione
-al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e
-in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte. Un pulsante
+  campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`). Se non è il JS che monta la pagina,
+  dalla `v2.16.0` la ricerca arriva: il pezzo riceve dalla cornice chi è a schermo e la funzione che chiama la parte server,
+  e non li prende dalla seconda copia del codice delle richieste per la cornice, dove nessuno è a schermo; e il freno
+  del `429` lo riconosce dai secondi, non dalla classe dell'errore, che in quella copia è un'altra (visto in Chromium 151 sulle
+  pagine di prova di `npm run demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: i risultati
+  entro due secondi dalla parola). Il JS che contiene la cornice si scarica e si esegue lo stesso una seconda volta, con ciò
+  che segue se è anche quello che monta la pagina. Fino alla `v2.15` lì la richiesta della ricerca non partiva, e il riquadro
+  restava in caricamento senza un errore. Un pulsante
   per riprovare nel riquadro della ricerca
   l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
   cambia niente; per i suoi test vedi «Passare alla v2.8».

@@ -3,7 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
-import { AccettazioneRichiesta, caricaNotifiche, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -883,10 +883,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // La richiesta, la sua risposta e il freno stanno nel pezzo a richiesta (`./ricerca`, dalla `v2.8.0`): se il fuoco non lo
         // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. Nell'attesa che dalla
         // `v2.11.5` segue un pezzo non arrivato non lo chiede: `chiediLaRicerca` è respinta subito, e lo stato è l'errore. All'arrivo parte l'ultima
-        // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`); una
+        // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`, con
+        // `aSchermo` e `chiama` di qui, letti all'arrivo: dalla `v2.16.0`, perché il pezzo può avere un'altra copia di `servizi`); una
         // cornice smontata ha annullato la sua nella pulizia, anche se quella rifatta è della stessa persona.
         chiediLaRicerca().then(
-            (arrivata) => arrivata.cercaPer(parola, questa, persona.email, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno),
+            (arrivata) => arrivata.cercaPer(parola, questa, persona.email, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno, aSchermo, chiama),
             () => ricercaInVolo.current === questa && setRicerca({ stato: 'error' }),
         );
     };
