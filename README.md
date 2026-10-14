@@ -290,7 +290,8 @@ altro lo decide lui. Costa una lettura, `io.mostra`, nelle richieste in cui la c
 non c'è; dove c'è non ne costa una in più: nella stessa richiesta `Cornice::dati()` usa la lettura di `Cornice::lingua()`
 invece di rifarla, e `Cornice::lingua()` quella di `Cornice::dati()` se viene dopo, e le letture restano quattro. Le non
 lette e il segno dei dati sono allora quelli della lettura di `Cornice::lingua()`: ciò che il controller cambia dopo — una
-notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo. Vale anche per il nome, e
+notifica segnata come letta in quella richiesta — arriva alla campanella con la lettura dopo (dalla `v2.15.0`, con la cornice
+rimandata, la lettura dopo può essere quella stessa: vedi «La cornice in due dati»). Vale anche per il nome, e
 per la lingua se è una di quelle che `Sessione::aggiorna` prende (fino alla 0.12.11 di zr-auth ogni testo che non sia
 vuoto o di soli spazi, dalla 0.12.12 solo una lingua di Zeiras: vedi «Quale lingua c'è nella sessione», più sotto): se il
 controller li cambia nel profilo in quella richiesta, i dati li portano dalla richiesta dopo — subito solo se il
@@ -1390,18 +1391,27 @@ email della persona quella della sessione: con un'altra, campanella e ricerca no
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
-Dalla `v2.15.0` la richiesta rimandata costa una lettura di io.mostra in meno. Se prima del controller della pagina c'è
-`Cornice::lingua()`, la sua lettura di io.mostra, quando riesce, resta nella sessione (alla chiave
+Dalla `v2.15.0` la richiesta rimandata può costare una lettura di io.mostra in meno. Se prima del controller della pagina
+c'è `Cornice::lingua()`, la sua lettura di io.mostra, quando riesce, resta nella sessione (alla chiave
 `zr-core.io-mostra-rimandata`), e `Cornice::dopo()`, nella richiesta rimandata, la usa invece di rifarla: le non lette,
-`aggiornati_il` e `sessione_il` sono quelli di quella lettura, e le chiamate a /v1 della pagina sono quattro invece di
-cinque. Vale a quattro condizioni, tutte dalla parte server: la stessa persona, lo stesso workspace, il segno ancora
-quello che la sessione ricorda per la lingua di quella persona (una lettura fatta dopo, in un'altra richiesta, lo porta
-avanti), e al più 10 secondi dal suo segno. E vale una volta sola: `Cornice::dopo()` la toglie dalla sessione, che la
-usi o no. Una lettura fallita non resta, e la richiesta rimandata rilegge. La toglie anche il cambio di workspace, alla
-prima richiesta che chiede la cornice nel workspace nuovo, e l'uscita, che chiude la sessione. `Cornice::lingua()` e
-`Cornice::dati()` non la prendono: leggono come sempre. Il frontend non fa niente, e dal browser non passa nessun dato
-in più. Con due schede della stessa persona nello stesso workspace, la richiesta rimandata dell'una può prendere la
-lettura fatta per la pagina dell'altra: sono dati della stessa persona, di meno di 10 secondi, col loro segno.
+`aggiornati_il` e `sessione_il` sono quelli di quella lettura, e la pagina chiama /v1 una volta in meno. Il risparmio c'è
+se nella richiesta rimandata il frontend non chiama `Cornice::lingua()`: con Inertia, la chiama solo dove la richiesta
+chiede `subito` (senza `X-Inertia-Partial-Data`, o con `subito` dentro). Se la chiama anche lì, `Cornice::lingua()`
+rilegge io.mostra e `Cornice::dopo()` usa quella, come prima: le letture restano quelle di prima. Per il resto il
+frontend non fa niente, e dal browser non passa nessun dato in più. La lettura tenuta vale a quattro condizioni, tutte
+dalla parte server: la stessa persona, lo stesso workspace, il segno ancora quello che la sessione ricorda per la lingua
+di quella persona (una lettura fatta dopo, in un'altra richiesta, lo porta avanti), e al più 10 secondi da quando è stata
+tenuta, contati sull'orologio del server (una lettura tenuta da un server con l'orologio più avanti di quello che la usa
+non vale). E vale una volta sola: `Cornice::dopo()` la toglie dalla sessione, che la usi o no; due richieste della stessa
+sessione in volo insieme possono però usarla tutte e due, perché Laravel salva la sessione intera alla fine di ognuna. Una
+lettura fallita non resta, toglie quella di prima, e la richiesta rimandata rilegge. Il cambio di workspace la toglie alla
+prima richiesta nel workspace nuovo che chiama `Cornice::subito()`, `Cornice::lingua()`, `Cornice::dati()` o
+`Cornice::dopo()`, e l'uscita la toglie chiudendo la sessione. `Cornice::lingua()` e `Cornice::dati()` non la prendono:
+leggono come sempre (in una stessa richiesta `Cornice::dopo()` va dopo `Cornice::lingua()`, come il middleware prima del
+controller). Con due schede della stessa persona nello stesso workspace, la richiesta rimandata dell'una può prendere la
+lettura fatta per la pagina dell'altra: sono dati della stessa persona, di meno di 10 secondi, col loro segno. Ciò che il
+controller della pagina cambia dopo `Cornice::lingua()` — una notifica segnata come letta in quella richiesta — con la
+richiesta rimandata che usa quella lettura arriva alla campanella con la visita dopo.
 
 Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l'email della
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche
@@ -1679,8 +1689,9 @@ errore del frontend, un errore di `/v1` che `Cornice::dopo()` lascia passare: zr
 vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
 che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
 `Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
-con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e `Cornice::dopo()` lo
-rilegge nella sua: io.mostra si legge due volte per visita.
+con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e anche nella richiesta
+rimandata, dove `Cornice::dopo()` usa quella lettura: io.mostra si legge due volte per visita. Dalla `v2.15.0` chi la chiama
+solo dove la richiesta chiede `subito` la legge una volta (vedi «Dalla `v2.15.0`», sopra).
 
 ## Il logo
 
