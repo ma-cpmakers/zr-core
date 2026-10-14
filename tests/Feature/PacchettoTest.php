@@ -5531,10 +5531,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: una persona vuota' => ['readme', 'Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422 anche dove il frontend non ha `ConvertEmptyStringsToNull`, che Laravel monta di suo (fino alla `v2.5.1` lì era un 409 `persona_diversa`)'],
     'la guida: le due cose di «Riprova»' => ['guida', 'il JS che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta), e dove la tua build non scrive il nome del pezzo com\'è «Riprova» riprova allo stesso indirizzo, senza coda: in Chromium non parte niente'],
     'la guida: un dopo che vale null' => ['guida', 'Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la cornice ha già i dati di quel workspace, resta coi dati di prima'],
-    'la guida: non_letti al posto di null' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`'],
+    // Sprint 58 · T1.5 (voce #2120): dalla `v2.18.0` la cornice ridotta non si compone a mano, la dà `Cornice::ridotta()`.
+    'la guida: la ridotta al posto di null (sprint 58 · T1.5)' => ['guida', 'Se la tua parte server non è riuscita a leggerlo non dare `null`: dai `Cornice::ridotta()` (dalla `v2.18.0`), la cornice ridotta come la dà `Cornice::dopo()`'],
     'la guida: non_letti dice di chi è (sprint 41 · T4.5)' => ['guida', 'Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e `sessione_il`'],
     'la guida: non_letti di un\'altra persona (sprint 41 · T6, R3)' => ['guida', 'Se è di un\'altra persona, o di un altro workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde'],
-    'la guida: non_letti composto a mano (sprint 41 · T6, R5)' => ['guida', 'Se lo componi tu nella parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale come prima, sotto il nome dei dati della sessione'],
+    'la guida: non comporlo a mano (sprint 58 · T1.5)' => ['guida', 'Non comporlo a mano nella tua parte server: `Cornice::ridotta()` lo dà nella stessa forma, col segno della lettura di io.mostra della richiesta (senza una lettura, il più vecchio che la forma dei segni ammette), senza chiamare il backoffice e senza righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica'],
+    'ridotta: quando (sprint 58 · T1.5)' => ['readme', 'Dalla `v2.18.0` non serve comporlo: `Cornice::ridotta()` dà la cornice ridotta com\'è nel ramo `non_letti` di `Cornice::dopo()`'],
+    'ridotta: la forma (sprint 58 · T1.5)' => ['readme', 'nella stessa forma e nello stesso ordine — `non_letti`, `aggiornati_il`, `lingua`, `persona`, `workspace`, `sessione_il` e, se c\'è, `lingua_il` —, per il frontend che la vuole lui, per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica. Non chiama il backoffice e non scrive nel log'],
+    'ridotta: il segno (sprint 58 · T1.5)' => ['readme', 'I due segni sono l\'inizio della lettura di io.mostra di quella richiesta (quella del 403, o quella di `Cornice::lingua()`); in una richiesta che io.mostra non l\'ha letto sono il segno più vecchio che la loro forma ammette, `0000-01-01T00:00:00.000000Z`: una cornice ridotta non vale mai sopra dati veri arrivati dopo. Senza sessione o senza workspace dà `null`'],
     'la guida: la parola cancellata' => ['guida', 'dalla `v2.5.1` non una che nel frattempo hai cancellata'],
     'Indietro in attesa' => ['readme', 'Una pagina ripresa dalla cronologia con Indietro porta il `subito` di allora'],
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
@@ -5770,6 +5774,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: in attesa caricano' => ['guida', 'dalla `v2.2.0` campanella e ricerca caricano: una parola scritta intanto si cerca quando `dopo` arriva'],
     'la guida: la persona in attesa' => ['guida', 'e il menu del profilo mostra la persona di `subito`'],
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
+]);
+
+// Sprint 58 · T1.5 (voce #2120): dalla `v2.18.0` la guida non chiede più di comporre `non_letti` a mano.
+it('la guida non chiede più di comporre non_letti a mano (sprint 58 · T1.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')), $frase))->toBe(false);
+})->with([
+    'nella stessa forma' => ['Se lo componi tu nella parte server, dallo nella stessa forma'],
+    'dai non_letti' => ['non dare `null`: dai `non_letti`'],
 ]);
 
 // Sprint 57 · T2.4 (voce 2086): dalla `v2.17.1` le cornici montate stanno in una pila, e con una cornice ancora montata a
