@@ -1678,12 +1678,16 @@ Che cosa vede la persona:
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
   sessione è passata a lei fra le due richieste), o di un altro workspace, la cornice si rifà, e la pagina con lei;
-- **se il backoffice non risponde** (la connessione, un 5xx, un 429) `Cornice::dopo()` non lancia: dà
+- **se il backoffice non risponde** (la connessione, un 5xx, un 429; dalla `v2.17.0` anche un 4xx che non è un 401
+  né un 403 — un 404, un 409, un 422 — e una risposta che la cornice non sa leggere) `Cornice::dopo()` non lancia: dà
   `['non_letti' => true]` col segno della lettura (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
-  `downOff`), e la pagina resta dov'è. Un altro errore di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
-  li tratta il frontend come prima. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
+  `downOff`), e la pagina resta dov'è. Un 401 o un 403 di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
+  dicono che la persona non ha più accesso, la cornice ridotta lo nasconderebbe, e li tratta il frontend come prima (il
+  403 `accettazione_richiesta` no: dà i dati ridotti). Fino alla `v2.16.0` passava ogni 4xx, e una risposta guasta usciva
+  come un errore PHP: un frontend che per quei casi compone `dopo` a mano attorno a `Cornice::subito()` dalla `v2.17.0`
+  può togliere la sua composizione e dare `Cornice::dopo()` com'è. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
   `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento,
   come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
   I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
@@ -1707,7 +1711,7 @@ riletti arrivano già con `dopo`, e la cornice li mostra da quel momento. Se c'�
 usa quella e non guarda `subito` e `dopo`.
 
 Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un
-errore del frontend, un errore di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
+errore del frontend, un 401 o un 403 di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
 vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
 che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
 `Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
