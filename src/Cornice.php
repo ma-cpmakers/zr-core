@@ -364,7 +364,7 @@ final class Cornice
 
         // La lettura della pagina, se è riuscita, resta per la sua richiesta rimandata; una fallita non resta, e toglie quella di prima.
         if (! $perIDati) {
-            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio()]) : null;
+            $segno !== '' ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio()]) : session()->forget(self::RIMANDATA);
         }
 
         return $lettura;
@@ -381,7 +381,7 @@ final class Cornice
         $tenuta = session(self::RIMANDATA);
         $id = Sessione::utente()['id'] ?? null;
 
-        if (is_string($id) && is_array($tenuta) && (($tenuta['di'] ?? null)[1] ?? null) === Sessione::workspace() && is_string($tenuta['segno'] ?? null) && is_int($tenuta['esito'] ?? null) && is_string($tenuta['il'] ?? null)) {
+        if (is_string($id) && is_array($tenuta) && ($tenuta['di'] ?? null) === [$id, Sessione::workspace()] && is_string($tenuta['segno'] ?? null) && is_string($tenuta['il'] ?? null)) {
             return $tenuta;
         }
 
