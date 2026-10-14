@@ -20,7 +20,8 @@ use Zeiras\Auth\Sessione;
  * La lingua e il nome della sessione sono quelli dell'ingresso: un cambio fatto dopo nel profilo non ci arriva da solo. Per
  * questo a ogni lettura la risposta di io.mostra, che la cornice legge già per le non lette, va a `Sessione::aggiorna` di
  * zr-auth (dalla 0.12), che mette nella sessione la lingua e il nome del profilo che prende (la lingua, dalla 0.12.12, solo se
- * è una di Zeiras), e i dati li portano da quella stessa lettura.
+ * è una di Zeiras; e dalla `v2.11.4` non quella di una lettura più vecchia di quella che l'ha confermata:
+ * `conLaLinguaRicordata()`), e i dati li portano da quella stessa lettura.
  * Un modulo che mette la lingua della pagina prima del controller la prende da `lingua()`, che fa quella stessa lettura: in una
  * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`).
  *
@@ -111,7 +112,8 @@ final class Cornice
      * La parte dei dati che sta nella sessione — lingua, persona, workspace —, per il frontend che non vuole aspettare il
      * backoffice prima del primo disegno (dalla `v2.1.0`): il resto lo dà `dopo()`, che può arrivare più tardi. Non chiama mai
      * il backoffice, nemmeno per rileggere la lingua: lingua e nome sono quelli dell'ingresso finché una `dopo()`, una
-     * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi. null senza sessione o
+     * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi (la lingua no, se quella
+     * lettura era più vecchia di quella che l'ha confermata: `conLaLinguaRicordata()`). null senza sessione o
      * senza workspace, come `dati()`.
      *
      * In fondo c'è il segno della sessione, `sessione_il` (dalla `v2.3.0`): l'istante in cui lingua e persona sono state lette.
@@ -391,8 +393,9 @@ final class Cornice
     }
 
     /**
-     * Il segno della lingua ricordato per la persona della sessione, come chiave da mettere nei dati; niente se non c'è, o se è
-     * di un'altra persona (ne è entrata un'altra nello stesso browser).
+     * Il segno della lingua ricordato per la persona della sessione, come chiave da mettere nei dati; niente se non c'è, se è
+     * di un'altra persona (ne è entrata un'altra nello stesso browser), o se sta avanti dell'orologio più di cinque minuti
+     * (`Segno::troppoAvanti()`, dalla `v2.11.4`: l'ha ricordato un server con l'orologio avanti, e la lettura lo sostituisce).
      *
      * @return array{lingua_il?: string}
      */
@@ -401,7 +404,7 @@ final class Cornice
         $ricordato = session(self::LINGUA);
         $id = Sessione::utente()['id'] ?? null;
 
-        return is_string($id) && is_array($ricordato) && ($ricordato['persona'] ?? null) === $id && is_string($ricordato['il'] ?? null)
+        return is_string($id) && is_array($ricordato) && ($ricordato['persona'] ?? null) === $id && is_string($ricordato['il'] ?? null) && ! Segno::troppoAvanti($ricordato['il'])
             ? ['lingua_il' => $ricordato['il']]
             : [];
     }
