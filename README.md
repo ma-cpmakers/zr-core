@@ -412,7 +412,8 @@ entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il
 anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte prima che li compia.
 Dalla `v2.11.5`, su quella pagina, il clic aspetta la risposta, e davanti al 409 la destinazione non si apre: niente è
 segnato a chi è entrato, e niente si apre con la sua sessione (dalla `v2.9.0` alla `v2.11.4` si apriva). Dalla `v2.10.0`,
-se la pagina è ancora lì quando compie 30 secondi, si ricarica allora.
+se la pagina è ancora lì quando compie 30 secondi, si ricarica allora. Dalla `v2.14.0` il clic aspetta la risposta su ogni
+pagina, e davanti al 409 la destinazione non si apre mai.
 Un JS di prima della `v2.6.0` rimasto in una
 scheda non dice la persona in tre richieste — l'elenco, la ricerca, la lettura con un clic — e prima della `v2.5.0` nemmeno
 in «Segna tutte come lette». Fino alla `v2.12` la rotta gli rispondeva come prima, e il suo clic su una notifica la segnava a
@@ -914,8 +915,9 @@ cornice === null ? pagina : (
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
   Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta: la cornice chiede
   `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina
-  sta cambiando, e la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina
-  caricata da meno di 30 secondi, dove il clic la aspetta: più sotto, «La cornice in due dati»). La funzione che lo fa, `segnaLetta`, è della cornice
+  sta cambiando. Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina, e la risorsa si apre alla risposta
+  (fino alla `v2.13` si apriva senza aspettarla, salvo su una pagina caricata da meno di 30 secondi, dove dalla `v2.11.5`
+  il clic la aspettava: più sotto, «La cornice in due dati»). La funzione che lo fa, `segnaLetta`, è della cornice
   e l'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta. Se l'id
   della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e
   la risorsa si apre lo stesso. Una notifica già letta, e
@@ -1412,10 +1414,14 @@ il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: nie
 sessione di chi è entrato (fino alla `v2.11.4` si apriva). Nell'attesa niente lo dice a schermo: il pannello si chiude e la
 notifica resta non letta. Dalla `v2.13.0` un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto, non
 fa niente: nessun'altra lettura, e all'arrivo la risorsa si apre una volta (fino alla `v2.12` partiva un'altra lettura, e la
-risorsa si apriva due volte); arrivata la risposta, un altro clic vale come il primo. Un secondo clic su un'altra notifica
-fa la sua lettura: all'arrivo la cornice le apre tutte e due, una dopo l'altra, e resta quella della risposta arrivata per
-ultima. La cornice ricorda una lettura sola, l'ultima partita, e la dimentica alla prima risposta: con due notifiche in
-attesa, un altro clic su una delle due può rifare la sua lettura e aprirla due volte, come fino alla `v2.12`.
+risorsa si apriva due volte); arrivata la risposta, un altro clic vale come il primo. Nella `v2.13` un secondo clic su
+un'altra notifica faceva la sua lettura, e all'arrivo la cornice le apriva tutte e due; con A, B e di nuovo A la lettura di A
+ripartiva, e A si apriva due volte. Dalla `v2.14.0` il clic aspetta la lettura su ogni pagina, anche di 30 secondi o più (fino
+alla `v2.13` lì la risorsa si apriva subito, e con la sessione di chi era entrato in un'altra scheda), e la cornice tiene una
+lettura sola in volo: un clic su una notifica qualsiasi, mentre è in volo, non fa niente — nessuna lettura, nessuna
+apertura —; alla risposta la dimentica, e un altro clic vale come il primo. Con A, B e di nuovo A parte la lettura di A
+sola, e alla risposta si apre A, una volta. Una lettura a cui risponde un'altra persona non risponde mai alla cornice: fino
+alla ricarica della pagina nessun clic su una notifica apre niente.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già

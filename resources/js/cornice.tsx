@@ -899,25 +899,22 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra, `inUnAltroWorkspace`). Una
     // che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi tutte», portano alla pagina delle
     // notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua risorsa è segnata letta (`leggi`): la
-    // richiesta parte prima dell'apertura. Su una pagina di 30 secondi o più l'apertura non la aspetta; su una più giovane
-    // (dalla `v2.11.5`) la aspetta, e la risposta di un'altra persona — la pagina si ricarica quando compie 30 secondi, vedi
-    // `chiama` — non apre la risorsa con la sessione di chi è entrato.
-    const letturaInVolo = useRef('');
+    // richiesta parte prima dell'apertura, e l'apertura la aspetta, a ogni età della pagina (dalla `v2.14.0`; dalla `v2.11.5`
+    // solo sotto i 30 secondi): la risposta di un'altra persona — la pagina si ricarica, vedi `chiama` — non apre la risorsa
+    // con la sessione di chi è entrato. La cornice tiene una lettura sola in volo: un clic su una notifica qualsiasi, mentre è
+    // in volo, non fa niente; alla risposta la dimentica, e un altro clic vale come il primo.
+    const letturaInVolo = useRef(false);
     const apriNotifica = (aperta: ShellNotification) => {
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined && !notifica!.letta) {
-            if (letturaInVolo.current === notifica!.id) {
-                return;
+            if (!letturaInVolo.current) {
+                letturaInVolo.current = true;
+                leggi(notifica!.id, elencoDi!).then(() => ((letturaInVolo.current = false), naviga(risorsa)));
             }
-            const lettura = leggi(notifica!.id, elencoDi!);
-            if (performance.now() < 3e4) {
-                letturaInVolo.current = notifica!.id;
-                lettura.then(() => ((letturaInVolo.current = ''), naviga(risorsa)));
-                return;
-            }
+            return;
         }
         naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
     };

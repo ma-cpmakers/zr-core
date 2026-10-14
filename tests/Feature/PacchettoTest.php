@@ -3772,7 +3772,8 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'il clic segna letta, e da quando' => ['punto', 'Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta'],
     // Review della PR #44, R3: `segnaLetta` non è più fra parentesi come se si importasse (sotto, il caso della review).
     'la richiesta' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando'],
-    'l\'apertura non aspetta' => ['punto', 'la risorsa si apre senza aspettare la risposta'],
+    // Sprint 53 · T1 (voce #2083): dalla `v2.14.0` l'apertura aspetta la lettura a ogni età della pagina.
+    'l\'apertura aspetta la lettura (sprint 53 · T1)' => ['punto', 'Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina, e la risorsa si apre alla risposta'],
     'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
     // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
@@ -5574,8 +5575,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 52 · T5 (voce #2079): l'evento prima della ricarica, e che cosa il pacchetto non fa.
     'l\'evento prima della ricarica (sprint 52 · T5)' => ['readme', 'subito prima di ricaricare la pagina per un cambio di persona — una risposta di un\'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» — la cornice manda sulla `window` un evento `zr-core:altra-persona`'],
     'l\'evento prima della ricarica: il pacchetto non scrive niente (sprint 52 · T5.2)' => ['readme', 'Il pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina si è aggiornata'],
-    'il clic su un\'altra notifica in attesa della lettura (sprint 52 · T4)' => ['readme', 'Un secondo clic su un\'altra notifica fa la sua lettura: all\'arrivo la cornice le apre tutte e due, una dopo l\'altra, e resta quella della risposta arrivata per ultima. La cornice ricorda una lettura sola, l\'ultima partita, e la dimentica alla prima risposta'],
-    'il clic che apre senza aspettare, e l\'eccezione (sprint 50 · T6, R14)' => ['readme', 'la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi, dove il clic la aspetta'],
+    // Sprint 53 · T1 (review R1 della PR #86): una lettura sola in volo per cornice, e A→B→A apre A una volta.
+    'una lettura sola in volo (sprint 53 · T1)' => ['readme', 'la cornice tiene una lettura sola in volo: un clic su una notifica qualsiasi, mentre è in volo, non fa niente'],
+    'A→B→A (sprint 53 · T1)' => ['readme', 'Con A, B e di nuovo A parte la lettura di A sola, e alla risposta si apre A, una volta.'],
+    'il clic che apriva senza aspettare, e l\'eccezione (sprint 50 · T6, R14; sprint 53 · T1)' => ['readme', 'fino alla `v2.13` si apriva senza aspettarla, salvo su una pagina caricata da meno di 30 secondi, dove dalla `v2.11.5` il clic la aspettava'],
     // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
     'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],

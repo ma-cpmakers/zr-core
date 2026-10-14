@@ -2787,7 +2787,7 @@ describe('il pannello delle notifiche', () => {
         expect([campanella(), detto()]).toStrictEqual(['3', '']);
     });
 
-    it('la risorsa si apre senza aspettare la lettura; quando la parte server risponde `letta: true` il numero scende di uno — non al clic, e una volta sola — e la notifica è letta nel pannello; coi dati letti dopo la lettura vale il loro numero (sprint 22 · T2.3, T2.4)', async () => {
+    it('la risorsa si apre alla risposta della lettura, non prima (dallo sprint 53 · T1.1: fino alla v2.13 si apriva senza aspettarla); quando la parte server risponde `letta: true` il numero scende di uno — non al clic, e una volta sola — e la notifica è letta nel pannello; coi dati letti dopo la lettura vale il loro numero (sprint 22 · T2.3, T2.4)', async () => {
         const lettura = inAttesa();
         // L'elenco è letto al secondo 5, e riletto uguale — con quella notifica ancora da leggere — al 7 e al 9: la lettura è dell'8.
         const fetchFinto = rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }, { data: daAprire, lettoIl: alSecondo(7) }, { data: daAprire, lettoIl: alSecondo(9) }], () => lettura.promessa);
@@ -2797,13 +2797,13 @@ describe('il pannello delle notifiche', () => {
         await mostra(pagina(letti(alSecondo(3), 3)));
 
         await apre(0);
-        // La risorsa è già aperta, e la parte server non ha ancora risposto: il numero aspetta lei.
-        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        // La parte server non ha ancora risposto: la risorsa e il numero aspettano lei.
+        expect(naviga).not.toHaveBeenCalled();
         expect(campanella()).toBe('3');
 
         await lettura.arriva(segnata('uat-n69', alSecondo(8)));
         expect(campanella()).toBe('2');
-        expect(naviga).toHaveBeenCalledTimes(1);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
 
         // I dati del clic ridati in un altro oggetto, con lo stesso segno: è la stessa lettura, di prima del clic, e la contano
         // ancora. Il numero resta sceso.
@@ -6083,10 +6083,94 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(letture()).toBe(letturePoi);
     });
 
-    // Sprint 50 · T4 (voce #2059): da 30 secondi in poi il clic apre la risorsa subito, come prima; e sotto i 30 secondi non
-    // aspetta niente quando non c'è una lettura da chiedere.
+    // Sprint 53 · T1 (voce #2083): il clic su una notifica non letta con una destinazione aspetta la lettura a ogni età della
+    // pagina, non solo sotto i 30 secondi: da una scheda rimasta aperta, dopo che in un'altra è entrata un'altra persona, la
+    // destinazione non si apre con la sua sessione.
+    it('su una pagina caricata da 60 secondi, il clic su una notifica non letta con una destinazione la apre solo alla risposta della lettura, una volta (sprint 53 · T1.1)', async () => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(60_000);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        await act(prossimoGiro);
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga).not.toHaveBeenCalled();
+
+        await lettura.arriva(risposta({ data: { letta: true }, persona: diSempre.persona.email }));
+        await act(prossimoGiro);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+    });
+
+    it('su una pagina caricata da 60 secondi, se alla lettura con un clic risponde un\'altra persona la destinazione non si apre e la pagina si ricarica (sprint 53 · T1.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email })
+            : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(60_000);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await clicEPassano(uno('.zr-notif-list .zr-notif-item'));
+            await act(() => vi.advanceTimersByTimeAsync(10_000));
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(naviga).not.toHaveBeenCalled();
+            expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    // Sprint 53 · T1 (review R1 della PR #86): la cornice tiene una lettura sola in volo. Un clic su una notifica qualsiasi,
+    // mentre è in volo, non fa niente: con A, B e di nuovo A parte la lettura di A sola, e alla risposta si apre A, una volta.
+    it.each([10_000, 60_000])('su una pagina caricata da %i ms, i clic su A, su B e di nuovo su A mentre la lettura di A è in volo fanno una lettura sola e aprono A una volta (sprint 53 · T1.3)', async (eta) => {
+        const notificaA = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const notificaB = { ...notificaA, id: 'uat-n70', creata_il: '2026-10-06T11:50:00Z', ids: { id: 'uat-persona-2' } };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [notificaA, notificaB], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(eta);
+        const naviga = vi.fn();
+        const unClic = async (quale: number) => {
+            if (document.querySelector('.zr-notif-list .zr-notif-item') === null) {
+                await clic(uno('.zr-bell'));
+            }
+            await clic(document.querySelectorAll<HTMLElement>('.zr-notif-list .zr-notif-item')[quale]!);
+        };
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await unClic(0);
+        await unClic(1);
+        await unClic(0);
+        await act(prossimoGiro);
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo).filter((indirizzo) => indirizzo !== '/cornice/notifiche')).toStrictEqual(['/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga).not.toHaveBeenCalled();
+
+        await lettura.arriva(risposta({ data: { letta: true }, persona: diSempre.persona.email }));
+        await act(prossimoGiro);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+    });
+
+    it('il README dice che il clic su una notifica aspetta la lettura a ogni età della pagina, e che la cornice tiene una lettura sola in volo (sprint 53 · T1.4)', () => {
+        const readme = readFileSync(resolve(process.cwd(), 'README.md'), 'utf8').replace(/\s+/g, ' ');
+        expect(readme.includes('e la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi')).toBe(false);
+        expect(readme.includes('Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina')).toBe(true);
+        expect(readme.includes('la cornice tiene una lettura sola in volo')).toBe(true);
+    });
+
+    // Sprint 50 · T4 (voce #2059): il clic non aspetta niente quando non c'è una lettura da chiedere. Da 30 secondi in poi il
+    // clic su una non letta apriva subito: dallo sprint 53 (T1.1) aspetta la lettura anche lì, e quella riga è uscita da qui.
     it.each<[string, number, Record<string, unknown>, string, string[]]>([
-        ['una non letta con una destinazione, su una pagina di 60 secondi', 60_000, {}, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']],
         ['una letta, su una pagina di 10 secondi', 10_000, { letta: true }, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche']],
         ['una senza destinazione, su una pagina di 10 secondi', 10_000, { tipo: 'com.zeiras.crm.qualcosa.mai.visto' }, 'https://app.zeiras.com/notifiche', ['/cornice/notifiche']],
     ])('il clic su %s apre subito dove porta, senza aspettare una risposta (sprint 50 · T4.4)', async (_quale, eta, diversa, dove, richieste) => {
