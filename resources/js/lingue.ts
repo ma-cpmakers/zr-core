@@ -280,15 +280,16 @@ export let campanella: typeof import('./campanella') | undefined;
  * Dopo un pezzo non arrivato la richiesta dopo aspetta (dalla `v2.11.5`): dopo l'n-esimo fallimento non parte prima di
  * 2^(n−1) secondi, e mai più di 60, dal fallimento. Nell'attesa non importa niente ed è respinta con l'errore di prima, che
  * per chi chiede è un pezzo non arrivato come gli altri. L'orologio è quello della pagina (`performance.now()`): niente è
- * scritto nel browser. Chi chiede con `subito` — «Riprova» del pannello delle notifiche, che la persona preme — non aspetta.
+ * scritto nel browser. Chi chiede con `senzaAttesa` — «Riprova» del pannello delle notifiche, che la persona preme — non aspetta.
+ * Due richieste partite insieme che non arrivano contano come due fallimenti: l'attesa dopo è quella del secondo (README).
  */
-export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): (subito?: unknown) => Promise<Pezzo> {
+export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): (senzaAttesa?: boolean) => Promise<Pezzo> {
     let tentativi = 0;
     let finoA = 0;
     let diPrima: unknown;
 
-    return (subito) => {
-        if (!subito && performance.now() < finoA) {
+    return (senzaAttesa) => {
+        if (!senzaAttesa && performance.now() < finoA) {
             return Promise.reject(diPrima);
         }
         const nome = tentativi && /import\((["'\x60])(.+?)\1/.exec(String(importa));
@@ -306,6 +307,6 @@ const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(()
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
  * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
  * Chromium, con l'indirizzo che `pezzoARichiesta` legge dalla build (README, «Le notifiche»), passata la sua attesa — o
- * subito, con `subito` («Riprova»). Arrivato, non si chiede più.
+ * subito, con `senzaAttesa` («Riprova»). Arrivato, non si chiede più.
  */
-export const chiediLaCampanella = async (subito?: unknown) => (campanella ??= await ilPezzoDellaCampanella(subito));
+export const chiediLaCampanella = async (senzaAttesa?: boolean) => (campanella ??= await ilPezzoDellaCampanella(senzaAttesa));

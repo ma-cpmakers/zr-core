@@ -114,3 +114,30 @@ describe('nell\'attesa dopo un pezzo della ricerca non arrivato (sprint 50 · T5
         }
     });
 });
+
+// Sprint 50 · T6 (review, R4): «Riprova» chiede il pezzo della campanella senza l'attesa, fino a `pezzoARichiesta`. Il caso della
+// cornice (`cornice.test.tsx`, T5.5) guarda che cosa passa a `chiediLaCampanella`; qui `chiediLaCampanella` vera, col pezzo che
+// non arriva: in un file coi moduli rifatti a ogni caso, come la ricerca qui sopra.
+describe('chi chiede il pezzo della campanella, nell\'attesa dopo un pezzo non arrivato (sprint 50 · T5.5)', () => {
+    it('senza `senzaAttesa` non lo richiede ed è respinto; con `senzaAttesa`, come «Riprova», lo richiede', async () => {
+        const ora = { adesso: 0 };
+        vi.spyOn(performance, 'now').mockImplementation(() => ora.adesso);
+        let caricamenti = 0;
+        vi.doMock('./campanella', () => {
+            caricamenti++;
+            throw new TypeError('Failed to fetch dynamically imported module');
+        });
+        const lingue = await import('./lingue');
+
+        await expect(lingue.chiediLaCampanella()).rejects.toThrow();
+        expect(caricamenti).toBe(1);
+
+        ora.adesso = 500;
+        await expect(lingue.chiediLaCampanella()).rejects.toThrow();
+        expect(caricamenti).toBe(1);
+
+        await expect(lingue.chiediLaCampanella(true)).rejects.toThrow();
+        expect(caricamenti).toBe(2);
+        vi.doUnmock('./campanella');
+    });
+});

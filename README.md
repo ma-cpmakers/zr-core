@@ -703,7 +703,8 @@ cornice === null ? pagina : (
   Chromium). Dalla `v2.11.5` fra un tentativo fallito e il successivo c'è un'attesa: dopo l'n-esimo il pezzo non si richiede
   prima di 2^(n−1) secondi dal fallimento (1, 2, 4… e mai più di 60), e nell'attesa chi lo chiede ha subito l'errore di
   prima — per la ricerca, che ha la stessa attesa, il suo avviso. «Riprova», che la persona preme, non aspetta; la
-  campanella aperta di nuovo sì. Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
+  campanella aperta di nuovo sì. Due richieste partite insieme che non arrivano contano come due tentativi falliti:
+  l'attesa dopo è quella del secondo (2 secondi e non 1), e la coda dopo è `?r=2`. Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
   della cornice, là dove lei importa il pezzo, risolto sull'indirizzo di quel JS. In `import()` entra solo il pezzo della
   campanella, qualunque cosa dica l'errore, e «Riprova» lo richiede anche se l'indirizzo del JS d'ingresso ha una coda sua
   (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, anche una
@@ -896,7 +897,8 @@ cornice === null ? pagina : (
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
   Dalla `v1.12.0` il clic che apre la risorsa di una notifica non letta la segna letta: la cornice chiede
   `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina
-  sta cambiando, e la risorsa si apre senza aspettare la risposta. La funzione che lo fa, `segnaLetta`, è della cornice
+  sta cambiando, e la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina
+  caricata da meno di 30 secondi, dove il clic la aspetta: più sotto, «La cornice in due dati»). La funzione che lo fa, `segnaLetta`, è della cornice
   e l'ingresso non la esporta: un frontend che segna letta una notifica da una pagina sua chiama la rotta. Se l'id
   della notifica non ha la forma che la rotta vuole (lettere, cifre, `-` e `_`, 64 al più) la richiesta non parte, e
   la risorsa si apre lo stesso. Una notifica già letta, e
@@ -957,11 +959,13 @@ cornice === null ? pagina : (
   prima dell'arrivo — il layout la rifà quando cambia il workspace, anche con la stessa persona — non cerca più la parola
   scritta in lei, e all'arrivo non parte niente (dalla `v2.11.2`). Se il pezzo non arriva —
   la rete che cade, un file che una build nuova ha tolto — sotto il campo c'è l'errore della ricerca, lo stesso avviso di
-  una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte. Si riprova
-  scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, e in Chromium lo richiede davvero, all'indirizzo
+  una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte. Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, passata
+  l'attesa che dalla `v2.11.5` segue un pezzo non arrivato (nell'attesa la parola non lo richiede, e sotto il campo resta
+  l'avviso), e in Chromium lo richiede davvero, all'indirizzo
   che la build ha scritto e con una coda, come «Riprova» per la campanella (vedi «Le notifiche»); arrivato, si cerca ciò che
-  è nel campo. Un pezzo non arrivato non accende il freno del `429`, e fra una richiesta del pezzo e l'altra non c'è
-  un'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive. Un file che una build nuova ha
+  è nel campo. Un pezzo non arrivato non accende il freno del `429`: fra una richiesta del pezzo e l'altra c'è solo l'attesa del
+  pezzo (fino alla `v2.11.4` nessuna: ne partiva una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi
+  scrive). Un file che una build nuova ha
   tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata. Per questo pezzo vale ciò che «Le notifiche» dice di
   quello della campanella: il JS che contiene la cornice non si serve con una coda (`app.js?v=3`). Il pezzo lo importa col suo
   nome, senza la coda, e il browser lo scarica e lo esegue una seconda volta: se è anche il JS che monta la pagina, al primo
@@ -1387,7 +1391,8 @@ notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva 
 ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
 una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia; dalla `v2.11.5` lì
 il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: niente è segnato, e niente si apre con la
-sessione di chi è entrato (fino alla `v2.11.4` si apriva).
+sessione di chi è entrato (fino alla `v2.11.4` si apriva). Nell'attesa niente lo dice a schermo: il pannello si chiude e la
+notifica resta non letta, e un secondo clic sulla stessa notifica fa un'altra lettura, che all'arrivo la apre di nuovo.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
@@ -1400,10 +1405,10 @@ terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricar
 quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
 su una cornice sola nel documento. Con due, a schermo è quella montata per ultima, e una cornice che si smonta toglie chi
 è a schermo solo se è ancora lei (dalla `v2.11.5`): se la cornice di chi ha risposto si monta prima che quella di prima
-sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica. Resta un limite:
-smontata la cornice montata per ultima mentre l'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non
+sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica. Resta un limite: smontata la cornice montata per ultima mentre l'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non
 si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c'è la cornice
-di chi ha risposto.
+di chi ha risposto. Lo stesso con due cornici della stessa persona, smontata una
+delle due: la cornice riconosce chi è a schermo dall'email, e non sa quale delle due si è smontata.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
@@ -1431,10 +1436,8 @@ scheda nascosta il browser può far scadere l'orologio più tardi (in una congel
 cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Fino allo scadere l'orologio tiene della risposta solo chi ha
 risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto il browser li può buttare subito. Allo scadere la
 cornice riguarda chi è a schermo: se una visita ha già
-portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano tre casi. Una
-richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
-apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona
-è arrivata. E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
+portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. I casi che restano sono due. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra.
+E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
 cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
 scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova: una risposta di
 un'altra persona a pagina appena caricata dà l'errore del pannello dopo 5 secondi e la pagina si ricarica quando ne compie

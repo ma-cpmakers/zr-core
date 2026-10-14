@@ -10,7 +10,7 @@ import { Alert, AppShell, Button } from './zeiras/componenti';
 // Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
 // chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
 // già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
-const caricaFrasi = (lingua: string, subito?: unknown) => chiediLaCampanella(subito).then((arrivata) => arrivata.caricaFrasi(lingua));
+const caricaFrasi = (lingua: string, senzaAttesa?: boolean) => chiediLaCampanella(senzaAttesa).then((arrivata) => arrivata.caricaFrasi(lingua));
 const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -317,7 +317,8 @@ export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready
 
 /**
  * Chiede il pezzo della ricerca (`./ricerca`) al primo fuoco nel campo: chi sta per scrivere lo trova arrivato, e chi non
- * cerca non lo scarica. Se non arriva qui non succede niente: lo richiede la prima parola (`cercaParola`).
+ * cerca non lo scarica. Se non arriva qui non succede niente: lo richiede la prima parola (`cercaParola`), passata l'attesa
+ * che segue un pezzo non arrivato (`pezzoARichiesta`, dalla `v2.11.5`). Nell'attesa nemmeno questo fuoco lo richiede.
  */
 const alFuoco = () => void chiediLaRicerca().catch(() => undefined);
 
@@ -568,7 +569,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
     // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
-    const chiedi = (svuota: boolean, subito?: unknown) => {
+    const chiedi = (svuota: boolean, senzaAttesa?: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
@@ -576,7 +577,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
         const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
-        const frasi = caricaFrasi(lingua, subito);
+        const frasi = caricaFrasi(lingua, senzaAttesa);
         frasi.catch(() => undefined);
         chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
             ({ elenco, il, workspace }) => {
@@ -617,11 +618,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
     const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
-    // da lì. «Riprova» chiede il pezzo della campanella senza l'attesa che segue un pezzo non arrivato (`subito`).
-    const carica = (subito?: unknown) => {
+    // da lì. «Riprova» chiede il pezzo della campanella senza l'attesa che segue un pezzo non arrivato (`senzaAttesa`).
+    const carica = (senzaAttesa?: boolean) => {
         setNeRestano(undefined);
         setFrasiChieste(undefined);
-        chiedi(true, subito);
+        chiedi(true, senzaAttesa);
     };
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
@@ -877,7 +878,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
         // La richiesta, la sua risposta e il freno stanno nel pezzo a richiesta (`./ricerca`, dalla `v2.8.0`): se il fuoco non lo
-        // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. All'arrivo parte l'ultima
+        // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. Nell'attesa che dalla
+        // `v2.11.5` segue un pezzo non arrivato non lo chiede: `chiediLaRicerca` è respinta subito, e lo stato è l'errore. All'arrivo parte l'ultima
         // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`); una
         // cornice smontata ha annullato la sua nella pulizia, anche se quella rifatta è della stessa persona.
         chiediLaRicerca().then(

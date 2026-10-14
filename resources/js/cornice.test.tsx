@@ -15,7 +15,7 @@ import { frasiARichiesta } from './campanella';
 import * as delleLingue from './lingue';
 import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
-import { chiediLaRicerca } from './servizi';
+import { aSchermo, chiediLaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
 
@@ -4076,6 +4076,9 @@ describe('il pannello delle notifiche', () => {
             } else {
                 await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
             }
+            // Review dello sprint 50 (R8): qui allo scadere la pagina si ricarica anche se lo smontaggio non toglie niente — a
+            // schermo resterebbe chi c'era prima, che non è chi ha risposto —; chi è a schermo lo dice allora `aSchermo`.
+            expect(aSchermo).toBe(conLAltra ? grace.email : undefined);
 
             await act(() => vi.advanceTimersByTimeAsync(25_000));
             expect(ricarica).toHaveBeenCalledTimes(volte);
@@ -6839,10 +6842,10 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
-        expect(campanella.chiesto.mock.calls.map(([subito]) => Boolean(subito))).toStrictEqual([false]);
+        expect(campanella.chiesto.mock.calls.map(([senzaAttesa]) => Boolean(senzaAttesa))).toStrictEqual([false]);
 
         await clic(errore()?.querySelector('button') ?? null);
-        expect(campanella.chiesto.mock.calls.map(([subito]) => Boolean(subito))).toStrictEqual([false, true]);
+        expect(campanella.chiesto.mock.calls.map(([senzaAttesa]) => Boolean(senzaAttesa))).toStrictEqual([false, true]);
         expect(errore()).not.toBeNull();
     });
 

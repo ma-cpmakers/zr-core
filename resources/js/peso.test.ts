@@ -119,8 +119,8 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
 }
 
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
-async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}): Promise<Costruito> {
-    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
+async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}, prima: Plugin[] = []): Promise<Costruito> {
+    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [...prima, react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
 }
 
 /** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
@@ -165,6 +165,7 @@ function pesiNelReadme(nome: string): number[] {
 }
 
 let soloCornice: Costruito;
+let coiDatiDentro: Costruito;
 let conIlLimiteAlto: Costruito;
 let perNome: Costruito;
 let diSempre: Costruito;
@@ -195,6 +196,12 @@ const DEI_FORMATTATORI = 'NumberFormat';
 beforeAll(async () => {
     vi.stubEnv('NODE_ENV', 'production');
     soloCornice = await app('resources/demo/peso/cornice.ts');
+    // Sprint 50 · T6 (review, R9): la stessa app col modulo dei componenti senza i segni «puri» del generatore.
+    coiDatiDentro = await app('resources/demo/peso/cornice.ts', {}, [{
+        name: 'zr-core:componenti-senza-segni',
+        enforce: 'pre',
+        load: (id) => (id.endsWith('/resources/js/zeiras/componenti.js') ? generato.replaceAll('/* @__PURE__ */ ', '') : null),
+    }]);
     conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
@@ -341,6 +348,15 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.789 byte: la misura a fine sprint 50, con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro (sprint 42 · T2.5; sprint 50 · T5.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
         expect(TETTO_DELL_INGRESSO).toBe(17_789);
+    });
+
+    // Sprint 50 · T6 (review, R9). Il tetto è la misura, non la misura più un margine: un ingresso che scende di 100 byte o più
+    // vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
+    // (T1.4: 515 alla misura di T1): qui la stessa app, costruita col modulo dei componenti senza i segni.
+    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
+        expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);
+        expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(1);
+        expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
     it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.789 byte, non più quelli di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4)', (file) => {

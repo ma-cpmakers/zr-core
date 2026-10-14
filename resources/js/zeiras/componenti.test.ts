@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { genera } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
@@ -100,6 +101,21 @@ describe('il modulo segna pure le tre righe dei dati di esempio e dei formattato
         expect(() => genera(finto)).toThrow(new RegExp(`forma inattesa del bundle: .*«${inizio.trim().replace(/[$]/g, '\\$&')}`));
     });
 
+    // Sprint 50 · T6 (review, R5): non basta l'inizio della riga. Se cambia ciò che sta dopo l'uguale — una chiamata al posto del
+    // valore, una riga della tabella con una funzione, il `.map` che diventa un'altra cosa — lo script si ferma: non segna puro un
+    // valore che non conosce.
+    it.each([
+        ['NF con una chiamata', "  var NF = new Intl.NumberFormat('it-IT');", "  var NF = creaFormatore('it-IT');", 'var NF ='],
+        ['EUR con un\'altra valuta', "maximumFractionDigits: 0 });", "maximumFractionDigits: 2 });", 'var EUR ='],
+        ['una riga della tabella con una chiamata', "    ['Paolo Greco', 'p.greco@nexa.it',", "    [registra('Paolo Greco'), 'p.greco@nexa.it',", 'var SAMPLE_CONTACTS ='],
+        ['il .map che diventa un\'altra cosa', "  ].map(function (r, i) {", "  ].forEach(function (r, i) {", 'var SAMPLE_CONTACTS ='],
+    ])('con %s dopo l\'uguale lo script si ferma e nomina la riga', (_come, da, a, nome) => {
+        const finto = bundle.replace(da, a);
+
+        expect(finto).not.toBe(bundle);
+        expect(() => genera(finto)).toThrow(new RegExp(`forma inattesa del bundle: la riga «${nome} …», da segnare pura, non è nella forma che lo script conosce`));
+    });
+
     it.each(SEGNATE)('con la riga «%s…» due volte nel bundle lo script si ferma', (inizio) => {
         const riga = righeDelBundle.find((questa) => questa.startsWith(inizio)) ?? '';
         // Lo script lavora sul testo e non lo esegue: la riga ripetuta basta, anche se il bundle così non girerebbe.
@@ -107,6 +123,27 @@ describe('il modulo segna pure le tre righe dei dati di esempio e dei formattato
 
         expect(finto).not.toBe(bundle);
         expect(() => genera(finto)).toThrow(/forma inattesa del bundle: .*2 volte/);
+    });
+});
+
+// Sprint 50 · T6 (review, R10): i tre valori segnati puri sono quelli di prima dove servono. `CrmContacts` senza `contacts`
+// mostra i contatti di esempio, e i numeri escono coi formattatori di sempre: da tutti e due gli ingressi.
+describe('dove servono, i dati di esempio e i formattatori dei numeri ci sono (sprint 50 · T1.2)', () => {
+    const inEuro = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    const inCifre = new Intl.NumberFormat('it-IT');
+
+    it.each([
+        ['il modulo dei componenti', componenti],
+        ['Zeiras', Zeiras],
+    ] as const)('da %s: CrmContacts senza contacts mostra i contatti di esempio, DealCard l\'importo in euro, PageHeader il numero', (_da, da) => {
+        const contatti = renderToStaticMarkup(React.createElement(da.CrmContacts, {}));
+        const trattativa = renderToStaticMarkup(React.createElement(da.DealCard, { title: 'Rinnovo', amount: 18500 }));
+        const testata = renderToStaticMarkup(React.createElement(da.PageHeader, { title: 'Contatti', count: 12345 }));
+
+        expect(['Anna Ferri', 'Paolo Greco'].map((nome) => contatti.includes(nome))).toStrictEqual([true, true]);
+        expect(trattativa).toContain(inEuro.format(18500));
+        expect(testata).toContain(inCifre.format(12345));
+        expect(inCifre.format(12345)).toBe('12.345');
     });
 });
 
