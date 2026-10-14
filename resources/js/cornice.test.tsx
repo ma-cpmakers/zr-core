@@ -598,6 +598,63 @@ describe('la Cornice', () => {
         expect(visti.at(-1)).toBe(diAltra[0]);
     });
 
+    // Sprint 42 · T4 (voce #1975). Senza il segno della lettura da una delle due parti la cornice non può dire se la pagina di
+    // un'altra persona è più vecchia di chi mostra (Indietro) o più nuova (una visita): di quella pagina non mostra niente, e
+    // la ricarica. Ricaricata, la pagina è di chi è entrato.
+    it.each<[caso: string, diChiEMostrato: string | undefined, dellaPagina: string | undefined]>([
+        ['né chi è mostrato né la pagina hanno il segno', undefined, undefined],
+        ['il segno lo ha solo chi è mostrato', '2026-10-13T08:00:03.000000Z', undefined],
+        ['il segno lo ha solo la pagina', undefined, '2026-10-13T08:00:00.000000Z'],
+        ['il segno della pagina non ha la forma di quelli della parte server', '2026-10-13T08:00:03.000000Z', '2026-10-13'],
+    ])('senza il segno da tutte e due le parti (%s) la pagina intera di chi c\'era prima non va a schermo — né nome, né email, né workspace, né numero — e la pagina si ricarica (sprint 42 · T4.1)', async (_caso, diChiEMostrato, dellaPagina) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const entrata = { nome: 'Augusta King', email: 'augusta@example.com' };
+        await mostra(<Cornice dati={{ ...dati, persona: entrata, aggiornati_il: diChiEMostrato }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(entrata.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        // Indietro: la voce della cronologia porta la pagina intera di chi c'era prima.
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: dellaPagina }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        expect(uno('.zr-bell-count')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    it('senza il segno, alle visite della stessa persona la cornice resta intera coi dati della pagina, e la pagina non si ricarica (sprint 42 · T4.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4 }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+
+        // La stessa email: il nome cambiato da un'altra scheda, e un altro numero.
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, nome: 'Ada King' }, aziende, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada King');
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+        expect(uno('.zr-ws-switch')).not.toBeNull();
+        expect(ricarica).not.toHaveBeenCalled();
+        ricarica.mockRestore();
+    });
+
+    it('col segno da tutte e due le parti niente cambia: una visita porta chi è entrato, con Indietro sulla pagina intera di chi c\'era prima resta chi è entrato, e la pagina non si ricarica (sprint 42 · T4.3)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const entrata = { nome: 'Augusta King', email: 'augusta@example.com' };
+        const avatar = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+        const diPrima = { ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' };
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, persona: entrata, non_lette: 1, aggiornati_il: '2026-10-13T08:00:02.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(avatar()).toBe(entrata.nome);
+
+        await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
+
+        expect(avatar()).toBe(entrata.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+        expect(ricarica).not.toHaveBeenCalled();
+        ricarica.mockRestore();
+    });
+
     it('i due limiti di Indietro che il README dichiara: dei dati senza `sessione_il` valgono come una pagina nuova e portano la loro persona, e una cornice montata da capo non sa chi aveva mostrato (sprint 36 · T6, R12)', async () => {
         type ColSegno = DatiDellaCornice & { sessione_il?: string };
         const altra = { nome: 'Augusta King', email: 'augusta@example.com' };

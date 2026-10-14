@@ -1688,6 +1688,22 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(richieste()).toStrictEqual([]);
     });
 
+    // Sprint 42 · T4 (voce #1975). Una `cornice` intera senza il segno della lettura: la cornice non può dire se la pagina di
+    // un'altra persona è di prima o di dopo, non ne mostra niente e ricarica la pagina.
+    it('con la `cornice` intera senza il segno della lettura, con Indietro sulla voce di chi c\'era prima niente di suo va a schermo — né nome, né workspace, né numero, né la pagina — e la pagina si ricarica (sprint 42 · T4.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
     it('con la `cornice` intera, una visita che porta un\'altra persona sullo stesso workspace toglie l\'elenco del pannello aperto, i risultati e la parola della ricerca di chi c\'era prima, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
