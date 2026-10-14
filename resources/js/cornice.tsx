@@ -207,9 +207,7 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
  * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
  */
 function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
-    const tone = tonoDelWorkspace(workspace.id);
-
-    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone });
+    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: tonoDelWorkspace(workspace.id) });
 }
 
 /**

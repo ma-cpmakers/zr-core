@@ -20,7 +20,7 @@ const TIPO_SU_UN_APP = 'com.zeiras.app.';
  */
 export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: unknown }, lingua: string): string | undefined {
     const nome = nomePulito(notifica.risorsa_nome);
-    if (nome === undefined || typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
+    if (!nome || typeof notifica.tipo !== 'string' || !notifica.tipo.startsWith(TIPO_SU_UN_APP)) {
         return nome;
     }
     const prodotto = prodottoDelRegistro(nome);
@@ -40,7 +40,7 @@ const POSTI_DEI_NOMI = /\{who\}|\{what\}/g;
  * posto vuoto.
  */
 export function fraseConINomi(frase: unknown, chi: string, cosa?: string): string | undefined {
-    if (typeof frase !== 'string' || frase === '' || (cosa === undefined && frase.includes('{what}'))) {
+    if (typeof frase !== 'string' || !frase || (cosa === undefined && frase.includes('{what}'))) {
         return undefined;
     }
 
@@ -85,7 +85,7 @@ export function frasiDiOgniLingua(file: Record<string, FrasiDelleNotifiche>, ing
  * un'altra cosa — `null`, un elenco, un oggetto senza frasi, un testo — non sono frasi.
  */
 const sonoFrasi = (arrivate: unknown): boolean =>
-    typeof arrivate === 'object' && arrivate !== null && Object.entries(arrivate).some(([chiave, frase]) => chiave.startsWith('notificationTitle') && typeof frase === 'string' && frase !== '');
+    typeof arrivate === 'object' && arrivate !== null && Object.entries(arrivate).some(([chiave, frase]) => chiave.startsWith('notificationTitle') && typeof frase === 'string' && frase);
 
 /**
  * Le frasi di una lingua da file che si caricano quando servono, come li dà `import.meta.glob` senza `eager`: per la cornice,
@@ -165,7 +165,7 @@ export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
 export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, lingua: string): string {
     const delTipo = typeof tipo === 'string' ? frasi[`notificationTitle.${tipo}`] : undefined;
 
-    return typeof delTipo === 'string' && delTipo !== '' ? delTipo : testi(lingua).notificationTitle;
+    return typeof delTipo === 'string' && delTipo ? delTipo : testi(lingua).notificationTitle;
 }
 
 /**
@@ -177,7 +177,7 @@ export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, ling
  */
 function nomeNelTitolo(nome: string | undefined): string | undefined {
     // Un nome di 60 unità o meno non ha più di 60 caratteri: non si conta, ed è quasi ogni nome.
-    if (nome === undefined || nome.length <= 60) {
+    if (!nome || nome.length <= 60) {
         return nome;
     }
     const caratteri = Intl.Segmenter ? Array.from(new Intl.Segmenter().segment(nome), (carattere) => carattere.segment) : Array.from(nome);
@@ -200,7 +200,7 @@ function contoEBoard(frasi: FrasiDelleNotifiche, notifica: { azioni?: unknown; b
     const board = nomePulito(notifica.board_nome);
     const frase = conto === undefined && board === undefined ? undefined : frasi[`notificationUnder.${conto === undefined ? 'board' : board === undefined ? 'count' : 'countBoard'}`];
 
-    return typeof frase === 'string' && frase !== '' ? frase.replace(POSTI_DI_SOTTO, (posto) => (posto === '{n}' ? (conto ?? '') : `\u2068${board ?? ''}\u2069`)) : undefined;
+    return typeof frase === 'string' && frase ? frase.replace(POSTI_DI_SOTTO, (posto) => (posto === '{n}' ? (conto ?? '') : `\u2068${board ?? ''}\u2069`)) : undefined;
 }
 
 /**
