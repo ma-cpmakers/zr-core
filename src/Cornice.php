@@ -383,7 +383,7 @@ final class Cornice
         $utente = Sessione::utente();
         $chi = $io['utente'] ?? null;
 
-        if ($ricordato === null || strcmp($segno, $ricordato) > 0 || ! is_array($chi) || ($chi['id'] ?? null) !== ($utente['id'] ?? null) || ! is_string($utente['lingua'] ?? null)) {
+        if ($ricordato === null || ! is_array($chi) || ($chi['id'] ?? null) !== ($utente['id'] ?? null) || ! is_string($utente['lingua'] ?? null)) {
             return $io;
         }
 
