@@ -361,7 +361,7 @@ final class Cornice
 
         // La lettura della pagina, se è riuscita, resta per la sua richiesta rimandata; una fallita non resta, e toglie quella di prima.
         if (! $perIDati) {
-            $segno !== '' ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito]) : session()->forget(self::RIMANDATA);
+            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito]) : session()->forget(self::RIMANDATA);
         }
 
         return $lettura;
@@ -377,7 +377,7 @@ final class Cornice
     {
         $tenuta = session(self::RIMANDATA);
 
-        if (is_array($tenuta) && (($tenuta['di'] ?? null)[0] ?? null) === (Sessione::utente()['id'] ?? null)) {
+        if (is_array($tenuta) && ($tenuta['di'] ?? null) === [Sessione::utente()['id'] ?? null, Sessione::workspace()]) {
             return $tenuta;
         }
 
@@ -395,8 +395,9 @@ final class Cornice
     private static function perLaRimandata(): void
     {
         $tenuta = self::tenuta();
+        session()->forget(self::RIMANDATA);
 
-        if ($tenuta !== null && ! request()->attributes->has(self::LETTURA) && ! Segno::piuVecchioDi($tenuta['segno'], self::SECONDI_DELLA_RIMANDATA * 1000)) {
+        if ($tenuta !== null && ! request()->attributes->has(self::LETTURA) && $tenuta['segno'] === (self::linguaIl()['lingua_il'] ?? null) && ! Segno::piuVecchioDi($tenuta['segno'], self::SECONDI_DELLA_RIMANDATA)) {
             request()->attributes->set(self::LETTURA, [...$tenuta, 'nei_dati' => false]);
         }
     }
