@@ -331,9 +331,7 @@ final class Cornice
 
         try {
             $io = self::ioMostra();
-            if (self::conLaLinguaRicordata($io, $segno) === $io) {
-                Sessione::aggiorna($io);
-            }
+            Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
             self::ricordaLaLingua($io, $segno);
             $esito = $io['notifiche_non_lette'];
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
