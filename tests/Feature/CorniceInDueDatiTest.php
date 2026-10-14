@@ -350,7 +350,8 @@ it('una lettura dopo, che conferma ancora la lingua, porta lingua_il al suo iniz
     sessioneAMano(marketing());
     // Un Http::fake dopo l'altro terrebbe la prima risposta: io.mostra risponde ciò che `$io` è quando la chiamata arriva.
     $io = ioMostra(3);
-    backofficeDiChiHaAccettato(['/v1/io' => function (Request $richiesta) use (&$io) {
+    // Più di una dopo(): gli elenchi di backoffice() non finiscono come le sequenze di backofficeDiChiHaAccettato().
+    backoffice(['/v1/io' => function (Request $richiesta) use (&$io) {
         return match (true) {
             is_array($io) => Http::response($io),
             $io instanceof Closure => $io($richiesta),
@@ -393,7 +394,8 @@ it('dopo l\'ingresso di un\'altra persona nello stesso browser, la lingua_il ric
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());
     $io = ioMostra(3);
-    backofficeDiChiHaAccettato(['/v1/io' => function (Request $richiesta) use (&$io) {
+    // Più di una dopo(): gli elenchi di backoffice() non finiscono come le sequenze di backofficeDiChiHaAccettato().
+    backoffice(['/v1/io' => function (Request $richiesta) use (&$io) {
         return match (true) {
             is_array($io) => Http::response($io),
             $io instanceof Closure => $io($richiesta),
