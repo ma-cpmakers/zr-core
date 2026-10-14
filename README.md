@@ -1495,12 +1495,17 @@ a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi 
 (più sotto). Se chi ha risposto è una
 terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
 quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
-su una cornice sola nel documento. Con due, a schermo è quella montata per ultima, e una cornice che si smonta toglie chi
-è a schermo solo se è ancora lei (dalla `v2.11.5`): se la cornice di chi ha risposto si monta prima che quella di prima
-sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica. Resta un limite: smontata la cornice montata per ultima mentre l'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non
-si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c'è la cornice
-di chi ha risposto. Lo stesso con due cornici della stessa persona, smontata una
-delle due: la cornice riconosce chi è a schermo dall'email, e non sa quale delle due si è smontata.
+su una cornice sola nel documento. Con due, a schermo è quella montata per ultima fra quelle ancora montate: le tiene una
+pila, e una cornice che si smonta toglie solo sé stessa (dalla `v2.17.1`): se la cornice di chi ha risposto si monta prima
+che quella di prima sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica (fra
+persone diverse dalla `v2.11.5`, con la stessa persona dalla `v2.17.1`); smontata la cornice montata per ultima, a schermo
+torna quella rimasta, anche se è della stessa persona. Fino alla `v2.17.0` nel secondo caso, e nel primo con la stessa
+persona, per la cornice nessuno era a schermo: una scheda ferma lì non si ricaricava, un orologio dei 30 secondi già
+partito, allo scadere, ricaricava la pagina anche con la cornice di chi aveva risposto, e il clic su una notifica non apriva
+la risorsa. Dalla `v2.17.1` la apre anche quando la cornice del clic si è smontata con la lettura in volo, se a schermo c'è
+ancora la stessa persona in un'altra cornice. Resta un limite: la cornice riconosce chi è a schermo dall'email, e con A,
+poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo resta A anche quando la A rimasta è quella montata
+prima di B.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
@@ -1508,9 +1513,9 @@ con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo
 niente cambia: il pannello in caricamento, «Segna tutte come lette» in corso. Fino alla `v2.8.0` chi aveva chiesto restava
 in attesa finché la pagina non si ricaricava. L'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è
 annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza
-niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser). Con due cornici nel documento
-vale il limite detto qui sopra: lì la pagina non si ricarica,
-nessun orologio parte, e chi ha chiesto resta in attesa, se il limite c'è già quando la risposta arriva. Provato in Chromium 151 con una pagina che nega il
+niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser). Con due cornici nel documento,
+fino alla `v2.17.0`, valeva il limite detto qui sopra: lì la pagina non si ricaricava, nessun orologio partiva, e chi aveva
+chiesto restava in attesa, se il limite c'era già quando la risposta arrivava. Provato in Chromium 151 con una pagina che nega il
 ricaricamento: passati i 5 secondi «Segna tutte come lette» torna premibile, e il pannello e la ricerca dicono il loro errore.
 Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica
 davanti a una risposta di un'altra persona prima di compierli. Subito dopo una ricarica, se la risposta lo dice ancora —
@@ -1522,18 +1527,18 @@ ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel br
 `localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
 all'uscita non c'è niente da togliere. Dalla `v2.10.0` la cornice di chi c'era prima non resta a schermo oltre i 30
 secondi: una pagina che ha ricevuto la risposta di un'altra persona nei suoi primi 30 secondi si ricarica da sola quando li
-compie, senza un clic e senza un'altra richiesta. Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e
+compie, senza un clic e senza un'altra richiesta. Salvo due eccezioni: la ricarica allo scadere si chiede una volta sola, e
 se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; in una
-scheda nascosta il browser può far scadere l'orologio più tardi (in una congelata, solo quando la riattiva); e con due
-cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Fino allo scadere l'orologio tiene della risposta solo chi ha
+scheda nascosta il browser può far scadere l'orologio più tardi (in una congelata, solo quando la riattiva). Fino alla `v2.17.0` ce n'era una terza: con due
+cornici nel documento, se il limite c'era già quando la risposta arrivava, nessun orologio partiva (detto sopra). Fino allo scadere l'orologio tiene della risposta solo chi ha
 risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto il browser li può buttare subito. Allo scadere la
 cornice riguarda chi è a schermo: se una visita ha già
 portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Dalla `v2.12.0` il 409
 `persona_diversa` non dice chi ha risposto (`persona` è un testo vuoto): davanti a quello, se a schermo c'è una cornice,
 la pagina si ricarica anche quando una visita ha già portato un'altra persona — una ricarica in più, e ciò che ci ha
 scritto si perde. I casi che restano sono due. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra.
-E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
-cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
+E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice (fino alla `v2.17.0` anche il
+limite delle due cornici) — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
 scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova: una risposta di
 un'altra persona a pagina appena caricata dà l'errore del pannello dopo 5 secondi e la pagina si ricarica quando ne compie
 30, una volta; se prima una visita ha portato chi ha risposto, la pagina non si ricarica; con una risposta che dice sempre
