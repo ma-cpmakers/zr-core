@@ -513,7 +513,7 @@ it('la parte server della cornice non usa Inertia: nessuna classe importata e ne
 
 // Sprint 54 · T1 (voce #2098). La richiesta rimandata di una pagina riusa la lettura di io.mostra che Cornice::lingua() ha fatto
 // per la pagina: una chiamata a /v1 in meno. Il legame sta tutto nella sessione: stessa persona, stesso workspace, segno ancora
-// quello ricordato per la lingua, al più dieci secondi, una volta sola (Decisione di zr-pm del 14/10, nota 13222).
+// quello ricordato per la lingua, al più dieci secondi, una volta sola (Decisione di zr-pm del 14/10, nota 13228).
 
 /** Una richiesta nuova con la stessa sessione: ciò che la cornice tiene sulla richiesta non c'è più. */
 function richiestaNuova(): void
