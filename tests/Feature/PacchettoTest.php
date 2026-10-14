@@ -5640,6 +5640,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il clic in attesa della lettura (sprint 50 · T6, R12; sprint 52 · T4)' => ['readme', 'Nell\'attesa niente lo dice a schermo: il pannello si chiude e la notifica resta non letta. Dalla `v2.13.0` un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto, non fa niente: nessun\'altra lettura, e all\'arrivo la risorsa si apre una volta'],
     // Sprint 52 · T5 (voce #2079): l'evento prima della ricarica, e che cosa il pacchetto non fa.
     'l\'evento prima della ricarica (sprint 52 · T5)' => ['readme', 'subito prima di ricaricare la pagina per un cambio di persona — una risposta di un\'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» — la cornice manda sulla `window` un evento `zr-core:altra-persona`'],
+    // Sprint 56 · T2.5 (voce #2105): `dopo()` sui 4xx che non sono 401 né 403 e sulle risposte guaste, e chi compone a mano.
+    'dopo() sui 4xx e sulle risposte guaste (sprint 56 · T2.5)' => ['readme', '(la connessione, un 5xx, un 429; dalla `v2.17.0` anche un 404, un 409 o un 422, e una risposta che la cornice non sa leggere) `Cornice::dopo()` non lancia'],
+    'il 403 e gli altri errori passano (sprint 56 · T2.5)' => ['readme', 'Ogni altro errore di `/v1` — un 403, che dice che la persona non ha più accesso e che la cornice ridotta nasconderebbe, un 401 `cliente_non_riconosciuto`, un 400, un 410… — e `GettoneRifiutato` passano, come da `Cornice::dati()`'],
+    'dati() e un elenco che non sa leggere (sprint 56 · T2.5; review R3)' => ['readme', 'il backoffice non risponde, o (dalla `v2.17.0`) risponde con un elenco che la cornice non sa leggere'],
+    'la composizione a mano si toglie (sprint 56 · T2.5)' => ['readme', 'un frontend che per quei casi compone `dopo` a mano attorno a `Cornice::subito()` dalla `v2.17.0` può togliere la sua composizione e dare `Cornice::dopo()` com\'è'],
+    'la guida: non serve comporlo a mano (sprint 56 · T2.5)' => ['guida', 'dalla `v2.17.0` anche a un 404, un 409 o un 422, e a una risposta che non sa leggere: non serve comporlo a mano attorno a `Cornice::subito()`'],
+    // Sprint 56 · T1.4 (voce #2107): l'evento anche prima delle due ricariche per la pagina di un'altra persona senza il segno.
+    'l\'evento prima della ricarica anche dopo Indietro (sprint 56 · T1.4)' => ['readme', 'Dalla `v2.17.0` lo manda anche subito prima delle due ricariche per la pagina di un\'altra persona senza il segno della lettura (Indietro sulla voce di chi c\'era prima: con `LayoutDellaCornice` la fa il layout, con la `Cornice` montata da sola la cornice)'],
+    'l\'evento mentre React disegna (sprint 56 · T1.4; review R6)' => ['readme', 'Lì l\'evento parte mentre React disegna: chi lo ascolta ricorda che è successo, come nell\'esempio qui sotto, e non aggiorna lo stato di un componente'],
     'l\'evento prima della ricarica: il pacchetto non scrive niente (sprint 52 · T5.2)' => ['readme', 'Il pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina si è aggiornata'],
     // Sprint 53 · T1 (review R1 della PR #86): una lettura sola in volo per cornice, e A→B→A apre A una volta.
     'una lettura sola in volo (sprint 53 · T1)' => ['readme', 'la cornice tiene una lettura sola in volo: un clic su una notifica qualsiasi, mentre è in volo, non fa niente'],
@@ -5953,6 +5962,16 @@ it('README e guida non dicono più che con Indietro il menu del profilo mostra l
 })->with([
     'la persona di quella pagina' => ['il menu del profilo mostra la persona di quella pagina'],
     'sopra i dati di adesso, dopo' => ['e la mostra anche dopo, sopra i dati di adesso'],
+]);
+
+// Sprint 56 · T2.5 (voce #2105): dalla `v2.17.0` da `Cornice::dopo()` non passano più il 404, il 409 e il 422.
+it('il README non dice più che da Cornice::dopo() passa ogni altro errore di /v1 (sprint 56 · T2.5)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'un altro errore di /v1 passa' => ['Un altro errore di `/v1` e `GettoneRifiutato` passano'],
+    'un errore che dopo() lascia passare' => ['un errore di `/v1` che `Cornice::dopo()` lascia passare'],
+    // Review della PR #90, R2: nello stesso workspace sotto il layout ricarica il layout, non la cornice.
+    'la cornice nello stesso workspace' => ['la fa la cornice nello stesso workspace, il layout in un altro'],
 ]);
 
 // Sprint 37 · T2.6 (voce #1998): `Cornice::dopo()` dice di chi sono i suoi dati, e il README non dice più il contrario.

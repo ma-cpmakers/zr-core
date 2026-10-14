@@ -89,9 +89,10 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // Senza il segno da una delle due parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi è
     // mostrato, e con Indietro sarebbe di chi c'era prima. Nello stesso workspace lo guarda `Cornice`, che resta montata; in un
     // altro la `key` cambia, la cornice si rifà e non sa più chi mostrava: lo sa il layout, che non ne mostra niente, nemmeno
-    // la pagina, e ricarica (dalla `v2.8.0`). Ricaricata, è di chi è entrato.
+    // la pagina, e ricarica (dalla `v2.8.0`). Ricaricata, è di chi è entrato. Prima manda l'evento `zr-core:altra-persona`, come per
+    // la ricarica chiesta da una risposta di un'altra persona (dalla `v2.17.0`).
     if (entrato && pagina.persona.email !== entrato.persona.email && !(della(pagina) && della(entrato))) {
-        return location.reload() as undefined;
+        return (dispatchEvent(new Event('zr-core:altra-persona')), location.reload()) as undefined;
     }
     const piuAvanti = entrato && della(entrato) > della(pagina) ? entrato : pagina;
     // La lingua, con la stessa persona, è quella col segno della lingua più avanti fra chi è mostrato e la pagina (dalla

@@ -423,9 +423,10 @@ export function Cornice(props: CorniceProps) {
     // Senza il segno da tutte e due le parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi la
     // cornice mostra: con Indietro sarebbe di chi c'era prima, per intero. Non se ne mostra niente, nemmeno per un disegno — si
     // esce prima di tenere qualcosa —, e la pagina si ricarica: ricaricata, è di chi è entrato (dalla `v2.8.0`). La stessa
-    // persona senza segno resta com'era: vale la pagina.
+    // persona senza segno resta com'era: vale la pagina. Prima manda l'evento `zr-core:altra-persona`, come per
+    // la ricarica chiesta da una risposta di un'altra persona (dalla `v2.17.0`).
     if (!(props.dati.persona.email === mostrato.persona.email || (della(props.dati) && della(mostrato)))) {
-        return location.reload() as undefined;
+        return (dispatchEvent(new Event('zr-core:altra-persona')), location.reload()) as undefined;
     }
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
 

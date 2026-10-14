@@ -697,6 +697,24 @@ describe('la Cornice', () => {
         ricarica.mockRestore();
     });
 
+    // Sprint 56 · T1.1 (voce #2107; review della PR #90, R1): la `Cornice` montata da sola, senza `LayoutDellaCornice`, ricarica da
+    // sé, e prima manda l'evento `zr-core:altra-persona`. In `avvisi` quante ricariche c'erano quando è partito.
+    it('la Cornice montata da sola, con Ada col segno e poi Indietro sulla pagina di Grace senza il segno: l\'evento zr-core:altra-persona parte una volta, prima della ricarica (sprint 56 · T1.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const avvisi: number[] = [];
+        const avvisa = () => avvisi.push(ricarica.mock.calls.length);
+        addEventListener('zr-core:altra-persona', avvisa);
+        onTestFinished(() => removeEventListener('zr-core:altra-persona', avvisa));
+        await mostra(<Cornice dati={{ ...dati, aggiornati_il: '2026-10-13T08:00:03.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(avvisi).toStrictEqual([]);
+
+        await mostra(<Cornice dati={{ ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, non_lette: 4 }} onLogout={esciSenzaEffetto} />);
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).toStrictEqual([0]);
+        ricarica.mockRestore();
+    });
+
     it('senza il segno, alle visite della stessa persona la cornice resta intera coi dati della pagina, e la pagina non si ricarica (sprint 42 · T4.2)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4 }} onLogout={esciSenzaEffetto} />);
