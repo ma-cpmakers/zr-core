@@ -5132,6 +5132,8 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
     'una lettera negli ultimi 300 ms' => ['ricerca', 'Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo'],
     // Sprint 47 · T5 (review, R2): la cornice smontata col pezzo in viaggio non cerca la parola scritta in lei (voce #2055).
     'smontata prima dell\'arrivo' => ['ricerca', 'Una cornice smontata prima dell\'arrivo — il layout la rifà quando cambia il workspace, anche con la stessa persona — non cerca più la parola scritta in lei, e all\'arrivo non parte niente (dalla `v2.11.2`)'],
+    // Sprint 48 · T2.4 (voce #2064): l'orologio dei 30 secondi tiene della risposta di un'altra persona solo chi ha risposto.
+    'l\'orologio tiene solo chi ha risposto' => ['pesi', 'Fino allo scadere l\'orologio tiene della risposta solo chi ha risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto il browser li può buttare subito'],
     'fra una richiesta del pezzo e l\'altra' => ['ricerca', 'fra una richiesta del pezzo e l\'altra non c\'è un\'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive'],
     'un file tolto da una build nuova' => ['ricerca', 'Un file che una build nuova ha tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata'],
     'il JS della cornice con una coda' => ['ricerca', 'al primo fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`)'],

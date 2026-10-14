@@ -1,5 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cerca } from './ricerca';
 import { AccettazioneRichiesta, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
@@ -609,6 +611,38 @@ describe('una risposta che dice di chi è', () => {
 
             await vi.advanceTimersByTimeAsync(1);
             expect(ricarica).toHaveBeenCalledTimes(volte);
+        });
+
+        // Sprint 48 · T2 (voce #2064): l'orologio dei 30 secondi tiene della risposta di chi è entrato solo chi è (`persona`), che
+        // gli serve allo scadere; il resto (qui i dati) si può buttare subito. Lo prova un `WeakRef` ai dati con una raccolta
+        // forzata: se l'orologio tiene tutta la risposta, i dati ci sono ancora. `fetch` è una funzione semplice e non un
+        // `vi.fn`, che terrebbe la risposta fra le sue chiamate.
+        it('una risposta di un\'altra persona con l\'orologio partito: l\'orologio tiene solo chi ha risposto, e i dati si buttano (sprint 48 · T2.1)', async () => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            let iDati: WeakRef<object> | undefined;
+            vi.stubGlobal('fetch', async () => {
+                const data = [{ id: 'uat-n1', titolo: 'UAT di Grace' }];
+                iDati = new WeakRef(data);
+                return risposta({ data, aggiornati_il: unIstante, persona: 'grace@example.com' });
+            });
+            caricataDa(10_000);
+
+            const esito = segui(caricaNotifiche('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(5_000);
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+            setFlagsFromString('--expose-gc');
+            const raccogli = runInNewContext('gc') as () => void;
+            for (let giro = 0; giro < 3; giro++) {
+                await new Promise((fatto) => setImmediate(fatto));
+                raccogli();
+            }
+            expect(iDati?.deref()).toBeUndefined();
+
+            // L'orologio c'è ancora, e allo scadere fa ciò che faceva.
+            await vi.advanceTimersByTimeAsync(14_999);
+            expect(ricarica).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(ricarica).toHaveBeenCalledTimes(1);
         });
 
         it.each(diUnAltra)('%s di un\'altra persona su una pagina caricata da 30.000 ms: la pagina si ricarica, una volta, e chi ha chiesto resta in attesa fino ai 5 secondi (sprint 43 · T3.2)', async (_nome, laRisposta, chiama) => {

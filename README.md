@@ -1405,7 +1405,7 @@ davanti a una risposta di un'altra persona prima di compierli. Subito dopo una r
 dei dati composti a mano con un'altra email —, ricaricare di nuovo non cambierebbe niente: chi ha chiesto ha
 l'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso, dalla `v2.10.0` dopo 5 secondi come sopra i 30
 (nella `v2.9.0` senza aspettare). Di quella risposta niente è disegnato e
-niente è tenuto, come quando la pagina si ricarica. Da 30 secondi in poi la pagina si ricarica come prima: al più una
+niente è tenuto, come quando la pagina si ricarica (l'orologio dei 30 secondi, sotto, tiene solo chi ha risposto). Da 30 secondi in poi la pagina si ricarica come prima: al più una
 ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né
 `localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
 all'uscita non c'è niente da togliere. Dalla `v2.10.0` la cornice di chi c'era prima non resta a schermo oltre i 30
@@ -1413,7 +1413,9 @@ secondi: una pagina che ha ricevuto la risposta di un'altra persona nei suoi pri
 compie, senza un clic e senza un'altra richiesta. Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e
 se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; in una
 scheda nascosta il browser può far scadere l'orologio più tardi (in una congelata, solo quando la riattiva); e con due
-cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
+cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Fino allo scadere l'orologio tiene della risposta solo chi ha
+risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto il browser li può buttare subito. Allo scadere la
+cornice riguarda chi è a schermo: se una visita ha già
 portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano tre casi. Una
 richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
 apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona

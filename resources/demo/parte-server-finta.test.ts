@@ -426,13 +426,23 @@ describe('il segno della lingua e il segno fermo della parte server finta', () =
         expect(conIlSegnoDellaLingua({ subito: subito('it', 6) }).subito).toStrictEqual({ ...subito('it', 6), lingua_il: il(3) });
     });
 
-    it('una lettura di `dopo` più vecchia di quella ricordata porta il suo segno ma non lo porta indietro; di un\'altra persona non esce (sprint 46 · T3.1)', () => {
+    // Sprint 48 · T3 (voce #2069): come `Cornice::dopo()` dalla `v2.11.2`, una lettura più vecchia di quella ricordata porta il
+    // segno ricordato, non il suo (fino allo sprint 47 qui portava il suo). Deve fallire se porta il segno della sua lettura.
+    it('una lettura di `dopo` più vecchia di quella ricordata porta il segno ricordato e non lo porta indietro; di un\'altra persona non esce (sprint 46 · T3.1; sprint 48 · T3.1)', () => {
         conIlSegnoDellaLingua({ dopo: dopo('es', 8) });
-        expect(conIlSegnoDellaLingua({ dopo: dopo('es', 4) }).dopo?.lingua_il).toBe(il(4));
+        expect(conIlSegnoDellaLingua({ dopo: dopo('es', 4) }).dopo?.lingua_il).toBe(il(8));
         expect(conIlSegnoDellaLingua({ subito: subito('es', 9) }).subito?.lingua_il).toBe(il(8));
 
         const grace = { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' };
         expect(conIlSegnoDellaLingua({ subito: subito('en', 10, grace) }).subito).toStrictEqual(subito('en', 10, grace));
+    });
+
+    // Sprint 48 · T3.2 (voce #2069): una lettura più avanti di quella ricordata porta il suo segno e lo fa ricordare. Deve fallire
+    // se il segno non avanza più.
+    it('una lettura di `dopo` più avanti di quella ricordata porta il suo segno, e il `subito` dopo porta quello (sprint 48 · T3.2)', () => {
+        conIlSegnoDellaLingua({ dopo: dopo('es', 4) });
+        expect(conIlSegnoDellaLingua({ dopo: dopo('it', 8) }).dopo).toStrictEqual({ ...dopo('it', 8), lingua_il: il(8) });
+        expect(conIlSegnoDellaLingua({ subito: subito('it', 9) }).subito?.lingua_il).toBe(il(8));
     });
 
     // Un `subito` riletto mentre `dopo` è in lettura porta la sessione di adesso e la lingua di prima: il pulsante della pagina di
