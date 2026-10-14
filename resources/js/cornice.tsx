@@ -837,15 +837,15 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
     useLayoutEffect(() => {
-        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra(undefined, era)`), se è ancora lei: con una
-        // seconda cornice montata dopo, a schermo resta quella (dalla `v2.11.5`). La `key` è l'email, quindi questa cornice è di
-        // una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
+        // Chi è a schermo lo dice la cornice montata, e smontata toglie la sua voce dalla pila delle cornici montate
+        // (`mostra(email, 1)`, dalla `v2.17.1`): con un'altra cornice ancora montata, a schermo resta quella, anche se è della
+        // stessa persona. La `key` è l'email, quindi questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
 
-        return () => (mostra(undefined, persona.email), ricercaInVolo.current?.abort());
+        return () => (mostra(persona.email, 1), ricercaInVolo.current?.abort());
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la

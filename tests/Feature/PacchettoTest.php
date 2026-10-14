@@ -5517,7 +5517,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'non letti composto nella parte server (sprint 41 · T6, R5)' => ['readme', 'chi lo compone nella sua parte server lo dà come `Cornice::dopo()`, con chi è nella sessione e `sessione_il`'],
     'la risposta in ritardo (sprint 41 · T5.1; T6, R5 e R9)' => ['readme', 'Dalla `v2.7.0` la pagina si ricarica solo se a schermo c\'è una cornice che non è di chi ha risposto: se una visita ha già portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi c\'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l\'elenco delle notifiche)'],
     'la risposta in ritardo: senza cornice, e una terza persona (sprint 41 · T6, R1, S2 e N2)' => ['readme', 'Una pagina senza la cornice non si ricarica: lì non c\'è nessuno a schermo. Questo vale per ciò che c\'è a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi già partito guarda di nuovo allo scadere (più sotto). Se chi ha risposto è una terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche quando a schermo c\'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione'],
-    'la risposta in ritardo: una cornice sola nel documento (sprint 41 · T6, N4)' => ['readme', 'La regola conta su una cornice sola nel documento. Con due, a schermo è quella montata per ultima, e una cornice che si smonta toglie chi è a schermo solo se è ancora lei (dalla `v2.11.5`)'],
+    'la risposta in ritardo: una cornice sola nel documento (sprint 41 · T6, N4)' => ['readme', 'La regola conta su una cornice sola nel documento. Con due, a schermo è quella montata per ultima fra quelle ancora montate: le tiene una pila, e una cornice che si smonta toglie solo sé stessa (dalla `v2.11.5` fra persone diverse, dalla `v2.17.1` anche con la stessa persona)'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
     // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
@@ -5627,15 +5627,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: le frasi di prima col tetto' => ['readme', 'Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una pagina caricata da meno di 30 secondi non partono prima che li compia — dalla `v2.10.0` partono allora, da sole —, e se la pagina non si ricarica la richiesta dà il suo errore dopo 5 secondi'],
     'la lettura con un clic: il tetto' => ['readme', 'Dalla `v2.9.0` anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte'],
     'la scheda ferma: l\'orologio a ogni ricarica' => ['readme', 'L\'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza niente di chi è entrato'],
-    'la scheda ferma: le due cornici e l\'orologio' => ['readme', 'Con due cornici nel documento vale il limite detto qui sopra: lì la pagina non si ricarica, nessun orologio parte, e chi ha chiesto resta in attesa'],
+    'la scheda ferma: le due cornici e l\'orologio' => ['readme', 'Con due cornici nel documento, fino alla `v2.17.0`, valeva il limite detto qui sopra: lì la pagina non si ricaricava, nessun orologio partiva, e chi aveva chiesto restava in attesa'],
     'la scheda ferma: sotto il tetto non resta chi c\'era' => ['readme', 'Dalla `v2.10.0` la cornice di chi c\'era prima non resta a schermo oltre i 30 secondi: una pagina che ha ricevuto la risposta di un\'altra persona nei suoi primi 30 secondi si ricarica da sola quando li compie, senza un clic e senza un\'altra richiesta'],
     // Review della PR #78 (sprint 44 · T5): le eccezioni dell'orologio dei 30 secondi, dette accanto alla regola.
-    'la scheda ferma: le eccezioni allo scadere (PR #78, S1)' => ['readme', 'Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un\'altra richiesta; in una scheda nascosta il browser può far scadere l\'orologio più tardi (in una congelata, solo quando la riattiva); e con due cornici nel documento, se il limite c\'è già quando la risposta arriva, nessun orologio parte (detto sopra)'],
-    'la scheda ferma: il terzo caso che resta (PR #78, R1, R2)' => ['readme', 'E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde'],
+    'la scheda ferma: le eccezioni allo scadere (PR #78, S1)' => ['readme', 'Salvo due eccezioni: la ricarica allo scadere si chiede una volta sola, e se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un\'altra richiesta'],
+    'la scheda ferma: il terzo caso che resta (PR #78, R1, R2)' => ['readme', 'E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice (fino alla `v2.17.0` anche il limite delle due cornici) — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde'],
     // Sprint 50 · T3.4 (voce #2065): con due cornici quella che si smonta toglie chi è a schermo solo se è ancora lei.
     'le due cornici: la cornice di chi ha risposto montata prima (sprint 50 · T3.4)' => ['readme', 'se la cornice di chi ha risposto si monta prima che quella di prima sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica'],
     // Sprint 50 · T6 (review, R6, R7, R12, R14): i limiti che restano, detti accanto alla regola.
-    'le due cornici della stessa persona (sprint 50 · T6, R7)' => ['readme', 'Lo stesso con due cornici della stessa persona, smontata una delle due: la cornice riconosce chi è a schermo dall\'email, e non sa quale delle due si è smontata'],
+    'le due cornici della stessa persona (sprint 50 · T6, R7)' => ['readme', 'smontata la cornice montata per ultima, a schermo torna quella rimasta, anche se è della stessa persona'],
     // Sprint 52 · T4 (voce #2082): un secondo clic sulla stessa notifica con la lettura in volo non fa niente.
     'il clic in attesa della lettura (sprint 50 · T6, R12; sprint 52 · T4)' => ['readme', 'Nell\'attesa niente lo dice a schermo: il pannello si chiude e la notifica resta non letta. Dalla `v2.13.0` un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto, non fa niente: nessun\'altra lettura, e all\'arrivo la risorsa si apre una volta'],
     // Sprint 52 · T5 (voce #2079): l'evento prima della ricarica, e che cosa il pacchetto non fa.
@@ -5656,7 +5656,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'il clic che apriva senza aspettare, e l\'eccezione (sprint 50 · T6, R14; sprint 53 · T1)' => ['readme', 'fino alla `v2.13` si apriva senza aspettarla, salvo su una pagina caricata da meno di 30 secondi, dove dalla `v2.11.5` il clic la aspettava'],
     // Sprint 52 · T3 (voce #2081): dalla `v2.13.0` le richieste partite insieme contano un fallimento solo.
     'le richieste insieme del pezzo (sprint 52 · T3)' => ['readme', 'Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche per l\'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo fallito solo'],
-    'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
+    'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: la cornice riconosce chi è a schermo dall\'email, e con A, poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo resta A anche quando la A rimasta è quella montata prima di B'],
     // Sprint 55 · T3.5 (voce #2063): dalla `v2.16.0` con la coda la ricerca arriva; com'era fino alla `v2.15`, detto al passato.
     'la ricerca: perché non arrivava con la coda (PR #78, R5; sprint 55 · T3.5)' => ['readme', 'e non li prende dalla seconda copia del codice delle richieste per la cornice, dove nessuno è a schermo; e il freno del `429` lo riconosce dai secondi, non dalla classe dell\'errore, che in quella copia è un\'altra'],
     'il 403 senza workspace e una sessione senza email (PR #78, R7; sprint 51 · T1.4)' => ['readme', 'Con una sessione senza email una richiesta che dice la persona riceve il 409, e una che non la dice il 422 `persona_mancante` (fino alla `v2.12` il 403).'],
@@ -5767,6 +5767,16 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: in attesa caricano' => ['guida', 'dalla `v2.2.0` campanella e ricerca caricano: una parola scritta intanto si cerca quando `dopo` arriva'],
     'la guida: la persona in attesa' => ['guida', 'e il menu del profilo mostra la persona di `subito`'],
     'la guida: i due tipi' => ['guida', 'i loro tipi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo`, dai due ingressi'],
+]);
+
+// Sprint 57 · T2.4 (voce 2086): dalla `v2.17.1` le cornici montate stanno in una pila, e con una cornice ancora montata a
+// schermo c'è sempre qualcuno: il README non dice più il limite di prima al presente.
+it('il README non dice più che smontata una delle due cornici a schermo non resta nessuno (sprint 57 · T2.4)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'nessuno a schermo' => ['per la cornice nessuno è a schermo'],
+    'quale delle due' => ['non sa quale delle due si è smontata'],
+    'il limite al presente' => ['se il limite c\'è già quando la risposta arriva'],
 ]);
 
 // Sprint 45 · T2.7 (voce #2001): il cookie del segno, detto a chi installa: che cosa porta, gli attributi, che cosa non vale,

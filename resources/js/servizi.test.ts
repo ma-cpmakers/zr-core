@@ -9,9 +9,16 @@ import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segna
 // Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
 const cerca = (parola: string, segnale: AbortSignal, email: string) => cercaCon(parola, segnale, email, chiama);
 
-// A schermo `chi`, o nessuno: senza nessuno è la cornice che c'era che si smonta, e toglie sé stessa (dalla `v2.11.5` chi toglie
-// dice chi è: `mostra(undefined, era)`).
-const mettiASchermo = (chi: string | undefined) => (chi === undefined ? aSchermo !== undefined && mostra(undefined, aSchermo) : mostra(chi));
+// A schermo `chi`, o nessuno: senza nessuno si smontano tutte le cornici che i casi hanno montato. Dalla `v2.17.1` `mostra` tiene
+// una pila delle cornici montate, e una cornice che si smonta toglie la sua email (`mostra(email, 1)`).
+const mettiASchermo = (chi: string | undefined) => {
+    if (chi !== undefined) {
+        return mostra(chi);
+    }
+    while (aSchermo !== undefined) {
+        mostra(aSchermo, 1);
+    }
+};
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -973,5 +980,29 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
             await expect(chiama(email as string)).resolves.toBeDefined();
         }
         expect(ricarica).not.toHaveBeenCalled();
+    });
+});
+
+// Sprint 57 · T2 (voce 2086): chi è a schermo lo tiene una pila delle cornici montate. Una cornice che si smonta toglie una voce
+// sola, la sua email; a schermo resta l'ultima montata, o nessuno.
+describe('la pila delle cornici montate (sprint 57 · T2)', () => {
+    beforeEach(() => mettiASchermo(undefined));
+
+    it('due cornici di Ada: smontata una a schermo resta Ada, smontata anche l\'altra nessuno (T2.1, T2.2)', () => {
+        mostra('ada@example.com');
+        mostra('ada@example.com');
+        mostra('ada@example.com', 1);
+        expect(aSchermo).toBe('ada@example.com');
+        mostra('ada@example.com', 1);
+        expect(aSchermo).toBeUndefined();
+    });
+
+    it('Ada e poi Grace: smontata Ada a schermo resta Grace, smontata anche Grace nessuno (T2.3)', () => {
+        mostra('ada@example.com');
+        mostra('grace@example.com');
+        mostra('ada@example.com', 1);
+        expect(aSchermo).toBe('grace@example.com');
+        mostra('grace@example.com', 1);
+        expect(aSchermo).toBeUndefined();
     });
 });

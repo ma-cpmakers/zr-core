@@ -84,20 +84,20 @@ export class TroppeRichieste extends Error {
 
 /**
  * Chi la cornice mostra adesso, con l'email, o nessuno: lo dice la cornice quando si monta, e lo toglie quando si smonta
- * (dalla `v2.7.0`; per togliere, `mostra(undefined, era)`). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
- * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo. Con due cornici è
- * l'ultima montata, e una cornice che si smonta toglie solo sé stessa (`era`, la sua email, dalla `v2.11.5`): se dopo di lei
- * se n'è montata un'altra, a schermo resta quella. Le forme sono due, e i tipi non ne lasciano una terza: `mostra(email)`
- * scrive sempre (la cornice che si monta), `mostra(undefined, era)` toglie solo se a schermo c'è `era` (quella che si
- * smonta). Il limite è l'email: due cornici della stessa persona sono la stessa per `mostra`, e quando se ne smonta una
- * a schermo non resta nessuno, anche se l'altra è ancora montata (README, «Le notifiche»).
+ * (dalla `v2.7.0`). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno che React abbandona non scrive
+ * niente —, e una pagina senza la cornice non ha nessuno a schermo. Dalla `v2.17.1` lo tiene una pila delle cornici montate:
+ * `mostra(email)` ci mette la cornice che si monta, `mostra(email, 1)` toglie una voce sola, la sua email, quando si smonta;
+ * a schermo c'è l'ultima montata fra quelle rimaste. Così con due cornici della stessa persona, smontata una, a schermo resta la
+ * persona dell'altra; e con due cornici di persone diverse, smontata quella di prima, resta l'altra (come dalla `v2.11.5`).
+ * Il limite è l'email: con A, poi B, poi di nuovo A, smontata una delle due di A, a schermo resta A anche se la A rimasta è
+ * quella montata prima di B (README, «Le notifiche»).
  */
 export let aSchermo: string | undefined;
 
-export function mostra(email: string): void;
-export function mostra(email: undefined, era: string): void;
-export function mostra(email?: string, era = aSchermo): void {
-    if (era == aSchermo) aSchermo = email;
+const montate: string[] = [];
+export function mostra(email: string, via?: 1): void {
+    via ? montate.splice(montate.indexOf(email), 1) : montate.push(email);
+    aSchermo = montate.at(-1);
 }
 
 /**
