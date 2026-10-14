@@ -435,7 +435,8 @@ mai indietro per lo stesso browser. L'ultimo segno dato sta nel cookie `__Host-z
 avanti fra l'orologio della parte server e quello: con due server del frontend sfasati, o con l'orologio riportato
 indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia (fino alla `v2.10.0` la cornice la scartava,
 e restava chi c'era prima). A parità di segno la cornice prende la pagina che arriva, e nella stessa richiesta due letture
-nello stesso istante hanno lo stesso segno.
+nello stesso istante hanno lo stesso segno. Anche `lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di
+quelle letture.
 
 - **Che cosa porta**: solo l'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del
   frontend): niente della persona né del workspace — né l'email, né un id, né lo slug, né un nome.
@@ -1297,12 +1298,23 @@ delle notifiche restano quelli del `dopo` che c'è finché non è riletto (prova
 layout). Il `subito` riletto porta la lingua nuova solo se la sessione l'ha già: `Cornice::subito()` non chiama il
 backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`. Con `Cornice::lingua()` prima
 del controller la rilegge la stessa richiesta; senza, e senza un'altra richiesta che l'abbia riletta dopo il `dopo` che la
-pagina ha, il `subito` riletto ha la lingua di prima e niente cambia. Da `subito` passa la sola
-lingua, e solo se `dopo` dice di chi è e il segno della sessione c'è da tutte e due le parti: senza, vale `dopo` come
-prima. Un caso resta: il segno di `dopo` è l'istante in cui la sua lettura comincia, e la sua lingua è quella riletta da
-io.mostra alla fine. Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di
-prima: se la lingua è cambiata fuori da questa sessione, la cornice resta in quella di prima finché `dopo` non è riletto
-o la pagina non fa una visita. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
+pagina ha, il `subito` riletto ha la lingua di prima e niente cambia. Da `subito` passano la sola
+lingua e il suo segno, e solo se `dopo` dice di chi è e il segno della lingua c'è da tutte e due le parti: senza, vale
+`dopo` come prima.
+
+Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`: `Cornice::subito()` e `Cornice::dopo()` lo portano dopo
+`sessione_il`, in fondo (anche `non_letti`), ed è l'istante in cui è cominciata la lettura di io.mostra che ha confermato
+la lingua della sessione per quella persona, cioè una lettura a cui io.mostra ha risposto con l'id della persona della
+sessione. In `dopo` è quello della sua lettura, se io.mostra ha risposto, altrimenti quello che la sessione ricorda; in
+`subito` quello che la sessione ricorda, mai l'istante di adesso. La parte server lo ricorda nella sessione, alla chiave
+`zr-core.lingua`, con l'id della persona: di un'altra persona entrata nello stesso browser non esce, e senza una lettura
+che l'abbia confermata non c'è. Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
+lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no. Così si chiude il caso che
+fino alla `v2.10.0` restava aperto: un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno della
+sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima. E con Indietro su una pagina
+della stessa persona letta dopo quella a schermo, ma con la lingua confermata prima, la lingua resta quella nuova, nello
+stesso workspace e in un altro. Un `dopo` composto a mano senza `lingua_il` porta la sua lingua, come prima della
+`v2.9.0`. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
 email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
@@ -1420,8 +1432,9 @@ Se succede — alla pagina arriva il `subito` di chi è entrato e fra le props r
 i dati di prima non vanno sotto il nome nuovo: un `dopo` di un'altra persona, letto con una sessione più vecchia di
 quella di `subito`, non vale, e **la cornice resta in attesa di un `dopo` di chi è entrato**: ridotta, col suo nome e la
 sua lingua, finché la pagina non lo rilegge o non fa una visita. Per la stessa persona il `dopo` vale anche sotto un
-`subito` riletto dopo di lui, coi suoi dati e il suo nome, senza attesa; dalla `v2.9.0` la lingua è quella di `subito`,
-il più recente dei due. Un `dopo` che non dice di chi è,
+`subito` riletto dopo di lui, coi suoi dati e il suo nome, senza attesa; la lingua è quella di `subito` se è sua la
+lingua confermata dopo (dalla `v2.11.0`, col segno della lingua; nella `v2.9.0` e nella `v2.10.0` col segno della sessione).
+Un `dopo` che non dice di chi è,
 o un segno che manca da una delle due parti, si unisce a `subito` come prima della `v2.5.0`.
 
 I tipi delle due parti escono dai due ingressi, dalla `v2.2.0`: `DatiSubito` e `DatiDopo` (`resources/js` e
@@ -1520,7 +1533,8 @@ Che cosa vede la persona:
   I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
   e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l'istante del fallimento) — anche quando
   io.mostra l'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i
-  dati di chi è entrato mentre il backoffice non rispondeva. Se fra
+  dati di chi è entrato mentre il backoffice non rispondeva. Dalla `v2.11.0` dopo `sessione_il` c'è anche `lingua_il`,
+  come in `Cornice::subito()`: quello di questa lettura se io.mostra ha risposto, altrimenti quello ricordato. Se fra
   `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
   sua lingua, e non quelli di chi c'era prima: la cornice si rifà, e la pagina con lei — ciò che la persona stava
   scrivendo si perde, come per un `dopo` di un'altra persona —, e lo stesso con un `non_letti` di un altro workspace.

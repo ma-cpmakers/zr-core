@@ -36,6 +36,12 @@ final class Cornice
     /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra che `lingua()` e `dati()` hanno in comune. */
     private const LETTURA = 'zr-core.io-mostra';
 
+    /**
+     * Il segno della lingua, nella sessione: di chi è (l'id della persona) e l'inizio della lettura di io.mostra che ha
+     * confermato la sua lingua. Sta nella sessione e non sulla richiesta: `subito()` lo dà in una richiesta che non legge.
+     */
+    private const LINGUA = 'zr-core.lingua';
+
     /** La forma di una lingua: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_` (`it`, `pt-BR`, `zh-Hans-CN`). */
     private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
 
@@ -112,7 +118,12 @@ final class Cornice
      * Nel browser dice se questi dati sono più vecchi di chi la cornice mostra: una pagina ripresa dalla cronologia con
      * Indietro porta il `subito` di allora, e non riporta a schermo la persona di allora.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string}|null
+     * Dopo c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`): l'istante in cui è cominciata la lettura di io.mostra che ha
+     * confermato la lingua della sessione per questa persona, ricordato nella sessione, mai quello di adesso. Un `subito`
+     * riletto mentre `dopo` è in lettura porta la sessione di adesso e la lingua di prima: col segno di adesso varrebbe nel
+     * browser sopra la lingua nuova. Senza una lettura che l'abbia confermata, o se quella era di un'altra persona, non c'è.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function subito(): ?array
     {
@@ -128,6 +139,7 @@ final class Cornice
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             'sessione_il' => Segno::adesso(),
+            ...self::linguaIl(),
         ];
     }
 
@@ -151,7 +163,11 @@ final class Cornice
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string}|null
+     * In fondo, dopo `sessione_il`, c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`), come in `subito()`: quello della
+     * lettura di questa richiesta se io.mostra ha risposto per la persona della sessione, altrimenti quello ricordato. Anche in
+     * `non_letti`.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function dopo(): ?array
     {
@@ -181,7 +197,7 @@ final class Cornice
             $tenuta = request()->attributes->get(self::LETTURA);
             $segno = is_array($tenuta) ? $tenuta['segno'] : $prima;
 
-            // Le due chiavi di sempre davanti, quelle della `v2.7.0` in fondo.
+            // Le due chiavi di sempre davanti, quelle della `v2.7.0` dopo, e `lingua_il` di `subito()` resta in fondo.
             return ['non_letti' => true, 'aggiornati_il' => $segno, ...$chi, 'sessione_il' => $segno];
         }
 
@@ -190,7 +206,7 @@ final class Cornice
         }
 
         // La persona è stata letta con questi dati: il suo segno è il loro.
-        return [...$dati, 'sessione_il' => $dati['aggiornati_il']];
+        return [...$dati, 'sessione_il' => $dati['aggiornati_il'], ...self::linguaIl()];
     }
 
     /**
@@ -311,6 +327,7 @@ final class Cornice
         try {
             $io = self::ioMostra();
             Sessione::aggiorna($io);
+            self::ricordaLaLingua($io, $segno);
             $esito = $io['notifiche_non_lette'];
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
@@ -324,6 +341,39 @@ final class Cornice
         request()->attributes->set(self::LETTURA, $lettura);
 
         return $lettura;
+    }
+
+    /**
+     * Ricorda nella sessione il segno di una lettura di io.mostra che ha confermato la lingua: solo se io.mostra ha risposto con
+     * l'id della persona della sessione (`Sessione::aggiorna` torna true solo se qualcosa cambia, e non lo dice), e solo se è
+     * più avanti di quello già ricordato per lei, perché due richieste in volo non lo portino indietro.
+     *
+     * @param  array<string, mixed>  $io  i `data` di io.mostra
+     */
+    private static function ricordaLaLingua(array $io, string $segno): void
+    {
+        $id = Sessione::utente()['id'] ?? null;
+        $di = is_array($io['utente'] ?? null) ? ($io['utente']['id'] ?? null) : null;
+
+        if (is_string($id) && $di === $id && strcmp($segno, self::linguaIl()['lingua_il'] ?? '') > 0) {
+            session()->put(self::LINGUA, ['persona' => $id, 'il' => $segno]);
+        }
+    }
+
+    /**
+     * Il segno della lingua ricordato per la persona della sessione, come chiave da mettere nei dati; niente se non c'è, o se è
+     * di un'altra persona (ne è entrata un'altra nello stesso browser).
+     *
+     * @return array{lingua_il?: string}
+     */
+    private static function linguaIl(): array
+    {
+        $ricordato = session(self::LINGUA);
+        $id = Sessione::utente()['id'] ?? null;
+
+        return is_string($id) && is_array($ricordato) && ($ricordato['persona'] ?? null) === $id && is_string($ricordato['il'] ?? null)
+            ? ['lingua_il' => $ricordato['il']]
+            : [];
     }
 
     /**

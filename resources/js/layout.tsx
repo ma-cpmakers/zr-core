@@ -61,11 +61,14 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // ha riletto il solo `subito`): non si unisce, e la cornice aspetta il `dopo` di chi è entrato. Uno più recente sì, e la
     // cornice diventa di chi dice lui; senza un segno o senza la persona da una parte vale come sempre.
     const suo = subito && dopo?.persona && dopo.persona.email !== subito.persona.email && segno(dopo.sessione_il)! < segno(subito.sessione_il)! ? undefined : dopo;
-    // Con la stessa persona vale la lingua del dato più recente (dalla `v2.9.0`): chi ha cambiato lingua e rilegge il solo
-    // `subito` ha i testi nella lingua nuova senza aspettare `dopo`. Da `subito` passa la sola lingua, e solo se `dopo` dice
-    // che è della stessa persona e i due segni ci sono: un confronto con `undefined` è falso, e vale `dopo` come sempre.
-    const piuRecente = subito && suo?.persona?.email === subito.persona.email && segno(suo?.sessione_il)! < segno(subito.sessione_il)! && { lingua: subito.lingua };
-    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...piuRecente } : undefined);
+    // Con la stessa persona vale la lingua del dato col segno della lingua più avanti (dalla `v2.9.0`; dalla `v2.11.0` col
+    // segno della lingua, `lingua_il`, e non con quello della sessione): chi ha cambiato lingua e rilegge il solo `subito` ha i
+    // testi nella lingua nuova senza aspettare `dopo`, e un `subito` riletto mentre `dopo` è in lettura, che porta la sessione
+    // di adesso e la lingua di prima, non la riporta. Da `subito` passano la sola lingua e il suo segno, e solo se `dopo` dice
+    // che è della stessa persona e i due segni ci sono: un confronto con `undefined` è falso, e vale `dopo` come sempre. Il segno
+    // della lingua della pagina è quello del dato da cui viene la lingua.
+    const piuRecente = subito && suo?.persona?.email === subito.persona.email && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
+    const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...(suo && (piuRecente || { lingua_il: suo.lingua_il })) } : undefined);
 
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
     // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai
@@ -84,8 +87,13 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     if (entrato && pagina.persona.email !== entrato.persona.email && !(della(pagina) && della(entrato))) {
         return location.reload() as undefined;
     }
-    const chi = entrato && della(entrato) > della(pagina) ? entrato : pagina;
-    if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato)) {
+    const piuAvanti = entrato && della(entrato) > della(pagina) ? entrato : pagina;
+    // La lingua, con la stessa persona, è quella col segno della lingua più avanti fra chi è mostrato e la pagina (dalla
+    // `v2.11.0`): una pagina di Indietro letta dopo la sessione di chi è mostrato, ma con la lingua confermata prima, non
+    // riporta la lingua di allora. Senza il segno da una parte resta quella di chi ha la sessione più avanti.
+    const altro = piuAvanti === pagina ? entrato : pagina;
+    const chi = altro?.persona.email === piuAvanti.persona.email && segno(altro.lingua_il)! > segno(piuAvanti.lingua_il)! ? { ...piuAvanti, lingua: altro.lingua, lingua_il: altro.lingua_il } : piuAvanti;
+    if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato) || chi.lingua_il !== entrato.lingua_il) {
         entra(chi);
     }
     // Una pagina di un'altra persona (un'altra email) è più vecchia di chi è mostrato: i suoi dati non valgono. Se è di un
@@ -100,7 +108,8 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // Una pagina sua più vecchia (Indietro su un altro workspace) porta i suoi dati, ma il nome, la lingua e il segno restano
     // quelli di adesso: la cornice che si rifà lì sotto riparte da chi è mostrato, e una voce di un'altra persona più vecchia
     // di lui non passa nemmeno dopo.
-    const cornice = valgono.persona.email === chi.persona.email && della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : valgono;
+    // Con la stessa persona e lo stesso segno, la lingua è quella di chi è mostrato, se lì il suo segno è più avanti (sopra).
+    const cornice = valgono.persona.email !== chi.persona.email ? valgono : della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : chi.lingua !== valgono.lingua ? { ...valgono, lingua: chi.lingua } : valgono;
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.

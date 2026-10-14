@@ -5495,12 +5495,22 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la cornice di chi c\'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c\'è già chi ha risposto'],
     // Sprint 43 · T4 (voce #2052): con la stessa persona vale la lingua del dato più recente.
     'la lingua del dato più recente' => ['readme', 'Dalla `v2.9.0`, con la stessa persona, vale la lingua del dato più recente anche se `dopo` non è riletto: una pagina che rilegge il solo `subito` dopo che la persona ha cambiato lingua ha i testi della cornice nella lingua nuova'],
-    'la lingua: da subito passa solo lei' => ['readme', 'Da `subito` passa la sola lingua, e solo se `dopo` dice di chi è e il segno della sessione c\'è da tutte e due le parti: senza, vale `dopo` come prima'],
+    'la lingua: da subito passa solo lei' => ['readme', 'Da `subito` passano la sola lingua e il suo segno, e solo se `dopo` dice di chi è e il segno della lingua c\'è da tutte e due le parti: senza, vale `dopo` come prima'],
     'la guida: la lingua del dato più recente' => ['guida', 'Dalla `v2.9.0`, con la stessa persona, i testi della cornice seguono la lingua del dato più recente: se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo`'],
     // Sprint 43 · T5 (review della PR 77): la lingua di un `subito` riletto mentre `dopo` è in lettura; le frasi di prima col
     // tetto e l'orologio; l'orologio a ogni ricarica chiamata; le due cornici; ciò che resta a schermo sotto il tetto; la guida.
-    'la lingua: il caso che resta' => ['readme', 'Un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno più avanti e la lingua di prima: se la lingua è cambiata fuori da questa sessione, la cornice resta in quella di prima finché `dopo` non è riletto o la pagina non fa una visita'],
-    'la lingua: sotto un subito riletto' => ['readme', 'coi suoi dati e il suo nome, senza attesa; dalla `v2.9.0` la lingua è quella di `subito`, il più recente dei due'],
+    'la lingua: sotto un subito riletto' => ['readme', 'coi suoi dati e il suo nome, senza attesa; la lingua è quella di `subito` se è sua la lingua confermata dopo (dalla `v2.11.0`, col segno della lingua; nella `v2.9.0` e nella `v2.10.0` col segno della sessione)'],
+    // Sprint 45 · T3.6 (voce #2060): la lingua ha un suo segno, e il caso che restava aperto si chiude.
+    'la lingua: il suo segno' => ['readme', 'Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`: `Cornice::subito()` e `Cornice::dopo()` lo portano dopo `sessione_il`, in fondo (anche `non_letti`), ed è l\'istante in cui è cominciata la lettura di io.mostra che ha confermato la lingua della sessione per quella persona'],
+    'la lingua: il segno, mai adesso' => ['readme', 'In `dopo` è quello della sua lettura, se io.mostra ha risposto, altrimenti quello che la sessione ricorda; in `subito` quello che la sessione ricorda, mai l\'istante di adesso'],
+    'la lingua: nella sessione, di chi è' => ['readme', 'La parte server lo ricorda nella sessione, alla chiave `zr-core.lingua`, con l\'id della persona: di un\'altra persona entrata nello stesso browser non esce, e senza una lettura che l\'abbia confermata non c\'è'],
+    'la lingua: decide il suo segno' => ['readme', 'Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no'],
+    'la lingua: il caso chiuso' => ['readme', 'un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno della sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima'],
+    'la lingua: Indietro' => ['readme', 'E con Indietro su una pagina della stessa persona letta dopo quella a schermo, ma con la lingua confermata prima, la lingua resta quella nuova, nello stesso workspace e in un altro'],
+    'la lingua: un dopo a mano senza segno' => ['readme', 'Un `dopo` composto a mano senza `lingua_il` porta la sua lingua, come prima della `v2.9.0`'],
+    'la lingua: il segno non va indietro' => ['readme', 'Anche `lingua_il` (sotto, «La cornice in due dati»), che è il segno di una di quelle letture'],
+    'la lingua: anche non_letti' => ['readme', 'Dalla `v2.11.0` dopo `sessione_il` c\'è anche `lingua_il`, come in `Cornice::subito()`: quello di questa lettura se io.mostra ha risposto, altrimenti quello ricordato'],
+    'la guida: il segno della lingua' => ['guida', 'Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`, e vale quella confermata più di recente: un `subito` riletto mentre `dopo` è ancora in lettura, o una pagina di prima ripresa con Indietro, non riportano la lingua di prima (README, «La cornice in due dati»)'],
     'la scheda ferma: le frasi di prima col tetto' => ['readme', 'Dalla `v2.9.0` questa ricarica, e le altre dette qui sotto, hanno un tetto e un orologio: su una pagina caricata da meno di 30 secondi non partono prima che li compia — dalla `v2.10.0` partono allora, da sole —, e se la pagina non si ricarica la richiesta dà il suo errore dopo 5 secondi'],
     'la lettura con un clic: il tetto' => ['readme', 'Dalla `v2.9.0` anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte'],
     'la scheda ferma: l\'orologio a ogni ricarica' => ['readme', 'L\'orologio dei 5 secondi parte a ogni ricarica chiamata, non solo quando è annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza niente di chi è entrato'],
@@ -5663,6 +5673,16 @@ it('README e guida dicono in grassetto le tre cose che un frontend non fa con `s
         '**comporre `dopo` a mano**',
         '**resta in attesa di un `dopo` di chi è entrato**',
     ]],
+]);
+
+// Sprint 45 · T3.6 (voce #2060): dalla `v2.11.0` la lingua ha un suo segno, e il caso che fino alla `v2.10.0` restava aperto
+// — un `subito` riletto mentre `dopo` è in lettura riportava la lingua di prima — è chiuso. Il README non lo dice più aperto.
+it('il README non dice più che resta aperto il caso della lingua di un `subito` riletto mentre `dopo` è in lettura (sprint 45 · T3.6)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'il caso che resta' => ['Un caso resta: il segno di `dopo` è l\'istante in cui la sua lettura comincia'],
+    'la lingua di prima' => ['la cornice resta in quella di prima finché `dopo` non è riletto'],
+    'il più recente dei due' => ['la lingua è quella di `subito`, il più recente dei due'],
 ]);
 
 // Sprint 38 · T3.6 (voce #2026): dalla `v2.5.0` il 403 `accettazione_richiesta` e il 429 della ricerca dicono anche di chi
