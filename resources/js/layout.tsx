@@ -73,6 +73,13 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     if (!pagina) {
         return children;
     }
+    // Senza il segno da una delle due parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi è
+    // mostrato, e con Indietro sarebbe di chi c'era prima. Nello stesso workspace lo guarda `Cornice`, che resta montata; in un
+    // altro la `key` cambia, la cornice si rifà e non sa più chi mostrava: lo sa il layout, che non ne mostra niente, nemmeno
+    // la pagina, e ricarica (dalla `v2.8.0`). Ricaricata, è di chi è entrato.
+    if (entrato && pagina.persona.email !== entrato.persona.email && !(della(pagina) && della(entrato))) {
+        return location.reload() as undefined;
+    }
     const chi = entrato && della(entrato) > della(pagina) ? entrato : pagina;
     if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato)) {
         entra(chi);

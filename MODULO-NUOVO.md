@@ -327,7 +327,8 @@ della campanella non arriva, «Riprova» lo richiede dovunque la tua build lo me
 l'indirizzo del JS d'ingresso ha una coda sua — README, «La cornice», al punto «Le notifiche». Due cose, dette lì: il JS
 che contiene la cornice non servirlo con una coda (il pezzo lo richiede senza, e la pagina si monta una seconda volta),
 e dove la tua build non scrive il nome del pezzo com'è «Riprova» riprova allo stesso indirizzo, senza coda: in
-Chromium non parte niente.
+Chromium non parte niente. Dalla `v2.8.0` la prima vale anche per la ricerca, che ha un pezzo suo: con una coda sul JS
+della cornice la pagina si monta di nuovo al primo fuoco nel campo della ricerca.
 Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima
 pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la
 cornice ha già i dati di quel workspace, resta coi dati di prima. Se la tua parte server non è riuscita a leggerlo

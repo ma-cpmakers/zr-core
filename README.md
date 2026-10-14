@@ -154,15 +154,20 @@ cornice chiede quando si apre la campanella (vedi «Quanto pesa», sopra). Nei t
 
 ### Passare alla v2.8
 
-La `v2.8.0` non cambia niente nel codice di chi installa: stessa `Cornice`, stessi dati, stesse rotte. Cambia quando arriva
-il codice della ricerca, che dalla `v2.8.0` è un pezzo a richiesta (vedi «La ricerca», in «La cornice»), e nei test di un
-frontend si può vedere. Finché il pezzo non è arrivato la richiesta a `POST /cornice/ricerca` non parte: un caso che scrive
+La `v2.8.0` non cambia niente nel codice di chi installa: stessa `Cornice`, stessi dati, stesse rotte. Cambiano due cose
+che nei test di un frontend si possono vedere. La seconda riguarda solo chi dà alla cornice dei dati senza il segno della
+lettura — un `subito` composto a mano senza `sessione_il`, una `cornice` intera senza `aggiornati_il` (la parte server del
+pacchetto il segno lo mette sempre): se quei dati portano un'altra persona rispetto a chi la cornice mostra, la cornice non
+disegna niente e chiama `location.reload()` (vedi «La cornice in due dati»). Un caso che cambia persona con dati senza
+segno trova lo schermo vuoto: ai dati del caso si dà il segno, da tutte e due le parti. La prima è quando arriva
+il codice della ricerca, che dalla `v2.8.0` è un pezzo a richiesta (vedi «La ricerca», in «La cornice»). Finché il pezzo non è arrivato la richiesta a `POST /cornice/ricerca` non parte: un caso che scrive
 nel campo, lascia passare i 300 ms dall'ultimo tasto e guarda subito le richieste partite non ne trova, perché la richiesta
 parte poco dopo, quando l'`import()` del pezzo è finito. La riga che il file di preparazione dei test ha già per le
 notifiche, `beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca: con quella riga
 la ricerca parte allo scadere dei 300 ms, e i casi restano com'erano. Un frontend che non la ha la aggiunge (vedi «Le
 notifiche»: `frasiInMemoria` sta in `vendor/zeiras/zr-core/resources/js/prove.ts`); un caso che rifà i moduli
-(`vi.resetModules()`) la richiama dopo l'import, come per la campanella. In una pagina vera non c'è niente da fare: chi
+(`vi.resetModules()`) la richiama dopo l'import, come per la campanella. In una pagina vera non c'è niente da fare, se il JS che contiene la
+cornice non è servito con una coda (vedi «La ricerca»): chi
 mette il fuoco nel campo trova il pezzo arrivato prima di aver scritto due lettere, e a rete lenta il primo risultato arriva
 quando arrivava (vedi «La ricerca»).
 
@@ -566,7 +571,8 @@ cornice === null ? pagina : (
   Vale dove la cornice resta montata, sotto il layout della cornice: con la cornice montata da ogni pagina quella nuova
   non sa niente di prima, e Indietro porta ancora il numero di allora. I segni vengono dall'orologio della parte server: i
   server del frontend devono avere l'ora allineata. Coi dati senza il segno la cornice non ha niente da confrontare: i
-  dati sono nuovi quando è nuovo l'oggetto, e vale sempre ciò che dà la pagina. Per il lettore di schermo la campanella si
+  dati sono nuovi quando è nuovo l'oggetto, e vale ciò che dà la pagina, se è della persona che la cornice mostra (di
+  un'altra, dalla `v2.8.0`, la pagina si ricarica: vedi «La cornice in due dati»). Per il lettore di schermo la campanella si
   chiama col suo numero («Notifiche, 3 non lette»), e con una sola al singolare («Notifiche, 1 non letta»). Il design
   system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello: il
   pallino dice «non letta» quando sulla campanella ce n'è una sola, «non lette» negli altri casi.
@@ -895,12 +901,20 @@ cornice === null ? pagina : (
   Dalla `v2.8.0` il codice della ricerca — la richiesta, ciò che si fa della risposta, la riga di un risultato — è un pezzo
   a richiesta, fuori dal JS d'ingresso: la cornice lo chiede con `import()` al primo fuoco nel campo della ricerca, o alla
   prima parola se il fuoco nel campo non c'è stato, mai quando si monta. Chi scrive prima che il pezzo sia arrivato vede
-  «Sto cercando…», e all'arrivo parte una richiesta sola, con ciò che è nel campo in quel momento. Se il pezzo non arriva —
+  «Sto cercando…», e all'arrivo parte una richiesta sola, con l'ultima parola che il campo ha dato alla cornice: quella che
+  c'era 300 ms dopo l'ultimo tasto. Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre
+  una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo. Se il pezzo non arriva —
   la rete che cade, un file che una build nuova ha tolto — sotto il campo c'è l'errore della ricerca, lo stesso avviso di
   una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte. Si riprova
   scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, e in Chromium lo richiede davvero, all'indirizzo
   che la build ha scritto e con una coda, come «Riprova» per la campanella (vedi «Le notifiche»); arrivato, si cerca ciò che
-  è nel campo. Un pezzo non arrivato non accende il freno del `429`. Un pulsante per riprovare nel riquadro della ricerca
+  è nel campo. Un pezzo non arrivato non accende il freno del `429`, e fra una richiesta del pezzo e l'altra non c'è
+  un'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive. Un file che una build nuova ha
+  tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata. Per questo pezzo vale ciò che «Le notifiche» dice di
+  quello della campanella: il JS che contiene la cornice non si serve con una coda (`app.js?v=3`). Il pezzo lo importa col suo
+  nome, senza la coda, e il browser lo scarica e lo esegue una seconda volta: se è anche il JS che monta la pagina, al primo
+  fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel
+  campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`). Un pulsante per riprovare nel riquadro della ricerca
   l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
   cambia niente; per i suoi test vedi «Passare alla v2.8».
   Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
@@ -1340,8 +1354,12 @@ Che cosa vede la persona:
   valgono in nessun workspace). Dalla `v2.8.0` nemmeno dei dati senza il segno riportano chi c'era prima — un `subito`
   composto a mano senza `sessione_il`, una `cornice` intera senza `aggiornati_il`: se la pagina è di un'altra persona e il
   segno manca da una delle due parti, la cornice non ne mostra niente, nemmeno il contenuto, e ricarica la pagina, che torna
-  di chi è entrato. Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un'altra persona
-  la pagina si ricarica, una volta. Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
+  di chi è entrato; sotto il layout anche quando la voce di chi c'era prima è di un altro workspace, dove la cornice si
+  rifà: lì lo guarda il layout (provato in Chromium 151 sulle pagine di prova, con `?segno=no`, nello stesso workspace e
+  in un altro). Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un'altra persona
+  la pagina si ricarica; ricaricata, la cornice parte da chi dice la pagina e non ricarica più. Un tetto alle ricariche non
+  c'è: una pagina che a ogni caricamento desse senza segno prima una persona e poi un'altra — un `subito` di una e un `dopo`
+  dell'altra — si ricaricherebbe ogni volta. Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
   cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia

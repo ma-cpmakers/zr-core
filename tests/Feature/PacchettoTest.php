@@ -5103,7 +5103,12 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
     'quando si chiede' => ['ricerca', 'la cornice lo chiede con `import()` al primo fuoco nel campo della ricerca, o alla prima parola se il fuoco nel campo non c\'è stato, mai quando si monta'],
-    'prima dell\'arrivo' => ['ricerca', 'Chi scrive prima che il pezzo sia arrivato vede «Sto cercando…», e all\'arrivo parte una richiesta sola, con ciò che è nel campo in quel momento'],
+    'prima dell\'arrivo' => ['ricerca', 'Chi scrive prima che il pezzo sia arrivato vede «Sto cercando…», e all\'arrivo parte una richiesta sola, con l\'ultima parola che il campo ha dato alla cornice: quella che c\'era 300 ms dopo l\'ultimo tasto'],
+    // Sprint 42 · T5 (review): la lettera battuta negli ultimi 300 ms, il pezzo richiesto senza un'attesa, il file tolto, la coda.
+    'una lettera negli ultimi 300 ms' => ['ricerca', 'Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo'],
+    'fra una richiesta del pezzo e l\'altra' => ['ricerca', 'fra una richiesta del pezzo e l\'altra non c\'è un\'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive'],
+    'un file tolto da una build nuova' => ['ricerca', 'Un file che una build nuova ha tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata'],
+    'il JS della cornice con una coda' => ['ricerca', 'al primo fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`)'],
     'se non arriva' => ['ricerca', 'sotto il campo c\'è l\'errore della ricerca, lo stesso avviso di una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte'],
     'si riprova scrivendo' => ['ricerca', 'Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta'],
     'il freno' => ['ricerca', 'Un pezzo non arrivato non accende il freno del `429`'],
@@ -5436,7 +5441,15 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di nuovo, che è suo e lo dice'],
     // Sprint 42 · T4 (voce #1975): senza il segno della lettura la pagina di un'altra persona non va a schermo, e si ricarica.
     'Indietro: senza il segno' => ['readme', 'se la pagina è di un\'altra persona e il segno manca da una delle due parti, la cornice non ne mostra niente, nemmeno il contenuto, e ricarica la pagina, che torna di chi è entrato'],
-    'Indietro: senza il segno, a una visita' => ['readme', 'Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un\'altra persona la pagina si ricarica, una volta. Della stessa persona, senza il segno, vale la pagina come prima'],
+    'Indietro: senza il segno, a una visita' => ['readme', 'Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un\'altra persona la pagina si ricarica; ricaricata, la cornice parte da chi dice la pagina e non ricarica più'],
+    'Indietro: senza il segno, la stessa persona' => ['readme', 'Della stessa persona, senza il segno, vale la pagina come prima'],
+    // Sprint 42 · T5 (review): sotto il layout anche in un altro workspace; nessun tetto alle ricariche; le due frasi che lo contraddicevano.
+    'Indietro: senza il segno, in un altro workspace' => ['readme', 'sotto il layout anche quando la voce di chi c\'era prima è di un altro workspace, dove la cornice si rifà: lì lo guarda il layout (provato in Chromium 151 sulle pagine di prova, con `?segno=no`, nello stesso workspace e in un altro)'],
+    'Indietro: senza il segno, nessun tetto alle ricariche' => ['readme', 'Un tetto alle ricariche non c\'è: una pagina che a ogni caricamento desse senza segno prima una persona e poi un\'altra — un `subito` di una e un `dopo` dell\'altra — si ricaricherebbe ogni volta'],
+    'senza il segno vale la pagina, se è della stessa persona' => ['readme', 'vale ciò che dà la pagina, se è della persona che la cornice mostra (di un\'altra, dalla `v2.8.0`, la pagina si ricarica: vedi «La cornice in due dati»)'],
+    'passare alla v2.8: i dati senza il segno' => ['readme', 'se quei dati portano un\'altra persona rispetto a chi la cornice mostra, la cornice non disegna niente e chiama `location.reload()` (vedi «La cornice in due dati»). Un caso che cambia persona con dati senza segno trova lo schermo vuoto: ai dati del caso si dà il segno, da tutte e due le parti'],
+    'passare alla v2.8: senza una coda' => ['readme', 'In una pagina vera non c\'è niente da fare, se il JS che contiene la cornice non è servito con una coda (vedi «La ricerca»)'],
+    'la guida: la coda vale anche per la ricerca' => ['guida', 'Dalla `v2.8.0` la prima vale anche per la ricerca, che ha un pezzo suo: con una coda sul JS della cornice la pagina si monta di nuovo al primo fuoco nel campo della ricerca'],
     'Indietro: i limiti' => ['readme', 'Restano due limiti. La cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
