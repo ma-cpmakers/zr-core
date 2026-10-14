@@ -617,7 +617,7 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
     $scritte = fn (array $cose): array => array_combine($cose, array_map(fn (string $cosa) => substr_count($pagina, $cosa), $cose));
 
     expect($importati('@inertiajs/react'))->toBe(['createInertiaApp', 'http', 'router'])
-        ->and($importati('./parte-server-finta'))->toBe(['chiaveDellaSessione', 'clientFinto', 'colSegno', 'conLaSessione', 'istanteDellaLettura', 'lettura', 'sessioneFinta'])
+        ->and($importati('./parte-server-finta'))->toBe(['chiaveDellaSessione', 'clientFinto', 'colSegno', 'conIlSegnoDellaLingua', 'conLaSessione', 'fermaIlSegno', 'istanteDellaLettura', 'lettura', 'sessioneFinta'])
         ->and($scritte(['createInertiaApp({', 'router.visit(', 'router.push(', 'http.setClient(', 'http.setClient(clientFinto(']))->toBe([
             'createInertiaApp({' => 1,
             'router.visit(' => 1,
@@ -774,6 +774,30 @@ it('la pagina di prova del layout, con ?sessione, lascia la stessa persona con u
             "['altra', altra]," => 1,
             $laLingua => 1,
             "entrate.get(localStorage.getItem(chiaveDellaSessione) ?? '')" => 1,
+        ]);
+});
+
+// Sprint 46 · T3 (voce #2067): la parte server finta dà il segno della lingua e, con `?segno=fermo`, lo stesso segno a ogni
+// lettura. Che cosa fanno lo prova parte-server-finta.test.ts; qui, che la pagina di prova li usa: ogni risposta passa da
+// `conIlSegnoDellaLingua` (anche la prima pagina), il segno fermo lo decide l'indirizzo, e il pulsante della lingua di prima
+// c'è una volta, con la sua rilettura del solo `subito`. Se una risposta uscisse senza, la lingua nel browser non avrebbe il
+// suo segno e le righe della UAT non distinguerebbero.
+it('la pagina di prova del layout dà il segno della lingua a ogni risposta, ferma il segno con ?segno=fermo e rilegge subito con la lingua di prima (sprint 46 · T3.4)', function () {
+    $diPrima = '<button type="button" data-uat="rileggi-subito-lingua-di-prima" onClick={rileggiSubitoConLaLinguaDiPrima}>UAT rileggi subito con la lingua di prima</button>';
+    $conLaLingua = '    return segno ? conIlSegnoDellaLingua(letta, diPrima) : letta;';
+
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$diPrima, 'data-uat="rileggi-subito-lingua-di-prima"', $conLaLingua, 'leggiConLaLingua(', 'leggi(', "fermaIlSegno(scelti.get('segno') === 'fermo');", "router.reload({ only: ['subito'] });"]))->toBe([
+        $diPrima => 1,
+        'data-uat="rileggi-subito-lingua-di-prima"' => 1,
+        $conLaLingua => 1,
+        'leggiConLaLingua(' => 3,
+        'leggi(' => 2,
+        "fermaIlSegno(scelti.get('segno') === 'fermo');" => 1,
+        "router.reload({ only: ['subito'] });" => 1,
+    ])
+        ->and(scritteNellaPaginaDiProva('parte-server-finta.ts', ["const chiaveDelleLingue = 'uat-lingue';", 'if (!(segnoFermo && ultimaLettura)) {']))->toBe([
+            "const chiaveDelleLingue = 'uat-lingue';" => 1,
+            'if (!(segnoFermo && ultimaLettura)) {' => 1,
         ]);
 });
 
