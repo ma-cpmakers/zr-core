@@ -444,14 +444,35 @@ it('una lettura di io.mostra più vecchia del segno della lingua ricordato non c
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.000000', 'UTC'));
     sessioneAMano(marketing(), 'it');
     session()->put('zr-core.lingua', ['persona' => 'uat-ada', 'il' => '2026-10-09T21:31:09.000000Z']);
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
+
+    $dopo = (array) Cornice::dopo();
+    $subito = (array) Cornice::subito();
+
+    // Il nome della lettura più vecchia passa com'è (R1 della review della PR #83): resta ferma solo la lingua.
+    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null])->toBe(['it', '2026-10-09T21:31:09.000000Z'])
+        ->and($subito['lingua'] ?? null)->toBe('it')
+        ->and([$dopo['persona']['nome'] ?? null, $subito['persona']['nome'] ?? null])->toBe(['UAT Ada Lovelace', 'UAT Ada Lovelace'])
+        ->and(Cornice::lingua())->toBe('it');
+});
+
+// S1 della revisione di sicurezza della PR #83: un segno della lingua ricordato avanti dell'orologio di più di cinque minuti
+// l'ha dato un server del frontend con l'orologio avanti, e non vale, come il cookie del segno (`Segno`): la lingua della
+// lettura passa, e il suo segno prende il posto di quello ricordato. Cinque minuti esatti valgono ancora.
+it('un segno della lingua ricordato avanti dell\'orologio di più di cinque minuti non vale: la lingua di io.mostra passa col segno della lettura; a cinque minuti esatti vale (sprint 49 · T5, S1)', function (string $ricordato, array $atteso) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.000000', 'UTC'));
+    sessioneAMano(marketing(), 'it');
+    session()->put('zr-core.lingua', ['persona' => 'uat-ada', 'il' => $ricordato]);
     backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
 
     $dopo = (array) Cornice::dopo();
 
-    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null])->toBe(['it', '2026-10-09T21:31:09.000000Z'])
-        ->and(((array) Cornice::subito())['lingua'] ?? null)->toBe('it')
-        ->and(Cornice::lingua())->toBe('it');
-});
+    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null, Cornice::lingua()])->toBe($atteso);
+})->with([
+    'un\'ora avanti' => ['2026-10-09T22:31:05.000000Z', ['es', '2026-10-09T21:31:05.000000Z', 'es']],
+    'cinque minuti e un microsecondo avanti' => ['2026-10-09T21:36:05.000001Z', ['es', '2026-10-09T21:31:05.000000Z', 'es']],
+    'cinque minuti esatti avanti' => ['2026-10-09T21:36:05.000000Z', ['it', '2026-10-09T21:36:05.000000Z', 'it']],
+]);
 
 it('una lettura di io.mostra più avanti del segno della lingua ricordato, con un\'altra lingua, la porta col suo segno (sprint 49 · T2.2)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000000', 'UTC'));
