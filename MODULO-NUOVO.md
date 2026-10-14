@@ -313,7 +313,9 @@ rimasta ferma, dalla `v2.4.0`, la cornice non mostra le notifiche e i risultati 
 ricerca di un'altra persona: ricarica la pagina. Dalla `v2.5.0` nemmeno i suoi errori: i documenti da accettare e il
 freno della ricerca di chi è entrato non cambiano la cornice sotto il nome di prima. La persona la riconosce dall'email, che c'è sempre: la garantisce il
 contratto del backoffice, non zr-auth, che la porta com'è. Dalla `v2.5.0` nemmeno «Segna tutte come lette» da una
-scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.6.0` nemmeno il clic su una
+scheda ferma segna le notifiche di chi è entrato: la pagina si ricarica. Dalla `v2.9.0` si ricarica al più una volta ogni
+30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi: per questo il pacchetto non scrive
+niente nel browser. Dalla `v2.6.0` nemmeno il clic su una
 notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l'intestazione `Persona`, e la sua parte server
 risponde 409 `persona_diversa` a quella di un'altra persona. Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,

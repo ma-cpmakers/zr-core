@@ -1252,7 +1252,8 @@ niente da scrivere, e tre cose si vedono. La lingua e il nome della cornice, qua
 da io.mostra, i più recenti. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
-email della persona quella della sessione: con un'altra, campanella e ricerca ricaricano la pagina a ogni uso.
+email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
+`v2.9.0` al più una volta ogni 30 secondi (prima a ogni uso), e fra una ricarica e l'altra danno il loro errore.
 Tutte e due danno `null` senza sessione o senza workspace. `Cornice::dati()` resta com'è, e chi manda solo
 `cornice` non cambia niente.
 
@@ -1295,6 +1296,16 @@ errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto 
 con «Riprova», la ricerca il suo avviso. Niente di chi è entrato va a schermo, nemmeno nell'errore, e prima dei 5 secondi
 niente cambia: il pannello in caricamento, «Segna tutte come lette» in corso. Fino alla `v2.8.0` chi aveva chiesto restava
 in attesa finché la pagina non si ricaricava.
+Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica
+davanti a una risposta di un'altra persona. Subito dopo una ricarica, se la risposta lo dice ancora — dei dati composti a
+mano con un'altra email, una pagina presa da una cache —, ricaricare di nuovo non cambierebbe niente: chi ha chiesto ha
+subito l'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso. Di quella risposta niente è disegnato e
+niente è tenuto, come quando la pagina si ricarica. Da 30 secondi in poi la pagina si ricarica come prima: al più una
+ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né
+`localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
+all'uscita non c'è niente da togliere. Restano due casi. Una richiesta partita più di 30 secondi dopo una ricarica che non
+ha cambiato niente ne dà un'altra. E una pagina che riceve la risposta di un'altra persona nei suoi primi 30 secondi dà
+l'errore senza ricaricarsi: passati i 30 secondi, «Riprova» o la richiesta dopo la ricaricano.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
@@ -1362,7 +1373,8 @@ Che cosa vede la persona:
   in un altro). Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un'altra persona
   la pagina si ricarica; ricaricata, la cornice parte da chi dice la pagina e non ricarica più. Un tetto alle ricariche non
   c'è: una pagina che a ogni caricamento desse senza segno prima una persona e poi un'altra — un `subito` di una e un `dopo`
-  dell'altra — si ricaricherebbe ogni volta. Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
+  dell'altra — si ricaricherebbe ogni volta. Il tetto che dalla `v2.9.0` hanno le ricariche davanti a una risposta di
+  un'altra persona non copre questa: fermata, lascerebbe la pagina vuota, senza un «Riprova». Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
   cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia

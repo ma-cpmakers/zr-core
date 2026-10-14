@@ -112,7 +112,10 @@ export function mostra(email?: string): void {
  * ancora lì — un `beforeunload` che annulla il ricaricamento — la promessa si chiude con un errore senza niente dentro (dalla
  * `v2.9.0`): né i dati, né `persona`, né la classe dell'errore di chi è entrato, e chi ha chiamato dice il suo errore di
  * sempre. Se la pagina non si ricarica perché non deve (nessuno a schermo, o c'è già chi ha risposto) nessun orologio parte, e
- * la promessa resta aperta: chi l'ha chiesta non è più a schermo. Una risposta che non lo dice
+ * la promessa resta aperta: chi l'ha chiesta non è più a schermo. La ricarica ha un tetto, l'età della pagina (dalla
+ * `v2.9.0`): una pagina caricata da meno di 30 secondi non si ricarica — subito dopo una ricarica, se la risposta dice ancora
+ * un'altra persona, rifarla non cambia niente — e la promessa si chiude subito con lo stesso errore senza niente dentro. Niente
+ * è scritto nel browser per ricordarlo: l'orologio è quello della pagina (`performance.now()`). Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
@@ -121,7 +124,7 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (location.reload(), setTimeout(no, 5e3)));
+        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (performance.now() < 3e4 ? no() : (location.reload(), setTimeout(no, 5e3))));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
