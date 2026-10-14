@@ -1294,6 +1294,31 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(lingueASchermo()).toStrictEqual(['it']);
         });
 
+        // Sprint 46 · T2 (voce #2066, N6 della seconda lettura della PR #79): due dati contro il tipo, senza l'email tutti e due.
+        // Due email che mancano non sono la stessa persona (`Decisione:` 12938): dove i dati passano da chi è mostrato alla
+        // pagina, o dalla pagina a lui, non passa niente. La cornice ha la lingua e il nome della pagina.
+        const senzaEmail = (nome: string, lingua: string, aggiornati_il: string, lingua_il?: string, workspace = subito.workspace) =>
+            ({ cornice: { lingua, persona: { nome }, workspace, prodotti: { pm: 'attivo' }, non_lette: 1, aggiornati_il, ...(lingua_il && { lingua_il }) } }) as never;
+        const nomeASchermo = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
+
+        it('chi è mostrato e la pagina più recente non hanno l\'email: la lingua di chi è mostrato non passa alla pagina, anche col suo segno della lingua più avanti (sprint 46 · T2.1)', async () => {
+            await inDue(senzaEmail('Ada', 'es', prima, poi), <PaginaA key="1" />);
+            expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['es'], 'Ada']);
+
+            await inDue(senzaEmail('Grace', 'it', poi, prima), <PaginaB key="2" />);
+            expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['it'], 'Grace']);
+        });
+
+        // In un altro workspace la cornice si rifà e mostra ciò che il layout le dà; nello stesso workspace lo decide `Cornice`, che
+        // resta montata, e lì il confronto delle email è fuori dalla voce (`Decisione:` 12942: l'email la garantisce il contratto).
+        it('chi è mostrato e una pagina più vecchia di un altro workspace non hanno l\'email: lingua, nome e segno di chi è mostrato non passano alla pagina (sprint 46 · T2.2)', async () => {
+            await inDue(senzaEmail('Ada', 'es', poi), <PaginaA key="1" />);
+            expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['es'], 'Ada']);
+
+            await inDue(senzaEmail('Grace', 'it', prima, undefined, { nome: 'Vendite', slug: 'acme-vendite' }), <PaginaB key="2" />);
+            expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['it'], 'Grace']);
+        });
+
         // Un segno che non ha la forma di un istante della parte server è un segno che manca, da una parte e dall'altra: i due
         // senza i microsecondi, letti come testi, direbbero «`subito` è più avanti».
         it.each<[string, unknown, unknown]>([
