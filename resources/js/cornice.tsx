@@ -410,9 +410,17 @@ export function Cornice(props: CorniceProps) {
     // può essere passata a un'altra. Tranne quando la pagina è più vecchia di chi la cornice mostra: lo dice il segno della
     // sessione (`sessione_il`, o quello della lettura nei dati interi), e allora resta chi c'è. Con Indietro la voce della
     // cronologia porta il `subito` di allora, anche quando il suo `dopo` è riletto: senza questo tornerebbero nome ed email di
-    // chi c'era allora. Senza un segno da una parte vale la pagina: un confronto con `undefined` è sempre falso.
+    // chi c'era allora. Senza un segno da una parte vale la pagina, se è della stessa persona: un confronto con `undefined` è
+    // sempre falso.
     const [mostrato, setMostrato] = useState(props.dati);
     const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
+    // Senza il segno da tutte e due le parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi la
+    // cornice mostra: con Indietro sarebbe di chi c'era prima, per intero. Non se ne mostra niente, nemmeno per un disegno — si
+    // esce prima di tenere qualcosa —, e la pagina si ricarica: ricaricata, è di chi è entrato (dalla `v2.8.0`). La stessa
+    // persona senza segno resta com'era: vale la pagina.
+    if (!(props.dati.persona.email === mostrato.persona.email || (della(props.dati) && della(mostrato)))) {
+        return location.reload() as undefined;
+    }
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
 
     // La pagina è della persona mostrata fin qui (la stessa email), o i suoi dati sono stati letti dopo la sessione di chi la

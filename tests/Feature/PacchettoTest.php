@@ -5080,7 +5080,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto scende a 18.229 byte, il peso di oggi più
     // i 48 byte misurati per le quattro correzioni che lo aspettano.
     'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con gzip. Dalla `v2.8.0` è sceso di 325 byte'],
-    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che ora pesa 18.181 byte, e il tetto è quel peso più 48 byte, ciò che costano, misurate, quattro correzioni che lo aspettano (16, 6, 26 e 0 byte), e niente oltre'],
+    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non riportano chi c\'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre'],
     'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
@@ -5434,7 +5434,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Sprint 36 · T3.4 (voce #1967): con Indietro la persona resta quella di adesso, e che cosa fa il frontend all'uscita.
     'Indietro: il segno della sessione' => ['readme', 'dalla `v2.3.0` `Cornice::subito()` dà anche `sessione_il`, il segno dell\'istante in cui ha letto la sessione, e una pagina col segno più indietro di chi la cornice mostra non cambia la persona'],
     'Indietro: nei due tempi' => ['readme', 'Nome, email e lingua restano quelli di chi è entrato, sia in attesa sia quando arriva un `dopo` letto di nuovo, che è suo e lo dice'],
-    'Indietro: i limiti' => ['readme', 'Un `subito` composto a mano senza `sessione_il` vale come una pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata'],
+    // Sprint 42 · T4 (voce #1975): senza il segno della lettura la pagina di un'altra persona non va a schermo, e si ricarica.
+    'Indietro: senza il segno' => ['readme', 'se la pagina è di un\'altra persona e il segno manca da una delle due parti, la cornice non ne mostra niente, nemmeno il contenuto, e ricarica la pagina, che torna di chi è entrato'],
+    'Indietro: senza il segno, a una visita' => ['readme', 'Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un\'altra persona la pagina si ricarica, una volta. Della stessa persona, senza il segno, vale la pagina come prima'],
+    'Indietro: i limiti' => ['readme', 'Restano due limiti. La cornice sa chi ha mostrato solo finché resta montata'],
     'Indietro: all\'uscita' => ['readme', 'la risposta dell\'uscita chiama `Inertia::clearHistory()`, e una voce di prima non si legge più'],
     // Review della PR #69 (R1, R2, R3): il `dopo` di allora, i due workspace, l'esempio dell'uscita e la scheda lasciata aperta.
     'Indietro: il dopo di allora' => ['readme', 'Se la voce della cronologia porta anche il suo `dopo` di allora, quei dati non valgono: restano quelli di chi è entrato'],

@@ -449,7 +449,7 @@ describe('la Cornice', () => {
         expect(uno('.zr-bell-count')?.textContent).toBe('4');
 
         // In attesa: la sessione è cambiata da un'altra scheda, e `subito` porta la persona e la lingua di adesso.
-        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
 
         expect(etichette()).not.toContain('CRM');
         expect(etichette()).not.toContain('Gestión de proyectos');
@@ -515,10 +515,12 @@ describe('la Cornice', () => {
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')).toBeNull();
 
-        // Un segno che non ha la forma di quelli della parte server vale come nessun segno: vale la pagina.
-        const senzaForma: ColSegno = { ...diAdesso, lingua: dati.lingua, persona: dati.persona, sessione_il: '2026-10-13' };
+        // Un segno che non ha la forma di quelli della parte server vale come nessun segno: della stessa persona vale la pagina
+        // (di un'altra, dalla `v2.8.0`, la pagina si ricarica: sprint 42 · T4.1).
+        // Qui la persona ha cambiato nome: se quel segno contasse sarebbe più indietro di chi è mostrato, e resterebbe il nome di prima.
+        const senzaForma: ColSegno = { ...diAdesso, persona: { ...altra, nome: 'Augusta Ada King' }, sessione_il: '2026-10-13' };
         await mostra(<Cornice dati={senzaForma} onLogout={esciSenzaEffetto} />);
-        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Augusta Ada King');
     });
 
     it('senza il layout, con Indietro su una pagina intera di chi c\'era prima mentre chi è entrato è ancora in attesa, i dati di allora non valgono: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima sotto il nome di adesso, né a quel disegno né alla visita dopo; poi arrivano i suoi (sprint 36 · T6, R1)', async () => {
@@ -591,7 +593,7 @@ describe('la Cornice', () => {
         await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
         expect(visti.at(-1)).toBe(`${dati.persona.nome} · 4 · selettore`);
 
-        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
+        await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto}><Spia /></Cornice>);
         const diAltra = visti.filter((visto) => visto.startsWith(altra.nome));
         expect(diAltra).not.toHaveLength(0);
         expect([...new Set(diAltra)]).toStrictEqual([`${altra.nome} · nessun numero · nessun selettore`]);
@@ -655,7 +657,7 @@ describe('la Cornice', () => {
         ricarica.mockRestore();
     });
 
-    it('i due limiti di Indietro che il README dichiara: dei dati senza `sessione_il` valgono come una pagina nuova e portano la loro persona, e una cornice montata da capo non sa chi aveva mostrato (sprint 36 · T6, R12)', async () => {
+    it('il limite di Indietro che il README dichiara, e quello che non lo è più: dei dati senza `sessione_il` di chi c\'era prima non vanno a schermo e la pagina si ricarica, e una cornice montata da capo non sa chi aveva mostrato (sprint 36 · T6, R12; sprint 42 · T4.1)', async () => {
         type ColSegno = DatiDellaCornice & { sessione_il?: string };
         const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
         const diPrima: ColSegno = { lingua: dati.lingua, persona: dati.persona, workspace: dati.workspace, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:00.000000Z' };
@@ -666,11 +668,15 @@ describe('la Cornice', () => {
         await mostra(<Cornice key="1" dati={diPrima} onLogout={esciSenzaEffetto} />);
         expect(avatar()).toBe(altra.nome);
 
-        // Il primo limite: il segno manca, e vale la pagina.
+        // Il primo non è più un limite (sprint 42 · T4, voce #1975): senza il segno la pagina di chi c'era prima non va a
+        // schermo, e si ricarica.
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         await mostra(<Cornice key="1" dati={{ ...diPrima, sessione_il: undefined }} onLogout={esciSenzaEffetto} />);
-        expect(avatar()).toBe(dati.persona.nome);
+        expect(avatar()).toBeUndefined();
+        expect(ricarica).toHaveBeenCalled();
+        ricarica.mockRestore();
 
-        // Il secondo: la cornice si monta da capo, e la pagina di allora è la prima che vede.
+        // Quello che resta: la cornice si monta da capo, e la pagina di allora è la prima che vede.
         await mostra(<Cornice key="1" dati={diAdesso} onLogout={esciSenzaEffetto} />);
         expect(avatar()).toBe(altra.nome);
         await mostra(<Cornice key="2" dati={diPrima} onLogout={esciSenzaEffetto} />);
@@ -3807,11 +3813,11 @@ describe('il pannello delle notifiche', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
         const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         // Una visita porta chi è entrato, sullo stesso workspace: la cornice si rifà, e poi arriva la risposta di prima.
-        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: grace.email }));
 
         expect(ricarica).not.toHaveBeenCalled();
@@ -3847,11 +3853,11 @@ describe('il pannello delle notifiche', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
         const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         // Una visita porta Grace; poi, da un'altra scheda, entra Carol, e la risposta di prima dice lei.
-        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'carol@example.com' }));
 
         expect(ricarica).toHaveBeenCalledTimes(1);
@@ -4677,7 +4683,8 @@ describe('la ricerca', () => {
 
     // Sprint 36 · T2 (voce #1968): ciò che la cornice tiene è della persona che lo ha visto. Senza il layout, e quindi senza la sua `key`.
     it.each([
-        ['senza segno', undefined, undefined],
+        // Senza segno la pagina si ricarica (sprint 42 · T4.1, sopra): qui la visita ha il segno da tutte e due le parti.
+        ['col segno un microsecondo più avanti', '2026-10-13T08:00:00.000000Z', '2026-10-13T08:00:00.000001Z'],
         ['col segno più avanti', '2026-10-13T08:00:00.000000Z', '2026-10-13T08:00:05.000000Z'],
     ])('senza il layout, coi dati di un\'altra persona sullo stesso workspace (%s) la cornice non tiene i risultati, la parola e l\'elenco delle notifiche di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async (_caso, prima, poi) => {
         const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(indirizzo === '/cornice/notifiche' ? { data: [{ id: 'uat-n1', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm' }] } : { data: risultatiDelServer, workspace: 'acme-marketing' }));
@@ -4707,10 +4714,10 @@ describe('la ricerca', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: risultatiDelServer, workspace: 'acme-marketing' }));
         vi.stubGlobal('fetch', fetchFinto);
         const altra = { nome: 'Augusta King', email: 'augusta@example.com' };
-        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, prodotti: {}, in_attesa: true, sessione_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         await scrivi('lancio');
 
-        await mostra(<Cornice dati={{ ...dati, persona: altra, prodotti: {}, in_attesa: true }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, persona: altra, prodotti: {}, in_attesa: true, sessione_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect((uno('.zr-search input') as HTMLInputElement).value).toBe('');
         await mostra(<Cornice dati={{ ...dati, persona: altra }} onLogout={esciSenzaEffetto} />);
         await act(giro);

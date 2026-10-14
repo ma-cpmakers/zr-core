@@ -100,8 +100,9 @@ primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingre
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con
-gzip. Dalla `v2.8.0` è sceso di 325 byte: la ricerca è uscita dal JS d'ingresso, che ora pesa 18.181 byte, e il tetto è quel
-peso più 48 byte, ciò che costano, misurate, quattro correzioni che lo aspettano (16, 6, 26 e 0 byte), e niente oltre. Hanno
+gzip. Dalla `v2.8.0` è sceso di 325 byte: la ricerca è uscita dal JS d'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel
+peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non
+riportano chi c'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre. Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -1336,8 +1337,12 @@ Che cosa vede la persona:
   persona cambia una cosa sola: con Indietro su una sua pagina di un altro workspace la cornice è quella di quel workspace,
   coi dati di allora, ma col nome e la lingua di adesso, non con quelli di allora
   (chi monta `Cornice` senza il layout era già così: lì i dati di una pagina più vecchia di un'altra persona non
-  valgono in nessun workspace). Altri tre limiti. Un `subito` composto a mano senza `sessione_il` vale come una
-  pagina nuova, e porta la sua persona. E la cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
+  valgono in nessun workspace). Dalla `v2.8.0` nemmeno dei dati senza il segno riportano chi c'era prima — un `subito`
+  composto a mano senza `sessione_il`, una `cornice` intera senza `aggiornati_il`: se la pagina è di un'altra persona e il
+  segno manca da una delle due parti, la cornice non ne mostra niente, nemmeno il contenuto, e ricarica la pagina, che torna
+  di chi è entrato. Senza il segno non può distinguere Indietro da una visita: anche a una visita che porta un'altra persona
+  la pagina si ricarica, una volta. Della stessa persona, senza il segno, vale la pagina come prima. Restano due limiti. La
+  cornice sa chi ha mostrato solo finché resta montata: dopo un caricamento da
   capo non sa chi c'era, e una
   pagina di prima che il browser ridà senza richiederla è quella di allora per intero, cornice e contenuto; con Inertia
   lo è anche a un caricamento da capo fatto con Indietro o Avanti, perché il client mostra la voce che aveva salvato. E

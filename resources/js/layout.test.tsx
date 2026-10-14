@@ -900,7 +900,7 @@ describe('la cornice in due dati, sotto il layout', () => {
     });
 
     it('alla visita dopo, se il `subito` nuovo dice un\'altra persona (un\'altra email) e il `dopo` nuovo non è ancora arrivato, la cornice è quella ridotta di un primo caricamento: nessun modulo, nessun selettore e nessun numero di non lette di chi c\'era prima, e il menu del profilo dice chi è entrato; all\'arrivo di `dopo` moduli e non lette sono i suoi (sprint 36 · T2.1, T2.3)', async () => {
-        const diAltra = { ...subito, lingua: 'es', persona: altra };
+        const diAltra = { ...subito, lingua: 'es', persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
         await inDue({ subito, dopo: { ...dopo, aziende } }, <PaginaA key="1" />);
         expect(etichette()).toContain('CRM');
         expect(uno('.zr-ws-switch')).not.toBeNull();
@@ -1646,7 +1646,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     it('quando il `subito` nuovo dice un\'altra persona non restano l\'elenco delle notifiche del pannello aperto, i risultati della ricerca e la parola di chi c\'era prima: il campo è vuoto, i pannelli sono chiusi, e all\'arrivo di `dopo` non parte nessuna richiesta finché chi è entrato non cerca o non apre la campanella (sprint 36 · T2.2)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
-        const diAltra = { ...subito, persona: altra };
+        const diAltra = { ...subito, persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
         await inDue({ subito, dopo }, <PaginaA key="1" />);
         await scrivi('uat');
@@ -1676,8 +1676,8 @@ describe('la cornice in due dati, sotto il layout', () => {
     });
 
     it('la parola che una persona ha scritto in attesa non parte quando arrivano i dati di un\'altra, e nel campo non resta (sprint 36 · T2.2)', async () => {
-        const diAltra = { ...subito, persona: altra };
-        await inDue({ subito }, <PaginaA key="1" />);
+        const diAltra = { ...subito, persona: altra, sessione_il: '2026-10-13T08:00:03.000000Z' };
+        await inDue({ subito: { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' } }, <PaginaA key="1" />);
         await scrivi('uat');
         expect(richieste()).toStrictEqual([]);
 
@@ -1707,13 +1707,13 @@ describe('la cornice in due dati, sotto il layout', () => {
     it('con la `cornice` intera, una visita che porta un\'altra persona sullo stesso workspace toglie l\'elenco del pannello aperto, i risultati e la parola della ricerca di chi c\'era prima, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];
-        await visita(dati, <PaginaA key="1" />);
+        await visita({ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' }, <PaginaA key="1" />);
         await scrivi('uat');
         expect(titoliDellaRicerca()).toStrictEqual(['UAT Lancio Q1']);
         await clic(uno('.zr-bell'));
         expect(tutti('.zr-notif .zr-notif-list .zr-notif-item')).toHaveLength(2);
 
-        await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);
+        await visita({ ...dati, persona: altra, non_lette: 1, aggiornati_il: '2026-10-13T08:00:03.000000Z' }, <PaginaB key="2" />);
         expect(uno('#uat-pagina-b')).not.toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('1');
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('');

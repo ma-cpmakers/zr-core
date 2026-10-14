@@ -66,6 +66,7 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * quella forma, le quattro correzioni che lo aspettano — Indietro senza il segno della lettura (#1975, 16 byte), l'attesa
  * che finisce dopo la ricarica (#2036, 6), il tetto delle ricariche (#2053, 26) e la lingua del primo disegno (#2052, 0) —,
  * e niente oltre (zr-pm, 13/10/2026, nota 12843 del progetto). È un numero scritto, non il peso di oggi: scende di 325 byte.
+ * Sprint 42 · T4: la prima delle quattro è entrata, coi suoi 16 byte (ingresso 18.197).
  */
 const TETTO_DELL_INGRESSO = 18_181 + 16 + 6 + 26;
 /**
