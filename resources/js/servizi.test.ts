@@ -27,9 +27,28 @@ function cookieCsrf(valore?: string): void {
 const unIstante = '2026-10-06T12:00:08.123456Z';
 
 describe('segnaLetta', () => {
+    // Dalla `v2.14.0` una lettura riesce solo se chi l'ha chiesta è ancora a schermo: qui è Ada.
+    beforeEach(() => mettiASchermo('ada@example.com'));
     afterEach(() => {
         vi.unstubAllGlobals();
         cookieCsrf();
+        mettiASchermo(undefined);
+    });
+
+    // Sprint 53 · T4 (review R5, sicurezza S1): la cornice di chi ha fatto il clic può non essere più a schermo quando arriva
+    // la risposta — una visita ha portato un'altra persona, entrata in un'altra scheda, o la cornice è smontata. La lettura
+    // allora non riesce, anche con `letta: true`: chi l'ha chiesta non apre la risorsa con la sessione di un altro.
+    it.each([
+        ['un\'altra persona', 'grace@example.com'],
+        ['nessuno', undefined],
+    ])('una risposta `letta: true` arrivata quando a schermo c\'è %s non è una lettura riuscita (sprint 53 · T4, review R5)', async (_chi, aSchermoAllaRisposta) => {
+        let rispondi: (risposta: Response) => void = () => undefined;
+        vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((si) => (rispondi = si))));
+        const lettura = segnaLetta('uat-n69', 'ada@example.com');
+        mettiASchermo(aSchermoAllaRisposta);
+        rispondi(new Response(JSON.stringify({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }), { status: 200 }));
+
+        await expect(lettura).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura: letta');
     });
 
     it.each([
@@ -870,6 +889,7 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
+        mettiASchermo(undefined);
     });
 
     const finoA = '2026-10-06T11:55:00+00:00';
@@ -877,7 +897,7 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         ['GET /cornice/notifiche', (email) => caricaNotifiche(email), { data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }, undefined],
         ['POST /cornice/ricerca', (email) => cerca('lancio', new AbortController().signal, email), { data: [], workspace: 'uat-vendite' }, { q: 'lancio' }],
         ['POST /cornice/notifiche/letture', (email) => segnaLetteFinoA(finoA, 'acme-marketing', email), { data: { fino_a: '2026-10-06T11:55:00.000Z' } }, { fino_a: finoA, workspace: 'acme-marketing' }],
-        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => segnaLetta('uat-n69', email), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
+        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => (mettiASchermo(email), segnaLetta('uat-n69', email)), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
     ];
     const corpoDi = (opzioni?: RequestInit) => (opzioni?.body == null ? undefined : (JSON.parse(String(opzioni.body)) as unknown));
 

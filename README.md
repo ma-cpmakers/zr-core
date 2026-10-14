@@ -405,8 +405,8 @@ cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta so
 nell'indirizzo, e nel corpo di «Segna tutte come lette» non c'è più. Con lei partono in ogni richiesta `Content-Type` e il
 gettone CSRF, anche nella `GET` dell'elenco. Così da una scheda rimasta ferma, con la sessione passata a un'altra persona,
 nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la
-segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
-prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
+segnava letta a lui. Fino alla `v2.13` la destinazione di quel clic si chiedeva subito, senza aspettare la risposta, e si apriva solo se arrivava
+prima del 409: se il 409 arrivava con la pagina ancora lì, la pagina si ricaricava al posto della destinazione, ed era di chi era
 entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza; riprovato il
 14/10/2026 con la `v2.10.0`, in cui quella ricarica la chiede un orologio, su una pagina caricata da più di 30 secondi). Dalla `v2.9.0`
 anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte prima che li compia.
@@ -943,12 +943,12 @@ cornice === null ? pagina : (
   oggetto `dati`: un test che ridà alla `Cornice` un oggetto `dati` nuovo fra l'elenco e il clic non vede scendere il
   numero.
   Con due schede su due workspace la lettura parte lo stesso, ma il numero dei
-  dati della pagina non scende: quella notifica non è fra le sue. Se la lettura fallisce la risorsa si è aperta lo
-  stesso e in pagina non cambia niente: la notifica resta da leggere, e il numero com'era. Fa eccezione la risposta di
-  un'altra persona a una scheda rimasta ferma, che ricarica la pagina («Le rotte della cornice»). Con
-  `window.location.assign` (il `naviga` di partenza) la pagina se ne va quando la destinazione arriva, e se è prima della
-  risposta il numero nuovo lo possono portare i dati della pagina dopo: se quella li legge prima che il backoffice abbia
-  segnato la notifica la contano ancora, fino alla visita successiva. Resta in pagina con un `naviga` che non la ricarica, come la visita di Inertia dentro lo stesso modulo. A chi usa
+  dati della pagina non scende: quella notifica non è fra le sue. Se la lettura fallisce
+  in pagina non cambia niente: la notifica resta da leggere, e il numero com'era (fino alla `v2.13` la risorsa si apriva lo
+  stesso). La risposta di un'altra persona a una scheda rimasta ferma ricarica la pagina («Le rotte della cornice»). Con
+  `window.location.assign` (il `naviga` di partenza) la pagina se ne va alla risposta, e il numero nuovo arriva coi dati della pagina dopo (fino alla `v2.13` la destinazione
+  poteva arrivare prima della risposta, e la pagina dopo, se leggeva i dati prima che il backoffice avesse segnato la notifica,
+  la contava ancora fino alla visita successiva). Resta in pagina con un `naviga` che non la ricarica, come la visita di Inertia dentro lo stesso modulo. A chi usa
   un lettore di schermo il numero nuovo lo dice un avviso che non si vede (`role="status"`, con la classe
   `zr-visually-hidden`), accanto all'`AppShell`, che non ha un posto per dirlo: vuoto al caricamento, dice il nome della
   campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di
@@ -963,8 +963,12 @@ cornice === null ? pagina : (
   aggiunge `workspace`, con lo slug dei dati della pagina. Un clic su una notifica non letta che apre la sua risorsa fa
   partire una richiesta in più, la `PATCH` della lettura: una parte server finta che non la aspetta la vede arrivare. E
   chi conta i figli del contenitore della `Cornice`, o ne prende l'unico, ne trova due: vale anche per una regola CSS sui
-  figli del contenitore. Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend; le due della ricerca
-  cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca.
+  figli del contenitore. Si trovano cercando `cornice/notifiche` e `<Cornice` nei test del frontend; le due della ricerca cercando `cornice/ricerca` e i testi di prima, che il suo punto elenca.
+  Per i test di un frontend che passa alla `v2.14.0` cambiano due cose. Un clic su una notifica che ha una destinazione,
+  anche già letta, apre solo se la `PATCH` finta della lettura risponde `{"data": {"letta": true}}`: una parte server finta
+  che risponde altro, o non risponde, non vede aprire niente. E l'apertura arriva dopo la risposta, non nello stesso giro
+  del clic: chi guarda `naviga` subito dopo il clic aspetta prima la risposta finta. Si trovano cercando `/lettura` e
+  `cornice/notifiche` nei test del frontend.
 - **La ricerca** (Ctrl/Cmd+K) chiede `POST /cornice/ricerca` dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola
   nel corpo (`{q}`) e il gettone CSRF del cookie `XSRF-TOKEN` nell'header `X-XSRF-TOKEN`, come «Segna tutte come lette»: dalla
   `v1.8.0` ciò che la persona cerca non sta più nell'indirizzo della richiesta del browser. Nel codice del frontend non cambia
@@ -1417,8 +1421,8 @@ segna niente. Nemmeno con una `persona` vuota (`""`): dalla `v2.6.0` è quel 422
 `ConvertEmptyStringsToNull`, che Laravel monta di suo (fino alla `v2.5.1` lì era un 409 `persona_diversa`).
 Dalla `v2.6.0` la cornice dice per chi chiede in tutte e quattro le richieste, nell'intestazione `Persona` e non più nel
 corpo, e la rotta risponde quel 409 a ognuna («Le rotte della cornice»): da una scheda rimasta ferma nemmeno il clic su una
-notifica la segna letta a chi è entrato. La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si
-ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
+notifica la segna letta a chi è entrato. Fino alla `v2.13` la sua risorsa si apriva solo se arrivava prima di quel 409: se no la
+pagina si ricaricava al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»). Dalla `v2.9.0`, su
 una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia; dalla `v2.11.5` lì
 il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: niente è segnato, e niente si apre con la
 sessione di chi è entrato (fino alla `v2.11.4` si apriva). Nell'attesa niente lo dice a schermo: il pannello si chiude e la
@@ -1429,9 +1433,13 @@ un'altra notifica faceva la sua lettura, e all'arrivo la cornice le apriva tutte
 ripartiva, e A si apriva due volte. Dalla `v2.14.0` il clic aspetta la lettura su ogni pagina, anche di 30 secondi o più (fino
 alla `v2.13` lì la risorsa si apriva subito, e con la sessione di chi era entrato in un'altra scheda), e la cornice tiene una
 lettura sola in volo: un clic su una notifica qualsiasi, mentre è in volo, non fa niente — nessuna lettura, nessuna
-apertura —; alla risposta la dimentica, e un altro clic vale come il primo. Con A, B e di nuovo A parte la lettura di A
-sola, e alla risposta si apre A, una volta. Una lettura a cui risponde un'altra persona non risponde mai alla cornice: fino
-alla ricarica della pagina nessun clic su una notifica apre niente.
+apertura —, e nemmeno quello su «Vedi tutte» o su una notifica senza destinazione, che altrimenti aprono subito la pagina
+delle notifiche; alla risposta o all'errore la dimentica, e un altro clic vale come il primo. La lettura non ha un tempo
+massimo: se la rete la tiene appesa, nessun clic sulle notifiche apre niente finché la pagina non si ricarica. Con A, B e di nuovo A parte la lettura di A
+sola, e alla risposta si apre A, una volta. Una lettura a cui risponde un'altra persona non risponde mai alla cornice: fino alla ricarica della pagina nessun clic su una
+notifica apre niente. E la risorsa si apre solo se chi ha fatto il clic è ancora a schermo quando la lettura risponde: se nel
+mezzo una visita ha portato la cornice di un'altra persona, entrata in un'altra scheda, o la cornice non c'è più, la lettura
+non riesce e non si apre niente (dalla `v2.14.0`).
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
