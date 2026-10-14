@@ -111,9 +111,10 @@ function confermate(): Record<string, Confermata> {
 
 /**
  * Il segno della lingua, `lingua_il`, come lo dà la parte server dalla `v2.11.0` (`Cornice::subito()` e `Cornice::dopo()`):
- * un `dopo` a cui il backoffice ha risposto porta l'istante della sua lettura, e la parte server lo ricorda per quella
- * persona se è più avanti di quello ricordato; `subito` e i `dopo` ridotti portano quello ricordato, mai l'istante di
- * adesso, e senza una lettura che l'abbia confermata non ne portano. Prima `subito`, poi `dopo`, come nella stessa richiesta.
+ * quello ricordato per la persona, che un `dopo` a cui il backoffice ha risposto porta avanti solo se la sua lettura è più
+ * avanti di quello ricordato — allora porta l'istante della sua lettura e la parte server lo ricorda —; una lettura più
+ * vecchia, finita dopo, porta quello ricordato (dalla `v2.11.2`, come il docblock di `Cornice::dopo()`). `subito` e i `dopo`
+ * ridotti portano quello ricordato, mai l'istante di adesso, e senza una lettura che l'abbia confermata non ne portano. Prima `subito`, poi `dopo`, come nella stessa richiesta.
  * Con `linguaDiPrima`, `subito` porta la lingua confermata prima dell'ultima, col suo segno: un `subito` riletto mentre
  * `dopo` è in lettura, con la sessione di adesso e la lingua di prima.
  */
@@ -139,7 +140,7 @@ export function conIlSegnoDellaLingua<Props extends { subito?: DatiSubito | null
                 // Senza `localStorage` la lettura non si ricorda: la pagina di prova si apre lo stesso.
             }
         }
-        dopo = { ...dopo, lingua_il: il };
+        dopo = { ...dopo, lingua_il: ricordata && ricordata.il > il ? ricordata.il : il };
     } else if (dopo) {
         dopo = conIlSuo(dopo);
     }
