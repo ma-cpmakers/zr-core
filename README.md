@@ -1320,7 +1320,9 @@ sessione. In `dopo` e in `subito` è quello che la sessione ricorda, mai l'istan
 porta avanti solo se io.mostra ha risposto per quella persona ed è più avanti di quello ricordato, e una lettura più
 vecchia lo lascia com'è. La parte server lo ricorda nella sessione, alla chiave
 `zr-core.lingua`, con l'id della persona: di un'altra persona entrata nello stesso browser non esce, e senza una lettura
-che l'abbia confermata non c'è. Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
+che l'abbia confermata non c'è. Dalla `v2.11.4` una lettura più vecchia non cambia nemmeno la lingua della sessione: resta
+quella confermata dalla lettura ricordata, e lingua e segno restano una coppia (fino alla `v2.11.3` la lingua superata
+entrava nella sessione sotto il segno più nuovo, e a pari segno con `subito` la cornice la teneva). Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
 lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no. Così si chiude il caso che
 fino alla `v2.10.0` restava aperto: un `subito` riletto da solo mentre `dopo` è ancora in lettura ha il segno della
 sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima. E con Indietro su una pagina

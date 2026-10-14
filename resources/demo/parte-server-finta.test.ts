@@ -437,6 +437,14 @@ describe('il segno della lingua e il segno fermo della parte server finta', () =
         expect(conIlSegnoDellaLingua({ subito: subito('en', 10, grace) }).subito).toStrictEqual(subito('en', 10, grace));
     });
 
+    // Sprint 49 · T2.4 (voce #2071): come `Cornice::dopo()` dalla `v2.11.4`, una lettura più vecchia di quella ricordata porta
+    // anche la lingua ricordata, non la sua: lingua e segno restano una coppia. Deve fallire se porta la lingua del `dopo`, che a
+    // pari segno col `subito` il layout terrebbe.
+    it('una lettura di `dopo` più vecchia di quella ricordata, con un\'altra lingua, porta la lingua ricordata col segno ricordato (sprint 49 · T2.4)', () => {
+        conIlSegnoDellaLingua({ dopo: dopo('it', 8) });
+        expect(conIlSegnoDellaLingua({ dopo: dopo('es', 4) }).dopo).toStrictEqual({ ...dopo('es', 4), lingua: 'it', lingua_il: il(8) });
+    });
+
     // Sprint 48 · T3.2 (voce #2069): una lettura più avanti di quella ricordata porta il suo segno e lo fa ricordare. Deve fallire
     // se il segno non avanza più.
     it('una lettura di `dopo` più avanti di quella ricordata porta il suo segno, e il `subito` dopo porta quello (sprint 48 · T3.2)', () => {
