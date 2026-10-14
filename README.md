@@ -94,13 +94,16 @@ dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69
 di JS, i rimedi provvisori di tastiera (circa 1,2 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche» e «Tab dentro un dialogo aperto», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
-con `import()` quando si apre la campanella, non quando si monta. Nel JS d'ingresso di queste app c'è anche l'aiuto
+con `import()` quando si apre la campanella, non quando si monta. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
+(circa 1,0 KB con gzip): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
+primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi e della campanella, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.554 byte con
-gzip. Sono 18 KB più 122 byte: dalla `v2.3.0` la cornice si rifà quando cambia la persona (17 byte) e con Indietro non riporta
-a schermo chi c'era prima (37), e dalla `v2.4.0` in una scheda rimasta ferma non mostra l'elenco e i risultati di un'altra
-persona (68): quei byte sono ciò che costano quelle tre sole correzioni. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
+I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con
+gzip. Dalla `v2.8.0` è sceso di 325 byte: la ricerca è uscita dal JS d'ingresso, che ora pesa 18.181 byte, e il tetto è quel
+peso più 48 byte, ciò che costano, misurate, quattro correzioni che lo aspettano (16, 6, 26 e 0 byte), e niente oltre. Hanno
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la
+ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
@@ -147,6 +150,20 @@ usa nessuna delle tre non cambia niente nel codice. Il perché: un modulo che un
 di ogni app, anche di quelle che non lo usano; ora ciò che compone le righe delle notifiche è un pezzo a richiesta, che la
 cornice chiede quando si apre la campanella (vedi «Quanto pesa», sopra). Nei test del frontend la riga
 `beforeAll(() => frasiInMemoria())` resta com'è: dà alla cornice anche quel pezzo.
+
+### Passare alla v2.8
+
+La `v2.8.0` non cambia niente nel codice di chi installa: stessa `Cornice`, stessi dati, stesse rotte. Cambia quando arriva
+il codice della ricerca, che dalla `v2.8.0` è un pezzo a richiesta (vedi «La ricerca», in «La cornice»), e nei test di un
+frontend si può vedere. Finché il pezzo non è arrivato la richiesta a `POST /cornice/ricerca` non parte: un caso che scrive
+nel campo, lascia passare i 300 ms dall'ultimo tasto e guarda subito le richieste partite non ne trova, perché la richiesta
+parte poco dopo, quando l'`import()` del pezzo è finito. La riga che il file di preparazione dei test ha già per le
+notifiche, `beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca: con quella riga
+la ricerca parte allo scadere dei 300 ms, e i casi restano com'erano. Un frontend che non la ha la aggiunge (vedi «Le
+notifiche»: `frasiInMemoria` sta in `vendor/zeiras/zr-core/resources/js/prove.ts`); un caso che rifà i moduli
+(`vi.resetModules()`) la richiama dopo l'import, come per la campanella. In una pagina vera non c'è niente da fare: chi
+mette il fuoco nel campo trova il pezzo arrivato prima di aver scritto due lettere, e a rete lenta il primo risultato arriva
+quando arrivava (vedi «La ricerca»).
 
 ## La parte server
 
@@ -874,6 +891,17 @@ cornice === null ? pagina : (
   dalla `v1.17.0` anche quello di una richiesta che non è più l'ultima annulla la ricerca in volo e mette l'errore al posto
   dei suoi risultati (nella `v1.16.0` armava il freno senza mostrare l'errore). In un browser una richiesta annullata non
   risponde, e il caso non si dà; si dà nei test di un frontend, con una `fetch` finta che non guarda l'annullo.
+  Dalla `v2.8.0` il codice della ricerca — la richiesta, ciò che si fa della risposta, la riga di un risultato — è un pezzo
+  a richiesta, fuori dal JS d'ingresso: la cornice lo chiede con `import()` al primo fuoco nel campo della ricerca, o alla
+  prima parola se il fuoco nel campo non c'è stato, mai quando si monta. Chi scrive prima che il pezzo sia arrivato vede
+  «Sto cercando…», e all'arrivo parte una richiesta sola, con ciò che è nel campo in quel momento. Se il pezzo non arriva —
+  la rete che cade, un file che una build nuova ha tolto — sotto il campo c'è l'errore della ricerca, lo stesso avviso di
+  una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte. Si riprova
+  scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, e in Chromium lo richiede davvero, all'indirizzo
+  che la build ha scritto e con una coda, come «Riprova» per la campanella (vedi «Le notifiche»); arrivato, si cerca ciò che
+  è nel campo. Un pezzo non arrivato non accende il freno del `429`. Un pulsante per riprovare nel riquadro della ricerca
+  l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
+  cambia niente; per i suoi test vedi «Passare alla v2.8».
   Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
   prodotto è lo dice il registro, dal tipo. Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede
   (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le

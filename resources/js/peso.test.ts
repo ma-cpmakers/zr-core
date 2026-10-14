@@ -60,8 +60,14 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * la pagina. Costa 68 byte sul tetto, e non ci sta nemmeno togliendo altro: 22 varianti misurate, da 18.540 a 18.556 (le più
  * leggere tengono l'email fuori da React, o lasciano il pannello in errore fino al ricaricamento). Il tetto sale di quei 68
  * byte per questa sola correzione (zr-pm, 13/10/2026, nota 12503 del progetto). Ciò che non ci sta continua a non entrare.
+ *
+ * Sprint 42 · T2 e T3 (voce #2054): la ricerca della cornice è uscita dal JS d'ingresso, in un pezzo che la cornice chiede al
+ * primo fuoco nel campo. L'ingresso pesa 18.181 byte, e il tetto scende: è quel peso più ciò che costano, misurate sopra
+ * quella forma, le quattro correzioni che lo aspettano — Indietro senza il segno della lettura (#1975, 16 byte), l'attesa
+ * che finisce dopo la ricarica (#2036, 6), il tetto delle ricariche (#2053, 26) e la lingua del primo disegno (#2052, 0) —,
+ * e niente oltre (zr-pm, 13/10/2026, nota 12843 del progetto). È un numero scritto, non il peso di oggi: scende di 325 byte.
  */
-const TETTO_DELL_INGRESSO = 18 * 1024 + 17 + 37 + 68;
+const TETTO_DELL_INGRESSO = 18_181 + 16 + 6 + 26;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.

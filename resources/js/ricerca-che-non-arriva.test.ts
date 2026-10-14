@@ -1,9 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Sprint 42 · T3 (voce #2054, T3.2). Chi chiede il pezzo della ricerca (`chiediLaRicerca`, in `servizi.ts`) quando il pezzo non
 // arriva: la promessa è respinta e niente resta, e la richiesta dopo lo richiede. In un file suo: qui `./ricerca` la prima
 // volta non si carica, e negli altri file il pezzo è quello vero dal primo caso. Che la seconda richiesta parta davvero in
 // Chromium, che di un modulo fallito ricorda l'indirizzo, lo provano `lingue.test.ts` (`pezzoARichiesta`) e la UAT.
+
+// Il caso riparte dai moduli appena caricati: il file di preparazione (`frasiInMemoria`) ha già dato il pezzo a quelli di prima.
+beforeEach(() => {
+    vi.resetModules();
+});
 
 afterEach(() => {
     vi.doUnmock('./ricerca');

@@ -5077,9 +5077,43 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
     // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.554 byte con gzip. Sono 18 KB più 122 byte'],
-    'i pesi: la scheda ferma' => ['pesi', 'dalla `v2.4.0` in una scheda rimasta ferma non mostra l\'elenco e i risultati di un\'altra persona (68): quei byte sono ciò che costano quelle tre sole correzioni'],
+    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto scende a 18.229 byte, il peso di oggi più
+    // i 48 byte misurati per le quattro correzioni che lo aspettano.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con gzip. Dalla `v2.8.0` è sceso di 325 byte'],
+    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che ora pesa 18.181 byte, e il tetto è quel peso più 48 byte, ciò che costano, misurate, quattro correzioni che lo aspettano (16, 6, 26 e 0 byte), e niente oltre'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
+]);
+
+// Sprint 42 · T3 (voce #2054): dalla `v2.8.0` la ricerca della cornice è un pezzo a richiesta. Il README dice quando la cornice
+// lo chiede, che cosa si vede se non arriva e come si riprova, e che cosa cambia nei test di un frontend; la guida lo dice a un
+// modulo che nasce.
+
+it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo chiede, che cosa si vede se non arriva, come si riprova e che cosa cambia nei test di un frontend, e la guida lo dice a un modulo che nasce (sprint 42 · T3)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v2\.8$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+    $testi = [
+        'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
+        'passaggio' => suUnaRiga($passaggio[1] ?? ''),
+        'pesi' => suUnaRiga($readme),
+        'guida' => suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md')),
+    ];
+
+    expect($testi[$dove])->not->toBe('')
+        ->and(str_contains($testi[$dove], $frase))->toBe(true);
+})->with([
+    'quando si chiede' => ['ricerca', 'la cornice lo chiede con `import()` al primo fuoco nel campo della ricerca, o alla prima parola se il fuoco nel campo non c\'è stato, mai quando si monta'],
+    'prima dell\'arrivo' => ['ricerca', 'Chi scrive prima che il pezzo sia arrivato vede «Sto cercando…», e all\'arrivo parte una richiesta sola, con ciò che è nel campo in quel momento'],
+    'se non arriva' => ['ricerca', 'sotto il campo c\'è l\'errore della ricerca, lo stesso avviso di una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte'],
+    'si riprova scrivendo' => ['ricerca', 'Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta'],
+    'il freno' => ['ricerca', 'Un pezzo non arrivato non accende il freno del `429`'],
+    'il pulsante che non c\'è' => ['ricerca', 'Un pulsante per riprovare nel riquadro della ricerca l\'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo'],
+    'il passaggio: niente nel codice' => ['passaggio', 'La `v2.8.0` non cambia niente nel codice di chi installa'],
+    'il passaggio: nei test' => ['passaggio', 'un caso che scrive nel campo, lascia passare i 300 ms dall\'ultimo tasto e guarda subito le richieste partite non ne trova'],
+    'il passaggio: la riga che c\'è già' => ['passaggio', '`beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca'],
+    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,0 KB con gzip)'],
+    'la guida: la riga dei test' => ['guida', 'Dalla `v2.8.0` dà alla cornice anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo'],
+    'la guida: se non arriva' => ['guida', 'Se non arriva, sotto il campo c\'è l\'errore della ricerca, e si riprova scrivendo un\'altra parola, o la stessa'],
 ]);
 
 it('la guida dice a un modulo che nasce che la cornice chiede le frasi con `fetch`, che nelle sue pagine non cambia niente e che nei suoi test serve una riga; il file che nomina c\'è, ha quella funzione e nessun ingresso lo importa (sprint 30 · T1.10)', function () {

@@ -1,5 +1,6 @@
 import { caricaFrasi, indirizziDelleFrasi } from './campanella';
 import { chiediLaCampanella, lingue, type FrasiDelleNotifiche } from './lingue';
+import { chiediLaRicerca } from './servizi';
 
 // Per i test di chi installa il pacchetto, e per quelli del pacchetto: non è un ingresso per le pagine, e nessun ingresso lo
 // importa. La cornice chiede i file delle frasi delle notifiche con `fetch` quando si apre la campanella; in un test quei
@@ -13,7 +14,8 @@ const file = import.meta.glob<FrasiDelleNotifiche>('../lingue/notifiche/*.json',
  * frasi non si chiedono. Mentre le carica risponde lei al posto di `fetch` per i file delle frasi, coi file del pacchetto, e
  * ogni altra richiesta la passa al `fetch` di prima; poi lo rimette. Si chiama prima dei casi, non dentro un caso che conta
  * le richieste. Dopo `vi.resetModules()` si prende con un import nuovo: questa mette le frasi nel modulo che ha importato
- * lei. Dalla `v2.0.0` dà alla cornice anche il pezzo della campanella (`chiediLaCampanella`), che è quello che le carica.
+ * lei. Dalla `v2.0.0` dà alla cornice anche il pezzo della campanella (`chiediLaCampanella`), che è quello che le carica, e
+ * dalla `v2.8.0` quello della ricerca (`chiediLaRicerca`): in un caso la ricerca parte 300 ms dopo l'ultimo tasto, come prima.
  */
 export async function frasiInMemoria(): Promise<void> {
     const perIndirizzo = new Map(Object.entries(indirizziDelleFrasi).map(([percorso, indirizzo]) => [indirizzo, file[percorso]]));
@@ -22,7 +24,7 @@ export async function frasiInMemoria(): Promise<void> {
     globalThis.fetch = (richiesta, opzioni) => (perIndirizzo.has(String(richiesta)) ? Promise.resolve(Response.json(perIndirizzo.get(String(richiesta)))) : diPrima(richiesta, opzioni));
     try {
         // La lingua vuota è una che zr-core non ha: le sue frasi sono quelle dell'inglese.
-        await Promise.all([chiediLaCampanella(), ...[...lingue, ''].map((lingua) => caricaFrasi(lingua))]);
+        await Promise.all([chiediLaCampanella(), chiediLaRicerca(), ...[...lingue, ''].map((lingua) => caricaFrasi(lingua))]);
     } finally {
         globalThis.fetch = diPrima;
     }
