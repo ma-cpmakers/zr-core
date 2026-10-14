@@ -23,6 +23,8 @@ beforeEach(function () {
     // Le due letture di un frontend, nel gruppo `web` come le sue pagine: i dati della sessione e quelli del backoffice.
     Route::middleware('web')->get('uat-segno/subito', fn () => Cornice::subito());
     Route::middleware('web')->get('uat-segno/dopo', fn () => Cornice::dopo());
+    // La sessione dura un'ora da quando si apre: alle 11:30 copre ogni orologio dei casi, dalle 11:00 alle 12:05.
+    Carbon::setTestNow(Carbon::parse('2026-10-14 11:30:00', 'UTC'));
     sessioneAMano(['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
     segnoDalBackoffice();
 });
