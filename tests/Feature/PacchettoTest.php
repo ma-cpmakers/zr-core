@@ -5490,7 +5490,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: il tetto delle ricariche' => ['readme', 'Dalla `v2.9.0` la ricarica ha un tetto, ed è l\'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica davanti a una risposta di un\'altra persona'],
     'la scheda ferma: sotto il tetto niente è disegnato' => ['readme', 'chi ha chiesto ha l\'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso, dalla `v2.10.0` dopo 5 secondi come sopra i 30 (nella `v2.9.0` senza aspettare). Di quella risposta niente è disegnato e niente è tenuto, come quando la pagina si ricarica'],
     'la scheda ferma: niente nel browser' => ['readme', 'Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né `localStorage`, né il nome della finestra, né un cookie —: guarda l\'orologio della pagina (`performance.now()`), e all\'uscita non c\'è niente da togliere'],
-    'la scheda ferma: i due casi che restano' => ['readme', 'Restano tre casi. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E il clic su una notifica apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un\'altra persona è arrivata'],
+    'la scheda ferma: i tre casi che restano' => ['readme', 'Restano tre casi. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E il clic su una notifica apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un\'altra persona è arrivata'],
     'Indietro senza segno: il tetto non la copre' => ['readme', 'Il tetto che dalla `v2.9.0` hanno le ricariche davanti a una risposta di un\'altra persona non copre questa: fermata, lascerebbe la pagina vuota, senza un «Riprova»'],
     'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la cornice di chi c\'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c\'è già chi ha risposto'],
     // Sprint 43 · T4 (voce #2052): con la stessa persona vale la lingua del dato più recente.
@@ -5507,11 +5507,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: le due cornici e l\'orologio' => ['readme', 'Con due cornici nel documento vale il limite detto qui sopra: lì la pagina non si ricarica, nessun orologio parte, e chi ha chiesto resta in attesa'],
     'la scheda ferma: sotto il tetto non resta chi c\'era' => ['readme', 'Dalla `v2.10.0` la cornice di chi c\'era prima non resta a schermo oltre i 30 secondi: una pagina che ha ricevuto la risposta di un\'altra persona nei suoi primi 30 secondi si ricarica da sola quando li compie, senza un clic e senza un\'altra richiesta'],
     // Review della PR #78 (sprint 44 · T5): le eccezioni dell'orologio dei 30 secondi, dette accanto alla regola.
-    'la scheda ferma: le eccezioni allo scadere (PR #78, S1)' => ['readme', 'Salvo due eccezioni: la ricarica allo scadere si chiede una volta sola, e se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un\'altra richiesta; e in una scheda nascosta il browser può far scadere l\'orologio più tardi, quando la riattiva'],
+    'la scheda ferma: le eccezioni allo scadere (PR #78, S1)' => ['readme', 'Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un\'altra richiesta; in una scheda nascosta il browser può far scadere l\'orologio più tardi (in una congelata, solo quando la riattiva); e con due cornici nel documento, se il limite c\'è già quando la risposta arriva, nessun orologio parte (detto sopra)'],
     'la scheda ferma: il terzo caso che resta (PR #78, R1, R2)' => ['readme', 'E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde'],
     'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Se invece l\'orologio dei 30 secondi è già partito, allo scadere quel limite fa ricaricare la pagina anche quando a schermo c\'è già la cornice di chi ha risposto: per la cornice nessuno è a schermo'],
-    'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo porta con sé una seconda copia del codice delle richieste, in cui per la cornice nessuno è a schermo, e la richiesta della ricerca non parte'],
+    'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte'],
     'il 403 senza workspace e una sessione senza email (PR #78, R7)' => ['readme', 'Con una sessione senza email `persona` è `null`, come nel 409: per la cornice è un 403 che non dice di chi è'],
+    // UAT dello sprint 44 (U1-U5, in Chromium 151): la ricarica allo scadere è provata in un browser.
+    'la scheda ferma: la ricarica allo scadere, provata' => ['readme', 'La ricarica allo scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova'],
+    'le rotte: il 403 senza workspace, sessione senza email (PR #78, seconda lettura)' => ['readme', 'con `persona`, l\'email della sessione (`null` se la sessione non ne ha una), come il 409 `persona_diversa`'],
     'la scheda ferma: provato in un browser' => ['readme', 'Provato in Chromium 151, con la `v2.9.0`: l\'età della pagina riparte da zero a ogni ricarica'],
     'la guida: per ricordare il tetto' => ['guida', 'Per ricordare il tetto il pacchetto non scrive niente nel browser: guarda l\'età della pagina'],
     'la guida: non contare sulla ricarica' => ['guida', 'non contare sulla ricarica per togliere dalla tua pagina i dati di prima'],
@@ -5563,7 +5566,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: la destinazione del clic' => ['readme', 'La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione'],
     'la scheda ferma: la risorsa, nel capoverso della scheda ferma' => ['readme', 'La sua risorsa si apre solo se arriva prima di quel 409: se no la pagina si ricarica al suo posto'],
     // Seconda lettura, N2: una frase su ciò che fa il browser dice in quale è provata.
-    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza)'],
+    'la scheda ferma: la destinazione, in quale browser' => ['readme', 'ed è di chi è entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza; riprovato il 14/10/2026 con la `v2.10.0`, in cui quella ricarica la chiede un orologio, su una pagina caricata da più di 30 secondi)'],
     'la scheda ferma: la risorsa, in quale browser' => ['readme', 'come per il 403 qui sopra (provato in Chromium 151: «Le rotte della cornice»)'],
     'la scheda ferma: l\'eccezione a «si è aperta lo stesso»' => ['readme', 'Fa eccezione la risposta di un\'altra persona a una scheda rimasta ferma, che ricarica la pagina'],
     // Terza lettura, N5: con la `naviga` di partenza la pagina non se ne va sempre prima della risposta.
@@ -5735,6 +5738,8 @@ it('il README non dice più che `dopo` non dice di chi è, né che i dati rilett
     'il 403 senza workspace senza persona' => ['403 `{errore: "gettone_senza_workspace"}`; un backoffice'],
     // Review della PR #78, R2: i casi che restano sotto il tetto sono tre.
     'restano due casi' => ['Restano due casi'],
+    // UAT dello sprint 44: la ricarica allo scadere non è più «non provata».
+    'la ricarica allo scadere non provata' => ['scadere dei 30 secondi: non provato in un browser'],
     'sopra i dati di adesso' => ['sopra i dati di adesso'],
     'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
     'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],

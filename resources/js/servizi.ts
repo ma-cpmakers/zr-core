@@ -107,7 +107,8 @@ export function mostra(email?: string): void {
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
- * ricarica una pagina senza la cornice; se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
+ * ricarica una pagina senza la cornice (ciò che è a schermo quando arriva la risposta: allo scadere dei 30 secondi vale ciò
+ * che è detto sotto); se chi ha risposto è una terza persona, sì. Fino al ricaricamento chi ha chiesto resta in attesa, e
  * niente di quella risposta va a schermo, nemmeno la cornice ridotta o il freno della ricerca. Se dopo 5 secondi la pagina è
  * ancora lì — un `beforeunload` che annulla il ricaricamento, una pagina nuova che tarda, o una pagina che non ha ancora
  * l'età per ricaricarsi — la promessa si chiude con un errore senza niente dentro (dalla

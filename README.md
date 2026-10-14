@@ -374,7 +374,8 @@ esce.
 | `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo, contesto}], workspace, persona}`: ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell'ordine del backoffice, la prima pagina (oggi, col loro `tipo`: le schede `board.scheda`, i contatti `crm.persona`, le aziende `crm.organizzazione`, le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`); dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server; dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice (`proprietario`, `amministratore`, `membro`): l'email di un membro non esce mai; dalla `v1.18.0` di un'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com'è arrivato: quali esiti si mostrano lo sa la cornice; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che cerca può essere rimasta su un altro workspace); è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l'indirizzo di quella richiesta non porta query; se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste", persona}` (`persona`, dalla `v2.5.0`: l'email della persona della sessione, di chi è il freno) con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo; il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi; dalla `v2.4.0` `persona` è l'email della persona della sessione, quella per cui la ricerca è fatta: viene dalla sessione, e la cornice non mostra i risultati di un'altra persona |
 
 Senza sessione rispondono 401; con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`, e dalla
-`v2.10.0` con `persona`, l'email della sessione, come il 409 `persona_diversa` (sotto la tabella); un backoffice
+`v2.10.0` con `persona`, l'email della sessione (`null` se la sessione non ne ha una), come il 409 `persona_diversa`
+(sotto la tabella); un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
 sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
 guardia.
@@ -398,7 +399,8 @@ gettone CSRF, anche nella `GET` dell'elenco. Così da una scheda rimasta ferma, 
 nessuna delle quattro legge o segna qualcosa di chi è entrato: nemmeno il clic su una notifica, che fino alla `v2.5.1` la
 segnava letta a lui. La destinazione di quel clic si chiede subito, senza aspettare la risposta, ma si apre solo se arriva
 prima del 409: se il 409 arriva con la pagina ancora lì, la pagina si ricarica al posto della destinazione, ed è di chi è
-entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza). Dalla `v2.9.0`
+entrato (provato il 13/10/2026 in Chromium 151, con `window.location.assign`, il `naviga` di partenza; riprovato il
+14/10/2026 con la `v2.10.0`, in cui quella ricarica la chiede un orologio, su una pagina caricata da più di 30 secondi). Dalla `v2.9.0`
 anche questa ricarica ha il tetto delle altre: su una pagina caricata da meno di 30 secondi non parte prima che li compia, e
 allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è
 la sua. Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora.
@@ -922,9 +924,8 @@ cornice === null ? pagina : (
   ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di
   `npm run demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: dieci secondi dopo la parola la
   ricerca era ancora in caricamento; servita senza coda, la stessa pagina dà il risultato entro due secondi). È l'eccezione
-al «non un caricamento che non finisce» detto sopra: il pezzo porta con sé una seconda copia del codice delle richieste, in
-cui per la cornice nessuno è a schermo, e la richiesta della ricerca non parte; in quella copia nemmeno la ricarica davanti
-a una risposta di un'altra persona parte. Un pulsante
+al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e
+in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte. Un pulsante
   per riprovare nel riquadro della ricerca
   l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
   cambia niente; per i suoi test vedi «Passare alla v2.8».
@@ -1350,15 +1351,20 @@ ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel br
 `localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
 all'uscita non c'è niente da togliere. Dalla `v2.10.0` la cornice di chi c'era prima non resta a schermo oltre i 30
 secondi: una pagina che ha ricevuto la risposta di un'altra persona nei suoi primi 30 secondi si ricarica da sola quando li
-compie, senza un clic e senza un'altra richiesta. Salvo due eccezioni: la ricarica allo scadere si chiede una volta sola, e
-se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; e in una
-scheda nascosta il browser può far scadere l'orologio più tardi, quando la riattiva. Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
+compie, senza un clic e senza un'altra richiesta. Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e
+se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; in una
+scheda nascosta il browser può far scadere l'orologio più tardi (in una congelata, solo quando la riattiva); e con due
+cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
 portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano tre casi. Una
 richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
 apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona
 è arrivata. E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
 cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
-scadere dei 30 secondi: non provato in un browser.
+scadere dei 30 secondi è provata il 14/10/2026 in Chromium 151, con la `v2.10.0` sulle pagine di prova: una risposta di
+un'altra persona a pagina appena caricata dà l'errore del pannello dopo 5 secondi e la pagina si ricarica quando ne compie
+30, una volta; se prima una visita ha portato chi ha risposto, la pagina non si ricarica; con una risposta che dice sempre
+un'altra persona, tre caricamenti in 70 secondi, a 30 secondi l'uno dall'altro; e lo stesso col 403
+`gettone_senza_workspace` di un'altra persona.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
