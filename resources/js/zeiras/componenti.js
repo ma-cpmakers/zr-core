@@ -848,8 +848,8 @@ import * as React from 'react';
 
   /* =====================  SAAS KIT  ===================== */
   var useEffect = React.useEffect;
-  var NF = new Intl.NumberFormat('it-IT');
-  var EUR = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  var NF = /* @__PURE__ */ new Intl.NumberFormat('it-IT');
+  var EUR = /* @__PURE__ */ new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   function fmtNum(v) { return NF.format(v); }
   function fmtEur(v) { return EUR.format(v); }
   var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }
@@ -1245,7 +1245,7 @@ import * as React from 'react';
       })));
   }
 
-  var SAMPLE_CONTACTS = [
+  var SAMPLE_CONTACTS = /* @__PURE__ */ [
     ['Anna Ferri', 'anna.ferri@rossilogistica.it', 'Rossi Logistica', 'Lead', 'Luciano Castro', 7200, 'oggi'],
     ['Paolo Greco', 'p.greco@nexa.it', 'Nexa Srl', 'Qualificato', 'Marco Neri', 9800, 'ieri'],
     ['Sara Conti', 'sara@alfacostruzioni.it', 'Alfa Costruzioni', 'Cliente', 'Luciano Castro', 18500, '2 gg fa'],

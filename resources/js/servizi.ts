@@ -83,13 +83,20 @@ export class TroppeRichieste extends Error {
 
 /**
  * Chi la cornice mostra adesso, con l'email, o nessuno: lo dice la cornice quando si monta, e lo toglie quando si smonta
- * (dalla `v2.7.0`; chiamata senza niente, toglie). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
- * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo.
+ * (dalla `v2.7.0`; per togliere, `mostra(undefined, era)`). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno
+ * che React abbandona non scrive niente —, e una pagina senza la cornice non ha nessuno a schermo. Con due cornici è
+ * l'ultima montata, e una cornice che si smonta toglie solo sé stessa (`era`, la sua email, dalla `v2.11.5`): se dopo di lei
+ * se n'è montata un'altra, a schermo resta quella. Le forme sono due, e i tipi non ne lasciano una terza: `mostra(email)`
+ * scrive sempre (la cornice che si monta), `mostra(undefined, era)` toglie solo se a schermo c'è `era` (quella che si
+ * smonta). Il limite è l'email: due cornici della stessa persona sono la stessa per `mostra`, e quando se ne smonta una
+ * a schermo non resta nessuno, anche se l'altra è ancora montata (README, «Le notifiche»).
  */
 export let aSchermo: string | undefined;
 
-export function mostra(email?: string): void {
-    aSchermo = email;
+export function mostra(email: string): void;
+export function mostra(email: undefined, era: string): void;
+export function mostra(email?: string, era = aSchermo): void {
+    if (era == aSchermo) aSchermo = email;
 }
 
 /**
@@ -237,7 +244,8 @@ const ilPezzoDellaRicerca = pezzoARichiesta<typeof import('./ricerca')>(() => im
 /**
  * Chiede il pezzo della ricerca, e quando è arrivato lo tiene (`ricerca`). La cornice lo chiede al primo fuoco nel campo della
  * ricerca, o alla prima parola, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo
- * richiede, come per la campanella (`pezzoARichiesta`, in `lingue.ts`). Arrivato, non si chiede più. Sta qui e non in `lingue.ts`, che è anche di chi prende solo le frasi (`resources/js/frasi`):
+ * richiede, come per la campanella (`pezzoARichiesta`, in `lingue.ts`), passata l'attesa che dalla `v2.11.5` segue un pezzo
+ * non arrivato; nell'attesa è respinta subito, senza richiederlo. Arrivato, non si chiede più. Sta qui e non in `lingue.ts`, che è anche di chi prende solo le frasi (`resources/js/frasi`):
  * lì un pezzo della ricerca non serve.
  */
 export const chiediLaRicerca = async () => (ricerca ??= await ilPezzoDellaRicerca());

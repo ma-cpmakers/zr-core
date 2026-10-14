@@ -4,7 +4,11 @@ import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cerca } from './ricerca';
-import { AccettazioneRichiesta, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+
+// A schermo `chi`, o nessuno: senza nessuno è la cornice che c'era che si smonta, e toglie sé stessa (dalla `v2.11.5` chi toglie
+// dice chi è: `mostra(undefined, era)`).
+const mettiASchermo = (chi: string | undefined) => (chi === undefined ? aSchermo !== undefined && mostra(undefined, aSchermo) : mostra(chi));
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
 // (`PATCH /cornice/notifiche/<id>/lettura`). Che cosa ne fa la cornice lo prova cornice.test.tsx.
@@ -528,7 +532,7 @@ describe('una risposta che dice di chi è', () => {
         ] as [string, string | undefined][]).flatMap(([come, chi]) => [60_000, 29_999, 0].map((eta) => [nome, come, eta, chi, laRisposta, chiama] as const))))('%s di un\'altra persona, se %s, su una pagina caricata da %i ms: la pagina non si ricarica, nessun orologio parte e chi ha chiesto resta in attesa, anche dopo un minuto — nemmeno il tetto dei 30 secondi chiude con un errore la richiesta di una cornice che non c\'è più (sprint 43 · T2.3)', async (_nome, _come, eta, chi, laRisposta, chiama) => {
             const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
             vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
-            mostra(chi);
+            mettiASchermo(chi);
             caricataDa(eta);
 
             const esito = segui(chiama());
@@ -607,7 +611,7 @@ describe('una risposta che dice di chi è', () => {
             segui(caricaNotifiche('ada@example.com'));
             await vi.advanceTimersByTimeAsync(19_999);
             expect(ricarica).not.toHaveBeenCalled();
-            mostra(chi);
+            mettiASchermo(chi);
 
             await vi.advanceTimersByTimeAsync(1);
             expect(ricarica).toHaveBeenCalledTimes(volte);

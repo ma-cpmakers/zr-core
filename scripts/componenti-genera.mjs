@@ -2,7 +2,7 @@
 // derivata): gli stessi componenti come modulo ES, esportati per nome. Il bundle è una funzione che legge `window.React` e scrive
 // tutto in `window.Zeiras`: chi lo importa li porta tutti nella build. Il modulo importa React da sé ed esporta ogni componente
 // col suo nome, e la build di un frontend tiene solo quelli che l'app usa. Il corpo non si riscrive: è quello del bundle riga per
-// riga, senza le prime tre (il commento del formato, l'apertura della funzione, `var React = window.React;`) e senza la
+// riga (tranne tre righe segnate pure, sotto), senza le prime tre (il commento del formato, l'apertura della funzione, `var React = window.React;`) e senza la
 // registrazione in `window.Zeiras` in fondo, al cui posto vanno gli `export`. Qui si conosce una forma sola del bundle, e la si
 // controlla prima di comporre: se una cosa non torna un errore dice quale. Questo file lavora solo su testi, senza `node:fs`:
 // lo importano il comando (scripts/componenti.mjs, che legge e scrive i file) e un caso di vitest, che i file li prende come
@@ -18,6 +18,42 @@ const INIZIO_DELLA_REGISTRAZIONE = `  window.${SPAZIO_DEI_NOMI} = Object.assign(
 const FINE_DELLA_REGISTRAZIONE = '  });';
 const CHIUSURA = '})();';
 const COPPIA = /^([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)$/;
+// Le righe che il modulo segna pure (dalla `v2.11.5`): i dati di esempio di `CrmContacts` e i due formattatori dei numeri, che il
+// bundle calcola appena caricato e che usano solo componenti che la cornice non usa. Senza il segno la build di un'app li tiene
+// anche dove nessuno li usa, perché una chiamata può fare altro; col segno li toglie solo lì. Il segno va dopo l'uguale, davanti
+// alla chiamata. Se una riga non c'è, o c'è due volte, lo script si ferma: un design system nuovo si riprenderebbe quei byte in
+// silenzio.
+// Le dichiarazioni che il modulo segna pure, con la forma intera che lo script conosce: l'inizio (il segno va dopo l'uguale) e,
+// riga per riga, ciò che deve esserci. Una riga di testo è da avere com'è; `FILA` è una o più righe di una tabella di soli
+// testi e numeri. Una riga diversa anche dopo l'uguale — una chiamata, un'altra funzione — ferma lo script: segnato puro, un
+// valore con effetti perderebbe gli effetti dove non serve.
+const FILA = /^ {4}\[(?:'[^'\\]*'|\d+)(?:, (?:'[^'\\]*'|\d+))*\],?$/;
+const DA_SEGNARE = [
+    ['  var NF = ', ["  var NF = new Intl.NumberFormat('it-IT');"]],
+    ['  var EUR = ', ["  var EUR = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });"]],
+    ['  var SAMPLE_CONTACTS = ', [
+        '  var SAMPLE_CONTACTS = [',
+        FILA,
+        "  ].map(function (r, i) { return { id: 'ct' + i, name: r[0], email: r[1], company: r[2], status: r[3], owner: r[4], value: r[5], last: r[6] }; });",
+    ]],
+];
+
+/** Se dalla riga `da` di `righe` c'è la dichiarazione nella forma `forma`. */
+function haLaForma(righe, da, forma) {
+    let qui = da;
+    for (const attesa of forma) {
+        if (typeof attesa === 'string') {
+            if (righe[qui++] !== attesa) return false;
+            continue;
+        }
+        const prima = qui;
+        while (qui < righe.length && attesa.test(righe[qui])) qui++;
+        if (qui === prima) return false;
+    }
+
+    return true;
+}
+const PURO = '/* @__PURE__ */ ';
 // Ciò che il modulo non può più leggere: `window.React` non è detto che ci sia, e `window.Zeiras` lo scrive chi importa il modulo.
 const DALLA_FINESTRA = [/\bwindow\.React\b/, new RegExp(`\\bwindow\\.${SPAZIO_DEI_NOMI}\\b`)];
 
@@ -57,7 +93,10 @@ export function nonIntero(bundle) {
     return (dentroLaRigaUno || delFormato) && !righe.includes(CHIUSURA) ? `si ferma a metà: manca la riga «${CHIUSURA}»` : null;
 }
 
-/** Il corpo del bundle, riga per riga, e i nomi che registra: solo se il bundle ha la forma che lo script conosce. */
+/**
+ * Il corpo del bundle, riga per riga, coi segni «puri» di `DA_SEGNARE`, e i nomi che registra: solo se il bundle ha la forma che lo
+ * script conosce.
+ */
 export function leggi(bundle) {
     const righe = bundle.split('\n');
 
@@ -99,10 +138,17 @@ export function leggi(bundle) {
         vuole(letta === undefined, `la riga ${indice + 4} nomina «${letta?.[0]}», che un modulo non può leggere dalla finestra`);
     });
 
+    for (const [inizio, forma] of DA_SEGNARE) {
+        const dove = corpo.flatMap((riga, indice) => (riga.startsWith(inizio) ? [indice] : []));
+        vuole(dove.length === 1, `la riga «${inizio.trim()} …», da segnare pura, c'è ${dove.length} volte`);
+        vuole(haLaForma(corpo, dove[0], forma), `la riga «${inizio.trim()} …», da segnare pura, non è nella forma che lo script conosce (riga ${dove[0] + 4}): segnato puro, un valore che lo script non conosce può perdere i suoi effetti`);
+        corpo[dove[0]] = inizio + PURO + corpo[dove[0]].slice(inizio.length);
+    }
+
     return { corpo, nomi };
 }
 
-/** Il modulo: l'intestazione, il corpo del bundle com'è e, al posto della registrazione, gli `export` coi nomi registrati. */
+/** Il modulo: l'intestazione, il corpo del bundle com'è (tranne i segni «puri») e, al posto della registrazione, gli `export` coi nomi registrati. */
 export function componi({ corpo, nomi }) {
     return [...INTESTAZIONE, ...corpo, 'export {', ...nomi.map((nome) => `  ${nome},`), '};', ''].join('\n');
 }

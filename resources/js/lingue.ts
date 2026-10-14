@@ -276,16 +276,28 @@ export let campanella: typeof import('./campanella') | undefined;
  * (`importa`). Due casi restano come sono, e il README li dice: un `qui` senza percorso (`blob:`, `data:`), dove `new URL`
  * lancia prima della promessa, e un nome che la build scrive già con una coda, a cui `?r=` si aggiunge com'è. L'errore esce com'è. L'accento rovescio nell'espressione è scritto `\x60`: scritto com'è, chi toglie i
  * commenti da questo file per le guardie (`senzaCommenti`) lo leggerebbe come l'inizio di un testo.
+ *
+ * Dopo un pezzo non arrivato la richiesta dopo aspetta (dalla `v2.11.5`): dopo l'n-esimo fallimento non parte prima di
+ * 2^(n−1) secondi, e mai più di 60, dal fallimento. Nell'attesa non importa niente ed è respinta con l'errore di prima, che
+ * per chi chiede è un pezzo non arrivato come gli altri. L'orologio è quello della pagina (`performance.now()`): niente è
+ * scritto nel browser. Chi chiede con `senzaAttesa` — «Riprova» del pannello delle notifiche, che la persona preme — non aspetta.
+ * Ogni richiesta partita mentre il pezzo è in viaggio, se non arriva, conta come un fallimento:
+ * con k richieste insieme l'attesa dopo è quella di k fallimenti in più, e la coda salta k−1 numeri (README).
  */
-export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): () => Promise<Pezzo> {
+export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): (senzaAttesa?: boolean) => Promise<Pezzo> {
     let tentativi = 0;
+    let finoA = 0;
+    let diPrima: unknown;
 
-    return () => {
+    return (senzaAttesa) => {
+        if (!senzaAttesa && performance.now() < finoA) {
+            return Promise.reject(diPrima);
+        }
         const nome = tentativi && /import\((["'\x60])(.+?)\1/.exec(String(importa));
 
         return (nome ? daLi(`${new URL(nome[2]!, qui)}?r=${tentativi}`) : importa()).catch((errore: unknown) => {
-            tentativi++;
-            throw errore;
+            finoA = performance.now() + 1e3 * Math.min(2 ** tentativi++, 60);
+            throw (diPrima = errore);
         });
     };
 }
@@ -295,6 +307,7 @@ const ilPezzoDellaCampanella = pezzoARichiesta<typeof import('./campanella')>(()
 /**
  * Chiede il pezzo della campanella, e quando è arrivato lo tiene (`campanella`). La cornice lo chiede all'apertura della
  * campanella, mai al montaggio. Se non arriva la promessa è respinta e niente resta: la richiesta dopo lo richiede, anche in
- * Chromium, con l'indirizzo che `pezzoARichiesta` legge dalla build (README, «Le notifiche»). Arrivato, non si chiede più.
+ * Chromium, con l'indirizzo che `pezzoARichiesta` legge dalla build (README, «Le notifiche»), passata la sua attesa — o
+ * subito, con `senzaAttesa` («Riprova»). Arrivato, non si chiede più.
  */
-export const chiediLaCampanella = async () => (campanella ??= await ilPezzoDellaCampanella());
+export const chiediLaCampanella = async (senzaAttesa?: boolean) => (campanella ??= await ilPezzoDellaCampanella(senzaAttesa));

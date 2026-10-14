@@ -5,6 +5,7 @@ import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
 import { build, type Plugin } from 'vite';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import generato from './zeiras/componenti.js?raw';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
 // del design system che l'app non usa. Qui si costruiscono le tre app di prova di resources/demo/peso come le costruisce un
@@ -67,8 +68,12 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * che finisce dopo la ricarica (#2036, 6), il tetto delle ricariche (#2053, 26) e la lingua del primo disegno (#2052, 0) —,
  * e niente oltre (zr-pm, 13/10/2026, nota 12843 del progetto). È un numero scritto, non il peso di oggi: scende di 325 byte.
  * Sprint 42 · T4: la prima delle quattro è entrata, coi suoi 16 byte (ingresso 18.197).
+ *
+ * Sprint 50 · T5.4 (voce #2056): i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d'ingresso
+ * (T1, voce #2073), e il tetto scende a ciò che l'ingresso pesa a fine sprint, con le correzioni di T3, T4 e T5 dentro: 17.789
+ * byte, 440 meno di prima, senza margine.
  */
-const TETTO_DELL_INGRESSO = 18_181 + 16 + 6 + 26;
+const TETTO_DELL_INGRESSO = 17_789;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -114,17 +119,22 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
 }
 
 /** Un'app di prova, costruita come la costruisce un frontend: minificata, con React fuori. */
-async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}): Promise<Costruito> {
-    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
+async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {}, prima: Plugin[] = []): Promise<Costruito> {
+    return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [...prima, react()], build: { ...delFrontend, write: false, minify: true, rolldownOptions: { input: delRepo(file), external: FUORI } } }));
 }
 
 /** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
 async function appCheImporta(file: string[]): Promise<Costruito> {
+    return appColTesto(file.map((uno) => `import ${JSON.stringify(delRepo(uno))};`).join('\n'));
+}
+
+/** Un'app che non ha un file suo: il suo JS è questo testo. Costruita come le altre app di prova. */
+async function appColTesto(testo: string): Promise<Costruito> {
     const nome = 'virtuale:ingresso';
     const senzaFile: Plugin = {
         name: 'zr-core:ingresso-senza-file',
         resolveId: (id) => (id === nome ? `\0${nome}` : null),
-        load: (id) => (id === `\0${nome}` ? file.map((uno) => `import ${JSON.stringify(delRepo(uno))};`).join('\n') : null),
+        load: (id) => (id === `\0${nome}` ? testo : null),
     };
 
     return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react(), senzaFile], build: { write: false, minify: true, rolldownOptions: { input: nome, external: FUORI } } }));
@@ -155,6 +165,7 @@ function pesiNelReadme(nome: string): number[] {
 }
 
 let soloCornice: Costruito;
+let coiDatiDentro: Costruito;
 let conIlLimiteAlto: Costruito;
 let perNome: Costruito;
 let diSempre: Costruito;
@@ -163,12 +174,34 @@ let ingressoDiSempre: Costruito;
 let ingressoDelleFrasi: Costruito;
 let dalBundle: Costruito;
 let dalModulo: Costruito;
+let conIDatiDiEsempio: Costruito;
+
+// Sprint 50 · T1 (voce 2073). I dati di esempio del design system (un `var SAMPLE_… = [` del modulo, come i contatti finti di
+// `CrmContacts`) e i due formattatori dei numeri (`NF`, `EUR`, cioè `new Intl.NumberFormat`) li usano solo componenti che la
+// cornice non usa: il generatore li segna puri (scripts/componenti-genera.mjs), e la build di un'app li lascia fuori dove nessuno
+// li usa. Si cercano tutti i `SAMPLE_` del modulo, e non solo quelli di oggi: un design system importato con un dato di esempio
+// nuovo, non segnato, fa rosso qui invece di riprendersi i byte in silenzio. Di ognuno si guardano i testi fra apici di almeno otto
+// caratteri che nel modulo stanno solo lì (i nomi, le email dei contatti finti): un testo più corto, o che il modulo usa anche
+// altrove, potrebbe stare nell'ingresso per un'altra ragione.
+const DATI_DI_ESEMPIO = [...generato.matchAll(/^ {2}var (SAMPLE_\w+) = (?:\/\* @__PURE__ \*\/ )?\[\n([\s\S]*?)\n {2}\]/gm)].map((trovato) => {
+    const testi = [...(trovato[2] ?? '').matchAll(/'([^'\n]*)'/g)].map((testo) => testo[1] ?? '');
+
+    return [trovato[1] ?? '', testi.filter((testo) => testo.length >= 8 && volte(generato, `'${testo}'`) === 1)] as const;
+});
+const DEI_CONTATTI_FINTI = 'anna.ferri@rossilogistica.it';
+const DEI_FORMATTATORI = 'NumberFormat';
 
 // vitest gira con NODE_ENV=test, e così il plugin di React renderebbe il JSX come in sviluppo, più pesante: qui si costruisce
 // come fa `vite build`, in produzione.
 beforeAll(async () => {
     vi.stubEnv('NODE_ENV', 'production');
     soloCornice = await app('resources/demo/peso/cornice.ts');
+    // Sprint 50 · T6 (review, R9): la stessa app col modulo dei componenti senza i segni «puri» del generatore.
+    coiDatiDentro = await app('resources/demo/peso/cornice.ts', {}, [{
+        name: 'zr-core:componenti-senza-segni',
+        enforce: 'pre',
+        load: (id) => (id.endsWith('/resources/js/zeiras/componenti.js') ? generato.replaceAll('/* @__PURE__ */ ', '') : null),
+    }]);
     conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
@@ -177,6 +210,7 @@ beforeAll(async () => {
     ingressoDelleFrasi = await ingresso('resources/js/frasi.ts');
     dalBundle = await appCheImporta(DAL_BUNDLE);
     dalModulo = await appCheImporta(DAL_MODULO);
+    conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
 
@@ -209,6 +243,28 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     it('pesa più della sola cornice e, con gzip, al più il 70% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(perNome.js)).toBeGreaterThan(gzip(soloCornice.js));
         expect(gzip(perNome.js)).toBeLessThanOrEqual(0.7 * gzip(diSempre.js));
+    });
+});
+
+describe('i dati di esempio del design system e i formattatori dei numeri non stanno nell\'ingresso dell\'app che prende solo la cornice (sprint 50 · T1.1, T1.2)', () => {
+    it('il modulo dei componenti ha dei dati di esempio, e ognuno ha dei testi suoi', () => {
+        expect(DATI_DI_ESEMPIO.map(([nome]) => nome)).toContain('SAMPLE_CONTACTS');
+        expect(DATI_DI_ESEMPIO.filter(([, testi]) => testi.length === 0)).toEqual([]);
+    });
+
+    it.each(DATI_DI_ESEMPIO)('di %s non c\'è niente; nell\'app dall\'ingresso di sempre sì', (_nome, testi) => {
+        expect(testi.filter((testo) => soloCornice.js.includes(testo))).toEqual([]);
+        expect(testi.some((testo) => diSempre.js.includes(testo))).toBe(true);
+    });
+
+    it('nell\'app che prende CrmContacts per nome i contatti finti ci sono: il segno li lascia dove servono', () => {
+        expect(conIDatiDiEsempio.js).toContain(DEI_CONTATTI_FINTI);
+    });
+
+    it('i formattatori dei numeri non ci sono; nell\'app dall\'ingresso di sempre, e in quella che prende DealCard per nome, sì', () => {
+        expect(soloCornice.js).not.toContain(DEI_FORMATTATORI);
+        expect(diSempre.js).toContain(DEI_FORMATTATORI);
+        expect(conIDatiDiEsempio.js).toContain(DEI_FORMATTATORI);
     });
 });
 
@@ -287,18 +343,27 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(conIlLimiteAlto.js).not.toContain('data:application/json');
     });
 
-    // Sprint 42 · T3 (voce #2054, T2.5). Con la ricerca in un pezzo a richiesta l'ingresso pesa 18.181 byte, e il tetto scende: è
-    // quel peso più i 48 byte misurati per le quattro correzioni che aspettano (#1975, #2036, #2053, #2052), non oltre.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.229 byte: i 18.181 misurati con la ricerca in un pezzo a richiesta, più i 16 byte di Indietro senza il segno della lettura, i 6 dell\'attesa che finisce e i 26 del tetto delle ricariche (sprint 42 · T2.5)', () => {
+    // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
+    // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.789 byte: la misura a fine sprint 50, con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro (sprint 42 · T2.5; sprint 50 · T5.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_229);
+        expect(TETTO_DELL_INGRESSO).toBe(17_789);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.229 byte, non più quelli di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5)', (file) => {
+    // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
+    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
+    // (T1.4: 515 alla misura di T1): qui la stessa app, costruita col modulo dei componenti senza i segni.
+    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
+        expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);
+        expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(1);
+        expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
+    });
+
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.789 byte, non più quelli di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '18.229 byte') > 0, volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.789 byte') > 0, volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {

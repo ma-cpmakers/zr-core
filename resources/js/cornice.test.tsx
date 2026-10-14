@@ -15,7 +15,7 @@ import { frasiARichiesta } from './campanella';
 import * as delleLingue from './lingue';
 import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
-import { chiediLaRicerca } from './servizi';
+import { aSchermo, chiediLaRicerca } from './servizi';
 import { Zeiras } from './zeiras';
 import * as componenti from './zeiras/componenti';
 
@@ -117,6 +117,23 @@ async function clicEPassano(elemento: Element | null, millisecondi = 0): Promise
         (elemento as HTMLElement).click();
         await vi.advanceTimersByTimeAsync(millisecondi);
     });
+}
+
+/**
+ * Sprint 50 · T2 (voce 2074): l'orologio finto per un caso che dice che la pagina non si ricarica. Parte prima della risposta,
+ * perché un orologio della ricarica partito con la risposta sia suo, e va avanti da sé col tempo vero, perché i giri delle
+ * risposte (`prossimoGiro`) passino come sempre.
+ */
+function orologioFintoCheVa(): void {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+}
+
+/**
+ * Passano 35 secondi: oltre i 30 della ricarica allo scadere e oltre i 5 dell'errore. Un controllo «non si ricarica» fatto dopo
+ * un solo giro resterebbe verde anche con una ricarica chiesta più tardi (review della PR 83, R6).
+ */
+async function oltreITrentaSecondi(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(35_000));
 }
 
 /** Una risposta di una rotta della cornice, come `fetch` la dà: lo stato e il corpo JSON. */
@@ -4033,6 +4050,43 @@ describe('il pannello delle notifiche', () => {
         }
     });
 
+    // Sprint 50 · T3 (voce 2065): due cornici nel documento. Una cornice che si smonta toglie chi è a schermo solo se è ancora lei:
+    // se dopo di lei se n'è montata un'altra, a schermo resta quella. Così, allo scadere dei 30 secondi, la pagina di chi ha
+    // risposto non si ricarica anche quando la sua cornice è stata montata prima che quella di prima si smontasse; e una pagina
+    // rimasta senza nessuna cornice si ricarica, come dalla `v2.10.0`.
+    it.each<[string, boolean, number]>([
+        ['la cornice di chi ha risposto montata prima che quella di prima si smonti: la sua pagina non si ricarica', true, 0],
+        ['nessuna cornice montata dopo quella di prima: la pagina si ricarica', false, 1],
+    ])('su una pagina caricata da meno di 30 secondi, dopo l\'elenco di un\'altra persona, con %s (sprint 50 · T3.1, T3.2)', async (_come, conLAltra, volte) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        vi.stubGlobal('fetch', rotteDiUnaPersona({ persona: grace.email }));
+        caricataDa(10_000);
+        const diPrima = <Cornice key="di-prima" dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />;
+        const diGrace = <Cornice key="di-grace" dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />;
+        await mostra(<>{[diPrima]}</>);
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            await clicEPassano(uno('.zr-bell'), 5_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            if (conLAltra) {
+                await mostra(<>{[diPrima, diGrace]}</>);
+                await mostra(<>{[diGrace]}</>);
+                expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
+            } else {
+                await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
+            }
+            // Review dello sprint 50 (R8): qui allo scadere la pagina si ricarica anche se lo smontaggio non toglie niente — a
+            // schermo resterebbe chi c'era prima, che non è chi ha risposto —; chi è a schermo lo dice allora `aSchermo`.
+            expect(aSchermo).toBe(conLAltra ? grace.email : undefined);
+
+            await act(() => vi.advanceTimersByTimeAsync(25_000));
+            expect(ricarica).toHaveBeenCalledTimes(volte);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica se a schermo c'è una cornice che non è di chi ha risposto. Se intanto una visita ha portato chi è entrato
     // e la cornice si è rifatta, la risposta in ritardo chiesta da chi c'era prima non ricarica la pagina di chi è entrato.
     it('una risposta in ritardo all\'elenco, chiesta da chi non è più a schermo, non ricarica la pagina di chi è entrato: niente di quella risposta va a schermo, e la cornice resta la sua (sprint 41 · T5.1)', async () => {
@@ -4041,12 +4095,14 @@ describe('il pannello delle notifiche', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
         const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         // Una visita porta chi è entrato, sullo stesso workspace: la cornice si rifà, e poi arriva la risposta di prima.
         await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: grace.email }));
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
@@ -4062,11 +4118,13 @@ describe('il pannello delle notifiche', () => {
         const lenta = inAttesa();
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('.senza-cornice')?.textContent).toBe('Una pagina senza la cornice');
@@ -4128,10 +4186,12 @@ describe('il pannello delle notifiche', () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403));
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         await clic(uno('.zr-bell'));
         await act(prossimoGiro);
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
@@ -4147,9 +4207,11 @@ describe('il pannello delle notifiche', () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = rotteDiUnaPersona(conLaPersona);
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
+        await oltreITrentaSecondi();
 
         expect(voci()).toHaveLength(notificheDelServer.length);
         expect(segnaTutte()).not.toBeNull();
@@ -5905,14 +5967,14 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(cornice()).toStrictEqual(prima);
     });
 
-    // Sprint 43 · T5 (seconda lettura della PR 77, N1): sotto il tetto la ricarica non parte subito, e niente toglie la navigazione
-    // che il clic ha già chiesto. La risorsa si apre anche se la risposta di un'altra persona è arrivata; niente è segnato.
-    // Sprint 44 · T2 (voce #2058): l'errore della lettura esce dopo 5 secondi, senza un avviso; se la pagina è ancora lì quando
-    // compie 30 secondi, si ricarica.
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1): sotto il tetto la ricarica non parte subito. Sprint 44 · T2 (voce #2058):
+    // l'errore della lettura esce dopo 5 secondi, senza un avviso; se la pagina è ancora lì quando compie 30 secondi, si ricarica.
+    // Sprint 50 · T4 (voce #2059): sotto il tetto il clic aspetta la lettura, e la risposta di un'altra persona non apre la
+    // risorsa con la sessione di chi è entrato — né prima né dopo la risposta, né all'errore dei 5 secondi; niente è segnato.
     it.each<[string, Record<string, unknown>, number]>([
         ['il 409 `persona_diversa`', { errore: 'persona_diversa' }, 409],
         ['il 403 `accettazione_richiesta`', { errore: 'accettazione_richiesta' }, 403],
-    ])('su una pagina caricata da meno di 30 secondi, alla lettura di una notifica con un clic %s di un\'altra persona non ricarica subito la pagina: la risorsa si apre, una PATCH sola, e la cornice resta com\'era, senza avviso nemmeno all\'errore dei 5 secondi; se è ancora lì quando compie 30 secondi la pagina si ricarica (sprint 43 · T5, N1; sprint 44 · T2.1, T2.3)', async (_quale, errore, stato) => {
+    ])('su una pagina caricata da meno di 30 secondi, alla lettura di una notifica con un clic %s di un\'altra persona non apre la risorsa e non ricarica subito la pagina: una PATCH sola, e la cornice resta com\'era, senza avviso nemmeno all\'errore dei 5 secondi; se è ancora lì quando compie 30 secondi la pagina si ricarica, e la risorsa non si apre nemmeno dopo (sprint 43 · T5, N1; sprint 44 · T2.1, T2.3; sprint 50 · T4.1)', async (_quale, errore, stato) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
         const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
@@ -5930,23 +5992,80 @@ describe('chi non ha accettato i documenti legali', () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         try {
             await clicEPassano(uno('.zr-notif-list .zr-notif-item'));
-            expect(naviga).toHaveBeenCalledTimes(1);
-            expect(naviga.mock.calls[0]?.[0]).toContain('/contatti/uat-persona-1');
+            expect(naviga).not.toHaveBeenCalled();
             expect(ricarica).not.toHaveBeenCalled();
 
             await act(() => vi.advanceTimersByTimeAsync(15_000));
             guarda.disconnect();
             expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
             expect(ricarica).not.toHaveBeenCalled();
-            expect(naviga).toHaveBeenCalledTimes(1);
+            expect(naviga).not.toHaveBeenCalled();
             expect(avvisi).not.toContain(true);
             expect(cornice()).toStrictEqual(prima);
 
             await act(() => vi.advanceTimersByTimeAsync(5_000));
             expect(ricarica).toHaveBeenCalledTimes(1);
+
+            // A 35 secondi la risorsa non si è aperta, e nessun'altra richiesta è partita.
+            await act(() => vi.advanceTimersByTimeAsync(5_000));
+            expect(naviga).not.toHaveBeenCalled();
+            expect(fetchFinto).toHaveBeenCalledTimes(2);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    // Sprint 50 · T4 (voce #2059): sotto il tetto la risorsa si apre all'esito della lettura, se la risposta è di chi la cornice
+    // mostra — riuscita o no: un errore della stessa persona non ferma l'apertura, e la notifica resta da leggere.
+    it.each<[string, () => Response, string]>([
+        ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), '6'],
+        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), '7'],
+    ])('su una pagina caricata da meno di 30 secondi, il clic su una notifica non letta con una destinazione la apre quando la lettura di chi la cornice mostra risponde, %s: non prima, e una volta sola (sprint 50 · T4.2, T4.3)', async (_come, laRisposta, numero) => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga).not.toHaveBeenCalled();
+
+        await lettura.arriva(laRisposta());
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(cornice().numero).toBe(numero);
+        await act(prossimoGiro);
+        expect(naviga).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+    });
+
+    // Sprint 50 · T4 (voce #2059): da 30 secondi in poi il clic apre la risorsa subito, come prima; e sotto i 30 secondi non
+    // aspetta niente quando non c'è una lettura da chiedere.
+    it.each<[string, number, Record<string, unknown>, string, string[]]>([
+        ['una non letta con una destinazione, su una pagina di 60 secondi', 60_000, {}, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']],
+        ['una letta, su una pagina di 10 secondi', 10_000, { letta: true }, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche']],
+        ['una senza destinazione, su una pagina di 10 secondi', 10_000, { tipo: 'com.zeiras.crm.qualcosa.mai.visto' }, 'https://app.zeiras.com/notifiche', ['/cornice/notifiche']],
+    ])('il clic su %s apre subito dove porta, senza aspettare una risposta (sprint 50 · T4.4)', async (_quale, eta, diversa, dove, richieste) => {
+        const notifica = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' }, ...diversa };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [notifica], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(eta);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(naviga.mock.calls).toStrictEqual([[dove]]);
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(richieste);
+
+        await lettura.arriva(risposta({ data: { letta: true }, persona: diSempre.persona.email }));
+        expect(naviga).toHaveBeenCalledTimes(1);
     });
 
     it.each<[string, Record<string, unknown>]>([
@@ -6712,6 +6831,22 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(campanella.chiesto.mock.calls.length).toBeGreaterThan(primaDiRiprova);
         expect(errore()).toBeNull();
         expect(titoli()).toStrictEqual([inItaliano]);
+    });
+
+    // Sprint 50 · T5 (voce #2056): dopo un pezzo non arrivato chi lo chiede aspetta (`pezzoARichiesta`), ma «Riprova» no: lo
+    // chiede senza attesa. L'apertura della campanella lo chiede come sempre.
+    it('l\'apertura della campanella chiede il pezzo con la sua attesa, «Riprova» senza (sprint 50 · T5.5)', async () => {
+        const campanella = pezzo();
+        campanella.stato.rotto = true;
+        conLElenco();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(campanella.chiesto.mock.calls.map(([senzaAttesa]) => Boolean(senzaAttesa))).toStrictEqual([false]);
+
+        await clic(errore()?.querySelector('button') ?? null);
+        expect(campanella.chiesto.mock.calls.map(([senzaAttesa]) => Boolean(senzaAttesa))).toStrictEqual([false, true]);
+        expect(errore()).not.toBeNull();
     });
 
     it('alla seconda apertura l\'elenco si richiede e le frasi no: restano in memoria (T1.6)', async () => {

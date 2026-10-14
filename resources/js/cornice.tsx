@@ -10,7 +10,7 @@ import { Alert, AppShell, Button } from './zeiras/componenti';
 // Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
 // chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
 // già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
-const caricaFrasi = (lingua: string) => chiediLaCampanella().then((arrivata) => arrivata.caricaFrasi(lingua));
+const caricaFrasi = (lingua: string, senzaAttesa?: boolean) => chiediLaCampanella(senzaAttesa).then((arrivata) => arrivata.caricaFrasi(lingua));
 const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
@@ -317,7 +317,8 @@ export type StatoDellaRicerca = { stato: 'loading' | 'error' } | { stato: 'ready
 
 /**
  * Chiede il pezzo della ricerca (`./ricerca`) al primo fuoco nel campo: chi sta per scrivere lo trova arrivato, e chi non
- * cerca non lo scarica. Se non arriva qui non succede niente: lo richiede la prima parola (`cercaParola`).
+ * cerca non lo scarica. Se non arriva qui non succede niente: lo richiede la prima parola (`cercaParola`), passata l'attesa
+ * che segue un pezzo non arrivato (`pezzoARichiesta`, dalla `v2.11.5`). Nell'attesa nemmeno questo fuoco lo richiede.
  */
 const alFuoco = () => void chiediLaRicerca().catch(() => undefined);
 
@@ -568,7 +569,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // frasi non arrivano è un errore del pannello come quello dell'elenco, con «Riprova», mai un elenco di titoli di ripiego;
     // ma che la persona debba accettare i documenti legali lo può dire solo l'errore dell'elenco, che è della parte server.
     // A elenco vuoto le frasi non servono: il pannello dice che non ci sono notifiche senza aspettarle, e anche se non arrivano.
-    const chiedi = (svuota: boolean) => {
+    const chiedi = (svuota: boolean, senzaAttesa?: boolean) => {
         const questa = ++ultimaRichiesta.current;
         const questi = dati;
         if (svuota) {
@@ -576,7 +577,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
         const chiesto = caricaNotifiche(persona.email);
         chiesto.catch(seDaAccettare);
-        const frasi = caricaFrasi(lingua);
+        const frasi = caricaFrasi(lingua, senzaAttesa);
         frasi.catch(() => undefined);
         chiesto.then((arrivato) => (arrivato.elenco.length > 0 ? frasi.then(() => arrivato) : arrivato)).then(
             ({ elenco, il, workspace }) => {
@@ -617,11 +618,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Con un elenco in pagina e senza le sue frasi il pannello aspetta, o è in errore se non sono arrivate.
     const statoDelPannello = !servonoLeFrasi ? notifiche.stato : frasiChieste?.lingua === lingua && !frasiChieste.arrivate ? 'error' : 'loading';
     // Il pannello aperto e «Riprova»: l'elenco è chiesto da capo, con le frasi, e un giro di letture rimasto a metà non continua
-    // da lì.
-    const carica = () => {
+    // da lì. «Riprova» chiede il pezzo della campanella senza l'attesa che segue un pezzo non arrivato (`senzaAttesa`).
+    const carica = (senzaAttesa?: boolean) => {
         setNeRestano(undefined);
         setFrasiChieste(undefined);
-        chiedi(true);
+        chiedi(true, senzaAttesa);
     };
 
     // «Segna tutte come lette» è una richiesta sola: segna le notifiche della persona nate fino alla più recente fra quelle
@@ -676,20 +677,22 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
     const unaSola = sullaCampanella === 1;
-    // La richiesta parte qui, nello stesso giro del clic, e chi la chiama apre la risorsa senza aspettarla: se fallisce non
-    // cambia niente, né in pagina né nell'apertura. Alla risposta resta ciò che la rotta ha detto, coi dati e l'elenco del clic.
+    // La richiesta parte qui, nello stesso giro del clic. Se fallisce non cambia niente in pagina; alla risposta resta ciò che la
+    // rotta ha detto, coi dati e l'elenco del clic. Dà una promessa che si chiude all'esito, riuscito o no — con un errore della
+    // persona a schermo —, e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un
+    // errore senza niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
     const [daDire, setDaDire] = useState<string>();
     const leggi = (id: string, workspace: string) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
-        segnaLetta(id, persona.email).then(
+        return segnaLetta(id, persona.email).then(
             ({ il }) => {
                 setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
                 setDaDire(id);
             },
             // La notifica resta da leggere, e il numero com'era.
-            seDaAccettare,
+            (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
     // L'avviso per chi usa un lettore di schermo: l'`AppShell` non ha un posto per dire che il numero è cambiato, e la cornice lo
@@ -829,14 +832,15 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // I rimedi provvisori di tastiera (`rimedi.ts`) arrivano a cornice montata, fuori dal JS d'ingresso: qui resta solo la
     // riga che li chiede. Se il pezzo non arriva la cornice resta quella di prima, senza un errore in console.
     useLayoutEffect(() => {
-        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra` senza niente): la `key` è l'email, quindi
-        // questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
+        // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra(undefined, era)`), se è ancora lei: con una
+        // seconda cornice montata dopo, a schermo resta quella (dalla `v2.11.5`). La `key` è l'email, quindi questa cornice è di
+        // una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
 
-        return () => (mostra(), ricercaInVolo.current?.abort());
+        return () => (mostra(undefined, persona.email), ricercaInVolo.current?.abort());
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
@@ -874,7 +878,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         ricercaInVolo.current = questa;
         setRicerca({ stato: 'loading' });
         // La richiesta, la sua risposta e il freno stanno nel pezzo a richiesta (`./ricerca`, dalla `v2.8.0`): se il fuoco non lo
-        // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. All'arrivo parte l'ultima
+        // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. Nell'attesa che dalla
+        // `v2.11.5` segue un pezzo non arrivato non lo chiede: `chiediLaRicerca` è respinta subito, e lo stato è l'errore. All'arrivo parte l'ultima
         // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`); una
         // cornice smontata ha annullato la sua nella pulizia, anche se quella rifatta è della stessa persona.
         chiediLaRicerca().then(
@@ -894,14 +899,20 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra, `inUnAltroWorkspace`). Una
     // che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi tutte», portano alla pagina delle
     // notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua risorsa è segnata letta (`leggi`): la
-    // richiesta parte prima dell'apertura, che non la aspetta.
+    // richiesta parte prima dell'apertura. Su una pagina di 30 secondi o più l'apertura non la aspetta; su una più giovane
+    // (dalla `v2.11.5`) la aspetta, e la risposta di un'altra persona — la pagina si ricarica quando compie 30 secondi, vedi
+    // `chiama` — non apre la risorsa con la sessione di chi è entrato.
     const apriNotifica = (aperta: ShellNotification) => {
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined && !notifica!.letta) {
-            leggi(notifica!.id, elencoDi!);
+            const lettura = leggi(notifica!.id, elencoDi!);
+            if (performance.now() < 3e4) {
+                lettura.then(() => naviga(risorsa));
+                return;
+            }
         }
         naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
     };
@@ -971,7 +982,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
                 onMarkAllRead: ridotta ? undefined : segnaTutteLette,
-                onRetryNotifications: ridotta ? undefined : carica,
+                onRetryNotifications: ridotta ? undefined : () => carica(true),
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : () => naviga(dashboard.indirizzo + pagineDiApp.notifiche),

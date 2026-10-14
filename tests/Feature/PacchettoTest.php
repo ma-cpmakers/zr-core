@@ -4305,6 +4305,8 @@ it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi l
 })->with([
     'i due tipi e i titoli' => ['Dalla `v2.3.0` hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM: `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita modificato»'],
     'quanti sono i titoli' => ['Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la menzione'],
+    // Sprint 50 · T6: dal 14/10/2026 il contratto ha un tipo di evento in più, che non genera notifiche.
+    'il quarantesimo tipo, senza titolo (sprint 50 · T6)' => ['Dal 14/10/2026 il contratto ha 40 tipi di evento: il quarantesimo, `com.zeiras.crm.campo.modificato` (le impostazioni di un campo del CRM cambiate), non genera notifiche e non ha un titolo. I titoli restano 44'],
     'la destinazione, dalla `v2.7.0` (sprint 41 · T2.1)' => ['i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`, dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi stanno, senza un id'],
     'gli altri tipi dei motivi (sprint 41 · T2.2)' => ['un altro tipo dei motivi di perdita, che il registro non ha, resta senza'],
 ]);
@@ -5101,10 +5103,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 33 · T1.3 (voce #1915): con la `v2.0.0` il tetto è di nuovo 18 KB. Sprint 36 · T2.6 (voce #1968): dalla `v2.3.0`
     // sono 17 byte in più, quelli della cornice che si rifà quando cambia la persona. Sprint 36 · T3.5 (voce #1967): e 37 di
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
-    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto scende a 18.229 byte, il peso di oggi più
-    // i 48 byte misurati per le quattro correzioni che lo aspettano.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.229 byte con gzip. Dalla `v2.8.0` è sceso di 325 byte'],
-    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'la ricerca è uscita dal JS d\'ingresso, che senza altro pesa 18.181 byte, e il tetto è quel peso più 48 byte: i 16 di una correzione che è in questa versione (con Indietro, dei dati senza il segno della lettura non riportano chi c\'era prima) e ciò che costano, misurate, tre correzioni che lo aspettano (6, 26 e 0 byte), e niente oltre'],
+    // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
+    // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.789 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
@@ -5134,11 +5136,12 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
     'smontata prima dell\'arrivo' => ['ricerca', 'Una cornice smontata prima dell\'arrivo — il layout la rifà quando cambia il workspace, anche con la stessa persona — non cerca più la parola scritta in lei, e all\'arrivo non parte niente (dalla `v2.11.2`)'],
     // Sprint 48 · T2.4 (voce #2064): l'orologio dei 30 secondi tiene della risposta di un'altra persona solo chi ha risposto.
     'l\'orologio tiene solo chi ha risposto' => ['pesi', 'Fino allo scadere l\'orologio tiene della risposta solo chi ha risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto il browser li può buttare subito'],
-    'fra una richiesta del pezzo e l\'altra' => ['ricerca', 'fra una richiesta del pezzo e l\'altra non c\'è un\'attesa: una per ogni parola scritta e per ogni fuoco nel campo, al ritmo di chi scrive'],
+    // Sprint 50 · T6 (review, R2): dalla `v2.11.5` fra una richiesta del pezzo e l'altra c'è l'attesa del pezzo.
+    'fra una richiesta del pezzo e l\'altra' => ['ricerca', 'Un pezzo non arrivato non accende il freno del `429`: fra una richiesta del pezzo e l\'altra c\'è solo l\'attesa del pezzo (fino alla `v2.11.4` nessuna'],
     'un file tolto da una build nuova' => ['ricerca', 'Un file che una build nuova ha tolto non arriva nemmeno riscrivendo: lì la pagina va ricaricata'],
     'il JS della cornice con una coda' => ['ricerca', 'al primo fuoco nel campo della ricerca la pagina si monta di nuovo, il fuoco si perde e ciò che si scrive subito dopo non entra nel campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`)'],
     'se non arriva' => ['ricerca', 'sotto il campo c\'è l\'errore della ricerca, lo stesso avviso di una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte'],
-    'si riprova scrivendo' => ['ricerca', 'Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta'],
+    'si riprova scrivendo' => ['ricerca', 'Si riprova scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, passata l\'attesa che dalla `v2.11.5` segue un pezzo non arrivato (nell\'attesa la parola non lo richiede, e sotto il campo resta l\'avviso)'],
     'il freno' => ['ricerca', 'Un pezzo non arrivato non accende il freno del `429`'],
     'il pulsante che non c\'è' => ['ricerca', 'Un pulsante per riprovare nel riquadro della ricerca l\'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo'],
     'il passaggio: niente nel codice' => ['passaggio', 'La `v2.8.0` non cambia niente nel codice di chi installa'],
@@ -5444,7 +5447,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'non letti composto nella parte server (sprint 41 · T6, R5)' => ['readme', 'chi lo compone nella sua parte server lo dà come `Cornice::dopo()`, con chi è nella sessione e `sessione_il`'],
     'la risposta in ritardo (sprint 41 · T5.1; T6, R5 e R9)' => ['readme', 'Dalla `v2.7.0` la pagina si ricarica solo se a schermo c\'è una cornice che non è di chi ha risposto: se una visita ha già portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi c\'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l\'elenco delle notifiche)'],
     'la risposta in ritardo: senza cornice, e una terza persona (sprint 41 · T6, R1, S2 e N2)' => ['readme', 'Una pagina senza la cornice non si ricarica: lì non c\'è nessuno a schermo. Questo vale per ciò che c\'è a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi già partito guarda di nuovo allo scadere (più sotto). Se chi ha risposto è una terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche quando a schermo c\'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione'],
-    'la risposta in ritardo: una cornice sola nel documento (sprint 41 · T6, N4)' => ['readme', 'La regola conta su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si smonta toglie chi è a schermo anche per l\'altra, e una scheda ferma lì non si ricarica'],
+    'la risposta in ritardo: una cornice sola nel documento (sprint 41 · T6, N4)' => ['readme', 'La regola conta su una cornice sola nel documento. Con due, a schermo è quella montata per ultima, e una cornice che si smonta toglie chi è a schermo solo se è ancora lei (dalla `v2.11.5`)'],
     'la campanella in attesa' => ['readme', 'la campanella aperta in attesa chiede già l\'elenco, e il pannello lo mostra quando `dopo` arriva'],
     // Sprint 39 · T3.4 (voce #1971): all'arrivo la cornice cerca ciò che è nel campo; il limite che resta è scritto com'è.
     'la ricerca in attesa' => ['readme', 'una parola scritta nella ricerca in attesa non parte subito: quando `dopo` è arrivato la cornice cerca ciò che c\'è nel suo campo in quel momento, se ha almeno due caratteri ed è cambiato da quando l\'attesa è cominciata, dovunque sia il fuoco, e non cerca niente se al posto dei dati arriva `non_letti` o l\'accettazione dei documenti legali'],
@@ -5518,7 +5521,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: il tetto delle ricariche' => ['readme', 'Dalla `v2.9.0` la ricarica ha un tetto, ed è l\'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica davanti a una risposta di un\'altra persona'],
     'la scheda ferma: sotto il tetto niente è disegnato' => ['readme', 'chi ha chiesto ha l\'errore di sempre, il pannello con «Riprova» e la ricerca col suo avviso, dalla `v2.10.0` dopo 5 secondi come sopra i 30 (nella `v2.9.0` senza aspettare). Di quella risposta niente è disegnato e niente è tenuto, come quando la pagina si ricarica'],
     'la scheda ferma: niente nel browser' => ['readme', 'Per ricordarselo il pacchetto non scrive niente nel browser — né `sessionStorage`, né `localStorage`, né il nome della finestra, né un cookie —: guarda l\'orologio della pagina (`performance.now()`), e all\'uscita non c\'è niente da togliere'],
-    'la scheda ferma: i tre casi che restano' => ['readme', 'Restano tre casi. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E il clic su una notifica apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un\'altra persona è arrivata'],
+    // Sprint 50 · T6 (review, R1): il clic sotto i 30 secondi non è più uno dei casi che restano.
+    'la scheda ferma: i due casi che restano (sprint 50 · T6, R1)' => ['readme', 'I casi che restano sono due. Una richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un\'altra. E una pagina senza cornice allo scadere'],
     'Indietro senza segno: il tetto non la copre' => ['readme', 'Il tetto che dalla `v2.9.0` hanno le ricariche davanti a una risposta di un\'altra persona non copre questa: fermata, lascerebbe la pagina vuota, senza un «Riprova»'],
     'la guida: il tetto delle ricariche' => ['guida', 'Dalla `v2.9.0` si ricarica al più una volta ogni 30 secondi, e una richiesta rimasta senza ricaricamento dà il suo errore dopo 5 secondi. Il rovescio: una pagina caricata da meno di 30 secondi resta con la cornice di chi c\'era prima finché non li compie — dalla `v2.10.0` allora si ricarica da sola, se a schermo non c\'è già chi ha risposto'],
     // Sprint 43 · T4 (voce #2052): con la stessa persona vale la lingua del dato più recente.
@@ -5550,7 +5554,14 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Review della PR #78 (sprint 44 · T5): le eccezioni dell'orologio dei 30 secondi, dette accanto alla regola.
     'la scheda ferma: le eccezioni allo scadere (PR #78, S1)' => ['readme', 'Salvo tre eccezioni: la ricarica allo scadere si chiede una volta sola, e se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un\'altra richiesta; in una scheda nascosta il browser può far scadere l\'orologio più tardi (in una congelata, solo quando la riattiva); e con due cornici nel documento, se il limite c\'è già quando la risposta arriva, nessun orologio parte (detto sopra)'],
     'la scheda ferma: il terzo caso che resta (PR #78, R1, R2)' => ['readme', 'E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde'],
-    'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Se invece l\'orologio dei 30 secondi è già partito, allo scadere quel limite fa ricaricare la pagina anche quando a schermo c\'è già la cornice di chi ha risposto: per la cornice nessuno è a schermo'],
+    // Sprint 50 · T3.4 (voce #2065): con due cornici quella che si smonta toglie chi è a schermo solo se è ancora lei.
+    'le due cornici: la cornice di chi ha risposto montata prima (sprint 50 · T3.4)' => ['readme', 'se la cornice di chi ha risposto si monta prima che quella di prima sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica'],
+    // Sprint 50 · T6 (review, R6, R7, R12, R14): i limiti che restano, detti accanto alla regola.
+    'le due cornici della stessa persona (sprint 50 · T6, R7)' => ['readme', 'Lo stesso con due cornici della stessa persona, smontata una delle due: la cornice riconosce chi è a schermo dall\'email, e non sa quale delle due si è smontata'],
+    'il clic in attesa della lettura (sprint 50 · T6, R12)' => ['readme', 'Nell\'attesa niente lo dice a schermo: il pannello si chiude e la notifica resta non letta, e un secondo clic, sulla stessa notifica o su un\'altra, fa un\'altra lettura: all\'arrivo la cornice le apre tutte e due, una dopo l\'altra, e resta quella della risposta arrivata per ultima'],
+    'il clic che apre senza aspettare, e l\'eccezione (sprint 50 · T6, R14)' => ['readme', 'la risorsa si apre senza aspettare la risposta (dalla `v2.11.5` salvo su una pagina caricata da meno di 30 secondi, dove il clic la aspetta'],
+    'le richieste insieme del pezzo (sprint 50 · T6, R6; seconda lettura, N1)' => ['readme', 'per l\'attesa e per la coda ognuna, se il pezzo non arriva, conta come un tentativo fallito: con k richieste partite mentre il pezzo è in viaggio l\'attesa dopo è quella di k tentativi falliti in più, e la coda salta k−1 numeri'],
+    'la scheda ferma: le due cornici allo scadere (PR #78, R1)' => ['readme', 'Resta un limite: smontata la cornice montata per ultima mentre l\'altra resta, per la cornice nessuno è a schermo. Una scheda ferma lì non si ricarica, e un orologio dei 30 secondi già partito, allo scadere, ricarica la pagina anche se a schermo c\'è la cornice di chi ha risposto'],
     'la ricerca: perché non arriva con la coda (PR #78, R5)' => ['readme', 'È l\'eccezione al «non un caricamento che non finisce» detto sopra: il pezzo esegue di nuovo, per nome, il JS che contiene la cornice, e in quella seconda copia del codice delle richieste per la cornice nessuno è a schermo: la richiesta della ricerca non parte'],
     'il 403 senza workspace e una sessione senza email (PR #78, R7)' => ['readme', 'Con una sessione senza email `persona` è `null`, come nel 409: per la cornice è un 403 che non dice di chi è'],
     // UAT dello sprint 44 (U1-U5, in Chromium 151): la ricarica allo scadere è provata in un browser.
@@ -5587,10 +5598,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
     // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
     'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
-    // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): sotto il tetto la destinazione del clic si apre anche dopo il 409;
-    // il `subito` riletto porta la lingua nuova solo se la sessione l'ha già; la ricarica lenta non è provata in un browser.
-    'la lettura con un clic: sotto il tetto la destinazione si apre' => ['readme', 'su una pagina caricata da meno di 30 secondi non parte prima che li compia, e allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua'],
-    'la scheda ferma: sotto il tetto la risorsa si apre' => ['readme', 'Dalla `v2.9.0`, su una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia: la risorsa si apre anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato'],
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): il `subito` riletto porta la lingua nuova solo se la sessione l'ha
+    // già; la ricarica lenta non è provata in un browser. Sprint 50 · T4.5 (voce #2059): sotto il tetto il clic aspetta la
+    // lettura, e davanti alla risposta di un'altra persona la destinazione non si apre (fino alla `v2.11.4` si apriva).
+    'la lettura con un clic: sotto il tetto la destinazione non si apre' => ['readme', 'Dalla `v2.11.5`, su quella pagina, il clic aspetta la risposta, e davanti al 409 la destinazione non si apre: niente è segnato a chi è entrato, e niente si apre con la sua sessione (dalla `v2.9.0` alla `v2.11.4` si apriva)'],
+    'la scheda ferma: sotto il tetto la risorsa non si apre' => ['readme', 'dalla `v2.11.5` lì il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: niente è segnato, e niente si apre con la sessione di chi è entrato (fino alla `v2.11.4` si apriva)'],
     // Sprint 44 · T2 (voce #2058): sotto il tetto la pagina si ricarica da sola quando compie 30 secondi, e riguarda chi è a schermo.
     'la scheda ferma: allo scadere, chi è a schermo' => ['readme', 'Allo scadere la cornice riguarda chi è a schermo: se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì'],
     'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
@@ -5806,6 +5818,13 @@ it('il README non dice più che dalla scheda ferma la destinazione del clic su u
     'la sua risorsa' => ['La sua risorsa si apre lo stesso'],
     'i dati senza email: sempre vuota' => ['l\'intestazione partirebbe vuota'],
     'la pagina se ne va sempre prima' => ['la pagina se ne va prima della risposta'],
+    // Sprint 50 · T4.5 (voce #2059): sotto il tetto la risorsa non si apre più con la sessione di chi è entrato.
+    'sotto il tetto la destinazione si apre' => ['e allora la destinazione si apre anche se il 409 è arrivato prima'],
+    'sotto il tetto la risorsa si apre' => ['la risorsa si apre anche se sono arrivati prima'],
+    // Sprint 50 · T6 (review, R1, R2): né il clic sotto i 30 secondi che apre, né la ricerca che richiede il pezzo senza attesa.
+    'sotto i 30 secondi si apre lo stesso' => ['sotto i 30 secondi si apre anche se la risposta di un\'altra persona è arrivata'],
+    'tre casi che restano' => ['Restano tre casi'],
+    'il pezzo senza attesa' => ['fra una richiesta del pezzo e l\'altra non c\'è un\'attesa'],
 ]);
 
 // Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.
