@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } fr
 import type { DatiDellaCornice, GruppoDiVoci } from '../js/cornice';
 import { LayoutDellaCornice, useCornice, type LayoutDellaCorniceProps } from '../js/layout';
 import { Zeiras } from '../js/zeiras';
-import { chiaveDellaSessione, clientFinto, colSegno, conLaSessione, istanteDellaLettura, lettura, sessioneFinta } from './parte-server-finta';
+import { chiaveDellaSessione, clientFinto, colSegno, conIlSegnoDellaLingua, conLaSessione, fermaIlSegno, istanteDellaLettura, lettura, sessioneFinta } from './parte-server-finta';
 import type { Entrata } from './parte-server-finta';
 import { notifichePartite, rotteFinte } from './rotte-finte';
 
@@ -33,6 +33,9 @@ import { notifichePartite, rotteFinte } from './rotte-finte';
 const scelti = new URLSearchParams(window.location.search);
 /** Il segno della lettura nei dati: c'è, salvo con `?segno=no`. */
 const segno = colSegno(window.location.search);
+// Sprint 46 · T3 (voce #2067): con `?segno=fermo` ogni lettura ha il segno della prima, anche quelle di un'altra persona: la
+// parità dei segni, che dalla `v2.11.0` dà la cornice a chi arriva, si vede in un browser.
+fermaIlSegno(scelti.get('segno') === 'fermo');
 
 const marketing: DatiDellaCornice = {
     lingua: 'it',
@@ -237,6 +240,17 @@ function chiediDopo() {
     router.reload({ only: ['dopo'] });
 }
 
+let conLaLinguaDiPrima = false;
+
+/**
+ * Sprint 46 · T3 (voce #2067): la rilettura del solo `subito` come arriva mentre `dopo` è in lettura dopo un cambio di lingua: la
+ * sessione di adesso, la lingua confermata prima dell'ultima e il suo segno. La cornice resta nella lingua del `dopo` che ha.
+ */
+function rileggiSubitoConLaLinguaDiPrima() {
+    conLaLinguaDiPrima = true;
+    router.reload({ only: ['subito'] });
+}
+
 function DueDati({ visita, dopo }: Props) {
     const contatori = useContatori();
     useEffect(() => {
@@ -262,7 +276,8 @@ function DueDati({ visita, dopo }: Props) {
                 <p>
                     <button type="button" data-uat="rileggi-dopo" onClick={chiediDopo}>UAT rileggi dopo</button>{' · '}
                     {/* Sprint 38 · T1 (voce 2027): la rilettura del solo `subito`, quella che un frontend non deve fare. Il `dopo` resta quello che la pagina aveva. */}
-                    <button type="button" data-uat="rileggi-subito" onClick={() => router.reload({ only: ['subito'] })}>UAT rileggi subito</button>
+                    <button type="button" data-uat="rileggi-subito" onClick={() => router.reload({ only: ['subito'] })}>UAT rileggi subito</button>{' · '}
+                    <button type="button" data-uat="rileggi-subito-lingua-di-prima" onClick={rileggiSubitoConLaLinguaDiPrima}>UAT rileggi subito con la lingua di prima</button>
                 </p>
             )}
             {contatori}
@@ -385,6 +400,18 @@ function leggi(nome: Nome): Props {
 }
 
 /**
+ * Ciò che il «server» legge, col segno della lingua (dalla `v2.11.0`, come `Cornice::subito()` e `Cornice::dopo()`), salvo con
+ * `?segno=no`: in `dopo` l'istante della sua lettura, in `subito` quello ricordato. Sprint 46 · T3 (voce #2067).
+ */
+function leggiConLaLingua(nome: Nome): Props {
+    const letta = leggi(nome);
+    const diPrima = conLaLinguaDiPrima;
+    conLaLinguaDiPrima = false;
+
+    return segno ? conIlSegnoDellaLingua(letta, diPrima) : letta;
+}
+
+/**
  * Una visita vera di Inertia, alla parte server finta. Verso l'indirizzo in cui si è già, Inertia sostituisce la voce della
  * cronologia. Con `lenta` la risposta aspetta quei millisecondi, e porta i dati letti al clic.
  */
@@ -482,7 +509,7 @@ rotteFinte(() => sessioneDelleRotte()?.workspace.slug, segno ? istanteDellaLettu
 // che poi prende la pagina tenuta non passa di qui. Fra lo scaricamento e la visita i montaggi mostrati non dicono niente.
 http.setClient(clientFinto((indirizzo) => {
     const nome = paginaDi(indirizzo.search);
-    const letta = leggi(nome);
+    const letta = leggiConLaLingua(nome);
 
     return () => {
         montaggi = 0;
@@ -500,7 +527,7 @@ void createInertiaApp({
     page: {
         component: iniziale,
         url: window.location.pathname + window.location.search,
-        props: { errors: {}, ...leggi(iniziale), visita: visite },
+        props: { errors: {}, ...leggiConLaLingua(iniziale), visita: visite },
         version: null,
         flash: {},
         rescuedProps: [],

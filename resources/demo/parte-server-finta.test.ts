@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
-import { chiaveDellaSessione, clientFinto, colSegno, conLaSessione, lettura, sessioneFinta, type Entrata } from './parte-server-finta';
+import { chiaveDellaSessione, clientFinto, colSegno, conIlSegnoDellaLingua, conLaSessione, fermaIlSegno, istanteDellaLettura, lettura, sessioneFinta, type Entrata } from './parte-server-finta';
 
 // Sprint 10 · T3 (voce #1453), dopo la review della PR. La UAT del layout gira sulla pagina di prova, e ciò che lì fa la parte
 // server lo fa questo file: se smette di mettere il segno a ogni lettura, se `?segno=no` non lo toglie più, o se risponde a una
@@ -397,6 +397,72 @@ describe('la sessione della parte server finta nei suoi stati: li sceglie ciò c
 
         entra('lingua');
         expect(diAda()).toStrictEqual({ ...marketing, lingua: 'es' });
+    });
+});
+
+// Sprint 46 · T3 (voce #2067). La parte server vera dà dalla `v2.11.0` il segno della lingua, `lingua_il`: in `dopo` l'inizio
+// della sua lettura, se io.mostra ha risposto, e lo ricorda nella sessione se è più avanti di quello ricordato; in `subito`
+// quello ricordato, mai l'istante di adesso. La pagina di prova lo dava mai, e la lingua decisa dal suo segno non si vedeva in
+// un browser. Qui lo stesso, col ricordo nel `localStorage`, che è del browser come la sessione: due schede lo condividono.
+describe('il segno della lingua e il segno fermo della parte server finta', () => {
+    const ada = { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' };
+    const workspace = { nome: 'UAT Marketing', slug: 'uat-marketing' };
+    const il = (secondo: number) => `2026-10-14T06:00:${String(secondo).padStart(2, '0')}.000000Z`;
+    const subito = (lingua: string, secondo: number, persona = ada): DatiSubito => ({ lingua, persona, workspace, sessione_il: il(secondo) });
+    /** Un `dopo` a cui il backoffice ha risposto (con le aziende): io.mostra ha confermato la lingua. */
+    const dopo = (lingua: string, secondo: number, persona = ada): DatiDopo => ({ lingua, persona, workspace, prodotti: {}, aziende: [], non_lette: 0, aggiornati_il: il(secondo), sessione_il: il(secondo) });
+
+    afterEach(() => {
+        localStorage.clear();
+        fermaIlSegno(false);
+    });
+
+    // Deve fallire se `lingua_il` manca, o se cambia a ogni lettura di `subito` (sarebbe un secondo `sessione_il`).
+    it('un `dopo` letto porta in `lingua_il` l\'istante della sua lettura; un `subito` dopo porta quello ricordato, non il suo `sessione_il`; prima di un `dopo` non ce n\'è (sprint 46 · T3.1)', () => {
+        expect(conIlSegnoDellaLingua({ subito: subito('it', 1) }).subito).toStrictEqual(subito('it', 1));
+
+        expect(conIlSegnoDellaLingua({ subito: subito('it', 2), dopo: dopo('it', 3) })).toStrictEqual({ subito: subito('it', 2), dopo: { ...dopo('it', 3), lingua_il: il(3) } });
+        expect(conIlSegnoDellaLingua({ subito: subito('it', 5) }).subito).toStrictEqual({ ...subito('it', 5), lingua_il: il(3) });
+        expect(conIlSegnoDellaLingua({ subito: subito('it', 6) }).subito).toStrictEqual({ ...subito('it', 6), lingua_il: il(3) });
+    });
+
+    it('una lettura di `dopo` più vecchia di quella ricordata porta il suo segno ma non lo porta indietro; di un\'altra persona non esce (sprint 46 · T3.1)', () => {
+        conIlSegnoDellaLingua({ dopo: dopo('es', 8) });
+        expect(conIlSegnoDellaLingua({ dopo: dopo('es', 4) }).dopo?.lingua_il).toBe(il(4));
+        expect(conIlSegnoDellaLingua({ subito: subito('es', 9) }).subito?.lingua_il).toBe(il(8));
+
+        const grace = { nome: 'UAT Grace Hopper', email: 'uat-zr-core-2@example.com' };
+        expect(conIlSegnoDellaLingua({ subito: subito('en', 10, grace) }).subito).toStrictEqual(subito('en', 10, grace));
+    });
+
+    // Un `subito` riletto mentre `dopo` è in lettura porta la sessione di adesso e la lingua di prima: il pulsante della pagina di
+    // prova chiede quello. Deve fallire se dà la lingua di adesso, o il segno di prima con la lingua di adesso.
+    it('con la lingua di prima, `subito` porta la lingua confermata prima dell\'ultima e il suo segno; senza, la sua lingua e il segno ricordato (sprint 46 · T3.3)', () => {
+        conIlSegnoDellaLingua({ dopo: dopo('it', 1) });
+        conIlSegnoDellaLingua({ dopo: dopo('es', 4) });
+        conIlSegnoDellaLingua({ dopo: dopo('es', 6) });
+
+        expect(conIlSegnoDellaLingua({ subito: subito('es', 7) }, true).subito).toStrictEqual({ ...subito('es', 7), lingua: 'it', lingua_il: il(1) });
+        expect(conIlSegnoDellaLingua({ subito: subito('es', 8) }).subito).toStrictEqual({ ...subito('es', 8), lingua_il: il(6) });
+    });
+
+    it('i `dopo` ridotti (il backoffice non ha risposto) portano il segno ricordato, non quello della loro lettura (sprint 46 · T3.1)', () => {
+        conIlSegnoDellaLingua({ dopo: dopo('it', 2) });
+        const ridotto: DatiDopo = { non_letti: true, lingua: 'it', persona: ada, workspace, aggiornati_il: il(5), sessione_il: il(5) };
+
+        expect(conIlSegnoDellaLingua({ dopo: ridotto }).dopo).toStrictEqual({ ...ridotto, lingua_il: il(2) });
+    });
+
+    // Deve fallire se col segno fermo due letture hanno due istanti: la parità dei segni non si vedrebbe in un browser.
+    it('col segno fermo ogni lettura ha lo stesso istante, quello della prima; fermato e riavviato torna a crescere (sprint 46 · T3.2)', () => {
+        fermaIlSegno(true);
+        const fermi = [1, 2, 3].map(() => istanteDellaLettura());
+        expect(new Set(fermi).size).toBe(1);
+        expect(lettura(props(), true).cornice?.aggiornati_il).toBe(fermi[0]);
+
+        fermaIlSegno(false);
+        const [primo, secondo] = [istanteDellaLettura(), istanteDellaLettura()];
+        expect([primo > fermi[0]!, secondo > primo]).toStrictEqual([true, true]);
     });
 });
 
