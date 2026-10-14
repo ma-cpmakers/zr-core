@@ -345,8 +345,8 @@ Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore
 pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la
 cornice ha già i dati di quel workspace, resta coi dati di prima. Se la tua parte server non è riuscita a leggerlo
 non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`.
-Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti` (dalla `v2.17.0` anche a un 4xx che non è
-un 401 né un 403, e a una risposta che non sa leggere: non serve comporlo a mano attorno a `Cornice::subito()`), la
+Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti` (dalla `v2.17.0` anche a un 404, un 409 o un
+422, e a una risposta che non sa leggere: non serve comporlo a mano attorno a `Cornice::subito()`), la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
 Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e

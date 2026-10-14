@@ -1988,9 +1988,10 @@ describe('la cornice in due dati, sotto il layout', () => {
         ricarica.mockRestore();
     });
 
-    // Sprint 56 · T1 (voce #2107). Le due ricariche per la pagina di un'altra persona senza il segno — dalla cornice nello stesso
-    // workspace, dal layout in un altro — mandano prima l'evento `zr-core:altra-persona`, come quella chiesta da una risposta di
-    // un'altra persona: dopo la ricarica il frontend può dire perché. In `avvisi` quante ricariche c'erano quando è partito.
+    // Sprint 56 · T1 (voce #2107). Le due ricariche per la pagina di un'altra persona senza il segno — del layout, qui, in
+    // qualunque workspace; della `Cornice` montata da sola, in cornice.test.tsx — mandano prima l'evento `zr-core:altra-persona`,
+    // come quella chiesta da una risposta di un'altra persona: dopo la ricarica il frontend può dire perché. In `avvisi` quante
+    // ricariche c'erano quando è partito.
     const contaGliAvvisi = (ricarica: { mock: { calls: unknown[] } }) => {
         const avvisi: number[] = [];
         const avvisa = () => avvisi.push(ricarica.mock.calls.length);
@@ -2000,7 +2001,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         return avvisi;
     };
 
-    it('con Indietro sulla voce di chi c\'era prima, nello stesso workspace e senza il segno della lettura, l\'evento zr-core:altra-persona parte una volta, prima della ricarica (sprint 56 · T1.1)', async () => {
+    it('sotto il layout, con Indietro sulla voce di chi c\'era prima nello stesso workspace e senza il segno della lettura, l\'evento zr-core:altra-persona parte una volta, prima della ricarica del layout (sprint 56 · T1.1)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const avvisi = contaGliAvvisi(ricarica);
         await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);

@@ -59,7 +59,7 @@ final class Cornice
     /**
      * null senza una sessione entrata in un workspace: la pagina non ha un workspace, e il backoffice non si chiama. Il
      * workspace è quello del gettone, mai quello dell'indirizzo. Un backoffice che non risponde lancia BackofficeNonRisponde
-     * (zr-auth): mai una lista di app vuota, che farebbe «Presto» di ogni prodotto, né un elenco di aziende vuoto o zero non
+     * (zr-auth), e così un elenco che la cornice non sa leggere (dalla `v2.17.0`, `testi()`): mai una lista di app vuota, che farebbe «Presto» di ogni prodotto, né un elenco di aziende vuoto o zero non
      * lette.
      *
      * Con una sola eccezione, che non è un guasto: se a una delle letture il backoffice risponde 403 `accettazione_richiesta`
@@ -168,8 +168,8 @@ final class Cornice
      * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`
      * (dalla `v2.9.0` la lingua è quella del più recente dei due, con la stessa persona),
      * e i dati di una persona non stanno mai sotto il nome di un'altra. Se il backoffice non risponde — la
-     * connessione, un 5xx, un 429; dalla `v2.17.0` anche un 4xx che non è un 401 né un 403, e una risposta che la cornice non sa
-     * leggere — non lancia: dà `non_letti` col segno della lettura, lascia nel log una riga
+     * connessione, un 5xx, un 429; dalla `v2.17.0` anche un 404, un 409 o un 422, e una risposta che la cornice non sa leggere —
+     * non lancia: dà `non_letti` col segno della lettura, lascia nel log una riga
      * d'avviso, e la cornice esce ridotta con un avviso suo invece di una pagina d'errore. Anche `non_letti` dice di chi è
      * (dalla `v2.7.0`): dopo `non_letti` e `aggiornati_il` porta lingua, persona e workspace come sono nella sessione dopo
      * il fallimento — letti come li legge `subito()`, senza un'altra chiamata al backoffice — e in fondo `sessione_il`. I due segni
@@ -178,8 +178,8 @@ final class Cornice
      * di chi è entrato intanto. Niente di ciò che dà il backoffice. Così la cornice ridotta non
      * resta col nome di chi c'era prima. Se intanto la sessione è finita — chiusa, o col gettone scaduto — dà null come senza
      * sessione, e non scrive la riga nel log. Il segno `aggiornati_il` serve al browser come
-     * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un 401 o un 403 di /v1 passano com'è (dicono che la persona non ha più accesso: la
-     * cornice ridotta lo nasconderebbe), e GettoneRifiutato pure: la sessione è finita, e lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
+     * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Ogni altro errore di /v1 passa com'è (un 403 dice che la persona non ha più accesso, e
+     * la cornice ridotta lo nasconderebbe), e GettoneRifiutato pure: la sessione è finita, e lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
      * In fondo, dopo `sessione_il`, c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`), come in `subito()`: quello
      * ricordato per la persona della sessione, che la lettura di questa richiesta porta avanti solo se io.mostra ha risposto
@@ -200,9 +200,10 @@ final class Cornice
         try {
             $dati = self::dati();
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
-            // Un 401 o un 403 dicono che la persona non ha (più) accesso: la cornice ridotta lo nasconderebbe, e passano. Ogni altro
-            // 4xx — un 404, un 409, un 422 — è la cornice ridotta come un 5xx (dalla `v2.17.0`).
-            if ($errore instanceof ErroreApi && in_array($errore->stato, [401, 403], true)) {
+            // Un 404, un 409 o un 422 non parlano di accesso: sono la cornice ridotta come un 5xx (dalla `v2.17.0`). Ogni altro 4xx
+            // passa: un 403 dice che la persona non ha più accesso, e la cornice ridotta lo nasconderebbe; un 401
+            // `cliente_non_riconosciuto` è il frontend configurato male; uno che zr-core non conosce (un 410) non si indovina.
+            if ($errore instanceof ErroreApi && $errore->stato < 500 && ! in_array($errore->stato, [404, 409, 422, 429], true)) {
                 throw $errore;
             }
 
@@ -509,9 +510,11 @@ final class Cornice
             $aziende[$id] = ['id' => $id, 'nome' => $nome, 'workspace' => [], 'nuovo_workspace' => false];
         }
 
+        // Di un workspace di un'azienda che non è nell'elenco si legge solo `azienda_id`: si salta, come sempre.
         foreach (Api::persona()->tutti('/v1/io/workspace') as $workspace) {
-            [$id, $nome, $slug, $azienda] = self::testi($workspace, ['id', 'nome', 'slug', 'azienda_id'], 'GET /v1/io/workspace');
+            [$azienda] = self::testi($workspace, ['azienda_id'], 'GET /v1/io/workspace');
             if (isset($aziende[$azienda])) {
+                [$id, $nome, $slug] = self::testi($workspace, ['id', 'nome', 'slug'], 'GET /v1/io/workspace');
                 $aziende[$azienda]['workspace'][] = ['id' => $id, 'nome' => $nome, 'slug' => $slug];
                 if (in_array($workspace['ruolo'] ?? null, ['proprietario', 'amministratore'], true)) {
                     $aziende[$azienda]['nuovo_workspace'] = true;

@@ -289,9 +289,10 @@ it('se il gettone scade mentre il backoffice non risponde, Cornice::dopo() dà n
         ->and(avvisiDellaRiga())->toBe([]);
 });
 
-// Sprint 56 · T2.2 (voce #2105; Decisione di zr-pm 13319): un 401 o un 403 dicono che la persona non ha (più) accesso, e la
-// cornice ridotta lo nasconderebbe. Fino alla `v2.16.0` passavano da qui anche gli altri 4xx (il 404 di app.elenca).
-it('un 401 o un 403 che non è l\'accettazione passano da Cornice::dopo() com\'è, come da Cornice::dati(): non diventano non_letti (sprint 34 · T4.2; sprint 56 · T2.2)', function (string $percorso, int $stato, string $codice) {
+// Sprint 56 · T2.2 (voce #2105; Decisione di zr-pm 13319): un 403 dice che la persona non ha più accesso, e la cornice ridotta
+// lo nasconderebbe; un 401 `cliente_non_riconosciuto` è il frontend configurato male; un 4xx che zr-core non conosce non si
+// indovina (review della PR #90, S1). Fino alla `v2.16.0` passavano da qui anche il 404, il 409 e il 422.
+it('un 401, un 403 che non è l\'accettazione o un 4xx che non è un 404, un 409 o un 422 passano da Cornice::dopo() com\'è, come da Cornice::dati(): non diventano non_letti (sprint 34 · T4.2; sprint 56 · T2.2)', function (string $percorso, int $stato, string $codice) {
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato([$percorso => nonRisponde($stato, $codice)]);
 
@@ -301,6 +302,8 @@ it('un 401 o un 403 che non è l\'accettazione passano da Cornice::dopo() com\'�
     'app.elenca, un 403 che somiglia all\'accettazione e non lo è' => ['/v1/app', 403, 'permesso_negato'],
     'io.aziende.elenca, un 403' => ['/v1/io/aziende', 403, 'permesso_negato'],
     'io.mostra, un 401 cliente_non_riconosciuto' => ['/v1/io', 401, 'cliente_non_riconosciuto'],
+    'io.mostra, un 410' => ['/v1/io', 410, 'non_piu_disponibile'],
+    'app.elenca, un 400' => ['/v1/app', 400, 'richiesta_non_valida'],
 ]);
 
 // Sprint 56 · T2.1 (voce #2105): col 4xx, come col 5xx, se intanto la sessione è finita non c'è nessuno di cui dire non_letti.
@@ -353,6 +356,24 @@ it('a una risposta che non sa leggere Cornice::dati() lancia BackofficeNonRispon
 
     expect(fn () => Cornice::dati())->toThrow(BackofficeNonRisponde::class);
 })->with('risposte guaste');
+
+// Review della PR #90 (R4, S3): di un workspace di un'azienda che non è nell'elenco si legge solo `azienda_id`, e si salta come
+// prima, anche se il resto della riga è guasto: la cornice resta intera.
+it('un workspace guasto di un\'azienda che non è nell\'elenco si salta: Cornice::dopo() dà i dati interi, senza di lui (sprint 56 · T2.3; review R4)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io/workspace' => ['data' => [
+        ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing', 'ruolo' => 'membro', 'azienda_id' => 'az-b'],
+        ['id' => 'ws-z', 'nome' => 'UAT Z', 'slug' => null, 'azienda_id' => 'az-fuori'],
+    ], 'successivo' => null]]);
+
+    $dopo = Cornice::dopo();
+
+    expect($dopo)->not->toHaveKey('non_letti')
+        ->and(array_column($dopo['aziende'] ?? [], 'workspace', 'id'))->toBe([
+            'az-b' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']],
+            'az-a' => [],
+        ]);
+});
 
 // Sprint 56 · T2.4 (voce #2105): `Cornice::dati()` non cambia sui 4xx, che passano com'è.
 it('Cornice::dati() a un 4xx del backoffice lancia l\'ErroreApi com\'è: non_letti è solo di Cornice::dopo() (sprint 56 · T2.4)', function (string $percorso) {

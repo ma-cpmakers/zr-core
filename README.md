@@ -206,7 +206,7 @@ public function share(Request $request): array
 | `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
-| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
+| l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde, o (dalla `v2.17.0`) risponde con un elenco che la cornice non sa leggere — un'app, un'azienda o un workspace senza un campo testo: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
@@ -1544,7 +1544,9 @@ un'altra persona, tre caricamenti in 70 secondi, a 30 secondi l'uno dall'altro; 
 risposta di un'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» —
 la cornice manda sulla `window` un evento `zr-core:altra-persona` (un `Event` semplice, senza dati). Dalla `v2.17.0` lo
 manda anche subito prima delle due ricariche per la pagina di un'altra persona senza il segno della lettura (Indietro sulla
-voce di chi c'era prima: la fa la cornice nello stesso workspace, il layout in un altro). Quando la pagina non
+voce di chi c'era prima: con `LayoutDellaCornice` la fa il layout, con la `Cornice` montata da sola la cornice). Lì l'evento
+parte mentre React disegna: chi lo ascolta ricorda che è successo, come nell'esempio qui sotto, e non aggiorna lo stato di
+un componente. Quando la pagina non
 si ricarica l'evento non parte: una risposta della persona a schermo, una visita che ha già portato chi ha risposto, una
 pagina senza cornice. Parte una volta per ricarica chiesta, anche se poi la pagina la annulla (`beforeunload`). Il
 pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina
@@ -1678,16 +1680,17 @@ Che cosa vede la persona:
 - **quando `dopo` arriva** la cornice diventa quella di sempre, e la pagina non si rimonta: ciò che la persona stava
   scrivendo in un campo, il fuoco e lo scorrimento restano. Solo se `dopo` è di un'altra persona (un'altra email: la
   sessione è passata a lei fra le due richieste), o di un altro workspace, la cornice si rifà, e la pagina con lei;
-- **se il backoffice non risponde** (la connessione, un 5xx, un 429; dalla `v2.17.0` anche un 4xx che non è un 401
-  né un 403 — un 404, un 409, un 422 — e una risposta che la cornice non sa leggere) `Cornice::dopo()` non lancia: dà
+- **se il backoffice non risponde** (la connessione, un 5xx, un 429; dalla `v2.17.0` anche un 404, un 409 o un 422, e
+  una risposta che la cornice non sa leggere) `Cornice::dopo()` non lancia: dà
   `['non_letti' => true]` col segno della lettura (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
-  `downOff`), e la pagina resta dov'è. Un 401 o un 403 di `/v1` e `GettoneRifiutato` passano, come da `Cornice::dati()`:
-  dicono che la persona non ha più accesso, la cornice ridotta lo nasconderebbe, e li tratta il frontend come prima (il
-  403 `accettazione_richiesta` no: dà i dati ridotti). Fino alla `v2.16.0` passava ogni 4xx, e una risposta guasta usciva
-  come un errore PHP: un frontend che per quei casi compone `dopo` a mano attorno a `Cornice::subito()` dalla `v2.17.0`
-  può togliere la sua composizione e dare `Cornice::dopo()` com'è. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
+  `downOff`), e la pagina resta dov'è. Ogni altro errore di `/v1` — un 403, che dice che la persona non ha più accesso
+  e che la cornice ridotta nasconderebbe, un 401 `cliente_non_riconosciuto`, un 400, un 410… — e `GettoneRifiutato`
+  passano, come da `Cornice::dati()`, e li tratta il frontend come prima (il 403 `accettazione_richiesta` no: dà i dati
+  ridotti). Fino alla `v2.16.0` passavano anche il 404, il 409 e il 422, e una risposta guasta usciva come un errore PHP:
+  un frontend che per quei casi compone `dopo` a mano attorno a `Cornice::subito()` dalla `v2.17.0` può togliere la sua
+  composizione e dare `Cornice::dopo()` com'è. Dalla `v2.7.0` anche `non_letti` dice di chi è: dopo quelle due chiavi porta
   `lingua`, `persona`, `workspace` e in fondo `sessione_il`. I primi tre sono letti dalla sessione dopo il fallimento,
   come li legge `Cornice::subito()` — senza un'altra chiamata al backoffice, e senza niente di ciò che il backoffice dà.
   I due segni, `aggiornati_il` e `sessione_il`, sono l'istante in cui la lettura è cominciata, come nei dati riusciti,
@@ -1711,7 +1714,7 @@ riletti arrivano già con `dopo`, e la cornice li mostra da quel momento. Se c'�
 usa quella e non guarda `subito` e `dopo`.
 
 Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice resta in attesa — la rete che cade, un
-errore del frontend, un 401 o un 403 di `/v1` che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
+errore del frontend, un 403 di `/v1`, che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
 vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
 che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
 `Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
