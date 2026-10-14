@@ -1409,8 +1409,11 @@ ricarica al suo posto, come per il 403 qui sopra (provato in Chromium 151: «Le 
 una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia; dalla `v2.11.5` lì
 il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: niente è segnato, e niente si apre con la
 sessione di chi è entrato (fino alla `v2.11.4` si apriva). Nell'attesa niente lo dice a schermo: il pannello si chiude e la
-notifica resta non letta, e un secondo clic, sulla stessa notifica o su un'altra, fa un'altra lettura: all'arrivo la cornice le
-apre tutte e due, una dopo l'altra, e resta quella della risposta arrivata per ultima.
+notifica resta non letta. Dalla `v2.13.0` un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto, non
+fa niente: nessun'altra lettura, e all'arrivo la risorsa si apre una volta (fino alla `v2.12` partiva un'altra lettura, e la
+risorsa si apriva due volte); arrivata la risposta, un altro clic vale come il primo. Un secondo clic su un'altra notifica
+fa la sua lettura: all'arrivo la cornice le apre tutte e due, una dopo l'altra, e resta quella della risposta arrivata per
+ultima.
 Una scheda rimasta ferma mostra ciò che aveva — elenco, numero della campanella, risultati — finché da lì non parte una
 richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già

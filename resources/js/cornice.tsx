@@ -902,15 +902,20 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // richiesta parte prima dell'apertura. Su una pagina di 30 secondi o più l'apertura non la aspetta; su una più giovane
     // (dalla `v2.11.5`) la aspetta, e la risposta di un'altra persona — la pagina si ricarica quando compie 30 secondi, vedi
     // `chiama` — non apre la risorsa con la sessione di chi è entrato.
+    const letturaInVolo = useRef('');
     const apriNotifica = (aperta: ShellNotification) => {
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined && !notifica!.letta) {
+            if (letturaInVolo.current === notifica!.id) {
+                return;
+            }
             const lettura = leggi(notifica!.id, elencoDi!);
             if (performance.now() < 3e4) {
-                lettura.then(() => naviga(risorsa));
+                letturaInVolo.current = notifica!.id;
+                lettura.then(() => ((letturaInVolo.current = ''), naviga(risorsa)));
                 return;
             }
         }

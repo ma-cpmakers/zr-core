@@ -6043,6 +6043,46 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
+    // Sprint 52 · T4 (voce #2082): sotto il tetto un secondo clic sulla stessa notifica, mentre la sua lettura non ha risposto,
+    // non fa un'altra lettura e non apre la risorsa un'altra volta. Alla risposta la lettura non è più in volo: dopo un errore
+    // un altro clic la richiede, dopo una lettura riuscita la notifica è letta e il clic la apre senza leggere.
+    it.each<[string, () => Response, number]>([
+        ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), 1],
+        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), 2],
+    ])('su una pagina caricata da meno di 30 secondi, due clic sulla stessa notifica prima che la lettura risponda fanno una lettura sola e, alla risposta, %s, una sola apertura (sprint 52 · T4.1)', async (_come, laRisposta, letturePoi) => {
+        // Il pannello si chiude al clic, e riaperto chiede l'elenco: dopo una lettura riuscita la parte server la dà letta.
+        const sulServer = { letta: false };
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [{ ...delContatto, ...sulServer }], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        const naviga = vi.fn();
+        const letture = () => fetchFinto.mock.calls.filter(([indirizzo]) => indirizzo !== '/cornice/notifiche').length;
+        const unClic = async () => {
+            if (document.querySelector('.zr-notif-list .zr-notif-item') === null) {
+                await clic(uno('.zr-bell'));
+            }
+            await clic(uno('.zr-notif-list .zr-notif-item'));
+        };
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await unClic();
+        await unClic();
+        expect(letture()).toBe(1);
+        expect(naviga).not.toHaveBeenCalled();
+
+        const arrivata = laRisposta();
+        sulServer.letta = arrivata.ok;
+        await lettura.arriva(arrivata);
+        await act(prossimoGiro);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+
+        await unClic();
+        expect(letture()).toBe(letturePoi);
+    });
+
     // Sprint 50 · T4 (voce #2059): da 30 secondi in poi il clic apre la risorsa subito, come prima; e sotto i 30 secondi non
     // aspetta niente quando non c'è una lettura da chiedere.
     it.each<[string, number, Record<string, unknown>, string, string[]]>([
