@@ -144,14 +144,47 @@ describe('una parola scritta prima che il pezzo sia arrivato (T2.2)', () => {
     });
 });
 
-describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cercato (T2.4)', () => {
-    it.each<[caso: string, dopo: DatiDellaCornice]>([
-        ['passa allo stato ridotto di chi deve accettare i documenti', { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true }],
-        ['passa allo stato ridotto di quando i dati non si sono potuti leggere', { ...dati, prodotti: [], aziende: [], non_lette: 0, non_letti: true }],
-        ['è di un\'altra persona', { ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' } }],
-    ])('la cornice %s: all\'arrivo non parte nessuna richiesta, né per chi c\'era prima né per chi c\'è, e sotto il campo non resta «Sto cercando…»', async (_caso, dopo) => {
+describe('una lettera battuta meno di 300 ms prima dell\'arrivo del pezzo (T2.2)', () => {
+    // L'`AppShell` dà la parola alla cornice 300 ms dopo l'ultimo tasto: all'arrivo del pezzo parte l'ultima parola che ha dato,
+    // e la lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre una ricerca è in volo: la
+    // richiesta di prima è annullata e i risultati sono quelli di ciò che è nel campo.
+    it('all\'arrivo parte la parola che la cornice aveva, e 200 ms dopo quella che è nel campo, che annulla la prima: i risultati sono i suoi', async () => {
         const pezzo = pezzoInRitardo();
         await mostra(dati);
+        await scrivi('ada');
+        await passano(2_600);
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'adal');
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.advanceTimersByTimeAsync(100);
+        });
+        expect(cercate()).toStrictEqual([]);
+
+        await pezzo.arriva();
+        expect(cercate().map(([, corpo]) => corpo)).toStrictEqual([JSON.stringify({ q: 'ada' })]);
+
+        await passano(200);
+        expect(cercate().map(([, corpo]) => corpo)).toStrictEqual([JSON.stringify({ q: 'ada' }), JSON.stringify({ q: 'adal' })]);
+        expect(fetchFinto.mock.calls.filter(([indirizzo]) => indirizzo === '/cornice/ricerca').map(([, opzioni]) => opzioni?.signal?.aborted)).toStrictEqual([true, false]);
+
+        await passano(1_000);
+        expect(cercate()).toHaveLength(2);
+        expect(campo().value).toBe('adal');
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
+        expect(inCaricamento()).toBeNull();
+    });
+});
+
+describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cercato (T2.4)', () => {
+    // L'altra persona entra col segno della lettura da tutte e due le parti: senza, la pagina si ricarica e a schermo non resta
+    // niente (dalla `v2.8.0`), e il caso non direbbe niente della ricerca. Per questo in fondo si guarda di chi è la cornice.
+    it.each<[caso: string, dopo: DatiDellaCornice, mostrata: string]>([
+        ['passa allo stato ridotto di chi deve accettare i documenti', { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true }, 'Ada Lovelace'],
+        ['passa allo stato ridotto di quando i dati non si sono potuti leggere', { ...dati, prodotti: [], aziende: [], non_lette: 0, non_letti: true }, 'Ada Lovelace'],
+        ['è di un\'altra persona', { ...dati, persona: { nome: 'Grace Hopper', email: 'grace@example.com' }, aggiornati_il: '2026-10-13T08:00:03.000000Z' }, 'Grace Hopper'],
+    ])('la cornice %s: all\'arrivo non parte nessuna richiesta, né per chi c\'era prima né per chi c\'è, e sotto il campo non resta «Sto cercando…»', async (_caso, dopo, mostrata) => {
+        const pezzo = pezzoInRitardo();
+        await mostra({ ...dati, aggiornati_il: '2026-10-13T08:00:00.000000Z' });
         await scrivi('ada');
         expect(inCaricamento()).toBe(testi('it').searchLoading);
 
@@ -162,6 +195,7 @@ describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cerc
         expect(cercate()).toStrictEqual([]);
         expect(inCaricamento()).toBeNull();
         expect(titoli()).toStrictEqual([]);
+        expect(contenitore.querySelector('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(mostrata);
     });
 
     // Il controllo vede ciò che cerca: con la stessa persona e altri dati di sempre, dopo gli stessi tasti, all'arrivo la ricerca parte.

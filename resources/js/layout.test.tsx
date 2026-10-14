@@ -1704,6 +1704,51 @@ describe('la cornice in due dati, sotto il layout', () => {
         ricarica.mockRestore();
     });
 
+    // Sprint 42 · T5 (rilievo S1 della review). La voce di chi c'era prima può essere di un altro workspace: lì la `key` del
+    // layout cambia e `Cornice` si monta da capo, senza sapere chi mostrava. Lo sa il layout, ed è lui a non mostrarne niente.
+    it.each([
+        ['da tutte e due le parti', {}, {}],
+        ['solo da chi è mostrato', {}, { aggiornati_il: '2026-10-13T08:00:00.000000Z' }],
+        ['solo dalla pagina', { aggiornati_il: '2026-10-13T08:00:03.000000Z' }, {}],
+    ])('con la `cornice` intera e il segno della lettura che manca %s, con Indietro sulla voce di chi c\'era prima in un altro workspace niente di suo va a schermo e la pagina si ricarica (sprint 42 · T4.1)', async (_dove, diChiCe, dellaVoce) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        // A ogni disegno, non solo alla fine: la pagina dice di chi è la cornice in cui è disegnata, ogni volta che lo è.
+        const disegnataSotto: (string | null)[] = [];
+        function LaPagina() {
+            useLayoutEffect(() => {
+                disegnataSotto.push(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label') ?? null);
+            });
+
+            return <p>UAT pagina</p>;
+        }
+        await visita({ ...dati, persona: altra, non_lette: 1, ...diChiCe }, <LaPagina key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(ricarica).not.toHaveBeenCalled();
+
+        await visita({ ...datiAltroWorkspace, ...dellaVoce }, <LaPagina key="1" />);
+
+        expect(new Set(disegnataSotto)).toStrictEqual(new Set([altra.nome]));
+        expect(ricarica).toHaveBeenCalled();
+        expect(contenitore.textContent).toBe('');
+        expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    it('con la `cornice` intera senza il segno della lettura, la stessa persona che passa a un altro workspace e torna con Indietro vede la cornice intera, e la pagina non si ricarica (sprint 42 · T4.2)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+        await visita(datiAltroWorkspace, <PaginaB key="2" />);
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+        expect(uno('#uat-pagina-b')).not.toBeNull();
+
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        expect(uno('.zr-bell-count')?.textContent).toBe('4');
+        expect(ricarica).not.toHaveBeenCalled();
+        ricarica.mockRestore();
+    });
+
     it('con la `cornice` intera, una visita che porta un\'altra persona sullo stesso workspace toglie l\'elenco del pannello aperto, i risultati e la parola della ricerca di chi c\'era prima, e la campanella chiede di nuovo l\'elenco (sprint 36 · T2.5)', async () => {
         vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => risposta(indirizzo === '/cornice/notifiche' ? { data: notificheDelServer } : { data: risultatiDelServer, workspace: dati.workspace.slug })));
         const diPrima = ['POST /cornice/ricerca {"q":"uat"}', 'GET /cornice/notifiche'];

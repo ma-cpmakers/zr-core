@@ -603,21 +603,34 @@ describe('la Cornice', () => {
     // Sprint 42 · T4 (voce #1975). Senza il segno della lettura da una delle due parti la cornice non può dire se la pagina di
     // un'altra persona è più vecchia di chi mostra (Indietro) o più nuova (una visita): di quella pagina non mostra niente, e
     // la ricarica. Ricaricata, la pagina è di chi è entrato.
-    it.each<[caso: string, diChiEMostrato: string | undefined, dellaPagina: string | undefined]>([
+    it.each<[caso: string, diChiEMostrato: string | null | undefined, dellaPagina: string | null | undefined]>([
         ['né chi è mostrato né la pagina hanno il segno', undefined, undefined],
+        ['il segno della pagina è `null`', '2026-10-13T08:00:03.000000Z', null],
+        ['il segno di chi è mostrato è `null`', null, '2026-10-13T08:00:00.000000Z'],
+        ['il segno della pagina è un testo vuoto', '2026-10-13T08:00:03.000000Z', ''],
         ['il segno lo ha solo chi è mostrato', '2026-10-13T08:00:03.000000Z', undefined],
         ['il segno lo ha solo la pagina', undefined, '2026-10-13T08:00:00.000000Z'],
         ['il segno della pagina non ha la forma di quelli della parte server', '2026-10-13T08:00:03.000000Z', '2026-10-13'],
     ])('senza il segno da tutte e due le parti (%s) la pagina intera di chi c\'era prima non va a schermo — né nome, né email, né workspace, né numero — e la pagina si ricarica (sprint 42 · T4.1)', async (_caso, diChiEMostrato, dellaPagina) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const entrata = { nome: 'Augusta King', email: 'augusta@example.com' };
-        await mostra(<Cornice dati={{ ...dati, persona: entrata, aggiornati_il: diChiEMostrato }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        // A ogni disegno, non solo alla fine: la pagina dice di chi è la cornice in cui è disegnata, ogni volta che lo è.
+        const disegnataSotto: (string | null)[] = [];
+        function LaPagina() {
+            useLayoutEffect(() => {
+                disegnataSotto.push(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label') ?? null);
+            });
+
+            return <p>La pagina</p>;
+        }
+        await mostra(<Cornice dati={{ ...dati, persona: entrata, aggiornati_il: diChiEMostrato as string | undefined }} onLogout={esciSenzaEffetto}><LaPagina /></Cornice>);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(entrata.nome);
         expect(ricarica).not.toHaveBeenCalled();
 
         // Indietro: la voce della cronologia porta la pagina intera di chi c'era prima.
-        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: dellaPagina }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        await mostra(<Cornice dati={{ ...dati, aziende, non_lette: 4, aggiornati_il: dellaPagina as string | undefined }} onLogout={esciSenzaEffetto}><LaPagina /></Cornice>);
 
+        expect(new Set(disegnataSotto)).toStrictEqual(new Set([entrata.nome]));
         expect(ricarica).toHaveBeenCalled();
         expect(contenitore.textContent).toBe('');
         expect(uno('.zr-avatar-btn')).toBeNull();
