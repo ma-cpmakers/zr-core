@@ -824,3 +824,88 @@ it('una lettura tenuta che non ha la sua forma esce dalla sessione e non rompe l
     'le non lette non sono un numero' => [['esito' => '3']],
     'senza l\'ora del server' => [['il' => null]],
 ]);
+
+// Sprint 58 · T1 (voce #2120; Decisioni di zr-pm 13453 e 13460). Un 403 passa da `Cornice::dopo()`, e se si ripete dopo la
+// ricarica il frontend può voler ridurre la cornice: `Cornice::ridotta()` gliela dà com'è nel ramo ridotto di `dopo()`, senza
+// che la componga a mano. Il segno lo prende zr-core: quello della lettura di io.mostra della richiesta, e senza una lettura il
+// primo istante che la forma dei segni può dire, perché una ridotta non valga mai più di dati veri arrivati dopo.
+it('dopo un 403 di Cornice::dopo(), nella stessa richiesta Cornice::ridotta() dà la forma del ramo ridotto, nello stesso ordine, coi due segni all\'inizio della lettura di io.mostra e non all\'istante della chiamata; non richiama il backoffice e nel log non scrive niente (sprint 58 · T1.1, T1.4)', function (string $percorso) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato([$percorso => function () {
+        Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:12.500000', 'UTC'));
+
+        return nonRisponde(403, 'permesso_negato');
+    }]);
+
+    expect(fn () => Cornice::dopo())->toThrow(ErroreApi::class);
+    $chiamate = count(percorsiChiamati());
+
+    expect(Cornice::ridotta())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '2026-10-14T17:40:05.123456Z',
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '2026-10-14T17:40:05.123456Z',
+        ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-14T17:40:05.123456Z']),
+    ])->and(count(percorsiChiamati()))->toBe($chiamate)
+        ->and(avvisiDellaRiga())->toBe([]);
+})->with([
+    'io.mostra' => ['/v1/io'],
+    'app.elenca' => ['/v1/app'],
+    'io.aziende.elenca' => ['/v1/io/aziende'],
+]);
+
+it('senza sessione, o con la sessione aperta ma senza workspace, Cornice::ridotta() dà null e non chiama il backoffice (sprint 58 · T1.2)', function () {
+    backoffice();
+
+    expect(Cornice::ridotta())->toBeNull();
+
+    sessioneAMano(null);
+
+    expect(Sessione::aperta())->toBeTrue()
+        ->and(Cornice::ridotta())->toBeNull();
+    Http::assertNothingSent();
+});
+
+it('senza una lettura di io.mostra nella richiesta, Cornice::ridotta() dà la stessa forma coi due segni al primo istante che la forma dei segni può dire, non all\'istante della chiamata; non legge io.mostra e nel log non scrive niente — anche se la pagina di prima l\'aveva letto (sprint 58 · T1.3, T1.4)', function (bool $paginaDiPrima) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    logDellaRiga();
+    backofficeDiChiHaAccettato();
+    if ($paginaDiPrima) {
+        Cornice::lingua();
+        richiestaNuova();
+        Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:09.000000', 'UTC'));
+    }
+    $chiamate = count(percorsiChiamati());
+
+    expect(Cornice::ridotta())->toBe([
+        'non_letti' => true,
+        'aggiornati_il' => '0000-01-01T00:00:00.000000Z',
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
+        'sessione_il' => '0000-01-01T00:00:00.000000Z',
+        ...($paginaDiPrima ? ['lingua_il' => '2026-10-14T17:40:05.123456Z'] : []),
+    ])->and(count(percorsiChiamati()))->toBe($chiamate)
+        ->and(avvisiDellaRiga())->toBe([]);
+})->with([
+    'nessuna lettura' => [false],
+    'la lettura della pagina, in una richiesta di prima' => [true],
+]);
+
+// Review della PR #93, R1: che sia il primo lo dice l'istante un microsecondo prima, che nella forma dei segni non si scrive.
+it('il segno di una Cornice::ridotta() senza lettura è un istante vero nella forma dei segni, e un microsecondo prima non lo è più: nessun istante in quella forma è più vecchio (sprint 58 · T1.3; review della PR #93, R1)', function () {
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+    $segno = ((array) Cornice::ridotta())['aggiornati_il'];
+    $forma = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\z/';
+    $istante = Carbon::parse($segno, 'UTC');
+
+    expect($segno)->toMatch($forma)
+        ->and($istante->format('Y-m-d\TH:i:s.u\Z'))->toBe($segno)
+        ->and($istante->copy()->subMicrosecond()->format('Y-m-d\TH:i:s.u\Z'))->not->toMatch($forma);
+});

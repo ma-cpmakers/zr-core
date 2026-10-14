@@ -1722,7 +1722,15 @@ Due cose da sapere. Se la richiesta rimandata non arriva al browser la cornice r
 errore del frontend, un 403 di `/v1`, che `Cornice::dopo()` lascia passare: zr-core non lo vede. Il frontend che lo
 vede può dirlo da sé, con `dopo={{ non_letti: true }}`, e la cornice mostra l'avviso: un `non_letti` composto a mano,
 che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella sua parte server lo dà come
-`Cornice::dopo()`, con chi è nella sessione e `sessione_il`. E un frontend che mette la lingua
+`Cornice::dopo()`, con chi è nella sessione e `sessione_il`. Dalla `v2.18.0` non serve comporlo:
+`Cornice::ridotta()` dà la cornice ridotta com'è nel ramo `non_letti` di `Cornice::dopo()`, nella stessa forma e nello
+stesso ordine — `non_letti`, `aggiornati_il`, `lingua`, `persona`, `workspace`, `sessione_il` e, se c'è, `lingua_il` —, per
+il frontend che la vuole lui, per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica. Non chiama il
+backoffice e non scrive nel log. I due segni sono l'inizio della lettura di io.mostra che quella richiesta ha usato
+(quella del 403, quella di `Cornice::lingua()`, o nella richiesta rimandata quella della pagina che `Cornice::dopo()` ha
+ripreso); in una richiesta senza una lettura sono il primo istante che la forma dei segni può dire,
+`0000-01-01T00:00:00.000000Z`: una cornice ridotta non vale mai sopra dati veri arrivati dopo. Senza sessione o senza
+workspace dà `null`. E un frontend che mette la lingua
 con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e anche nella richiesta
 rimandata, dove `Cornice::dopo()` usa quella lettura: io.mostra si legge due volte per visita. Dalla `v2.15.0` chi la chiama
 solo dove la richiesta chiede `subito` la legge una volta (vedi «Dalla `v2.15.0`», sopra).

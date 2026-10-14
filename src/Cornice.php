@@ -50,6 +50,9 @@ final class Cornice
      */
     private const RIMANDATA = 'zr-core.io-mostra-rimandata';
 
+    /** Il primo istante che la forma dei segni può dire, l'inizio dell'anno 0000: il segno di `ridotta()` senza una lettura. */
+    private const IL_PIU_VECCHIO = '0000-01-01T00:00:00.000000Z';
+
     /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
     private const SECONDI_DELLA_RIMANDATA = 10;
 
@@ -207,22 +210,13 @@ final class Cornice
                 throw $errore;
             }
 
-            // Di chi è lo dice la sessione che questa richiesta ha in mano — con lingua e nome riletti, se io.mostra aveva
-            // risposto —, mai un'altra chiamata a /v1. Se intanto è finita — chiusa, o col gettone scaduto — non è di
-            // nessuno: null come senza sessione, e nel log niente, perché nessuna cornice esce ridotta.
-            $chi = self::subito();
-            if ($chi === null) {
-                return null;
+            // Se intanto la sessione è finita nessuna cornice esce ridotta: nel log niente.
+            $ridotta = self::laRidotta($prima);
+            if ($ridotta !== null) {
+                self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
             }
-            self::avvisa($errore, 'dati della cornice: il backoffice non ha risposto (%s): la cornice esce ridotta');
 
-            // Il segno è quello della lettura di io.mostra di questa richiesta, che `dati()` ha fatto o ha trovato già fatta
-            // da `lingua()` (il frontend che mette la lingua prima del controller): lo stesso che i dati riusciti avrebbero.
-            $tenuta = request()->attributes->get(self::LETTURA);
-            $segno = is_array($tenuta) ? $tenuta['segno'] : $prima;
-
-            // Le due chiavi di sempre davanti, quelle della `v2.7.0` dopo, e `lingua_il` di `subito()` resta in fondo.
-            return ['non_letti' => true, 'aggiornati_il' => $segno, ...$chi, 'sessione_il' => $segno];
+            return $ridotta;
         }
 
         if ($dati === null) {
@@ -231,6 +225,43 @@ final class Cornice
 
         // La persona è stata letta con questi dati: il suo segno è il loro.
         return [...$dati, 'sessione_il' => $dati['aggiornati_il'], ...self::linguaIl()];
+    }
+
+    /**
+     * La cornice ridotta, `non_letti`, com'è nel ramo ridotto di `dopo()` (dalla `v2.18.0`): per il frontend che la vuole lui,
+     * per esempio quando il 403 di `dopo()` si ripete dopo la ricarica. Non chiama il backoffice e non scrive nel log: la chiede
+     * il frontend, non è un guasto che zr-core ha visto. Il segno, in `aggiornati_il` e in `sessione_il`, è quello della lettura
+     * di io.mostra che questa richiesta ha usato — l'istante in cui è cominciata —, e senza una lettura il primo istante che la
+     * forma dei segni può dire: una cornice ridotta non vale mai sopra dati veri arrivati dopo. null senza sessione o senza workspace.
+     *
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     */
+    public static function ridotta(): ?array
+    {
+        return self::laRidotta(self::IL_PIU_VECCHIO);
+    }
+
+    /**
+     * La cornice ridotta di `dopo()` e di `ridotta()`. Di chi è lo dice la sessione che questa richiesta ha in mano — con lingua e
+     * nome riletti, se io.mostra aveva risposto —, mai un'altra chiamata a /v1; se intanto è finita — chiusa, o col gettone
+     * scaduto — non è di nessuno: null come senza sessione. Il segno è quello della lettura di io.mostra di questa richiesta, che
+     * `dati()` ha fatto o ha trovato già fatta da `lingua()` (il frontend che mette la lingua prima del controller): lo stesso che i
+     * dati riusciti avrebbero; senza una lettura, `$ripiego`.
+     *
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     */
+    private static function laRidotta(string $ripiego): ?array
+    {
+        $chi = self::subito();
+        if ($chi === null) {
+            return null;
+        }
+
+        $tenuta = request()->attributes->get(self::LETTURA);
+        $segno = is_array($tenuta) ? $tenuta['segno'] : $ripiego;
+
+        // Le due chiavi di sempre davanti, quelle della `v2.7.0` dopo, e `lingua_il` di `subito()` resta in fondo.
+        return ['non_letti' => true, 'aggiornati_il' => $segno, ...$chi, 'sessione_il' => $segno];
     }
 
     /**

@@ -344,16 +344,18 @@ della cornice la pagina si monta di nuovo al primo fuoco nel campo della ricerca
 Un `dopo` che vale `null` per la cornice è «ancora da leggere», non un errore, e non dà mai un avviso: alla prima
 pagina resta in attesa, con campanella e ricerca che caricano, finché non ne arriva uno; a una visita dopo, se la
 cornice ha già i dati di quel workspace, resta coi dati di prima. Se la tua parte server non è riuscita a leggerlo
-non dare `null`: dai `non_letti`, come fa `Cornice::dopo()`.
+non dare `null`: dai `Cornice::ridotta()` (dalla `v2.18.0`), la cornice ridotta come la dà `Cornice::dopo()`.
 Se il backoffice non risponde `Cornice::dopo()` non lancia e dà `non_letti` (dalla `v2.17.0` anche a un 404, un 409 o un
 422, e a una risposta che non sa leggere: non serve comporlo a mano attorno a `Cornice::subito()`), la
 cornice resta ridotta con un avviso suo, e la tua pagina resta dov'è, con ciò che la persona stava scrivendo — README,
 «La cornice in due dati».
 Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e workspace della sessione e
 `sessione_il`, e la cornice ridotta non resta col nome di chi c'era prima. Se è di un'altra persona, o di un altro
-workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde. Se lo componi tu nella
-parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale
-come prima, sotto il nome dei dati della sessione.
+workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde. Non comporlo a mano
+nella tua parte server: `Cornice::ridotta()` lo dà nella stessa forma, col segno della lettura di io.mostra della
+richiesta (senza una lettura, il primo istante che la forma dei segni può dire), senza chiamare il backoffice e senza
+righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica
+(README, «La cornice in due dati»).
 
 Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
 che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
