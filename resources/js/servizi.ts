@@ -103,7 +103,7 @@ export function mostra(email?: string): void {
  * Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
  * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
  * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
- * che dalla `v2.6.0` è di tutte e quattro le rotte). Con `email` una risposta di un'altra persona non torna a chi
+ * che dalla `v2.6.0` è di tutte e quattro le rotte, e dalla `v2.10.0` il 403 `gettone_senza_workspace`). Con `email` una risposta di un'altra persona non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
@@ -134,8 +134,8 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;
         // Solo quel codice cambia l'errore di un 403 — quello che una rotta della cornice dà al suo errore (`errore`), o quello
-        // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace), o lo
-        // stesso codice con un altro stato, restano l'errore di sempre.
+        // che dà zr-auth quando risponde da sé (`codice`) —: un 403 con un altro codice (la sessione senza workspace, quando è
+        // della persona a schermo: di un'altra vale ciò che è sopra), o lo stesso codice con un altro stato, restano l'errore di sempre.
         if (risposta.status === 403 && [corpo?.errore, corpo?.codice].includes('accettazione_richiesta')) {
             throw new AccettazioneRichiesta(esito);
         }

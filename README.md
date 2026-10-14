@@ -921,7 +921,10 @@ cornice === null ? pagina : (
   campo (visto in Chromium 151 sulla build `ZR_INGRESSO_CON_CODA=1 npm run demo`). Se non è il JS che monta la pagina, la
   ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di
   `npm run demo`, col JS che contiene la cornice chiesto con `?v=3` dal JS che monta la pagina: dieci secondi dopo la parola la
-  ricerca era ancora in caricamento; servita senza coda, la stessa pagina dà il risultato entro due secondi). Un pulsante
+  ricerca era ancora in caricamento; servita senza coda, la stessa pagina dà il risultato entro due secondi). È l'eccezione
+al «non un caricamento che non finisce» detto sopra: il pezzo porta con sé una seconda copia del codice delle richieste, in
+cui per la cornice nessuno è a schermo, e la richiesta della ricerca non parte; in quella copia nemmeno la ricarica davanti
+a una risposta di un'altra persona parte. Un pulsante
   per riprovare nel riquadro della ricerca
   l'`AppShell` non lo ha: è chiesto al design system, e il pacchetto non ne disegna uno suo. Nel codice del frontend non
   cambia niente; per i suoi test vedi «Passare alla v2.8».
@@ -1294,7 +1297,8 @@ risorsa si apra, la pagina si ricarica al suo posto. Il 403
 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima. Dalla `v2.10.0` lo dice invece il 403
 `gettone_senza_workspace`, che le quattro rotte danno a chi è entrato senza scegliere ancora un workspace: porta `persona`,
 l'email della sessione e niente altro (né nome, né lingua, né workspace, e mai l'email detta dalla richiesta), e il
-backoffice non si chiama. Una scheda rimasta ferma di chi c'era prima si ricarica con le stesse regole delle altre
+backoffice non si chiama. Con una sessione senza email `persona` è `null`, come nel 409: per la cornice è un 403 che non
+dice di chi è. Una scheda rimasta ferma di chi c'era prima si ricarica con le stesse regole delle altre
 risposte di un'altra persona; per la persona a schermo è l'errore di sempre, senza ricarica. Fino alla `v2.9.0` quel
 403 non diceva di chi era, e quella scheda dava solo il suo errore.
 Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l'email di chi mostra, e la
@@ -1316,11 +1320,15 @@ richiesta: la cornice sa di chi è la sessione solo da una risposta.
 Dalla `v2.7.0` la pagina si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto: se una visita ha già
 portato chi è entrato e la cornice si è rifatta, una risposta in ritardo a una delle quattro richieste, chiesta da chi
 c'era prima, non ricarica la sua pagina, e niente di quella risposta va a schermo (provato in Chromium 151 con l'elenco
-delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Se chi ha risposto è una
+delle notifiche). Una pagina senza la cornice non si ricarica: lì non c'è nessuno a schermo. Questo vale per ciò che c'è
+a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi già partito guarda di nuovo allo scadere
+(più sotto). Se chi ha risposto è una
 terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
 quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
 su una cornice sola nel documento: con due, o con una montata prima che quella di prima sia smontata, quella che si
-smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica.
+smonta toglie chi è a schermo anche per l'altra, e una scheda ferma lì non si ricarica. Se invece l'orologio dei 30
+secondi è già partito, allo scadere quel limite fa ricaricare la pagina anche quando a schermo c'è già la cornice di chi ha
+risposto: per la cornice nessuno è a schermo.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
@@ -1330,7 +1338,7 @@ in attesa finché la pagina non si ricaricava. L'orologio dei 5 secondi parte a 
 annullata: se la pagina nuova tarda più di 5 secondi, quella che sta per andarsene dice lo stesso il suo errore, senza
 niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser). Con due cornici nel documento
 vale il limite detto qui sopra: lì la pagina non si ricarica,
-nessun orologio parte, e chi ha chiesto resta in attesa. Provato in Chromium 151 con una pagina che nega il
+nessun orologio parte, e chi ha chiesto resta in attesa, se il limite c'è già quando la risposta arriva. Provato in Chromium 151 con una pagina che nega il
 ricaricamento: passati i 5 secondi «Segna tutte come lette» torna premibile, e il pannello e la ricerca dicono il loro errore.
 Dalla `v2.9.0` la ricarica ha un tetto, ed è l'età della pagina: una pagina caricata da meno di 30 secondi non si ricarica
 davanti a una risposta di un'altra persona prima di compierli. Subito dopo una ricarica, se la risposta lo dice ancora —
@@ -1342,11 +1350,14 @@ ricarica ogni 30 secondi. Per ricordarselo il pacchetto non scrive niente nel br
 `localStorage`, né il nome della finestra, né un cookie —: guarda l'orologio della pagina (`performance.now()`), e
 all'uscita non c'è niente da togliere. Dalla `v2.10.0` la cornice di chi c'era prima non resta a schermo oltre i 30
 secondi: una pagina che ha ricevuto la risposta di un'altra persona nei suoi primi 30 secondi si ricarica da sola quando li
-compie, senza un clic e senza un'altra richiesta. Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
-portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano due casi. Una
+compie, senza un clic e senza un'altra richiesta. Salvo due eccezioni: la ricarica allo scadere si chiede una volta sola, e
+se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; e in una
+scheda nascosta il browser può far scadere l'orologio più tardi, quando la riattiva. Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
+portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano tre casi. Una
 richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
 apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona
-è arrivata. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
+è arrivata. E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
+cornici — si ricarica anche se ormai è di chi ha risposto: ciò che ci ha scritto si perde. Provato in Chromium 151, con la `v2.9.0`: l'età della pagina riparte da zero a ogni ricarica. La ricarica allo
 scadere dei 30 secondi: non provato in un browser.
 
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del

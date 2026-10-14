@@ -240,3 +240,14 @@ it('con la sessione ma senza workspace ogni rotta della cornice risponde 403 get
     }
     Http::assertNothingSent();
 });
+
+it('con una sessione senza email e senza workspace il 403 porta `persona` null, come il 409: per la cornice è un 403 che non dice di chi è (review della PR #78, R7)', function () {
+    sessioneAMano(null, 'en', ['email' => null] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        expect(allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-grace%40example.com'])->assertForbidden()->getContent())
+            ->toBe('{"errore":"gettone_senza_workspace","persona":null}');
+    }
+    Http::assertNothingSent();
+});
