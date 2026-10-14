@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 import { HttpCancelledError } from '@inertiajs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatiDellaCornice, DatiDopo, DatiSubito } from '../js/cornice';
-// @ts-expect-error — sprint 46 · T3: i casi rossi, prima del codice.
 import { chiaveDellaSessione, clientFinto, colSegno, conIlSegnoDellaLingua, conLaSessione, fermaIlSegno, istanteDellaLettura, lettura, sessioneFinta, type Entrata } from './parte-server-finta';
 
 // Sprint 10 · T3 (voce #1453), dopo la review della PR. La UAT del layout gira sulla pagina di prova, e ciò che lì fa la parte

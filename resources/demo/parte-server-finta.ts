@@ -15,13 +15,26 @@ export function colSegno(parametri: string): boolean {
 }
 
 let ultimaLettura = 0;
+let segnoFermo = false;
+
+/**
+ * Col segno fermo (`?segno=fermo` nella pagina di prova) ogni lettura ha l'istante di quella di prima: due risposte, anche di
+ * due persone, con lo stesso segno, come quando un nodo indietro è frenato dal segno che il browser ha già (dalla `v2.11.0`).
+ * Così la parità dei segni si vede in un browser. Senza, i segni crescono come sempre.
+ */
+export function fermaIlSegno(fermo: boolean): void {
+    segnoFermo = fermo;
+}
 
 /**
  * L'istante di una lettura, come lo scrive la parte server in `aggiornati_il`: in UTC, coi microsecondi a sei cifre, e sempre
- * dopo quello della lettura di prima (due risposte nello stesso istante hanno comunque due segni).
+ * dopo quello della lettura di prima (due risposte nello stesso istante hanno comunque due segni); col segno fermo, dopo la
+ * prima lettura, sempre quello.
  */
 export function istanteDellaLettura(): string {
-    ultimaLettura = Math.max(Math.round((performance.timeOrigin + performance.now()) * 1000), ultimaLettura + 1);
+    if (!(segnoFermo && ultimaLettura)) {
+        ultimaLettura = Math.max(Math.round((performance.timeOrigin + performance.now()) * 1000), ultimaLettura + 1);
+    }
 
     return new Date(Math.floor(ultimaLettura / 1000)).toISOString().replace('Z', `${String(ultimaLettura % 1000).padStart(3, '0')}Z`);
 }
@@ -74,6 +87,58 @@ export function conLaSessione<Props extends { cornice: DatiDellaCornice | null; 
         ...(letta.subito ? { subito: { ...letta.subito, ...sessione, ...altrove } } : {}),
         ...(letta.dopo?.workspace ? { dopo: { ...letta.dopo, ...sessione, ...(letta.dopo.aziende?.length ? backoffice : {}), ...altrove } } : {}),
     };
+}
+
+/** Dove la parte server finta ricorda la lingua confermata di ogni persona, col suo segno: nel `localStorage`, come la sessione. */
+const chiaveDelleLingue = 'uat-lingue';
+
+/** La lingua confermata, il suo segno, e la lingua confermata prima di lei (un'altra), col suo. */
+interface Confermata {
+    lingua: string;
+    il: string;
+    prima?: { lingua: string; il: string };
+}
+
+function confermate(): Record<string, Confermata> {
+    try {
+        return JSON.parse(localStorage.getItem(chiaveDelleLingue) ?? '{}') as Record<string, Confermata>;
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * Il segno della lingua, `lingua_il`, come lo dà la parte server dalla `v2.11.0` (`Cornice::subito()` e `Cornice::dopo()`):
+ * un `dopo` a cui il backoffice ha risposto porta l'istante della sua lettura, e la parte server lo ricorda per quella
+ * persona se è più avanti di quello ricordato; `subito` e i `dopo` ridotti portano quello ricordato, mai l'istante di
+ * adesso, e senza una lettura che l'abbia confermata non ne portano. Prima `subito`, poi `dopo`, come nella stessa richiesta.
+ * Con `linguaDiPrima`, `subito` porta la lingua confermata prima dell'ultima, col suo segno: un `subito` riletto mentre
+ * `dopo` è in lettura, con la sessione di adesso e la lingua di prima.
+ */
+export function conIlSegnoDellaLingua<Props extends { subito?: DatiSubito | null | undefined; dopo?: DatiDopo | null | undefined }>(letta: Props, linguaDiPrima = false): Props {
+    const ricordate = confermate();
+    const conIlSuo = <Dati extends DatiSubito | DatiDopo>(dati: Dati, prima = false): Dati => {
+        const ricordata = ricordate[dati.persona?.email ?? ''];
+        const quella = prima ? ricordata?.prima : ricordata;
+
+        return quella ? { ...dati, ...(prima && { lingua: quella.lingua }), lingua_il: quella.il } : dati;
+    };
+    const subito = letta.subito && conIlSuo(letta.subito, linguaDiPrima);
+    let dopo = letta.dopo;
+    const il = dopo?.sessione_il ?? dopo?.aggiornati_il;
+    if (dopo?.aziende && dopo.persona?.email && dopo.lingua && il) {
+        const ricordata = ricordate[dopo.persona.email];
+        if (!ricordata || il > ricordata.il) {
+            const prima = ricordata && ricordata.lingua !== dopo.lingua ? { lingua: ricordata.lingua, il: ricordata.il } : ricordata?.prima;
+            ricordate[dopo.persona.email] = { lingua: dopo.lingua, il, ...(prima && { prima }) };
+            localStorage.setItem(chiaveDelleLingue, JSON.stringify(ricordate));
+        }
+        dopo = { ...dopo, lingua_il: il };
+    } else if (dopo) {
+        dopo = conIlSuo(dopo);
+    }
+
+    return { ...letta, ...(letta.subito && { subito }), ...(letta.dopo && { dopo }) };
 }
 
 /** Dove la pagina di prova scrive chi è entrato: nel `localStorage`, che è del browser e non della scheda. */
