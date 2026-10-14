@@ -1542,7 +1542,9 @@ un'altra persona, tre caricamenti in 70 secondi, a 30 secondi l'uno dall'altro; 
 
 **L'evento prima della ricarica.** Dalla `v2.13.0`, subito prima di ricaricare la pagina per un cambio di persona — una
 risposta di un'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» —
-la cornice manda sulla `window` un evento `zr-core:altra-persona` (un `Event` semplice, senza dati). Quando la pagina non
+la cornice manda sulla `window` un evento `zr-core:altra-persona` (un `Event` semplice, senza dati). Dalla `v2.17.0` lo
+manda anche subito prima delle due ricariche per la pagina di un'altra persona senza il segno della lettura (Indietro sulla
+voce di chi c'era prima: la fa la cornice nello stesso workspace, il layout in un altro). Quando la pagina non
 si ricarica l'evento non parte: una risposta della persona a schermo, una visita che ha già portato chi ha risposto, una
 pagina senza cornice. Parte una volta per ricarica chiesta, anche se poi la pagina la annulla (`beforeunload`). Il
 pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina

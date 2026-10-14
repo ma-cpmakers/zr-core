@@ -1,6 +1,6 @@
 import { act, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
 import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
 import { testi } from './lingue';
@@ -1985,6 +1985,63 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(ricarica).toHaveBeenCalled();
         expect(contenitore.textContent).toBe('');
         expect(uno('.zr-avatar-btn')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    // Sprint 56 · T1 (voce #2107). Le due ricariche per la pagina di un'altra persona senza il segno — dalla cornice nello stesso
+    // workspace, dal layout in un altro — mandano prima l'evento `zr-core:altra-persona`, come quella chiesta da una risposta di
+    // un'altra persona: dopo la ricarica il frontend può dire perché. In `avvisi` quante ricariche c'erano quando è partito.
+    const contaGliAvvisi = (ricarica: { mock: { calls: unknown[] } }) => {
+        const avvisi: number[] = [];
+        const avvisa = () => avvisi.push(ricarica.mock.calls.length);
+        addEventListener('zr-core:altra-persona', avvisa);
+        onTestFinished(() => removeEventListener('zr-core:altra-persona', avvisa));
+
+        return avvisi;
+    };
+
+    it('con Indietro sulla voce di chi c\'era prima, nello stesso workspace e senza il segno della lettura, l\'evento zr-core:altra-persona parte una volta, prima della ricarica (sprint 56 · T1.1)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const avvisi = contaGliAvvisi(ricarica);
+        await visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />);
+        expect(avvisi).toStrictEqual([]);
+
+        await visita({ ...dati, non_lette: 4 }, <PaginaA key="1" />);
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).toStrictEqual([0]);
+        ricarica.mockRestore();
+    });
+
+    it.each([
+        ['con la `cornice` intera', () => visita({ ...dati, persona: altra, non_lette: 1 }, <PaginaB key="2" />), () => visita({ ...datiAltroWorkspace }, <PaginaA key="1" />)],
+        ['con `subito` senza il segno della sessione', () => inDue({ subito: { ...subito, persona: altra, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />), () => inDue({ subito }, <PaginaA key="1" />)],
+    ])('con Indietro sulla voce di chi c\'era prima in un altro workspace, %s, l\'evento zr-core:altra-persona parte una volta, prima della ricarica (sprint 56 · T1.2)', async (_come, prima, indietro) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const avvisi = contaGliAvvisi(ricarica);
+        await prima();
+        expect(avvisi).toStrictEqual([]);
+
+        await indietro();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).toStrictEqual([0]);
+        ricarica.mockRestore();
+    });
+
+    it.each([
+        ['la stessa persona, senza il segno', { ...dati, non_lette: 9 }],
+        ['un\'altra persona, col segno da tutte e due le parti', { ...dati, persona: altra, non_lette: 2, aggiornati_il: '2026-10-14T12:00:01.000000Z' }],
+    ])('quando la pagina non si ricarica — %s — l\'evento zr-core:altra-persona non parte (sprint 56 · T1.3)', async (_caso, poi) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const avvisi = contaGliAvvisi(ricarica);
+        const segnato = 'aggiornati_il' in poi ? { aggiornati_il: '2026-10-14T12:00:00.000000Z' } : {};
+        await visita({ ...dati, ...segnato }, <PaginaA key="1" />);
+
+        await visita(poi, <PaginaB key="2" />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(avvisi).toStrictEqual([]);
         ricarica.mockRestore();
     });
 
