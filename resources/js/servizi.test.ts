@@ -307,7 +307,7 @@ describe('una risposta che dice di chi è', () => {
     // Sprint 41 · T5 (voce 2030): la pagina si ricarica per chi è a schermo, e chi è a schermo lo dice la cornice quando si monta (dalla review: non a ogni disegno).
     // In questi casi è Ada, che è anche chi chiede: la scheda rimasta ferma.
     // Sprint 43 · T3 (voce #2053): la pagina dei casi è una scheda ferma, caricata da un minuto (l'orologio di `performance.now()`):
-    // una pagina caricata da meno di 30 secondi non si ricarica, e ha i suoi casi più sotto.
+    // una pagina caricata da meno di 30 secondi si ricarica solo quando li compie (sprint 44 · T2), e ha i suoi casi più sotto.
     /** Da quanto è caricata la pagina, in millisecondi. */
     const caricataDa = (millisecondi: number) => vi.spyOn(performance, 'now').mockReturnValue(millisecondi);
 
@@ -499,6 +499,27 @@ describe('una risposta che dice di chi è', () => {
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
 
+        // Sprint 44 · T2 (voce #2058): la ricarica non parte più nel giro della risposta. La chiede un orologio, che su una scheda
+        // rimasta ferma scade al primo giro: alla risposta gli orologi sono due, quello della ricarica e quello dei 5 secondi.
+        it.each(diUnAltra)('%s di un\'altra persona su una scheda rimasta ferma: alla risposta partono due orologi e la pagina non è ancora ricaricata; al primo giro dell\'orologio si ricarica, una volta sola anche dopo un minuto (sprint 44 · T2.4)', async (_nome, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            caricataDa(60_000);
+
+            segui(chiama());
+            // La risposta arriva senza che l'orologio giri.
+            for (let giro = 0; giro < 20; giro += 1) {
+                await Promise.resolve();
+            }
+            expect(vi.getTimerCount()).toBe(2);
+            expect(ricarica).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(0);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+        });
+
         it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => ([
             ['a schermo c\'è già chi ha risposto', 'grace@example.com'],
             ['a schermo non c\'è nessuna cornice', undefined],
@@ -518,10 +539,12 @@ describe('una risposta che dice di chi è', () => {
     });
 
     // Sprint 43 · T3 (voce #2053): la ricarica davanti a una risposta di un'altra persona ha un tetto, e il tetto è l'età della
-    // pagina: una pagina caricata da meno di 30 secondi non si ricarica — se la risposta dice ancora un'altra persona subito
-    // dopo una ricarica (dei dati composti a mano con un'altra email), ricaricare di nuovo non cambia niente —, e chi ha chiesto
-    // ha subito un errore senza niente dentro. Da 30 secondi in poi si ricarica come prima. Il pacchetto non scrive niente
-    // nel browser per ricordarselo.
+    // pagina: una pagina caricata da meno di 30 secondi non si ricarica subito — se la risposta dice ancora un'altra persona
+    // subito dopo una ricarica (dei dati composti a mano con un'altra email), ricaricare di nuovo non cambia niente. Da 30
+    // secondi in poi si ricarica come prima. Il pacchetto non scrive niente nel browser per ricordarselo.
+    // Sprint 44 · T2 (voce #2058): sotto il tetto la cornice di chi c'era prima non resta a schermo. La pagina si ricarica da
+    // sola quando compie 30 secondi, se allora a schermo non c'è chi ha risposto: al più una ricarica ogni 30 secondi. L'errore
+    // senza niente dentro esce dopo 5 secondi anche sotto il tetto (nella `v2.9.0` usciva subito).
     describe('il tetto delle ricariche', () => {
         beforeEach(() => {
             vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -534,19 +557,58 @@ describe('una risposta che dice di chi è', () => {
         /** Ciò che il browser tiene fra una pagina e l'altra, e che il tetto non tocca. */
         const nelBrowser = () => [sessionStorage.length, localStorage.length, window.name, document.cookie];
 
-        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => [0, 29_999].map((eta) => [nome, eta, laRisposta, chiama] as const)))('%s di un\'altra persona su una pagina caricata da %i ms: la pagina non si ricarica, e chi ha chiesto ha subito un errore senza niente dentro, senza un orologio (sprint 43 · T3.1, T3.4)', async (_nome, eta, laRisposta, chiama) => {
-            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => [0, 29_999].map((eta) => [nome, eta, laRisposta, chiama] as const)))('%s di un\'altra persona su una pagina caricata da %i ms: a 4.999 ms dalla risposta chi ha chiesto è ancora in attesa, a 5.000 ms ha un errore senza niente dentro (sprint 44 · T2.3)', async (_nome, eta, laRisposta, chiama) => {
+            vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
             const fetchFinto = vi.fn(async () => laRisposta());
             vi.stubGlobal('fetch', fetchFinto);
             caricataDa(eta);
 
             const esito = segui(chiama());
-            await vi.advanceTimersByTimeAsync(0);
+            await vi.advanceTimersByTimeAsync(4_999);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+
+            await vi.advanceTimersByTimeAsync(1);
             // Né i dati, né `persona`, né i secondi del freno, né la classe dell'errore di chi è entrato.
             expect(esito).toStrictEqual({ come: 'errore', con: undefined });
-            expect(ricarica).not.toHaveBeenCalled();
-            expect(vi.getTimerCount()).toBe(0);
             expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => [0, 10_000, 29_999].map((eta) => [nome, eta, laRisposta, chiama] as const)))('%s di un\'altra persona su una pagina caricata da %i ms: la pagina si ricarica da sola quando compie 30.000 ms — a 29.999 ms no —, una volta, senza un\'altra richiesta (sprint 44 · T2.1, T2.6)', async (_nome, eta, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => laRisposta());
+            vi.stubGlobal('fetch', fetchFinto);
+            caricataDa(eta);
+
+            segui(chiama());
+            await vi.advanceTimersByTimeAsync(29_999 - eta);
+            expect(ricarica).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(1);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        // Allo scadere la pagina riguarda chi è a schermo: se una visita ha già portato chi ha risposto, la sua pagina non si
+        // ricarica da sola. Una pagina rimasta senza cornice sì: allo scadere non c'è chi ha risposto.
+        it.each<[string, string | undefined, number]>([
+            ['c\'è già chi ha risposto, portato da una visita: la pagina non si ricarica', 'grace@example.com', 0],
+            ['c\'è ancora chi c\'era prima: la pagina si ricarica', 'ada@example.com', 1],
+            ['c\'è una terza persona: la pagina si ricarica', 'alan@example.com', 1],
+            ['non c\'è più una cornice: la pagina si ricarica', undefined, 1],
+        ])('se quando la pagina compie 30 secondi a schermo %s (sprint 44 · T2.2)', async (_come, chi, volte) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, persona: 'grace@example.com' })));
+            caricataDa(10_000);
+
+            segui(caricaNotifiche('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(19_999);
+            expect(ricarica).not.toHaveBeenCalled();
+            mostra(chi);
+
+            await vi.advanceTimersByTimeAsync(1);
+            expect(ricarica).toHaveBeenCalledTimes(volte);
         });
 
         it.each(diUnAltra)('%s di un\'altra persona su una pagina caricata da 30.000 ms: la pagina si ricarica, una volta, e chi ha chiesto resta in attesa fino ai 5 secondi (sprint 43 · T3.2)', async (_nome, laRisposta, chiama) => {
@@ -562,7 +624,7 @@ describe('una risposta che dice di chi è', () => {
             expect(esito).toStrictEqual({ come: 'errore', con: undefined });
         });
 
-        it('il tetto non resta per sempre e non scrive niente nel browser: la stessa pagina a 29.999 ms non si ricarica, a 30.000 ms sì, e archivi, nome della finestra e cookie restano com\'erano (sprint 43 · T3.3, T3.6)', async () => {
+        it('il tetto non resta per sempre e non scrive niente nel browser: la stessa pagina a 29.999 ms non è ricaricata, a 30.000 ms sì, e archivi, nome della finestra e cookie restano com\'erano (sprint 43 · T3.3, T3.6; sprint 44 · T2.1)', async () => {
             const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
             vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, persona: 'grace@example.com' })));
             const prima = nelBrowser();
@@ -573,9 +635,7 @@ describe('una risposta che dice di chi è', () => {
             await vi.advanceTimersByTimeAsync(0);
             expect(ricarica).not.toHaveBeenCalled();
 
-            caricataDa(30_000);
-            segui(caricaNotifiche('ada@example.com'));
-            await vi.advanceTimersByTimeAsync(0);
+            await vi.advanceTimersByTimeAsync(1);
             expect(ricarica).toHaveBeenCalledTimes(1);
             expect(nelBrowser()).toStrictEqual(prima);
             expect(scritture).not.toHaveBeenCalled();
