@@ -279,8 +279,9 @@ export let campanella: typeof import('./campanella') | undefined;
  * 2^(n−1) secondi, e mai più di 60, dal fallimento. Nell'attesa non importa niente ed è respinta con l'errore di prima, che
  * per chi chiede è un pezzo non arrivato come gli altri. L'orologio è quello della pagina (`performance.now()`): niente è
  * scritto nel browser. Chi chiede con `senzaAttesa` — «Riprova» del pannello delle notifiche, che la persona preme — non aspetta.
- * Ogni richiesta partita mentre il pezzo è in viaggio, se non arriva, conta come un fallimento:
- * con k richieste insieme l'attesa dopo è quella di k fallimenti in più, e la coda salta k−1 numeri (README).
+ * Le richieste partite insieme, che non arrivano, contano un fallimento solo (dalla `v2.13.0`): conta quello della richiesta
+ * partita col numero di tentativi che c'è ancora quando fallisce (`questo`); il fallimento di una partita insieme a lei, che
+ * arriva dopo, non allunga l'attesa e non cambia la coda (README).
  */
 export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (indirizzo: string) => Promise<Pezzo>, qui: string): (senzaAttesa?: boolean) => Promise<Pezzo> {
     let tentativi = 0;
@@ -291,10 +292,13 @@ export function pezzoARichiesta<Pezzo>(importa: () => Promise<Pezzo>, daLi: (ind
         if (!senzaAttesa && performance.now() < finoA) {
             return Promise.reject(diPrima);
         }
+        const questo = tentativi;
         const nome = tentativi && /import\((["'\x60])(.+?)\1/.exec(String(importa));
 
         return (nome ? daLi(`${new URL(nome[2]!, qui)}?r=${tentativi}`) : importa()).catch((errore: unknown) => {
-            finoA = performance.now() + 1e3 * Math.min(2 ** tentativi++, 60);
+            if (questo === tentativi) {
+                finoA = performance.now() + 1e3 * Math.min(2 ** tentativi++, 60);
+            }
             throw (diPrima = errore);
         });
     };

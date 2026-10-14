@@ -716,11 +716,11 @@ cornice === null ? pagina : (
   Chromium). Dalla `v2.11.5` fra un tentativo fallito e il successivo c'è un'attesa: dopo l'n-esimo il pezzo non si richiede
   prima di 2^(n−1) secondi dal fallimento (1, 2, 4… e mai più di 60), e nell'attesa chi lo chiede ha subito l'errore di
   prima — per la ricerca, che ha la stessa attesa, il suo avviso. «Riprova», che la persona preme, non aspetta; la
-  campanella aperta di nuovo sì. Le richieste fatte insieme sono una sola per il browser, ma
-  per l'attesa e per la coda ognuna, se il pezzo non arriva, conta come un tentativo fallito: con k richieste partite
-  mentre il pezzo è in viaggio l'attesa dopo è quella di k tentativi falliti in più, e la coda salta k−1 numeri (due
-  richieste ai primi tentativi: 2 secondi e non 1, e poi `?r=2`). Per la ricerca ogni parola scritta mentre il pezzo è in
-  viaggio è una richiesta: con una rete lenta che poi cade, il fuoco e cinque parole fanno un'attesa di 32 secondi. Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
+  campanella aperta di nuovo sì. Le richieste fatte insieme sono una sola per il browser, e dalla `v2.13.0` lo sono anche
+  per l'attesa e per la coda: con k richieste partite mentre il pezzo è in viaggio, se il pezzo non arriva, è un tentativo
+  fallito solo — il primo fuoco nel campo della ricerca e la prima parola, che lo chiedono insieme, aspettano poi 1 secondo,
+  e la richiesta dopo ha la coda `?r=1`. Fino alla `v2.12` ognuna contava come un tentativo fallito: l'attesa dopo era
+  quella di k tentativi falliti in più, e la coda saltava k−1 numeri. Dalla `v2.5.1` l'indirizzo non si legge più dall'errore del browser: è il nome che la build ha scritto nel JS
   della cornice, là dove lei importa il pezzo, risolto sull'indirizzo di quel JS. In `import()` entra solo il pezzo della
   campanella, qualunque cosa dica l'errore, e «Riprova» lo richiede anche se l'indirizzo del JS d'ingresso ha una coda sua
   (`app.js?v=3`) e in un frontend che mette i pezzi a richiesta in un'altra cartella rispetto al JS d'ingresso, anche una
