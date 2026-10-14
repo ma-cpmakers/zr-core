@@ -119,6 +119,23 @@ async function clicEPassano(elemento: Element | null, millisecondi = 0): Promise
     });
 }
 
+/**
+ * Sprint 50 · T2 (voce 2074): l'orologio finto per un caso che dice che la pagina non si ricarica. Parte prima della risposta,
+ * perché un orologio della ricarica partito con la risposta sia suo, e va avanti da sé col tempo vero, perché i giri delle
+ * risposte (`prossimoGiro`) passino come sempre.
+ */
+function orologioFintoCheVa(): void {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+}
+
+/**
+ * Passano 35 secondi: oltre i 30 della ricarica allo scadere e oltre i 5 dell'errore. Un controllo «non si ricarica» fatto dopo
+ * un solo giro resterebbe verde anche con una ricarica chiesta più tardi (review della PR 83, R6).
+ */
+async function oltreITrentaSecondi(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(35_000));
+}
+
 /** Una risposta di una rotta della cornice, come `fetch` la dà: lo stato e il corpo JSON. */
 function risposta(corpo: unknown, stato = 200): Response {
     return { ok: stato >= 200 && stato < 300, status: stato, json: async () => corpo } as Response;
@@ -4041,12 +4058,14 @@ describe('il pannello delle notifiche', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
         const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         // Una visita porta chi è entrato, sullo stesso workspace: la cornice si rifà, e poi arriva la risposta di prima.
         await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: grace.email }));
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
@@ -4062,11 +4081,13 @@ describe('il pannello delle notifiche', () => {
         const lenta = inAttesa();
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => lenta.promessa);
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
         await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'grace@example.com' }));
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('.senza-cornice')?.textContent).toBe('Una pagina senza la cornice');
@@ -4128,10 +4149,12 @@ describe('il pannello delle notifiche', () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ errore: 'accettazione_richiesta', ...conLaPersona }, 403));
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         await clic(uno('.zr-bell'));
         await act(prossimoGiro);
+        await oltreITrentaSecondi();
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');
@@ -4147,9 +4170,11 @@ describe('il pannello delle notifiche', () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = rotteDiUnaPersona(conLaPersona);
         vi.stubGlobal('fetch', fetchFinto);
+        orologioFintoCheVa();
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
+        await oltreITrentaSecondi();
 
         expect(voci()).toHaveLength(notificheDelServer.length);
         expect(segnaTutte()).not.toBeNull();
