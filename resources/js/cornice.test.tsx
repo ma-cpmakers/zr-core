@@ -1623,10 +1623,10 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 38 · T4 (voce #2028): «Segna tutte come lette» dice per chi lo chiede (`persona`, l'email di chi la cornice mostra).
     // In una scheda rimasta ferma la sessione può essere passata a un'altra persona dello stesso workspace: la parte server non
-    // segna niente e risponde 409 `persona_diversa` con l'email di chi è entrato. Niente è dato per letto, e la pagina si ricarica.
+    // segna niente e risponde 409 `persona_diversa` (fino alla `v2.11.5` con l'email di chi è entrato, dalla `v2.12.0` con `persona` vuota). Niente è dato per letto, e la pagina si ricarica.
     it('in una scheda rimasta ferma «Segna tutte come lette» manda l\'email di chi è mostrato, e al 409 `persona_diversa` di chi è entrato non dà niente per letto: una POST sola, la pagina si ricarica, numero ed elenco restano com\'erano (sprint 38 · T4.1)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: '' }, 409)));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
@@ -1649,7 +1649,7 @@ describe('il pannello delle notifiche', () => {
     // secondi la richiesta si chiude con un errore, e il pulsante si può premere di nuovo: niente è dato per letto.
     it('in una scheda rimasta ferma, se la pagina non si ricarica, «Segna tutte come lette» torna premibile dopo 5 secondi: prima un secondo clic non manda niente, dopo manda un\'altra POST; numero ed elenco restano com\'erano (sprint 43 · T2.1, T2.2)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: '' }, 409)));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));

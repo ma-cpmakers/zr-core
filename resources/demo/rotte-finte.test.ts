@@ -927,8 +927,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
     });
 
     // Sprint 38 · T4 (voce 2028): come la rotta vera dalla `v2.5.0`, «Segna tutte come lette» chiesta per chi c'era prima non
-    // segna le notifiche di chi è entrato, e lo dice con la sua email: in una scheda ferma la cornice ricarica la pagina.
-    it('POST /cornice/notifiche/letture con la `persona` di chi c\'era prima non segna niente e risponde 409 `persona_diversa` con l\'email di chi è entrato, la cui notifica resta da leggere; con la sua, o senza `persona`, segna come prima (sprint 38 · T4.1)', async () => {
+    // segna le notifiche di chi è entrato, e lo dice col 409 (dalla `v2.12.0` senza la sua email): in una scheda ferma la cornice ricarica la pagina.
+    it('POST /cornice/notifiche/letture con la `persona` di chi c\'era prima non segna niente e risponde 409 `persona_diversa` con `persona` vuota (fino alla `v2.11.5` l\'email di chi è entrato), e la notifica di chi è entrato resta da leggere; con la sua, o senza `persona`, segna come prima (sprint 38 · T4.1)', async () => {
         const sessione = { persona: ada };
         await rotte(sessione);
         const segnaPer = async (persona?: string): Promise<[number, unknown]> => {
@@ -940,7 +940,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         };
         sessione.persona = grace;
 
-        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: grace.email }]);
+        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: '' }]);
         expect((await righeDi('/cornice/notifiche')).righe[0]).toMatchObject({ id: 'uat-di-grace', letta: false });
 
         expect((await segnaPer(grace.email))[0]).toBe(200);
@@ -984,7 +984,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         };
         sessione.persona = grace;
 
-        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: grace.email }]);
+        expect(await segnaPer(ada.email)).toStrictEqual([409, { errore: 'persona_diversa', persona: '' }]);
         expect(await segnaPer(grace.email)).toStrictEqual([403, { errore: 'accettazione_richiesta', persona: grace.email }]);
     });
 
@@ -1171,17 +1171,18 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         return tutti;
     };
     const stati = async (richieste: [string, RequestInit][]) => (await esiti(richieste)).map(([stato]) => stato);
-    const diUnAltro = (email: string): [number, unknown] => [409, { errore: 'persona_diversa', persona: email }];
+    // Dalla `v2.12.0` (sprint 51 · T1) il 409 non dice chi è entrato: `persona` è un testo vuoto, come nella parte server.
+    const diUnAltro: [number, unknown] = [409, { errore: 'persona_diversa', persona: '' }];
     const nonValida: [number, unknown] = [422, { errore: 'dati_non_validi' }];
 
-    it('le quattro rotte, chieste con la `Persona` di chi c\'era prima, rispondono 409 `persona_diversa` con la sola email di chi è entrato e non fanno niente: la notifica del clic resta da leggere a chi è entrato; con la sua rispondono come sempre (sprint 40 · T3.2, T3.3)', async () => {
+    it('le quattro rotte, chieste con la `Persona` di chi c\'era prima, rispondono 409 `persona_diversa` con `persona` vuota (fino alla `v2.11.5` la sola email di chi è entrato) e non fanno niente: la notifica del clic resta da leggere a chi è entrato; con la sua rispondono come sempre (sprint 40 · T3.2, T3.3)', async () => {
         const sessione = { persona: ada };
         await rotte(sessione);
         const diGrace = async () => (await righeDi('/cornice/notifiche', { headers: dice(grace.email) })).righe.filter(({ id }) => ['uat-di-grace', 'uat-4'].includes(id)).map(({ id, letta }) => [id, letta]);
         sessione.persona = grace;
         expect(await diGrace()).toStrictEqual([['uat-di-grace', false], ['uat-4', false]]);
 
-        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro(grace.email)));
+        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro));
         expect(await diGrace()).toStrictEqual([['uat-di-grace', false], ['uat-4', false]]);
 
         expect(await stati(leQuattroDi(dice(grace.email)))).toStrictEqual([200, 200, 200, 200]);
@@ -1201,8 +1202,8 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         expect(await esiti(leQuattroDi({ Persona: '' }, { persona: ada.email }).slice(1))).toStrictEqual([nonValida, nonValida, nonValida]);
         expect(await esiti(leQuattroDi(dice(ada.email), { persona: '' }).slice(1))).toStrictEqual([nonValida, nonValida, nonValida]);
         // Tutti e due i posti: basta che uno non sia quello della «sessione».
-        expect(await esiti(leQuattroDi(dice(grace.email), { persona: ada.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro(grace.email)));
-        expect(await esiti(leQuattroDi(dice(ada.email), { persona: grace.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro(grace.email)));
+        expect(await esiti(leQuattroDi(dice(grace.email), { persona: ada.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro));
+        expect(await esiti(leQuattroDi(dice(ada.email), { persona: grace.email }).slice(1))).toStrictEqual([1, 2, 3].map(() => diUnAltro));
         expect(await stati(leQuattroDi(dice(grace.email), { persona: grace.email }).slice(1))).toStrictEqual([200, 200, 200]);
     });
 
@@ -1218,7 +1219,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
             ['/cornice/notifiche/uat-non-c-e/lettura', { method: 'PATCH', headers, body: JSON.stringify({ letta: true }) }],
         ];
 
-        expect(await esiti(sbagliate(dice(ada.email)))).toStrictEqual(sbagliate({}).map(() => diUnAltro(grace.email)));
+        expect(await esiti(sbagliate(dice(ada.email)))).toStrictEqual(sbagliate({}).map(() => diUnAltro));
         expect(await esiti(sbagliate(dice(grace.email)))).toStrictEqual([nonValida, [409, { errore: 'workspace_diverso' }], nonValida, nonValida, [404, { errore: 'non_trovato' }]]);
         // Una rotta che in GET non c'è non arriva a guardare di chi è la richiesta.
         expect(await esitoDi('/cornice/ricerca', { headers: dice(ada.email) })).toStrictEqual([405, null]);
@@ -1229,7 +1230,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         await rotte(sessione, '?accettazione=dopo');
         sessione.persona = grace;
 
-        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro(grace.email)));
+        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro));
         expect(await esiti(leQuattroDi(dice(grace.email)))).toStrictEqual(leQuattroDi().map(() => [403, { errore: 'accettazione_richiesta', persona: grace.email }]));
     });
 
@@ -1237,7 +1238,7 @@ describe('con la persona della «sessione» l\'elenco delle notifiche e i risult
         const lucja = { nome: 'UAT Łucja Żółć', email: 'łucja.żółć+uat@example.com' };
         await rotte({ persona: lucja });
         expect(await stati(leQuattroDi(dice(lucja.email)))).toStrictEqual([200, 200, 200, 200]);
-        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro(lucja.email)));
+        expect(await esiti(leQuattroDi(dice(ada.email)))).toStrictEqual(leQuattroDi().map(() => diUnAltro));
 
         vi.resetModules();
         await rotte(null);
