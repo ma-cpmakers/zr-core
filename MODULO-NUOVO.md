@@ -353,7 +353,7 @@ Dalla `v2.7.0` quel `non_letti` dice anche di chi è: porta lingua, persona e wo
 `sessione_il`, e la cornice ridotta non resta col nome di chi c'era prima. Se è di un'altra persona, o di un altro
 workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava scrivendo si perde. Non comporlo a mano
 nella tua parte server: `Cornice::ridotta()` lo dà nella stessa forma, col segno della lettura di io.mostra della
-richiesta (senza una lettura, il più vecchio che la forma dei segni ammette), senza chiamare il backoffice e senza
+richiesta (senza una lettura, il primo istante che la forma dei segni può dire), senza chiamare il backoffice e senza
 righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica
 (README, «La cornice in due dati»).
 

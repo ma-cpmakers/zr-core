@@ -1726,10 +1726,11 @@ che non dice di chi è, resta sotto il nome di `subito`, e chi lo compone nella 
 `Cornice::ridotta()` dà la cornice ridotta com'è nel ramo `non_letti` di `Cornice::dopo()`, nella stessa forma e nello
 stesso ordine — `non_letti`, `aggiornati_il`, `lingua`, `persona`, `workspace`, `sessione_il` e, se c'è, `lingua_il` —, per
 il frontend che la vuole lui, per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica. Non chiama il
-backoffice e non scrive nel log. I due segni sono l'inizio della lettura di io.mostra di quella richiesta (quella del 403,
-o quella di `Cornice::lingua()`); in una richiesta che io.mostra non l'ha letto sono il segno più vecchio che la loro forma
-ammette, `0000-01-01T00:00:00.000000Z`: una cornice ridotta non vale mai sopra dati veri arrivati dopo. Senza sessione o
-senza workspace dà `null`. E un frontend che mette la lingua
+backoffice e non scrive nel log. I due segni sono l'inizio della lettura di io.mostra che quella richiesta ha usato
+(quella del 403, quella di `Cornice::lingua()`, o nella richiesta rimandata quella della pagina che `Cornice::dopo()` ha
+ripreso); in una richiesta senza una lettura sono il primo istante che la forma dei segni può dire,
+`0000-01-01T00:00:00.000000Z`: una cornice ridotta non vale mai sopra dati veri arrivati dopo. Senza sessione o senza
+workspace dà `null`. E un frontend che mette la lingua
 con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e anche nella richiesta
 rimandata, dove `Cornice::dopo()` usa quella lettura: io.mostra si legge due volte per visita. Dalla `v2.15.0` chi la chiama
 solo dove la richiesta chiede `subito` la legge una volta (vedi «Dalla `v2.15.0`», sopra).

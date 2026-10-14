@@ -50,7 +50,7 @@ final class Cornice
      */
     private const RIMANDATA = 'zr-core.io-mostra-rimandata';
 
-    /** Il segno più vecchio nella forma dei segni, il primo istante dell'anno 0000: quello di `ridotta()` senza una lettura. */
+    /** Il primo istante che la forma dei segni può dire, l'inizio dell'anno 0000: il segno di `ridotta()` senza una lettura. */
     private const IL_PIU_VECCHIO = '0000-01-01T00:00:00.000000Z';
 
     /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
@@ -231,8 +231,8 @@ final class Cornice
      * La cornice ridotta, `non_letti`, com'è nel ramo ridotto di `dopo()` (dalla `v2.18.0`): per il frontend che la vuole lui,
      * per esempio quando il 403 di `dopo()` si ripete dopo la ricarica. Non chiama il backoffice e non scrive nel log: la chiede
      * il frontend, non è un guasto che zr-core ha visto. Il segno, in `aggiornati_il` e in `sessione_il`, è quello della lettura
-     * di io.mostra di questa richiesta — l'istante in cui è cominciata —, e senza una lettura il più vecchio che la forma dei
-     * segni ammette: una cornice ridotta non vale mai sopra dati veri arrivati dopo. null senza sessione o senza workspace.
+     * di io.mostra che questa richiesta ha usato — l'istante in cui è cominciata —, e senza una lettura il primo istante che la
+     * forma dei segni può dire: una cornice ridotta non vale mai sopra dati veri arrivati dopo. null senza sessione o senza workspace.
      *
      * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */

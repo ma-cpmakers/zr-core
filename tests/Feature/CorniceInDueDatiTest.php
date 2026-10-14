@@ -828,7 +828,7 @@ it('una lettura tenuta che non ha la sua forma esce dalla sessione e non rompe l
 // Sprint 58 · T1 (voce #2120; Decisioni di zr-pm 13453 e 13460). Un 403 passa da `Cornice::dopo()`, e se si ripete dopo la
 // ricarica il frontend può voler ridurre la cornice: `Cornice::ridotta()` gliela dà com'è nel ramo ridotto di `dopo()`, senza
 // che la componga a mano. Il segno lo prende zr-core: quello della lettura di io.mostra della richiesta, e senza una lettura il
-// più vecchio che la forma dei segni ammette, perché una ridotta non valga mai più di dati veri arrivati dopo.
+// primo istante che la forma dei segni può dire, perché una ridotta non valga mai più di dati veri arrivati dopo.
 it('dopo un 403 di Cornice::dopo(), nella stessa richiesta Cornice::ridotta() dà la forma del ramo ridotto, nello stesso ordine, coi due segni all\'inizio della lettura di io.mostra e non all\'istante della chiamata; non richiama il backoffice e nel log non scrive niente (sprint 58 · T1.1, T1.4)', function (string $percorso) {
     Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:05.123456', 'UTC'));
     sessioneAMano(marketing());
@@ -870,7 +870,7 @@ it('senza sessione, o con la sessione aperta ma senza workspace, Cornice::ridott
     Http::assertNothingSent();
 });
 
-it('senza una lettura di io.mostra nella richiesta, Cornice::ridotta() dà la stessa forma coi due segni al più vecchio che la forma dei segni ammette, non all\'istante della chiamata; non legge io.mostra e nel log non scrive niente — anche se la pagina di prima l\'aveva letto (sprint 58 · T1.3, T1.4)', function (bool $paginaDiPrima) {
+it('senza una lettura di io.mostra nella richiesta, Cornice::ridotta() dà la stessa forma coi due segni al primo istante che la forma dei segni può dire, non all\'istante della chiamata; non legge io.mostra e nel log non scrive niente — anche se la pagina di prima l\'aveva letto (sprint 58 · T1.3, T1.4)', function (bool $paginaDiPrima) {
     Carbon::setTestNow(Carbon::parse('2026-10-14 17:40:05.123456', 'UTC'));
     sessioneAMano(marketing());
     logDellaRiga();
@@ -897,12 +897,15 @@ it('senza una lettura di io.mostra nella richiesta, Cornice::ridotta() dà la st
     'la lettura della pagina, in una richiesta di prima' => [true],
 ]);
 
-it('il segno di una Cornice::ridotta() senza lettura ha la forma dei segni, e nessun istante in quella forma è più vecchio (sprint 58 · T1.3)', function () {
+// Review della PR #93, R1: che sia il primo lo dice l'istante un microsecondo prima, che nella forma dei segni non si scrive.
+it('il segno di una Cornice::ridotta() senza lettura è un istante vero nella forma dei segni, e un microsecondo prima non lo è più: nessun istante in quella forma è più vecchio (sprint 58 · T1.3; review della PR #93, R1)', function () {
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato();
-    $segno = (array) Cornice::ridotta();
+    $segno = ((array) Cornice::ridotta())['aggiornati_il'];
+    $forma = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\z/';
+    $istante = Carbon::parse($segno, 'UTC');
 
-    expect($segno['aggiornati_il'])->toMatch('/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\z/')
-        ->and(Carbon::parse($segno['aggiornati_il'])->format('Y-m-d\TH:i:s.u\Z'))->toBe($segno['aggiornati_il'])
-        ->and(strcmp($segno['aggiornati_il'], '0000-01-01T00:00:00.000000Z'))->toBe(0);
+    expect($segno)->toMatch($forma)
+        ->and($istante->format('Y-m-d\TH:i:s.u\Z'))->toBe($segno)
+        ->and($istante->copy()->subMicrosecond()->format('Y-m-d\TH:i:s.u\Z'))->not->toMatch($forma);
 });
