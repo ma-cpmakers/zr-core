@@ -1178,6 +1178,61 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(document.body.textContent).not.toContain(dati.persona.nome);
     });
 
+    // Sprint 43 · T4 (voce 2052): con la stessa persona vale la lingua del dato più recente. Chi cambia lingua e rilegge il solo
+    // `subito` ha i testi della cornice nella lingua nuova da subito, senza aspettare che `dopo` sia riletto: da `subito` passa
+    // la sola lingua, e moduli, workspace e numero delle notifiche restano quelli del `dopo` che c'è.
+    describe('la lingua di chi l\'ha cambiata', () => {
+        /** Le lingue in cui la cornice dice «Notifiche» a schermo: una sola, quella dei suoi testi. */
+        const lingueASchermo = () => (['it', 'es', 'en'] as const).filter((lingua) => document.body.innerHTML.includes(testi(lingua).notifications));
+        const prima = '2026-10-13T08:00:01.000000Z';
+        const poi = '2026-10-13T08:00:05.000000Z';
+        const letto = (conIlSegno: Partial<DatiDopo>): DatiDopo => ({ ...dopo, aziende, lingua: 'it', persona: dati.persona, workspace: subito.workspace, aggiornati_il: prima, ...conIlSegno });
+        const delDopoDiPrima = () => {
+            expect(etichette()).toContain('CRM');
+            expect(uno('.zr-ws-switch')?.textContent).toContain('Acme');
+            expect(uno('.zr-bell-count')?.textContent).toBe('7');
+            expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+        };
+
+        it('stessa persona, riletto il solo `subito` con la sessione letta dopo quella del `dopo` che c\'è: i testi della cornice sono nella lingua di `subito`, e moduli, workspace e numero delle notifiche restano quelli del `dopo` di prima finché non è riletto (sprint 43 · T4.1)', async () => {
+            await inDue({ subito: { ...subito, sessione_il: '2026-10-13T08:00:00.000000Z' }, dopo: letto({ sessione_il: prima }) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['it']);
+            delDopoDiPrima();
+
+            // La persona ha cambiato lingua: un ricaricamento parziale del solo `subito`, e il `dopo` fra le props resta quello di prima.
+            await inDue({ subito: { ...subito, lingua: 'es', sessione_il: poi }, dopo: letto({ sessione_il: prima }) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['es']);
+            delDopoDiPrima();
+            await clic(uno('.zr-bell'));
+            expect(uno('.zr-notif')?.textContent).toContain(testi('es').notifications);
+
+            // Riletto anche `dopo`, è lui il più recente: vale tutto ciò che porta.
+            await inDue({ subito: { ...subito, lingua: 'es', sessione_il: poi }, dopo: letto({ lingua: 'es', non_lette: 3, sessione_il: '2026-10-13T08:00:06.000000Z' }) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['es']);
+            expect(uno('.zr-bell-count')?.textContent).toBe('3');
+        });
+
+        it('un `dopo` letto con la sessione più recente di quella di `subito` vale come sempre, lingua compresa: la lingua non torna a quella di un `subito` più vecchio (sprint 43 · T4.2)', async () => {
+            await inDue({ subito: { ...subito, lingua: 'es', sessione_il: prima }, dopo: letto({ lingua: 'it', sessione_il: poi }) }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['it']);
+            delDopoDiPrima();
+        });
+
+        /** Lo stesso `dopo` senza la persona: uno composto a mano, che non dice di chi è. */
+        const senzaPersona = ({ persona: _persona, ...resto }: DatiDopo): DatiDopo => resto;
+
+        it.each<[string, string | undefined, DatiDopo]>([
+            ['`subito` non ha il segno della sessione', undefined, letto({ sessione_il: prima })],
+            ['`dopo` non ha il segno della sessione', poi, letto({})],
+            ['i due segni sono lo stesso istante', prima, letto({ sessione_il: prima })],
+            ['`dopo` non dice di chi è', poi, senzaPersona(letto({ sessione_il: prima }))],
+        ])('se %s vale la lingua di `dopo`, come fino alla `v2.8.0` (sprint 43 · T4.3)', async (_caso, diSubito, ilDopo) => {
+            await inDue({ subito: { ...subito, lingua: 'es', sessione_il: diSubito }, dopo: ilDopo }, <PaginaA key="1" />);
+            expect(lingueASchermo()).toStrictEqual(['it']);
+            delDopoDiPrima();
+        });
+    });
+
     it('nello stesso workspace, per più passaggi e col menu del profilo aperto: a ogni `subito` riletto da solo che dice un\'altra persona la cornice è la sua e in attesa, senza niente di chi c\'era prima, e all\'arrivo del suo `dopo` è la sua per intero — da una persona all\'altra e ritorno (sprint 38 · T2.1, T2.2)', async () => {
         const conta = { montaggi: 0 };
         const diAda = (il: string): DatiSubito => ({ ...subito, sessione_il: `2026-10-13T08:00:${il}.000000Z` });
@@ -1257,9 +1312,11 @@ describe('la cornice in due dati, sotto il layout', () => {
         quellaDiSempre();
         expect(uno('aside.zr-side')).toBe(barra);
         expect([campo() === nodo, campo().value, document.activeElement === nodo, conta.montaggi]).toStrictEqual([true, 'UAT scritto', true, 1]);
-        // Nome e lingua: come oggi, quelli che dice il `dopo` (sta sopra `subito`, con tutto ciò che porta), finché non è riletto.
+        // Il nome è quello che dice il `dopo` (sta sopra `subito`, con ciò che porta), finché non è riletto. La lingua no: dalla
+        // `v2.9.0`, con la stessa persona, vale quella del dato più recente (sprint 43 · T4.1), qui il `subito` riletto.
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
-        expect(etichette()).toContain('Project Management');
+        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).not.toContain('Project Management');
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="status"]')?.textContent ?? '').not.toBe(testi('it').loading);
 
