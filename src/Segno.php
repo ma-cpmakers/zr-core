@@ -76,6 +76,26 @@ final class Segno
         return strcmp($segno, self::forma(Carbon::now('UTC')->addMinutes(self::AVANTI_AL_MASSIMO))) > 0;
     }
 
+    /**
+     * L'istante di adesso sull'orologio di questo server, nella forma dei segni, senza il cookie (dalla `v2.15.0`, per la
+     * lettura di io.mostra che `Cornice` tiene per la richiesta rimandata): non è un segno.
+     */
+    public static function orologio(): string
+    {
+        return self::forma(Carbon::now('UTC'));
+    }
+
+    /**
+     * Se un istante di `orologio()` sta negli ultimi `$secondi` secondi dell'orologio di questo server: a `$secondi` esatti sì,
+     * un istante più avanti di adesso no (l'ha preso un server con l'orologio avanti).
+     */
+    public static function negliUltimi(string $istante, int $secondi): bool
+    {
+        $adesso = Carbon::now('UTC');
+
+        return strcmp($istante, self::forma($adesso->copy()->subSeconds($secondi))) >= 0 && strcmp($istante, self::forma($adesso)) <= 0;
+    }
+
     /** Un istante nella forma dei segni. */
     private static function forma(Carbon $istante): string
     {

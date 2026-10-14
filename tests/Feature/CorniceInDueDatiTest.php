@@ -510,3 +510,228 @@ it('la parte server della cornice non usa Inertia: nessuna classe importata e ne
     expect($file)->not->toBe([])
         ->and(array_values(array_filter($file, fn (string $uno): bool => preg_match('/^use Inertia\\\\|Inertia::/m', (string) file_get_contents($uno)) === 1)))->toBe([]);
 });
+
+// Sprint 54 · T1 (voce #2098). La richiesta rimandata di una pagina riusa la lettura di io.mostra che Cornice::lingua() ha fatto
+// per la pagina: una chiamata a /v1 in meno. Il legame sta tutto nella sessione: stessa persona, stesso workspace, segno ancora
+// quello ricordato per la lingua, al più dieci secondi, una volta sola (Decisione di zr-pm del 14/10, nota 13228).
+
+/** Una richiesta nuova con la stessa sessione: ciò che la cornice tiene sulla richiesta non c'è più. */
+function richiestaNuova(): void
+{
+    app()->instance('request', Illuminate\Http\Request::create('/'));
+}
+
+it('la richiesta rimandata non rilegge io.mostra: Cornice::dopo() dopo la Cornice::lingua() della pagina dà le non lette e il segno di quella lettura, con le altre letture di sempre (sprint 54 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:02.000000', 'UTC'));
+
+    expect(Cornice::dopo())->toBe([...datiAttesi('2026-10-14T13:30:00.000000Z'), 'sessione_il' => '2026-10-14T13:30:00.000000Z', 'lingua_il' => '2026-10-14T13:30:00.000000Z'])
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
+});
+
+it('la lettura della pagina vale per una richiesta rimandata sola: una seconda Cornice::dopo() rilegge io.mostra (sprint 54 · T1.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io/workspace' => ['data' => [], 'successivo' => null]]);
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    Cornice::dopo();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:02.000000', 'UTC'));
+
+    expect(((array) Cornice::dopo())['aggiornati_il'] ?? null)->toBe('2026-10-14T13:30:02.000000Z')
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+});
+
+it('se fra la pagina e la sua richiesta rimandata nella sessione entra un\'altra persona, o la stessa passa a un altro workspace, Cornice::dopo() rilegge io.mostra e dà i dati di chi c\'è adesso (sprint 54 · T1.3)', function (array $chi, array $dove, int $nonLette) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    $io = ioMostra(3);
+    $altra = ioMostra($nonLette);
+    $altra['data']['utente'] = [...$altra['data']['utente'], ...$chi];
+    backofficeDiChiHaAccettato(['/v1/io' => Http::sequence()->push($io)->push($altra)]);
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => [...(array) Sessione::utente(), ...$chi], 'workspace' => $dove, 'ruolo' => 'membro']);
+    $dopo = (array) Cornice::dopo();
+
+    expect($dopo['non_lette'] ?? null)->toBe($nonLette)
+        ->and($dopo['aggiornati_il'] ?? null)->toBe('2026-10-14T13:30:01.000000Z')
+        ->and($dopo['persona']['email'] ?? null)->toBe($chi['email'] ?? 'uat-ada@example.com')
+        ->and($dopo['workspace'] ?? null)->toBe(['nome' => $dove['nome'], 'slug' => $dove['slug']])
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+})->with([
+    'un\'altra persona, nello stesso workspace' => [['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], marketing(), 9],
+    'la stessa persona, in un altro workspace' => [[], ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'], 7],
+]);
+
+it('la lettura della pagina vale per la richiesta rimandata fino a dieci secondi esatti dal suo segno; un microsecondo dopo Cornice::dopo() rilegge io.mostra (sprint 54 · T1.4)', function (string $quando, int $letture) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse($quando, 'UTC'));
+    Cornice::dopo();
+
+    expect(array_count_values(percorsiChiamati())['/v1/io'])->toBe($letture);
+})->with([
+    'a dieci secondi' => ['2026-10-14 13:30:10.000000', 1],
+    'a dieci secondi e un microsecondo' => ['2026-10-14 13:30:10.000001', 2],
+]);
+
+it('se fra la pagina e la sua richiesta rimandata un\'altra lettura porta avanti il segno ricordato della lingua, Cornice::dopo() rilegge io.mostra: non dà una lettura più vecchia di quella ricordata (sprint 54 · T1.5)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io/workspace' => ['data' => [], 'successivo' => null]]);
+
+    Cornice::lingua();
+    // Un'altra scheda, con la cornice in una richiesta sola.
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    Cornice::dati();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:02.000000', 'UTC'));
+    $dopo = (array) Cornice::dopo();
+
+    expect($dopo['aggiornati_il'] ?? null)->toBe('2026-10-14T13:30:02.000000Z')
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(3);
+});
+
+it('se la lettura di io.mostra della pagina fallisce, la richiesta rimandata la rifà: Cornice::dopo() non riusa un errore (sprint 54 · T1.6)', function (Closure $errore) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => $errore(Http::sequence())->push(ioMostra(3))]);
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    $dopo = (array) Cornice::dopo();
+
+    expect($dopo['non_lette'] ?? null)->toBe(3)
+        ->and($dopo['aggiornati_il'] ?? null)->toBe('2026-10-14T13:30:01.000000Z')
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+})->with([
+    'un 5xx' => [fn ($sequenza) => $sequenza->pushResponse(nonRisponde(502, null))],
+    'un 429' => [fn ($sequenza) => $sequenza->pushResponse(nonRisponde(429, 'troppe_richieste'))],
+    'il 403 accettazione_richiesta' => [fn ($sequenza) => $sequenza->pushResponse(accettazioneRichiesta())],
+    'la connessione che cade' => [fn ($sequenza) => $sequenza->pushFailedConnection()],
+]);
+
+it('la lettura tenuta per la richiesta rimandata la prende solo Cornice::dopo(): Cornice::lingua() e Cornice::dati() di una richiesta dopo leggono io.mostra come sempre (sprint 54 · T1.7)', function (string $chi) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    $chi === 'lingua' ? Cornice::lingua() : Cornice::dati();
+
+    expect(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+})->with(['lingua', 'dati']);
+
+it('la lettura tenuta per la richiesta rimandata esce dalla sessione all\'uscita e al cambio di workspace, non solo coi dieci secondi: tornando subito al workspace di prima, Cornice::dopo() rilegge io.mostra (sprint 54 · T1.10)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+    $entraIn = fn (array $workspace) => Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => Sessione::utente(), 'workspace' => $workspace, 'ruolo' => 'membro']);
+
+    Cornice::lingua();
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeTrue();
+
+    // Il cambio di workspace: la pagina dopo, nell'altro workspace, la toglie appena chiede la cornice.
+    richiestaNuova();
+    $entraIn(['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite']);
+    Cornice::subito();
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeFalse();
+
+    $entraIn(marketing());
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    Cornice::dopo();
+    expect(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+
+    // L'uscita.
+    richiestaNuova();
+    Cornice::lingua();
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeTrue();
+    Sessione::chiudi();
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeFalse();
+});
+
+it('i dieci secondi si contano sull\'orologio del server: una lettura tenuta con l\'ora più avanti di quella di chi la usa (un server con l\'orologio avanti) non vale, e Cornice::dopo() rilegge io.mostra (sprint 54 · T1.4; revisione di sicurezza S1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    Cornice::lingua();
+    richiestaNuova();
+    // Il server della richiesta rimandata ha l'orologio un secondo indietro.
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:29:59.000000', 'UTC'));
+    Cornice::dopo();
+
+    expect(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+});
+
+it('una lettura fallita della pagina non resta nella sessione e toglie quella di prima: la richiesta rimandata rilegge io.mostra anche se una pagina prima, riuscita, aveva il segno ancora ricordato (sprint 54 · T1.6; review R3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => Http::sequence()->push(ioMostra(3))->pushResponse(nonRisponde(502, null))->push(ioMostra(5))]);
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:01.000000', 'UTC'));
+    Cornice::lingua();
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeFalse();
+
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:02.000000', 'UTC'));
+    $dopo = (array) Cornice::dopo();
+
+    expect($dopo['non_lette'] ?? null)->toBe(5)
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(3);
+});
+
+it('la lettura tenuta esce dalla sessione appena la cornice è chiesta da un\'altra persona entrata nello stesso browser, nello stesso workspace (sprint 54 · T1.3; review R3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+    $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+
+    Cornice::lingua();
+    richiestaNuova();
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
+    Cornice::subito();
+
+    expect(session()->has('zr-core.io-mostra-rimandata'))->toBeFalse();
+});
+
+it('una lettura tenuta che non ha la sua forma esce dalla sessione e non rompe la richiesta rimandata: Cornice::dopo() rilegge io.mostra (sprint 54; revisione di sicurezza S7)', function (array $guasta) {
+    Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato();
+
+    Cornice::lingua();
+    richiestaNuova();
+    session()->put('zr-core.io-mostra-rimandata', [...(array) session('zr-core.io-mostra-rimandata'), ...$guasta]);
+    $dopo = (array) Cornice::dopo();
+
+    expect($dopo['non_lette'] ?? null)->toBe(3)
+        ->and(session()->has('zr-core.io-mostra-rimandata'))->toBeFalse()
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+})->with([
+    'il segno non è un testo' => [['segno' => 20261014]],
+    'le non lette non sono un numero' => [['esito' => '3']],
+    'senza l\'ora del server' => [['il' => null]],
+]);

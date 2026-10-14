@@ -23,7 +23,8 @@ use Zeiras\Auth\Sessione;
  * è una di Zeiras; e dalla `v2.11.4` non quella di una lettura più vecchia di quella che l'ha confermata:
  * `conLaLinguaRicordata()`), e i dati li portano da quella stessa lettura.
  * Un modulo che mette la lingua della pagina prima del controller la prende da `lingua()`, che fa quella stessa lettura: in una
- * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`).
+ * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`); e dalla `v2.15.0` la lettura di `lingua()` riuscita
+ * resta nella sessione per la richiesta rimandata della stessa pagina, dove `dopo()` la usa una volta (`perLaRimandata()`).
  *
  * Ogni lettura porta un segno, `aggiornati_il`: l'istante in cui è cominciata. La `Cornice` lo confronta con quello dei dati
  * che ha e con gli istanti delle due rotte delle notifiche, e non torna a dati letti prima: per questo la sua forma è una
@@ -42,6 +43,15 @@ final class Cornice
      * confermato la sua lingua. Sta nella sessione e non sulla richiesta: `subito()` lo dà in una richiesta che non legge.
      */
     private const LINGUA = 'zr-core.lingua';
+
+    /**
+     * La lettura di io.mostra riuscita che `lingua()` ha fatto per la pagina, nella sessione, per la richiesta rimandata della
+     * stessa pagina (dalla `v2.15.0`): `dopo()` la prende una volta sola, e la toglie che la usi o no (`perLaRimandata()`).
+     */
+    private const RIMANDATA = 'zr-core.io-mostra-rimandata';
+
+    /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
+    private const SECONDI_DELLA_RIMANDATA = 10;
 
     /** La forma di una lingua: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_` (`it`, `pt-BR`, `zh-Hans-CN`). */
     private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
@@ -65,7 +75,8 @@ final class Cornice
      * stringhe. Le non lette si contano per prime, subito dopo il segno: è il numero che la cornice confronta col segno, e
      * contato dopo le altre letture sarebbe più fresco del suo segno di tre chiamate. Se in questa richiesta `lingua()` ha già
      * letto io.mostra, le non lette e il segno sono quelli di quella lettura, che non si rifà: il segno resta l'istante preso
-     * prima di contarle. Una seconda `dati()` nella stessa richiesta rilegge tutto, col suo segno.
+     * prima di contarle. Una seconda `dati()` nella stessa richiesta rilegge tutto, col suo segno. Nella richiesta rimandata
+     * la lettura di `lingua()` può essere quella della pagina (`dopo()`, dalla `v2.15.0`).
      *
      * La lingua e il nome sono quelli della sessione riletta dopo `Sessione::aggiorna`, mai quelli di io.mostra presi da qui:
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
@@ -75,6 +86,7 @@ final class Cornice
      */
     public static function dati(): ?array
     {
+        self::tenuta();
         $utente = Sessione::utente();
         $workspace = Sessione::workspace();
 
@@ -132,6 +144,8 @@ final class Cornice
         $utente = Sessione::utente();
         $workspace = Sessione::workspace();
 
+        self::tenuta();
+
         if ($utente === null || $workspace === null) {
             return null;
         }
@@ -180,6 +194,7 @@ final class Cornice
         // metterci secondi a non rispondere, e col segno della fine un `non_letti` in ritardo varrebbe nel browser sopra i
         // dati di chi è entrato intanto. Questo è il ripiego: di norma il segno è quello che `lettura()` tiene (sotto).
         $prima = Segno::adesso();
+        self::perLaRimandata();
 
         try {
             $dati = self::dati();
@@ -268,7 +283,9 @@ final class Cornice
 
         $workspace = Sessione::workspace();
 
-        if ($workspace !== null) {
+        if ($workspace === null) {
+            session()->forget(self::RIMANDATA);
+        } else {
             self::lettura($utente, $workspace, false);
             // Come in `dati()`: se intanto la sessione è scaduta resta la persona letta all'inizio.
             $utente = Sessione::utente() ?? $utente;
@@ -345,7 +362,50 @@ final class Cornice
         $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati];
         request()->attributes->set(self::LETTURA, $lettura);
 
+        // La lettura della pagina, se è riuscita, resta per la sua richiesta rimandata; una fallita non resta, e toglie quella di prima.
+        if (! $perIDati) {
+            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio()]) : session()->forget(self::RIMANDATA);
+        }
+
         return $lettura;
+    }
+
+    /**
+     * La lettura tenuta per la richiesta rimandata, se è della persona e del workspace della sessione; se non lo è più (un
+     * cambio di workspace, un'altra persona entrata, nessuna sessione) o non ha la sua forma, la toglie dalla sessione e dà null.
+     *
+     * @return array{di: array{0: string, 1: array<string, mixed>}, segno: string, esito: int, il: string}|null
+     */
+    private static function tenuta(): ?array
+    {
+        $tenuta = session(self::RIMANDATA);
+        $id = Sessione::utente()['id'] ?? null;
+
+        if (is_string($id) && is_array($tenuta) && ($tenuta['di'] ?? null) === [$id, Sessione::workspace()] && is_string($tenuta['segno'] ?? null) && is_int($tenuta['esito'] ?? null) && is_string($tenuta['il'] ?? null)) {
+            return $tenuta;
+        }
+
+        session()->forget(self::RIMANDATA);
+
+        return null;
+    }
+
+    /**
+     * Nella richiesta rimandata, la lettura che `lingua()` ha fatto per la pagina diventa quella di questa richiesta, e i dati
+     * non rileggono io.mostra: se è della persona e del workspace della sessione, se il suo segno è ancora quello che la
+     * sessione ricorda per la lingua di quella persona (una lettura dopo, in un'altra richiesta, lo porta avanti) e se ha al più
+     * `SECONDI_DELLA_RIMANDATA` secondi sull'orologio di questo server (`il`, preso quando è stata tenuta: un segno può stare avanti
+     * dell'orologio, per il cookie). Vale una volta sola: la toglie dalla sessione sempre. Va prima di `lingua()` solo se la
+     * richiesta non la chiama: `lingua()` dopo userebbe questa lettura.
+     */
+    private static function perLaRimandata(): void
+    {
+        $tenuta = self::tenuta();
+        session()->forget(self::RIMANDATA);
+
+        if ($tenuta !== null && ! request()->attributes->has(self::LETTURA) && $tenuta['segno'] === (self::linguaIl()['lingua_il'] ?? null) && Segno::negliUltimi($tenuta['il'], self::SECONDI_DELLA_RIMANDATA)) {
+            request()->attributes->set(self::LETTURA, ['di' => $tenuta['di'], 'segno' => $tenuta['segno'], 'esito' => $tenuta['esito'], 'nei_dati' => false]);
+        }
     }
 
     /**
