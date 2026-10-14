@@ -435,6 +435,54 @@ it('dopo l\'ingresso di un\'altra persona nello stesso browser, la lingua_il ric
         ->and($riuscita['lingua_il'] ?? null)->toBe('2026-10-09T21:31:11.000000Z');
 });
 
+// Sprint 49 · T2 (voce #2071; R1 della review della PR #82, R9 della PR #81). Lingua e segno della lingua sono una coppia: una
+// lettura di io.mostra che non porta avanti il segno ricordato per la persona — più vecchia, finita dopo una più nuova — non
+// cambia la lingua della sessione. Fino alla `v2.11.3` la cambiava, e la lingua superata stava sotto il segno più nuovo: a pari
+// segno con `subito` il browser la teneva. Il segno ricordato più avanti di adesso si mette a mano: `Segno` non torna indietro
+// nella stessa richiesta, e due richieste in volo insieme non si fanno in un caso.
+it('una lettura di io.mostra più vecchia del segno della lingua ricordato non cambia la lingua della sessione: Cornice::dopo(), Cornice::subito() e Cornice::lingua() danno quella ricordata, col suo segno (sprint 49 · T2.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.000000', 'UTC'));
+    sessioneAMano(marketing(), 'it');
+    session()->put('zr-core.lingua', ['persona' => 'uat-ada', 'il' => '2026-10-09T21:31:09.000000Z']);
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
+
+    $dopo = (array) Cornice::dopo();
+
+    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null])->toBe(['it', '2026-10-09T21:31:09.000000Z'])
+        ->and(((array) Cornice::subito())['lingua'] ?? null)->toBe('it')
+        ->and(Cornice::lingua())->toBe('it');
+});
+
+it('una lettura di io.mostra più avanti del segno della lingua ricordato, con un\'altra lingua, la porta col suo segno (sprint 49 · T2.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:09.000000', 'UTC'));
+    sessioneAMano(marketing(), 'it');
+    session()->put('zr-core.lingua', ['persona' => 'uat-ada', 'il' => '2026-10-09T21:31:05.000000Z']);
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
+
+    $dopo = (array) Cornice::dopo();
+
+    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null])->toBe(['es', '2026-10-09T21:31:09.000000Z'])
+        ->and(((array) Cornice::subito())['lingua'] ?? null)->toBe('es')
+        ->and(Cornice::lingua())->toBe('es');
+});
+
+it('senza un segno della lingua ricordato per la persona della sessione — nessuno, o quello di un\'altra persona entrata prima nello stesso browser — la lingua di io.mostra passa come prima (sprint 49 · T2.3)', function (?array $ricordato) {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.000000', 'UTC'));
+    sessioneAMano(marketing(), 'it');
+    if ($ricordato !== null) {
+        session()->put('zr-core.lingua', $ricordato);
+    }
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraCon(['lingua' => 'es'])]);
+
+    $dopo = (array) Cornice::dopo();
+
+    expect([$dopo['lingua'] ?? null, $dopo['lingua_il'] ?? null])->toBe(['es', '2026-10-09T21:31:05.000000Z'])
+        ->and(Cornice::lingua())->toBe('es');
+})->with([
+    'nessuno' => [null],
+    'di un\'altra persona, più avanti' => [['persona' => 'uat-grace', 'il' => '2026-10-09T21:31:09.000000Z']],
+]);
+
 it('la parte server della cornice non usa Inertia: nessuna classe importata e nessuna chiamata, la prop rimandata la scrive il frontend (sprint 34 · T4.10)', function () {
     $file = glob(__DIR__.'/../../src/{*,*/*}.php', GLOB_BRACE) ?: [];
 
