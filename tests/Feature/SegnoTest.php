@@ -10,6 +10,7 @@ use Illuminate\Testing\TestResponse;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Symfony\Component\HttpFoundation\Cookie;
+use Zeiras\Auth\Sessione;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Segno;
 
@@ -100,7 +101,10 @@ function dalBrowser(string $metodo, string $indirizzo, ?array $corpo = null, ?st
 {
     $cookies = $cookie === null ? [] : [Segno::COOKIE => encrypt(CookieValuePrefix::create(Segno::COOKIE, app('encrypter')->getKey()).$cookie, false)];
 
-    return test()->call($metodo, $indirizzo, [], $cookies, [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], $corpo === null ? null : (string) json_encode($corpo));
+    // La pagina dice di chi è (`Persona`, dalla `v2.13.0` obbligatoria sulle rotte della cornice): quella della sessione.
+    $persona = rawurlencode((string) (Sessione::utente()['email'] ?? ''));
+
+    return test()->call($metodo, $indirizzo, [], $cookies, [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_PERSONA' => $persona], $corpo === null ? null : (string) json_encode($corpo));
 }
 
 /** Il cookie del segno che la risposta scrive, così come lo scrive (cifrato da EncryptCookies), o null. */
