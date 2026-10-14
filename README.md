@@ -427,6 +427,35 @@ zr-auth. Da zr-auth `v0.12.17` è un 403 con `codice` e `mancanti`: la cornice l
 passa allo stato ridotto. Con una patch più vecchia, che il vincolo di zr-core ammette, quell'errore non ha una risposta
 sua: al browser arriva un 500, e la cornice mostra l'errore di sempre: nel pannello delle notifiche resta «Riprova».
 
+### Il cookie del segno
+
+Dalla `v2.11.0` i segni della parte server — `sessione_il` di `Cornice::subito()`, `aggiornati_il` e `sessione_il` di
+`Cornice::dopo()`, `aggiornati_il` dei dati interi e dell'elenco delle notifiche, `segnata_il` e `segnate_il` — non vanno
+mai indietro per lo stesso browser. L'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è il più
+avanti fra l'orologio della parte server e quello: con due server del frontend sfasati, o con l'orologio riportato
+indietro, la pagina di chi è entrato adesso non vale come una pagina vecchia (fino alla `v2.10.0` la cornice la scartava,
+e restava chi c'era prima). A parità di segno la cornice prende la pagina che arriva, e nella stessa richiesta due letture
+nello stesso istante hanno lo stesso segno.
+
+- **Che cosa porta**: solo l'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del
+  frontend): niente della persona né del workspace — né l'email, né un id, né lo slug, né un nome.
+- **Gli attributi**: `Path=/`, nessun `Domain` (il prefisso `__Host-` lo lega all'host del modulo), `Secure`, `HttpOnly`,
+  `SameSite=Lax`; scade con la sessione (`session.lifetime`, o alla chiusura del browser con `session.expire_on_close`).
+  Nel gruppo `web` lo cifra anche `EncryptCookies`, come ogni cookie del frontend; la firma regge anche dove il frontend
+  lo esclude.
+- **Un cookie che non torna non vale**: manomesso, firmato con un'altra chiave, in un'altra forma, vuoto o mancante, il
+  segno è l'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie. Senza `APP_KEY` il cookie non c'è, e il
+  segno è l'orologio.
+- **Per l'informativa**: è un cookie tecnico, necessario al funzionamento della cornice; non serve a profilare, non va a
+  terzi e non esce dall'host del modulo. Va citato col suo nome e il suo scopo nell'informativa sui cookie del modulo.
+- **Che cosa serve**: le risposte che danno un segno lo mettono nella coda dei cookie di Laravel, e lo manda
+  `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`: il frontend non scrive niente. Una pagina fuori dal gruppo
+  `web` dà i segni senza il cookie, come prima.
+- **Che cosa resta**: due richieste in volo insieme leggono lo stesso cookie, e l'ordine dei loro segni è quello degli
+  orologi; un browser che non tiene il cookie — un indirizzo `http://` che non è `localhost`, i cookie rifiutati — vale
+  come prima della `v2.11.0`. I server del frontend devono avere comunque l'ora allineata: il cookie frena un orologio
+  indietro, non uno avanti.
+
 ## La cornice
 
 Ogni pagina di un workspace sta dentro la `Cornice`. Il frontend dà la pagina, i dati della parte server (`Cornice::dati()`)

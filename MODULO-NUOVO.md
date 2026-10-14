@@ -348,6 +348,10 @@ workspace, la cornice si rifà e la tua pagina con lei: lì ciò che si stava sc
 parte server, dallo nella stessa forma, coi due segni presi prima di leggere; uno che dice solo `non_letti` vale
 come prima, sotto il nome dei dati della sessione.
 
+Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
+che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
+a te: citalo nell'informativa sui cookie del modulo, come cookie tecnico.
+
 ## 7. La cornice montata una volta sola
 
 **Scrivi**, nel file d'ingresso di Inertia (`resources/js/app.tsx`), il layout del frontend: un componente a livello di
