@@ -374,6 +374,19 @@ it('una lettura dopo, che conferma ancora la lingua, porta lingua_il al suo iniz
         ->and(((array) Cornice::subito())['lingua_il'] ?? null)->toBe('2026-10-09T21:31:07.000000Z');
 });
 
+it('lingua_il è l\'inizio della lettura anche quando l\'orologio va avanti mentre io.mostra risponde, non la sua fine (sprint 45 · T3.1; review della PR #79, R4a)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => function () {
+        Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:08.000000', 'UTC'));
+
+        return Http::response(ioMostra(3));
+    }]);
+
+    expect(((array) Cornice::dopo())['lingua_il'] ?? null)->toBe('2026-10-09T21:31:05.123456Z')
+        ->and(((array) Cornice::subito())['lingua_il'] ?? null)->toBe('2026-10-09T21:31:05.123456Z');
+});
+
 it('una risposta di io.mostra con l\'id di un\'altra persona non conferma la lingua: niente lingua_il, né in Cornice::dopo() né in Cornice::subito() (sprint 45 · T3.1)', function (mixed $id) {
     Carbon::setTestNow(Carbon::parse('2026-10-09 21:31:05.123456', 'UTC'));
     sessioneAMano(marketing());

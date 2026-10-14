@@ -968,14 +968,19 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     // Sprint 45 · T2 (voce #2001): col cookie del segno, un nodo con l'orologio indietro dà alla pagina di chi è entrato lo stesso
     // segno dell'ultima data al browser, non uno più vecchio. A parità di segno vale la pagina che arriva: è di chi è entrato.
-    it('la pagina di chi è entrato con lo stesso segno della pagina di prima — il nodo con l\'orologio indietro, frenato dal cookie del segno — è sua: avatar, moduli e non lette dicono chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async () => {
+    // Nello stesso workspace la `Cornice` resta montata e decide lei; in un altro la `key` cambia e decide il layout (review della
+    // PR #79, R3): il caso si prova nei due.
+    it.each([
+        ['nello stesso workspace', subito.workspace],
+        ['in un altro workspace', datiAltroWorkspace.workspace],
+    ])('la pagina di chi è entrato con lo stesso segno della pagina di prima, %s, è sua: avatar, moduli e non lette dicono chi è entrato, e la pagina non si ricarica (sprint 45 · T2.6)', async (_caso, workspace) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const stesso = '2026-10-14T12:00:00.000000Z';
         await inDue({ subito: { ...subito, sessione_il: stesso }, dopo: { ...dopo, aggiornati_il: stesso, sessione_il: stesso } }, <PaginaA key="1" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
 
-        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, sessione_il: stesso };
-        await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace: subito.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: stesso, sessione_il: stesso } }, <PaginaB key="2" />);
+        const diAltra: DatiSubito = { ...subito, lingua: 'es', persona: altra, workspace, sessione_il: stesso };
+        await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: stesso, sessione_il: stesso } }, <PaginaB key="2" />);
 
         expect(ricarica).not.toHaveBeenCalled();
         expect(uno('#uat-pagina-b')).not.toBeNull();
@@ -983,6 +988,31 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(document.body.textContent).not.toContain(dati.persona.nome);
         expect(etichette()).toContain('Gestión de proyectos');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
+    });
+
+    // Dalla review della PR #79 (R1; zr-pm, Decisione: 12931): col cookie avanti il segno è quello più un microsecondo, e due
+    // richieste non hanno mai lo stesso. Ada ha l'ultima pagina da un nodo avanti, Grace entra su un nodo indietro, e Indietro
+    // torna sulla pagina di Ada: a parità di segno vincerebbe la pagina che arriva, e Ada tornerebbe a schermo davanti a Grace.
+    it.each([
+        ['nello stesso workspace', subito.workspace],
+        ['in un altro workspace', datiAltroWorkspace.workspace],
+    ])('Ada ha l\'ultima pagina col segno S, Grace entra %s con S più un microsecondo e torna con Indietro sulla pagina di Ada: a schermo resta Grace, e niente di Ada (sprint 45 · T2.8)', async (_caso, workspace) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const diAda = { subito: { ...subito, sessione_il: '2026-10-14T12:00:00.000000Z' }, dopo: { ...dopo, aggiornati_il: '2026-10-14T12:00:00.000000Z', sessione_il: '2026-10-14T12:00:00.000000Z' } };
+        await inDue(diAda, <PaginaA key="1" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
+
+        const dopoS = '2026-10-14T12:00:00.000001Z';
+        await inDue({ subito: { ...subito, lingua: 'es', persona: altra, workspace, sessione_il: dopoS }, dopo: { lingua: 'es', persona: altra, workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: dopoS, sessione_il: dopoS } }, <PaginaB key="2" />);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+
+        // Indietro: la voce della cronologia di Ada, col suo `subito` e il suo `dopo` di allora.
+        await inDue(diAda, <PaginaA key="1" />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.nome);
+        expect(document.body.textContent).not.toContain(dati.persona.email);
     });
 
     it('il verso in avanti resta anche coi segni: un `subito` con la sessione letta dopo e un\'altra persona la mostra da subito, e la cornice riparte ridotta senza niente di chi c\'era prima (sprint 36 · T3.3)', async () => {

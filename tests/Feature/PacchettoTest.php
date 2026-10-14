@@ -5631,16 +5631,29 @@ it('il README dice il cookie del segno — nome, scopo per l\'informativa, conte
     expect(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
     'il titolo' => ['readme', '### Il cookie del segno'],
-    'il nome e che cosa fa' => ['readme', 'L\'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è il più avanti fra l\'orologio della parte server e quello'],
+    'il nome e che cosa fa' => ['readme', 'L\'ultimo segno dato sta nel cookie `__Host-zr-core-segno`, e un segno nuovo è l\'orologio della parte server se è più avanti di quello, e altrimenti quello più un microsecondo'],
+    'due richieste non hanno mai lo stesso segno' => ['readme', 'Due richieste diverse non hanno mai lo stesso segno: lo stesso segno c\'è solo dentro una richiesta'],
     'che cosa porta' => ['readme', 'solo l\'istante, nella forma dei segni, e la sua firma (un HMAC-SHA256 con la `APP_KEY` del frontend): niente della persona né del workspace'],
     'gli attributi e la durata' => ['readme', '`Path=/`, nessun `Domain` (il prefisso `__Host-` lo lega all\'host del modulo), `Secure`, `HttpOnly`, `SameSite=Lax`; scade con la sessione'],
     'che cosa non vale' => ['readme', 'manomesso, firmato con un\'altra chiave, in un\'altra forma, vuoto o mancante, il segno è l\'orologio, come fino alla `v2.10.0`, e la risposta riscrive il cookie'],
+    'al massimo cinque minuti avanti' => ['readme', 'il cookie vale solo se è avanti dell\'orologio della parte server di cinque minuti al massimo. Oltre, il segno è l\'orologio, la risposta riscrive il cookie, e nel log resta un avviso che non dice l\'istante del cookie'],
     'per l\'informativa' => ['readme', 'è un cookie tecnico, necessario al funzionamento della cornice'],
     'che cosa serve' => ['readme', 'lo manda `AddQueuedCookiesToResponse`, che sta già nel gruppo `web`'],
     'che cosa resta: due richieste insieme' => ['readme', 'due richieste in volo insieme leggono lo stesso cookie, e l\'ordine dei loro segni è quello degli orologi'],
-    'che cosa resta: un browser che non lo tiene' => ['readme', 'un browser che non tiene il cookie — un indirizzo `http://` che non è `localhost`, i cookie rifiutati — vale come prima della `v2.11.0`'],
+    'che cosa resta: un browser che non lo tiene' => ['readme', 'un browser che non tiene il cookie — i cookie rifiutati, o un indirizzo `http://`: il prefisso `__Host-` lo vuole `Secure`, e su `http://localhost` alcuni browser lo tengono e Safari no (non provato in un browser) — vale come prima della `v2.11.0`'],
+    'che cosa resta: un server avanti' => ['readme', 'un server avanti di meno di cinque minuti porta il suo orologio agli altri, per quel browser, finché l\'orologio vero non lo raggiunge'],
     'la guida: il cookie' => ['guida', 'Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l\'ultimo dato sta nel cookie `__Host-zr-core-segno`'],
     'la guida: l\'informativa' => ['guida', 'citalo nell\'informativa sui cookie del modulo, come cookie tecnico'],
+]);
+
+// Dalla review della PR #79 (R1, S1; zr-pm, Decisione: 12931): a parità di segno non si torna, e un orologio avanti non è
+// più «non frenato» e basta.
+it('il README non dice più che a parità di segno la cornice prende la pagina che arriva, né che il cookie frena un orologio indietro e non uno avanti (sprint 45 · T2.8, T2.9)', function (string $frase) {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
+})->with([
+    'la parità' => ['A parità di segno la cornice prende la pagina che arriva'],
+    'l\'orologio avanti' => ['il cookie frena un orologio indietro, non uno avanti'],
+    'il più avanti fra i due' => ['un segno nuovo è il più avanti fra l\'orologio della parte server e quello'],
 ]);
 
 // Sprint 38 · T2.5 (voce #2027): le tre cose che un frontend non fa con `subito` e `dopo`, e che cosa fa la cornice se
