@@ -487,8 +487,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
         }
 
         // La lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa: la segna e risponde come la
-        // parte server dalla `v1.12.0`, con l'istante preso a notifica segnata. Con `?errore=lettura` fallisce sempre: la
-        // risorsa si apre lo stesso, e la notifica resta da leggere.
+        // parte server dalla `v1.12.0`, con l'istante preso a notifica segnata. Con `?errore=lettura` fallisce sempre: dalla
+        // `v2.14.0` la risorsa non si apre, e la notifica resta da leggere.
         if (daSegnare !== undefined) {
             if (errore === 'lettura') {
                 return json({ errore: 'uat_errore' }, 502);
