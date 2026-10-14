@@ -36,6 +36,19 @@ function nomiDichiarati(): string[] {
 
 const come = (oggetto: object) => oggetto as Record<string, unknown>;
 
+// Sprint 50 · T1 (voce 2073). Le tre righe del bundle che il modulo segna pure, con ciò che va davanti al segno: i dati di esempio
+// di `CrmContacts` e i due formattatori dei numeri, che usano solo componenti che la cornice non usa. Scritte qui, non prese dallo
+// script.
+const SEGNATE = ['  var NF = ', '  var EUR = ', '  var SAMPLE_CONTACTS = '];
+const PURO = '/* @__PURE__ */ ';
+
+/** La riga del bundle com'è nel modulo: una delle tre col segno dopo l'uguale, le altre uguali. */
+function nelModulo(riga: string): string {
+    const segnata = SEGNATE.find((inizio) => riga.startsWith(inizio));
+
+    return segnata === undefined ? riga : segnata + PURO + riga.slice(segnata.length);
+}
+
 describe('il file generato è quello che il bundle genera (T1.1)', () => {
     it('rigenerato in memoria dal bundle è uguale al file, carattere per carattere', () => {
         expect(genera(bundle)).toBe(generato);
@@ -60,10 +73,40 @@ describe('il file generato è quello che il bundle genera (T1.1)', () => {
         ]);
         // Dalla quarta riga del bundle (le prime tre sono il commento del formato, l'apertura e `var React = window.React;`) fino
         // alla riga prima della registrazione.
-        expect(righe.slice(3, righe.length - nomi.length - 3)).toEqual(righeDelBundle.slice(3, rigaDellaRegistrazione));
+        expect(righe.slice(3, righe.length - nomi.length - 3)).toEqual(righeDelBundle.slice(3, rigaDellaRegistrazione).map(nelModulo));
         expect(righe.slice(righe.length - nomi.length - 3)).toEqual(['export {', ...nomi.map((nome) => `  ${nome},`), '};', '']);
         expect(generato).not.toContain('window.React');
         expect(generato).not.toContain('window.Zeiras');
+    });
+});
+
+describe('il modulo segna pure le tre righe dei dati di esempio e dei formattatori dei numeri, e nessun\'altra (sprint 50 · T1.3)', () => {
+    it('dal corpo del bundle cambiano tre righe sole, quelle, e solo per il segno', () => {
+        const righe = generato.split('\n');
+        const corpo = righeDelBundle.slice(3, rigaDellaRegistrazione);
+        const diverse = corpo.flatMap((riga, indice) => (righe[indice + 3] === riga ? [] : [righe[indice + 3]]));
+
+        expect(diverse).toEqual([
+            "  var NF = /* @__PURE__ */ new Intl.NumberFormat('it-IT');",
+            "  var EUR = /* @__PURE__ */ new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });",
+            '  var SAMPLE_CONTACTS = /* @__PURE__ */ [',
+        ]);
+    });
+
+    it.each(SEGNATE)('senza la riga «%s…» nel bundle lo script si ferma e la nomina', (inizio) => {
+        const finto = bundle.replace(`\n${inizio}`, `\n${inizio.replace('var ', 'let ')}`);
+
+        expect(finto).not.toBe(bundle);
+        expect(() => genera(finto)).toThrow(new RegExp(`forma inattesa del bundle: .*«${inizio.trim().replace(/[$]/g, '\\$&')}`));
+    });
+
+    it.each(SEGNATE)('con la riga «%s…» due volte nel bundle lo script si ferma', (inizio) => {
+        const riga = righeDelBundle.find((questa) => questa.startsWith(inizio)) ?? '';
+        // Lo script lavora sul testo e non lo esegue: la riga ripetuta basta, anche se il bundle così non girerebbe.
+        const finto = bundle.replace(`\n${riga}\n`, `\n${riga}\n${riga}\n`);
+
+        expect(finto).not.toBe(bundle);
+        expect(() => genera(finto)).toThrow(/forma inattesa del bundle: .*2 volte/);
     });
 });
 

@@ -5,6 +5,7 @@ import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
 import { build, type Plugin } from 'vite';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import generato from './zeiras/componenti.js?raw';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
 // del design system che l'app non usa. Qui si costruiscono le tre app di prova di resources/demo/peso come le costruisce un
@@ -120,11 +121,16 @@ async function app(file: string, delFrontend: { assetsInlineLimit?: number } = {
 
 /** Un'app che non ha un file suo: importa quei file del repo, nell'ordine, e nient'altro. Costruita come le altre app di prova. */
 async function appCheImporta(file: string[]): Promise<Costruito> {
+    return appColTesto(file.map((uno) => `import ${JSON.stringify(delRepo(uno))};`).join('\n'));
+}
+
+/** Un'app che non ha un file suo: il suo JS è questo testo. Costruita come le altre app di prova. */
+async function appColTesto(testo: string): Promise<Costruito> {
     const nome = 'virtuale:ingresso';
     const senzaFile: Plugin = {
         name: 'zr-core:ingresso-senza-file',
         resolveId: (id) => (id === nome ? `\0${nome}` : null),
-        load: (id) => (id === `\0${nome}` ? file.map((uno) => `import ${JSON.stringify(delRepo(uno))};`).join('\n') : null),
+        load: (id) => (id === `\0${nome}` ? testo : null),
     };
 
     return costruito(await build({ configFile: false, root: delRepo(''), logLevel: 'silent', plugins: [react(), senzaFile], build: { write: false, minify: true, rolldownOptions: { input: nome, external: FUORI } } }));
@@ -163,6 +169,22 @@ let ingressoDiSempre: Costruito;
 let ingressoDelleFrasi: Costruito;
 let dalBundle: Costruito;
 let dalModulo: Costruito;
+let conIDatiDiEsempio: Costruito;
+
+// Sprint 50 · T1 (voce 2073). I dati di esempio del design system (un `var SAMPLE_… = [` del modulo, come i contatti finti di
+// `CrmContacts`) e i due formattatori dei numeri (`NF`, `EUR`, cioè `new Intl.NumberFormat`) li usano solo componenti che la
+// cornice non usa: il generatore li segna puri (scripts/componenti-genera.mjs), e la build di un'app li lascia fuori dove nessuno
+// li usa. Si cercano tutti i `SAMPLE_` del modulo, e non solo quelli di oggi: un design system importato con un dato di esempio
+// nuovo, non segnato, fa rosso qui invece di riprendersi i byte in silenzio. Di ognuno si guardano i testi fra apici di almeno otto
+// caratteri che nel modulo stanno solo lì (i nomi, le email dei contatti finti): un testo più corto, o che il modulo usa anche
+// altrove, potrebbe stare nell'ingresso per un'altra ragione.
+const DATI_DI_ESEMPIO = [...generato.matchAll(/^ {2}var (SAMPLE_\w+) = (?:\/\* @__PURE__ \*\/ )?\[\n([\s\S]*?)\n {2}\]/gm)].map((trovato) => {
+    const testi = [...(trovato[2] ?? '').matchAll(/'([^'\n]*)'/g)].map((testo) => testo[1] ?? '');
+
+    return [trovato[1] ?? '', testi.filter((testo) => testo.length >= 8 && volte(generato, `'${testo}'`) === 1)] as const;
+});
+const DEI_CONTATTI_FINTI = 'anna.ferri@rossilogistica.it';
+const DEI_FORMATTATORI = 'NumberFormat';
 
 // vitest gira con NODE_ENV=test, e così il plugin di React renderebbe il JSX come in sviluppo, più pesante: qui si costruisce
 // come fa `vite build`, in produzione.
@@ -177,6 +199,7 @@ beforeAll(async () => {
     ingressoDelleFrasi = await ingresso('resources/js/frasi.ts');
     dalBundle = await appCheImporta(DAL_BUNDLE);
     dalModulo = await appCheImporta(DAL_MODULO);
+    conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
 
@@ -209,6 +232,28 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     it('pesa più della sola cornice e, con gzip, al più il 70% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(perNome.js)).toBeGreaterThan(gzip(soloCornice.js));
         expect(gzip(perNome.js)).toBeLessThanOrEqual(0.7 * gzip(diSempre.js));
+    });
+});
+
+describe('i dati di esempio del design system e i formattatori dei numeri non stanno nell\'ingresso dell\'app che prende solo la cornice (sprint 50 · T1.1, T1.2)', () => {
+    it('il modulo dei componenti ha dei dati di esempio, e ognuno ha dei testi suoi', () => {
+        expect(DATI_DI_ESEMPIO.map(([nome]) => nome)).toContain('SAMPLE_CONTACTS');
+        expect(DATI_DI_ESEMPIO.filter(([, testi]) => testi.length === 0)).toEqual([]);
+    });
+
+    it.each(DATI_DI_ESEMPIO)('di %s non c\'è niente; nell\'app dall\'ingresso di sempre sì', (_nome, testi) => {
+        expect(testi.filter((testo) => soloCornice.js.includes(testo))).toEqual([]);
+        expect(testi.some((testo) => diSempre.js.includes(testo))).toBe(true);
+    });
+
+    it('nell\'app che prende CrmContacts per nome i contatti finti ci sono: il segno li lascia dove servono', () => {
+        expect(conIDatiDiEsempio.js).toContain(DEI_CONTATTI_FINTI);
+    });
+
+    it('i formattatori dei numeri non ci sono; nell\'app dall\'ingresso di sempre, e in quella che prende DealCard per nome, sì', () => {
+        expect(soloCornice.js).not.toContain(DEI_FORMATTATORI);
+        expect(diSempre.js).toContain(DEI_FORMATTATORI);
+        expect(conIDatiDiEsempio.js).toContain(DEI_FORMATTATORI);
     });
 });
 
