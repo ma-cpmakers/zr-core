@@ -119,7 +119,8 @@ export function mostra(email?: string): void {
  * risposta dice ancora un'altra persona, rifarla non cambia niente. Dalla `v2.10.0` si ricarica da sola quando li compie: la
  * ricarica la chiede un orologio — su una pagina di 30 secondi o più scade al primo giro: un ritardo negativo vale zero —,
  * e allo scadere riguarda chi è a schermo. Se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una
- * pagina rimasta senza cornice sì. L'orologio dei 5 secondi parte per primo: scambiati, due pezzi a richiesta passano il
+ * pagina rimasta senza cornice sì. Fino allo scadere l'orologio tiene della risposta solo chi ha risposto (`chi`, dalla `v2.11.3`):
+ * il resto si butta subito. L'orologio dei 5 secondi parte per primo: scambiati, due pezzi a richiesta passano il
  * loro tetto. Niente
  * è scritto nel browser per ricordarlo: l'orologio è quello della pagina (`performance.now()`). Una risposta che non lo dice
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
@@ -129,8 +130,9 @@ export async function chiama(indirizzo: string, email: string, method?: string, 
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
-    if (email && typeof corpo?.persona === 'string' && corpo.persona !== email) {
-        return new Promise<never>((_, no) => aSchermo && corpo.persona !== aSchermo && (setTimeout(no, 5e3), setTimeout(() => corpo.persona !== aSchermo && location.reload(), 3e4 - performance.now())));
+    const chi = corpo?.persona;
+    if (email && typeof chi === 'string' && chi !== email) {
+        return new Promise<never>((_, no) => aSchermo && chi !== aSchermo && (setTimeout(no, 5e3), setTimeout(() => chi !== aSchermo && location.reload(), 3e4 - performance.now())));
     }
     if (!risposta.ok) {
         const esito = `${method ?? 'GET'} ${indirizzo}: ${risposta.status}`;

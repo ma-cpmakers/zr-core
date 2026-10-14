@@ -1414,7 +1414,9 @@ compie, senza un clic e senza un'altra richiesta. Salvo tre eccezioni: la ricari
 se la pagina la annulla (`beforeunload`) la cornice di prima resta finché da lì non parte un'altra richiesta; in una
 scheda nascosta il browser può far scadere l'orologio più tardi (in una congelata, solo quando la riattiva); e con due
 cornici nel documento, se il limite c'è già quando la risposta arriva, nessun orologio parte (detto sopra). Allo scadere la cornice riguarda chi è a schermo: se una visita ha già
-portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Restano tre casi. Una
+portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì. Fino allo scadere l'orologio
+tiene della risposta solo chi ha risposto, che gli serve allo scadere (dalla `v2.11.3`): i dati e il resto si buttano
+subito. Restano tre casi. Una
 richiesta partita più di 30 secondi dopo una ricarica che non ha cambiato niente ne dà un'altra. E il clic su una notifica
 apre la sua destinazione senza aspettare la risposta: sotto i 30 secondi si apre anche se la risposta di un'altra persona
 è arrivata. E una pagina senza cornice allo scadere — una visita a una pagina senza la cornice, o il limite delle due
