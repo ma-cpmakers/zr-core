@@ -1471,6 +1471,24 @@ un'altra persona a pagina appena caricata dà l'errore del pannello dopo 5 secon
 un'altra persona, tre caricamenti in 70 secondi, a 30 secondi l'uno dall'altro; e lo stesso col 403
 `gettone_senza_workspace` di un'altra persona.
 
+**L'evento prima della ricarica.** Dalla `v2.13.0`, subito prima di ricaricare la pagina per un cambio di persona — una
+risposta di un'altra persona alla campanella, alla ricerca, alla lettura di una notifica o a «Segna tutte come lette» —
+la cornice manda sulla `window` un evento `zr-core:altra-persona` (un `Event` semplice, senza dati). Quando la pagina non
+si ricarica l'evento non parte: una risposta della persona a schermo, una visita che ha già portato chi ha risposto, una
+pagina senza cornice. Parte una volta per ricarica chiesta, anche se poi la pagina la annulla (`beforeunload`). Il
+pacchetto non mostra niente e non scrive niente nel browser: se dopo la ricarica il frontend vuole dire perché la pagina
+si è aggiornata («Nel browser è cambiato l'accesso…», col suo testo e nelle sue lingue), ricorda lui che è successo, in
+questa scheda, e niente della persona:
+
+```ts
+// Nel frontend, una volta, prima che la cornice si monti.
+addEventListener('zr-core:altra-persona', () => sessionStorage.setItem('accesso-cambiato', '1'));
+const accessoCambiato = sessionStorage.getItem('accesso-cambiato') !== null; // dopo la ricarica: l'avviso, una volta
+sessionStorage.removeItem('accesso-cambiato');
+```
+
+La pagina di prova del layout lo fa con `?sessione`: dopo «UAT entra un'altra persona» e la ricarica mostra un avviso.
+
 In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è sempre perché la garantisce il contratto del
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
 non la controlla.

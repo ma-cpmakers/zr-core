@@ -79,6 +79,14 @@ window.addEventListener('popstate', () => {
     montaggi = 0;
 });
 
+// Sprint 52 · T5 (voce #2079): l'esempio del README («La cornice in due dati», l'evento prima della ricarica). Subito prima di ricaricare la pagina per
+// un cambio di persona la cornice manda `zr-core:altra-persona`: la pagina ricorda solo che è successo, in questa scheda, e
+// dopo la ricarica lo dice una volta. Niente della persona resta nel browser.
+const chiaveDellAvviso = 'uat-cambiato-l-accesso';
+window.addEventListener('zr-core:altra-persona', () => sessionStorage.setItem(chiaveDellAvviso, '1'));
+const cambiatoLAccesso = sessionStorage.getItem(chiaveDellAvviso) !== null;
+sessionStorage.removeItem(chiaveDellAvviso);
+
 /**
  * I montaggi della pagina in questa visita e i suoi render, contati mentre si rende: mostrarli non la fa rendere di nuovo. Senza
  * `StrictMode`, che in sviluppo renderebbe due volte.
@@ -443,6 +451,7 @@ function Collegamenti() {
                 <a href={indirizzoDi('lunga', attesaLenta)} data-uat="vai-lunga-lenta" onClick={apri('lunga', false, attesaLenta)}>UAT alla Lunga lenta</a>{' · '}
                 <button type="button" data-uat="prefetch-corta" onClick={() => router.prefetch(indirizzoDi('corta'), {}, { cacheFor: 30_000 })}>UAT scarica prima la Corta</button>
             </p>
+            {cambiatoLAccesso && <p role="status" data-uat="avviso-altra-persona">UAT nel browser è cambiato l'accesso: la pagina si è ricaricata, e ciò che non era salvato è andato perso.</p>}
             {/* Sprint 36 · T1: chi è entrato, per la parte server finta. Vale dalla visita dopo, in ogni scheda di questo browser. */}
             {scelti.has('sessione') && (
                 <p>

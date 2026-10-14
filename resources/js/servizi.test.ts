@@ -544,6 +544,78 @@ describe('una risposta che dice di chi è', () => {
         });
     });
 
+    // Sprint 52 · T5 (voce #2079): subito prima di ricaricare la pagina per un cambio di persona la cornice lo dice al frontend,
+    // con un evento sulla `window` (`zr-core:altra-persona`, README): dopo la ricarica il frontend può dire perché. Quando la
+    // pagina non si ricarica l'evento non parte.
+    describe('l\'evento prima della ricarica', () => {
+        const EVENTO = 'zr-core:altra-persona';
+        let eventi: string[];
+        const ascolta = () => eventi.push('evento');
+
+        beforeEach(() => {
+            eventi = [];
+            window.addEventListener(EVENTO, ascolta);
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        });
+
+        afterEach(() => {
+            window.removeEventListener(EVENTO, ascolta);
+            vi.useRealTimers();
+        });
+
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => [60_000, 10_000].map((eta) => [nome, eta, laRisposta, chiama] as const)))('%s di un\'altra persona su una pagina caricata da %i ms: subito prima della ricarica parte un evento `zr-core:altra-persona` sulla `window`, uno solo (sprint 52 · T5.1)', async (_nome, eta, laRisposta, chiama) => {
+            vi.spyOn(window.location, 'reload').mockImplementation(() => void eventi.push('ricarica'));
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            caricataDa(eta);
+
+            segui(chiama());
+            await vi.advanceTimersByTimeAsync(0);
+            expect(eventi).toStrictEqual(eta < 30_000 ? [] : ['evento', 'ricarica']);
+
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(eventi).toStrictEqual(['evento', 'ricarica']);
+        });
+
+        it.each(diUnAltra.flatMap(([nome, laRisposta, chiama]) => ([
+            ['a schermo c\'è già chi ha risposto', 'grace@example.com'],
+            ['a schermo non c\'è nessuna cornice', undefined],
+        ] as [string, string | undefined][]).map(([come, chi]) => [nome, come, chi, laRisposta, chiama] as const)))('%s di un\'altra persona, se %s: la pagina non si ricarica e nessun evento parte (sprint 52 · T5.1)', async (_nome, _come, chi, laRisposta, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            mettiASchermo(chi);
+
+            segui(chiama());
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            expect(eventi).toStrictEqual([]);
+        });
+
+        it.each(chiamate)('%s: una risposta della persona a schermo non ricarica la pagina e non fa partire l\'evento (sprint 52 · T5.1)', async (_nome, corpo, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => risposta({ ...corpo, persona: 'ada@example.com' })));
+
+            await chiama('ada@example.com');
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            expect(eventi).toStrictEqual([]);
+        });
+
+        // Allo scadere dei 30 secondi la pagina guarda chi è a schermo: se una visita ha già portato chi ha risposto, niente.
+        it('su una pagina caricata da 10.000 ms, se allo scadere a schermo c\'è già chi ha risposto, la pagina non si ricarica e nessun evento parte (sprint 52 · T5.1)', async () => {
+            const [, laRisposta, chiama] = diUnAltra[0]!;
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => laRisposta()));
+            caricataDa(10_000);
+
+            segui(chiama());
+            await vi.advanceTimersByTimeAsync(0);
+            mettiASchermo('grace@example.com');
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            expect(eventi).toStrictEqual([]);
+        });
+    });
+
     // Sprint 43 · T3 (voce #2053): la ricarica davanti a una risposta di un'altra persona ha un tetto, e il tetto è l'età della
     // pagina: una pagina caricata da meno di 30 secondi non si ricarica subito — se la risposta dice ancora un'altra persona
     // subito dopo una ricarica (dei dati composti a mano con un'altra email), ricaricare di nuovo non cambia niente. Da 30
