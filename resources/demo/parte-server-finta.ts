@@ -112,9 +112,12 @@ function confermate(): Record<string, Confermata> {
 /**
  * Il segno della lingua, `lingua_il`, come lo dà la parte server dalla `v2.11.0` (`Cornice::subito()` e `Cornice::dopo()`):
  * quello ricordato per la persona, che un `dopo` a cui il backoffice ha risposto porta avanti solo se la sua lettura è più
- * avanti di quello ricordato — allora porta l'istante della sua lettura e la parte server lo ricorda —; una lettura più
- * vecchia, finita dopo, porta quello ricordato (dalla `v2.11.2`, come il docblock di `Cornice::dopo()`). `subito` e i `dopo`
- * ridotti portano quello ricordato, mai l'istante di adesso, e senza una lettura che l'abbia confermata non ne portano. Prima `subito`, poi `dopo`, come nella stessa richiesta.
+ * avanti di quello ricordato — allora porta l'istante della sua lettura e la parte server lo ricorda —; un `dopo` con una
+ * lettura più vecchia porta quello ricordato (dalla `v2.11.2`, come il docblock di `Cornice::dopo()`). `subito` e i `dopo`
+ * ridotti portano quello ricordato, mai l'istante di adesso, e senza una lettura che l'abbia confermata non ne portano.
+ * Un limite: la parte server vera dà a ogni richiesta la sua copia della sessione, e due richieste in volo non si vedono
+ * fino alla fine (`Cornice::ricordaLaLingua()`); qui il ricordo è uno solo, nel `localStorage`, e una lettura vede subito
+ * ciò che un'altra ha ricordato. Prima `subito`, poi `dopo`, come nella stessa richiesta.
  * Con `linguaDiPrima`, `subito` porta la lingua confermata prima dell'ultima, col suo segno: un `subito` riletto mentre
  * `dopo` è in lettura, con la sessione di adesso e la lingua di prima.
  */
@@ -131,7 +134,8 @@ export function conIlSegnoDellaLingua<Props extends { subito?: DatiSubito | null
     const il = dopo?.sessione_il ?? dopo?.aggiornati_il;
     if (dopo?.aziende && dopo.persona?.email && dopo.lingua && il) {
         const ricordata = ricordate[dopo.persona.email];
-        if (!ricordata || il > ricordata.il) {
+        const avanti = !ricordata || il > ricordata.il;
+        if (avanti) {
             const prima = ricordata && ricordata.lingua !== dopo.lingua ? { lingua: ricordata.lingua, il: ricordata.il } : ricordata?.prima;
             ricordate[dopo.persona.email] = { lingua: dopo.lingua, il, ...(prima && { prima }) };
             try {
@@ -140,7 +144,7 @@ export function conIlSegnoDellaLingua<Props extends { subito?: DatiSubito | null
                 // Senza `localStorage` la lettura non si ricorda: la pagina di prova si apre lo stesso.
             }
         }
-        dopo = { ...dopo, lingua_il: ricordata && ricordata.il > il ? ricordata.il : il };
+        dopo = { ...dopo, lingua_il: avanti ? il : ricordata.il };
     } else if (dopo) {
         dopo = conIlSuo(dopo);
     }
