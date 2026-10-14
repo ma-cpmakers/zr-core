@@ -831,6 +831,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     useLayoutEffect(() => {
         // Chi è a schermo lo dice la cornice montata, e smontata lo toglie (`mostra` senza niente): la `key` è l'email, quindi
         // questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
+        // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
+        // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
 
@@ -873,7 +875,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         setRicerca({ stato: 'loading' });
         // La richiesta, la sua risposta e il freno stanno nel pezzo a richiesta (`./ricerca`, dalla `v2.8.0`): se il fuoco non lo
         // ha già portato lo chiede questa parola, e finché non arriva lo stato è il caricamento. All'arrivo parte l'ultima
-        // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`).
+        // parola chiesta: una di prima è annullata, e chi non è più a schermo non cerca (lo guarda il pezzo, `cercaPer`); una
+        // cornice smontata ha annullato la sua nella pulizia, anche se quella rifatta è della stessa persona.
         chiediLaRicerca().then(
             (arrivata) => arrivata.cercaPer(parola, questa, persona.email, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno),
             () => ricercaInVolo.current === questa && setRicerca({ stato: 'error' }),

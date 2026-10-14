@@ -219,7 +219,7 @@ describe('prima dell\'arrivo del pezzo la cornice è smontata (T2)', () => {
 
     it.each<[caso: string, dopo: DatiDellaCornice]>([
         ['in un altro workspace', inUnAltro],
-        ['nello stesso workspace (A → B → A)', dati],
+        ['nello stesso workspace (una cornice nuova con gli stessi dati)', dati],
     ])('e rifatta con la stessa persona %s: all\'arrivo nessuna richiesta parte (T2.1); una parola scritta dopo cerca come sempre (T2.2)', async (_caso, dopo) => {
         const pezzo = pezzoInRitardo();
         await rifatta('prima', dati);
@@ -239,6 +239,8 @@ describe('prima dell\'arrivo del pezzo la cornice è smontata (T2)', () => {
         expect(titoli()).toStrictEqual(['Lancio Q4']);
     });
 
+    // Qui la difendono due strati: l'annullo nella pulizia della cornice e `cercaPer`, che non cerca per chi non è più a schermo.
+    // Tolto uno solo dei due il caso resta verde; tolto l'annullo, sono rossi i due casi di sopra (la stessa persona rifatta).
     it('e non rifatta: all\'arrivo nessuna richiesta parte, e niente va in console (T2.3)', async () => {
         const pezzo = pezzoInRitardo();
         await mostra(dati);
