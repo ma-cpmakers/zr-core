@@ -209,7 +209,7 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
 function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
     const tone = tonoDelWorkspace(workspace.id);
 
-    return { slug: workspace.slug, name: workspace.nome, ...(tone && { tone }) };
+    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone });
 }
 
 /**
@@ -218,10 +218,10 @@ function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: 
  */
 function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
     const data = new Date(istante);
-    if (Number.isNaN(data.getTime())) {
+    if (isNaN(+data)) {
         return undefined;
     }
-    const secondi = (adesso.getTime() - data.getTime()) / 1000;
+    const secondi = (+adesso - +data) / 1000;
     const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto' });
     if (secondi < 60) {
         return relativa.format(0, 'second');
@@ -229,7 +229,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
     if (secondi < 3600) {
         return relativa.format(-Math.floor(secondi / 60), 'minute');
     }
-    const mezzanotte = (giorno: Date) => new Date(giorno.getFullYear(), giorno.getMonth(), giorno.getDate()).getTime();
+    const mezzanotte = (giorno: Date) => new Date(giorno).setHours(0, 0, 0, 0);
     const giorni = Math.round((mezzanotte(adesso) - mezzanotte(data)) / 86_400_000);
     if (giorni === 0) {
         return relativa.format(-Math.floor(secondi / 3600), 'hour');
@@ -279,7 +279,7 @@ function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     let scelta: string | undefined;
     let istante = -Infinity;
     for (const { creata_il: creataIl } of elenco) {
-        const questo = new Date(creataIl).getTime();
+        const questo = +new Date(creataIl);
         if (questo > istante) {
             scelta = creataIl;
             istante = questo;
@@ -357,9 +357,9 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
  * il `main` resta l'elemento attivo: l'attributo resta, o al ritorno il `main` non terrebbe più il fuoco.
  */
 function fuocoAlContenuto(dalSalto: HTMLElement | null): void {
-    const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main') ?? null;
+    const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main');
 
-    if (main === null) {
+    if (!main) {
         return;
     }
     if (!main.hasAttribute('tabindex')) {
@@ -389,8 +389,7 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
     return (
         <div
             ref={contenitore}
-            className={colFuoco ? undefined : 'zr-visually-hidden'}
-            style={colFuoco ? { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } : undefined}
+            {...(colFuoco ? { style: { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } } : { className: 'zr-visually-hidden' })}
             onFocus={() => setColFuoco(true)}
             onBlur={() => setColFuoco(false)}
         >
@@ -530,7 +529,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
     const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     const companies = delWorkspace
-        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map((ws) => nelSelettore(ws)) }))
+        ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))
         : undefined;
     // «Nuovo workspace» in fondo al selettore solo se la parte server dice che la persona può crearne uno in quell'azienda: proprio
     // `true`, perché i dati di una parte server di prima non lo dicono. Apre la pagina di zr-home nel workspace dei dati, che è

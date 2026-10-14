@@ -213,18 +213,16 @@ const POSTO_DELLE_FONTI = '{sources}';
  */
 export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
-    if (fonti.length === 0) {
-        return { searchPlaceholder: t.searchPlaceholder, searchHint: t.searchHint };
-    }
-    if (typeof Intl.ListFormat !== 'function') {
-        return { searchPlaceholder: t.searchPlaceholderSources, searchHint: t.searchHint };
-    }
-    const nomi = fonti.map((fonte) => t[`searchSource.${fonte}`]);
-    const elenco = new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' });
+    const conFonti = fonti.length > 0;
 
     return {
-        searchPlaceholder: t.searchPlaceholderSources,
-        searchHint: t.searchHintSources.replace(POSTO_DELLE_FONTI, () => elenco.format(nomi)),
+        searchPlaceholder: conFonti ? t.searchPlaceholderSources : t.searchPlaceholder,
+        searchHint:
+            conFonti && typeof Intl.ListFormat === 'function'
+                ? t.searchHintSources.replace(POSTO_DELLE_FONTI, () =>
+                      new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' }).format(fonti.map((fonte) => t[`searchSource.${fonte}`])),
+                  )
+                : t.searchHint,
     };
 }
 
