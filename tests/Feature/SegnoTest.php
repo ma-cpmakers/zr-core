@@ -30,7 +30,7 @@ beforeEach(function () {
     // Le due letture di un frontend, nel gruppo `web` come le sue pagine: i dati della sessione e quelli del backoffice.
     Route::middleware('web')->get('uat-segno/subito', fn () => Cornice::subito());
     Route::middleware('web')->get('uat-segno/dopo', fn () => Cornice::dopo());
-    // Il solo segno, senza la sessione: per gli orologi lontani, dove la sessione dei casi è scaduta.
+    // Il solo segno, senza i dati della cornice.
     Route::middleware('web')->get('uat-segno/solo', fn () => [Segno::adesso()]);
     // La sessione dura un'ora da quando si apre: alle 11:30 copre ogni orologio dei casi, dalle 11:00 alle 12:05.
     Carbon::setTestNow(Carbon::parse('2026-10-14 11:30:00', 'UTC'));
@@ -306,8 +306,10 @@ function segnoAvvisiNelLog(): array
 
 it('un cookie firmato bene ma più di cinque minuti avanti dell\'orologio non vale: il segno è l\'orologio, la risposta riscrive il cookie con quello, e nel log resta un avviso che non dice l\'istante del cookie (sprint 45 · T2.9; zr-pm, Decisione: 12931)', function (string $avanti, string $istante) {
     segnoLogInMemoria();
-    // Un nodo con l'orologio avanti dà il cookie, firmato bene.
+    // Un nodo con l'orologio avanti dà il cookie, firmato bene. La sessione si apre col suo orologio: quella delle 11:30 nel
+    // 2099 è scaduta, e zr-auth risponderebbe 401.
     Carbon::setTestNow(Carbon::parse($avanti, 'UTC'));
+    sessioneAMano(['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
     $buono = (string) valoreDelSegno(dalBrowser('GET', 'uat-segno/solo')->assertOk());
     expect(substr($buono, 0, 27))->toBe($istante);
 
