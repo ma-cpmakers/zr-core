@@ -530,7 +530,7 @@ it('con la sessione ma senza workspace le quattro rotte della cornice rispondono
         $this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
         $this->postJson('cornice/ricerca', ['q' => 'uat']),
     ] as $risposta) {
-        senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
+        senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace', 'persona' => 'uat-ada@example.com']);
     }
     Http::assertNothingSent();
 });

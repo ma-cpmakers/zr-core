@@ -339,7 +339,7 @@ it('senza sessione 401, con la sessione ma senza workspace 403, e il backoffice 
 
     sessioneAMano(null);
 
-    cerca('UAT')->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
+    cerca('UAT')->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace', 'persona' => 'uat-ada@example.com']);
     Http::assertNothingSent();
 });
 

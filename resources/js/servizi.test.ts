@@ -660,6 +660,45 @@ describe('una risposta che dice di chi è', () => {
             expect(sorgenti).toContain('zeiras/componenti.js');
             expect(conUnArchivio).toStrictEqual([]);
         });
+
+        // Sprint 44 · T4 (voce #2061): dalla `v2.10.0` anche il 403 di chi è entrato senza workspace dice di chi è (`persona`),
+        // e vale come le altre risposte di un'altra persona; quello della persona a schermo resta l'errore di sempre.
+        const senzaWorkspace: [string, (email: string) => Promise<unknown>][] = [
+            ...chiamate.map(([nome, , chiama]) => [nome, chiama] as [string, (email: string) => Promise<unknown>]),
+            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', email)],
+            ['segnaLetta', (email) => segnaLetta('uat-n69', email)],
+        ];
+
+        it.each(senzaWorkspace)('%s: il 403 `gettone_senza_workspace` di un\'altra persona su una pagina appena caricata vale come le altre sue risposte: a 5.000 ms un errore senza niente dentro, a 30.000 ms la pagina si ricarica, una volta (sprint 44 · T4.2)', async (_nome, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => diErrore(403, { errore: 'gettone_senza_workspace', persona: 'grace@example.com' }));
+            vi.stubGlobal('fetch', fetchFinto);
+            caricataDa(0);
+
+            const esito = segui(chiama('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(5_000);
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+            expect(ricarica).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(25_000);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(senzaWorkspace)('%s: il 403 `gettone_senza_workspace` della persona a schermo resta l\'errore di sempre, con una richiesta sola e senza ricaricare la pagina (sprint 44 · T4.3)', async (_nome, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => diErrore(403, { errore: 'gettone_senza_workspace', persona: 'ada@example.com' }));
+            vi.stubGlobal('fetch', fetchFinto);
+            caricataDa(0);
+
+            const errore = await chiama('ada@example.com').catch((e: unknown) => e);
+            expect(errore).toBeInstanceOf(Error);
+            expect(errore).not.toBeInstanceOf(AccettazioneRichiesta);
+            expect((errore as Error).message).toMatch(/: 403$/);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).not.toHaveBeenCalled();
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
     });
 });
 
