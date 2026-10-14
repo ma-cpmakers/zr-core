@@ -5523,6 +5523,10 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: gli errori' => ['readme', 'Dalla `v2.5.0` lo dicono anche gli errori di quelle rotte: il 403 `accettazione_richiesta` e il 429 della ricerca portano `persona`'],
     'la scheda ferma: gli errori a schermo' => ['readme', 'In una scheda rimasta ferma l\'errore di chi è entrato non riduce la cornice e non ferma la ricerca sotto il nome di prima, nemmeno per un disegno: la pagina si ricarica'],
     'la scheda ferma: il 403 di zr-auth' => ['readme', 'Il 403 che zr-auth dà da sé (con `codice`) non dice di chi è, e vale come prima'],
+    // Sprint 44 · T4.5 (voce #2061): il 403 di chi è entrato senza workspace dice di chi è la sessione.
+    'la scheda ferma: il 403 senza workspace' => ['readme', 'Dalla `v2.10.0` lo dice invece il 403 `gettone_senza_workspace`, che le quattro rotte danno a chi è entrato senza scegliere ancora un workspace: porta `persona`, l\'email della sessione e niente altro'],
+    'le rotte: il 403 senza workspace' => ['readme', 'con la sessione ma senza workspace 403 `{errore: "gettone_senza_workspace"}`, e dalla `v2.10.0` con `persona`, l\'email della sessione'],
+    'la guida: il 403 senza workspace' => ['guida', 'dalla `v2.10.0` dice di chi è anche il 403 `gettone_senza_workspace` di chi è entrato senza un workspace'],
     // Sprint 38 · T4.5 (voce #2028): «Segna tutte come lette» da una scheda ferma non è più un limite; ciò che resta, detto.
     'la scheda ferma: segna tutte' => ['readme', 'Dalla `v2.5.0` anche «Segna tutte come lette» dice per chi lo chiede: la cornice manda `persona`, l\'email di chi mostra, e la rotta la confronta con quella della sessione'],
     'la scheda ferma: il 409' => ['readme', 'la rotta non segna niente e risponde 409 `persona_diversa` con l\'email di chi è entrato: le sue notifiche restano da leggere, l\'elenco a schermo non è dato per letto, e la pagina si ricarica'],
@@ -5721,6 +5725,8 @@ it('il README non dice più che `dopo` non dice di chi è, né che i dati rilett
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), $frase))->toBe(false);
 })->with([
     'dopo non dice di chi è' => ['`dopo` non dice di chi è'],
+    // Sprint 44 · T4.5 (voce #2061): il 403 senza workspace non è più detto senza `persona`.
+    'il 403 senza workspace senza persona' => ['403 `{errore: "gettone_senza_workspace"}`; un backoffice'],
     'sopra i dati di adesso' => ['sopra i dati di adesso'],
     'sotto nome ed email di allora' => ['sta sotto nome ed email di allora'],
     'li vede sotto il proprio nome' => ['li vede sotto il proprio nome'],
