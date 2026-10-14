@@ -5964,14 +5964,14 @@ describe('chi non ha accettato i documenti legali', () => {
         expect(cornice()).toStrictEqual(prima);
     });
 
-    // Sprint 43 · T5 (seconda lettura della PR 77, N1): sotto il tetto la ricarica non parte subito, e niente toglie la navigazione
-    // che il clic ha già chiesto. La risorsa si apre anche se la risposta di un'altra persona è arrivata; niente è segnato.
-    // Sprint 44 · T2 (voce #2058): l'errore della lettura esce dopo 5 secondi, senza un avviso; se la pagina è ancora lì quando
-    // compie 30 secondi, si ricarica.
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1): sotto il tetto la ricarica non parte subito. Sprint 44 · T2 (voce #2058):
+    // l'errore della lettura esce dopo 5 secondi, senza un avviso; se la pagina è ancora lì quando compie 30 secondi, si ricarica.
+    // Sprint 50 · T4 (voce #2059): sotto il tetto il clic aspetta la lettura, e la risposta di un'altra persona non apre la
+    // risorsa con la sessione di chi è entrato — né prima né dopo la risposta, né all'errore dei 5 secondi; niente è segnato.
     it.each<[string, Record<string, unknown>, number]>([
         ['il 409 `persona_diversa`', { errore: 'persona_diversa' }, 409],
         ['il 403 `accettazione_richiesta`', { errore: 'accettazione_richiesta' }, 403],
-    ])('su una pagina caricata da meno di 30 secondi, alla lettura di una notifica con un clic %s di un\'altra persona non ricarica subito la pagina: la risorsa si apre, una PATCH sola, e la cornice resta com\'era, senza avviso nemmeno all\'errore dei 5 secondi; se è ancora lì quando compie 30 secondi la pagina si ricarica (sprint 43 · T5, N1; sprint 44 · T2.1, T2.3)', async (_quale, errore, stato) => {
+    ])('su una pagina caricata da meno di 30 secondi, alla lettura di una notifica con un clic %s di un\'altra persona non apre la risorsa e non ricarica subito la pagina: una PATCH sola, e la cornice resta com\'era, senza avviso nemmeno all\'errore dei 5 secondi; se è ancora lì quando compie 30 secondi la pagina si ricarica, e la risorsa non si apre nemmeno dopo (sprint 43 · T5, N1; sprint 44 · T2.1, T2.3; sprint 50 · T4.1)', async (_quale, errore, stato) => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
         const fetchFinto = vi.fn(async (indirizzo: string) => (indirizzo === '/cornice/notifiche'
@@ -5989,23 +5989,80 @@ describe('chi non ha accettato i documenti legali', () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         try {
             await clicEPassano(uno('.zr-notif-list .zr-notif-item'));
-            expect(naviga).toHaveBeenCalledTimes(1);
-            expect(naviga.mock.calls[0]?.[0]).toContain('/contatti/uat-persona-1');
+            expect(naviga).not.toHaveBeenCalled();
             expect(ricarica).not.toHaveBeenCalled();
 
             await act(() => vi.advanceTimersByTimeAsync(15_000));
             guarda.disconnect();
             expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
             expect(ricarica).not.toHaveBeenCalled();
-            expect(naviga).toHaveBeenCalledTimes(1);
+            expect(naviga).not.toHaveBeenCalled();
             expect(avvisi).not.toContain(true);
             expect(cornice()).toStrictEqual(prima);
 
             await act(() => vi.advanceTimersByTimeAsync(5_000));
             expect(ricarica).toHaveBeenCalledTimes(1);
+
+            // A 35 secondi la risorsa non si è aperta, e nessun'altra richiesta è partita.
+            await act(() => vi.advanceTimersByTimeAsync(5_000));
+            expect(naviga).not.toHaveBeenCalled();
+            expect(fetchFinto).toHaveBeenCalledTimes(2);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    // Sprint 50 · T4 (voce #2059): sotto il tetto la risorsa si apre all'esito della lettura, se la risposta è di chi la cornice
+    // mostra — riuscita o no: un errore della stessa persona non ferma l'apertura, e la notifica resta da leggere.
+    it.each<[string, () => Response, string]>([
+        ['riuscita', () => risposta({ data: { letta: true }, persona: diSempre.persona.email }), '6'],
+        ['non riuscita (500)', () => risposta({ persona: diSempre.persona.email }, 500), '7'],
+    ])('su una pagina caricata da meno di 30 secondi, il clic su una notifica non letta con una destinazione la apre quando la lettura di chi la cornice mostra risponde, %s: non prima, e una volta sola (sprint 50 · T4.2, T4.3)', async (_come, laRisposta, numero) => {
+        const delContatto = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' } };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [delContatto], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(10_000);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
+        expect(naviga).not.toHaveBeenCalled();
+
+        await lettura.arriva(laRisposta());
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1']]);
+        expect(cornice().numero).toBe(numero);
+        await act(prossimoGiro);
+        expect(naviga).toHaveBeenCalledTimes(1);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
+    });
+
+    // Sprint 50 · T4 (voce #2059): da 30 secondi in poi il clic apre la risorsa subito, come prima; e sotto i 30 secondi non
+    // aspetta niente quando non c'è una lettura da chiedere.
+    it.each<[string, number, Record<string, unknown>, string, string[]]>([
+        ['una non letta con una destinazione, su una pagina di 60 secondi', 60_000, {}, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']],
+        ['una letta, su una pagina di 10 secondi', 10_000, { letta: true }, 'https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-1', ['/cornice/notifiche']],
+        ['una senza destinazione, su una pagina di 10 secondi', 10_000, { tipo: 'com.zeiras.crm.qualcosa.mai.visto' }, 'https://app.zeiras.com/notifiche', ['/cornice/notifiche']],
+    ])('il clic su %s apre subito dove porta, senza aspettare una risposta (sprint 50 · T4.4)', async (_quale, eta, diversa, dove, richieste) => {
+        const notifica = { id: 'uat-n69', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.crm.persona.creata', ids: { id: 'uat-persona-1' }, ...diversa };
+        const lettura = inAttesa();
+        const fetchFinto = vi.fn((indirizzo: string) => (indirizzo === '/cornice/notifiche'
+            ? Promise.resolve(risposta({ data: [notifica], workspace: 'acme-marketing', persona: diSempre.persona.email }))
+            : lettura.promessa));
+        vi.stubGlobal('fetch', fetchFinto);
+        caricataDa(eta);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={diSempre} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-notif-list .zr-notif-item'));
+        expect(naviga.mock.calls).toStrictEqual([[dove]]);
+        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(richieste);
+
+        await lettura.arriva(risposta({ data: { letta: true }, persona: diSempre.persona.email }));
+        expect(naviga).toHaveBeenCalledTimes(1);
     });
 
     it.each<[string, Record<string, unknown>]>([

@@ -676,20 +676,22 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
     const unaSola = sullaCampanella === 1;
-    // La richiesta parte qui, nello stesso giro del clic, e chi la chiama apre la risorsa senza aspettarla: se fallisce non
-    // cambia niente, né in pagina né nell'apertura. Alla risposta resta ciò che la rotta ha detto, coi dati e l'elenco del clic.
+    // La richiesta parte qui, nello stesso giro del clic. Se fallisce non cambia niente in pagina; alla risposta resta ciò che la
+    // rotta ha detto, coi dati e l'elenco del clic. Dà una promessa che si chiude all'esito, riuscito o no — con un errore della
+    // persona a schermo —, e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un
+    // errore senza niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
     const [daDire, setDaDire] = useState<string>();
     const leggi = (id: string, workspace: string) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
-        segnaLetta(id, persona.email).then(
+        return segnaLetta(id, persona.email).then(
             ({ il }) => {
                 setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
                 setDaDire(id);
             },
             // La notifica resta da leggere, e il numero com'era.
-            seDaAccettare,
+            (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
     // L'avviso per chi usa un lettore di schermo: l'`AppShell` non ha un posto per dire che il numero è cambiato, e la cornice lo
@@ -895,14 +897,20 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // stato dei loro moduli; di un altro workspace la cornice non lo conosce, e non decide (sopra, `inUnAltroWorkspace`). Una
     // che non ha dove andare, una di un elenco di cui non si sa il workspace, e «Vedi tutte», portano alla pagina delle
     // notifiche di app.zeiras.com, anche da un prodotto. Una non letta che apre la sua risorsa è segnata letta (`leggi`): la
-    // richiesta parte prima dell'apertura, che non la aspetta.
+    // richiesta parte prima dell'apertura. Su una pagina di 30 secondi o più l'apertura non la aspetta; su una più giovane
+    // (dalla `v2.11.5`) la aspetta, e la risposta di un'altra persona — la pagina si ricarica quando compie 30 secondi, vedi
+    // `chiama` — non apre la risorsa con la sessione di chi è entrato.
     const apriNotifica = (aperta: ShellNotification) => {
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined && !notifica!.letta) {
-            leggi(notifica!.id, elencoDi!);
+            const lettura = leggi(notifica!.id, elencoDi!);
+            if (performance.now() < 3e4) {
+                lettura.then(() => naviga(risorsa));
+                return;
+            }
         }
         naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
     };

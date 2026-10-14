@@ -5589,10 +5589,11 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: una persona che non è un testo' => ['readme', 'dalla `v2.5.1` una `persona` che c\'è e non è un testo, anche `null`, è un 422 `dati_non_validi`, e la rotta non segna niente'],
     // Sprint 40 · T3.4 (voce #2051): che cosa manda la cornice, che cosa fa la rotta, e che cosa resta fuori.
     'la scheda ferma: l\'intestazione' => ['readme', 'La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l\'intestazione `Persona` porta l\'email di chi la cornice mostra, passata da `encodeURIComponent`'],
-    // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): sotto il tetto la destinazione del clic si apre anche dopo il 409;
-    // il `subito` riletto porta la lingua nuova solo se la sessione l'ha già; la ricarica lenta non è provata in un browser.
-    'la lettura con un clic: sotto il tetto la destinazione si apre' => ['readme', 'su una pagina caricata da meno di 30 secondi non parte prima che li compia, e allora la destinazione si apre anche se il 409 è arrivato prima: niente è segnato a chi è entrato, e la pagina che si apre è la sua'],
-    'la scheda ferma: sotto il tetto la risorsa si apre' => ['readme', 'Dalla `v2.9.0`, su una pagina caricata da meno di 30 secondi, né quel 409 né quel 403 la ricaricano prima che li compia: la risorsa si apre anche se sono arrivati prima, con la sessione di chi è entrato, e niente è segnato'],
+    // Sprint 43 · T5 (seconda lettura della PR 77, N1-N3): il `subito` riletto porta la lingua nuova solo se la sessione l'ha
+    // già; la ricarica lenta non è provata in un browser. Sprint 50 · T4.5 (voce #2059): sotto il tetto il clic aspetta la
+    // lettura, e davanti alla risposta di un'altra persona la destinazione non si apre (fino alla `v2.11.4` si apriva).
+    'la lettura con un clic: sotto il tetto la destinazione non si apre' => ['readme', 'Dalla `v2.11.5`, su quella pagina, il clic aspetta la risposta, e davanti al 409 la destinazione non si apre: niente è segnato a chi è entrato, e niente si apre con la sua sessione (dalla `v2.9.0` alla `v2.11.4` si apriva)'],
+    'la scheda ferma: sotto il tetto la risorsa non si apre' => ['readme', 'dalla `v2.11.5` lì il clic aspetta la risposta, e davanti a uno dei due la risorsa non si apre: niente è segnato, e niente si apre con la sessione di chi è entrato (fino alla `v2.11.4` si apriva)'],
     // Sprint 44 · T2 (voce #2058): sotto il tetto la pagina si ricarica da sola quando compie 30 secondi, e riguarda chi è a schermo.
     'la scheda ferma: allo scadere, chi è a schermo' => ['readme', 'Allo scadere la cornice riguarda chi è a schermo: se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì'],
     'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
@@ -5808,6 +5809,9 @@ it('il README non dice più che dalla scheda ferma la destinazione del clic su u
     'la sua risorsa' => ['La sua risorsa si apre lo stesso'],
     'i dati senza email: sempre vuota' => ['l\'intestazione partirebbe vuota'],
     'la pagina se ne va sempre prima' => ['la pagina se ne va prima della risposta'],
+    // Sprint 50 · T4.5 (voce #2059): sotto il tetto la risorsa non si apre più con la sessione di chi è entrato.
+    'sotto il tetto la destinazione si apre' => ['e allora la destinazione si apre anche se il 409 è arrivato prima'],
+    'sotto il tetto la risorsa si apre' => ['la risorsa si apre anche se sono arrivati prima'],
 ]);
 
 // Sprint 36 · T3.4 (voce #1967): con Indietro il menu del profilo non mostra più la persona della pagina di allora.
