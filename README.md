@@ -181,12 +181,13 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.4` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.31` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
 e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla
-`v1.5.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+`v1.5.0`. Dalla `v2.16.0` serve la 0.12.31: è quella che protegge la richiesta rimandata della cornice in due dati
+(`SessioneChiusa`, vedi «La cornice in due dati»), e con una più vecchia Composer lascia zr-core alla `v2.15.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
@@ -256,10 +257,7 @@ alla pagina dell'accettazione (302), a una visita di Inertia un 409 con `X-Inert
 403 con `codice` e `mancanti`, senza rimando — lì la persona resta dov'è, e che cosa mostrarle lo decide il frontend. Per
 le visite il frontend non scrive un rimando suo. La quarta forma è della pagina dell'accettazione stessa (l'host e il
 percorso di `zr-auth.accettazione`, con o senza la lingua davanti): lì risponde quel 403 anche a una visita e a una visita
-di Inertia, perché un rimando la manderebbe a sé stessa. Con una patch di zr-auth più
-vecchia della `v0.12.17` quel 403 resta un
-`ErroreApi` come gli altri, e nessuno rimanda: il vincolo di zr-core le ammette, e un frontend che vuole il rimando chiede
-nel proprio `composer.json` una zr-auth dalla `v0.12.17` in su.
+di Inertia, perché un rimando la manderebbe a sé stessa.
 
 Il workspace è quello del gettone (`Sessione::workspace()` di zr-auth), non quello dell'indirizzo della pagina. Persona,
 lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la cornice li tiene aggiornati: a ogni
@@ -440,8 +438,7 @@ Dalla `v1.14.0`, se la persona non ha accettato i documenti legali in vigore le 
 i documenti legali»); ogni altro errore del backoffice resta quello di prima. Su quelle rotte nessun middleware del
 frontend chiama `/v1` senza prendere quel 403: altrimenti al browser, al posto della risposta della rotta, arriva quella di
 zr-auth. Da zr-auth `v0.12.17` è un 403 con `codice` e `mancanti`: la cornice lo riconosce lo stesso, dal `codice`, e
-passa allo stato ridotto. Con una patch più vecchia, che il vincolo di zr-core ammette, quell'errore non ha una risposta
-sua: al browser arriva un 500, e la cornice mostra l'errore di sempre: nel pannello delle notifiche resta «Riprova».
+passa allo stato ridotto.
 
 ### Il cookie del segno
 
@@ -1412,6 +1409,22 @@ controller). Con due schede della stessa persona nello stesso workspace, la rich
 lettura fatta per la pagina dell'altra: sono dati della stessa persona, di meno di 10 secondi, col loro segno. Ciò che il
 controller della pagina cambia dopo `Cornice::lingua()` — una notifica segnata come letta in quella richiesta — con la
 richiesta rimandata che usa quella lettura arriva alla campanella con la visita dopo.
+
+Sulla rotta della richiesta rimandata il frontend non mette niente: né un middleware suo, né `bloccaSessione()` di zr-auth,
+che terrebbe fermo un processo fino a 10 secondi e metterebbe in fila le richieste della persona. Quella richiesta arriva
+quando la pagina è già in mano alla persona, e `Cornice::dopo()` scrive nella sessione la lingua e il nome riletti
+(`Sessione::aggiorna`): Laravel, a fine richiesta, salva la sessione che aveva letto all'inizio, sotto l'id di allora, e
+senza una protezione una richiesta rimandata lenta, finita dopo che la persona è uscita o è passata a un altro workspace,
+rimetterebbe in vita la sessione di prima. La protezione è `SessioneChiusa` di zr-auth, dalla 0.12.31, ed è per questo che
+dalla `v2.16.0` zr-core chiede zr-auth dalla 0.12.31: l'uscita e il cambio di workspace cambiano l'id della sessione e
+segnano chiuso il vecchio, e una richiesta partita con l'id chiuso non lo rimette in vita. Il gettone non si perde: zr-auth
+lo cambia solo entrando, cambiando workspace o uscendo, mai dentro la stessa sessione (risposta di zr-backoffice del
+14/10/2026, letta nel codice di zr-auth). La protezione vale a quattro condizioni, tutte dalla parte del frontend: la rotta
+della richiesta rimandata, cioè la pagina stessa, sta nel gruppo `web`; `session.block_store` è uno store condiviso fra i
+processi, mai `array`, che spegne la protezione senza dirlo; l'ordine del gruppo `web` non si riordina (`SessioneChiusa`
+ne è il primo); e `zr-auth.sessione_chiusa_secondi` (300) non è più corto della richiesta più lenta. Resta ciò che vale
+per ogni sessione di Laravel: fra due richieste della stessa sessione in volo insieme vince quella che finisce per
+ultima, e la lingua e il nome si riallineano alla pagina dopo.
 
 Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l'email della
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche

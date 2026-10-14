@@ -284,8 +284,7 @@ con `accettazione_richiesta: true`; la cornice esce ridotta, con un avviso che p
 di zr-home. Tu dai i dati così come sono, non leggi `prodotti` vuoto come «Presto» (lì è una lista vuota, `[]`) e per le
 visite non scrivi un rimando tuo: dalle tue chiamate a `/v1` lo fa zr-auth, dalla sua `v0.12.17`, con l'eccezione
 `AccettazioneRichiesta` — 302 a una visita, 409 con `X-Inertia-Location` a una visita di Inertia. A una tua richiesta JSON
-zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Con una patch più vecchia
-quel 403 resta un `ErroreApi`: chiedi una zr-auth dalla `v0.12.17` in su. Sulle rotte `/cornice/*` non mettere un middleware che chiama
+zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che cosa mostrare. Sulle rotte `/cornice/*` non mettere un middleware che chiama
 `/v1` senza prendere quel 403. Nello stato ridotto l'avviso sta sopra la tua pagina, che resta dov'è e non si rimonta
 quando lo stato arriva o se ne va: ciò che è scritto in un campo resta — README, «La cornice», al punto «Chi non ha
 accettato i documenti legali».
@@ -308,6 +307,9 @@ sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la su
 se la pagina rilegge il solo `subito` dopo un cambio di lingua, la cornice passa alla lingua nuova senza aspettare `dopo` (a una visita era già così). Vale se la sessione ha già la lingua nuova: `Cornice::subito()` non la chiede al backoffice, la rileggono `Cornice::lingua()`, `dopo()` e `dati()`.
 Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`, e vale quella confermata più di recente: un `subito` riletto mentre `dopo`
 è ancora in lettura, o una pagina di prima ripresa con Indietro, non riportano la lingua di prima (README, «La cornice in due dati»).
+Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSessione()`: la protegge `SessioneChiusa` di zr-auth
+dalla 0.12.31, che zr-core chiede dalla `v2.16.0`, se la rotta sta nel gruppo `web` e `session.block_store` non è
+`array` (le quattro condizioni: README, «La cornice in due dati»).
 **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un
