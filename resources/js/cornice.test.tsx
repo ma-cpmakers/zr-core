@@ -4118,8 +4118,8 @@ describe('il pannello delle notifiche', () => {
         }
     });
 
-    // Sprint 50 · T3 (voce 2065): due cornici nel documento. Una cornice che si smonta toglie chi è a schermo solo se è ancora lei:
-    // se dopo di lei se n'è montata un'altra, a schermo resta quella. Così, allo scadere dei 30 secondi, la pagina di chi ha
+    // Sprint 50 · T3 (voce 2065): due cornici nel documento. Dalla `v2.17.1` una cornice che si smonta toglie solo sé stessa dalla
+    // pila delle montate: se dopo di lei se n'è montata un'altra, a schermo resta quella. Così, allo scadere dei 30 secondi, la pagina di chi ha
     // risposto non si ricarica anche quando la sua cornice è stata montata prima che quella di prima si smontasse; e una pagina
     // rimasta senza nessuna cornice si ricarica, come dalla `v2.10.0`.
     it.each<[string, boolean, number]>([
@@ -4175,6 +4175,46 @@ describe('il pannello delle notifiche', () => {
 
         await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
         expect(aSchermo).toBeUndefined();
+    });
+
+    // Review della PR #91 (R4): T2.2 dice anche la lettura in volo. Partita da una delle due cornici di Ada, se alla risposta
+    // non ne resta montata nessuna la risorsa non si apre.
+    it('con due cornici di Ada, la lettura partita da una e in volo quando si smontano tutte e due non apre la risorsa alla risposta (sprint 57 · T2.2)', async () => {
+        const lettura = inAttesa();
+        vi.stubGlobal('fetch', vi.fn((indirizzo: string) => (indirizzo.endsWith('/lettura') ? lettura.promessa : Promise.resolve(risposta({ data: conGliId, workspace: dati.workspace.slug })))));
+        const naviga = vi.fn();
+        const prima = <Cornice key="prima" dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        const seconda = <Cornice key="seconda" dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        await mostra(<>{[prima, seconda]}</>);
+        await clic(uno('.zr-bell'));
+        await clic(voci()[0] ?? null);
+        await act(prossimoGiro);
+        expect(naviga).not.toHaveBeenCalled();
+
+        await mostra(<p className="senza-cornice">Una pagina senza la cornice</p>);
+        expect(aSchermo).toBeUndefined();
+        await lettura.arriva(risposta({ data: { letta: true } }));
+        await act(prossimoGiro);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    // Review della PR #91 (R3): fra persone diverse lo scenario nuovo è smontare l'ultima montata: a schermo torna quella
+    // rimasta, e il clic su una sua notifica apre la risorsa. Fino alla `v2.17.0` lo schermo restava vuoto.
+    it('montate la cornice di Ada e poi quella di Grace, smontata quella di Grace a schermo torna Ada, e il clic su una notifica nella sua apre la risorsa (sprint 57 · T2.3, review R3)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (indirizzo: string) => (indirizzo.endsWith('/lettura') ? risposta({ data: { letta: true } }) : risposta({ data: conGliId, workspace: dati.workspace.slug }))));
+        const naviga = vi.fn();
+        const grace = { nome: 'Grace Hopper', email: 'grace@example.com' };
+        const diAda = <Cornice key="di-ada" dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        const diGrace = <Cornice key="di-grace" dati={{ ...dati, persona: grace }} onLogout={esciSenzaEffetto} />;
+        await mostra(<>{[diAda, diGrace]}</>);
+        expect(aSchermo).toBe(grace.email);
+        await mostra(<>{[diAda]}</>);
+        expect(aSchermo).toBe(dati.persona.email);
+
+        await clic(uno('.zr-bell'));
+        await clic(voci()[0] ?? null);
+        await act(prossimoGiro);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
     });
 
     it('montate la cornice di Ada e poi quella di Grace, smontata quella di Ada a schermo resta Grace; smontata anche quella di Grace, nessuno (sprint 57 · T2.3)', async () => {

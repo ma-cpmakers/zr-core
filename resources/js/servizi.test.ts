@@ -15,7 +15,8 @@ const mettiASchermo = (chi: string | undefined) => {
     if (chi !== undefined) {
         return mostra(chi);
     }
-    while (aSchermo !== undefined) {
+    // Un tetto ai giri: se `mostra(…, 1)` non togliesse niente (un mutante), il caso sarebbe rosso invece di non finire mai.
+    for (let giri = 0; aSchermo !== undefined && giri < 99; giri++) {
         mostra(aSchermo, 1);
     }
 };
@@ -1003,6 +1004,17 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
         mostra('ada@example.com', 1);
         expect(aSchermo).toBe('grace@example.com');
         mostra('grace@example.com', 1);
+        expect(aSchermo).toBeUndefined();
+    });
+
+    // Review della PR #91 (R3): fra persone diverse lo scenario nuovo è smontare l'ultima montata. Fino alla `v2.17.0` lo schermo
+    // restava vuoto; ora torna quella rimasta.
+    it('Ada e poi Grace: smontata Grace a schermo torna Ada, smontata anche Ada nessuno (T2.3, review R3)', () => {
+        mostra('ada@example.com');
+        mostra('grace@example.com');
+        mostra('grace@example.com', 1);
+        expect(aSchermo).toBe('ada@example.com');
+        mostra('ada@example.com', 1);
         expect(aSchermo).toBeUndefined();
     });
 });

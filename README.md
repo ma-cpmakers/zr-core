@@ -1496,14 +1496,16 @@ a schermo quando arriva la risposta: dalla `v2.10.0` un orologio dei 30 secondi 
 terza persona — né chi ha chiesto né chi è a schermo — la pagina si ricarica, e dopo è di chi è nella sessione: anche
 quando a schermo c'è già lei, entrata dopo quella risposta, perché il browser non sa chi è nella sessione. La regola conta
 su una cornice sola nel documento. Con due, a schermo è quella montata per ultima fra quelle ancora montate: le tiene una
-pila, e una cornice che si smonta toglie solo sé stessa (dalla `v2.11.5` fra persone diverse, dalla `v2.17.1` anche con la
-stessa persona): se la cornice di chi ha risposto si monta prima che quella di prima sia smontata, a schermo resta la sua, e
-allo scadere dei 30 secondi la sua pagina non si ricarica; smontata la cornice montata per ultima, a schermo torna quella
-rimasta, anche se è della stessa persona. Fino alla `v2.17.0` in questi due casi per la cornice nessuno era a schermo: una
-scheda ferma lì non si ricaricava, un orologio dei 30 secondi già partito, allo scadere, ricaricava la pagina anche con la
-cornice di chi aveva risposto, e il clic su una notifica non apriva la risorsa. Resta un limite: la cornice riconosce chi è
-a schermo dall'email, e con A, poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo resta A anche quando la
-A rimasta è quella montata prima di B.
+pila, e una cornice che si smonta toglie solo sé stessa (dalla `v2.17.1`): se la cornice di chi ha risposto si monta prima
+che quella di prima sia smontata, a schermo resta la sua, e allo scadere dei 30 secondi la sua pagina non si ricarica (fra
+persone diverse dalla `v2.11.5`, con la stessa persona dalla `v2.17.1`); smontata la cornice montata per ultima, a schermo
+torna quella rimasta, anche se è della stessa persona. Fino alla `v2.17.0` nel secondo caso, e nel primo con la stessa
+persona, per la cornice nessuno era a schermo: una scheda ferma lì non si ricaricava, un orologio dei 30 secondi già
+partito, allo scadere, ricaricava la pagina anche con la cornice di chi aveva risposto, e il clic su una notifica non apriva
+la risorsa. Dalla `v2.17.1` la apre anche quando la cornice del clic si è smontata con la lettura in volo, se a schermo c'è
+ancora la stessa persona in un'altra cornice. Resta un limite: la cornice riconosce chi è a schermo dall'email, e con A,
+poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo resta A anche quando la A rimasta è quella montata
+prima di B.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»

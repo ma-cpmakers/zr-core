@@ -90,7 +90,8 @@ export class TroppeRichieste extends Error {
  * a schermo c'è l'ultima montata fra quelle rimaste. Così con due cornici della stessa persona, smontata una, a schermo resta la
  * persona dell'altra; e con due cornici di persone diverse, smontata quella di prima, resta l'altra (come dalla `v2.11.5`).
  * Il limite è l'email: con A, poi B, poi di nuovo A, smontata una delle due di A, a schermo resta A anche se la A rimasta è
- * quella montata prima di B (README, «Le notifiche»).
+ * quella montata prima di B (README, «La cornice in due dati»). `mostra(email, 1)` si chiama solo per un'email montata, allo
+ * smontaggio della sua cornice: con una mai montata `indexOf` darebbe -1, e `splice` toglierebbe l'ultima voce, di un'altra.
  */
 export let aSchermo: string | undefined;
 
