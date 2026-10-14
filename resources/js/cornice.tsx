@@ -683,14 +683,16 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // aspetta apre la risorsa solo allora), e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un errore senza
     // niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
     const [daDire, setDaDire] = useState<string>();
-    const leggi = (id: string, workspace: string) => {
+    const leggi = (id: string, workspace: string, letta?: boolean) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
         return segnaLetta(id, persona.email).then(
             ({ il }) => {
-                setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
-                setDaDire(id);
+                if (!letta) {
+                    setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
+                    setDaDire(id);
+                }
 
                 return id;
             },
@@ -912,10 +914,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
-        if (risorsa !== undefined && !notifica!.letta) {
+        if (risorsa !== undefined) {
             if (!letturaInVolo.current) {
                 letturaInVolo.current = true;
-                leggi(notifica!.id, elencoDi!).then((letta) => ((letturaInVolo.current = false), letta && naviga(risorsa)));
+                leggi(notifica!.id, elencoDi!, notifica!.letta).then((letta) => ((letturaInVolo.current = false), letta && naviga(risorsa)));
             }
             return;
         }

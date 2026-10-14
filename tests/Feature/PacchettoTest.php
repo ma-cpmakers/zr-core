@@ -3774,7 +3774,9 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'la richiesta' => ['punto', 'la cornice chiede `PATCH /cornice/notifiche/<id>/lettura` con `{"letta": true}`, col gettone CSRF e con `keepalive`, perché la pagina sta cambiando'],
     // Sprint 53 · T1 (voce #2083): dalla `v2.14.0` l'apertura aspetta la lettura a ogni età della pagina.
     'l\'apertura aspetta la lettura (sprint 53 · T1)' => ['punto', 'Dalla `v2.14.0` il clic aspetta la lettura a ogni età della pagina, e la risorsa si apre alla risposta'],
-    'quando no' => ['punto', 'Una notifica già letta, e una il cui clic apre la pagina delle notifiche, non chiedono niente'],
+    // Sprint 53 · T3 (voce #2085): una già letta con una destinazione chiede la lettura anche lei.
+    'quando no (sprint 53 · T3)' => ['punto', 'Una notifica il cui clic apre la pagina delle notifiche non chiede niente'],
+    'anche una già letta (sprint 53 · T3)' => ['punto', 'Dalla `v2.14.0` anche il clic su una notifica già letta che ha una destinazione chiede la lettura'],
     'quando scende il numero' => ['punto', 'Il numero sulla campanella scende di uno quando la parte server risponde `letta: true`, non al clic'],
     // Review della PR #44, R1: non «fino a `segnata_il`», ma per i dati del clic.
     'una volta sola' => ['punto', 'e solo per i dati che la pagina aveva al clic: dei dati letti dopo il clic non si può sapere se la contano già letta'],

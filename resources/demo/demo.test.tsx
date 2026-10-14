@@ -100,8 +100,11 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
             await risponde();
             expect(numero()).toBeNull();
             // Un clic che naviga: la prima notifica, «Nuova scheda», dallo sprint 24 (T3) apre la sua scheda, cioè la pagina di
-            // prova scrive l'indirizzo e si ridisegna. È già letta, e il clic non chiede altro.
+            // prova scrive l'indirizzo e si ridisegna. È già letta: dallo sprint 53 (T3.1) il clic chiede la lettura anche per lei, e
+            // apre alla risposta.
             await clic(uno('.zr-notif-list .zr-notif-item'));
+            expect(scritti()).toStrictEqual([]);
+            await risponde();
             expect(scritti()).toStrictEqual([['https://board.zeiras.com/w/uat-marketing/c/uat-scheda-1']]);
             expect(numero()).toBeNull();
         } finally {

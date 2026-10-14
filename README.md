@@ -927,8 +927,11 @@ cornice === null ? pagina : (
   nuovo la lettura. A schermo niente dice che il clic non è andato: l'`AppShell` chiude il pannello al clic, e la cornice
   non ha un posto per dirlo (né un testo nuovo, che l'ingresso non ha lo spazio per portare). Il 403
   `accettazione_richiesta` porta come sempre alla cornice ridotta. Fino alla `v2.13` un errore della persona a schermo
-  apriva la risorsa lo stesso. Una notifica già letta, e
-  una il cui clic apre la pagina delle notifiche, non chiedono niente. Il numero sulla campanella scende di uno quando la
+  apriva la risorsa lo stesso. Dalla `v2.14.0` anche il clic su una notifica già letta che ha una destinazione chiede la
+  lettura, con la stessa `PATCH` e `{"letta": true}`, e la apre solo alla risposta: così una scheda rimasta aperta non la
+  apre con la sessione di un'altra persona entrata altrove. È una chiamata al backoffice in più per ogni clic su una già
+  letta; segnarla letta di nuovo non cambia niente, e il numero sulla campanella non scende (fino alla `v2.13` una già
+  letta si apriva senza chiedere niente). Una notifica il cui clic apre la pagina delle notifiche non chiede niente. Il numero sulla campanella scende di uno quando la
   parte server risponde `letta: true`, non al clic, e solo per i dati che la pagina aveva al clic: dei dati letti dopo
   il clic non si può sapere se la contano già letta — il loro segno è preso prima della lettura dal backoffice,
   `segnata_il` dopo la sua risposta —, e vale il loro numero: al più una in più fino alla visita dopo, mai una in meno.
