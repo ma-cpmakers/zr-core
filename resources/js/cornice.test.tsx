@@ -1616,6 +1616,8 @@ describe('il pannello delle notifiche', () => {
 
         await clic(segnaTutte());
         await act(prossimoGiro);
+        // La ricarica parte da un `setTimeout` che sulla pagina di un minuto ha il ritardo negativo: si aspetta, non si conta sul giro (#2070).
+        await act(() => vi.waitFor(() => expect(ricarica).toHaveBeenCalled()));
 
         expect(ricarica).toHaveBeenCalledTimes(1);
         expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:55:00+00:00', workspace: 'acme-marketing' });
@@ -3881,6 +3883,8 @@ describe('il pannello delle notifiche', () => {
 
         await clic(uno('.zr-bell'));
         await act(prossimoGiro);
+        // La ricarica parte da un `setTimeout` che sulla pagina di un minuto ha il ritardo negativo: si aspetta, non si conta sul giro (#2070).
+        await act(() => vi.waitFor(() => expect(ricarica).toHaveBeenCalled()));
         guarda.disconnect();
 
         expect(ricarica).toHaveBeenCalledTimes(1);
@@ -4083,6 +4087,8 @@ describe('il pannello delle notifiche', () => {
         // Una visita porta Grace; poi, da un'altra scheda, entra Carol, e la risposta di prima dice lei.
         await mostra(<Cornice dati={{ ...dati, persona: grace, non_lette: 5, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         await lenta.arriva(risposta({ data: notificheDelServer, workspace: dati.workspace.slug, persona: 'carol@example.com' }));
+        // La ricarica parte da un `setTimeout` che sulla pagina di un minuto ha il ritardo negativo: si aspetta, non si conta sul giro (#2070).
+        await act(() => vi.waitFor(() => expect(ricarica).toHaveBeenCalled()));
 
         expect(ricarica).toHaveBeenCalledTimes(1);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(grace.nome);
@@ -4103,6 +4109,8 @@ describe('il pannello delle notifiche', () => {
 
         await clic(uno('.zr-bell'));
         await act(prossimoGiro);
+        // La ricarica parte da un `setTimeout` che sulla pagina di un minuto ha il ritardo negativo: si aspetta, non si conta sul giro (#2070).
+        await act(() => vi.waitFor(() => expect(ricarica).toHaveBeenCalled()));
         guarda.disconnect();
 
         expect(ricarica).toHaveBeenCalledTimes(1);
@@ -5887,6 +5895,8 @@ describe('chi non ha accettato i documenti legali', () => {
 
         await clic(uno('.zr-notif-list .zr-notif-item'));
         await act(prossimoGiro);
+        // La ricarica parte da un `setTimeout` che sulla pagina di un minuto ha il ritardo negativo: si aspetta, non si conta sul giro (#2070).
+        await act(() => vi.waitFor(() => expect(ricarica).toHaveBeenCalled()));
         guarda.disconnect();
 
         expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo)).toStrictEqual(['/cornice/notifiche', '/cornice/notifiche/uat-n69/lettura']);
