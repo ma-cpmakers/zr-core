@@ -53,6 +53,12 @@ const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) =>
 /** Il segno di chi questi dati mostrano, come lo legge `Cornice`: quello della sessione, o quello della lettura nei dati interi. */
 const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
 
+/**
+ * Due dati sono della stessa persona se hanno la stessa email, e l'email c'è: due email che mancano (dati contro il tipo) sono
+ * due persone, e dall'uno all'altro non passa niente — né la lingua né il nome (dalla `v2.11.1`).
+ */
+const stessaPersona = (uno: DatiDellaCornice, altro: DatiDellaCornice) => !!uno.persona.email && uno.persona.email === altro.persona.email;
+
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
     // `dopo` sta sopra, con tutto ciò che porta (dalla `v2.9.0` meno la lingua, se `subito` è della stessa persona ed è più recente: qui sotto): è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
@@ -92,7 +98,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // `v2.11.0`): una pagina di Indietro letta dopo la sessione di chi è mostrato, ma con la lingua confermata prima, non
     // riporta la lingua di allora. Senza il segno da una parte resta quella di chi ha la sessione più avanti.
     const altro = piuAvanti === pagina ? entrato : pagina;
-    const chi = altro?.persona.email === piuAvanti.persona.email && segno(altro.lingua_il)! > segno(piuAvanti.lingua_il)! ? { ...piuAvanti, lingua: altro.lingua, lingua_il: altro.lingua_il } : piuAvanti;
+    const chi = altro && stessaPersona(altro, piuAvanti) && segno(altro.lingua_il)! > segno(piuAvanti.lingua_il)! ? { ...piuAvanti, lingua: altro.lingua, lingua_il: altro.lingua_il } : piuAvanti;
     if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato) || chi.lingua_il !== entrato.lingua_il) {
         entra(chi);
     }
@@ -109,7 +115,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // quelli di adesso: la cornice che si rifà lì sotto riparte da chi è mostrato, e una voce di un'altra persona più vecchia
     // di lui non passa nemmeno dopo.
     // Con la stessa persona e lo stesso segno, la lingua è quella di chi è mostrato, se lì il suo segno è più avanti (sopra).
-    const cornice = valgono.persona.email !== chi.persona.email ? valgono : della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : chi.lingua !== valgono.lingua ? { ...valgono, lingua: chi.lingua } : valgono;
+    const cornice = !stessaPersona(valgono, chi) ? valgono : della(chi) > della(valgono) ? { ...valgono, lingua: chi.lingua, persona: chi.persona, sessione_il: chi.sessione_il ?? chi.aggiornati_il } : chi.lingua !== valgono.lingua ? { ...valgono, lingua: chi.lingua } : valgono;
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.

@@ -1323,7 +1323,9 @@ fino alla `v2.10.0` restava aperto: un `subito` riletto da solo mentre `dopo` è
 sessione più avanti, ma quello della lingua no, e la cornice non torna alla lingua di prima. E con Indietro su una pagina
 della stessa persona letta dopo quella a schermo, ma con la lingua confermata prima, la lingua resta quella nuova, nello
 stesso workspace e in un altro. Un `dopo` composto a mano senza `lingua_il` porta la sua lingua, come prima della
-`v2.9.0`. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
+`v2.9.0`. Dalla `v2.11.1` due dati senza l'email della persona (composti a mano contro il tipo) sono due persone
+per il layout, dove ne fa passare la lingua o il nome dall'uno all'altro: con una pagina di un altro workspace la cornice
+ha la lingua e il nome della pagina, non quelli di chi era a schermo. Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a
 un'altra persona mostra la cornice di questa, rifatta, e la pagina con lei. E chi compone `dopo` a mano gli lascia
 `lingua`, `persona` e `sessione_il`: senza, vale come prima della `v2.4.0`. Chi compone a mano i dati della cornice dà come
 email della persona quella della sessione: con un'altra, campanella e ricerca non funzionano — ricaricano la pagina, dalla
