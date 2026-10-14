@@ -5541,6 +5541,8 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     'la scheda ferma: allo scadere, chi è a schermo' => ['readme', 'Allo scadere la cornice riguarda chi è a schermo: se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una pagina rimasta senza cornice sì'],
     'la lettura con un clic: allo scadere' => ['readme', 'Dalla `v2.10.0`, se la pagina è ancora lì quando compie 30 secondi, si ricarica allora'],
     'chi compone i dati a mano: l\'errore dopo 5 secondi' => ['readme', 'e fra una ricarica e l\'altra danno il loro errore, dalla `v2.10.0` dopo 5 secondi'],
+    // Sprint 44 · T3.3 (voce #2057, rilievo N5 della seconda lettura dello sprint 42): la coda sul JS della cornice che non monta la pagina, vista in Chromium.
+    'la ricerca: la coda su un JS che non monta la pagina' => ['readme', 'Se non è il JS che monta la pagina, la ricerca non arriva: resta su «Sto cercando…», senza un errore (visto in Chromium 151 sulle pagine di prova di `npm run demo`'],
     'la lingua: solo se la sessione l\'ha già' => ['readme', 'Il `subito` riletto porta la lingua nuova solo se la sessione l\'ha già: `Cornice::subito()` non chiama il backoffice, e la lingua della sessione la rileggono `Cornice::lingua()`, `dopo()` e `dati()`'],
     'la lingua: senza, niente cambia' => ['readme', 'senza, e senza un\'altra richiesta che l\'abbia riletta dopo il `dopo` che la pagina ha, il `subito` riletto ha la lingua di prima e niente cambia'],
     'la scheda ferma: la ricarica lenta non è provata' => ['readme', 'senza niente di chi è entrato (letto nel codice: una ricarica lenta non è provata in un browser)'],
