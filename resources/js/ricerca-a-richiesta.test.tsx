@@ -211,6 +211,49 @@ describe('prima dell\'arrivo del pezzo la cornice non è più quella che ha cerc
     });
 });
 
+// Sprint 47 · T2 (voce #2055). La cornice smontata col pezzo in viaggio: il layout la rifà quando cambia il workspace, con la
+// stessa persona, e la cornice nuova non è quella che ha cercato. All'arrivo la parola scritta nella cornice di prima non parte.
+describe('prima dell\'arrivo del pezzo la cornice è smontata (T2)', () => {
+    const rifatta = (chiave: string, deiDati: DatiDellaCornice) => act(async () => radice.render(<Cornice key={chiave} dati={deiDati} product="pm" onLogout={() => {}}><p>La pagina</p></Cornice>));
+    const inUnAltro: DatiDellaCornice = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' } };
+
+    it.each<[caso: string, dopo: DatiDellaCornice]>([
+        ['in un altro workspace', inUnAltro],
+        ['nello stesso workspace (una cornice nuova con gli stessi dati)', dati],
+    ])('e rifatta con la stessa persona %s: all\'arrivo nessuna richiesta parte (T2.1); una parola scritta dopo cerca come sempre (T2.2)', async (_caso, dopo) => {
+        const pezzo = pezzoInRitardo();
+        await rifatta('prima', dati);
+        await scrivi('ada');
+        expect(inCaricamento()).toBe(testi('it').searchLoading);
+
+        await rifatta('dopo', dopo);
+        await pezzo.arriva();
+        await passano(1_000);
+
+        expect(cercate()).toStrictEqual([]);
+
+        await scrivi('lancio');
+        await passano(0);
+
+        expect(cercate()).toStrictEqual([['POST', JSON.stringify({ q: 'lancio' }), 'ada%40example.com']]);
+        expect(titoli()).toStrictEqual(['Lancio Q4']);
+    });
+
+    // Qui la difendono due strati: l'annullo nella pulizia della cornice e `cercaPer`, che non cerca per chi non è più a schermo.
+    // Tolto uno solo dei due il caso resta verde; tolto l'annullo, sono rossi i due casi di sopra (la stessa persona rifatta).
+    it('e non rifatta: all\'arrivo nessuna richiesta parte, e niente va in console (T2.3)', async () => {
+        const pezzo = pezzoInRitardo();
+        await mostra(dati);
+        await scrivi('ada');
+
+        await act(async () => radice.render(<p>Un'altra pagina</p>));
+        await pezzo.arriva();
+        await passano(1_000);
+
+        expect(cercate()).toStrictEqual([]);
+    });
+});
+
 // Sprint 42 · T3 (voce #2054). Il pezzo che non arriva: una rete caduta, un file che una build nuova ha tolto.
 const avviso = () => contenitore.querySelector('.zr-search-panel [role="alert"]')?.textContent ?? null;
 const sottoIlCampo = () => contenitore.querySelector('.zr-search-panel')?.textContent ?? '';

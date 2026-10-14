@@ -948,7 +948,9 @@ cornice === null ? pagina : (
   prima parola se il fuoco nel campo non c'è stato, mai quando si monta. Chi scrive prima che il pezzo sia arrivato vede
   «Sto cercando…», e all'arrivo parte una richiesta sola, con l'ultima parola che il campo ha dato alla cornice: quella che
   c'era 300 ms dopo l'ultimo tasto. Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre
-  una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo. Se il pezzo non arriva —
+  una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo. Una cornice smontata
+  prima dell'arrivo — il layout la rifà quando cambia il workspace, anche con la stessa persona — non cerca più la parola
+  scritta in lei, e all'arrivo non parte niente (dalla `v2.11.2`). Se il pezzo non arriva —
   la rete che cade, un file che una build nuova ha tolto — sotto il campo c'è l'errore della ricerca, lo stesso avviso di
   una rotta che fallisce: non un caricamento che non finisce e non «Nessun risultato», e nessuna richiesta parte. Si riprova
   scrivendo: ogni parola dopo richiede il pezzo, anche la stessa riscritta, e in Chromium lo richiede davvero, all'indirizzo
@@ -1314,8 +1316,9 @@ lingua e il suo segno, e solo se `dopo` dice di chi è e il segno della lingua c
 Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`: `Cornice::subito()` e `Cornice::dopo()` lo portano dopo
 `sessione_il`, in fondo (anche `non_letti`), ed è l'istante in cui è cominciata la lettura di io.mostra che ha confermato
 la lingua della sessione per quella persona, cioè una lettura a cui io.mostra ha risposto con l'id della persona della
-sessione. In `dopo` è quello della sua lettura, se io.mostra ha risposto, altrimenti quello che la sessione ricorda; in
-`subito` quello che la sessione ricorda, mai l'istante di adesso. La parte server lo ricorda nella sessione, alla chiave
+sessione. In `dopo` e in `subito` è quello che la sessione ricorda, mai l'istante di adesso: la lettura di `dopo` lo
+porta avanti solo se io.mostra ha risposto per quella persona ed è più avanti di quello ricordato, e una lettura più
+vecchia lo lascia com'è. La parte server lo ricorda nella sessione, alla chiave
 `zr-core.lingua`, con l'id della persona: di un'altra persona entrata nello stesso browser non esce, e senza una lettura
 che l'abbia confermata non c'è. Fra `subito` e `dopo` della stessa persona la lingua è quella del dato col segno della
 lingua più avanti; il segno della sessione decide come prima chi è a schermo, e la lingua no. Così si chiude il caso che
@@ -1549,7 +1552,8 @@ Che cosa vede la persona:
   e non quello in cui è fallita (fino alla `v2.6.0` `aggiornati_il` era l'istante del fallimento) — anche quando
   io.mostra l'ha già letta `Cornice::lingua()` prima del controller: un `non_letti` arrivato tardi non vale sopra i
   dati di chi è entrato mentre il backoffice non rispondeva. Dalla `v2.11.0` dopo `sessione_il` c'è anche `lingua_il`,
-  come in `Cornice::subito()`: quello di questa lettura se io.mostra ha risposto, altrimenti quello ricordato. Se fra
+  come in `Cornice::subito()`: quello ricordato per la persona, che questa lettura porta avanti solo se io.mostra ha
+  risposto per lei ed è più avanti. Se fra
   `subito` e `dopo` la sessione è passata a un'altra persona, la cornice ridotta porta il nome e l'email di questa, nella
   sua lingua, e non quelli di chi c'era prima: la cornice si rifà, e la pagina con lei — ciò che la persona stava
   scrivendo si perde, come per un `dopo` di un'altra persona —, e lo stesso con un `non_letti` di un altro workspace.

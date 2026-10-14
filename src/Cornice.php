@@ -163,9 +163,10 @@ final class Cornice
      * quello dei dati: un `non_letti` più vecchio dei dati che la cornice ha (Indietro su una visita di prima) non la riduce. Un altro errore di /v1 passa com'è, e GettoneRifiutato pure: la sessione è finita, e
      * lo tratta il frontend come con `dati()`. null senza sessione o senza workspace.
      *
-     * In fondo, dopo `sessione_il`, c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`), come in `subito()`: quello della
-     * lettura di questa richiesta se io.mostra ha risposto per la persona della sessione, altrimenti quello ricordato. Anche in
-     * `non_letti`.
+     * In fondo, dopo `sessione_il`, c'è il segno della lingua, `lingua_il` (dalla `v2.11.0`), come in `subito()`: quello
+     * ricordato per la persona della sessione, che la lettura di questa richiesta porta avanti solo se io.mostra ha risposto
+     * per lei e la lettura è più avanti (`ricordaLaLingua()`); una lettura più vecchia lo lascia com'è. Niente se non c'è.
+     * Anche in `non_letti`.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */

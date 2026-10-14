@@ -143,7 +143,8 @@ const TETTO_DEL_FRENO = 60;
  * Cerca `parola` per la cornice che l'ha chiesta, e ne scrive l'esito nel suo stato (`mostra`): i risultati col loro workspace,
  * l'errore, o il freno dopo un 429 (`frenataFinoA`, `nelFreno`). Alla parte server vanno i primi 100 caratteri. La cornice lo
  * chiama quando il pezzo è arrivato, che può essere dopo: una richiesta annullata nel frattempo (una parola nuova, lo stato
- * ridotto) non parte, e non parte quella di chi non è più a schermo (`aSchermo`: la cornice di un'altra persona, o nessuna).
+ * ridotto, la cornice smontata, anche se rifatta con la stessa persona) non parte, e non parte quella di chi non è più a
+ * schermo (`aSchermo`: la cornice di un'altra persona, o nessuna).
  * Di una richiesta che non è più l'ultima (`inVolo`) l'esito non entra nello stato, tranne il freno, che è della persona.
  */
 
