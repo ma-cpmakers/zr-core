@@ -245,5 +245,5 @@ function gettoneCsrf(): Record<string, string> {
     const nome = 'XSRF-TOKEN';
     const cookie = document.cookie.split(';').map((parte) => parte.trim()).find((parte) => parte.startsWith(`${nome}=`));
 
-    return cookie === undefined ? {} : { 'X-XSRF-TOKEN': decodeURIComponent(cookie.slice(nome.length + 1)) };
+    return cookie ? { 'X-XSRF-TOKEN': decodeURIComponent(cookie.slice(nome.length + 1)) } : {};
 }

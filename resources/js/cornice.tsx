@@ -209,7 +209,7 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
 function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
     const tone = tonoDelWorkspace(workspace.id);
 
-    return tone === undefined ? { slug: workspace.slug, name: workspace.nome } : { slug: workspace.slug, name: workspace.nome, tone };
+    return { slug: workspace.slug, name: workspace.nome, ...(tone && { tone }) };
 }
 
 /**
@@ -834,7 +834,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         mostra(persona.email);
         void import('./rimedi').catch(() => undefined);
 
-        return mostra;
+        return () => (mostra(), ricercaInVolo.current?.abort());
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
