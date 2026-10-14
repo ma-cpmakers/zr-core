@@ -20,7 +20,9 @@ let segnoFermo = false;
 /**
  * Col segno fermo (`?segno=fermo` nella pagina di prova) ogni lettura ha l'istante di quella di prima: due risposte, anche di
  * due persone, con lo stesso segno, come quando un nodo indietro è frenato dal segno che il browser ha già (dalla `v2.11.0`).
- * Così la parità dei segni si vede in un browser. Senza, i segni crescono come sempre.
+ * Così la parità dei segni si vede in un browser. Senza, i segni crescono come sempre. Col segno fermo una lettura di `dopo`
+ * non è mai più avanti di quella ricordata: un cambio di lingua non si ricorda, e il pulsante della lingua di prima non ha una
+ * lingua di prima. Le due prove non si fanno insieme (review della PR #80, R8).
  */
 export function fermaIlSegno(fermo: boolean): void {
     segnoFermo = fermo;
@@ -101,7 +103,7 @@ interface Confermata {
 
 function confermate(): Record<string, Confermata> {
     try {
-        return JSON.parse(localStorage.getItem(chiaveDelleLingue) ?? '{}') as Record<string, Confermata>;
+        return (JSON.parse(localStorage.getItem(chiaveDelleLingue) ?? '{}') as Record<string, Confermata> | null) ?? {};
     } catch {
         return {};
     }
@@ -131,7 +133,11 @@ export function conIlSegnoDellaLingua<Props extends { subito?: DatiSubito | null
         if (!ricordata || il > ricordata.il) {
             const prima = ricordata && ricordata.lingua !== dopo.lingua ? { lingua: ricordata.lingua, il: ricordata.il } : ricordata?.prima;
             ricordate[dopo.persona.email] = { lingua: dopo.lingua, il, ...(prima && { prima }) };
-            localStorage.setItem(chiaveDelleLingue, JSON.stringify(ricordate));
+            try {
+                localStorage.setItem(chiaveDelleLingue, JSON.stringify(ricordate));
+            } catch {
+                // Senza `localStorage` la lettura non si ricorda: la pagina di prova si apre lo stesso.
+            }
         }
         dopo = { ...dopo, lingua_il: il };
     } else if (dopo) {

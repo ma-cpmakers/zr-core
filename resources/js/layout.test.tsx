@@ -1297,25 +1297,36 @@ describe('la cornice in due dati, sotto il layout', () => {
         // Sprint 46 · T2 (voce #2066, N6 della seconda lettura della PR #79): due dati contro il tipo, senza l'email tutti e due.
         // Due email che mancano non sono la stessa persona (`Decisione:` 12938): dove i dati passano da chi è mostrato alla
         // pagina, o dalla pagina a lui, non passa niente. La cornice ha la lingua e il nome della pagina.
-        const senzaEmail = (nome: string, lingua: string, aggiornati_il: string, lingua_il?: string, workspace = subito.workspace) =>
-            ({ cornice: { lingua, persona: { nome }, workspace, prodotti: { pm: 'attivo' }, non_lette: 1, aggiornati_il, ...(lingua_il && { lingua_il }) } }) as never;
+        // Le tre forme in cui l'email manca: la chiave assente, `''` e `null` (review della PR #80, R2).
+        const formeSenzaEmail = [['senza la chiave', {}], ['con l\'email vuota', { email: '' }], ['con l\'email `null`', { email: null }]] as const;
+        const senzaEmail = (nome: string, lingua: string, aggiornati_il: string, lingua_il?: string, workspace = subito.workspace, email: object = {}) =>
+            ({ cornice: { lingua, persona: { nome, ...email }, workspace, prodotti: { pm: 'attivo' }, non_lette: 1, aggiornati_il, ...(lingua_il && { lingua_il }) } }) as never;
         const nomeASchermo = () => uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label');
 
-        it('chi è mostrato e la pagina più recente non hanno l\'email: la lingua di chi è mostrato non passa alla pagina, anche col suo segno della lingua più avanti (sprint 46 · T2.1)', async () => {
-            await inDue(senzaEmail('Ada', 'es', prima, poi), <PaginaA key="1" />);
+        it.each(formeSenzaEmail)('chi è mostrato e la pagina più recente non hanno l\'email, %s: la lingua di chi è mostrato non passa alla pagina, anche col suo segno della lingua più avanti (sprint 46 · T2.1)', async (_forma, email) => {
+            await inDue(senzaEmail('Ada', 'es', prima, poi, subito.workspace, email), <PaginaA key="1" />);
             expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['es'], 'Ada']);
 
-            await inDue(senzaEmail('Grace', 'it', poi, prima), <PaginaB key="2" />);
+            await inDue(senzaEmail('Grace', 'it', poi, prima, subito.workspace, email), <PaginaB key="2" />);
             expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['it'], 'Grace']);
         });
 
         // In un altro workspace la cornice si rifà e mostra ciò che il layout le dà; nello stesso workspace lo decide `Cornice`, che
         // resta montata, e lì il confronto delle email è fuori dalla voce (`Decisione:` 12942: l'email la garantisce il contratto).
-        it('chi è mostrato e una pagina più vecchia di un altro workspace non hanno l\'email: lingua, nome e segno di chi è mostrato non passano alla pagina (sprint 46 · T2.2)', async () => {
-            await inDue(senzaEmail('Ada', 'es', poi), <PaginaA key="1" />);
+        it.each(formeSenzaEmail)('chi è mostrato e una pagina più vecchia di un altro workspace non hanno l\'email, %s: lingua, nome e segno di chi è mostrato non passano alla pagina (sprint 46 · T2.2)', async (_forma, email) => {
+            await inDue(senzaEmail('Ada', 'es', poi, undefined, subito.workspace, email), <PaginaA key="1" />);
             expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['es'], 'Ada']);
 
-            await inDue(senzaEmail('Grace', 'it', prima, undefined, { nome: 'Vendite', slug: 'acme-vendite' }), <PaginaB key="2" />);
+            await inDue(senzaEmail('Grace', 'it', prima, undefined, { nome: 'Vendite', slug: 'acme-vendite' }, email), <PaginaB key="2" />);
+            expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['it'], 'Grace']);
+        });
+
+        // Review della PR #80, R1: dopo una pagina senza la cornice non c'è chi è mostrato, e alla `v2.11.0` due email mancanti
+        // valevano come la stessa persona anche contro nessuno: il layout leggeva il segno della lingua di chi non c'è, e la
+        // pagina si rompeva. È il caso che fissa la guardia di `chi`.
+        it.each(formeSenzaEmail)('dopo una pagina senza la cornice, una pagina senza l\'email, %s, ha la sua cornice e la pagina non si rompe (sprint 46 · T2.1, review della PR #80, R1)', async (_forma, email) => {
+            await inDue({ cornice: null }, <PaginaA key="1" />);
+            await inDue(senzaEmail('Grace', 'it', poi, prima, subito.workspace, email), <PaginaB key="2" />);
             expect([lingueASchermo(), nomeASchermo()]).toStrictEqual([['it'], 'Grace']);
         });
 
