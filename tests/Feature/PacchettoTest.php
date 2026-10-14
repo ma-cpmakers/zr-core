@@ -631,10 +631,12 @@ it('la pagina di prova del layout fa visite vere di Inertia, la versione dei fro
             'lettura(' => 1,
             'lettura(propsDi[nome], segno)' => 1,
         ])
-        ->and($scritte(['leggi(', 'props: { errors: {}, ...letta, visita: visite }', 'props: { errors: {}, ...leggi(iniziale), visita: visite }']))->toBe([
-            'leggi(' => 3,
+        // Dallo sprint 46 (T3) le risposte passano da `leggiConLaLingua`, che chiama `leggi` e ci mette il segno della lingua.
+        ->and($scritte(['leggiConLaLingua(', 'leggi(', 'props: { errors: {}, ...letta, visita: visite }', 'props: { errors: {}, ...leggiConLaLingua(iniziale), visita: visite }']))->toBe([
+            'leggiConLaLingua(' => 3,
+            'leggi(' => 2,
             'props: { errors: {}, ...letta, visita: visite }' => 1,
-            'props: { errors: {}, ...leggi(iniziale), visita: visite }' => 1,
+            'props: { errors: {}, ...leggiConLaLingua(iniziale), visita: visite }' => 1,
         ])
         ->and(substr((string) $lock['packages']['node_modules/@inertiajs/react']['version'], 0, 4))->toBe('3.7.');
 });
@@ -658,7 +660,7 @@ it('sulla pagina di prova del layout una visita è letta quando arriva alla part
     // La lettura sta prima della funzione che il client chiama alla consegna, e fuori: lì dentro si conta soltanto. Letta alla
     // consegna, una visita lenta porterebbe il segno di quando arriva, non di quando è partita; contata alla lettura, una
     // visita annullata conterebbe.
-    $allArrivo = "    const letta = leggi(nome);\n\n    return () => {\n        montaggi = 0;\n        visite += 1;\n";
+    $allArrivo = "    const letta = leggiConLaLingua(nome);\n\n    return () => {\n        montaggi = 0;\n        visite += 1;\n";
 
     expect(scritteNellaPaginaDiProva('layout.tsx', [$allArrivo, 'visite += 1;']))->toBe([$allArrivo => 1, 'visite += 1;' => 1]);
 });
@@ -786,12 +788,10 @@ it('la pagina di prova del layout dà il segno della lingua a ogni risposta, fer
     $diPrima = '<button type="button" data-uat="rileggi-subito-lingua-di-prima" onClick={rileggiSubitoConLaLinguaDiPrima}>UAT rileggi subito con la lingua di prima</button>';
     $conLaLingua = '    return segno ? conIlSegnoDellaLingua(letta, diPrima) : letta;';
 
-    expect(scritteNellaPaginaDiProva('layout.tsx', [$diPrima, 'data-uat="rileggi-subito-lingua-di-prima"', $conLaLingua, 'leggiConLaLingua(', 'leggi(', "fermaIlSegno(scelti.get('segno') === 'fermo');", "router.reload({ only: ['subito'] });"]))->toBe([
+    expect(scritteNellaPaginaDiProva('layout.tsx', [$diPrima, 'data-uat="rileggi-subito-lingua-di-prima"', $conLaLingua, "fermaIlSegno(scelti.get('segno') === 'fermo');", "router.reload({ only: ['subito'] });"]))->toBe([
         $diPrima => 1,
         'data-uat="rileggi-subito-lingua-di-prima"' => 1,
         $conLaLingua => 1,
-        'leggiConLaLingua(' => 3,
-        'leggi(' => 2,
         "fermaIlSegno(scelti.get('segno') === 'fermo');" => 1,
         "router.reload({ only: ['subito'] });" => 1,
     ])
