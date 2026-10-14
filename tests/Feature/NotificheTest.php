@@ -530,7 +530,7 @@ it('con la sessione ma senza workspace le quattro rotte della cornice rispondono
         $this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.000Z')),
         $this->postJson('cornice/ricerca', ['q' => 'uat']),
     ] as $risposta) {
-        senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace', 'persona' => 'uat-ada@example.com']);
+        senzaGettone($risposta)->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
     }
     Http::assertNothingSent();
 });
@@ -2374,7 +2374,7 @@ it('l\'email di quel 403 è presa prima di chiamare il backoffice: se durante la
 // chi è entrato, mai viste. `persona` nel corpo è l'email di chi la cornice mostra: si confronta con quella della sessione, e
 // basta. Non sceglie di chi segnare, non va al backoffice. Una richiesta che non la porta (un JS di prima) vale come prima.
 
-it('con una `persona` che non è l\'email della sessione risponde 409 persona_diversa con l\'email della sessione, e non chiama il backoffice: da una scheda ferma non si segnano le notifiche di chi è entrato dopo (sprint 38 · T4.2)', function (array $diversa, string $chiesta, string $dellaSessione) {
+it('con una `persona` che non è l\'email della sessione risponde 409 persona_diversa con `persona` vuota, senza l\'email della sessione (dalla `v2.12.0`), e non chiama il backoffice: da una scheda ferma non si segnano le notifiche di chi è entrato dopo (sprint 38 · T4.2; sprint 51 · T1.1)', function (array $diversa, string $chiesta, string $dellaSessione) {
     // Senza il middleware che toglie gli spazi: l'email si confronta com'è.
     test()->withoutMiddleware(TrimStrings::class);
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
@@ -2382,7 +2382,7 @@ it('con una `persona` che non è l\'email della sessione risponde 409 persona_di
 
     $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => $chiesta]))->assertStatus(409);
 
-    expect($risposta->getContent())->toBe('{"errore":"persona_diversa","persona":"'.$dellaSessione.'"}');
+    expect($risposta->getContent())->toBe('{"errore":"persona_diversa","persona":""}')->not->toContain($dellaSessione);
     Http::assertNothingSent();
 })->with([
     'Ada a schermo, Grace nella sessione' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-ada@example.com', 'uat-grace@example.com'],
@@ -2466,7 +2466,7 @@ it('la persona viene prima delle guardie di prima: con un\'altra `persona` insie
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
 
     $diUnAltra = senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus(409);
-    expect($diUnAltra->getContent())->toBe('{"errore":"persona_diversa","persona":"uat-ada@example.com"}');
+    expect($diUnAltra->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
     senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-ada@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
     Http::assertNothingSent();
 })->with([

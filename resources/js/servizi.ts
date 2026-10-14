@@ -110,7 +110,9 @@ export function mostra(email?: string, era = aSchermo): void {
  * Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è
  * la sua risposta (`persona`, l'email della persona della sessione che ha risposto: dalla `v2.4.0` l'elenco delle notifiche e
  * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
- * che dalla `v2.6.0` è di tutte e quattro le rotte, e dalla `v2.10.0` il 403 `gettone_senza_workspace`). Con `email` una risposta di un'altra persona non torna a chi
+ * che dalla `v2.6.0` è di tutte e quattro le rotte, e dalla `v2.10.0` alla `v2.11` il 403 `gettone_senza_workspace`; dalla
+ * `v2.12.0` il 409 porta `persona` vuota, che non è l'email di nessuno, e il 403 non la porta più: arriva solo alla persona
+ * della sessione). Con `email` una risposta di un'altra persona non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
@@ -126,7 +128,8 @@ export function mostra(email?: string, era = aSchermo): void {
  * risposta dice ancora un'altra persona, rifarla non cambia niente. Dalla `v2.10.0` si ricarica da sola quando li compie: la
  * ricarica la chiede un orologio — su una pagina di 30 secondi o più scade al primo giro: un ritardo negativo vale zero —,
  * e allo scadere riguarda chi è a schermo. Se una visita ha già portato chi ha risposto, la sua pagina non si ricarica; una
- * pagina rimasta senza cornice sì. Fino allo scadere l'orologio tiene della risposta solo chi ha risposto (`chi`, dalla `v2.11.3`):
+ * pagina rimasta senza cornice sì. Il 409 con `persona` vuota non dice chi ha risposto: con una cornice a schermo la pagina
+ * si ricarica anche se una visita ha già portato un'altra persona. Fino allo scadere l'orologio tiene della risposta solo chi ha risposto (`chi`, dalla `v2.11.3`):
  * il resto si butta subito. L'orologio dei 5 secondi parte per primo: scambiati, due pezzi a richiesta passano il
  * loro tetto. Niente
  * è scritto nel browser per ricordarlo: l'orologio è quello della pagina (`performance.now()`). Una risposta che non lo dice

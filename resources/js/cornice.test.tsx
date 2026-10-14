@@ -1626,7 +1626,7 @@ describe('il pannello delle notifiche', () => {
     // segna niente e risponde 409 `persona_diversa` con l'email di chi è entrato. Niente è dato per letto, e la pagina si ricarica.
     it('in una scheda rimasta ferma «Segna tutte come lette» manda l\'email di chi è mostrato, e al 409 `persona_diversa` di chi è entrato non dà niente per letto: una POST sola, la pagina si ricarica, numero ed elenco restano com\'erano (sprint 38 · T4.1)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: '' }, 409)));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
@@ -1649,7 +1649,7 @@ describe('il pannello delle notifiche', () => {
     // secondi la richiesta si chiude con un errore, e il pulsante si può premere di nuovo: niente è dato per letto.
     it('in una scheda rimasta ferma, se la pagina non si ricarica, «Segna tutte come lette» torna premibile dopo 5 secondi: prima un secondo clic non manda niente, dopo manda un\'altra POST; numero ed elenco restano com\'erano (sprint 43 · T2.1, T2.2)', async () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: 'grace@example.com' }, 409)));
+        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: notificheDelServer, persona: dati.persona.email }) : risposta({ errore: 'persona_diversa', persona: '' }, 409)));
         vi.stubGlobal('fetch', fetchFinto);
         await mostra(<Cornice dati={{ ...dati, non_lette: 60 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));

@@ -737,6 +737,55 @@ describe('una risposta che dice di chi è', () => {
             expect(ricarica).not.toHaveBeenCalled();
             expect(fetchFinto).toHaveBeenCalledTimes(1);
         });
+
+        // Sprint 51 · T1 (voce #2078): dalla `v2.12.0` il 409 `persona_diversa` non dice chi è entrato: `persona` è un testo
+        // vuoto, che non è l'email di nessuno. Per la cornice vale come la risposta di un'altra persona, su ognuna delle quattro;
+        // senza sapere chi è entrato, se a schermo c'è una cornice la pagina si ricarica, anche quella che una visita ha già
+        // portato a un'altra persona (allora una ricarica in più, detta nel README).
+        const col409: [string, (email: string) => Promise<unknown>][] = [
+            ...chiamate.map(([nome, , chiama]) => [nome, chiama] as [string, (email: string) => Promise<unknown>]),
+            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', email)],
+            ['segnaLetta', (email) => segnaLetta('uat-n69', email)],
+        ];
+        const ilNuovo409 = () => diErrore(409, { errore: 'persona_diversa', persona: '' });
+
+        it.each(col409.flatMap(([nome, chiama]) => ([
+            ['chi ha chiesto', 'ada@example.com'],
+            ['un\'altra persona, portata da una visita', 'grace@example.com'],
+        ] as [string, string][]).map(([chi, email]) => [nome, chi, email, chiama] as const)))('%s: il 409 `persona_diversa` con `persona` vuota, con a schermo %s, non torna a chi ha chiesto: a 5.000 ms un errore senza niente dentro, a 30.000 ms la pagina si ricarica, una volta (sprint 51 · T1.3)', async (_nome, _chi, aSchermoC, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            const fetchFinto = vi.fn(async () => ilNuovo409());
+            vi.stubGlobal('fetch', fetchFinto);
+            mettiASchermo(aSchermoC);
+            caricataDa(0);
+
+            const esito = segui(chiama('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(4_999);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+            await vi.advanceTimersByTimeAsync(1);
+            expect(esito).toStrictEqual({ come: 'errore', con: undefined });
+            expect(ricarica).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(25_000);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(ricarica).toHaveBeenCalledTimes(1);
+            expect(fetchFinto).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(col409)('%s: il 409 `persona_diversa` con `persona` vuota senza una cornice a schermo non fa partire nessun orologio e non ricarica la pagina (sprint 51 · T1.3)', async (_nome, chiama) => {
+            const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+            vi.stubGlobal('fetch', vi.fn(async () => ilNuovo409()));
+            mettiASchermo(undefined);
+            caricataDa(60_000);
+
+            const esito = segui(chiama('ada@example.com'));
+            await vi.advanceTimersByTimeAsync(0);
+            expect(vi.getTimerCount()).toBe(0);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(esito).toStrictEqual({ come: 'in attesa' });
+            expect(ricarica).not.toHaveBeenCalled();
+        });
     });
 });
 
