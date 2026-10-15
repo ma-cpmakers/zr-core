@@ -1,7 +1,10 @@
 <?php
 
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Zeiras\Auth\Http\Middleware\ConGettone;
+use Zeiras\Auth\Http\Middleware\SoloDallaPersona;
 use Zeiras\Auth\Persona;
 
 // Sprint 59 · T1 (voce #2143; Decisione di zr-pm del 15/10, nota 13633): dalla 0.12.41 zr-auth mette nel gruppo `web`, dopo la
@@ -53,7 +56,9 @@ it('con l\'interruttore acceso una scrittura della cornice che dice una persona 
     Http::fake();
     $intestazioni = ['Persona' => 'uat-grace%40example.com'] + ($conLImpronta ? [Persona::INTESTAZIONE => (string) Persona::impronta()] : []);
 
-    expect(Persona::impronta())->not->toBeNull();
+    expect(Persona::impronta())->not->toBeNull()
+        // Review della PR #95, R1: con nessuna scrittura trovata il ciclo non girerebbe, e il caso passerebbe senza provare niente.
+        ->and(array_column(scrittureDellaCornice(), 1))->toContain('/cornice/ricerca', '/cornice/notifiche/letture', '/cornice/notifiche/uat-n3/lettura');
     foreach (scrittureDellaCornice() as [$metodo, $indirizzo]) {
         $avuta = test()->withHeaders($intestazioni)->json($metodo, $indirizzo, CORPO_DI_OGNI_SCRITTURA);
 
@@ -66,7 +71,20 @@ it('con l\'interruttore acceso una scrittura della cornice che dice una persona 
     'senza l\'impronta' => [false],
 ]);
 
-it('con l\'interruttore acceso una scrittura del frontend nel gruppo `web`, fuori da `cornice/`, resta sotto SoloDallaPersona: senza `X-Zr-Persona` 409, con l\'impronta della sessione passa (sprint 59 · T1.3)', function () {
+it('con l\'interruttore acceso una scrittura del frontend nel gruppo `web`, fuori da `cornice/`, resta sotto SoloDallaPersona: senza `X-Zr-Persona` 409, con l\'impronta della sessione passa; il gruppo `web` e ogni rotta del frontend con la guardia lo tengono (sprint 59 · T1.3; review della PR #95, R2)', function () {
+    // Le rotte che il frontend ha già nel router (le sue pagine di prova), non solo quella che il caso registra qui sotto: zr-core
+    // non toglie SoloDallaPersona né dal gruppo né da una rotta che non è sua.
+    $router = app('router');
+    $kernel = app(Kernel::class);
+    assert($kernel instanceof Illuminate\Foundation\Http\Kernel);
+    $conLaGuardia = collect(Route::getRoutes()->getRoutes())
+        ->reject(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
+        ->filter(fn ($rotta) => in_array(ConGettone::class, $router->gatherRouteMiddleware($rotta), true));
+
+    expect($kernel->getMiddlewareGroups()['web'])->toContain(SoloDallaPersona::class)
+        ->and($conLaGuardia->map->uri()->values()->all())->toContain('w/{slug}/cornice')
+        ->and($conLaGuardia->reject(fn ($rotta) => in_array(SoloDallaPersona::class, $router->gatherRouteMiddleware($rotta), true))->map->uri()->values()->all())->toBe([]);
+
     Route::middleware('web')->post('uat-scrittura-del-frontend', fn () => response()->json(['scritta' => true]));
     sessioneAMano(WORKSPACE_COL_CONTROLLO);
 

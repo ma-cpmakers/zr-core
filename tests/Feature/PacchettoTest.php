@@ -1635,7 +1635,7 @@ it('CLAUDE.md dice perché il vincolo parte dalla 0.12.41, e né CLAUDE.md né i
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.19.0` parte dalla 0.12.41: le rotte della cornice escono da `SoloDallaPersona`, che c\'è da quella; dalla `v2.16.0` la 0.12.31 per `SessioneChiusa`, che protegge la richiesta rimandata della cornice in due dati; decisioni di zr-pm).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` parte dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella (decisioni di zr-pm).'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v2.16.0` parte dalla 0.12.31'))->toBe(false)
         ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
         ->and(str_contains($claude, 'per questo parte dalla 0.12.1'))->toBe(false)
