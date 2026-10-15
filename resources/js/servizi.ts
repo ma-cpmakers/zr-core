@@ -102,7 +102,8 @@ export let aSchermo: string | undefined;
  * l'impronta con quella della sessione: con la sola email una scheda rimasta aperta di un altro account con la stessa email
  * passerebbe. Con due cornici montate insieme, stessa email e due account, ognuna manda la sua (nella `v2.20.0` tutte quella
  * dell'ultima montata). Senza impronta (dati di prima, o una `persona` costruita dal frontend) parte un testo che non è
- * un'impronta (`undefined` nel browser), e la parte server confronta solo l'email: mai l'impronta di un'altra cornice.
+ * un'impronta (`undefined` nel browser), mai l'impronta di un'altra cornice; dalla `v2.21.0`, se la sessione ne ha una, la
+ * parte server lo rifiuta col 409 (fino alla `v2.20` confrontava solo l'email).
  */
 export interface Persona {
     email: string;

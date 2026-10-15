@@ -6129,6 +6129,23 @@ it('il README non dice più che il layout riconosce la persona dalla sola email,
         ->and(str_contains($readme, 'Resta un limite: una voce della cronologia salvata prima della `v2.20.0` non ha l\'impronta'))->toBe(true);
 });
 
+// Sprint 62 · T2.1 (voce #2152, Decisione di zr-pm 13852): dalla `v2.21.0`, con la sessione che ha un'impronta, una richiesta
+// che non la dice è il 409, e «Le rotte della cornice» lo dice, con chi rompe e i test di un frontend; il README non dice più,
+// da nessuna parte, che senza l'impronta decide l'email (review della PR #100, R4-R6).
+it('«Le rotte della cornice» dice che dalla `v2.21.0` una richiesta senza `X-Zr-Persona`, o coi testi `undefined` e `null`, riceve il 409, che rompe il frontend che costruisce `persona` senza `impronta`, e che cosa cambia nei suoi test; il README non dice più che senza l\'impronta decide l\'email (sprint 62 · T2.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Le rotte della cornice$(.*?)(?=^##)/ms', $readme, $sezione);
+    $rotte = suUnaRiga($sezione[1] ?? '');
+
+    expect($rotte)->toContain('Dalla `v2.21.0`, con la sessione che ha un\'impronta, una richiesta che non la dice — senza `X-Zr-Persona`, o coi testi `undefined` e `null` che il JS manda con dati che non la portano — riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`')
+        ->and($rotte)->toContain('Senza, dalla `v2.21.0` ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica, al più una volta ogni 30 secondi e senza fine')
+        ->and($rotte)->toContain('È il cambio che rompe chi non manda l\'impronta')
+        ->and($rotte)->toContain('Per i test di un frontend che passa alla `v2.21.0` cambia una cosa: un caso che chiama una rotta `cornice/*` con la sola `Persona`, e una sessione che ha un id (e quindi un\'impronta), riceve il 409')
+        ->and(suUnaRiga($readme))->not->toContain('vale come fino alla `v2.19` (decide l\'email)')
+        ->and(suUnaRiga($readme))->not->toContain('altrimenti la sua cornice resta protetta solo dall\'email')
+        ->and(suUnaRiga($readme))->not->toContain('non chiedono `X-Zr-Persona`');
+});
+
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
     $chiamate = ['set'.'Value(', 'registroGiaLetto('.'null)'];

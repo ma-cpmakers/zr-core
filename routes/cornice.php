@@ -24,8 +24,8 @@ use Zeiras\Core\Http\StessaPersona;
 // controllo suo (StessaPersona): una rotta nuova sta qui dentro, e la regola ce l'ha. Dalla v2.12.0 la regola viene prima
 // anche di ConWorkspace: senza workspace una scheda di un'altra persona riceve il 409, e il 403 non dice chi è nella sessione.
 // Dalla v2.19.0 il gruppo esce da SoloDallaPersona di zr-auth (dalla 0.12.41, acceso da `zr-auth.persona.controllo`), che
-// vuole l'impronta della persona in `X-Zr-Persona`: la cornice dice la persona in `Persona`, e il confronto lo fa StessaPersona,
-// che resta. Esce solo questo gruppo: le scritture del frontend nel gruppo `web` restano sotto SoloDallaPersona.
+// vuole l'impronta della persona in `X-Zr-Persona`: la cornice dice la persona in `Persona` (dalla v2.20.0 anche l'impronta in
+// `X-Zr-Persona`, e dalla v2.21.0 senza l'impronta è un 409), e il confronto lo fa StessaPersona, che resta. Esce solo questo gruppo: le scritture del frontend nel gruppo `web` restano sotto SoloDallaPersona.
 Route::middleware(['web', StessaPersona::class, ConWorkspace::class])->withoutMiddleware(SoloDallaPersona::class)->prefix('cornice')->group(function (): void {
     Route::get('notifiche', [NotificheDellaCornice::class, 'elenco']);
     Route::post('notifiche/letture', [NotificheDellaCornice::class, 'letture'])

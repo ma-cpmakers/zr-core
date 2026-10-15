@@ -90,7 +90,27 @@ it('con una sessione che ha un\'impronta, una richiesta con l\'email della sessi
     'il testo `undefined` (T1.2)' => ['undefined'],
     'il testo `null` (T1.2)' => ['null'],
     'quella giusta ripetuta con `undefined` (T1.2)' => ['{giusta}, undefined'],
+    'l\'intestazione vuota (T1.2; sicurezza della PR #100, R3)' => [''],
 ]);
+
+it('senza `X-Zr-Persona` l\'ordine dei rifiuti resta quello di prima: una richiesta che non dice la persona riceve da ogni rotta 422 persona_mancante, e una che la dice vuota 422 dati_non_validi, prima del 409 dell\'impronta (sprint 62 · T1.1; review della PR #100, R2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+    test()->withoutHeader(Persona::INTESTAZIONE);
+
+    expect(Persona::impronta())->not->toBeNull()
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $nonDetta = allaCornice($metodo, $indirizzo);
+        $vuota = allaCornice($metodo, $indirizzo, [], ['Persona' => '']);
+
+        expect($nonDetta->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($nonDetta->getContent())->toBe('{"errore":"persona_mancante","persona":""}')
+            ->and($vuota->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($vuota->getContent())->toBe('{"errore":"dati_non_validi"}');
+    }
+    Http::assertNothingSent();
+});
 
 it('con l\'impronta della sessione la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice; con una sessione senza impronta (senza id) anche senza `X-Zr-Persona` o con un testo qualunque (sprint 60 · T1.2; sprint 62 · T1.3)', function (array $diversa, ?string $impronta) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', $diversa);
@@ -117,15 +137,3 @@ it('con l\'impronta della sessione la richiesta con l\'email della sessione arri
     'la sessione senza id e il testo `undefined` (T1.3)' => [['id' => null], 'undefined'],
     'la sessione senza id e un\'impronta qualunque (T1.3)' => [['id' => null], str_repeat('0', 32)],
 ]);
-
-// Sprint 62 · T2.1 (voce #2152, Decisione di zr-pm 13852): dalla `v2.21.0` senza l'impronta è il 409, e il README dice che è
-// il cambio che rompe chi costruisce `persona` da sé senza `impronta`; non dice più che senza l'impronta decide l'email.
-it('il README dice che dalla `v2.21.0`, con la sessione che ha un\'impronta, una richiesta che non la dice riceve il 409, e che rompe chi costruisce `persona` senza `impronta`; non dice più che decide l\'email (sprint 62 · T2.1)', function () {
-    $readme = trim((string) preg_replace('/\s+/', ' ', (string) file_get_contents(__DIR__.'/../../README.md')));
-
-    expect(str_contains($readme, 'dalla `v2.21.0`, con la sessione che ha un\'impronta, riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, come da `SoloDallaPersona` di zr-auth'))->toBe(true)
-        ->and(str_contains($readme, 'Senza, dalla `v2.21.0` ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica'))->toBe(true)
-        ->and(str_contains($readme, 'è il cambio che rompe chi non manda l\'impronta'))->toBe(true)
-        ->and(str_contains($readme, 'vale come fino alla `v2.19` (decide l\'email)'))->toBe(false)
-        ->and(str_contains($readme, 'altrimenti la sua cornice resta protetta solo dall\'email'))->toBe(false);
-});

@@ -404,7 +404,8 @@ che la richiesta dice si confronta e basta. Il middleware è `Zeiras\Core\Http\S
 lo registra da sé.
 
 Dalla `v2.19.0` le rotte della cornice stanno fuori da `SoloDallaPersona` di zr-auth («Resta poi Salva»): il frontend può
-accendere `ZR_AUTH_PERSONA_CONTROLLO`, e la ricerca e le letture della cornice non chiedono `X-Zr-Persona`. Le protegge
+accendere `ZR_AUTH_PERSONA_CONTROLLO`, e la ricerca e le letture della cornice non passano da `SoloDallaPersona` (l'impronta in
+`X-Zr-Persona` la chiede `StessaPersona`: dalla `v2.21.0` senza è un 409, più sotto). Le protegge
 `StessaPersona`, che confronta la persona della pagina con quella della sessione prima della rotta, come `SoloDallaPersona`
 fa con l'impronta per le scritture del frontend; a una pagina di un'altra persona la risposta resta il 409
 `{errore: "persona_diversa", persona: ""}` di sopra, anche se porta un `X-Zr-Persona`. L'uscita è delle sole rotte
@@ -418,17 +419,21 @@ della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id, né l'id né 
 la cornice non mostra mai e manda in `X-Zr-Persona` a ogni richiesta `cornice/*`. Un'impronta detta che non è quella della
 sessione riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, anche con l'email giusta, senza chiamare il
 backoffice. Si confronta quando la sessione ne ha una, e si legge come la legge `SoloDallaPersona`: ogni parte fra le virgole
-deve essere quella della sessione (le maiuscole o un testo qualunque sono un'altra persona). Fino alla `v2.20` una
-richiesta senza `X-Zr-Persona`, o coi testi `undefined` e `null` che il JS manda con dati che non la portano, valeva come
-fino alla `v2.19` (decideva l'email); dalla `v2.21.0`, con la sessione che ha un'impronta, riceve lo stesso 409
-`{errore: "persona_diversa", persona: ""}`, come da `SoloDallaPersona` di zr-auth. Con una sessione senza impronta non si
-confronta niente, come prima.
+deve essere quella della sessione (le maiuscole o un testo qualunque sono un'altra persona). Dalla `v2.21.0`, con la
+sessione che ha un'impronta, una richiesta che non la dice — senza `X-Zr-Persona`, o coi testi `undefined` e `null` che il JS
+manda con dati che non la portano — riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, come da
+`SoloDallaPersona` di zr-auth (fino alla `v2.20` decideva l'email); i 422 della persona restano prima. Con una sessione
+senza impronta non si confronta niente, come prima.
 Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
 niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`. Senza, dalla `v2.21.0`
-ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica (al più una volta ogni 30 secondi): è il cambio che
-rompe chi non manda l'impronta, e prima di passare alla `v2.21.0` si guarda che `persona` la porti (fino alla `v2.20` la
-sua cornice restava protetta solo dall'email).
+ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica, al più una volta ogni 30 secondi e senza fine: ogni
+ricarica manda l'evento `zr-core:altra-persona`, e la pagina dopo ha di nuovo i dati senza impronta. È il cambio che rompe
+chi non manda l'impronta, e prima di passare alla `v2.21.0` si guarda che `persona` la porti (fino alla `v2.20` la sua
+cornice restava protetta solo dall'email). Per i test di un frontend che passa alla `v2.21.0` cambia una cosa: un caso che
+chiama una rotta `cornice/*` con la sola `Persona`, e una sessione che ha un id (e quindi un'impronta), riceve il 409; ci
+aggiunge `X-Zr-Persona` con `Persona::impronta()` della sessione, come fa la pagina (un caso che parte da `call()` la mette
+fra le variabili del server, `HTTP_X_ZR_PERSONA`). Si trovano cercando `cornice/` nei test del frontend.
 L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
 altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Nella `v2.20.0` restavano due limiti dalla parte del
 browser (il server confronta sempre l'impronta della sessione), e dalla `v2.20.1` non ci sono più: il layout in due dati
