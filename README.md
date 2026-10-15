@@ -423,7 +423,11 @@ deve essere quella della sessione (le maiuscole o un testo qualunque sono un'alt
 sessione che ha un'impronta, una richiesta che non la dice — senza `X-Zr-Persona`, o coi testi `undefined` e `null` che il JS
 manda con dati che non la portano — riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, come da
 `SoloDallaPersona` di zr-auth (fino alla `v2.20` decideva l'email); i 422 della persona restano prima. Con una sessione
-senza impronta non si confronta niente, come prima.
+senza id (`id` assente o `null`) non si confronta niente, come prima. Dalla `v2.21.1` una sessione con un id che non dà
+un'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni richiesta `cornice/*`, letture comprese, riceve lo
+stesso 409 senza chiamare il backoffice, e la pagina si ricarica: al più una volta ogni 30 secondi e senza fine, perché la
+ricarica non cambia la sessione. È voluto: una sessione così non si sa di chi sia. Il contratto di `/v1` dà sempre un id di
+testo.
 Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
 niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`. Senza, dalla `v2.21.0`
