@@ -137,3 +137,49 @@ it('con l\'impronta della sessione la richiesta con l\'email della sessione arri
     'la sessione senza id e il testo `undefined` (T1.3)' => [['id' => null], 'undefined'],
     'la sessione senza id e un\'impronta qualunque (T1.3)' => [['id' => null], str_repeat('0', 32)],
 ]);
+
+// Sprint 63 · T1 (voce #2204, Decisione di zr-pm 14216): un id che non dà un'impronta — vuoto, o non un testo — non è una
+// sessione senza id. `Persona::impronta()` dà `null` a tutti e tre, ma solo l'id assente o `null` resta senza confronto: gli
+// altri due sono una persona sconosciuta, e ogni rotta della cornice risponde 409 senza chiamare il backoffice.
+it('con una sessione che ha un id che non dà un\'impronta — vuoto o un numero — ogni rotta della cornice riceve 409 persona_diversa con l\'email della sessione, senza `X-Zr-Persona`, con un testo qualunque o coi testi `undefined` e `null`, e il backoffice non è chiamato (sprint 63 · T1.1, T1.2)', function (mixed $id, ?string $detta) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => $id]);
+    Http::fake();
+    if ($detta === null) {
+        test()->withoutHeader(Persona::INTESTAZIONE);
+    }
+
+    expect(Persona::impronta())->toBeNull()
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-ada%40example.com'] + ($detta === null ? [] : [Persona::INTESTAZIONE => $detta]));
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with([
+    'l\'id vuoto senza X-Zr-Persona (T1.1)' => ['', null],
+    'l\'id vuoto e un\'impronta qualunque (T1.1)' => ['', str_repeat('0', 32)],
+    'l\'id vuoto e il testo `undefined` (T1.1)' => ['', 'undefined'],
+    'l\'id vuoto e il testo `null` (T1.1)' => ['', 'null'],
+    'l\'id numerico senza X-Zr-Persona (T1.2)' => [7, null],
+    'l\'id numerico e un\'impronta qualunque (T1.2)' => [7, str_repeat('0', 32)],
+]);
+
+it('con l\'id vuoto l\'ordine dei rifiuti resta quello di prima: una richiesta che non dice la persona riceve da ogni rotta 422 persona_mancante, e una che la dice vuota 422 dati_non_validi, prima del 409 nuovo (sprint 63 · T1.4)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => '']);
+    Http::fake();
+
+    expect(Persona::impronta())->toBeNull()
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $nonDetta = allaCornice($metodo, $indirizzo);
+        $vuota = allaCornice($metodo, $indirizzo, [], ['Persona' => '']);
+
+        expect($nonDetta->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($nonDetta->getContent())->toBe('{"errore":"persona_mancante","persona":""}')
+            ->and($vuota->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($vuota->getContent())->toBe('{"errore":"dati_non_validi"}');
+    }
+    Http::assertNothingSent();
+});
