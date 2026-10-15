@@ -181,13 +181,15 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.31` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.41` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
 e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecchia della 0.12.4 Composer lascia zr-core alla
 `v1.5.0`. Dalla `v2.16.0` serve la 0.12.31: è quella che protegge la richiesta rimandata della cornice in due dati
-(`SessioneChiusa`, vedi «La cornice in due dati»), e con una più vecchia Composer lascia zr-core alla `v2.15.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+(`SessioneChiusa`, vedi «La cornice in due dati»), e con una più vecchia Composer lascia zr-core alla `v2.15.0`. Dalla
+`v2.19.0` serve la 0.12.41: le rotte della cornice escono da `SoloDallaPersona`, che c'è da quella (vedi «Le rotte della
+cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
@@ -398,6 +400,14 @@ rifiuti è lo stesso per tutte: il 401 della guardia, la persona (prima il 422, 
 della persona. Di chi sono i dati lo dice sempre e solo la sessione: ciò
 che la richiesta dice si confronta e basta. Il middleware è `Zeiras\Core\Http\StessaPersona`, sul gruppo delle rotte: zr-core
 lo registra da sé.
+
+Dalla `v2.19.0` le rotte della cornice stanno fuori da `SoloDallaPersona` di zr-auth («Resta poi Salva»): il frontend può
+accendere `ZR_AUTH_PERSONA_CONTROLLO`, e la ricerca e le letture della cornice non chiedono `X-Zr-Persona`. Le protegge
+`StessaPersona`, che confronta la persona della pagina con quella della sessione prima della rotta, come `SoloDallaPersona`
+fa con l'impronta per le scritture del frontend; a una pagina di un'altra persona la risposta resta il 409
+`{errore: "persona_diversa", persona: ""}` di sopra, anche se porta un `X-Zr-Persona`. L'uscita è delle sole rotte
+`cornice/*`: le scritture del frontend nel gruppo `web` restano sotto `SoloDallaPersona`. Con zr-core fino alla `v2.18`
+l'interruttore acceso dà 409 alla ricerca e alle letture della cornice: prima si aggiorna zr-core, poi si accende.
 
 La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l'intestazione `Persona` porta l'email di chi la
 cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta solo caratteri di Latin-1. L'email non sta mai
