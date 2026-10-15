@@ -88,7 +88,8 @@ it('con l\'interruttore acceso una scrittura del frontend nel gruppo `web`, fuor
     Route::middleware('web')->post('uat-scrittura-del-frontend', fn () => response()->json(['scritta' => true]));
     sessioneAMano(WORKSPACE_COL_CONTROLLO);
 
-    $senza = test()->postJson('/uat-scrittura-del-frontend');
+    // `sessioneAMano` manda l'impronta della sessione, come la pagina (dalla `v2.21.0`): qui la scrittura parte senza.
+    $senza = test()->withoutHeader(Persona::INTESTAZIONE)->postJson('/uat-scrittura-del-frontend');
     $con = test()->withHeader(Persona::INTESTAZIONE, (string) Persona::impronta())->postJson('/uat-scrittura-del-frontend');
 
     expect($senza->getStatusCode())->toBe(409)
