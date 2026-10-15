@@ -28,6 +28,8 @@ use Zeiras\Auth\Sessione;
  * con l'email giusta. Si confronta solo quando la sessione ne ha una (non senza id), e ogni parte detta deve essere quella. Dalla
  * `v2.21.0` una richiesta che non la dice — senza l'intestazione, o coi testi `undefined` e `null` di un JS con dati che non la
  * portano — è lo stesso 409, come per `SoloDallaPersona` di zr-auth (fino alla `v2.20` decideva l'email).
+ * Dalla `v2.21.1` una sessione con un id che non dà un'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni
+ * richiesta riceve il 409. Senza id (assente o `null`) non si confronta niente, come prima.
  *
  * Ciò che la richiesta dice si confronta e basta: di chi sono i dati lo dice sempre e solo la sessione. Gira dopo la guardia
  * di zr-auth (401) e, dalla `v2.12.0`, prima di ConWorkspace (403): senza workspace una scheda di un'altra persona riceve il
@@ -74,6 +76,11 @@ final class StessaPersona
         // persona, come per SoloDallaPersona: senza l'intestazione, o coi testi `undefined` e `null` che il JS manda con dati che
         // non la portano (fino alla `v2.20` decideva l'email).
         $impronta = Persona::impronta();
+        // Dalla `v2.21.1` un id che non dà un'impronta — vuoto, o non un testo — è una persona sconosciuta, e la richiesta
+        // riceve lo stesso 409: solo la sessione senza id (assente o `null`) resta senza confronto.
+        if ($impronta === null && (Sessione::utente()['id'] ?? null) !== null) {
+            return self::diversa();
+        }
         if ($impronta !== null) {
             $dette = $richiesta->headers->all(Persona::INTESTAZIONE);
             if ($dette === []) {
