@@ -54,13 +54,14 @@ const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) =>
 const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
 
 /**
- * Chi è una persona per il layout (dalla `v2.20.1`, come per `Cornice` dalla `v2.20.0`): l'email e l'impronta di zr-auth. Con la
+ * Chi è una persona per il layout (dalla `v2.20.1`; per `Cornice` dalla `v2.20.0`): l'email e l'impronta di zr-auth. Con la
  * stessa email e un'altra impronta è un altro account, e quindi un'altra persona; senza impronta da tutte e due le parti (un
  * frontend che costruisce `persona` da sé) decide l'email, come fino alla `v2.19`; e senza impronta vuol dire anche `null` (una
- * sessione senza id) o un testo vuoto, da una parte o dall'altra. È un testo, non una somma: con l'email e
+ * sessione senza id), come per `StessaPersona`, che legge «senza impronta» i testi `undefined` e `null` e un'impronta ogni altro
+ * testo, anche vuoto. (`Cornice` legge ancora `null` e la chiave che manca come due persone: una voce dopo la #2150.) È un testo, non una somma: con l'email e
  * l'impronta che mancano tutte e due la somma sarebbe `NaN`, diverso da sé stesso, e il layout si renderebbe senza fine.
  */
-const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${persona.impronta ?? ''}`;
+const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${persona.impronta ?? undefined}`;
 
 /**
  * Due dati sono della stessa persona se hanno la stessa email e la stessa impronta, e l'email c'è: due email che mancano (dati

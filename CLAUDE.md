@@ -94,7 +94,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 - Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 17.826 byte con gzip (dalla `v2.11.5`:
   ciò che pesa quando i dati di esempio e i formattatori dei numeri del design system sono usciti dall'ingresso, con le
   correzioni degli sprint 50 e 52 dentro, e niente oltre: decisione di zr-pm; dalla `v2.20.0` 30 byte in più, l'impronta di
-  zr-auth in `X-Zr-Persona`: eccezione di zr-pm per la sicurezza fra persone; dalla `v2.20.1` altri 7, l'impronta della cornice che chiede, stessa eccezione). Fuori dall'ingresso stanno tre pezzi a richiesta, ognuno col suo tetto: ciò che compone le righe delle notifiche e carica le
+  zr-auth in `X-Zr-Persona`: eccezione di zr-pm per la sicurezza fra persone; dalla `v2.20.1` altri 7, l'impronta della cornice che chiede, stessa eccezione: nota 13713). Fuori dall'ingresso stanno tre pezzi a richiesta, ognuno col suo tetto: ciò che compone le righe delle notifiche e carica le
   frasi (`resources/js/campanella.ts`, chiesto all'apertura della campanella: nessun ingresso riesporta niente da lì), la
   ricerca (`resources/js/ricerca.ts`, chiesta al primo fuoco nel campo della ricerca o alla prima parola: nemmeno da lì un
   ingresso riesporta niente) e i rimedi provvisori di tastiera (`resources/js/rimedi.ts`). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.

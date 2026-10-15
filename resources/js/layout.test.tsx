@@ -2072,7 +2072,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         ['`dopo` dello stesso account (impronta i2 tutte e due): vale', i2, i2, true],
         ['senza impronta da tutte e due le parti decide l\'email: vale', undefined, undefined, true],
         ['`null` da una parte e la chiave che manca dall\'altra sono tutti e due «senza impronta»: vale', null, undefined, true],
-        ['un testo vuoto e `null` sono tutti e due «senza impronta»: vale', '', null, true],
+        ['un testo vuoto è un\'impronta, come per la parte server, e `null` no: non vale', '', null, false],
         ['un\'impronta da una parte e `null` dall\'altra: non vale', i2, null, false],
     ])('`subito` e un `dopo` della stessa email con una sessione più vecchia: %s (sprint 61 · T2.2, T2.3)', async (_caso, diSubito, diDopo, vale) => {
         const suo: DatiSubito = { ...subito, persona: adaCon(diSubito), sessione_il: '2026-10-13T08:00:05.000000Z' };
@@ -2109,7 +2109,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: suo, dopo: letto }, <PaginaA />);
 
         expect(etichette()).not.toContain('Gestión de proyectos');
-        expect(etichette()).toContain(testi('it').dashboard);
+        expect(etichette()).toContain('Project Management');
     });
 
     it.each([
