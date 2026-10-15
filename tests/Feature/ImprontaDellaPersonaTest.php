@@ -68,7 +68,51 @@ it('un\'impronta detta che non è proprio quella della sessione è il 409 su ogn
     Http::assertNothingSent();
 })->with(['maiuscole', 'ripetuta', 'testo']);
 
-it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con una sessione senza impronta, la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice (sprint 60 · T1.2)', function (array $diversa, ?string $impronta) {
+it('con una sessione che ha un\'impronta, una richiesta con l\'email della sessione che non dice l\'impronta — senza `X-Zr-Persona`, coi testi `undefined` o `null`, o con quella giusta ripetuta insieme a `undefined` — riceve da ogni rotta della cornice 409 persona_diversa con `persona` vuota, e il backoffice non è chiamato (sprint 62 · T1.1, T1.2)', function (?string $detta) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+    $intestazioni = $detta === null ? [] : [Persona::INTESTAZIONE => str_replace('{giusta}', (string) Persona::impronta(), $detta)];
+    if ($detta === null) {
+        test()->withoutHeader(Persona::INTESTAZIONE);
+    }
+
+    expect(Persona::impronta())->not->toBeNull()
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-ada%40example.com'] + $intestazioni);
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with([
+    'senza X-Zr-Persona (T1.1)' => [null],
+    'il testo `undefined` (T1.2)' => ['undefined'],
+    'il testo `null` (T1.2)' => ['null'],
+    'quella giusta ripetuta con `undefined` (T1.2)' => ['{giusta}, undefined'],
+    'l\'intestazione vuota (T1.2; sicurezza della PR #100, R3)' => [''],
+]);
+
+it('senza `X-Zr-Persona` l\'ordine dei rifiuti resta quello di prima: una richiesta che non dice la persona riceve da ogni rotta 422 persona_mancante, e una che la dice vuota 422 dati_non_validi, prima del 409 dell\'impronta (sprint 62 · T1.1; review della PR #100, R2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+    test()->withoutHeader(Persona::INTESTAZIONE);
+
+    expect(Persona::impronta())->not->toBeNull()
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $nonDetta = allaCornice($metodo, $indirizzo);
+        $vuota = allaCornice($metodo, $indirizzo, [], ['Persona' => '']);
+
+        expect($nonDetta->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($nonDetta->getContent())->toBe('{"errore":"persona_mancante","persona":""}')
+            ->and($vuota->getStatusCode())->toBe(422, "{$metodo} {$indirizzo}")
+            ->and($vuota->getContent())->toBe('{"errore":"dati_non_validi"}');
+    }
+    Http::assertNothingSent();
+});
+
+it('con l\'impronta della sessione la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice; con una sessione senza impronta (senza id) anche senza `X-Zr-Persona` o con un testo qualunque (sprint 60 · T1.2; sprint 62 · T1.3)', function (array $diversa, ?string $impronta) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', $diversa);
     Http::fake();
     $intestazioni = ['Persona' => 'uat-ada%40example.com'] + match ($impronta) {
@@ -76,6 +120,9 @@ it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con
         'della sessione' => [Persona::INTESTAZIONE => (string) Persona::impronta()],
         default => [Persona::INTESTAZIONE => $impronta],
     };
+    if ($impronta === null) {
+        test()->withoutHeader(Persona::INTESTAZIONE);
+    }
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         $prima = Http::recorded()->count();
@@ -86,8 +133,7 @@ it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con
     }
 })->with([
     'l\'impronta della sessione' => [[], 'della sessione'],
-    'senza X-Zr-Persona' => [[], null],
-    'il testo `undefined` (il JS coi dati di prima)' => [[], 'undefined'],
-    'il testo `null` (una sessione senza id quando i dati sono stati letti)' => [[], 'null'],
-    'la sessione senza id e un\'impronta qualunque' => [['id' => null], str_repeat('0', 32)],
+    'la sessione senza id e senza X-Zr-Persona (T1.3)' => [['id' => null], null],
+    'la sessione senza id e il testo `undefined` (T1.3)' => [['id' => null], 'undefined'],
+    'la sessione senza id e un\'impronta qualunque (T1.3)' => [['id' => null], str_repeat('0', 32)],
 ]);

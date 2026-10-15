@@ -57,8 +57,8 @@ const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.a
  * Chi è una persona per il layout (dalla `v2.20.1`; per `Cornice` dalla `v2.20.0`): l'email e l'impronta di zr-auth. Con la
  * stessa email e un'altra impronta è un altro account, e quindi un'altra persona; senza impronta da tutte e due le parti (un
  * frontend che costruisce `persona` da sé) decide l'email, come fino alla `v2.19`; e senza impronta vuol dire anche `null` (una
- * sessione senza id), come per `StessaPersona`, che legge «senza impronta» i testi `undefined` e `null` e un'impronta ogni altro
- * testo, anche vuoto. (`Cornice` legge ancora `null` e la chiave che manca come due persone: una voce dopo la #2150.) È un testo, non una somma: con l'email e
+ * sessione senza id), come i testi `undefined` e `null` che la cornice manda senza impronta. Qui si riconosce e basta: dalla
+ * `v2.21.0` `StessaPersona` rifiuta col 409 le richieste senza impronta quando la sessione ne ha una. (`Cornice` legge ancora `null` e la chiave che manca come due persone: una voce dopo la #2150.) È un testo, non una somma: con l'email e
  * l'impronta che mancano tutte e due la somma sarebbe `NaN`, diverso da sé stesso, e il layout si renderebbe senza fine.
  */
 const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${persona.impronta ?? undefined}`;

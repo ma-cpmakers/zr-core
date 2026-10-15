@@ -34,12 +34,17 @@ beforeEach(function (): void {
     config(['zr-auth.persona.controllo' => true]);
 });
 
-it('con `zr-auth.persona.controllo` acceso ogni scrittura della cornice, letta dal router, con la persona della sessione in `Persona` e senza `X-Zr-Persona`, arriva al backoffice: SoloDallaPersona non la ferma (sprint 59 · T1.1)', function () {
+it('con `zr-auth.persona.controllo` acceso SoloDallaPersona non sta sulle scritture della cornice, lette dal router: con la persona e l\'impronta della sessione arrivano al backoffice, e senza `X-Zr-Persona` il 409 è quello di StessaPersona, con `persona` vuota, non quello di zr-auth (sprint 59 · T1.1; sprint 62, review della PR #100, R1)', function () {
     sessioneAMano(WORKSPACE_COL_CONTROLLO);
     Http::fake();
+    $router = app('router');
 
     $scritture = scrittureDellaCornice();
-    expect(array_column($scritture, 1))->toContain('/cornice/ricerca', '/cornice/notifiche/letture', '/cornice/notifiche/uat-n3/lettura');
+    expect(array_column($scritture, 1))->toContain('/cornice/ricerca', '/cornice/notifiche/letture', '/cornice/notifiche/uat-n3/lettura')
+        ->and(collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
+            ->filter(fn ($rotta) => in_array(SoloDallaPersona::class, $router->gatherRouteMiddleware($rotta), true))
+            ->map->uri()->values()->all())->toBe([]);
 
     foreach ($scritture as [$metodo, $indirizzo]) {
         $prima = Http::recorded()->count();
@@ -49,6 +54,17 @@ it('con `zr-auth.persona.controllo` acceso ogni scrittura della cornice, letta d
         expect(Http::recorded()->count())->toBeGreaterThan($prima, "{$metodo} {$indirizzo}")
             ->and($avuta->getContent())->not->toContain('persona_diversa');
     }
+
+    // Dalla `v2.21.0` senza l'impronta StessaPersona risponde 409, come zr-auth; ma col suo corpo, che la cornice legge
+    // («un'altra persona»): quello di SoloDallaPersona non ha `persona`. E il backoffice non è chiamato.
+    $chiamate = Http::recorded()->count();
+    foreach ($scritture as [$metodo, $indirizzo]) {
+        $senza = test()->withoutHeader(Persona::INTESTAZIONE)->json($metodo, $indirizzo, CORPO_DI_OGNI_SCRITTURA);
+
+        expect($senza->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($senza->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    expect(Http::recorded()->count())->toBe($chiamate);
 });
 
 it('con l\'interruttore acceso una scrittura della cornice che dice una persona che non è quella della sessione riceve il 409 di StessaPersona, `persona` vuota compresa, anche con l\'`X-Zr-Persona` giusta, e il backoffice non è chiamato (sprint 59 · T1.2)', function (bool $conLImpronta) {
@@ -59,6 +75,10 @@ it('con l\'interruttore acceso una scrittura della cornice che dice una persona 
     expect(Persona::impronta())->not->toBeNull()
         // Review della PR #95, R1: con nessuna scrittura trovata il ciclo non girerebbe, e il caso passerebbe senza provare niente.
         ->and(array_column(scrittureDellaCornice(), 1))->toContain('/cornice/ricerca', '/cornice/notifiche/letture', '/cornice/notifiche/uat-n3/lettura');
+    if (! $conLImpronta) {
+        // `sessioneAMano` manda l'impronta della sessione, come la pagina (dalla `v2.21.0`): qui la richiesta parte senza.
+        test()->withoutHeader(Persona::INTESTAZIONE);
+    }
     foreach (scrittureDellaCornice() as [$metodo, $indirizzo]) {
         $avuta = test()->withHeaders($intestazioni)->json($metodo, $indirizzo, CORPO_DI_OGNI_SCRITTURA);
 
@@ -88,7 +108,8 @@ it('con l\'interruttore acceso una scrittura del frontend nel gruppo `web`, fuor
     Route::middleware('web')->post('uat-scrittura-del-frontend', fn () => response()->json(['scritta' => true]));
     sessioneAMano(WORKSPACE_COL_CONTROLLO);
 
-    $senza = test()->postJson('/uat-scrittura-del-frontend');
+    // `sessioneAMano` manda l'impronta della sessione, come la pagina (dalla `v2.21.0`): qui la scrittura parte senza.
+    $senza = test()->withoutHeader(Persona::INTESTAZIONE)->postJson('/uat-scrittura-del-frontend');
     $con = test()->withHeader(Persona::INTESTAZIONE, (string) Persona::impronta())->postJson('/uat-scrittura-del-frontend');
 
     expect($senza->getStatusCode())->toBe(409)
@@ -103,7 +124,7 @@ it('il README dice da quale versione zr-core chiede la 0.12.41 e perché, e che 
     expect(substr_count($readme, $frase))->toBe(1);
 })->with([
     'il vincolo' => ['Dalla `v2.19.0` serve la 0.12.41: le rotte della cornice escono da `SoloDallaPersona`, che c\'è da quella (vedi «Le rotte della cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`.'],
-    'l\'interruttore' => ['Dalla `v2.19.0` le rotte della cornice stanno fuori da `SoloDallaPersona` di zr-auth («Resta poi Salva»): il frontend può accendere `ZR_AUTH_PERSONA_CONTROLLO`, e la ricerca e le letture della cornice non chiedono `X-Zr-Persona`.'],
+    'l\'interruttore' => ['Dalla `v2.19.0` le rotte della cornice stanno fuori da `SoloDallaPersona` di zr-auth («Resta poi Salva»): il frontend può accendere `ZR_AUTH_PERSONA_CONTROLLO`, e la ricerca e le letture della cornice non passano da `SoloDallaPersona` (l\'impronta in `X-Zr-Persona` la chiede `StessaPersona`: dalla `v2.21.0` senza è un 409, più sotto).'],
     'chi le protegge' => ['Le protegge `StessaPersona`, che confronta la persona della pagina con quella della sessione prima della rotta'],
     'solo le sue' => ['L\'uscita è delle sole rotte `cornice/*`: le scritture del frontend nel gruppo `web` restano sotto `SoloDallaPersona`.'],
     'l\'ordine' => ['Con zr-core fino alla `v2.18` l\'interruttore acceso dà 409 alla ricerca e alle letture della cornice: prima si aggiorna zr-core, poi si accende.'],

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Zeiras\Auth\Persona;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Registro;
 use Zeiras\Core\Tests\TestCase;
@@ -111,8 +112,11 @@ function sessioneAMano(?array $workspace, string $lingua = 'en', array $diversa 
 
     // Come la pagina di quella persona: la cornice dice sempre di chi è la pagina che chiede (l'intestazione `Persona`), e dalla
     // `v2.13.0` una richiesta che non lo dice riceve 422 (StessaPersona). Un caso che vuole un'altra persona, o nessuna, lo dice.
+    // Dalla `v2.21.0` anche l'impronta, quando la sessione ne ha una: senza, la richiesta riceve 409 (sprint 62 · T1).
     $email = $utente['email'];
     is_string($email) && $email !== '' ? test()->withHeader('Persona', rawurlencode($email)) : test()->withoutHeader('Persona');
+    $impronta = Persona::impronta();
+    $impronta !== null ? test()->withHeader(Persona::INTESTAZIONE, $impronta) : test()->withoutHeader(Persona::INTESTAZIONE);
 
     return $gettoni;
 }

@@ -39,8 +39,8 @@ function rotteDellaCorniceDalRouter(): array
  */
 function allaCornice(string $metodo, string $indirizzo, array $corpo = [], array $intestazioni = [], bool $corpoDiTutte = true): TestResponse
 {
-    // Qui le intestazioni sono quelle del caso e basta: non quella che `sessioneAMano` mette a ogni richiesta (la pagina della
-    // persona della sessione).
+    // Qui la persona è quella del caso e basta: non quella che `sessioneAMano` mette a ogni richiesta (la pagina della persona
+    // della sessione). L'impronta della sessione resta, come la manda la pagina, se il caso non ne dice un'altra o non la toglie.
     $risposta = test()->withoutHeader('Persona')->json($metodo, $indirizzo, ($corpoDiTutte ? CORPO_PER_OGNI_ROTTA : []) + $corpo, $intestazioni);
     Gettone::assenteDa($risposta);
 
