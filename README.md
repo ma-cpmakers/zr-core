@@ -99,11 +99,11 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.819 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.826 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
-sicurezza fra persone). Hanno
+sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa. Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -424,12 +424,15 @@ deve essere quella della sessione (le maiuscole o un testo qualunque sono un'alt
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
 niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`, altrimenti la sua cornice
 resta protetta solo dall'email. L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
-altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Restano due limiti, tutti e due dalla parte del browser (il
-server confronta sempre l'impronta della sessione): il layout in due dati (`LayoutDellaCornice`) riconosce ancora la persona
-dalla sola email, e con Indietro su una pagina dell'account di prima, della stessa email ma di un altro workspace, ne mostra i
-dati sotto il nome di adesso finché non si ricarica; e con due cornici montate insieme, della stessa email e di due account,
-le richieste di quella montata prima portano l'impronta dell'ultima. Una voce della cronologia salvata prima della `v2.20.0`
-non ha l'impronta: con Indietro, la prima volta, la cornice la prende per un'altra persona (si rifà, o la pagina si ricarica).
+altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Nella `v2.20.0` restavano due limiti dalla parte del
+browser (il server confronta sempre l'impronta della sessione), e dalla `v2.20.1` non ci sono più: il layout in due dati
+(`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta, e una pagina dell'account di prima, della stessa
+email, vale come quella di un'altra persona (con Indietro i dati della cornice di quella pagina non vanno sotto il nome di
+adesso, e senza il segno della lettura il layout manda l'evento `zr-core:altra-persona` e ricarica la pagina; il contenuto della
+pagina resta del frontend, come con un'altra email); e con due cornici montate insieme, della stessa email
+e di due account, ogni richiesta porta l'impronta della cornice che la fa, non quella dell'ultima montata. Resta un limite:
+una voce della cronologia salvata prima della `v2.20.0` non ha l'impronta, e con Indietro, la prima volta, la cornice la prende
+per un'altra persona (si rifà, o la pagina si ricarica).
 
 La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l'intestazione `Persona` porta l'email di chi la
 cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta solo caratteri di Latin-1. L'email non sta mai

@@ -54,10 +54,20 @@ const ContestoDellaCornice = createContext<((dellaPagina: CorniceDellaPagina) =>
 const della = (questi: DatiDellaCornice) => segno(questi.sessione_il ?? questi.aggiornati_il)!;
 
 /**
- * Due dati sono della stessa persona se hanno la stessa email, e l'email c'è: due email che mancano (dati contro il tipo) sono
- * due persone, e dall'uno all'altro non passa niente — né la lingua né il nome (dalla `v2.11.1`).
+ * Chi è una persona per il layout (dalla `v2.20.1`; per `Cornice` dalla `v2.20.0`): l'email e l'impronta di zr-auth. Con la
+ * stessa email e un'altra impronta è un altro account, e quindi un'altra persona; senza impronta da tutte e due le parti (un
+ * frontend che costruisce `persona` da sé) decide l'email, come fino alla `v2.19`; e senza impronta vuol dire anche `null` (una
+ * sessione senza id), come per `StessaPersona`, che legge «senza impronta» i testi `undefined` e `null` e un'impronta ogni altro
+ * testo, anche vuoto. (`Cornice` legge ancora `null` e la chiave che manca come due persone: una voce dopo la #2150.) È un testo, non una somma: con l'email e
+ * l'impronta che mancano tutte e due la somma sarebbe `NaN`, diverso da sé stesso, e il layout si renderebbe senza fine.
  */
-const stessaPersona = (uno: DatiDellaCornice, altro: DatiDellaCornice) => !!uno.persona.email && uno.persona.email === altro.persona.email;
+const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${persona.impronta ?? undefined}`;
+
+/**
+ * Due dati sono della stessa persona se hanno la stessa email e la stessa impronta, e l'email c'è: due email che mancano (dati
+ * contro il tipo) sono due persone, e dall'uno all'altro non passa niente — né la lingua né il nome (dalla `v2.11.1`).
+ */
+const stessaPersona = (uno: DatiDellaCornice, altro: DatiDellaCornice) => !!uno.persona.email && lui(uno.persona) === lui(altro.persona);
 
 export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
@@ -66,14 +76,14 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // Un `dopo` di un'altra persona letto con una sessione più vecchia di quella di `subito` è di chi c'era prima (la pagina
     // ha riletto il solo `subito`): non si unisce, e la cornice aspetta il `dopo` di chi è entrato. Uno più recente sì, e la
     // cornice diventa di chi dice lui; senza un segno o senza la persona da una parte vale come sempre.
-    const suo = subito && dopo?.persona && dopo.persona.email !== subito.persona.email && segno(dopo.sessione_il)! < segno(subito.sessione_il)! ? undefined : dopo;
+    const suo = subito && dopo?.persona && lui(dopo.persona) !== lui(subito.persona) && segno(dopo.sessione_il)! < segno(subito.sessione_il)! ? undefined : dopo;
     // Con la stessa persona vale la lingua del dato col segno della lingua più avanti (dalla `v2.9.0`; dalla `v2.11.0` col
     // segno della lingua, `lingua_il`, e non con quello della sessione): chi ha cambiato lingua e rilegge il solo `subito` ha i
     // testi nella lingua nuova senza aspettare `dopo`, e un `subito` riletto mentre `dopo` è in lettura, che porta la sessione
     // di adesso e la lingua di prima, non la riporta. Da `subito` passano la sola lingua e il suo segno, e solo se `dopo` dice
     // che è della stessa persona e i due segni ci sono: un confronto con `undefined` è falso, e vale `dopo` come sempre. Il segno
     // della lingua della pagina è quello del dato da cui viene la lingua.
-    const piuRecente = subito && subito.persona.email && suo?.persona?.email === subito.persona.email && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
+    const piuRecente = subito && subito.persona.email && suo?.persona && lui(suo.persona) === lui(subito.persona) && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
     const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...(suo && (piuRecente || { lingua_il: suo.lingua_il })) } : undefined);
 
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
@@ -91,7 +101,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // altro la `key` cambia, la cornice si rifà e non sa più chi mostrava: lo sa il layout, che non ne mostra niente, nemmeno
     // la pagina, e ricarica (dalla `v2.8.0`). Ricaricata, è di chi è entrato. Prima manda l'evento `zr-core:altra-persona`, come per
     // la ricarica chiesta da una risposta di un'altra persona (dalla `v2.17.0`).
-    if (entrato && pagina.persona.email !== entrato.persona.email && !(della(pagina) && della(entrato))) {
+    if (entrato && lui(pagina.persona) !== lui(entrato.persona) && !(della(pagina) && della(entrato))) {
         return (dispatchEvent(new Event('zr-core:altra-persona')), location.reload()) as undefined;
     }
     const piuAvanti = entrato && della(entrato) > della(pagina) ? entrato : pagina;
@@ -100,15 +110,15 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // riporta la lingua di allora. Senza il segno da una parte resta quella di chi ha la sessione più avanti.
     const altro = piuAvanti === pagina ? entrato : pagina;
     const chi = altro && stessaPersona(altro, piuAvanti) && segno(altro.lingua_il)! > segno(piuAvanti.lingua_il)! ? { ...piuAvanti, lingua: altro.lingua, lingua_il: altro.lingua_il } : piuAvanti;
-    if (!entrato || chi.persona.email !== entrato.persona.email || della(chi) !== della(entrato) || chi.lingua_il !== entrato.lingua_il) {
+    if (!entrato || lui(chi.persona) !== lui(entrato.persona) || della(chi) !== della(entrato) || chi.lingua_il !== entrato.lingua_il) {
         entra(chi);
     }
-    // Una pagina di un'altra persona (un'altra email) è più vecchia di chi è mostrato: i suoi dati non valgono. Se è di un
+    // Una pagina di un'altra persona (un'altra email, o la stessa con un'altra impronta) è più vecchia di chi è mostrato: i suoi dati non valgono. Se è di un
     // altro workspace restano quelli visti, e la cornice non si rifà; nello stesso workspace lo decide `Cornice`, che lì è
     // rimasta montata e sa leggere un `dopo` riletto adesso sotto il `subito` di allora.
-    const sua = pagina.persona.email === chi.persona.email;
+    const sua = lui(pagina.persona) === lui(chi.persona);
     const ultima = (sua ? pagina : vista) ?? pagina;
-    if (sua && (!vista || pagina.persona.email !== vista.persona.email || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
+    if (sua && (!vista || lui(pagina.persona) !== lui(vista.persona) || pagina.workspace.slug !== vista.workspace.slug || della(pagina) !== della(vista))) {
         vedi(pagina);
     }
     const valgono = sua || pagina.workspace.slug === ultima.workspace.slug ? pagina : ultima;

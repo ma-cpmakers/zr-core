@@ -5177,7 +5177,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.819 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.826 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
@@ -6115,6 +6115,19 @@ it('il README non dice più che il pannello usa titoloDellaNotifica e risorsaDel
     'il middleware di Laravel rifiuta (R6)' => ['e da solo non rifiuta nessuna richiesta'],
     'un host con caratteri non validi (R2)' => ['Un host con caratteri che un nome non ha prende `400` lo stesso'],
 ]);
+
+// Sprint 61 · T3.2 (voce #2150): i due limiti della `v2.20.0` non ci sono più, e il README non li dice al presente; quello
+// della cronologia salvata prima della `v2.20.0` resta, e resta detto.
+it('il README non dice più che il layout riconosce la persona dalla sola email, né che con due cornici insieme le richieste della prima portano l\'impronta dell\'ultima; dice ancora il limite della cronologia di prima (sprint 61 · T3.2)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'riconosce ancora la persona dalla sola email'))->toBe(false)
+        ->and(str_contains($readme, 'portano l\'impronta dell\'ultima'))->toBe(false)
+        ->and(str_contains($readme, 'Restano due limiti, tutti e due dalla parte del browser'))->toBe(false)
+        ->and(str_contains($readme, '(`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta'))->toBe(true)
+        ->and(str_contains($readme, 'ogni richiesta porta l\'impronta della cornice che la fa, non quella dell\'ultima montata'))->toBe(true)
+        ->and(str_contains($readme, 'Resta un limite: una voce della cronologia salvata prima della `v2.20.0` non ha l\'impronta'))->toBe(true);
+});
 
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
