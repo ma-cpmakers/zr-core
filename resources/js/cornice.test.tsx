@@ -1620,6 +1620,22 @@ describe('il pannello delle notifiche', () => {
         expect(document.body.innerHTML).not.toContain(impronta);
     });
 
+    // Sprint 60 (review della PR #96, R1; sicurezza S1): un'email può passare da un account a un altro. Con la stessa email e
+    // un'altra impronta la cornice è di un'altra persona: si rifà, e niente di ciò che teneva resta sotto il nome nuovo.
+    it('dati più nuovi con la stessa email e un\'altra impronta rifanno la cornice: il pannello aperto si chiude, e la richiesta dopo porta l\'impronta nuova (sprint 60 · T1.1, R1, S1)', async () => {
+        const [prima, dopo] = ['0f1e2d3c4b5a69788796a5b4c3d2e1f0', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'];
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: notificheDelServer }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, impronta: prima }, aggiornati_il: '2026-10-13T08:00:00.000000Z' }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).not.toBeNull();
+
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, impronta: dopo }, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
+        expect(uno('.zr-notif')).toBeNull();
+        await clic(uno('.zr-bell'));
+        expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([prima, dopo]);
+    });
+
     it('«Segna tutte come lette» manda una sola POST /cornice/notifiche/letture, col gettone CSRF e la creata_il più recente fra le caricate così com\'è, e nessuna PATCH; alla risposta le caricate sono tutte lette e la campanella non ha più un numero, anche con 60 nei dati e 2 caricate (sprint 6 · T4.1)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const lettura = inAttesa();

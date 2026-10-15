@@ -49,6 +49,25 @@ it('una richiesta con l\'email della sessione e l\'impronta di un\'altra persona
     'la persona anche nel corpo' => [['persona' => 'uat-ada@example.com']],
 ]);
 
+it('un\'impronta detta che non è proprio quella della sessione è il 409 su ogni rotta della cornice, come la legge SoloDallaPersona: con le maiuscole, ripetuta con un\'altra, o un testo qualunque (sprint 60 · T1.2; sicurezza della PR #96, S4)', function (string $come) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+    $detta = match ($come) {
+        'maiuscole' => strtoupper((string) Persona::impronta()),
+        'ripetuta' => Persona::impronta().', '.str_repeat('0', 32),
+        'testo' => 'uat',
+        default => '',
+    };
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => $detta]);
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with(['maiuscole', 'ripetuta', 'testo']);
+
 it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con una sessione senza impronta, la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice (sprint 60 · T1.2)', function (array $diversa, ?string $impronta) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', $diversa);
     Http::fake();
@@ -68,6 +87,7 @@ it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con
 })->with([
     'l\'impronta della sessione' => [[], 'della sessione'],
     'senza X-Zr-Persona' => [[], null],
-    'un testo che non è un\'impronta (il JS coi dati di prima)' => [[], 'undefined'],
+    'il testo `undefined` (il JS coi dati di prima)' => [[], 'undefined'],
+    'il testo `null` (una sessione senza id quando i dati sono stati letti)' => [[], 'null'],
     'la sessione senza id e un\'impronta qualunque' => [['id' => null], str_repeat('0', 32)],
 ]);

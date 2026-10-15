@@ -25,8 +25,9 @@ use Zeiras\Auth\Sessione;
  *
  * Un'email può passare da un account a un altro: dalla `v2.20.0` la cornice manda anche l'impronta di zr-auth della persona dei
  * suoi dati (`X-Zr-Persona`, `Persona::impronta()`), e un'impronta detta che non è quella della sessione è lo stesso 409, anche
- * con l'email giusta. Si confronta solo quando la sessione ne ha una (non senza id) e il testo ne ha la forma, 32 cifre
- * esadecimali: senza, o con il testo `undefined` di un JS coi dati di prima, decide l'email come fino alla `v2.19`.
+ * con l'email giusta. Si confronta solo quando la sessione ne ha una (non senza id), e ogni parte detta deve essere quella:
+ * senza l'intestazione, o coi testi `undefined` e `null` di un JS con dati che non la portano, decide l'email come fino alla
+ * `v2.19`.
  *
  * Ciò che la richiesta dice si confronta e basta: di chi sono i dati lo dice sempre e solo la sessione. Gira dopo la guardia
  * di zr-auth (401) e, dalla `v2.12.0`, prima di ConWorkspace (403): senza workspace una scheda di un'altra persona riceve il
@@ -67,13 +68,17 @@ final class StessaPersona
             }
         }
 
-        // Dalla `v2.20.0` anche l'impronta di zr-auth, quando la richiesta ne dice una e la sessione ne ha una: con la stessa
-        // email, l'impronta di un altro account è un'altra persona. Un testo che non ne ha la forma — `undefined`, il JS con dati
-        // di prima — non è un'impronta detta, e decide l'email come prima.
+        // Dalla `v2.20.0` anche l'impronta di zr-auth, quando la sessione ne ha una: con la stessa email, l'impronta di un altro
+        // account è un'altra persona. Si legge come la legge SoloDallaPersona — ogni intestazione, ogni parte fra le virgole —, e
+        // ogni parte detta deve essere quella della sessione. Non dicono un'impronta solo `undefined` e `null`, i testi che il JS
+        // manda con dati che non la portano: decide l'email, come fino alla `v2.19`.
         $impronta = Persona::impronta();
-        foreach ($richiesta->headers->all(Persona::INTESTAZIONE) as $detta) {
-            if ($impronta !== null && is_string($detta) && preg_match('/^[0-9a-f]{32}$/', $detta) === 1 && ! hash_equals($impronta, $detta)) {
-                return self::diversa();
+        foreach ($richiesta->headers->all(Persona::INTESTAZIONE) as $valore) {
+            foreach (explode(',', (string) $valore) as $detta) {
+                $detta = trim($detta);
+                if ($impronta !== null && ! in_array($detta, ['undefined', 'null'], true) && ! hash_equals($impronta, $detta)) {
+                    return self::diversa();
+                }
             }
         }
 

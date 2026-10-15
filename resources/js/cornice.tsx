@@ -3,7 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, conImpronta, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -431,7 +431,7 @@ export function Cornice(props: CorniceProps) {
     // esce prima di tenere qualcosa —, e la pagina si ricarica: ricaricata, è di chi è entrato (dalla `v2.8.0`). La stessa
     // persona senza segno resta com'era: vale la pagina. Prima manda l'evento `zr-core:altra-persona`, come per
     // la ricarica chiesta da una risposta di un'altra persona (dalla `v2.17.0`).
-    if (!(props.dati.persona.email === mostrato.persona.email || (della(props.dati) && della(mostrato)))) {
+    if (!(lui(props.dati) === lui(mostrato) || (della(props.dati) && della(mostrato)))) {
         return (dispatchEvent(new Event('zr-core:altra-persona')), location.reload()) as undefined;
     }
     const chi = della(mostrato) > della(props.dati) ? mostrato : props.dati;
@@ -445,7 +445,7 @@ export function Cornice(props: CorniceProps) {
     // se è lei a essere entrata adesso valgono i suoi dati, ridotti come sono; se è più vecchia di chi la cornice mostra
     // (Indietro) i suoi dati sono quelli di allora e non valgono, nemmeno quando la voce della cronologia li porta interi e chi
     // è entrato aspetta ancora i propri. Restano i tenuti, che sono di chi è entrato.
-    const dati = (props.dati.persona.email === mostrato.persona.email || segno(props.dati.aggiornati_il)! > della(mostrato) ? tenuti.workspace.slug === props.dati.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato) ? tenuti : props.dati;
+    const dati = (lui(props.dati) === lui(mostrato) || segno(props.dati.aggiornati_il)! > della(mostrato) ? tenuti.workspace.slug === props.dati.workspace.slug && (props.dati.in_attesa ? !tenuti.in_attesa : segno(props.dati.aggiornati_il)! < segno(tenuti.aggiornati_il)!) : chi === mostrato) ? tenuti : props.dati;
     if (dati !== tenuti) {
         setTenuti(dati);
     }
@@ -457,8 +457,14 @@ export function Cornice(props: CorniceProps) {
     // risultati e la sua parola, i pannelli aperti) è della persona che lo ha visto. Se la sessione passa a un'altra sullo stesso
     // workspace — da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con lei: niente di chi c'era prima
     // resta sotto il nome nuovo, nemmeno per un disegno. Sta qui e non nel layout: vale anche per chi monta `Cornice` da sé.
-    return <DiUnaPersona key={chi.persona.email} {...props} dati={dati} chi={chi} />;
+    return <DiUnaPersona key={lui(chi)} {...props} dati={dati} chi={chi} />;
 }
+
+/**
+ * Chi è una persona per la cornice (dalla `v2.20.0`): l'email e l'impronta di zr-auth. Un'email può passare da un account a un
+ * altro, e con la stessa email l'impronta dice che è un'altra persona: la cornice si rifà, come con un'altra email.
+ */
+const lui = (questi: DatiDellaCornice) => questi.persona.email + questi.persona.impronta;
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
 function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
@@ -847,11 +853,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // stessa persona. La `key` è l'email, quindi questa cornice è di una persona sola. Sta in un effetto e non nel disegno: un disegno abbandonato non lo scrive.
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
-        mostra(persona.email);
-        conImpronta(persona.impronta);
+        mostra(persona);
         void import('./rimedi').catch(() => undefined);
 
-        return () => (mostra(persona.email, 1), ricercaInVolo.current?.abort());
+        return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
     }, []);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la

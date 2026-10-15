@@ -417,10 +417,14 @@ cornice (`Cornice::dati()`, `subito()`, e quindi `dopo()` e `ridotta()`) portano
 della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id, né l'id né l'email; `null` per una sessione senza id), che
 la cornice non mostra mai e manda in `X-Zr-Persona` a ogni richiesta `cornice/*`. Un'impronta detta che non è quella della
 sessione riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, anche con l'email giusta, senza chiamare il
-backoffice. Si confronta solo quando la sessione ne ha una e il testo ne ha la forma (32 cifre esadecimali): una richiesta
-senza `X-Zr-Persona`, o col testo `undefined` di dati che non la portano, vale come fino alla `v2.19` (decide l'email). Il
-frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa niente; quello che costruisce `persona` da
-sé ci aggiunge `impronta` da `Persona::impronta()`.
+backoffice. Si confronta quando la sessione ne ha una, e si legge come la legge `SoloDallaPersona`: ogni parte fra le virgole
+deve essere quella della sessione (le maiuscole o un testo qualunque sono un'altra persona). Una richiesta senza
+`X-Zr-Persona`, o coi testi `undefined` e `null` che il JS manda con dati che non la portano, vale come fino alla `v2.19`
+(decide l'email). Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
+si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
+niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`, altrimenti la sua cornice
+resta protetta solo dall'email. L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
+altro modulo, o la stessa persona avrebbe la stessa impronta nei due.
 
 La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l'intestazione `Persona` porta l'email di chi la
 cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta solo caratteri di Latin-1. L'email non sta mai
@@ -1526,9 +1530,10 @@ torna quella rimasta, anche se è della stessa persona. Fino alla `v2.17.0` nel 
 persona, per la cornice nessuno era a schermo: una scheda ferma lì non si ricaricava, un orologio dei 30 secondi già
 partito, allo scadere, ricaricava la pagina anche con la cornice di chi aveva risposto, e il clic su una notifica non apriva
 la risorsa. Dalla `v2.17.1` la apre anche quando la cornice del clic si è smontata con la lettura in volo, se a schermo c'è
-ancora la stessa persona in un'altra cornice. Resta un limite: la cornice riconosce chi è a schermo dall'email, e con A,
-poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo resta A anche quando la A rimasta è quella montata
-prima di B.
+ancora la stessa persona in un'altra cornice. Fino alla `v2.19` restava un limite: la cornice riconosceva chi è a schermo
+dall'email, e con A, poi B, poi di nuovo A, smontata una delle due cornici di A, a schermo restava A anche quando la A
+rimasta era quella montata prima di B. Dalla `v2.20.0` la pila tiene le persone delle cornici, con la loro impronta, e
+ognuna toglie sé stessa: smontata la A montata dopo B, a schermo torna B.
 Se il ricaricamento non avviene — la pagina chiede conferma prima di essere lasciata (`beforeunload`) e la persona sceglie di
 restare — chi ha chiesto non resta in attesa per sempre (dalla `v2.9.0`): dopo 5 secondi la richiesta si chiude con un
 errore. «Segna tutte come lette» si può premere di nuovo, il pannello aperto dice «Non riusciamo a caricare le notifiche»
