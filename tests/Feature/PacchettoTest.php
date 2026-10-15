@@ -137,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.31 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4)', function () {
+it('composer.json chiede zr-auth ^0.12.41 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -152,8 +152,9 @@ it('composer.json chiede zr-auth ^0.12.31 e nessuna minore più vecchia, e la CI
     // per le versioni più vecchie l'analisi statica la segna in ogni giro (sonda del 10/10/2026). Dallo sprint 17 la patch più
     // bassa la installa a ogni run il giro «minima», che la legge da qui: chi abbassa il vincolo la vede provata, o rossa.
     // Dalla `v2.16.0` dalla 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c'è da
-    // quella (Decisione 13268 di zr-pm; sprint 55 · T1.4).
-    expect($vincolo)->toBe('^0.12.31')
+    // quella (Decisione 13268 di zr-pm; sprint 55 · T1.4). Dalla `v2.19.0` dalla 0.12.41: le rotte della cornice escono da
+    // `SoloDallaPersona`, che c'è da quella, e i due giri le provano con l'interruttore acceso (nota 13633; sprint 59 · T1.4).
+    expect($vincolo)->toBe('^0.12.41')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
@@ -1620,21 +1621,22 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.31, una volta, e nessuno dice più quello di prima (sprint 16 · T4.5; sprint 55 · T1.4)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.41, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
+    // Ogni vincolo 0.12 che il testo dice, intero: `^0.12.4` è anche l'inizio di `^0.12.41`.
+    $vincoli = fn (string $t): array => preg_match_all('/\^0\.12\.\d+/', $t, $trovati) > 0 ? $trovati[0] : [];
 
-    expect(substr_count($testo, '^0.12.31'))->toBe(1)
-        ->and(substr_count($testo, '^0.12.4'))->toBe(0)
-        ->and(substr_count($testo, '^0.12.1'))->toBe(0)
+    expect($vincoli($testo))->toBe(['^0.12.41'])
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and(substr_count(str_replace('^0.12.31', '^0.12.4', $testo), '^0.12.4'))->toBe(1);
+        ->and($vincoli(str_replace('^0.12.41', '^0.12.31', $testo)))->toBe(['^0.12.31']);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.31, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.41, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` parte dalla 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella; decisione di zr-pm).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` parte dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella (decisioni di zr-pm).'))->toBe(1)
+        ->and(str_contains($claude, 'dalla `v2.16.0` parte dalla 0.12.31'))->toBe(false)
         ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
         ->and(str_contains($claude, 'per questo parte dalla 0.12.1'))->toBe(false)
         ->and(str_contains($readme, 'Nemmeno la 0.12.0 basta'))->toBe(false);
