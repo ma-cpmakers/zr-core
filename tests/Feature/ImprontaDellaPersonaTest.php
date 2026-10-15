@@ -117,3 +117,15 @@ it('con l\'impronta della sessione la richiesta con l\'email della sessione arri
     'la sessione senza id e il testo `undefined` (T1.3)' => [['id' => null], 'undefined'],
     'la sessione senza id e un\'impronta qualunque (T1.3)' => [['id' => null], str_repeat('0', 32)],
 ]);
+
+// Sprint 62 · T2.1 (voce #2152, Decisione di zr-pm 13852): dalla `v2.21.0` senza l'impronta è il 409, e il README dice che è
+// il cambio che rompe chi costruisce `persona` da sé senza `impronta`; non dice più che senza l'impronta decide l'email.
+it('il README dice che dalla `v2.21.0`, con la sessione che ha un\'impronta, una richiesta che non la dice riceve il 409, e che rompe chi costruisce `persona` senza `impronta`; non dice più che decide l\'email (sprint 62 · T2.1)', function () {
+    $readme = trim((string) preg_replace('/\s+/', ' ', (string) file_get_contents(__DIR__.'/../../README.md')));
+
+    expect(str_contains($readme, 'dalla `v2.21.0`, con la sessione che ha un\'impronta, riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, come da `SoloDallaPersona` di zr-auth'))->toBe(true)
+        ->and(str_contains($readme, 'Senza, dalla `v2.21.0` ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica'))->toBe(true)
+        ->and(str_contains($readme, 'è il cambio che rompe chi non manda l\'impronta'))->toBe(true)
+        ->and(str_contains($readme, 'vale come fino alla `v2.19` (decide l\'email)'))->toBe(false)
+        ->and(str_contains($readme, 'altrimenti la sua cornice resta protetta solo dall\'email'))->toBe(false);
+});

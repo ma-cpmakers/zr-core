@@ -418,12 +418,18 @@ della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id, né l'id né 
 la cornice non mostra mai e manda in `X-Zr-Persona` a ogni richiesta `cornice/*`. Un'impronta detta che non è quella della
 sessione riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, anche con l'email giusta, senza chiamare il
 backoffice. Si confronta quando la sessione ne ha una, e si legge come la legge `SoloDallaPersona`: ogni parte fra le virgole
-deve essere quella della sessione (le maiuscole o un testo qualunque sono un'altra persona). Una richiesta senza
-`X-Zr-Persona`, o coi testi `undefined` e `null` che il JS manda con dati che non la portano, vale come fino alla `v2.19`
-(decide l'email). Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
+deve essere quella della sessione (le maiuscole o un testo qualunque sono un'altra persona). Fino alla `v2.20` una
+richiesta senza `X-Zr-Persona`, o coi testi `undefined` e `null` che il JS manda con dati che non la portano, valeva come
+fino alla `v2.19` (decideva l'email); dalla `v2.21.0`, con la sessione che ha un'impronta, riceve lo stesso 409
+`{errore: "persona_diversa", persona: ""}`, come da `SoloDallaPersona` di zr-auth. Con una sessione senza impronta non si
+confronta niente, come prima.
+Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
-niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`, altrimenti la sua cornice
-resta protetta solo dall'email. L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
+niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`. Senza, dalla `v2.21.0`
+ogni richiesta della sua cornice riceve il 409 e la pagina si ricarica (al più una volta ogni 30 secondi): è il cambio che
+rompe chi non manda l'impronta, e prima di passare alla `v2.21.0` si guarda che `persona` la porti (fino alla `v2.20` la
+sua cornice restava protetta solo dall'email).
+L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
 altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Nella `v2.20.0` restavano due limiti dalla parte del
 browser (il server confronta sempre l'impronta della sessione), e dalla `v2.20.1` non ci sono più: il layout in due dati
 (`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta, e una pagina dell'account di prima, della stessa
