@@ -77,7 +77,7 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * (zr-pm, 15/10/2026, nota 13648: eccezione per la sicurezza fra persone).
  *
  * Sprint 61 · T1 (voce #2150): altri 7 byte, perché ogni richiesta porta l'impronta della cornice che la fa e non quella
- * dell'ultima montata (zr-pm, 15/10/2026: la stessa eccezione).
+ * dell'ultima montata (zr-pm, 15/10/2026, nota 13713 del progetto: la stessa eccezione, per questa sola correzione).
  */
 const TETTO_DELL_INGRESSO = 17_826;
 /**

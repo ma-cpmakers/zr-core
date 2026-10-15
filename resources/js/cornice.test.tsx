@@ -4267,8 +4267,13 @@ describe('il pannello delle notifiche', () => {
         await vi.waitFor(() => expect(richieste(fetchFinto)).toContain('POST /cornice/ricerca'));
         await clic(tutti('.zr-bell')[1] ?? null);
 
-        const diA = i1 ?? expect.not.stringMatching(/^[0-9a-f]{32}$/);
-        const dette = fetchFinto.mock.calls.map(([indirizzo, opzioni]) => [`${opzioni?.method ?? 'GET'} ${indirizzo}`, new Headers(opzioni?.headers).get('X-Zr-Persona'), new Headers(opzioni?.headers).get('Persona')]);
+        // Le intestazioni come le riceve `fetch`: senza impronta la chiave c'è, col valore `undefined` (il testo «undefined» nel browser).
+        const diA = i1;
+        const dette = fetchFinto.mock.calls.map(([indirizzo, opzioni]) => {
+            const intestazioni = opzioni?.headers as Record<string, unknown>;
+
+            return [`${opzioni?.method ?? 'GET'} ${indirizzo}`, 'X-Zr-Persona' in intestazioni && intestazioni['X-Zr-Persona'], intestazioni.Persona];
+        });
         expect(dette).toStrictEqual([
             ['GET /cornice/notifiche', diA, 'ada%40example.com'],
             ['POST /cornice/notifiche/letture', diA, 'ada%40example.com'],

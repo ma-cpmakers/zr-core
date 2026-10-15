@@ -427,8 +427,9 @@ resta protetta solo dall'email. L'impronta è un HMAC con la chiave dell'app (`A
 altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Nella `v2.20.0` restavano due limiti dalla parte del
 browser (il server confronta sempre l'impronta della sessione), e dalla `v2.20.1` non ci sono più: il layout in due dati
 (`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta, e una pagina dell'account di prima, della stessa
-email, vale come quella di un'altra persona (con Indietro i suoi dati non vanno sotto il nome di adesso: senza il segno della
-lettura manda l'evento `zr-core:altra-persona` e ricarica la pagina); e con due cornici montate insieme, della stessa email
+email, vale come quella di un'altra persona (con Indietro i dati della cornice di quella pagina non vanno sotto il nome di
+adesso, e senza il segno della lettura il layout manda l'evento `zr-core:altra-persona` e ricarica la pagina; il contenuto della
+pagina resta del frontend, come con un'altra email); e con due cornici montate insieme, della stessa email
 e di due account, ogni richiesta porta l'impronta della cornice che la fa, non quella dell'ultima montata. Resta un limite:
 una voce della cronologia salvata prima della `v2.20.0` non ha l'impronta, e con Indietro, la prima volta, la cornice la prende
 per un'altra persona (si rifà, o la pagina si ricarica).

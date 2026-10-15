@@ -117,7 +117,8 @@ export function mostra(persona: Persona, via?: 1): void {
 
 /**
  * Una chiamata a una rotta della cornice. Ogni richiesta dice di chi è la pagina che chiede (dalla `v2.6.0`): l'intestazione
- * `Persona` porta `email`, quella di chi la cornice mostra, passata da `encodeURIComponent` — un'intestazione porta solo
+ * `Persona` porta l'email della persona della cornice che chiede (dalla `v2.20.1` con l'impronta, in `X-Zr-Persona`: vedi
+ * `Persona` qui sopra), passata da `encodeURIComponent` — un'intestazione porta solo
  * caratteri di Latin-1, e con un altro `fetch` lancerebbe prima di partire —, e mai l'indirizzo. La parte server la confronta
  * con la sessione prima di ogni altro controllo: a una pagina rimasta ferma, con la sessione passata a un'altra persona,
  * risponde 409 `persona_diversa` senza leggere né segnare niente. `dati` va nel corpo, in JSON; `Content-Type` e il gettone
@@ -128,7 +129,8 @@ export function mostra(persona: Persona, via?: 1): void {
  * la ricerca, dalla `v2.5.0` anche i loro 403 `accettazione_richiesta`, il 429 della ricerca e il 409 `persona_diversa`,
  * che dalla `v2.6.0` è di tutte e quattro le rotte, e dalla `v2.10.0` alla `v2.11` il 403 `gettone_senza_workspace`; dalla
  * `v2.12.0` il 409 porta `persona` vuota, che non è l'email di nessuno, e il 403 non la porta più: arriva solo alla persona
- * della sessione). Con `email` una risposta di un'altra persona non torna a chi
+ * della sessione). Con l'email di chi chiede una risposta di un'altra persona (un'altra email: lo scarto guarda la sola email;
+ * fra due account con la stessa email protegge il 409 della parte server, quando l'impronta c'è) non torna a chi
  * l'ha chiesta, né coi dati né con un errore: la sessione è passata a un'altra persona con la pagina ferma, e la pagina si
  * ricarica — dopo, è di chi è entrato. Si ricarica solo se a schermo c'è una cornice che non è di chi ha risposto (`mostra`,
  * dalla `v2.7.0`): se una visita ha già portato chi è entrato, la risposta in ritardo non ricarica la sua pagina, e non
@@ -197,7 +199,7 @@ export function segno(valore: unknown): string | undefined {
  * a leggerle (`aggiornati_il`). Una risposta senza l'istante, o con un istante in un'altra forma, non è un errore: è senza segno.
  * `workspace` è lo slug del workspace di cui sono, come lo dice la parte server (dalla `v1.12.0`): quello della sessione, che
  * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
- * `email` è quella di chi la cornice mostra: un elenco, o un errore, di un'altra persona non torna (`chiama`).
+ * `persona` è quella della cornice che chiede (email e impronta): un elenco, o un errore, di un'altra persona non torna (`chiama`).
  */
 export async function caricaNotifiche(persona: Persona): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
     const corpo = (await chiama('/cornice/notifiche', persona)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
@@ -212,7 +214,7 @@ export async function caricaNotifiche(persona: Persona): Promise<{ elenco: Notif
  * Segna lette, con una richiesta sola, le notifiche della persona nate fino a `finoA` compreso, anche quelle che la cornice non
  * ha caricato: POST /cornice/notifiche/letture. `finoA` è un istante col suo fuso, come la `creata_il` di una notifica;
  * `workspace` è lo slug del workspace della pagina, quello per cui l'istante è stato calcolato: se la sessione è passata a un
- * altro (un'altra scheda) la parte server non segna niente. `persona` è l'email di chi la cornice mostra, e dalla `v2.6.0` parte
+ * altro (un'altra scheda) la parte server non segna niente. `persona` è quella della cornice che chiede (email e impronta), e dalla `v2.6.0` l'email parte
  * nell'intestazione come per le altre richieste, non più nel corpo: se la sessione è passata a un'altra persona (una scheda
  * rimasta ferma) la parte server non segna niente nemmeno lì, lo dice col 409 `persona_diversa` (dalla `v2.12.0` senza l'email di chi è entrato), e la pagina si ricarica,
  * col tetto e l'orologio di `chiama`. Una risposta senza `fino_a` è un errore come le altre. Dà
@@ -240,7 +242,7 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
  * errore, come una che non è un 2xx. E dalla `v2.14.0` anche quella, se quando arriva chi l'ha chiesta non è più a schermo
  * (`aSchermo`: una visita ha portato la cornice di un'altra persona, o non c'è più nessuna cornice): chi l'ha chiesta non
  * apre la risorsa con la sessione di un altro. Dà l'istante in cui la parte server l'ha segnata (`segnata_il`, dalla `v1.12.0`): se
- * manca, o ha un'altra forma, non è un errore, è senza segno. `email` è quella di chi la cornice mostra: se la sessione è
+ * manca, o ha un'altra forma, non è un errore, è senza segno. `persona` è quella della cornice che chiede (email e impronta): se la sessione è
  * passata a un'altra persona la parte server non segna la notifica a chi è entrato (409 `persona_diversa`, dalla `v2.6.0`), e
  * né quel 409 né il 403 `accettazione_richiesta` di un'altra persona tornano a chi ha chiesto: la pagina, se è ancora lì, si
  * ricarica (vedi `chiama`).

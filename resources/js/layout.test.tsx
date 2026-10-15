@@ -2033,7 +2033,7 @@ describe('la cornice in due dati, sotto il layout', () => {
     // Sprint 61 · T2 (voce #2150): con la stessa email un'altra impronta di zr-auth è un altro account, e quindi un'altra persona,
     // anche per il layout (fino alla `v2.20.0` il layout guardava la sola email). `i2` è l'account di chi è entrato, `i1` un altro.
     const [i1, i2] = ['cccccccccccccccccccccccccccccccc', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'];
-    const adaCon = (impronta?: string) => (impronta ? { ...dati.persona, impronta } : dati.persona);
+    const adaCon = (impronta?: string | null) => (impronta === undefined ? dati.persona : { ...dati.persona, impronta });
 
     it.each([
         ['con la `cornice` intera, in un altro workspace', () => visita({ ...dati, persona: adaCon(i2), non_lette: 1 }, <PaginaB key="2" />), () => visita({ ...datiAltroWorkspace, persona: adaCon(i1) }, <PaginaA key="1" />)],
@@ -2067,10 +2067,13 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     // T2.2 e T2.3: un `dopo` della stessa email letto con una sessione più vecchia di quella di `subito` vale solo se è dello
     // stesso account: con un'altra impronta è di chi c'era prima, e la cornice resta di `subito`, in attesa, senza i suoi dati.
-    it.each<[string, string | undefined, string | undefined, boolean]>([
+    it.each<[string, string | null | undefined, string | null | undefined, boolean]>([
         ['`dopo` di un altro account (impronta i1 sotto i2): non vale', i2, i1, false],
         ['`dopo` dello stesso account (impronta i2 tutte e due): vale', i2, i2, true],
         ['senza impronta da tutte e due le parti decide l\'email: vale', undefined, undefined, true],
+        ['`null` da una parte e la chiave che manca dall\'altra sono tutti e due «senza impronta»: vale', null, undefined, true],
+        ['un testo vuoto e `null` sono tutti e due «senza impronta»: vale', '', null, true],
+        ['un\'impronta da una parte e `null` dall\'altra: non vale', i2, null, false],
     ])('`subito` e un `dopo` della stessa email con una sessione più vecchia: %s (sprint 61 · T2.2, T2.3)', async (_caso, diSubito, diDopo, vale) => {
         const suo: DatiSubito = { ...subito, persona: adaCon(diSubito), sessione_il: '2026-10-13T08:00:05.000000Z' };
         const letto: DatiDopo = { ...dopo, aziende, lingua: 'it', persona: adaCon(diDopo), workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
@@ -2078,6 +2081,35 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         expect(uno('#uat-pagina-a')).not.toBeNull();
         expect([etichette().includes('CRM'), uno('.zr-ws-switch') !== null, uno('.zr-bell-count')?.textContent ?? null]).toStrictEqual(vale ? [true, true, '7'] : [false, false, null]);
+    });
+
+    // Review della PR #98 (R3; sicurezza S2): coi segni da tutte e due le parti — come li danno sempre `Cornice::dati()` e
+    // `subito()` — la pagina dell'altro account più vecchia non ricarica, e di lei niente va nella cornice: restano workspace e
+    // non lette di chi è entrato. Con la sola email (`v2.20.0`) in un altro workspace la cornice si rifaceva coi dati di i1.
+    it.each([
+        ['in un altro workspace', { ...datiAltroWorkspace, non_lette: 5 }],
+        ['nello stesso workspace', { ...dati, non_lette: 4 }],
+    ])('coi segni da tutte e due le parti, Indietro su una pagina più vecchia della stessa email e di un altro account, %s: la pagina non si ricarica e la cornice resta di chi è entrato, col suo workspace e le sue non lette (sprint 61 · T2.1; review R3)', async (_dove, diI1) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await visita({ ...dati, persona: adaCon(i2), non_lette: 1, aggiornati_il: '2026-10-13T08:00:02.000000Z' }, <PaginaB key="2" />);
+        await visita({ ...diI1, persona: adaCon(i1), aggiornati_il: '2026-10-13T08:00:01.000000Z' }, <PaginaA key="1" />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+        expect(uno('aside.zr-side')?.textContent).toContain(dati.workspace.nome);
+        expect(uno('aside.zr-side')?.textContent).not.toContain(datiAltroWorkspace.workspace.nome);
+        ricarica.mockRestore();
+    });
+
+    // Review della PR #98 (R5): la lingua di `subito` passa a `dopo` solo se sono della stessa persona. Un `dopo` di un altro
+    // account, letto con una sessione più recente, tiene la sua lingua anche se `subito` ha il segno della lingua più avanti.
+    it('un `dopo` di un altro account con la stessa email e una sessione più recente tiene la sua lingua: quella di `subito` non passa, anche col segno della lingua più avanti (sprint 61 · T2.2; review R5)', async () => {
+        const suo: DatiSubito = { ...subito, lingua: 'es', persona: adaCon(i2), sessione_il: '2026-10-13T08:00:01.000000Z', lingua_il: '2026-10-13T08:00:05.000000Z' };
+        const letto: DatiDopo = { ...dopo, aziende, lingua: 'it', persona: adaCon(i1), workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:03.000000Z', sessione_il: '2026-10-13T08:00:03.000000Z', lingua_il: '2026-10-13T08:00:02.000000Z' };
+        await inDue({ subito: suo, dopo: letto }, <PaginaA />);
+
+        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(etichette()).toContain(testi('it').dashboard);
     });
 
     it.each([

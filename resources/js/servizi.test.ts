@@ -961,9 +961,10 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         await chiama('ada@example.com', IMPRONTA);
         await chiama('ada@example.com', i2);
         await chiama('ada@example.com');
-        const intestazioni = fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers));
-        expect(intestazioni.map((dette) => dette.get('X-Zr-Persona'))).toStrictEqual([IMPRONTA, IMPRONTA, i2, expect.not.stringMatching(/^[0-9a-f]{32}$/)]);
-        expect(intestazioni.map((dette) => dette.get('Persona'))).toStrictEqual(Array(4).fill('ada%40example.com'));
+        // Le intestazioni come le riceve `fetch`: senza impronta la chiave c'è, col valore `undefined` (il testo «undefined» nel browser).
+        const intestazioni = fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.headers as Record<string, unknown>);
+        expect(intestazioni.map((dette) => ['X-Zr-Persona' in dette, dette['X-Zr-Persona']])).toStrictEqual([[true, IMPRONTA], [true, IMPRONTA], [true, i2], [true, undefined]]);
+        expect(intestazioni.map((dette) => dette.Persona)).toStrictEqual(Array(4).fill('ada%40example.com'));
     });
 
     it.each(richieste)('%s con un\'email che ha caratteri fuori da Latin-1 parte lo stesso: nell\'intestazione ci sono solo caratteri ASCII, e decodificata è quell\'email (sprint 40 · T3, invariante)', async (_richiesta, chiama, corpo) => {
@@ -1069,7 +1070,7 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
         expect(aSchermo).toBe('grace@example.com');
     });
 
-    it('due account con la stessa email: smontata la cornice del secondo, a schermo resta il primo, e le sue richieste portano la sua impronta (sprint 60 · T1.1, S2; sprint 61 · T1.1)', async () => {
+    it('due account con la stessa email: smontata la cornice del secondo, a schermo resta il primo; e la pila non dà l\'impronta a una richiesta che non la porta (sprint 60 · T1.1, S2; sprint 61 · T1.2)', async () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }));
         vi.stubGlobal('fetch', fetchFinto);
         onTestFinished(() => void vi.unstubAllGlobals());
@@ -1080,7 +1081,8 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
         smonta(grace);
 
         expect(aSchermo).toBe('ada@example.com');
-        await caricaNotifiche({ email: 'ada@example.com', impronta: IMPRONTA });
-        expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('X-Zr-Persona')).toBe(IMPRONTA);
+        await caricaNotifiche({ email: 'ada@example.com' });
+        const dette = fetchFinto.mock.calls[0]?.[1]?.headers as Record<string, unknown>;
+        expect(['X-Zr-Persona' in dette, dette['X-Zr-Persona']]).toStrictEqual([true, undefined]);
     });
 });

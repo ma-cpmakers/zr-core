@@ -21,8 +21,8 @@ const senzaUndefined = <T>(oggetto: { [K in keyof T]: T[K] | undefined }) => Obj
  * risultati, il workspace di cui sono, come lo dice la parte server (dalla
  * `v1.12.0`): quello della sessione, che non è sempre quello della pagina, ed è lì che un risultato si apre. Una risposta che
  * non lo dice, o lo dice senza la forma di uno slug (dalla `v1.13.0`: quella che vale per una notifica), è un errore come una
- * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
- * mostra: i risultati, o un errore, di un'altra persona non tornano (`chiama`).
+ * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `persona` è quella della cornice
+ * che chiede (email e impronta): i risultati, o un errore, di un'altra persona non tornano (`chiama`).
  */
 export async function cerca(parola: string, segnale: AbortSignal, persona: Persona, chiama_: typeof chiama): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
