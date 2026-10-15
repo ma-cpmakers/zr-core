@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Zeiras\Auth\Persona;
+use Zeiras\Auth\Sessione;
 use Zeiras\Core\Cornice;
 
 // Sprint 60 · T1 (voce #2144; S1 della revisione di sicurezza della PR #95, Decisioni di zr-pm del 15/10, note 13646 e 13648):
@@ -166,6 +168,26 @@ it('con una sessione che ha un id che non dà un\'impronta — vuoto o un numero
     'l\'id numerico e un\'impronta qualunque (T1.2)' => [7, str_repeat('0', 32)],
 ]);
 
+it('con una sessione in cui la chiave `id` non c\'è proprio la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice, senza `X-Zr-Persona`: l\'id assente vale come `null` (sprint 63 · T1.3; review della PR #102, R3)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null]);
+    $utente = (array) Sessione::utente();
+    unset($utente['id']);
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $utente, 'workspace' => WORKSPACE_DELLA_PERSONA, 'ruolo' => 'membro']);
+    Http::fake();
+    test()->withoutHeader(Persona::INTESTAZIONE);
+
+    expect(array_key_exists('id', (array) Sessione::utente()))->toBeFalse()
+        ->and(Sessione::utente()['email'] ?? null)->toBe('uat-ada@example.com')
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $prima = Http::recorded()->count();
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-ada%40example.com']);
+
+        expect(Http::recorded()->count())->toBeGreaterThan($prima, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->not->toContain('persona_diversa');
+    }
+});
+
 it('con l\'id vuoto l\'ordine dei rifiuti resta quello di prima: una richiesta che non dice la persona riceve da ogni rotta 422 persona_mancante, e una che la dice vuota 422 dati_non_validi, prima del 409 nuovo (sprint 63 · T1.4)', function () {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => '']);
     Http::fake();
@@ -184,12 +206,17 @@ it('con l\'id vuoto l\'ordine dei rifiuti resta quello di prima: una richiesta c
     Http::assertNothingSent();
 });
 
-// Sprint 63 · T2.1 (voce #2204, Decisione di zr-pm 14216): il README dice che dalla `v2.21.1` un id che non dà un'impronta è
-// una persona sconosciuta, e non dice più che con ogni sessione senza impronta non si confronta niente.
-it('il README dice che dalla `v2.21.1` una sessione con un id vuoto, o che non è un testo, riceve il 409 a ogni richiesta della cornice, e che solo la sessione senza id resta senza confronto (sprint 63 · T2.1)', function () {
-    $readme = trim((string) preg_replace('/\s+/', ' ', (string) file_get_contents(__DIR__.'/../../README.md')));
+// Sprint 63 · T2.1 (voce #2204, Decisione di zr-pm 14216): «Le rotte della cornice» dice che dalla `v2.21.1` un id che non dà
+// un'impronta è una persona sconosciuta e che la pagina si ricarica senza fine; il README non dice più, da nessuna parte, che
+// con ogni sessione senza impronta non si confronta niente (review della PR #102, R1, R2 e R4).
+it('«Le rotte della cornice» dice che dalla `v2.21.1` una sessione con un id vuoto, o che non è un testo, riceve il 409 a ogni richiesta della cornice e che la pagina si ricarica senza fine, e che solo la sessione senza id resta senza confronto (sprint 63 · T2.1)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Le rotte della cornice$(.*?)(?=^##)/ms', $readme, $sezione);
+    $suUnaRiga = fn (string $testo): string => trim((string) preg_replace('/\s+/', ' ', $testo));
+    $rotte = $suUnaRiga($sezione[1] ?? '');
 
-    expect(str_contains($readme, 'Dalla `v2.21.1` una sessione con un id che non dà un\'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni richiesta `cornice/*`, letture comprese, riceve lo stesso 409 senza chiamare il backoffice'))->toBe(true)
-        ->and(str_contains($readme, 'Con una sessione senza id (`id` assente o `null`) non si confronta niente, come prima.'))->toBe(true)
-        ->and(str_contains($readme, 'Con una sessione senza impronta non si confronta niente'))->toBe(false);
+    expect($rotte)->toContain('Dalla `v2.21.1` una sessione con un id che non dà un\'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni richiesta `cornice/*`, letture comprese, riceve lo stesso 409 senza chiamare il backoffice, e la pagina si ricarica')
+        ->and($rotte)->toContain('al più una volta ogni 30 secondi e senza fine, perché la ricarica non cambia la sessione')
+        ->and($rotte)->toContain('Con una sessione senza id (`id` assente o `null`) non si confronta niente, come prima.')
+        ->and($suUnaRiga($readme))->not->toContain('Con una sessione senza impronta non si confronta niente');
 });
