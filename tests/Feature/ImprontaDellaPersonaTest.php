@@ -1,0 +1,93 @@
+<?php
+
+use Illuminate\Support\Facades\Http;
+use Zeiras\Auth\Persona;
+use Zeiras\Core\Cornice;
+
+// Sprint 60 · T1 (voce #2144; S1 della revisione di sicurezza della PR #95, Decisioni di zr-pm del 15/10, note 13646 e 13648):
+// StessaPersona confronta l'email, e un'email può passare da un account a un altro. I dati della cornice portano l'impronta di
+// zr-auth (`Persona::impronta()`, un HMAC dell'id: né l'id né niente di nuovo), la cornice la manda in `X-Zr-Persona`, e
+// StessaPersona la confronta con quella della sessione quando la richiesta la dice e la sessione ne ha una.
+
+const ADA_IN_UN_ALTRO_ACCOUNT = ['id' => 'uat-ada-2'];
+
+it('Cornice::subito() e Cornice::ridotta() portano in `persona` nome, email e l\'impronta di zr-auth della persona della sessione, e nient\'altro: non l\'id (sprint 60 · T1.1)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+
+    foreach (['subito' => Cornice::subito(), 'ridotta' => Cornice::ridotta()] as $quale => $dati) {
+        expect($dati['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')], $quale)
+            ->and($dati['persona']['impronta'] ?? null)->toBe(Persona::impronta())->toMatch('/^[0-9a-f]{32}$/')
+            ->and(json_encode($dati))->not->toContain('uat-ada"');
+    }
+});
+
+it('con una sessione senza id l\'impronta nei dati è null (sprint 60 · T1.1)', function () {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null]);
+
+    expect(Persona::impronta())->toBeNull()
+        ->and(Cornice::subito()['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => null]);
+});
+
+it('una richiesta con l\'email della sessione e l\'impronta di un\'altra persona con la stessa email riceve da ogni rotta della cornice 409 persona_diversa con `persona` vuota, e il backoffice non è chiamato (sprint 60 · T1.2)', function (array $corpo) {
+    // L'impronta della persona di prima: la stessa email, un altro account.
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ADA_IN_UN_ALTRO_ACCOUNT);
+    $diPrima = (string) Persona::impronta();
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+
+    expect($diPrima)->not->toBe((string) Persona::impronta())
+        ->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, $corpo, ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => $diPrima]);
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with([
+    'la persona nell\'intestazione' => [[]],
+    'la persona anche nel corpo' => [['persona' => 'uat-ada@example.com']],
+]);
+
+it('un\'impronta detta che non è proprio quella della sessione è il 409 su ogni rotta della cornice, come la legge SoloDallaPersona: con le maiuscole, ripetuta con un\'altra, o un testo qualunque (sprint 60 · T1.2; sicurezza della PR #96, S4)', function (string $come) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA);
+    Http::fake();
+    $detta = match ($come) {
+        'maiuscole' => strtoupper((string) Persona::impronta()),
+        'ripetuta' => Persona::impronta().', '.str_repeat('0', 32),
+        'testo' => 'uat',
+        default => '',
+    };
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => $detta]);
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with(['maiuscole', 'ripetuta', 'testo']);
+
+it('con l\'impronta della sessione, senza `X-Zr-Persona` (il JS di prima), o con una sessione senza impronta, la richiesta con l\'email della sessione arriva al backoffice da ogni rotta della cornice (sprint 60 · T1.2)', function (array $diversa, ?string $impronta) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', $diversa);
+    Http::fake();
+    $intestazioni = ['Persona' => 'uat-ada%40example.com'] + match ($impronta) {
+        null => [],
+        'della sessione' => [Persona::INTESTAZIONE => (string) Persona::impronta()],
+        default => [Persona::INTESTAZIONE => $impronta],
+    };
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $prima = Http::recorded()->count();
+        $avuta = allaCornice($metodo, $indirizzo, [], $intestazioni);
+
+        expect(Http::recorded()->count())->toBeGreaterThan($prima, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->not->toContain('persona_diversa');
+    }
+})->with([
+    'l\'impronta della sessione' => [[], 'della sessione'],
+    'senza X-Zr-Persona' => [[], null],
+    'il testo `undefined` (il JS coi dati di prima)' => [[], 'undefined'],
+    'il testo `null` (una sessione senza id quando i dati sono stati letti)' => [[], 'null'],
+    'la sessione senza id e un\'impronta qualunque' => [['id' => null], str_repeat('0', 32)],
+]);

@@ -91,9 +91,10 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   KB: un aggiornamento degli strumenti della build (Vite, il plugin di React) può spostarli, e allora il caso è rosso e i
   numeri del README si riscrivono dalla misura. Quanto costa il modulo dei componenti rispetto al bundle si prova lì con due
   build fatte nel caso, mai con un numero scritto a mano.
-- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 17.789 byte con gzip (dalla `v2.11.5`:
+- Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, nello stesso file: 17.819 byte con gzip (dalla `v2.11.5`:
   ciò che pesa quando i dati di esempio e i formattatori dei numeri del design system sono usciti dall'ingresso, con le
-  correzioni degli sprint 50 e 52 dentro, e niente oltre: decisione di zr-pm). Fuori dall'ingresso stanno tre pezzi a richiesta, ognuno col suo tetto: ciò che compone le righe delle notifiche e carica le
+  correzioni degli sprint 50 e 52 dentro, e niente oltre: decisione di zr-pm; dalla `v2.20.0` 30 byte in più, l'impronta di
+  zr-auth in `X-Zr-Persona`: eccezione di zr-pm per la sicurezza fra persone). Fuori dall'ingresso stanno tre pezzi a richiesta, ognuno col suo tetto: ciò che compone le righe delle notifiche e carica le
   frasi (`resources/js/campanella.ts`, chiesto all'apertura della campanella: nessun ingresso riesporta niente da lì), la
   ricerca (`resources/js/ricerca.ts`, chiesta al primo fuoco nel campo della ricerca o alla prima parola: nemmeno da lì un
   ingresso riesporta niente) e i rimedi provvisori di tastiera (`resources/js/rimedi.ts`). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.

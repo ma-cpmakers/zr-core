@@ -86,19 +86,29 @@ export class TroppeRichieste extends Error {
  * Chi la cornice mostra adesso, con l'email, o nessuno: lo dice la cornice quando si monta, e lo toglie quando si smonta
  * (dalla `v2.7.0`). «A schermo» è la cornice montata: non l'ultima disegnata — un disegno che React abbandona non scrive
  * niente —, e una pagina senza la cornice non ha nessuno a schermo. Dalla `v2.17.1` lo tiene una pila delle cornici montate:
- * `mostra(email)` ci mette la cornice che si monta, `mostra(email, 1)` toglie una voce sola, la sua email, quando si smonta;
+ * `mostra(persona)` ci mette la cornice che si monta, `mostra(persona, 1)` toglie una voce sola, la sua, quando si smonta;
  * a schermo c'è l'ultima montata fra quelle rimaste. Così con due cornici della stessa persona, smontata una, a schermo resta la
  * persona dell'altra; e con due cornici di persone diverse, smontata quella di prima, resta l'altra (come dalla `v2.11.5`).
- * Il limite è l'email: con A, poi B, poi di nuovo A, smontata una delle due di A, a schermo resta A anche se la A rimasta è
- * quella montata prima di B (README, «La cornice in due dati»). `mostra(email, 1)` si chiama solo per un'email montata, allo
- * smontaggio della sua cornice: con una mai montata `indexOf` darebbe -1, e `splice` toglierebbe l'ultima voce, di un'altra.
+ * Dalla `v2.20.0` la pila tiene le persone (email e impronta di zr-auth), non le email: ogni cornice toglie la sua, e con A, poi
+ * B, poi di nuovo A, smontata la A montata dopo B a schermo torna B (README, «La cornice in due dati»). `mostra(persona, 1)` si
+ * chiama solo allo smontaggio della cornice che l'ha montata, con la stessa persona: con una mai montata `indexOf` darebbe -1,
+ * e `splice` toglierebbe l'ultima voce, di un'altra.
  */
 export let aSchermo: string | undefined;
 
-const montate: string[] = [];
-export function mostra(email: string, via?: 1): void {
-    via ? montate.splice(montate.indexOf(email), 1) : montate.push(email);
-    aSchermo = montate.at(-1);
+/**
+ * L'impronta di zr-auth della persona a schermo (`persona.impronta` dei dati, dalla `v2.20.0`), dalla stessa pila: ogni richiesta
+ * la porta in `X-Zr-Persona`, e StessaPersona la confronta con quella della sessione. Con l'email detta in `Persona` una scheda
+ * rimasta aperta di un altro account con la stessa email passerebbe; con l'impronta no. Senza (dati di prima) parte un testo che
+ * non è un'impronta (`undefined` nel browser), e la parte server confronta solo l'email.
+ */
+let impronta: string | null | undefined;
+
+const montate: { email: string; impronta?: string | null }[] = [];
+export function mostra(persona: { email: string; impronta?: string | null }, via?: 1): void {
+    via ? montate.splice(montate.indexOf(persona), 1) : montate.push(persona);
+    aSchermo = montate.at(-1)?.email;
+    impronta = montate.at(-1)?.impronta;
 }
 
 /**
@@ -141,7 +151,7 @@ export function mostra(email: string, via?: 1): void {
  */
 export async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
-    const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
+    const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': impronta!, Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     const chi = corpo?.persona;
     if (email && typeof chi === 'string' && chi !== email) {

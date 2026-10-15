@@ -7,6 +7,7 @@ use Throwable;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
+use Zeiras\Auth\Persona;
 use Zeiras\Auth\Sessione;
 
 /**
@@ -85,7 +86,11 @@ final class Cornice
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
      * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * Accanto all'email la persona porta l'impronta di zr-auth (`Persona::impronta()`, dalla `v2.20.0`; anche in `subito()`): un
+     * HMAC dell'id, né l'id né l'email, null per una sessione senza id. La cornice la manda in `X-Zr-Persona`, e StessaPersona la
+     * confronta: un'email passata da un account a un altro non basta più a una scheda rimasta aperta. Non va mai a schermo.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -115,7 +120,7 @@ final class Cornice
 
         return [
             'lingua' => $utente['lingua'],
-            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta()],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             'aggiornati_il' => $lettura['segno'],
@@ -140,7 +145,7 @@ final class Cornice
      * riletto mentre `dopo` è in lettura porta la sessione di adesso e la lingua di prima: col segno di adesso varrebbe nel
      * browser sopra la lingua nuova. Senza una lettura che l'abbia confermata, o se quella era di un'altra persona, non c'è.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function subito(): ?array
     {
@@ -155,7 +160,7 @@ final class Cornice
 
         return [
             'lingua' => $utente['lingua'],
-            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email']],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta()],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             'sessione_il' => Segno::adesso(),
             ...self::linguaIl(),
@@ -190,7 +195,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function dopo(): ?array
     {
@@ -234,7 +239,7 @@ final class Cornice
      * di io.mostra che questa richiesta ha usato — l'istante in cui è cominciata —, e senza una lettura il primo istante che la
      * forma dei segni può dire: una cornice ridotta non vale mai sopra dati veri arrivati dopo. null senza sessione o senza workspace.
      *
-     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function ridotta(): ?array
     {
@@ -248,7 +253,7 @@ final class Cornice
      * `dati()` ha fatto o ha trovato già fatta da `lingua()` (il frontend che mette la lingua prima del controller): lo stesso che i
      * dati riusciti avrebbero; senza una lettura, `$ripiego`.
      *
-     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     private static function laRidotta(string $ripiego): ?array
     {

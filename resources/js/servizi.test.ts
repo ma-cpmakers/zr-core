@@ -2,23 +2,35 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { cerca as cercaCon } from './ricerca';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
 const cerca = (parola: string, segnale: AbortSignal, email: string) => cercaCon(parola, segnale, email, chiama);
 
-// A schermo `chi`, o nessuno: senza nessuno si smontano tutte le cornici che i casi hanno montato. Dalla `v2.17.1` `mostra` tiene
-// una pila delle cornici montate, e una cornice che si smonta toglie la sua email (`mostra(email, 1)`).
+// La persona di una cornice montata, come la passa la cornice: dalla `v2.20.0` la pila tiene le persone (email e impronta), e
+// una cornice che si smonta toglie la sua (`mostra(persona, 1)`). Le montate dai casi si ricordano qui, per smontarle.
+type Montata = { email: string; impronta?: string | null };
+const montateDaiCasi: Montata[] = [];
+const monta = (email: string, impronta?: string): Montata => {
+    const persona = { email, impronta };
+    montateDaiCasi.push(persona);
+    mostra(persona);
+    return persona;
+};
+const smonta = (persona: Montata) => (montateDaiCasi.splice(montateDaiCasi.indexOf(persona), 1), mostra(persona, 1));
+
+// A schermo `chi`, o nessuno: senza nessuno si smontano tutte le cornici che i casi hanno montato.
 const mettiASchermo = (chi: string | undefined) => {
     if (chi !== undefined) {
-        return mostra(chi);
+        return void monta(chi);
     }
-    // Un tetto ai giri: se `mostra(…, 1)` non togliesse niente (un mutante), il caso sarebbe rosso invece di non finire mai.
-    for (let giri = 0; aSchermo !== undefined && giri < 99; giri++) {
-        mostra(aSchermo, 1);
+    for (const persona of [...montateDaiCasi].reverse()) {
+        smonta(persona);
     }
+    // Se `mostra(…, 1)` non togliesse niente (un mutante), qui resterebbe qualcuno.
+    expect(aSchermo).toBeUndefined();
 };
 
 // Sprint 22 · T2 (voce #1712): la lettura di una notifica sola, che la cornice chiede col clic che apre la sua risorsa
@@ -36,6 +48,9 @@ function cookieCsrf(valore?: string): void {
 }
 
 const unIstante = '2026-10-06T12:00:08.123456Z';
+
+/** Un'impronta di zr-auth, come la danno i dati della cornice dalla `v2.20.0`: 32 cifre esadecimali. */
+const IMPRONTA = '0f1e2d3c4b5a69788796a5b4c3d2e1f0';
 
 describe('segnaLetta', () => {
     // Dalla `v2.14.0` una lettura riesce solo se chi l'ha chiesta è ancora a schermo: qui è Ada.
@@ -67,12 +82,14 @@ describe('segnaLetta', () => {
         ['senza il cookie parte senza X-XSRF-TOKEN', undefined, {}],
     ])('chiede PATCH /cornice/notifiche/<id>/lettura con {"letta": true} e con keepalive, e dà l\'istante della parte server: %s (sprint 22 · T2.1)', async (_quale, cookie, gettone) => {
         cookieCsrf(cookie);
+        monta('ada@example.com', IMPRONTA);
+        onTestFinished(() => mettiASchermo(undefined));
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }));
         vi.stubGlobal('fetch', fetchFinto);
 
         await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
-            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
+            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': IMPRONTA, Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
     });
 
@@ -348,7 +365,7 @@ describe('una risposta che dice di chi è', () => {
     const caricataDa = (millisecondi: number) => vi.spyOn(performance, 'now').mockReturnValue(millisecondi);
 
     beforeEach(() => {
-        mostra('ada@example.com');
+        monta('ada@example.com');
         caricataDa(60_000);
     });
 
@@ -380,7 +397,7 @@ describe('una risposta che dice di chi è', () => {
         const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
         const fetchFinto = vi.fn(async () => risposta({ ...corpo, persona: 'grace@example.com' }));
         vi.stubGlobal('fetch', fetchFinto);
-        mostra('grace@example.com');
+        monta('grace@example.com');
 
         expect(await esitoDi(chiama('ada@example.com'))).toBe('in attesa');
         expect(ricarica).not.toHaveBeenCalled();
@@ -908,7 +925,7 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         ['GET /cornice/notifiche', (email) => caricaNotifiche(email), { data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }, undefined],
         ['POST /cornice/ricerca', (email) => cerca('lancio', new AbortController().signal, email), { data: [], workspace: 'uat-vendite' }, { q: 'lancio' }],
         ['POST /cornice/notifiche/letture', (email) => segnaLetteFinoA(finoA, 'acme-marketing', email), { data: { fino_a: '2026-10-06T11:55:00.000Z' } }, { fino_a: finoA, workspace: 'acme-marketing' }],
-        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => (mettiASchermo(email), segnaLetta('uat-n69', email)), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
+        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => (aSchermo === email || mettiASchermo(email), segnaLetta('uat-n69', email)), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
     ];
     const corpoDi = (opzioni?: RequestInit) => (opzioni?.body == null ? undefined : (JSON.parse(String(opzioni.body)) as unknown));
 
@@ -923,6 +940,22 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         expect(new Headers(opzioni?.headers).get('Persona')).toBe('ada%40example.com');
         expect(indirizzo).not.toContain('ada');
         expect(corpoDi(opzioni)).toStrictEqual(nelCorpo);
+    });
+
+    // Sprint 60 · T1.1 (voce #2144): l'email detta in `Persona` non basta quando un'email passa da un account a un altro; ogni
+    // richiesta porta anche l'impronta di zr-auth della persona della cornice montata, e senza impronta parte un testo che non è un'impronta
+    // (`undefined` nel browser), che StessaPersona non confronta.
+    it.each(richieste)('%s porta in `X-Zr-Persona` l\'impronta data dalla cornice montata, e senza impronta un testo che non è un\'impronta (sprint 60 · T1.1)', async (_richiesta, chiama, corpo) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+        onTestFinished(() => mettiASchermo(undefined));
+
+        const conLImpronta = monta('ada@example.com', IMPRONTA);
+        await chiama('ada@example.com');
+        smonta(conLImpronta);
+        monta('ada@example.com');
+        await chiama('ada@example.com');
+        expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([IMPRONTA, expect.not.stringMatching(/^[0-9a-f]{32}$/)]);
     });
 
     it.each(richieste)('%s con un\'email che ha caratteri fuori da Latin-1 parte lo stesso: nell\'intestazione ci sono solo caratteri ASCII, e decodificata è quell\'email (sprint 40 · T3, invariante)', async (_richiesta, chiama, corpo) => {
@@ -990,31 +1023,56 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
     beforeEach(() => mettiASchermo(undefined));
 
     it('due cornici di Ada: smontata una a schermo resta Ada, smontata anche l\'altra nessuno (T2.1, T2.2)', () => {
-        mostra('ada@example.com');
-        mostra('ada@example.com');
-        mostra('ada@example.com', 1);
+        const prima = monta('ada@example.com');
+        const seconda = monta('ada@example.com');
+        smonta(prima);
         expect(aSchermo).toBe('ada@example.com');
-        mostra('ada@example.com', 1);
+        smonta(seconda);
         expect(aSchermo).toBeUndefined();
     });
 
     it('Ada e poi Grace: smontata Ada a schermo resta Grace, smontata anche Grace nessuno (T2.3)', () => {
-        mostra('ada@example.com');
-        mostra('grace@example.com');
-        mostra('ada@example.com', 1);
+        const ada = monta('ada@example.com');
+        const grace = monta('grace@example.com');
+        smonta(ada);
         expect(aSchermo).toBe('grace@example.com');
-        mostra('grace@example.com', 1);
+        smonta(grace);
         expect(aSchermo).toBeUndefined();
     });
 
     // Review della PR #91 (R3): fra persone diverse lo scenario nuovo è smontare l'ultima montata. Fino alla `v2.17.0` lo schermo
     // restava vuoto; ora torna quella rimasta.
     it('Ada e poi Grace: smontata Grace a schermo torna Ada, smontata anche Ada nessuno (T2.3, review R3)', () => {
-        mostra('ada@example.com');
-        mostra('grace@example.com');
-        mostra('grace@example.com', 1);
+        const ada = monta('ada@example.com');
+        const grace = monta('grace@example.com');
+        smonta(grace);
         expect(aSchermo).toBe('ada@example.com');
-        mostra('ada@example.com', 1);
+        smonta(ada);
         expect(aSchermo).toBeUndefined();
+    });
+
+    // Sprint 60 (revisione di sicurezza della PR #96, S2; review R2): la pila tiene le persone, non le email. Con due cornici della
+    // stessa email e di due account, smontata l'ultima, le richieste portano l'impronta di quella rimasta; e con A, B e di nuovo
+    // A, smontata la A montata dopo B, a schermo resta la A di prima, con la sua impronta.
+    it('A, poi B, poi di nuovo A: smontata la A montata dopo B, a schermo torna B (sprint 60, S2; fino alla `v2.19` restava A)', () => {
+        monta('ada@example.com');
+        monta('grace@example.com');
+        smonta(monta('ada@example.com'));
+        expect(aSchermo).toBe('grace@example.com');
+    });
+
+    it('due account con la stessa email: smontata la cornice del secondo, le richieste portano l\'impronta del primo (sprint 60 · T1.1, S2)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }));
+        vi.stubGlobal('fetch', fetchFinto);
+        onTestFinished(() => void vi.unstubAllGlobals());
+        monta('ada@example.com', IMPRONTA);
+        const grace = monta('grace@example.com', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+        const secondoAccount = monta('ada@example.com', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+        smonta(secondoAccount);
+        smonta(grace);
+
+        expect(aSchermo).toBe('ada@example.com');
+        await caricaNotifiche('ada@example.com');
+        expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('X-Zr-Persona')).toBe(IMPRONTA);
     });
 });
