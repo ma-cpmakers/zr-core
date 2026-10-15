@@ -97,18 +97,22 @@ export class TroppeRichieste extends Error {
 export let aSchermo: string | undefined;
 
 /**
- * L'impronta di zr-auth della persona a schermo (`persona.impronta` dei dati, dalla `v2.20.0`), dalla stessa pila: ogni richiesta
- * la porta in `X-Zr-Persona`, e StessaPersona la confronta con quella della sessione. Con l'email detta in `Persona` una scheda
- * rimasta aperta di un altro account con la stessa email passerebbe; con l'impronta no. Senza (dati di prima) parte un testo che
- * non è un'impronta (`undefined` nel browser), e la parte server confronta solo l'email.
+ * Chi chiede (dalla `v2.20.1`): l'email e l'impronta di zr-auth (`persona.impronta` dei dati) della cornice che fa la richiesta,
+ * non di quella a schermo. Ogni richiesta porta l'email in `Persona` e l'impronta in `X-Zr-Persona`, e StessaPersona confronta
+ * l'impronta con quella della sessione: con la sola email una scheda rimasta aperta di un altro account con la stessa email
+ * passerebbe. Con due cornici montate insieme, stessa email e due account, ognuna manda la sua (nella `v2.20.0` tutte quella
+ * dell'ultima montata). Senza impronta (dati di prima, o una `persona` costruita dal frontend) parte un testo che non è
+ * un'impronta (`undefined` nel browser), e la parte server confronta solo l'email: mai l'impronta di un'altra cornice.
  */
-let impronta: string | null | undefined;
+export interface Persona {
+    email: string;
+    impronta?: string | null;
+}
 
-const montate: { email: string; impronta?: string | null }[] = [];
-export function mostra(persona: { email: string; impronta?: string | null }, via?: 1): void {
+const montate: Persona[] = [];
+export function mostra(persona: Persona, via?: 1): void {
     via ? montate.splice(montate.indexOf(persona), 1) : montate.push(persona);
     aSchermo = montate.at(-1)?.email;
-    impronta = montate.at(-1)?.impronta;
 }
 
 /**
@@ -149,7 +153,7 @@ export function mostra(persona: { email: string; impronta?: string | null }, via
  * con un testo (una parte server di prima) vale com'è: nessun ricaricamento. Una risposta 200 senza un corpo JSON torna
  * `null`, e l'errore lo dà chi ha chiamato.
  */
-export async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
+export async function chiama(indirizzo: string, { email, impronta }: Persona, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
     const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': impronta!, Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
@@ -195,8 +199,8 @@ export function segno(valore: unknown): string | undefined {
  * non è sempre quello della pagina. Se la risposta non lo dice, o non lo dice con un testo, non è un errore: non si sa.
  * `email` è quella di chi la cornice mostra: un elenco, o un errore, di un'altra persona non torna (`chiama`).
  */
-export async function caricaNotifiche(email: string): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
-    const corpo = (await chiama('/cornice/notifiche', email)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
+export async function caricaNotifiche(persona: Persona): Promise<{ elenco: NotificaDellaCornice[]; il: string | undefined; workspace: string | undefined }> {
+    const corpo = (await chiama('/cornice/notifiche', persona)) as { data?: unknown; aggiornati_il?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error('GET /cornice/notifiche: data');
     }
@@ -216,7 +220,7 @@ export async function caricaNotifiche(email: string): Promise<{ elenco: Notifica
  * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
  * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano.
  */
-export async function segnaLetteFinoA(finoA: string, workspace: string, persona: string): Promise<{ il: string | undefined; altre: boolean }> {
+export async function segnaLetteFinoA(finoA: string, workspace: string, persona: Persona): Promise<{ il: string | undefined; altre: boolean }> {
     const indirizzo = '/cornice/notifiche/letture';
     const corpo = (await chiama(indirizzo, persona, 'POST', { workspace, fino_a: finoA })) as { data?: { fino_a?: unknown; altre?: unknown } | null; segnate_il?: unknown } | null;
     if (typeof corpo?.data?.fino_a !== 'string') {
@@ -241,15 +245,15 @@ export async function segnaLetteFinoA(finoA: string, workspace: string, persona:
  * né quel 409 né il 403 `accettazione_richiesta` di un'altra persona tornano a chi ha chiesto: la pagina, se è ancora lì, si
  * ricarica (vedi `chiama`).
  */
-export async function segnaLetta(id: string, email: string): Promise<{ il: string | undefined }> {
+export async function segnaLetta(id: string, persona: Persona): Promise<{ il: string | undefined }> {
     // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
     // un'espressione regolare lo converte da sé, e `null` o un numero hanno la forma di un id.
     if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
         throw new Error('PATCH /cornice/notifiche/{id}/lettura: id');
     }
     const indirizzo = `/cornice/notifiche/${encodeURIComponent(id)}/lettura`;
-    const corpo = (await chiama(indirizzo, email, 'PATCH', { letta: true }, { keepalive: true })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
-    if (corpo?.data?.letta !== true || email !== aSchermo) {
+    const corpo = (await chiama(indirizzo, persona, 'PATCH', { letta: true }, { keepalive: true })) as { data?: { letta?: unknown } | null; segnata_il?: unknown } | null;
+    if (corpo?.data?.letta !== true || persona.email !== aSchermo) {
         throw new Error(`PATCH ${indirizzo}: letta`);
     }
 

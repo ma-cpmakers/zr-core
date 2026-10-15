@@ -7,7 +7,7 @@ import { cerca as cercaCon } from './ricerca';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
-const cerca = (parola: string, segnale: AbortSignal, email: string) => cercaCon(parola, segnale, email, chiama);
+const cerca = (parola: string, segnale: AbortSignal, email: string, impronta?: string) => cercaCon(parola, segnale, { email, impronta }, chiama);
 
 // La persona di una cornice montata, come la passa la cornice: dalla `v2.20.0` la pila tiene le persone (email e impronta), e
 // una cornice che si smonta toglie la sua (`mostra(persona, 1)`). Le montate dai casi si ricordano qui, per smontarle.
@@ -70,7 +70,7 @@ describe('segnaLetta', () => {
     ])('una risposta `letta: true` arrivata quando a schermo c\'è %s non è una lettura riuscita (sprint 53 · T4, review R5)', async (_chi, aSchermoAllaRisposta) => {
         let rispondi: (risposta: Response) => void = () => undefined;
         vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((si) => (rispondi = si))));
-        const lettura = segnaLetta('uat-n69', 'ada@example.com');
+        const lettura = segnaLetta('uat-n69', { email: 'ada@example.com' });
         mettiASchermo(aSchermoAllaRisposta);
         rispondi(new Response(JSON.stringify({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }), { status: 200 }));
 
@@ -87,7 +87,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
+        await expect(segnaLetta('uat-n69', { email: 'ada@example.com', impronta: IMPRONTA })).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
             ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': IMPRONTA, Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
@@ -97,7 +97,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        const lettura = segnaLetta('uat-n69', 'ada@example.com');
+        const lettura = segnaLetta('uat-n69', { email: 'ada@example.com' });
         expect(fetchFinto).toHaveBeenCalledTimes(1);
         await lettura;
     });
@@ -110,7 +110,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await segnaLetta(id, 'ada@example.com');
+        await segnaLetta(id, { email: 'ada@example.com' });
         expect(fetchFinto.mock.calls.map(([chiesto]) => chiesto)).toStrictEqual([indirizzo]);
     });
 
@@ -133,7 +133,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id, { email: 'ada@example.com' })).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -150,7 +150,7 @@ describe('segnaLetta', () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id, letta: true } }));
         vi.stubGlobal('fetch', fetchFinto);
 
-        await expect(segnaLetta(id as string, 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
+        await expect(segnaLetta(id as string, { email: 'ada@example.com' })).rejects.toThrow('PATCH /cornice/notifiche/{id}/lettura: id');
         expect(fetchFinto).not.toHaveBeenCalled();
     });
 
@@ -163,7 +163,7 @@ describe('segnaLetta', () => {
     ])('una risposta con `letta: true` il cui istante %s non è un errore: è senza segno (sprint 22 · T2.5)', async (_come, conLIstante) => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: { id: 'uat-n69', letta: true }, ...conLIstante })));
 
-        await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: undefined });
+        await expect(segnaLetta('uat-n69', { email: 'ada@example.com' })).resolves.toStrictEqual({ il: undefined });
     });
 
     it.each([
@@ -178,7 +178,7 @@ describe('segnaLetta', () => {
     ])('una risposta con %s è un errore, mai una lettura riuscita (sprint 22 · T2.3)', async (_come, dellaRotta) => {
         vi.stubGlobal('fetch', vi.fn(async () => dellaRotta));
 
-        await expect(segnaLetta('uat-n69', 'ada@example.com')).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
+        await expect(segnaLetta('uat-n69', { email: 'ada@example.com' })).rejects.toThrow('PATCH /cornice/notifiche/uat-n69/lettura');
     });
 });
 
@@ -238,9 +238,9 @@ describe('il 403 `accettazione_richiesta` di una rotta della cornice', () => {
     });
 
     const chiamate: [string, () => Promise<unknown>][] = [
-        ['caricaNotifiche', () => caricaNotifiche('ada@example.com')],
-        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com')],
-        ['segnaLetta', () => segnaLetta('uat-n69', 'ada@example.com')],
+        ['caricaNotifiche', () => caricaNotifiche({ email: 'ada@example.com' })],
+        ['segnaLetteFinoA', () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', { email: 'ada@example.com' })],
+        ['segnaLetta', () => segnaLetta('uat-n69', { email: 'ada@example.com' })],
         ['cerca', () => cerca('lancio', new AbortController().signal, 'ada@example.com')],
     ];
     /** Come una chiamata finisce: con quell'errore, con un altro, o bene. */
@@ -377,7 +377,7 @@ describe('una risposta che dice di chi è', () => {
     const elenco = [{ id: 'uat-n1', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata' }];
     const risultati = [{ tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio' }];
     const chiamate: [string, Record<string, unknown>, (email: string) => Promise<unknown>, unknown][] = [
-        ['caricaNotifiche', { data: elenco, aggiornati_il: unIstante, workspace: 'uat-vendite' }, (email) => caricaNotifiche(email), { elenco, il: unIstante, workspace: 'uat-vendite' }],
+        ['caricaNotifiche', { data: elenco, aggiornati_il: unIstante, workspace: 'uat-vendite' }, (email) => caricaNotifiche({ email }), { elenco, il: unIstante, workspace: 'uat-vendite' }],
         ['cerca', { data: risultati, workspace: 'uat-vendite' }, (email) => cerca('lancio', new AbortController().signal, email), { risultati, workspace: 'uat-vendite' }],
     ];
     /** Come finisce una chiamata entro qualche giro: chiusa, con un errore, o ancora in attesa. */
@@ -437,7 +437,7 @@ describe('una risposta che dice di chi è', () => {
     // mostra: il suo 403 `accettazione_richiesta` dice di chi è come quello delle altre rotte.
     const conErrore = [
         ...chiamate.flatMap(([nome, , chiama]) => errori.map(([quale, stato, codice, classe]) => [nome, quale, stato, codice, classe, chiama] as const)),
-        ['segnaLetta', 'il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta, (email: string) => segnaLetta('uat-n69', email)] as const,
+        ['segnaLetta', 'il 403 `accettazione_richiesta`', 403, 'accettazione_richiesta', AccettazioneRichiesta, (email: string) => segnaLetta('uat-n69', { email })] as const,
     ];
 
     it.each(conErrore)('%s: %s di un\'altra persona non torna a chi ha chiesto — né chiuso né con un errore, prima dei 5 secondi — e la pagina si ricarica, una volta (sprint 38 · T3.1, T3.2)', async (_nome, _quale, stato, codice, _classe, chiama) => {
@@ -468,7 +468,7 @@ describe('una risposta che dice di chi è', () => {
     // Sprint 38 · T4 (voce #2028): «Segna tutte come lette» dice per chi lo chiede. `segnaLetteFinoA` manda l'email di chi la
     // cornice mostra (`persona`), e la parte server, se la sessione è di un'altra persona, non segna niente e risponde 409
     // `persona_diversa` con l'email di chi è entrato: un errore di un'altra persona, e la pagina si ricarica.
-    const segna = () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', 'ada@example.com');
+    const segna = () => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', { email: 'ada@example.com' });
 
     // Dallo sprint 40 (T3, voce #2051) l'email non sta più nel corpo: la dice l'intestazione `Persona`, come le altre tre richieste.
     it('segnaLetteFinoA dice l\'email di chi la cornice mostra nell\'intestazione `Persona`; nel corpo restano l\'istante e lo slug (sprint 38 · T4.1, sprint 40 · T3.1)', async () => {
@@ -727,7 +727,7 @@ describe('una risposta che dice di chi è', () => {
             vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, persona: 'grace@example.com' })));
             caricataDa(10_000);
 
-            segui(caricaNotifiche('ada@example.com'));
+            segui(caricaNotifiche({ email: 'ada@example.com' }));
             await vi.advanceTimersByTimeAsync(19_999);
             expect(ricarica).not.toHaveBeenCalled();
             mettiASchermo(chi);
@@ -750,7 +750,7 @@ describe('una risposta che dice di chi è', () => {
             });
             caricataDa(10_000);
 
-            const esito = segui(caricaNotifiche('ada@example.com'));
+            const esito = segui(caricaNotifiche({ email: 'ada@example.com' }));
             await vi.advanceTimersByTimeAsync(5_000);
             expect(esito).toStrictEqual({ come: 'errore', con: undefined });
             setFlagsFromString('--expose-gc');
@@ -788,7 +788,7 @@ describe('una risposta che dice di chi è', () => {
             const scritture = vi.spyOn(Storage.prototype, 'setItem');
 
             caricataDa(29_999);
-            segui(caricaNotifiche('ada@example.com'));
+            segui(caricaNotifiche({ email: 'ada@example.com' }));
             await vi.advanceTimersByTimeAsync(0);
             expect(ricarica).not.toHaveBeenCalled();
 
@@ -803,7 +803,7 @@ describe('una risposta che dice di chi è', () => {
             vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: elenco, aggiornati_il: unIstante, workspace: 'uat-vendite', persona: 'ada@example.com' })));
             caricataDa(0);
 
-            await expect(caricaNotifiche('ada@example.com')).resolves.toStrictEqual({ elenco, il: unIstante, workspace: 'uat-vendite' });
+            await expect(caricaNotifiche({ email: 'ada@example.com' })).resolves.toStrictEqual({ elenco, il: unIstante, workspace: 'uat-vendite' });
             expect(ricarica).not.toHaveBeenCalled();
         });
         it('nessun file del pacchetto che si installa nomina un archivio del browser o il nome della finestra: il tetto è l\'età della pagina, e niente resta dopo l\'uscita (sprint 43 · T3.6)', () => {
@@ -822,8 +822,8 @@ describe('una risposta che dice di chi è', () => {
         // e vale come le altre risposte di un'altra persona; quello della persona a schermo resta l'errore di sempre.
         const senzaWorkspace: [string, (email: string) => Promise<unknown>][] = [
             ...chiamate.map(([nome, , chiama]) => [nome, chiama] as [string, (email: string) => Promise<unknown>]),
-            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', email)],
-            ['segnaLetta', (email) => segnaLetta('uat-n69', email)],
+            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', { email })],
+            ['segnaLetta', (email) => segnaLetta('uat-n69', { email })],
         ];
 
         it.each(senzaWorkspace)('%s: il 403 `gettone_senza_workspace` di un\'altra persona su una pagina appena caricata vale come le altre sue risposte: a 5.000 ms un errore senza niente dentro, a 30.000 ms la pagina si ricarica, una volta (sprint 44 · T4.2)', async (_nome, chiama) => {
@@ -863,8 +863,8 @@ describe('una risposta che dice di chi è', () => {
         // portato a un'altra persona (allora una ricarica in più, detta nel README).
         const col409: [string, (email: string) => Promise<unknown>][] = [
             ...chiamate.map(([nome, , chiama]) => [nome, chiama] as [string, (email: string) => Promise<unknown>]),
-            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', email)],
-            ['segnaLetta', (email) => segnaLetta('uat-n69', email)],
+            ['segnaLetteFinoA', (email) => segnaLetteFinoA('2026-10-06T11:55:00+00:00', 'acme-marketing', { email })],
+            ['segnaLetta', (email) => segnaLetta('uat-n69', { email })],
         ];
         const ilNuovo409 = () => diErrore(409, { errore: 'persona_diversa', persona: '' });
 
@@ -921,11 +921,12 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
     });
 
     const finoA = '2026-10-06T11:55:00+00:00';
-    const richieste: [string, (email: string) => Promise<unknown>, Record<string, unknown>, Record<string, unknown> | undefined][] = [
-        ['GET /cornice/notifiche', (email) => caricaNotifiche(email), { data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }, undefined],
-        ['POST /cornice/ricerca', (email) => cerca('lancio', new AbortController().signal, email), { data: [], workspace: 'uat-vendite' }, { q: 'lancio' }],
-        ['POST /cornice/notifiche/letture', (email) => segnaLetteFinoA(finoA, 'acme-marketing', email), { data: { fino_a: '2026-10-06T11:55:00.000Z' } }, { fino_a: finoA, workspace: 'acme-marketing' }],
-        ['PATCH /cornice/notifiche/uat-n69/lettura', (email) => (aSchermo === email || mettiASchermo(email), segnaLetta('uat-n69', email)), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
+    // Chi chiede è la persona della cornice che fa la richiesta: la sua email e, se i dati la danno, la sua impronta.
+    const richieste: [string, (email: string, impronta?: string) => Promise<unknown>, Record<string, unknown>, Record<string, unknown> | undefined][] = [
+        ['GET /cornice/notifiche', (email, impronta) => caricaNotifiche({ email, impronta }), { data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }, undefined],
+        ['POST /cornice/ricerca', (email, impronta) => cerca('lancio', new AbortController().signal, email, impronta), { data: [], workspace: 'uat-vendite' }, { q: 'lancio' }],
+        ['POST /cornice/notifiche/letture', (email, impronta) => segnaLetteFinoA(finoA, 'acme-marketing', { email, impronta }), { data: { fino_a: '2026-10-06T11:55:00.000Z' } }, { fino_a: finoA, workspace: 'acme-marketing' }],
+        ['PATCH /cornice/notifiche/uat-n69/lettura', (email, impronta) => (aSchermo === email || mettiASchermo(email), segnaLetta('uat-n69', { email, impronta })), { data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }, { letta: true }],
     ];
     const corpoDi = (opzioni?: RequestInit) => (opzioni?.body == null ? undefined : (JSON.parse(String(opzioni.body)) as unknown));
 
@@ -943,19 +944,26 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
     });
 
     // Sprint 60 · T1.1 (voce #2144): l'email detta in `Persona` non basta quando un'email passa da un account a un altro; ogni
-    // richiesta porta anche l'impronta di zr-auth della persona della cornice montata, e senza impronta parte un testo che non è un'impronta
-    // (`undefined` nel browser), che StessaPersona non confronta.
-    it.each(richieste)('%s porta in `X-Zr-Persona` l\'impronta data dalla cornice montata, e senza impronta un testo che non è un\'impronta (sprint 60 · T1.1)', async (_richiesta, chiama, corpo) => {
+    // richiesta porta anche l'impronta di zr-auth, e senza impronta parte un testo che non è un'impronta (`undefined` nel
+    // browser), che StessaPersona non confronta. Sprint 61 · T1.1 e T1.2 (voce #2150): l'impronta è quella della cornice che
+    // chiede, non quella dell'ultima montata. Con A (impronta i1) e poi B (stessa email, impronta i2) montate insieme, le
+    // richieste di A portano i1 e quelle di B i2 (nella `v2.20.0` tutte i2); e una richiesta senza impronta non prende quella di
+    // un'altra cornice montata.
+    it.each(richieste)('%s porta in `X-Zr-Persona` l\'impronta della cornice che chiede, anche con un\'altra cornice della stessa email montata dopo, e senza impronta un testo che non è un\'impronta (sprint 60 · T1.1; sprint 61 · T1.1, T1.2)', async (_richiesta, chiama, corpo) => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta(corpo));
         vi.stubGlobal('fetch', fetchFinto);
         onTestFinished(() => mettiASchermo(undefined));
+        const i2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
-        const conLImpronta = monta('ada@example.com', IMPRONTA);
+        monta('ada@example.com', IMPRONTA);
+        await chiama('ada@example.com', IMPRONTA);
+        monta('ada@example.com', i2);
+        await chiama('ada@example.com', IMPRONTA);
+        await chiama('ada@example.com', i2);
         await chiama('ada@example.com');
-        smonta(conLImpronta);
-        monta('ada@example.com');
-        await chiama('ada@example.com');
-        expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([IMPRONTA, expect.not.stringMatching(/^[0-9a-f]{32}$/)]);
+        const intestazioni = fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers));
+        expect(intestazioni.map((dette) => dette.get('X-Zr-Persona'))).toStrictEqual([IMPRONTA, IMPRONTA, i2, expect.not.stringMatching(/^[0-9a-f]{32}$/)]);
+        expect(intestazioni.map((dette) => dette.get('Persona'))).toStrictEqual(Array(4).fill('ada%40example.com'));
     });
 
     it.each(richieste)('%s con un\'email che ha caratteri fuori da Latin-1 parte lo stesso: nell\'intestazione ci sono solo caratteri ASCII, e decodificata è quell\'email (sprint 40 · T3, invariante)', async (_richiesta, chiama, corpo) => {
@@ -1061,7 +1069,7 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
         expect(aSchermo).toBe('grace@example.com');
     });
 
-    it('due account con la stessa email: smontata la cornice del secondo, le richieste portano l\'impronta del primo (sprint 60 · T1.1, S2)', async () => {
+    it('due account con la stessa email: smontata la cornice del secondo, a schermo resta il primo, e le sue richieste portano la sua impronta (sprint 60 · T1.1, S2; sprint 61 · T1.1)', async () => {
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [], aggiornati_il: unIstante, workspace: 'uat-vendite' }));
         vi.stubGlobal('fetch', fetchFinto);
         onTestFinished(() => void vi.unstubAllGlobals());
@@ -1072,7 +1080,7 @@ describe('la pila delle cornici montate (sprint 57 · T2)', () => {
         smonta(grace);
 
         expect(aSchermo).toBe('ada@example.com');
-        await caricaNotifiche('ada@example.com');
+        await caricaNotifiche({ email: 'ada@example.com', impronta: IMPRONTA });
         expect(new Headers(fetchFinto.mock.calls[0]?.[1]?.headers).get('X-Zr-Persona')).toBe(IMPRONTA);
     });
 });

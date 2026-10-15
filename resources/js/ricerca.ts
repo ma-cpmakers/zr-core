@@ -9,7 +9,7 @@ import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 import { nomeDellaVoce, nomePulito, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, prodottoDelRegistro, registro, type CodiceDelContesto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
 import type { StatoDellaRicerca } from './cornice';
-import type { chiama, RisultatoDellaRicerca } from './servizi';
+import type { chiama, Persona, RisultatoDellaRicerca } from './servizi';
 
 /** Senza le chiavi che non hanno un valore: l'`AppShell` distingue una prop che manca da una `undefined`. */
 const senzaUndefined = <T>(oggetto: { [K in keyof T]: T[K] | undefined }) => Object.fromEntries(Object.entries(oggetto).filter(([, valore]) => valore !== undefined)) as T;
@@ -24,9 +24,9 @@ const senzaUndefined = <T>(oggetto: { [K in keyof T]: T[K] | undefined }) => Obj
  * senza la lista: senza, un risultato non ha un indirizzo, e con `..` ne avrebbe un altro. `email` è quella di chi la cornice
  * mostra: i risultati, o un errore, di un'altra persona non tornano (`chiama`).
  */
-export async function cerca(parola: string, segnale: AbortSignal, email: string, chiama_: typeof chiama): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
+export async function cerca(parola: string, segnale: AbortSignal, persona: Persona, chiama_: typeof chiama): Promise<{ risultati: RisultatoDellaRicerca[]; workspace: string }> {
     const indirizzo = '/cornice/ricerca';
-    const corpo = (await chiama_(indirizzo, email, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
+    const corpo = (await chiama_(indirizzo, persona, 'POST', { q: parola }, { signal: segnale })) as { data?: unknown; workspace?: unknown } | null;
     if (!Array.isArray(corpo?.data)) {
         throw new Error(`POST ${indirizzo}: data`);
     }
@@ -151,12 +151,12 @@ const TETTO_DEL_FRENO = 60;
  * Di una richiesta che non è più l'ultima (`inVolo`) l'esito non entra nello stato, tranne il freno, che è della persona.
  */
 
-export function cercaPer(parola: string, questa: AbortController, email: string, inVolo: { current: AbortController | undefined }, frenataFinoA: { current: number }, mostra: (stato: StatoDellaRicerca) => void, seDaAccettare: (errore: unknown) => void, nelFreno: () => void, aSchermo: string | undefined, chiama_: typeof chiama): Promise<void> | undefined {
-    if (questa.signal.aborted || email !== aSchermo) {
+export function cercaPer(parola: string, questa: AbortController, persona: Persona, inVolo: { current: AbortController | undefined }, frenataFinoA: { current: number }, mostra: (stato: StatoDellaRicerca) => void, seDaAccettare: (errore: unknown) => void, nelFreno: () => void, aSchermo: string | undefined, chiama_: typeof chiama): Promise<void> | undefined {
+    if (questa.signal.aborted || persona.email !== aSchermo) {
         return undefined;
     }
 
-    return cerca([...parola].slice(0, 100).join(''), questa.signal, email, chiama_).then(
+    return cerca([...parola].slice(0, 100).join(''), questa.signal, persona, chiama_).then(
         ({ risultati, workspace }) => {
             if (inVolo.current === questa) {
                 mostra({ stato: 'ready', risultati, workspace });

@@ -4228,6 +4228,56 @@ describe('il pannello delle notifiche', () => {
         expect(naviga).not.toHaveBeenCalled();
     });
 
+    // Sprint 61 · T1.1 e T1.2 (voce #2150): due cornici montate insieme, con la stessa email e due account (impronte i1 e i2).
+    // Ogni richiesta porta l'impronta della cornice che la fa: nella `v2.20.0` quelle della prima portavano l'impronta
+    // dell'ultima montata, la cima della pila. E una cornice senza impronta nei dati non prende quella dell'altra.
+    it.each<[string, string | undefined]>([
+        ['con l\'impronta i1 nei dati, le sue richieste portano i1', 'cccccccccccccccccccccccccccccccc'],
+        ['senza impronta nei dati, le sue richieste non portano quella dell\'altra', undefined],
+    ])('con due cornici di Ada montate insieme, la seconda di un altro account (impronta i2), ogni richiesta della prima — notifiche, «Segna tutte come lette», lettura col clic, ricerca — porta la sua impronta e quelle della seconda i2; %s (sprint 61 · T1.1, T1.2)', async (_caso, i1) => {
+        const i2 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+        const fetchFinto = vi.fn(async (indirizzo: string, opzioni?: RequestInit) => {
+            if (indirizzo === '/cornice/notifiche') {
+                return risposta({ data: conGliId, workspace: dati.workspace.slug });
+            }
+            if (indirizzo === '/cornice/notifiche/letture') {
+                return segnateFinoA(opzioni);
+            }
+
+            return indirizzo === '/cornice/ricerca' ? risposta({ data: [], workspace: dati.workspace.slug }) : risposta({ data: { letta: true } });
+        });
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        const prima = <Cornice key="prima" dati={i1 ? { ...dati, persona: { ...dati.persona, impronta: i1 } } : dati} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        const seconda = <Cornice key="seconda" dati={{ ...dati, persona: { ...dati.persona, impronta: i2 } }} naviga={naviga} onLogout={esciSenzaEffetto} />;
+        await mostra(<>{[prima, seconda]}</>);
+        expect(aSchermo).toBe(dati.persona.email);
+
+        await clic(tutti('.zr-bell')[0] ?? null);
+        await clic(segnaTutte());
+        await clic(voci()[0] ?? null);
+        await act(prossimoGiro);
+        const campo = tutti('.zr-search input')[0] as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'lancio');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((fatto) => setTimeout(fatto, 350));
+        });
+        await vi.waitFor(() => expect(richieste(fetchFinto)).toContain('POST /cornice/ricerca'));
+        await clic(tutti('.zr-bell')[1] ?? null);
+
+        const diA = i1 ?? expect.not.stringMatching(/^[0-9a-f]{32}$/);
+        const dette = fetchFinto.mock.calls.map(([indirizzo, opzioni]) => [`${opzioni?.method ?? 'GET'} ${indirizzo}`, new Headers(opzioni?.headers).get('X-Zr-Persona'), new Headers(opzioni?.headers).get('Persona')]);
+        expect(dette).toStrictEqual([
+            ['GET /cornice/notifiche', diA, 'ada%40example.com'],
+            ['POST /cornice/notifiche/letture', diA, 'ada%40example.com'],
+            ['PATCH /cornice/notifiche/uat-n59/lettura', diA, 'ada%40example.com'],
+            ['POST /cornice/ricerca', diA, 'ada%40example.com'],
+            ['GET /cornice/notifiche', i2, 'ada%40example.com'],
+        ]);
+    });
+
     // Review della PR #91 (R3): fra persone diverse lo scenario nuovo è smontare l'ultima montata: a schermo torna quella
     // rimasta, e il clic su una sua notifica apre la risorsa. Fino alla `v2.17.0` lo schermo restava vuoto.
     it('montate la cornice di Ada e poi quella di Grace, smontata quella di Grace a schermo torna Ada, e il clic su una notifica nella sua apre la risorsa (sprint 57 · T2.3, review R3)', async () => {

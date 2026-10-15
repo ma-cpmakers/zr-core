@@ -586,7 +586,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         if (svuota) {
             setNotifiche({ stato: 'loading', elenco: [], richiesta: questa });
         }
-        const chiesto = caricaNotifiche(persona.email);
+        const chiesto = caricaNotifiche(persona);
         chiesto.catch(seDaAccettare);
         const frasi = caricaFrasi(lingua, senzaAttesa);
         frasi.catch(() => undefined);
@@ -698,7 +698,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
-        return segnaLetta(id, persona.email).then(
+        return segnaLetta(id, persona).then(
             ({ il }) => {
                 if (!letta) {
                     setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
@@ -758,7 +758,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente. E con l'email di chi è mostrato: nemmeno se
             // è passata a un'altra persona.
-            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug, persona.email));
+            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug, persona));
         } catch (errore) {
             // Non cambia niente: il pulsante resta, per riprovare.
             seDaAccettare(errore);
@@ -900,7 +900,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // `aSchermo` e `chiama` di qui, letti all'arrivo: dalla `v2.16.0`, perché il pezzo può avere un'altra copia di `servizi`); una
         // cornice smontata ha annullato la sua nella pulizia, anche se quella rifatta è della stessa persona.
         chiediLaRicerca().then(
-            (arrivata) => arrivata.cercaPer(parola, questa, persona.email, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno, aSchermo, chiama),
+            (arrivata) => arrivata.cercaPer(parola, questa, persona, ricercaInVolo, frenataFinoA, setRicerca, seDaAccettare, nelFreno, aSchermo, chiama),
             () => ricercaInVolo.current === questa && setRicerca({ stato: 'error' }),
         );
     };

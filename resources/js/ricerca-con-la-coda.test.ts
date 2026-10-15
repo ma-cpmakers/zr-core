@@ -18,9 +18,11 @@ describe('il pezzo della ricerca con la `chiama` e chi è a schermo della cornic
         const mostra = vi.fn();
         const questa = new AbortController();
 
-        await cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, { current: 0 }, mostra, () => undefined, () => undefined, 'anna@esempio.it', chiama);
+        // La persona della cornice che cerca, con la sua impronta (sprint 61 · T1.1): alla `chiama` arriva lei, non un'altra.
+        const anna = { email: 'anna@esempio.it', impronta: 'cccccccccccccccccccccccccccccccc' };
+        await cercaPer('ua', questa, anna, { current: questa }, { current: 0 }, mostra, () => undefined, () => undefined, 'anna@esempio.it', chiama);
 
-        expect(chiama).toHaveBeenCalledWith('/cornice/ricerca', 'anna@esempio.it', 'POST', { q: 'ua' }, { signal: questa.signal });
+        expect(chiama).toHaveBeenCalledWith('/cornice/ricerca', anna, 'POST', { q: 'ua' }, { signal: questa.signal });
         expect(mostra).toHaveBeenCalledWith({ stato: 'ready', risultati: [], workspace: 'principale' });
     });
 
@@ -29,8 +31,8 @@ describe('il pezzo della ricerca con la `chiama` e chi è a schermo della cornic
         const chiama = vi.fn(() => Promise.resolve(risposta));
         const questa = new AbortController();
 
-        expect(cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, { current: 0 }, () => undefined, () => undefined, () => undefined, 'bruno@esempio.it', chiama)).toBeUndefined();
-        expect(cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, { current: 0 }, () => undefined, () => undefined, () => undefined, undefined, chiama)).toBeUndefined();
+        expect(cercaPer('ua', questa, { email: 'anna@esempio.it' }, { current: questa }, { current: 0 }, () => undefined, () => undefined, () => undefined, 'bruno@esempio.it', chiama)).toBeUndefined();
+        expect(cercaPer('ua', questa, { email: 'anna@esempio.it' }, { current: questa }, { current: 0 }, () => undefined, () => undefined, () => undefined, undefined, chiama)).toBeUndefined();
         expect(chiama).not.toHaveBeenCalled();
     });
 });
@@ -45,13 +47,13 @@ describe('un 429 da un\'altra copia del modulo (T3.3)', () => {
         const questa = new AbortController();
         const daUnAltraCopia = Object.assign(new Error('429 troppe_richieste'), { secondi: 30 });
 
-        await cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, frenataFinoA, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(daUnAltraCopia));
+        await cercaPer('ua', questa, { email: 'anna@esempio.it' }, { current: questa }, frenataFinoA, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(daUnAltraCopia));
 
         expect(nelFreno).toHaveBeenCalledTimes(1);
         expect(frenataFinoA.current).toBe(31_000);
         expect(mostra).not.toHaveBeenCalled();
 
-        await cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, frenataFinoA, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(Object.assign(new Error('429'), { secondi: 3600 })));
+        await cercaPer('ua', questa, { email: 'anna@esempio.it' }, { current: questa }, frenataFinoA, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(Object.assign(new Error('429'), { secondi: 3600 })));
 
         expect(frenataFinoA.current).toBe(61_000);
     });
@@ -62,7 +64,7 @@ describe('un 429 da un\'altra copia del modulo (T3.3)', () => {
         const mostra = vi.fn();
         const questa = new AbortController();
 
-        await cercaPer('ua', questa, 'anna@esempio.it', { current: questa }, { current: 0 }, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(new Error('500')));
+        await cercaPer('ua', questa, { email: 'anna@esempio.it' }, { current: questa }, { current: 0 }, mostra, () => undefined, nelFreno, 'anna@esempio.it', () => Promise.reject(new Error('500')));
 
         expect(nelFreno).not.toHaveBeenCalled();
         expect(mostra).toHaveBeenCalledWith({ stato: 'error' });
