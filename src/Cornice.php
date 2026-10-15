@@ -87,7 +87,8 @@ final class Cornice
      * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
      *
      * Accanto all'email la persona porta l'impronta di zr-auth (`Persona::impronta()`, dalla `v2.20.0`; anche in `subito()`): un
-     * HMAC dell'id, né l'id né l'email, null per una sessione senza id. La cornice la manda in `X-Zr-Persona`, e StessaPersona la
+     * HMAC dell'id, né l'id né l'email, null per una sessione senza id o con un id che non è un testo non vuoto (dalla `v2.21.1`
+     * StessaPersona dà 409 a quest'ultima). La cornice la manda in `X-Zr-Persona`, e StessaPersona la
      * confronta: un'email passata da un account a un altro non basta più a una scheda rimasta aperta. Non va mai a schermo.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null

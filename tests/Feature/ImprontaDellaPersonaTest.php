@@ -183,3 +183,13 @@ it('con l\'id vuoto l\'ordine dei rifiuti resta quello di prima: una richiesta c
     }
     Http::assertNothingSent();
 });
+
+// Sprint 63 · T2.1 (voce #2204, Decisione di zr-pm 14216): il README dice che dalla `v2.21.1` un id che non dà un'impronta è
+// una persona sconosciuta, e non dice più che con ogni sessione senza impronta non si confronta niente.
+it('il README dice che dalla `v2.21.1` una sessione con un id vuoto, o che non è un testo, riceve il 409 a ogni richiesta della cornice, e che solo la sessione senza id resta senza confronto (sprint 63 · T2.1)', function () {
+    $readme = trim((string) preg_replace('/\s+/', ' ', (string) file_get_contents(__DIR__.'/../../README.md')));
+
+    expect(str_contains($readme, 'Dalla `v2.21.1` una sessione con un id che non dà un\'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni richiesta `cornice/*`, letture comprese, riceve lo stesso 409 senza chiamare il backoffice'))->toBe(true)
+        ->and(str_contains($readme, 'Con una sessione senza id (`id` assente o `null`) non si confronta niente, come prima.'))->toBe(true)
+        ->and(str_contains($readme, 'Con una sessione senza impronta non si confronta niente'))->toBe(false);
+});
