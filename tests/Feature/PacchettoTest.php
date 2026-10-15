@@ -6116,6 +6116,19 @@ it('il README non dice più che il pannello usa titoloDellaNotifica e risorsaDel
     'un host con caratteri non validi (R2)' => ['Un host con caratteri che un nome non ha prende `400` lo stesso'],
 ]);
 
+// Sprint 61 · T3.2 (voce #2150): i due limiti della `v2.20.0` non ci sono più, e il README non li dice al presente; quello
+// della cronologia salvata prima della `v2.20.0` resta, e resta detto.
+it('il README non dice più che il layout riconosce la persona dalla sola email, né che con due cornici insieme le richieste della prima portano l\'impronta dell\'ultima; dice ancora il limite della cronologia di prima (sprint 61 · T3.2)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'riconosce ancora la persona dalla sola email'))->toBe(false)
+        ->and(str_contains($readme, 'portano l\'impronta dell\'ultima'))->toBe(false)
+        ->and(str_contains($readme, 'Restano due limiti, tutti e due dalla parte del browser'))->toBe(false)
+        ->and(str_contains($readme, '(`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta'))->toBe(true)
+        ->and(str_contains($readme, 'ogni richiesta porta l\'impronta della cornice che la fa, non quella dell\'ultima montata'))->toBe(true)
+        ->and(str_contains($readme, 'Resta un limite: una voce della cronologia salvata prima della `v2.20.0` non ha l\'impronta'))->toBe(true);
+});
+
 it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chiamata che scrive la proprietà di `Registro` c\'è una volta, in `registroGiaLetto()`, e l\'azzeramento una volta, nel solo `afterEach`, dopo ogni caso di ogni file; nei file di `tests/Feature` nessuna delle due c\'è; e i due casi che provano l\'azzeramento fra due file sono al loro posto, l\'ultimo di questo file e il primo di quello che gira dopo (sprint 27 · T5.2; lettura della PR #60, R3)', function () {
     // Le due chiamate sono spezzate: intere, questo file le troverebbe in sé stesso.
     $chiamate = ['set'.'Value(', 'registroGiaLetto('.'null)'];

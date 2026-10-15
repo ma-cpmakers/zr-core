@@ -424,12 +424,14 @@ deve essere quella della sessione (le maiuscole o un testo qualunque sono un'alt
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
 niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`, altrimenti la sua cornice
 resta protetta solo dall'email. L'impronta è un HMAC con la chiave dell'app (`APP_KEY`): un frontend non la condivide con un
-altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Restano due limiti, tutti e due dalla parte del browser (il
-server confronta sempre l'impronta della sessione): il layout in due dati (`LayoutDellaCornice`) riconosce ancora la persona
-dalla sola email, e con Indietro su una pagina dell'account di prima, della stessa email ma di un altro workspace, ne mostra i
-dati sotto il nome di adesso finché non si ricarica; e con due cornici montate insieme, della stessa email e di due account,
-le richieste di quella montata prima portano l'impronta dell'ultima. Una voce della cronologia salvata prima della `v2.20.0`
-non ha l'impronta: con Indietro, la prima volta, la cornice la prende per un'altra persona (si rifà, o la pagina si ricarica).
+altro modulo, o la stessa persona avrebbe la stessa impronta nei due. Nella `v2.20.0` restavano due limiti dalla parte del
+browser (il server confronta sempre l'impronta della sessione), e dalla `v2.20.1` non ci sono più: il layout in due dati
+(`LayoutDellaCornice`) riconosce anche lui la persona da email e impronta, e una pagina dell'account di prima, della stessa
+email, vale come quella di un'altra persona (con Indietro i suoi dati non vanno sotto il nome di adesso: senza il segno della
+lettura manda l'evento `zr-core:altra-persona` e ricarica la pagina); e con due cornici montate insieme, della stessa email
+e di due account, ogni richiesta porta l'impronta della cornice che la fa, non quella dell'ultima montata. Resta un limite:
+una voce della cronologia salvata prima della `v2.20.0` non ha l'impronta, e con Indietro, la prima volta, la cornice la prende
+per un'altra persona (si rifà, o la pagina si ricarica).
 
 La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l'intestazione `Persona` porta l'email di chi la
 cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta solo caratteri di Latin-1. L'email non sta mai

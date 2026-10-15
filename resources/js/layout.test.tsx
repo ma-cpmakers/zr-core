@@ -2030,6 +2030,56 @@ describe('la cornice in due dati, sotto il layout', () => {
         ricarica.mockRestore();
     });
 
+    // Sprint 61 · T2 (voce #2150): con la stessa email un'altra impronta di zr-auth è un altro account, e quindi un'altra persona,
+    // anche per il layout (fino alla `v2.20.0` il layout guardava la sola email). `i2` è l'account di chi è entrato, `i1` un altro.
+    const [i1, i2] = ['cccccccccccccccccccccccccccccccc', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'];
+    const adaCon = (impronta?: string) => (impronta ? { ...dati.persona, impronta } : dati.persona);
+
+    it.each([
+        ['con la `cornice` intera, in un altro workspace', () => visita({ ...dati, persona: adaCon(i2), non_lette: 1 }, <PaginaB key="2" />), () => visita({ ...datiAltroWorkspace, persona: adaCon(i1) }, <PaginaA key="1" />)],
+        ['con la `cornice` intera, nello stesso workspace', () => visita({ ...dati, persona: adaCon(i2), non_lette: 1 }, <PaginaB key="2" />), () => visita({ ...dati, persona: adaCon(i1), non_lette: 4 }, <PaginaA key="1" />)],
+        ['con `subito` senza il segno della sessione, in un altro workspace', () => inDue({ subito: { ...subito, persona: adaCon(i2), workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />), () => inDue({ subito: { ...subito, persona: adaCon(i1) } }, <PaginaA key="1" />)],
+    ])('con Indietro su una pagina della stessa email e di un altro account (un\'altra impronta), %s, l\'evento zr-core:altra-persona parte una volta, prima della ricarica, e niente di quella pagina va a schermo (sprint 61 · T2.1)', async (_come, prima, indietro) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const avvisi = contaGliAvvisi(ricarica);
+        await prima();
+        expect(avvisi).toStrictEqual([]);
+
+        await indietro();
+
+        expect(ricarica).toHaveBeenCalledTimes(1);
+        expect(avvisi).toStrictEqual([0]);
+        expect(uno('#uat-pagina-a')).toBeNull();
+        ricarica.mockRestore();
+    });
+
+    // T2.3: senza impronta da tutte e due le parti decide l'email, come fino alla `v2.19`: la stessa persona non ricarica.
+    it('con Indietro su una pagina della stessa email in un altro workspace, senza impronta da tutte e due le parti, la pagina non si ricarica e mostra la cornice di quel workspace (sprint 61 · T2.3)', async () => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        await inDue({ subito: { ...subito, workspace: datiAltroWorkspace.workspace } }, <PaginaB key="2" />);
+        await inDue({ subito }, <PaginaA key="1" />);
+
+        expect(ricarica).not.toHaveBeenCalled();
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        expect(uno('aside.zr-side')?.textContent).toContain(dati.workspace.nome);
+        ricarica.mockRestore();
+    });
+
+    // T2.2 e T2.3: un `dopo` della stessa email letto con una sessione più vecchia di quella di `subito` vale solo se è dello
+    // stesso account: con un'altra impronta è di chi c'era prima, e la cornice resta di `subito`, in attesa, senza i suoi dati.
+    it.each<[string, string | undefined, string | undefined, boolean]>([
+        ['`dopo` di un altro account (impronta i1 sotto i2): non vale', i2, i1, false],
+        ['`dopo` dello stesso account (impronta i2 tutte e due): vale', i2, i2, true],
+        ['senza impronta da tutte e due le parti decide l\'email: vale', undefined, undefined, true],
+    ])('`subito` e un `dopo` della stessa email con una sessione più vecchia: %s (sprint 61 · T2.2, T2.3)', async (_caso, diSubito, diDopo, vale) => {
+        const suo: DatiSubito = { ...subito, persona: adaCon(diSubito), sessione_il: '2026-10-13T08:00:05.000000Z' };
+        const letto: DatiDopo = { ...dopo, aziende, lingua: 'it', persona: adaCon(diDopo), workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:01.000000Z', sessione_il: '2026-10-13T08:00:01.000000Z' };
+        await inDue({ subito: suo, dopo: letto }, <PaginaA />);
+
+        expect(uno('#uat-pagina-a')).not.toBeNull();
+        expect([etichette().includes('CRM'), uno('.zr-ws-switch') !== null, uno('.zr-bell-count')?.textContent ?? null]).toStrictEqual(vale ? [true, true, '7'] : [false, false, null]);
+    });
+
     it.each([
         ['la stessa persona, senza il segno', { ...dati, non_lette: 9 }],
         ['un\'altra persona, col segno da tutte e due le parti', { ...dati, persona: altra, non_lette: 2, aggiornati_il: '2026-10-14T12:00:01.000000Z' }],
