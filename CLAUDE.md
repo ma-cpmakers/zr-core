@@ -115,5 +115,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 60 chiuso (`v2.20.0`, eccezione di sicurezza 13646/13648); fermo finché Luciano non dà il via al design system (Decisione 13345).
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 61 chiuso (`v2.20.1`, eccezione di sicurezza 13697/13713); fermo finché Luciano non dà il via al design system (Decisione 13345).
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
