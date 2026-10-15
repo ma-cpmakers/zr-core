@@ -95,6 +95,17 @@ export class TroppeRichieste extends Error {
  */
 export let aSchermo: string | undefined;
 
+/**
+ * L'impronta di zr-auth della persona della cornice montata (`persona.impronta` dei dati, dalla `v2.20.0`): ogni richiesta la porta
+ * in `X-Zr-Persona`, e StessaPersona la confronta con quella della sessione. Con l'email detta in `Persona` una scheda rimasta
+ * aperta di un altro account con la stessa email passerebbe; con l'impronta no. Senza (dati di prima) parte un testo che non è
+ * un'impronta (`undefined` nel browser), e la parte server confronta solo l'email.
+ */
+export let impronta: string | null | undefined;
+export function conImpronta(i?: string | null): void {
+    impronta = i;
+}
+
 const montate: string[] = [];
 export function mostra(email: string, via?: 1): void {
     via ? montate.splice(montate.indexOf(email), 1) : montate.push(email);
@@ -141,7 +152,7 @@ export function mostra(email: string, via?: 1): void {
  */
 export async function chiama(indirizzo: string, email: string, method?: string, dati?: object, altro?: { signal?: AbortSignal; keepalive?: boolean }): Promise<unknown> {
     // Per `fetch` un `method` o un `body` che è `undefined` è come se mancasse: la `GET` parte senza corpo.
-    const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
+    const risposta = await fetch(indirizzo, { method, ...altro, headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': impronta!, Persona: encodeURIComponent(email), ...gettoneCsrf() }, body: dati && JSON.stringify(dati) } as RequestInit);
     const corpo = (await risposta.json().catch(() => null)) as { errore?: unknown; codice?: unknown; persona?: unknown } | null;
     const chi = corpo?.persona;
     if (email && typeof chi === 'string' && chi !== email) {

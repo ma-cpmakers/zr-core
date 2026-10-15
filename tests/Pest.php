@@ -83,6 +83,15 @@ function senzaCommenti(string $codice): string
 }
 
 /**
+ * L'impronta di zr-auth della persona con questo id (sprint 60 · T1.1): la forma di `Persona::impronta()` della 0.12.41, rifatta
+ * qui da sé, così un caso prova che i dati della cornice portano quella e non un'altra (l'id, o un hash di zr-core).
+ */
+function improntaDi(string $id): string
+{
+    return substr(hash_hmac('sha256', 'zr-auth.persona|'.$id, (string) config('app.key')), 0, 32);
+}
+
+/**
  * Una sessione fatta a mano, senza il finto: l'accesso e, se c'è, il workspace, coi dati di accessi.crea e gettoni.crea.
  * La lingua è quella del profilo all'ingresso: zr-auth la mette nella sessione com'è.
  *

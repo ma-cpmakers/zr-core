@@ -99,9 +99,11 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.789 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.819 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
-d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Hanno
+d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
+30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
+sicurezza fra persone). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -205,7 +207,7 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email, impronta}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde, o (dalla `v2.17.0`) risponde con un elenco che la cornice non sa leggere — un'app, un'azienda o un workspace senza un campo testo: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
@@ -408,6 +410,17 @@ fa con l'impronta per le scritture del frontend; a una pagina di un'altra person
 `{errore: "persona_diversa", persona: ""}` di sopra, anche se porta un `X-Zr-Persona`. L'uscita è delle sole rotte
 `cornice/*`: le scritture del frontend nel gruppo `web` restano sotto `SoloDallaPersona`. Con zr-core fino alla `v2.18`
 l'interruttore acceso dà 409 alla ricerca e alle letture della cornice: prima si aggiorna zr-core, poi si accende.
+
+Dalla `v2.20.0` `StessaPersona` confronta anche l'impronta di zr-auth: un'email può passare da un account a un altro, e con
+la sola email una scheda rimasta aperta dell'account di prima leggerebbe e segnerebbe a nome di quello nuovo. I dati della
+cornice (`Cornice::dati()`, `subito()`, e quindi `dopo()` e `ridotta()`) portano in `persona.impronta` l'impronta della persona
+della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id, né l'id né l'email; `null` per una sessione senza id), che
+la cornice non mostra mai e manda in `X-Zr-Persona` a ogni richiesta `cornice/*`. Un'impronta detta che non è quella della
+sessione riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, anche con l'email giusta, senza chiamare il
+backoffice. Si confronta solo quando la sessione ne ha una e il testo ne ha la forma (32 cifre esadecimali): una richiesta
+senza `X-Zr-Persona`, o col testo `undefined` di dati che non la portano, vale come fino alla `v2.19` (decide l'email). Il
+frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa niente; quello che costruisce `persona` da
+sé ci aggiunge `impronta` da `Persona::impronta()`.
 
 La cornice, dalla `v2.6.0`, lo dice in ognuna delle quattro richieste: l'intestazione `Persona` porta l'email di chi la
 cornice mostra, passata da `encodeURIComponent` perché un'intestazione porta solo caratteri di Latin-1. L'email non sta mai

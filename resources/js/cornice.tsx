@@ -3,7 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, conImpronta, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -28,7 +28,12 @@ export interface DatiDellaCornice {
     /** La lingua della persona (`it`, `es`, `en`…): in una lingua che zr-core non ha, la cornice è in inglese. */
     lingua: string;
     /** Nell'avatar e in cima al menu del profilo. */
-    persona: { nome: string; email: string };
+    persona: {
+        nome: string;
+        email: string;
+        /** L'impronta di zr-auth della persona (dalla `v2.20.0`): la cornice la manda in `X-Zr-Persona`. Mai a schermo. */
+        impronta?: string | null;
+    };
     /** Il nome sta in cima alla sidebar, come testo; lo slug in ogni indirizzo dei prodotti. */
     workspace: { nome: string; slug: string };
     /**
@@ -843,6 +848,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona.email);
+        conImpronta(persona.impronta);
         void import('./rimedi').catch(() => undefined);
 
         return () => (mostra(persona.email, 1), ricercaInVolo.current?.abort());

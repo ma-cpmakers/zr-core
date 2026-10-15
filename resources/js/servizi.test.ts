@@ -2,9 +2,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { cerca as cercaCon } from './ricerca';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, conImpronta, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
 
 // Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
 const cerca = (parola: string, segnale: AbortSignal, email: string) => cercaCon(parola, segnale, email, chiama);
@@ -37,6 +37,9 @@ function cookieCsrf(valore?: string): void {
 
 const unIstante = '2026-10-06T12:00:08.123456Z';
 
+/** Un'impronta di zr-auth, come la danno i dati della cornice dalla `v2.20.0`: 32 cifre esadecimali. */
+const IMPRONTA = '0f1e2d3c4b5a69788796a5b4c3d2e1f0';
+
 describe('segnaLetta', () => {
     // Dalla `v2.14.0` una lettura riesce solo se chi l'ha chiesta è ancora a schermo: qui è Ada.
     beforeEach(() => mettiASchermo('ada@example.com'));
@@ -67,12 +70,14 @@ describe('segnaLetta', () => {
         ['senza il cookie parte senza X-XSRF-TOKEN', undefined, {}],
     ])('chiede PATCH /cornice/notifiche/<id>/lettura con {"letta": true} e con keepalive, e dà l\'istante della parte server: %s (sprint 22 · T2.1)', async (_quale, cookie, gettone) => {
         cookieCsrf(cookie);
+        conImpronta(IMPRONTA);
+        onTestFinished(() => conImpronta(undefined));
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: { id: 'uat-n69', letta: true }, segnata_il: unIstante }));
         vi.stubGlobal('fetch', fetchFinto);
 
         await expect(segnaLetta('uat-n69', 'ada@example.com')).resolves.toStrictEqual({ il: unIstante });
         expect(fetchFinto.mock.calls).toStrictEqual([
-            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
+            ['/cornice/notifiche/uat-n69/lettura', { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Zr-Persona': IMPRONTA, Persona: 'ada%40example.com', ...gettone }, body: '{"letta":true}', keepalive: true }],
         ]);
     });
 
@@ -923,6 +928,21 @@ describe('ogni richiesta dice di chi è la pagina che chiede', () => {
         expect(new Headers(opzioni?.headers).get('Persona')).toBe('ada%40example.com');
         expect(indirizzo).not.toContain('ada');
         expect(corpoDi(opzioni)).toStrictEqual(nelCorpo);
+    });
+
+    // Sprint 60 · T1.1 (voce #2144): l'email detta in `Persona` non basta quando un'email passa da un account a un altro; ogni
+    // richiesta porta anche l'impronta di zr-auth della persona della cornice montata, e senza impronta parte un testo che non è un'impronta
+    // (`undefined` nel browser), che StessaPersona non confronta.
+    it.each(richieste)('%s porta in `X-Zr-Persona` l\'impronta data dalla cornice montata, e senza impronta un testo che non è un\'impronta (sprint 60 · T1.1)', async (_richiesta, chiama, corpo) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+        onTestFinished(() => conImpronta(undefined));
+
+        conImpronta(IMPRONTA);
+        await chiama('ada@example.com');
+        conImpronta(undefined);
+        await chiama('ada@example.com');
+        expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([IMPRONTA, expect.not.stringMatching(/^[0-9a-f]{32}$/)]);
     });
 
     it.each(richieste)('%s con un\'email che ha caratteri fuori da Latin-1 parte lo stesso: nell\'intestazione ci sono solo caratteri ASCII, e decodificata è quell\'email (sprint 40 · T3, invariante)', async (_richiesta, chiama, corpo) => {

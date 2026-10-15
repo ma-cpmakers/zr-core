@@ -39,7 +39,7 @@ it('Cornice::subito() dà lingua, persona e workspace della sessione e in fondo 
 
     expect(Cornice::subito())->toBe([
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
     ])->and(session(Sessione::CHIAVE))->toBe($prima);
@@ -88,9 +88,9 @@ it('Cornice::dopo() dice di chi sono i dati che dà: se fra la subito() di una p
     Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
     $dopo = (array) Cornice::dopo();
 
-    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'])
+    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')])
         ->and($subito['sessione_il'] ?? null)->toBe('2026-10-09T21:31:05.123456Z')
-        ->and($dopo['persona'] ?? null)->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'])
+        ->and($dopo['persona'] ?? null)->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'impronta' => improntaDi('uat-grace')])
         ->and($dopo['lingua'] ?? null)->toBe('it')
         ->and($dopo['non_lette'] ?? null)->toBe(9)
         ->and($dopo['sessione_il'] ?? null)->toBe('2026-10-09T21:31:09.000001Z')
@@ -119,7 +119,7 @@ it('se il backoffice non risponde — la connessione cade, un 5xx, un 429 — Co
         'non_letti' => true,
         'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
         // Se io.mostra ha risposto la lingua è confermata da quella lettura.
@@ -157,12 +157,12 @@ it('col backoffice che non risponde Cornice::dopo() dice di chi è non_letti: se
     $grace = ['id' => 'uat-grace', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
     Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
 
-    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'])
+    expect($subito['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')])
         ->and(Cornice::dopo())->toBe([
             'non_letti' => true,
             'aggiornati_il' => '2026-10-09T21:31:09.000001Z',
             'lingua' => 'it',
-            'persona' => ['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'],
+            'persona' => ['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'impronta' => improntaDi('uat-grace')],
             'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
             'sessione_il' => '2026-10-09T21:31:09.000001Z',
         ])
@@ -182,7 +182,7 @@ it('col backoffice che non risponde dopo io.mostra, la lingua e il nome di non_l
         'non_letti' => true,
         'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'es',
-        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
         'lingua_il' => '2026-10-09T21:31:05.123456Z',
@@ -210,7 +210,7 @@ it('col backoffice che non risponde i due segni di non_letti, sessione_il e aggi
         'non_letti' => true,
         'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
         ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-09T21:31:05.123456Z']),
@@ -245,7 +245,7 @@ it('se Cornice::lingua() ha già letto io.mostra in questa richiesta, i segni di
         'non_letti' => true,
         'aggiornati_il' => '2026-10-09T21:31:05.123456Z',
         'lingua' => $lingua,
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-09T21:31:05.123456Z',
         ...($statoDiIo === 200 ? ['lingua_il' => '2026-10-09T21:31:05.123456Z'] : []),
@@ -342,7 +342,7 @@ it('a una risposta che non sa leggere Cornice::dopo() non lancia: dà non_letti 
         'non_letti' => true,
         'aggiornati_il' => '2026-10-14T15:31:05.123456Z',
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-14T15:31:05.123456Z',
         'lingua_il' => '2026-10-14T15:31:05.123456Z',
@@ -427,7 +427,7 @@ it('Cornice::subito() porta in fondo, dopo sessione_il, lingua_il: l\'istante in
     expect(array_keys((array) $prima))->toBe(['lingua', 'persona', 'workspace', 'sessione_il'])
         ->and($poi)->toBe([
             'lingua' => 'es',
-            'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+            'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
             'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
             'sessione_il' => '2026-10-09T21:31:09.000001Z',
             'lingua_il' => '2026-10-09T21:31:05.123456Z',
@@ -846,7 +846,7 @@ it('dopo un 403 di Cornice::dopo(), nella stessa richiesta Cornice::ridotta() d�
         'non_letti' => true,
         'aggiornati_il' => '2026-10-14T17:40:05.123456Z',
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '2026-10-14T17:40:05.123456Z',
         ...($percorso === '/v1/io' ? [] : ['lingua_il' => '2026-10-14T17:40:05.123456Z']),
@@ -886,7 +886,7 @@ it('senza una lettura di io.mostra nella richiesta, Cornice::ridotta() dà la st
         'non_letti' => true,
         'aggiornati_il' => '0000-01-01T00:00:00.000000Z',
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'sessione_il' => '0000-01-01T00:00:00.000000Z',
         ...($paginaDiPrima ? ['lingua_il' => '2026-10-14T17:40:05.123456Z'] : []),

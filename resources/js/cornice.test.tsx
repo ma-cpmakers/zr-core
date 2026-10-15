@@ -1606,6 +1606,20 @@ describe('il pannello delle notifiche', () => {
         expect(voci()).toHaveLength(3);
     });
 
+    // Sprint 60 · T1.1 (voce #2144): la cornice montata manda in ogni richiesta l'impronta di zr-auth dei suoi dati.
+    it('la cornice montata manda in `X-Zr-Persona` l\'impronta di `persona.impronta`, accanto all\'email in `Persona`, e l\'impronta non è a schermo (sprint 60 · T1.1)', async () => {
+        const impronta = '0f1e2d3c4b5a69788796a5b4c3d2e1f0';
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: notificheDelServer }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, impronta } }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+        const intestazioni = new Headers(fetchFinto.mock.calls[0]?.[1]?.headers);
+        expect([intestazioni.get('X-Zr-Persona'), intestazioni.get('Persona')]).toStrictEqual([impronta, 'ada%40example.com']);
+        expect(document.body.innerHTML).not.toContain(impronta);
+    });
+
     it('«Segna tutte come lette» manda una sola POST /cornice/notifiche/letture, col gettone CSRF e la creata_il più recente fra le caricate così com\'è, e nessuna PATCH; alla risposta le caricate sono tutte lette e la campanella non ha più un numero, anche con 60 nei dati e 2 caricate (sprint 6 · T4.1)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const lettura = inAttesa();

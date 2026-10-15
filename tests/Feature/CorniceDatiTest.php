@@ -117,7 +117,7 @@ function datiAttesi(string $aggiornatiIl, array $cambi = []): array
 {
     return [
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'prodotti' => ['pm' => 'attivo', 'crm' => 'disponibile'],
         'aziende' => [
@@ -218,7 +218,7 @@ it('lo stato di ogni app è quello di app.elenca, chiesto col gettone del worksp
 
     expect(Cornice::dati())->toMatchArray([
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'prodotti' => ['crm' => 'disponibile', 'pm' => 'attivo', 'reports' => 'in_arrivo'],
     ]);
@@ -483,7 +483,7 @@ it('la lingua e il nome che io.mostra dà diversi da quelli della sessione sono 
     // Gli stessi dati del primo caso, con la lingua e il nome nuovi: l'email e il workspace sono ancora quelli della sessione.
     $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson(datiAttesi('2026-10-10T09:40:00.000001Z', [
         'lingua' => 'es',
-        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
     ]));
 });
 
@@ -969,7 +969,7 @@ it('la lettura tenuta vale per quella persona: se fra la riga e i dati nella ses
     Sessione::entra(['gettone' => $suo, 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $grace, 'workspace' => marketing(), 'ruolo' => 'membro']);
     $dati = Cornice::dati();
 
-    expect($dati['persona'])->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'])
+    expect($dati['persona'])->toBe(['nome' => 'UAT Grace', 'email' => 'uat-grace@example.com', 'impronta' => improntaDi('uat-grace')])
         ->and($dati['non_lette'])->toBe(9)
         ->and(richiesteA('/v1/io'))->toHaveCount(2)
         ->and(richiesteA('/v1/io')->last()->hasHeader('Authorization', 'Bearer '.$suo))->toBeTrue();
@@ -1108,7 +1108,7 @@ function datiRidotti(string $aggiornatiIl, array $cambi = []): array
 {
     return [
         'lingua' => 'en',
-        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com'],
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'workspace' => ['nome' => 'UAT Marketing', 'slug' => 'uat-marketing'],
         'prodotti' => [],
         'aziende' => [],
@@ -1170,7 +1170,7 @@ it('i dati ridotti portano la lingua e il nome che io.mostra ha appena dato, com
 
     $dati = Cornice::dati();
 
-    expect([$dati['lingua'], $dati['persona'], $dati['accettazione_richiesta']])->toBe(['es', ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com'], true])
+    expect([$dati['lingua'], $dati['persona'], $dati['accettazione_richiesta']])->toBe(['es', ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')], true])
         ->and([Sessione::utente()['lingua'], Sessione::utente()['nome']])->toBe(['es', 'UAT Ada Lovelace']);
 });
 
