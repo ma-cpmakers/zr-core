@@ -549,7 +549,7 @@ it('della sessione cambiano solo la lingua e il nome, e dalla zr-auth 0.12.63 l\
 // come per un'altra persona. Con una zr-auth più vecchia l'email resta quella dell'ingresso, e i due versi si scambiano.
 it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima riceve 409 persona_diversa senza chiamare il backoffice, e una con l\'email nuova passa; fino alla zr-auth 0.12.62 il contrario (sprint 64 · T1.2)', function () {
     sessioneAMano(marketing());
-    backoffice(['/v1/io' => ioMostraCon(['email' => 'uat-ada-nuova@example.com'])]);
+    backoffice(['/v1/io' => ioMostraCon(['email' => 'uat-ada-nuova@example.com']), '/v1/io/notifiche' => ['data' => [], 'successivo' => null]]);
     $this->get('w/uat-marketing/cornice')->assertOk();
 
     [$giusta, $vecchia] = emailDaIoMostra() ? ['uat-ada-nuova@example.com', 'uat-ada@example.com'] : ['uat-ada@example.com', 'uat-ada-nuova@example.com'];
@@ -560,9 +560,8 @@ it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con
         ->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
     expect(Http::recorded()->count())->toBe($prima);
 
-    $risposta = $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($giusta)]);
-    expect($risposta->status())->not->toBe(409)
-        ->and(Http::recorded()->count())->toBeGreaterThan($prima);
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($giusta)])->assertOk()->assertJsonPath('persona', $giusta);
+    expect(Http::recorded()->count())->toBeGreaterThan($prima);
 });
 
 it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua o un nome che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
