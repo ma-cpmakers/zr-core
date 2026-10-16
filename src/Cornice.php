@@ -134,7 +134,7 @@ final class Cornice
     /**
      * La parte dei dati che sta nella sessione — lingua, persona, workspace —, per il frontend che non vuole aspettare il
      * backoffice prima del primo disegno (dalla `v2.1.0`): il resto lo dà `dopo()`, che può arrivare più tardi. Non chiama mai
-     * il backoffice, nemmeno per rileggere la lingua: lingua e nome sono quelli dell'ingresso finché una `dopo()`, una
+     * il backoffice, nemmeno per rileggere la lingua: lingua e nome (e dalla zr-auth 0.12.63 l'email) sono quelli dell'ingresso finché una `dopo()`, una
      * `dati()` o una `lingua()` non hanno riletto io.mostra, e dalla richiesta dopo sono quelli nuovi (la lingua no, se quella
      * lettura era più vecchia di quella che l'ha confermata: `conLaLinguaRicordata()`). null senza sessione o
      * senza workspace, come `dati()`.

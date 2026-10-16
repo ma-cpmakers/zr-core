@@ -564,7 +564,10 @@ it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con
     expect(Http::recorded()->count())->toBeGreaterThan($prima);
 });
 
-it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua o un nome che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
+it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua, un nome o un\'email che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1; sprint 64, review della PR #104, R2 e R4)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
+    // L'orologio fermo: `sessioneAMano` e io.mostra scrivono `email_verificata_il` con `now()`, e dalla zr-auth 0.12.63
+    // `Sessione::aggiorna` lo prende se è diverso. Con un secondo scattato fra i due il confronto della sessione sarebbe rosso.
+    Carbon::setTestNow(Carbon::parse('2026-10-10 09:45:00', 'UTC'));
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
     backoffice(['/v1/io' => ioMostraCon($utente, senza: $senza)]);
@@ -596,6 +599,11 @@ it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, 
     'il nome null' => [['lingua' => 'es', 'nome' => null], 'es', 'UAT Ada'],
     'il nome un numero' => [['lingua' => 'es', 'nome' => 7], 'es', 'UAT Ada'],
     'il nome una lista' => [['lingua' => 'es', 'nome' => ['UAT Ada Lovelace']], 'es', 'UAT Ada'],
+    // dalla zr-auth 0.12.63 anche l'email segue io.mostra, con la stessa regola: una che non vale non entra
+    'l\'email vuota' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => ''], 'es', 'UAT Ada Lovelace'],
+    'l\'email di soli spazi' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => '   '], 'es', 'UAT Ada Lovelace'],
+    'l\'email null' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => null], 'es', 'UAT Ada Lovelace'],
+    'l\'email un numero' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => 7], 'es', 'UAT Ada Lovelace'],
     // (c) a valori uguali la sessione è la stessa
     'gli stessi valori' => [[], 'en', 'UAT Ada'],
     // un backoffice che sbaglia la persona: niente entra, e la lettura non si rompe

@@ -1192,11 +1192,14 @@ it('il README dice, in «La parte server», che l\'ordine in cui Cornice::dati()
 // Sprint 13 · T2 (voce #1480): dalla v1.4.0 la parte server chiama `Sessione::aggiorna` di zr-auth a ogni lettura, e il README lo
 // dice dove dice da dove vengono la persona e la lingua. Fino alla v1.3.0 diceva che zr-core non la chiamava (sprint 12 · T7).
 
-it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cambiano solo quei due, da quale richiesta valgono, il rimedio, e che chi la chiama prima ne tiene il risultato (sprint 13 · T2.7; review, R2)', function () {
+it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() rimette la lingua e il nome della sessione con Sessione::aggiorna, che cosa resta dell\'ingresso, che l\'email dipende dalla zr-auth installata e che cosa succede a una scheda aperta con l\'email di prima, da quale richiesta valgono, il rimedio, e che chi la chiama prima ne tiene il risultato (sprint 13 · T2.7; review, R2)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende'),
-        'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'),
+        // Dalla `v2.21.2` (sprint 64 · T2.1; review della PR #104, R3) l'email non sta più fra ciò che resta dell'ingresso.
+        'workspace, ruolo e gettoni restano quelli dell\'ingresso' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Workspace, ruolo e gettoni restano quelli dell\'ingresso.'),
+        'l\'email secondo la zr-auth installata' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'),
+        'la scheda con l\'email di prima si ricarica' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Una scheda rimasta aperta con l\'email di prima riceve alla sua richiesta della cornice il 409 `persona_diversa`, e si ricarica come per un\'altra persona'),
         'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome della sessione dopo `Sessione::aggiorna`, da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
         // Dalla v1.8.0 il rimedio di prima è la strada di chi resta col suo codice: la riga è `Cornice::lingua()` (sprint 18 · T2.8).
@@ -1212,7 +1215,9 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
 
     expect($cosaDice($readme))->toBe([
         'a ogni lettura, con Sessione::aggiorna' => true,
-        'cambiano solo quei due' => true,
+        'workspace, ruolo e gettoni restano quelli dell\'ingresso' => true,
+        'l\'email secondo la zr-auth installata' => true,
+        'la scheda con l\'email di prima si ricarica' => true,
         'i dati li portano da quella stessa richiesta' => true,
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => true,
         'il rimedio' => true,
@@ -1225,7 +1230,9 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         ->and(str_contains(suUnaRiga($scambiate), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
             'a ogni lettura, con Sessione::aggiorna' => false,
-            'cambiano solo quei due' => false,
+            'workspace, ruolo e gettoni restano quelli dell\'ingresso' => false,
+            'l\'email secondo la zr-auth installata' => false,
+            'la scheda con l\'email di prima si ricarica' => false,
             'i dati li portano da quella stessa richiesta' => false,
             'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => false,
             'il rimedio' => false,

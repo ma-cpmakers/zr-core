@@ -299,7 +299,8 @@ richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 `dopo` non arriva la cornice è ridotta e senza avviso, e dalla `v2.2.0` campanella e ricerca caricano: una parola scritta
 intanto si cerca quando `dopo` arriva (dalla `v2.5.1` non una che nel frattempo hai cancellata), e il menu del profilo mostra la persona
 di `subito`. Dalla `v2.3.0`, se quella persona ha un'altra email rispetto a chi c'era prima, la cornice si rifà e la tua
-pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo. Con Indietro una pagina di prima
+pagina con lei: niente di ciò che la cornice teneva per l'altra resta a schermo. Dalla zr-auth 0.12.63 succede anche alla
+stessa persona che ha appena cambiato la sua email (README, «La cornice in due dati»). Con Indietro una pagina di prima
 non riporta nel menu del profilo chi c'era allora, né i suoi dati (`subito` porta il segno della
 sessione, `sessione_il`): nello stesso workspace dalla `v2.3.0`, in un altro dalla `v2.4.0`. Dalla `v2.4.0` anche `Cornice::dopo()` dice di chi è (lingua, persona e il suo segno): se la
 sessione è passata a un'altra persona fra `subito` e `dopo` la cornice è la sua, e tu non scrivi niente, se dai

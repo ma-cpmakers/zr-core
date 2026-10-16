@@ -1630,6 +1630,12 @@ In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è se
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
 non la controlla.
 
+Dalla zr-auth 0.12.63 l'email può cambiare a sessione aperta (il cambio dell'email di zr-home), e per la cornice la stessa
+persona con l'email nuova è un'altra persona. Nella scheda in cui cambia, i primi dati che la portano (un `dopo`, o la
+pagina dopo) rifanno la cornice e la pagina del frontend con lei, e ciò che tenevano si perde; con Indietro una pagina di
+prima del cambio vale come la pagina di un'altra persona. In un'altra scheda rimasta aperta la prossima richiesta della
+cornice riceve il 409 `persona_diversa`, e la pagina si ricarica.
+
 Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
 
 ```php
@@ -1770,7 +1776,8 @@ Che cosa vede la persona:
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
-una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Dalla `v2.4.0` quelli
+una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi, e dalla zr-auth 0.12.63 anche
+l'email. Dalla `v2.4.0` quelli
 riletti arrivano già con `dopo`, e la cornice li mostra da quel momento. Se c'è `cornice`, il layout
 usa quella e non guarda `subito` e `dopo`.
 
