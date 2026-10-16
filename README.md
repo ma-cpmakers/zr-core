@@ -268,8 +268,12 @@ lingua e workspace sono quelli della sessione di zr-auth. La lingua e il nome la
 lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non
 lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende: quali
 prende lo decide zr-auth (per la lingua vedi «Quale lingua c'è nella sessione», più sotto). Dalla `v2.11.4` la lingua di una
-lettura più vecchia di quella che l'ha confermata non le arriva (vedi `lingua_il`, più sotto). Cambiano solo quei due: email,
-workspace, ruolo e gettoni restano quelli dell'ingresso. I dati della cornice portano la lingua e il nome della sessione
+lettura più vecchia di quella che l'ha confermata non le arriva (vedi `lingua_il`, più sotto). Workspace, ruolo e gettoni
+restano quelli dell'ingresso. L'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell'ingresso, e
+dalla 0.12.63 segue io.mostra: `Sessione::aggiorna` la mette nella sessione se è cambiata — il cambio dell'email di
+zr-home —, e i dati della cornice la portano da quella stessa lettura. Una scheda rimasta
+aperta con l'email di prima riceve alla sua richiesta della cornice il 409 `persona_diversa`, e si ricarica come per
+un'altra persona. I dati della cornice portano la lingua e il nome della sessione
 dopo `Sessione::aggiorna`, da quella stessa richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare
 `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e
 dalla richiesta dopo è nuovo.
@@ -1392,7 +1396,8 @@ backoffice; `Cornice::dopo()` legge dal backoffice ciò che `Cornice::dati()` le
 più tardi. `Cornice::dopo()` dà anche il `workspace` di cui sono quei dati: nel layout vale su quello di `subito`, così se
 fra le due richieste la sessione è passata a un altro workspace (un'altra scheda) nome, slug e moduli sono dello stesso.
 Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione
-dopo quella lettura (la lingua e il nome riletti da io.mostra, l'email dell'ingresso) e, in fondo, `sessione_il`, il segno
+dopo quella lettura (la lingua e il nome riletti da io.mostra; l'email, quella dell'ingresso fino alla zr-auth 0.12.62 e
+quella di io.mostra dalla 0.12.63) e, in fondo, `sessione_il`, il segno
 di quella lettura. Nel layout valgono anche loro su quelli di
 `subito`: se fra le due richieste la sessione è passata a un'altra persona la cornice è la sua, coi suoi dati, e i dati
 di una persona non stanno sotto il nome di un'altra. Per un frontend che dà al layout `Cornice::dopo()` com'è non c'è
@@ -1625,6 +1630,12 @@ In tutti questi casi la cornice riconosce la persona dall'email. L'email c'è se
 backoffice: nelle API `/v1` l'email di una persona è obbligatoria, in ogni gettone. zr-auth la porta nella sessione com'è, e
 non la controlla.
 
+Dalla zr-auth 0.12.63 l'email può cambiare a sessione aperta (il cambio dell'email di zr-home), e per la cornice la stessa
+persona con l'email nuova è un'altra persona. Nella scheda in cui cambia, i primi dati che la portano (un `dopo`, o la
+pagina dopo) rifanno la cornice e la pagina del frontend con lei, e ciò che tenevano si perde; con Indietro una pagina di
+prima del cambio vale come la pagina di un'altra persona. In un'altra scheda rimasta aperta la prossima richiesta della
+cornice riceve il 409 `persona_diversa`, e la pagina si ricarica.
+
 Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
 
 ```php
@@ -1765,7 +1776,8 @@ Che cosa vede la persona:
 - **a chi non ha accettato i documenti legali** resta lo stato ridotto di sempre, col suo avviso e il suo pulsante.
 
 La lingua e il nome di `Cornice::subito()` sono quelli dell'ingresso finché una `Cornice::dopo()`, una `Cornice::dati()` o
-una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi. Dalla `v2.4.0` quelli
+una `Cornice::lingua()` non hanno riletto io.mostra: dalla richiesta dopo sono quelli nuovi, e dalla zr-auth 0.12.63 anche
+l'email. Dalla `v2.4.0` quelli
 riletti arrivano già con `dopo`, e la cornice li mostra da quel momento. Se c'è `cornice`, il layout
 usa quella e non guarda `subito` e `dopo`.
 

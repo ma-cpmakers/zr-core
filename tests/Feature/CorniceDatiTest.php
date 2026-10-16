@@ -467,11 +467,11 @@ function adaCambiata(): array
     return ['id' => 'uat-ada', 'nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com', 'lingua' => 'es', 'fuso_orario' => 'Europe/Rome'];
 }
 
-it('la lingua e il nome che io.mostra dà diversi da quelli della sessione sono nei dati di quella stessa lettura, e il resto è quello della sessione (sprint 13 · T2.1)', function () {
+it('la lingua e il nome che io.mostra dà diversi da quelli della sessione sono nei dati di quella stessa lettura, e dalla zr-auth 0.12.63 anche l\'email; il resto è quello della sessione (sprint 13 · T2.1; sprint 64 · T1.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-10 09:40:00.000001', 'UTC'));
     sessioneAMano(marketing());
-    // Nel profilo sono cambiati la lingua e il nome. io.mostra dà anche un'altra email e un altro nome del workspace: non
-    // sono cose che la cornice prende da lì, e restano quelle della sessione.
+    // Nel profilo sono cambiati la lingua e il nome. io.mostra dà anche un'altra email e un altro nome del workspace: il
+    // workspace la cornice non lo prende da lì, e resta quello della sessione; l'email sì, dalla zr-auth 0.12.63.
     $io = ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada-nuova@example.com']);
     $io['data']['workspace'] = ['id' => 'uat-ws', 'nome' => 'UAT Marketing rinominato', 'slug' => 'uat-marketing-rinominato', 'azienda_id' => 'az-b'];
     backoffice([
@@ -480,10 +480,11 @@ it('la lingua e il nome che io.mostra dà diversi da quelli della sessione sono 
         ...aziendeEWorkspace(),
     ]);
 
-    // Gli stessi dati del primo caso, con la lingua e il nome nuovi: l'email e il workspace sono ancora quelli della sessione.
+    // Gli stessi dati del primo caso, con la lingua e il nome nuovi: il workspace è ancora quello della sessione, l'email quella
+    // che la zr-auth installata ci ha messo.
     $this->get('w/un-altro-workspace/cornice')->assertOk()->assertExactJson(datiAttesi('2026-10-10T09:40:00.000001Z', [
         'lingua' => 'es',
-        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
+        'persona' => ['nome' => 'UAT Ada Lovelace', 'email' => emailDaIoMostra() ? 'uat-ada-nuova@example.com' : 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
     ]));
 });
 
@@ -521,7 +522,7 @@ it('per rimettere la lingua e il nome la cornice non legge niente in più: le qu
     }
 });
 
-it('della sessione cambiano solo la lingua e il nome: gettoni, id, email, fuso, workspace e ruolo restano quelli dell\'ingresso, anche se io.mostra li dà diversi (sprint 13 · T2.4)', function () {
+it('della sessione cambiano solo la lingua e il nome, e dalla zr-auth 0.12.63 l\'email: gettoni, id, fuso, workspace e ruolo restano quelli dell\'ingresso, anche se io.mostra li dà diversi, e un `email_verificata_il` nullo non entra (sprint 13 · T2.4; sprint 64 · T1.1)', function () {
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
     $io = ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => 'uat-ada-nuova@example.com', 'email_verificata_il' => null, 'fuso_orario' => 'America/Lima']);
@@ -531,17 +532,42 @@ it('della sessione cambiano solo la lingua e il nome: gettoni, id, email, fuso, 
 
     $risposta = $this->get('w/uat-marketing/cornice')->assertOk();
 
-    // La sessione di prima, coi due soli campi che zr-auth rimette: ogni altra differenza è un campo che non doveva cambiare.
+    // La sessione di prima, coi soli campi che zr-auth rimette: ogni altra differenza è un campo che non doveva cambiare.
+    $email = emailDaIoMostra() ? 'uat-ada-nuova@example.com' : 'uat-ada@example.com';
     $attesa = $prima;
     $attesa['utente']['lingua'] = 'es';
     $attesa['utente']['nome'] = 'UAT Ada Lovelace';
+    $attesa['utente']['email'] = $email;
 
     expect(session(Sessione::CHIAVE))->toBe($attesa)
-        ->and($risposta->json('persona.email'))->toBe('uat-ada@example.com')
+        ->and($risposta->json('persona.email'))->toBe($email)
         ->and($risposta->json('workspace'))->toBe(['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
 });
 
-it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua o un nome che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
+// Sprint 64 · T1.2 (voce #2215). Dopo la lettura che rimette l'email nella sessione, la regola della persona (StessaPersona) la
+// confronta con quella nuova: una scheda rimasta aperta con l'email di prima riceve il 409, e il JS della cornice la ricarica
+// come per un'altra persona. Con una zr-auth più vecchia l'email resta quella dell'ingresso, e i due versi si scambiano.
+it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima riceve 409 persona_diversa senza chiamare il backoffice, e una con l\'email nuova passa; fino alla zr-auth 0.12.62 il contrario (sprint 64 · T1.2)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io' => ioMostraCon(['email' => 'uat-ada-nuova@example.com']), '/v1/io/notifiche' => ['data' => [], 'successivo' => null]]);
+    $this->get('w/uat-marketing/cornice')->assertOk();
+
+    [$giusta, $vecchia] = emailDaIoMostra() ? ['uat-ada-nuova@example.com', 'uat-ada@example.com'] : ['uat-ada@example.com', 'uat-ada-nuova@example.com'];
+    expect(session(Sessione::CHIAVE.'.utente.email'))->toBe($giusta);
+
+    $prima = Http::recorded()->count();
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia)])
+        ->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
+    expect(Http::recorded()->count())->toBe($prima);
+
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($giusta)])->assertOk()->assertJsonPath('persona', $giusta);
+    expect(Http::recorded()->count())->toBeGreaterThan($prima);
+});
+
+it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua, un nome o un\'email che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1; sprint 64, review della PR #104, R2 e R4)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
+    // L'orologio fermo: `sessioneAMano` e io.mostra scrivono `email_verificata_il` con `now()`, e dalla zr-auth 0.12.63
+    // `Sessione::aggiorna` lo prende se è diverso. Con un secondo scattato fra i due il confronto della sessione sarebbe rosso.
+    Carbon::setTestNow(Carbon::parse('2026-10-10 09:45:00', 'UTC'));
     sessioneAMano(marketing());
     $prima = session(Sessione::CHIAVE);
     backoffice(['/v1/io' => ioMostraCon($utente, senza: $senza)]);
@@ -573,6 +599,11 @@ it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, 
     'il nome null' => [['lingua' => 'es', 'nome' => null], 'es', 'UAT Ada'],
     'il nome un numero' => [['lingua' => 'es', 'nome' => 7], 'es', 'UAT Ada'],
     'il nome una lista' => [['lingua' => 'es', 'nome' => ['UAT Ada Lovelace']], 'es', 'UAT Ada'],
+    // dalla zr-auth 0.12.63 anche l'email segue io.mostra, con la stessa regola: una che non vale non entra
+    'l\'email vuota' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => ''], 'es', 'UAT Ada Lovelace'],
+    'l\'email di soli spazi' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => '   '], 'es', 'UAT Ada Lovelace'],
+    'l\'email null' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => null], 'es', 'UAT Ada Lovelace'],
+    'l\'email un numero' => [['lingua' => 'es', 'nome' => 'UAT Ada Lovelace', 'email' => 7], 'es', 'UAT Ada Lovelace'],
     // (c) a valori uguali la sessione è la stessa
     'gli stessi valori' => [[], 'en', 'UAT Ada'],
     // un backoffice che sbaglia la persona: niente entra, e la lettura non si rompe
@@ -1041,6 +1072,16 @@ it('la riga dà la lingua della sessione solo se ha la forma di una lingua, se n
 function soloLingueDiZeiras(): bool
 {
     return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.12', '>=');
+}
+
+/**
+ * Dalla 0.12.63 `Sessione::aggiorna` di zr-auth rimette nella sessione anche l'email di io.mostra (il cambio dell'email di
+ * zr-home, #2214), e `email_verificata_il` se è un testo; fino alla 0.12.62 solo la lingua e il nome. Come sopra: la versione
+ * installata dice quale dei due comportamenti aspettarsi (sprint 64 · T1).
+ */
+function emailDaIoMostra(): bool
+{
+    return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.63', '>=');
 }
 
 it('la forma si guarda dopo la lettura: una lingua malfatta arrivata da io.mostra non esce dalla riga, e i dati della cornice portano la lingua della sessione com\'è — con zr-auth fino alla 0.12.11 la sessione la prende e la riga dà null, dalla 0.12.12 la sessione tiene la lingua che aveva e la riga dà quella (sprint 18 · T2.9, sprint 20 · T4.1, T4.2)', function () {
