@@ -1196,7 +1196,7 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $cosaDice = fn (string $testo): array => [
         'a ogni lettura, con Sessione::aggiorna' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'a ogni lettura `Cornice::dati()` dà a `Sessione::aggiorna` di zr-auth la risposta di `io.mostra` che ha già letto per le non lette, e `Sessione::aggiorna` mette nella sessione la lingua e il nome del profilo, se sono cambiati e se li prende'),
-        'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'),
+        'cambiano solo quei due' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'),
         'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome della sessione dopo `Sessione::aggiorna`, da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
         // Dalla v1.8.0 il rimedio di prima è la strada di chi resta col suo codice: la riga è `Cornice::lingua()` (sprint 18 · T2.8).
@@ -1220,7 +1220,9 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         'perché: rilegge tutto a ogni chiamata' => true,
         'in un middleware parte a ogni richiesta' => true,
     ])
-        ->and(str_contains(suUnaRiga($scambiate), 'Cambiano solo quei due: email, workspace, ruolo e gettoni restano quelli dell\'ingresso'))->toBe(true)
+        // Dalla `v2.21.2` (sprint 64 · T2.1) l'email segue io.mostra con la zr-auth 0.12.63: il README non la mette più fra ciò che resta.
+        ->and(str_contains(suUnaRiga($readme), 'email, workspace, ruolo e gettoni restano quelli dell\'ingresso'))->toBe(false)
+        ->and(str_contains(suUnaRiga($scambiate), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'))->toBe(true)
         ->and($cosaDice($scambiate))->toBe([
             'a ogni lettura, con Sessione::aggiorna' => false,
             'cambiano solo quei due' => false,
@@ -5572,7 +5574,7 @@ it('il README dice la cornice in due dati: subito() e dopo(), l\'esempio con la 
     // Seconda lettura della PR #69 (N2, N4, N6, N7): ciò che resta fuori, detto per intero.
     'Indietro: il dopo riletto fra due workspace' => ['readme', 'Se a quella voce manca il `dopo`, quello riletto è di chi è entrato, col suo workspace, e sta sotto il suo nome'],
     // Sprint 37 · T2.6 (voce #1998): `dopo` dice di chi è, e che cosa cambia per un frontend.
-    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione dopo quella lettura (la lingua e il nome riletti da io.mostra, l\'email dell\'ingresso) e, in fondo, `sessione_il`, il segno di quella lettura'],
+    'dopo dice di chi è' => ['readme', 'Dalla `v2.4.0` `Cornice::dopo()` dice anche di chi sono quei dati: porta `lingua` e `persona` come sono nella sessione dopo quella lettura (la lingua e il nome riletti da io.mostra; l\'email, quella dell\'ingresso fino alla zr-auth 0.12.62 e quella di io.mostra dalla 0.12.63) e, in fondo, `sessione_il`, il segno di quella lettura'],
     'dopo dice di chi è: nel layout' => ['readme', 'se fra le due richieste la sessione è passata a un\'altra persona la cornice è la sua, coi suoi dati, e i dati di una persona non stanno sotto il nome di un\'altra'],
     'dopo dice di chi è: per un frontend' => ['readme', 'Per un frontend che dà al layout `Cornice::dopo()` com\'è non c\'è niente da scrivere, e tre cose si vedono'],
     'dopo dice di chi è: la scheda ferma' => ['readme', 'Una scheda rimasta ferma che rilegge il solo `dopo` dopo che la sessione è passata a un\'altra persona mostra la cornice di questa, rifatta, e la pagina con lei'],

@@ -20,8 +20,8 @@ use Zeiras\Auth\Sessione;
  *
  * La lingua e il nome della sessione sono quelli dell'ingresso: un cambio fatto dopo nel profilo non ci arriva da solo. Per
  * questo a ogni lettura la risposta di io.mostra, che la cornice legge già per le non lette, va a `Sessione::aggiorna` di
- * zr-auth (dalla 0.12), che mette nella sessione la lingua e il nome del profilo che prende (la lingua, dalla 0.12.12, solo se
- * è una di Zeiras; e dalla `v2.11.4` non quella di una lettura più vecchia di quella che l'ha confermata:
+ * zr-auth (dalla 0.12), che mette nella sessione la lingua e il nome del profilo che prende (dalla 0.12.63 anche l'email;
+ * la lingua, dalla 0.12.12, solo se è una di Zeiras; e dalla `v2.11.4` non quella di una lettura più vecchia di quella che l'ha confermata:
  * `conLaLinguaRicordata()`), e i dati li portano da quella stessa lettura.
  * Un modulo che mette la lingua della pagina prima del controller la prende da `lingua()`, che fa quella stessa lettura: in una
  * richiesta io.mostra si legge una volta per tutte e due (vedi `lettura()`); e dalla `v2.15.0` la lettura di `lingua()` riuscita
@@ -84,7 +84,9 @@ final class Cornice
      *
      * La lingua e il nome sono quelli della sessione riletta dopo `Sessione::aggiorna`, mai quelli di io.mostra presi da qui:
      * che cosa vale lo decide zr-auth (i dati di un'altra persona e un valore vuoto non entrano), e i dati della cornice non
-     * dicono altro dalla sessione. Email, workspace e ruolo restano quelli dell'ingresso.
+     * dicono altro dalla sessione. Workspace e ruolo restano quelli dell'ingresso; l'email anche fino alla zr-auth 0.12.62, e
+     * dalla 0.12.63 `Sessione::aggiorna` mette anche lei (il cambio dell'email di zr-home): `persona.email` è sempre quella della
+     * sessione riletta, e StessaPersona la confronta da lì.
      *
      * Accanto all'email la persona porta l'impronta di zr-auth (`Persona::impronta()`, dalla `v2.20.0`; anche in `subito()`): un
      * HMAC dell'id, né l'id né l'email, null per una sessione senza id o con un id che non è un testo non vuoto (dalla `v2.21.1`
@@ -172,7 +174,8 @@ final class Cornice
      * La parte dei dati che si legge dal backoffice: le stesse letture di `dati()`, e gli stessi dati, anche ridotti davanti
      * al 403 `accettazione_richiesta`. Dice di chi sono (dalla `v2.4.0`): porta lingua e persona come sono nella sessione
      * dopo quella lettura (la lingua e il nome riletti da io.mostra — la lingua no, se la lettura è più vecchia di quella che l'ha
-     * confermata: vedi `conLaLinguaRicordata()` —, l'email dell'ingresso) e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
+     * confermata: vedi `conLaLinguaRicordata()` —; l'email, quella dell'ingresso fino alla zr-auth 0.12.62 e di io.mostra
+     * dalla 0.12.63) e, in fondo, `sessione_il`, l'istante di quella lettura. Questi dati si leggono in una richiesta che
      * non è quella di `subito()`, e fra le due la sessione può essere passata a un'altra persona o a un altro workspace, da
      * un'altra scheda: nel browser lingua, persona, workspace e `sessione_il` di `dopo()` valgono su quelli di `subito()`
      * (dalla `v2.9.0` la lingua è quella del più recente dei due, con la stessa persona),
