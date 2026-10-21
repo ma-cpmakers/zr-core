@@ -97,7 +97,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   zr-auth in `X-Zr-Persona`: eccezione di zr-pm per la sicurezza fra persone; dalla `v2.20.1` altri 7, l'impronta della cornice che chiede, stessa eccezione: nota 13713; dalla `v2.22.0` altri 49, il design system nuovo (37) e Finanze nel registro e nelle tre lingue (12): eccezione di zr-pm, 21/10). Fuori dall'ingresso stanno tre pezzi a richiesta, ognuno col suo tetto: ciò che compone le righe delle notifiche e carica le
   frasi (`resources/js/campanella.ts`, chiesto all'apertura della campanella: nessun ingresso riesporta niente da lì), la
   ricerca (`resources/js/ricerca.ts`, chiesta al primo fuoco nel campo della ricerca o alla prima parola: nemmeno da lì un
-  ingresso riesporta niente) e i rimedi provvisori di tastiera (`resources/js/rimedi.ts`). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
+  ingresso riesporta niente) e i rimedi provvisori di tastiera (`resources/js/rimedi.ts`, tetto 1.327 dalla `v2.22.1`: +99 per C1 e C2, Decisione 14804). Ciò che non ci sta non entra nell'ingresso: il tetto non si alza.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;
   Pest gira solo in CI.
 
@@ -115,5 +115,5 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 64 chiuso (`v2.21.2`, #2215, Decisione 14345); `v2.22.0` (21/10) importa il design system `ds-1792607498-b5a6`: il fermo del design (Decisione 13345) è tolto da zr-pm-b1, si riparte dalle voci in fila.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 64 chiuso (`v2.21.2`, #2215, Decisione 14345); sprint 65 chiuso (`v2.22.1`, #2340, Decisione 14804; #2340 in `test_umano`); `v2.22.0` ha importato il design system `ds-1792607498-b5a6` e il fermo (Decisione 13345) è tolto: si riparte dalle voci in fila con zr-pm (#2341 la nuova).
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
