@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 38,9 KB | 7,0 KB |
-| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 38,9 KB | 7,0 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,2 KB | 38,8 KB | 7,0 KB |
+| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 39,5 KB | 7,0 KB |
+| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 39,5 KB | 7,0 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,2 KB | 39,5 KB | 7,0 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -105,7 +105,7 @@ d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione den
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
 il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm. Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.327 i rimedi, 1.004 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.401 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
@@ -637,7 +637,10 @@ cornice === null ? pagina : (
   dell'intestazione è nascosto ai lettori di schermo (`aria-hidden`), perché un'immagine dentro un `role="menu"` non è
   ammessa (axe: `aria-required-children`); il nome e l'email restano scritti accanto. Con il selettore dei workspace o il
   menu Moduli aperto, la barra dei moduli dietro, già nascosta (`aria-hidden`), è anche `inert`: i suoi link non si
-  raggiungono col Tab (axe: `aria-hidden-focus`), e chiuso il selettore torna com'era. Il modulo non deve fare niente; un
+  raggiungono col Tab (axe: `aria-hidden-focus`), e chiuso il selettore torna com'era. Dalla `v2.22.2`, a 390 px, col menu
+  a cassetto aperto l'`aside` della navigazione ha anche `role="dialog"` e `aria-modal="true"`, perché copre la pagina e
+  un lettore di schermo deve saperlo; richiuso, col pulsante, con Esc o col velo, li perde, e il giro del Tab non cambia.
+  Il modulo non deve fare niente; un
   test del modulo che cerca per ruolo l'avatar del menu del profilo non lo trova più, e uno che col selettore aperto
   raggiunge un link della barra col Tab va riletto. È provvisorio: il menu e la barra sono dell'`AppShell` del design system,
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il

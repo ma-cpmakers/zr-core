@@ -8587,3 +8587,83 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         expect(barra()?.hasAttribute('inert')).toBe(false);
     });
 });
+
+describe('a 390 px il menu a cassetto aperto dice di essere una finestra (sprint 66 · T1, voce 2341)', () => {
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const lato = () => uno('.zr-shell > aside.zr-side');
+    const pulsante = () => uno('.zr-shell .zr-top-menu');
+
+    it('aperto il cassetto con il pulsante, l\'`aside` ha `role="dialog"`, `aria-modal` e il suo nome; richiuso, col pulsante o con Esc, non ha né l\'uno né l\'altro (T1.1)', async () => {
+        await laCornice();
+        expect(lato()?.hasAttribute('role')).toBe(false);
+        expect(lato()?.hasAttribute('aria-modal')).toBe(false);
+
+        await clic(pulsante());
+
+        expect(lato()?.classList.contains('is-open')).toBe(true);
+        expect(lato()?.getAttribute('role')).toBe('dialog');
+        expect(lato()?.getAttribute('aria-modal')).toBe('true');
+        expect(lato()?.getAttribute('aria-label')).toBe(testi('it').nav);
+
+        await clic(pulsante());
+
+        expect(lato()?.classList.contains('is-open')).toBe(false);
+        expect(lato()?.hasAttribute('role')).toBe(false);
+        expect(lato()?.hasAttribute('aria-modal')).toBe(false);
+
+        await clic(pulsante());
+        await act(async () => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        });
+
+        expect(lato()?.classList.contains('is-open')).toBe(false);
+        expect(lato()?.hasAttribute('role')).toBe(false);
+        expect(lato()?.hasAttribute('aria-modal')).toBe(false);
+    });
+
+    it('chiuso col velo, il cassetto non è più una finestra (T1.1)', async () => {
+        await laCornice();
+        await clic(pulsante());
+        expect(lato()?.getAttribute('role')).toBe('dialog');
+
+        await clic(uno('.zr-side-scrim'));
+
+        expect(lato()?.hasAttribute('role')).toBe(false);
+        expect(lato()?.hasAttribute('aria-modal')).toBe(false);
+    });
+
+    it('un pulsante della pagina con la stessa classe, fuori dalla cornice o nella pagina, e un\'altra `aside` non fanno di nessun\'`aside` una finestra (T1.1)', async () => {
+        await laCornice();
+        const fuori = document.createElement('div');
+        const nellaPagina = document.createElement('div');
+        fuori.innerHTML = '<aside class="zr-side"></aside><button class="zr-top-menu" aria-expanded="false"></button>';
+        nellaPagina.innerHTML = '<aside class="zr-side"></aside><button class="zr-top-menu" aria-expanded="false"></button>';
+        await act(async () => {
+            document.body.prepend(fuori);
+            uno('.zr-main')?.append(nellaPagina);
+        });
+
+        await act(async () => {
+            fuori.querySelector('button')?.setAttribute('aria-expanded', 'true');
+            nellaPagina.querySelector('button')?.setAttribute('aria-expanded', 'true');
+        });
+
+        expect(fuori.querySelector('aside')?.hasAttribute('role')).toBe(false);
+        expect(nellaPagina.querySelector('aside')?.hasAttribute('role')).toBe(false);
+        expect(lato()?.hasAttribute('role')).toBe(false);
+
+        await clic(pulsante());
+
+        expect(lato()?.getAttribute('role')).toBe('dialog');
+        expect(fuori.querySelector('aside')?.hasAttribute('role')).toBe(false);
+        expect(nellaPagina.querySelector('aside')?.hasAttribute('role')).toBe(false);
+        fuori.remove();
+        nellaPagina.remove();
+    });
+});
