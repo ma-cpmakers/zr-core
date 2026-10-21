@@ -45,6 +45,9 @@ final class StessaPersona
     /** L'intestazione con cui la cornice dice di chi è la pagina. */
     public const INTESTAZIONE = 'Persona';
 
+    /** Dove la richiesta tiene l'email che la pagina ha detto, quando l'impronta ha deciso che la persona è quella della sessione. */
+    private const PERSONA_DELLA_PAGINA = 'zr-core.persona';
+
     public function handle(Request $richiesta, Closure $next): Response
     {
         $dette = array_map(
@@ -102,9 +105,26 @@ final class StessaPersona
                     return self::diversa();
                 }
             }
+        } else {
+            // La risposta dice `persona` com'è nella pagina, non com'è nella sessione: il JS della cornice confronta quel testo con
+            // l'email a schermo e, se è un altro, ricarica la pagina come per un'altra persona.
+            $richiesta->attributes->set(self::PERSONA_DELLA_PAGINA, $dette[0]);
         }
 
         return $next($richiesta);
+    }
+
+    /**
+     * La `persona` che le rotte della cornice danno nella risposta, a ogni risposta tranne il 409 della regola: l'email della
+     * sessione, o — quando l'impronta ha deciso che la pagina è della stessa persona e l'email che porta è quella di prima (dalla
+     * `v2.23.0`) — quella della pagina, così la scheda non si ricarica come per un'altra persona. Non è un dato: chi la dice è la
+     * pagina, e l'email della sessione non esce.
+     */
+    public static function chiRisponde(): ?string
+    {
+        $dellaPagina = request()->attributes->get(self::PERSONA_DELLA_PAGINA);
+
+        return is_string($dellaPagina) ? $dellaPagina : (Sessione::utente()['email'] ?? null);
     }
 
     private static function diversa(): JsonResponse

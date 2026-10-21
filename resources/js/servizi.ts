@@ -122,7 +122,8 @@ export function mostra(persona: Persona, via?: 1): void {
  * `Persona` qui sopra), passata da `encodeURIComponent` — un'intestazione porta solo
  * caratteri di Latin-1, e con un altro `fetch` lancerebbe prima di partire —, e mai l'indirizzo. La parte server la confronta
  * con la sessione prima di ogni altro controllo: a una pagina rimasta ferma, con la sessione passata a un'altra persona,
- * risponde 409 `persona_diversa` senza leggere né segnare niente. `dati` va nel corpo, in JSON; `Content-Type` e il gettone
+ * risponde 409 `persona_diversa` senza leggere né segnare niente (dalla `v2.23.0`, con la stessa impronta, passa anche con l'email di
+ * prima, e la risposta dice `persona` com'è nella pagina). `dati` va nel corpo, in JSON; `Content-Type` e il gettone
  * CSRF partono con ogni richiesta, anche con la `GET` che non ha un corpo.
  *
  * Il corpo JSON si legge di ogni risposta, anche di un errore: una rotta dice di chi è

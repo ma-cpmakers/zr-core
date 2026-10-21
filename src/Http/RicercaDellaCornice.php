@@ -49,7 +49,7 @@ final class RicercaDellaCornice
         }
 
         $workspace = Sessione::workspace()['slug'] ?? null;
-        $persona = Sessione::utente()['email'] ?? null;
+        $persona = StessaPersona::chiRisponde();
 
         try {
             $risultati = Api::workspace()->post('/v1/ricerca', ['q' => $q])['data'] ?? null;

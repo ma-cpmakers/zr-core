@@ -548,7 +548,7 @@ it('della sessione cambiano solo la lingua e il nome, e dalla zr-auth 0.12.63 l\
 // Sprint 64 · T1.2 (voce #2215), sprint 67 · T1 (voce #2216). Dopo la lettura che rimette l'email nella sessione, una scheda
 // rimasta aperta con l'email di prima ha la stessa impronta: dalla `v2.23.0` è la stessa persona, e non riceve il 409. Lo
 // riceve quella con l'impronta di un'altra persona. Con una zr-auth più vecchia l'email resta quella dell'ingresso.
-it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima e la stessa impronta passa come una con l\'email nuova, e a dire i dati è la sessione; con l\'impronta di un\'altra persona riceve 409 persona_diversa senza chiamare il backoffice (sprint 64 · T1.2; sprint 67 · T1.1, T1.2)', function () {
+it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima e la stessa impronta passa come una con l\'email nuova, e i dati sono quelli della sessione, con `persona` com\'è nella pagina; con l\'impronta di un\'altra persona riceve 409 persona_diversa senza chiamare il backoffice (sprint 64 · T1.2; sprint 67 · T1.1, T1.2)', function () {
     sessioneAMano(marketing());
     backoffice(['/v1/io' => ioMostraCon(['email' => 'uat-ada-nuova@example.com']), '/v1/io/notifiche' => ['data' => [], 'successivo' => null]]);
     $this->get('w/uat-marketing/cornice')->assertOk();
@@ -561,7 +561,7 @@ it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con
         ->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
     expect(Http::recorded()->count())->toBe($prima);
 
-    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia)])->assertOk()->assertJsonPath('persona', $giusta);
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia)])->assertOk()->assertJsonPath('persona', $vecchia);
     $dopoLaVecchia = Http::recorded()->count();
     expect($dopoLaVecchia)->toBeGreaterThan($prima);
 

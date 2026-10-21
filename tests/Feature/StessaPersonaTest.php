@@ -68,7 +68,7 @@ function rotteCheNonRispondono(int $stato, string $risposta, array $corpo, array
     return $altre;
 }
 
-it('ogni rotta della cornice, letta dal router, a una richiesta che dice una persona che non è quella della sessione risponde 409 persona_diversa con `persona` vuota e nient\'altro — nemmeno l\'email della sessione, dalla `v2.12.0` —, e non chiama il backoffice (sprint 40 · T2.1, T2.2; sprint 51 · T1.1)', function (array $corpo, array $intestazioni) {
+it('ogni rotta della cornice, letta dal router, a una richiesta di un\'altra persona — email e impronta che non sono quelle della sessione — risponde 409 persona_diversa con `persona` vuota e nient\'altro — nemmeno l\'email della sessione, dalla `v2.12.0` —, e non chiama il backoffice (sprint 40 · T2.1, T2.2; sprint 51 · T1.1)', function (array $corpo, array $intestazioni) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
     Http::fake();
     $diGrace = '{"errore":"persona_diversa","persona":""}';
@@ -379,4 +379,28 @@ it('con una sessione senza id l\'email decide come prima, qualunque impronta dic
 })->with([
     'l\'impronta di un\'altra persona' => ['{ada}'],
     'un testo qualunque' => ['uat-ada'],
+]);
+
+it('con una sessione senza id l\'email si confronta com\'è: le maiuscole e uno spazio in fondo sono un\'altra persona, e riceve da ogni rotta il 409 (sprint 67 · T1.4; R3 della review)', function (string $email) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    expect(Persona::impronta())->toBeNull()
+        ->and(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', [], ['Persona' => $email]))->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'le maiuscole' => ['UAT-Grace%40example.com'],
+    'uno spazio in fondo' => ['uat-grace%40example.com%20'],
+]);
+
+it('con una sessione che ha un\'impronta ma un\'email nulla o vuota nessuna email detta passa, nemmeno con l\'impronta giusta: da ogni rotta 409, e il backoffice non è chiamato (sprint 67 · T1.5; R4 della review)', function (?string $email) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['email' => $email] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    expect(Persona::impronta())->not->toBeNull()
+        ->and(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', [], ['Persona' => 'uat-grace%40example.com']))->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'nulla' => [null],
+    'vuota' => [''],
 ]);

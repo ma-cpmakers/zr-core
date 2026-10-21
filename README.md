@@ -274,8 +274,9 @@ restano quelli dell'ingresso. L'email dipende dalla zr-auth installata: fino all
 dalla 0.12.63 segue io.mostra: `Sessione::aggiorna` la mette nella sessione se è cambiata — il cambio dell'email di
 zr-home —, e i dati della cornice la portano da quella stessa lettura. Una scheda rimasta
 aperta con l'email di prima ha la stessa impronta della persona: dalla `v2.23.0` la sua richiesta della cornice passa come
-quella di una scheda con l'email nuova, e i dati li dice la sessione (fino alla `v2.22` riceveva il 409 `persona_diversa`
-e si ricaricava come per un'altra persona). I dati della cornice portano la lingua e il nome della sessione
+quella di una scheda con l'email nuova, i dati sono quelli della sessione e `persona` nella risposta è l'email che la pagina
+ha detto, così la scheda non si ricarica (fino alla `v2.22` riceveva il 409 `persona_diversa` e si ricaricava come per
+un'altra persona). I dati della cornice portano la lingua e il nome della sessione
 dopo `Sessione::aggiorna`, da quella stessa richiesta; ciò che il frontend ha letto dalla sessione prima di chiamare
 `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e
 dalla richiesta dopo è nuovo.
@@ -435,14 +436,16 @@ stesso 409 senza chiamare il backoffice, e la pagina si ricarica: al più una vo
 ricarica non cambia la sessione. È voluto: una sessione così non si sa di chi sia. Il contratto di `/v1` dà sempre un id di
 testo. Dalla `v2.23.0` l'impronta decide chi è la persona della pagina: se la sessione ne ha una e la richiesta dice quella,
 la richiesta passa anche con un'email che non è quella della sessione (la persona l'ha cambiata da un'altra scheda,
-zr-home #2214), e a dire i dati è sempre la sessione. Con un'altra impronta, o senza, è il 409 di sempre, qualunque email dica,
+zr-home #2214), e i dati sono sempre quelli della sessione, mentre `persona` nella risposta è l'email che la pagina ha detto (se fosse
+un'altra la scheda si ricaricherebbe come per un'altra persona). Con un'altra impronta, o senza, è il 409 di sempre, qualunque email dica,
 e senza sessione resta il 401: l'impronta da sola non fa entrare nessuno. L'email decide dove l'impronta non c'è — la
 sessione senza id — e dove la sessione non ha un'email da confrontare; i 422 della persona restano prima. Nessuna rotta della
 cornice legge l'email detta come dato: l'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`. Cambiare
-`APP_KEY` cambia tutte le impronte: le schede aperte ricevono il 409 e si ricaricano. Per i test di un
+`APP_KEY` cambia tutte le impronte, e annulla le sessioni se non c'è `APP_PREVIOUS_KEYS`: con le chiavi di prima le schede
+aperte ricevono il 409 e si ricaricano. Per i test di un
 frontend cambia una cosa: un caso che aspetta il 409 da una richiesta con un'altra email e l'impronta della sessione ora
-passa, e per provare «un'altra persona» la richiesta porta l'impronta di quella persona (`improntaDi('…')`, o l'`id` di un
-altro account).
+passa, e per provare «un'altra persona» la richiesta porta l'impronta di quella persona (quella di un altro account, cioè
+`Persona::impronta()` con un altro `id` nella sessione).
 Nel browser la cornice riconosce una persona da email e impronta: con la stessa email e un'altra impronta
 si rifà, come con un'altra email. Il frontend che passa all'`AppShell` i dati di `Cornice::dati()` o `subito()` non fa
 niente; quello che costruisce `persona` da sé ci aggiunge `impronta` da `Persona::impronta()`. Senza, dalla `v2.21.0`
@@ -1657,8 +1660,10 @@ non la controlla.
 Dalla zr-auth 0.12.63 l'email può cambiare a sessione aperta (il cambio dell'email di zr-home), e per la cornice la stessa
 persona con l'email nuova è un'altra persona. Nella scheda in cui cambia, i primi dati che la portano (un `dopo`, o la
 pagina dopo) rifanno la cornice e la pagina del frontend con lei, e ciò che tenevano si perde; con Indietro una pagina di
-prima del cambio vale come la pagina di un'altra persona. In un'altra scheda rimasta aperta la prossima richiesta della
-cornice riceve il 409 `persona_diversa`, e la pagina si ricarica.
+prima del cambio vale come la pagina di un'altra persona. In un'altra scheda rimasta aperta
+la prossima richiesta della cornice passa (dalla `v2.23.0`; fino alla `v2.22` riceveva il 409 `persona_diversa` e la pagina
+si ricaricava): la scheda ha la stessa impronta, la risposta dice `persona` com'è nella pagina e la scheda non si ricarica,
+ma mostra l'email di prima finché non si ricarica o non si cambia pagina.
 
 Con Inertia la seconda è una prop rimandata. zr-core non importa Inertia: `Inertia::defer` lo scrive il frontend.
 

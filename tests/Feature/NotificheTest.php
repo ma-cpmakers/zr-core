@@ -2376,8 +2376,6 @@ it('l\'email di quel 403 è presa prima di chiamare il backoffice: se durante la
 // basta. Non sceglie di chi segnare, non va al backoffice. Una richiesta che non la porta (un JS di prima) vale come prima.
 
 it('con una `persona` che non è l\'email della sessione risponde 409 persona_diversa con `persona` vuota, senza l\'email della sessione (dalla `v2.12.0`), e non chiama il backoffice: da una scheda ferma non si segnano le notifiche di chi è entrato dopo (sprint 38 · T4.2; sprint 51 · T1.1)', function (array $diversa, string $chiesta, string $dellaSessione) {
-    // Senza il middleware che toglie gli spazi: l'email si confronta com'è.
-    test()->withoutMiddleware(TrimStrings::class);
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
     // Dalla `v2.23.0` di chi è la pagina lo dice l'impronta: la scheda di Ada porta quella di Ada.

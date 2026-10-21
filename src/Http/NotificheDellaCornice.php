@@ -136,7 +136,7 @@ final class NotificheDellaCornice
     {
         $aggiornatiIl = Segno::adesso();
         $workspace = Sessione::workspace()['slug'] ?? null;
-        $persona = Sessione::utente()['email'] ?? null;
+        $persona = StessaPersona::chiRisponde();
 
         try {
             $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
@@ -223,7 +223,7 @@ final class NotificheDellaCornice
 
         $percorso = '/v1/io/notifiche/'.rawurlencode($notifica).'/lettura';
         // Di chi è la risposta, se è quel 403: l'email della sessione, presa prima di chiamare il backoffice.
-        $persona = Sessione::utente()['email'] ?? null;
+        $persona = StessaPersona::chiRisponde();
 
         try {
             $segnata = self::perLaCornice(Api::workspace()->patch($percorso, ['letta' => $letta])['data'] ?? null, "PATCH {$percorso}");
@@ -253,7 +253,8 @@ final class NotificheDellaCornice
      * workspace della pagina che chiede, quello per cui ha calcolato l'istante: al backoffice non va. `persona` è l'email di
      * chi quella pagina mostra (dalla `v2.5.0`): se non è quella della sessione la rotta non chiama il backoffice e risponde
      * 409 `persona_diversa` con `persona` (dalla `v2.12.0` un testo vuoto: non dice chi è entrato); non va al backoffice nemmeno lei. Dalla `v2.6.0` il
-     * confronto lo fa StessaPersona, per tutte le rotte della cornice e prima dei controlli di questa. `segnate_il` è l'istante
+     * confronto lo fa StessaPersona, per tutte le rotte della cornice e prima dei controlli di questa; dalla `v2.23.0`, con
+     * l'impronta della sessione, l'email di prima passa e `persona` della risposta è quella che la pagina ha detto. `segnate_il` è l'istante
      * preso dopo l'ultima risposta del backoffice: a quel punto le notifiche sono segnate, e ciò che è stato letto prima può
      * non saperlo. Una chiamata che fallisce, la prima o un richiamo, è un errore della rotta: ciò che è già segnato resta
      * segnato. La rotta tiene il blocco della sessione (tenutaDelBlocco): se il lock è di un'altra richiesta oltre l'attesa di
@@ -280,7 +281,7 @@ final class NotificheDellaCornice
         // Lo stesso per la persona — la sessione può essere passata a un'altra dello stesso workspace, con la pagina che chiede
         // rimasta ferma — ma qui non c'è più: dalla `v2.6.0` la confronta StessaPersona, prima di arrivare alla rotta. L'email
         // è presa qui, prima di chiamare il backoffice: la risposta dice di chi è, come il 403 di sotto.
-        $persona = Sessione::utente()['email'] ?? null;
+        $persona = StessaPersona::chiRisponde();
 
         // Per il client di zr-auth un tempo di 0 è «senza limite» — e lo diventa ogni valore che `(int)` porta a 0 —, e uno
         // sotto lo zero non è un tempo: il client lo rifiuta. Una chiamata senza un tetto può durare più di qualunque lock. È
