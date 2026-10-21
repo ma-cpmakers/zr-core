@@ -1385,13 +1385,14 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   `{...props}`: Inertia passa al layout anche le props della pagina, e una prop del server che si chiama `actions` o
   `product` non deve arrivare alla cornice.
 - **Senza dati: la barra minima**, provvisoria (dalla `v2.24.0`). Quando la cornice non c'è — `cornice` `null` o mancante, e
-  niente `subito` —, la pagina ha sopra una barra sola: il logo, le voci del modulo (le `nav` che il layout riceve) ed «Esci».
+  niente `subito` —, la pagina ha sopra una barra sola: il logo, le voci del modulo ed «Esci». Le voci sono le `nav`, `active` e `onNavigate` che il layout riceve come props: quelle che la
+  pagina dà con `useCornice` non ci sono, perché la cornice che le riceve non è montata. Per averle anche qui il frontend le dà al layout.
   Non chiede niente al backoffice, così chi arriva su una pagina d'esito o d'errore non resta senza strada. Non è una seconda
   cornice: niente moduli, workspace, ricerca, notifiche, profilo né «+». «Esci» chiama `onLogout`, una voce chiama
   `onNavigate` col suo id, e la voce `active` porta `aria-current="page"`. I testi sono quelli della cornice, nella lingua
   del documento (`<html lang>`), in inglese se manca. È un pezzo a richiesta (`barra`, 463 byte con gzip): il layout lo
   chiede con `import()` solo quando la cornice non c'è, la pagina resta nello stesso posto quando arriva, e se non arriva si
-  vede da sola. Costa 118 byte con gzip nel JS d'ingresso di chi usa il layout (misura dello sprint 68); l'app che prende
+  vede da sola. Costa 110 byte con gzip nel JS d'ingresso di chi usa il layout (misura dello sprint 68); l'app che prende
   solo la cornice non cambia. **È provvisoria**: il design system non ha ancora la sua barra minima (è fra le richieste a
   Luciano), e questa è fatta coi soli suoi pezzi, `Logo` e `Button`. Quando la barra c'è nel design system questa si toglie
   e la sostituisce lui, con una versione che lo annuncia.
@@ -1511,7 +1512,7 @@ richiesta rimandata che usa quella lettura arriva alla campanella con la visita 
 
 Sulla rotta della richiesta rimandata il frontend non mette niente: né un middleware suo, né `bloccaSessione()` di zr-auth,
 che terrebbe il blocco della sessione fino a 10 secondi e metterebbe in fila le richieste della persona: ognuna aspetterebbe
-al più 3 secondi, e poi riceverebbe 503. Quella richiesta arriva
+al più 3 secondi, e poi riceverebbe 503 (fa eccezione la pagina che è anche la rotta di `entra()`: qui sotto). Quella richiesta arriva
 quando la pagina è già in mano alla persona, e `Cornice::dopo()` scrive nella sessione la lingua e il nome riletti
 (`Sessione::aggiorna`): Laravel, a fine richiesta, salva la sessione che aveva letto all'inizio, sotto l'id di allora, e
 senza una protezione una richiesta rimandata lenta, finita dopo che la persona è uscita o è passata a un altro workspace,
@@ -1528,10 +1529,13 @@ per ogni sessione di Laravel: fra due richieste della stessa sessione in volo in
 ultima, e la lingua e il nome si riallineano alla pagina dopo.
 
 Se la pagina è insieme la rotta della richiesta rimandata e una rotta che chiama `Sessione::entra()` (una pagina d'ingresso
-che porta anche i dati della cornice), `bloccaSessione()` va sulla visita intera e mai sulla richiesta parziale `dopo`, quella
-che Inertia manda con `X-Inertia-Partial-Data`: il frontend distingue le due richieste dall'intestazione, e il blocco tocca solo
-la prima. Vale a condizione che la parziale non chiami `entra()`: una parziale che la chiama non è coperta da questa regola, e
-il frontend lo dice a zr-core (risposta a zr-home del 14/10/2026, voce #2115).
+che porta anche i dati della cornice), il blocco della sessione (`bloccaSessione()`, il `Route::block` di Laravel) va sulla visita intera e mai sulla
+richiesta parziale `dopo`, quella che Inertia manda con `X-Inertia-Partial-Data`. Il macro vale per la rotta, e le due richieste
+passano dalla stessa: non le distingue. Il frontend lo prende con un suo middleware, prima di `StartSession` (che legge il blocco
+della rotta quando la sessione parte): `$richiesta->route()->block(Sessione::BLOCCO_TENUTA, Sessione::BLOCCO_ATTESA)` se
+l'intestazione manca, e niente se c'è; il blocco tocca solo la prima. Vale a condizione che la parziale non chiami `entra()`:
+una parziale che la chiama non è coperta da questa regola, e il frontend lo dice a zr-core (risposta a zr-home del 14/10/2026,
+voce #2115).
 
 Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l'email della
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche

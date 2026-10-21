@@ -21,6 +21,8 @@ export interface BarraProps {
     onLogout: () => void;
 }
 
+// Gli stili sono in linea, coi soli token del design system per nome: il design system non ha una classe per questa barra, e il
+// pacchetto non aggiunge un foglio di stile per un pezzo provvisorio.
 export default function Barra({ Button, Logo, t, nav, active, onNavigate, onLogout }: BarraProps) {
     return (
         <header

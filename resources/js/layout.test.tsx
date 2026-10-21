@@ -400,6 +400,8 @@ describe('LayoutDellaCornice', () => {
 
         it('T1.3 i testi sono quelli della cornice, nella lingua del documento (it, es, en), e in inglese se non c\'è; nessun testo scritto nel pezzo', async () => {
             const lingueDelDocumento = [['it', testi('it')], ['es-ES', testi('es')], ['', testi('en')], ['ja', testi('en')]] as const;
+            // La lingua del browser non conta: senza `lang` o con una lingua che la cornice non ha, l'inglese (jsdom dà `en-US`: qui è italiana).
+            vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
             for (const [lang, attesi] of lingueDelDocumento) {
                 document.documentElement.lang = lang;
                 onTestFinished(() => document.documentElement.removeAttribute('lang'));
@@ -412,7 +414,7 @@ describe('LayoutDellaCornice', () => {
             expect(readFileSync('resources/js/barra.tsx', 'utf8').replace(/\/\/.*$/gm, '')).not.toMatch(/Esci|Log out|Salir|Navigation/);
         });
 
-        it('T1.5 se il pezzo non arriva la pagina si vede da sola, senza un errore; e a una visita con i dati la cornice c\'è', async () => {
+        it('T1.5 se il pezzo non arriva la pagina si vede da sola, senza un errore', async () => {
             vi.doMock('./barra', () => {
                 throw new Error('UAT il pezzo non arriva');
             });
@@ -423,6 +425,10 @@ describe('LayoutDellaCornice', () => {
                     <PaginaA />
                 </Layout>,
             );
+            // Il rifiuto del pezzo è avvenuto qui, non dopo il caso: un rifiuto non gestito o un errore in console sarebbe già nell'`afterEach`.
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
             vi.doUnmock('./barra');
 
             expect(contenitore.childElementCount).toBe(1);
@@ -2282,7 +2288,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expectTypeOf<DatiDopoDiApp>().toEqualTypeOf<DatiDopo>();
     });
 
-    it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
+    it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede senza la cornice (sprint 34 · T4.8)', async () => {
         await inDue({ cornice: datiAltroWorkspace, subito, dopo: { non_letti: true } }, <PaginaA />);
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
         expect(sopraLaPagina()).toBeNull();

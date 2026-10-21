@@ -163,7 +163,7 @@ function SenzaDati({ children, ...barra }: Pick<CorniceProps, 'nav' | 'active' |
     return (
         <>
             {/* Senza dati non c'è la lingua della persona: quella del documento, e i testi che mancano sono in inglese (come nella cornice). */}
-            {Barra && <Barra Button={Button} Logo={Logo} t={testi(document.documentElement.lang || navigator.language)} {...barra} />}
+            {Barra && <Barra Button={Button} Logo={Logo} t={testi(document.documentElement.lang)} {...barra} />}
             {children}
         </>
     );

@@ -312,7 +312,7 @@ Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSession
 dalla 0.12.31, che zr-core chiede dalla `v2.16.0`, se la rotta sta nel gruppo `web` e `session.block_store` (o, non
 impostato, lo store della cache predefinito) non è `array` (le quattro condizioni: README, «La cornice in due dati»).
 Se quella pagina è anche una rotta che chiama `Sessione::entra()`, il blocco va sulla visita intera e mai sulla richiesta parziale
-`dopo`, e solo se la parziale non chiama `entra()` (README, «La cornice in due dati»).
+`dopo`, e solo se la parziale non chiama `entra()`: `bloccaSessione()` non distingue le due, quindi lo prende un tuo middleware dall'intestazione (README, «La cornice in due dati»).
 **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un
@@ -381,8 +381,10 @@ e che cosa dai tu è in README, «La cornice». Le forme:
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
 - **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
-  minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: la
-  tua `nav` e il tuo `onNavigate` le dai già al layout (README, «La cornice montata una volta sola»). Quando il design
+  minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: le
+  voci le dai al layout come props, `nav`, `active` e `onNavigate`: quelle che la pagina dà con `useCornice` qui non arrivano a
+  nessuno, perché la cornice non c'è, e senza props la barra ha il solo logo ed «Esci». Costa 110 byte con gzip nel JS d'ingresso
+  del tuo layout (README, «La cornice montata una volta sola»). Quando il design
   system ha la sua barra minima questa si toglie, e con lei la tua pagina d'esito non cambia.
 
 **Prova**: scrivi due lettere nella ricerca, poi vai a un'altra pagina del modulo da una tua voce: il testo che hai
