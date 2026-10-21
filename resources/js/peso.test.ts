@@ -91,6 +91,8 @@ const PER_LE_PAGINE = ['rigaDellaNotifica', 'risorsaDellaNotifica', 'titoloDella
 const DELLA_RICERCA = '/cornice/ricerca';
 /** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
 const DEI_RIMEDI = 'MutationObserver';
+/** Ciò che nel codice costruito c'è solo nella barra minima di chi non ha i dati della cornice (sprint 68 · T1). */
+const DELLA_BARRA = 'var(--topbar-height)';
 
 interface Costruito {
     /** Il JS d'ingresso: ciò che la pagina scarica subito, coi pezzi che l'ingresso importa in modo statico. */
@@ -170,6 +172,8 @@ function pesiNelReadme(nome: string): number[] {
     return [...riga.matchAll(/\| (\d+(?:,\d)?) KB/g)].map((trovato) => Number((trovato[1] ?? '').replace(',', '.')));
 }
 
+/** Un'app che prende il layout della cornice (sprint 68 · T1): quella che, senza dati, chiede la barra minima. */
+let conIlLayout: Costruito;
 let soloCornice: Costruito;
 let coiDatiDentro: Costruito;
 let conIlLimiteAlto: Costruito;
@@ -211,6 +215,7 @@ beforeAll(async () => {
     conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
+    conIlLayout = await appColTesto(`import { LayoutDellaCornice } from ${JSON.stringify(delRepo('resources/js/app.ts'))};\nconsole.log(LayoutDellaCornice);`);
     ingressoPerLeApp = await ingresso('resources/js/app.ts');
     ingressoDiSempre = await ingresso('resources/js/index.ts');
     ingressoDelleFrasi = await ingresso('resources/js/frasi.ts');
@@ -483,5 +488,28 @@ describe('i pesi che il README dice sono quelli misurati qui, e la sua ricetta d
         expect(aRichiesta).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + Buffer.byteLength(pezzo), 0)), 0);
         expect(aRichiestaCompressi).toBeCloseTo(inKb(pezzi.reduce((somma, pezzo) => somma + gzip(pezzo), 0)), 0);
         expect(altri).toStrictEqual([]);
+    });
+});
+
+// Sprint 68 · T1 (voce #1399, Decisione 15190 di zr-pm). La barra minima di chi non ha i dati della cornice è PROVVISORIA (il
+// design system non ha la sua) e un pezzo a richiesta: il layout la chiede con `import()` solo quando la cornice non c'è. Nel
+// JS d'ingresso non c'è il suo codice, e l'app che prende solo la cornice (il tetto di 17.875) non cambia.
+describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS d\'ingresso (sprint 68 · T1.4)', () => {
+    it('nell\'app che prende il layout il suo codice non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello della campanella, della ricerca né dei rimedi', () => {
+        expect(volte(conIlLayout.js, DELLA_BARRA)).toBe(0);
+        expect(conIlLayout.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA)).map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DELLA_RICERCA), pezzo.includes(DEI_RIMEDI)])).toStrictEqual([[false, false, false]]);
+    });
+
+    it('il pezzo è chiesto dal layout fra virgolette dentro `import(`, e l\'app che prende solo la cornice non lo porta', () => {
+        expect([...conIlLayout.js.matchAll(/import\(([\x22\x27\x60])(.+?)\1/g)].map(([, , nome = '']) => nome.replace(/-[\w-]{8,}\.js$/, '-<impronta>.js')).filter((nome) => nome.startsWith('./barra'))).toStrictEqual(['./barra-<impronta>.js']);
+        expect(soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA))).toHaveLength(0);
+        expect(volte(soloCornice.js, DELLA_BARRA)).toBe(0);
+    });
+
+    it('il pezzo pesa, con gzip, al più 463 byte (misura di sprint 68 · T1)', () => {
+        const [barra = ''] = conIlLayout.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA));
+
+        expect(barra).not.toBe('');
+        expect(gzip(barra)).toBeLessThanOrEqual(463);
     });
 });

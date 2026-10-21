@@ -1,6 +1,8 @@
-import { createContext, useContext, useLayoutEffect, useReducer, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
+import { testi } from './lingue';
 import { segno } from './servizi';
+import { Button, Logo } from './zeiras/componenti';
 
 // Il layout della cornice per i frontend con Inertia. Il modulo lo rende dal suo layout (un componente a livello di modulo,
 // dato a `createInertiaApp({ layout })`) e la cornice resta montata mentre la pagina cambia: il testo scritto nella ricerca, il
@@ -10,7 +12,7 @@ import { segno } from './servizi';
 
 /** Le props di `Cornice`, coi dati che possono mancare. */
 export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
-    /** I dati della parte server (`Cornice::dati()`), come arrivano fra le props della pagina. Senza (`null`, o la prop che manca) la pagina si vede da sola. */
+    /** I dati della parte server (`Cornice::dati()`), come arrivano fra le props della pagina. Senza (`null`, o la prop che manca) la pagina ha sopra la barra minima (dalla `v2.24.0`). */
     cornice?: DatiDellaCornice | null | undefined;
     /**
      * Al posto di `cornice` (dalla `v2.1.0`): i dati che la parte server legge dalla sola sessione (`Cornice::subito()`), che
@@ -94,7 +96,11 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // L'ultima pagina di chi è mostrato: una pagina di un'altra persona non la cambia, nemmeno nello stesso workspace.
     const [vista, vedi] = useState(pagina);
     if (!pagina) {
-        return children;
+        return (
+            <SenzaDati nav={nav} active={active} onNavigate={onNavigate} onLogout={onLogout}>
+                {children}
+            </SenzaDati>
+        );
     }
     // Senza il segno da una delle due parti la pagina di un'altra persona non si può dire più vecchia né più nuova di chi è
     // mostrato, e con Indietro sarebbe di chi c'era prima. Nello stesso workspace lo guarda `Cornice`, che resta montata; in un
@@ -140,6 +146,26 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
         <CorniceMontata key={cornice.workspace.slug} dati={cornice} {...dellaCornice}>
             {children}
         </CorniceMontata>
+    );
+}
+
+/**
+ * La pagina senza i dati della cornice (dalla `v2.24.0`): da sola, con sopra la barra minima (`barra.tsx`, un pezzo a richiesta,
+ * provvisoria). La pagina resta nello stesso posto quando la barra arriva, e se non arriva si vede da sola.
+ */
+function SenzaDati({ children, ...barra }: Pick<CorniceProps, 'nav' | 'active' | 'onNavigate' | 'onLogout' | 'children'>) {
+    const [Barra, mostra] = useState<typeof import('./barra').default>();
+
+    useEffect(() => {
+        import('./barra').then((pezzo) => mostra(() => pezzo.default), () => undefined);
+    }, []);
+
+    return (
+        <>
+            {/* Senza dati non c'è la lingua della persona: quella del documento, e i testi che mancano sono in inglese (come nella cornice). */}
+            {Barra && <Barra Button={Button} Logo={Logo} t={testi(document.documentElement.lang)} {...barra} />}
+            {children}
+        </>
     );
 }
 

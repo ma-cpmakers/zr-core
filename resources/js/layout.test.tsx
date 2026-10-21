@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { act, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
@@ -134,12 +135,16 @@ async function mostra(elemento: ReactElement): Promise<void> {
 }
 
 /** Una visita di Inertia: lo stesso layout, la pagina nuova e i dati della parte server di quella pagina. */
-function visita(cornice: DatiDellaCornice | null | undefined, pagina: ReactElement, delLayout: Partial<LayoutDellaCorniceProps> = {}): Promise<void> {
-    return mostra(
+async function visita(cornice: DatiDellaCornice | null | undefined, pagina: ReactElement, delLayout: Partial<LayoutDellaCorniceProps> = {}): Promise<void> {
+    await mostra(
         <LayoutDellaCornice cornice={cornice} onLogout={esciSenzaEffetto} {...delLayout}>
             {pagina}
         </LayoutDellaCornice>,
     );
+    // Senza dati la barra minima è un pezzo a richiesta (sprint 68 · T1): arriva prima del controllo.
+    await act(async () => {
+        await vi.dynamicImportSettled();
+    });
 }
 
 /** Il giro dopo, coi timer finti: le risposte già pronte delle rotte finte arrivano. */
@@ -342,11 +347,12 @@ describe('LayoutDellaCornice', () => {
         expect(dopo.montaggi).toBe(1);
     });
 
-    it.each<[null | undefined]>([[null], [undefined]])('senza dati (cornice %s) la pagina si vede da sola, senza barra né topbar; quando la pagina dopo porta i dati la cornice compare, e senza dati se ne va (sprint 9 · T1.3)', async (senzaDati) => {
+    it.each<[null | undefined]>([[null], [undefined]])('senza dati (cornice %s) la pagina si vede con sopra la barra minima, senza barra laterale né topbar; quando la pagina dopo porta i dati la cornice compare, e senza dati la barra torna (sprint 9 · T1.3; sprint 68 · T1.1)', async (senzaDati) => {
         await visita(senzaDati, <PaginaA key="1" />);
-        // Solo la pagina: nessun elemento del layout intorno.
-        expect(contenitore.childElementCount).toBe(1);
-        expect(contenitore.firstElementChild).toBe(uno('#uat-pagina-a'));
+        // La barra e la pagina, una dopo l'altra: nessun elemento del layout intorno alla pagina.
+        expect(contenitore.childElementCount).toBe(2);
+        expect(contenitore.firstElementChild).toBe(uno('header'));
+        expect(contenitore.lastElementChild).toBe(uno('#uat-pagina-a'));
         expect(uno('#uat-pagina-a')?.textContent).toBe('UAT pagina A');
         expect(tutti('.zr-shell, .zr-side, .zr-top')).toHaveLength(0);
 
@@ -354,11 +360,89 @@ describe('LayoutDellaCornice', () => {
         expect(uno('aside.zr-side .zr-workspace')?.textContent).toBe('Marketing');
         expect(uno('header.zr-top .zr-bell-count')?.textContent).toBe('7');
         expect(uno('main.zr-main > #uat-pagina-b')?.textContent).toBe('UAT pagina B');
+        expect(tutti('header')).toHaveLength(1);
 
         await visita(senzaDati, <PaginaA key="3" />);
-        expect(contenitore.firstElementChild).toBe(uno('#uat-pagina-a'));
-        expect(uno('#uat-pagina-a')?.textContent).toBe('UAT pagina A');
+        expect(contenitore.childElementCount).toBe(2);
+        expect(contenitore.lastElementChild).toBe(uno('#uat-pagina-a'));
         expect(tutti('.zr-shell, .zr-side, .zr-top')).toHaveLength(0);
+    });
+
+    // Sprint 68 · T1 (voce #1399, Decisione 15190). La barra minima è PROVVISORIA: il design system non ha ancora la sua, e questa
+    // ha i soli pezzi del design system (`Logo`, `Button`). Con la sua si toglie.
+    describe('la barra minima di chi non ha i dati della cornice (sprint 68 · T1)', () => {
+        const dellaBarra = (onLogout: () => void, onNavigate?: (id: string) => void): Partial<LayoutDellaCorniceProps> => ({ product: 'pm', nav: voci, active: 'uat-b', onNavigate, onLogout });
+
+        it('T1.1 ha il logo, le voci del modulo ed «Esci», e nient\'altro: né moduli, né workspace, né ricerca, né notifiche, né profilo, né «+»', async () => {
+            await visita(null, <PaginaA key="1" />, dellaBarra(esciSenzaEffetto));
+
+            const barra = uno('header') as HTMLElement;
+            expect(barra.querySelector('svg, img')).not.toBeNull();
+            expect(tutti('header nav button').map((voce) => voce.textContent)).toStrictEqual(['UAT A', 'UAT B']);
+            expect([...barra.querySelectorAll('button')].map((pulsante) => pulsante.textContent)).toStrictEqual(['UAT A', 'UAT B', 'Log out']);
+            expect(tutti('.zr-search, .zr-bell, .zr-create, .zr-workspace, .zr-avatar, [aria-haspopup]')).toHaveLength(0);
+            expect(fetch).not.toHaveBeenCalled();
+        });
+
+        it('T1.2 «Esci» chiama `onLogout`, una voce chiama `onNavigate` col suo id, e la voce attiva dice `aria-current` (le altre no)', async () => {
+            const esci = vi.fn();
+            const vai = vi.fn();
+            await visita(undefined, <PaginaA key="1" />, dellaBarra(esci, vai));
+
+            expect(tutti('header nav button').map((voce) => voce.getAttribute('aria-current'))).toStrictEqual([null, 'page']);
+            await clic(tutti('header nav button')[0]!);
+            expect(vai.mock.calls).toStrictEqual([['uat-a']]);
+            expect(esci).not.toHaveBeenCalled();
+            await clic(tutti('header button').at(-1)!);
+            expect(esci).toHaveBeenCalledOnce();
+            expect(vai).toHaveBeenCalledOnce();
+        });
+
+        it('T1.3 i testi sono quelli della cornice, nella lingua del documento (it, es, en), e in inglese se non c\'è; nessun testo scritto nel pezzo', async () => {
+            const lingueDelDocumento = [['it', testi('it')], ['es-ES', testi('es')], ['', testi('en')], ['ja', testi('en')]] as const;
+            // La lingua del browser non conta: senza `lang` o con una lingua che la cornice non ha, l'inglese (jsdom dà `en-US`: qui è italiana).
+            vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
+            for (const [lang, attesi] of lingueDelDocumento) {
+                document.documentElement.lang = lang;
+                onTestFinished(() => document.documentElement.removeAttribute('lang'));
+                await visita(null, <PaginaA key={`l-${lang}`} />, dellaBarra(esciSenzaEffetto));
+                expect(tutti('header button').at(-1)?.textContent).toBe(attesi.logout);
+                expect(uno('header nav')?.getAttribute('aria-label')).toBe(attesi.nav);
+                await act(async () => radice.render(null));
+            }
+            expect(testi('it').logout).not.toBe(testi('en').logout);
+            expect(readFileSync('resources/js/barra.tsx', 'utf8').replace(/\/\/.*$/gm, '')).not.toMatch(/Esci|Log out|Salir|Navigation/);
+        });
+
+        it('T1.5 se il pezzo non arriva la pagina si vede da sola, senza un errore', async () => {
+            vi.doMock('./barra', () => {
+                throw new Error('UAT il pezzo non arriva');
+            });
+            vi.resetModules();
+            const { LayoutDellaCornice: Layout } = await import('./layout');
+            await mostra(
+                <Layout cornice={null} onLogout={esciSenzaEffetto}>
+                    <PaginaA />
+                </Layout>,
+            );
+            // Il rifiuto del pezzo è avvenuto qui, non dopo il caso: un rifiuto non gestito o un errore in console sarebbe già nell'`afterEach`.
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            vi.doUnmock('./barra');
+
+            expect(contenitore.childElementCount).toBe(1);
+            expect(contenitore.firstElementChild).toBe(uno('#uat-pagina-a'));
+            expect(tutti('header')).toHaveLength(0);
+        });
+
+        it('T1.4 la pagina non si rimonta quando la barra arriva: lo stato della pagina resta', async () => {
+            const conta = { montaggi: 0 };
+            await visita(null, <PaginaCheSiConta key="1" conta={conta} />, dellaBarra(esciSenzaEffetto));
+
+            expect(uno('header')).not.toBeNull();
+            expect(conta.montaggi).toBe(1);
+        });
     });
 
     it('con la cornice montata l\'area della pagina è una scroll-region di Inertia: `main.zr-main` e, col percorso, `div.zr-main-body`, anche quando la cornice o il percorso compaiono dopo (sprint 9 · T1.4)', async () => {
@@ -506,7 +590,9 @@ describe('useCornice', () => {
         expect(uno('#uat-pagina-che-da')?.textContent).toBe('UAT pagina che dà');
 
         await visita(null, <PaginaCheDa key="1" cose={cose} />);
-        expect(contenitore.childElementCount).toBe(1);
+        // La barra minima e la pagina (sprint 68 · T1): la pagina non dà niente alla barra.
+        expect(contenitore.childElementCount).toBe(2);
+        expect(contenitore.lastElementChild).toBe(uno('#uat-pagina-che-da'));
         expect(uno('#uat-pagina-che-da')?.textContent).toBe('UAT pagina che dà');
         expect(tutti('.zr-shell, .zr-create')).toHaveLength(0);
 
@@ -2202,7 +2288,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expectTypeOf<DatiDopoDiApp>().toEqualTypeOf<DatiDopo>();
     });
 
-    it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede da sola (sprint 34 · T4.8)', async () => {
+    it('chi manda `cornice` non cambia: vale lei anche se ci sono `subito` e `dopo`; senza `cornice` e senza `subito` la pagina si vede senza la cornice (sprint 34 · T4.8)', async () => {
         await inDue({ cornice: datiAltroWorkspace, subito, dopo: { non_letti: true } }, <PaginaA />);
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
         expect(sopraLaPagina()).toBeNull();
