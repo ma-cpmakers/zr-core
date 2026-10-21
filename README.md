@@ -918,7 +918,7 @@ cornice === null ? pagina : (
   la sua durata. Il blocco ferma solo chi lo prende: il frontend mette `->bloccaSessione()` di zr-auth sulle sue rotte che
   aprono, cambiano o chiudono la sessione — quelle che chiamano `Sessione::apri()`, `Sessione::entra()` o
   `Sessione::chiudi()`: non solo l'uscita e l'ingresso in un workspace — e sulle sue rotte lente, non su tutte (non su
-  quella della richiesta rimandata della cornice in due dati: vedi lì): è il
+  quella della richiesta rimandata della cornice in due dati, salvo la pagina che è anche la rotta di `entra()`: vedi lì): è il
   criterio di zr-auth (il suo README, «Il blocco della sessione»; il ricevitore dell'ingresso di zr-auth lo ha già); messo
   da una parte sola non ferma niente. Con le due parti, le richieste non si sovrappongono: la seconda aspetta la prima al più 3 secondi, e
   oltre risponde 503 con `Retry-After: 1` — un'uscita mentre «Segna tutte come lette» gira, o «Segna tutte come lette»
@@ -1526,6 +1526,12 @@ stesso per quello); l'ordine del gruppo `web` non si riordina (`SessioneChiusa`
 ne è il primo); e `zr-auth.sessione_chiusa_secondi` (300) non è più corto della richiesta più lenta. Resta ciò che vale
 per ogni sessione di Laravel: fra due richieste della stessa sessione in volo insieme vince quella che finisce per
 ultima, e la lingua e il nome si riallineano alla pagina dopo.
+
+Se la pagina è insieme la rotta della richiesta rimandata e una rotta che chiama `Sessione::entra()` (una pagina d'ingresso
+che porta anche i dati della cornice), `bloccaSessione()` va sulla visita intera e mai sulla richiesta parziale `dopo`, quella
+che Inertia manda con `X-Inertia-Partial-Data`: il frontend distingue le due richieste dall'intestazione, e il blocco tocca solo
+la prima. Vale a condizione che la parziale non chiami `entra()`: una parziale che la chiama non è coperta da questa regola, e
+il frontend lo dice a zr-core (risposta a zr-home del 14/10/2026, voce #2115).
 
 Dalla `v2.4.0` anche l'elenco delle notifiche e la ricerca dicono di chi sono: le due rotte danno `persona`, l'email della
 persona della sessione. In una scheda rimasta ferma, senza visitare niente, la sessione può passare a un'altra persona, anche

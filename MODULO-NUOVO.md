@@ -311,6 +311,8 @@ Dalla `v2.11.0` la lingua ha un suo segno, `lingua_il`, e vale quella confermata
 Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSessione()`: la protegge `SessioneChiusa` di zr-auth
 dalla 0.12.31, che zr-core chiede dalla `v2.16.0`, se la rotta sta nel gruppo `web` e `session.block_store` (o, non
 impostato, lo store della cache predefinito) non è `array` (le quattro condizioni: README, «La cornice in due dati»).
+Se quella pagina è anche una rotta che chiama `Sessione::entra()`, il blocco va sulla visita intera e mai sulla richiesta parziale
+`dopo`, e solo se la parziale non chiama `entra()` (README, «La cornice in due dati»).
 **Tre cose non le fai**: **rileggere `subito` senza `dopo`** (un ricaricamento parziale con `only`),
 **tenere `subito` con `once`**, **comporre `dopo` a mano**. Se succede, dalla `v2.5.0` i dati di chi c'era non vanno
 sotto il nome di chi è entrato: la cornice **resta in attesa di un `dopo` di chi è entrato**, ridotta. Lo fa per un

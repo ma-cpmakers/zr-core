@@ -914,6 +914,23 @@ it('le sei cose che il README dice di useCornice sono quelle che accetta nel cod
     expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'actions', 'flush']);
 });
 
+// Sprint 68 · T2 (voce #2115): una pagina che è insieme la rotta di `entra()` e quella della richiesta rimandata.
+it('il README e la guida dicono dove va il blocco della sessione quando la pagina è anche la rotta di entra(), senza contraddire il divieto sulla richiesta rimandata (sprint 68 · T2.1)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect($readme)->toContain(
+        '`bloccaSessione()` va sulla visita intera e mai sulla richiesta parziale `dopo`',
+        'a condizione che la parziale non chiami `entra()`',
+        'salvo la pagina che è anche la rotta di `entra()`',
+        'Sulla rotta della richiesta rimandata il frontend non mette niente',
+    )
+        ->and($guida)->toContain(
+            'il blocco va sulla visita intera e mai sulla richiesta parziale `dopo`, e solo se la parziale non chiama `entra()`',
+            'Sulla rotta della richiesta rimandata non mettere niente, nemmeno `bloccaSessione()`',
+        );
+});
+
 /** Il punto «La campanella» del README, com'è scritto: dal grassetto al punto dopo. Vuoto se non c'è. */
 function puntoDellaCampanella(string $readme): string
 {
