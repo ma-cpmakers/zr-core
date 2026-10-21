@@ -399,11 +399,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(1_351);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,2 KB (sprint 31 · T3.7)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,3 KB (sprint 31 · T3.7; sprint 65 · T2)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_228);
+        // Sprint 65 · T2 (voce 2340): +99 byte per l'avatar del menu del profilo nascosto e la barra dei moduli `inert` (Decisione 14804
+        // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_327);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

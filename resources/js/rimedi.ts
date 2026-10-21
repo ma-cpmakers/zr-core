@@ -157,6 +157,31 @@ function dialogoSopraIlPannello(aggiunto: Node): void {
     }
 }
 
+/**
+ * Nel menu del profilo aperto l'avatar dell'intestazione è un `role="img"` dentro un `role="menu"`, dove un'immagine non è
+ * ammessa: axe lo dà critico (`aria-required-children`). Il nome e l'email stanno scritti accanto, quindi l'avatar si nasconde
+ * e basta; il menu è quello che l'`AppShell` scrive nella barra in alto, non un elemento della pagina con la stessa classe.
+ */
+function avatarFuoriDalMenu(aggiunto: Node): void {
+    if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-shell .zr-top-actions > .zr-profile-menu')) {
+        aggiunto.querySelector('.zr-avatar')?.setAttribute('aria-hidden', 'true');
+    }
+}
+
+/**
+ * La barra dei moduli dietro il selettore dei workspace o il menu Moduli è nascosta ai lettori di schermo ma i suoi link si
+ * raggiungono col Tab (axe: `aria-hidden-focus`): finché è nascosta è anche `inert`, e torna com'era quando il design system
+ * toglie `aria-hidden`. La barra è quella che l'`AppShell` scrive nella sidebar, non un elemento della pagina con la stessa classe;
+ * il filtro sugli attributi accende da sé l'ascolto degli attributi.
+ */
+function barraInert(cambio: MutationRecord): void {
+    const barra = cambio.target;
+
+    if (barra instanceof Element && barra.matches('.zr-shell > .zr-side > .zr-nav')) {
+        barra.toggleAttribute('inert', barra.getAttribute('aria-hidden') === 'true');
+    }
+}
+
 document.addEventListener('keydown', tabRestaDentro);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
@@ -168,13 +193,15 @@ new MutationObserver((cambi) => {
     }
     for (const cambio of cambi) {
         fuocoAllaCampanella(cambio);
+        barraInert(cambio);
         cambio.addedNodes.forEach((aggiunto) => {
             fuocoNelPannelloDelleNotifiche(aggiunto);
             dialogoSopraIlPannello(aggiunto);
+            avatarFuoriDalMenu(aggiunto);
         });
     }
     fuocoAChiLoAveva();
-}).observe(document, { childList: true, subtree: true });
+}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {

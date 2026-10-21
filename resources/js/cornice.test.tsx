@@ -8486,3 +8486,104 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         });
     });
 });
+
+describe('il menu del profilo e il selettore dei workspace aperti non danno errori di accessibilità (sprint 65 · T1, voce 2340)', () => {
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const barra = () => uno('.zr-shell nav.zr-nav');
+
+    it('col menu del profilo aperto l\'avatar dell\'intestazione è nascosto, e il nome e l\'email restano nell\'albero di accessibilità (T1.1)', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(uno('.zr-menu-head .zr-avatar')?.getAttribute('aria-hidden')).toBe('true');
+        expect(uno('.zr-menu-head')?.getAttribute('aria-hidden')).toBeNull();
+        expect(uno('.zr-menu-head strong')?.textContent).toBe('Ada Lovelace');
+        expect(uno('.zr-menu-head')?.textContent).toContain('ada@example.com');
+        expect(uno('.zr-menu-head strong')?.closest('[aria-hidden="true"]')).toBeNull();
+    });
+
+    it('l\'avatar del pulsante del profilo, fuori dal menu, resta com\'è: il suo nome è l\'unico che il pulsante dice (T1.1)', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-hidden')).toBeNull();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('role')).toBe('img');
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
+    });
+
+    it('un menu e una barra nascosta che non sono quelli dell\'`AppShell` non si toccano: né fuori dalla cornice né nella pagina dentro la cornice (T1.1, T1.2)', async () => {
+        await laCornice();
+        const menu = '<div class="zr-menu zr-profile-menu"><div class="zr-menu-head"><span class="zr-avatar" role="img"></span></div></div>';
+        const fuori = document.createElement('div');
+        const nellaPagina = document.createElement('div');
+        fuori.innerHTML = '<nav class="zr-nav"></nav>';
+        nellaPagina.innerHTML = '<nav class="zr-nav"></nav>';
+
+        await act(async () => {
+            document.body.append(fuori);
+            uno('.zr-main')?.append(nellaPagina);
+        });
+        // Il menu è l\'elemento aggiunto: un menu uguale a quello del profilo, ma non nella barra in alto della cornice.
+        const altrove = [document.body, uno('.zr-main') as HTMLElement].map((dove) => {
+            const nodo = document.createElement('div');
+            nodo.innerHTML = menu;
+
+            return [dove, nodo.firstElementChild as HTMLElement] as const;
+        });
+        await act(async () => {
+            altrove.forEach(([dove, nodo]) => dove.append(nodo));
+        });
+        await act(async () => {
+            fuori.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+            nellaPagina.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+        });
+
+        altrove.forEach(([, nodo]) => expect(nodo.querySelector('.zr-avatar')?.getAttribute('aria-hidden')).toBeNull());
+        expect(fuori.querySelector('nav')?.hasAttribute('inert')).toBe(false);
+        expect(nellaPagina.querySelector('nav')?.hasAttribute('inert')).toBe(false);
+        fuori.remove();
+        nellaPagina.remove();
+        altrove.forEach(([, nodo]) => nodo.remove());
+    });
+
+    it('col selettore dei workspace aperto la barra dei moduli dietro è inert oltre che nascosta; chiuso il selettore torna com\'era e i suoi link si raggiungono (T1.2)', async () => {
+        await laCornice();
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBe('true');
+        expect(barra()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+    });
+
+    it('lo stesso con il menu Moduli esteso, dietro il pulsante del modulo (T1.2)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: [{ id: 'oggi', label: 'Oggi', icon: 'calendar' }] }]} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await clic(uno('.zr-product-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBe('true');
+        expect(barra()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-product-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+    });
+});
