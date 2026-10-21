@@ -8515,24 +8515,43 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         await clic(uno('.zr-avatar-btn'));
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-hidden')).toBeNull();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('role')).toBe('img');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
     });
 
-    it('un\'intestazione di menu e una barra nascosta che non sono della cornice non si toccano (T1.1, T1.2)', async () => {
+    it('un menu e una barra nascosta che non sono quelli dell\'`AppShell` non si toccano: né fuori dalla cornice né nella pagina dentro la cornice (T1.1, T1.2)', async () => {
         await laCornice();
-        const altrove = document.createElement('div');
-        altrove.innerHTML = '<div class="zr-menu zr-profile-menu"><div class="zr-menu-head"><span class="zr-avatar" role="img"></span></div></div><nav class="zr-nav"></nav>';
+        const menu = '<div class="zr-menu zr-profile-menu"><div class="zr-menu-head"><span class="zr-avatar" role="img"></span></div></div>';
+        const fuori = document.createElement('div');
+        const nellaPagina = document.createElement('div');
+        fuori.innerHTML = '<nav class="zr-nav"></nav>';
+        nellaPagina.innerHTML = '<nav class="zr-nav"></nav>';
 
         await act(async () => {
-            document.body.append(altrove);
+            document.body.append(fuori);
+            uno('.zr-main')?.append(nellaPagina);
+        });
+        // Il menu è l\'elemento aggiunto: un menu uguale a quello del profilo, ma non nella barra in alto della cornice.
+        const altrove = [document.body, uno('.zr-main') as HTMLElement].map((dove) => {
+            const nodo = document.createElement('div');
+            nodo.innerHTML = menu;
+
+            return [dove, nodo.firstElementChild as HTMLElement] as const;
         });
         await act(async () => {
-            altrove.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+            altrove.forEach(([dove, nodo]) => dove.append(nodo));
+        });
+        await act(async () => {
+            fuori.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+            nellaPagina.querySelector('nav')?.setAttribute('aria-hidden', 'true');
         });
 
-        expect(altrove.querySelector('.zr-avatar')?.getAttribute('aria-hidden')).toBeNull();
-        expect(altrove.querySelector('nav')?.hasAttribute('inert')).toBe(false);
-        altrove.remove();
+        altrove.forEach(([, nodo]) => expect(nodo.querySelector('.zr-avatar')?.getAttribute('aria-hidden')).toBeNull());
+        expect(fuori.querySelector('nav')?.hasAttribute('inert')).toBe(false);
+        expect(nellaPagina.querySelector('nav')?.hasAttribute('inert')).toBe(false);
+        fuori.remove();
+        nellaPagina.remove();
+        altrove.forEach(([, nodo]) => nodo.remove());
     });
 
     it('col selettore dei workspace aperto la barra dei moduli dietro è inert oltre che nascosta; chiuso il selettore torna com\'era e i suoi link si raggiungono (T1.2)', async () => {
@@ -8546,6 +8565,23 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         expect(barra()?.hasAttribute('inert')).toBe(true);
 
         await clic(uno('.zr-ws-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+    });
+
+    it('lo stesso con il menu Moduli esteso, dietro il pulsante del modulo (T1.2)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: [{ id: 'oggi', label: 'Oggi', icon: 'calendar' }] }]} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await clic(uno('.zr-product-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBe('true');
+        expect(barra()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-product-switch'));
 
         expect(barra()?.getAttribute('aria-hidden')).toBeNull();
         expect(barra()?.hasAttribute('inert')).toBe(false);
