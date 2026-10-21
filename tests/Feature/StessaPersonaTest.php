@@ -4,6 +4,7 @@ use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use Zeiras\Auth\Persona;
 use Zeiras\Auth\Testing\Gettone;
 
 // Sprint 40 · T2 (voce #2051): una regola sola per le rotte della cornice. In una scheda rimasta ferma la sessione può essere
@@ -67,10 +68,12 @@ function rotteCheNonRispondono(int $stato, string $risposta, array $corpo, array
     return $altre;
 }
 
-it('ogni rotta della cornice, letta dal router, a una richiesta che dice una persona che non è quella della sessione risponde 409 persona_diversa con `persona` vuota e nient\'altro — nemmeno l\'email della sessione, dalla `v2.12.0` —, e non chiama il backoffice (sprint 40 · T2.1, T2.2; sprint 51 · T1.1)', function (array $corpo, array $intestazioni) {
+it('ogni rotta della cornice, letta dal router, a una richiesta di un\'altra persona — email e impronta che non sono quelle della sessione — risponde 409 persona_diversa con `persona` vuota e nient\'altro — nemmeno l\'email della sessione, dalla `v2.12.0` —, e non chiama il backoffice (sprint 40 · T2.1, T2.2; sprint 51 · T1.1)', function (array $corpo, array $intestazioni) {
     sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
     Http::fake();
     $diGrace = '{"errore":"persona_diversa","persona":""}';
+    // Dalla `v2.23.0` di chi è la pagina lo dice l'impronta, non l'email: la pagina di Ada porta quella di Ada.
+    $intestazioni += [Persona::INTESTAZIONE => improntaDi('uat-ada')];
 
     // Le quattro di oggi ci sono tutte: un elenco vuoto non proverebbe niente.
     expect(array_map(fn (array $rotta) => implode(' ', $rotta), rotteDellaCorniceDalRouter()))->toEqualCanonicalizing([
@@ -85,8 +88,6 @@ it('ogni rotta della cornice, letta dal router, a una richiesta che dice una per
     'nell\'intestazione' => [[], ['Persona' => 'uat-ada%40example.com']],
     'nel corpo' => [['persona' => 'uat-ada@example.com'], []],
     'in tutti e due i posti' => [['persona' => 'uat-ada@example.com'], ['Persona' => 'uat-ada%40example.com']],
-    'la stessa con le maiuscole' => [[], ['Persona' => 'UAT-Grace%40example.com']],
-    'la stessa con uno spazio in fondo' => [[], ['Persona' => 'uat-grace%40example.com%20']],
 ]);
 
 it('una richiesta che dice la persona della sessione arriva al backoffice da ogni rotta: né il 409 né il 422 della regola (sprint 40 · T2.1, T2.3; sprint 52 · T1.2, T1.3)', function (array $corpo, array $intestazioni) {
@@ -189,7 +190,8 @@ it('con una sessione senza email nessuna richiesta che dice la persona arriva al
 ]);
 
 it('se la richiesta dice la persona nell\'intestazione e nel corpo valgono tutte e due: basta che una non sia quella della sessione, ed è un 409 (sprint 40 · T2.4)', function (string $nelCorpo, string $nellIntestazione) {
-    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    // Dalla `v2.23.0` l'email decide solo senza un'impronta da confrontare: una sessione senza id.
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null] + GRACE_NELLA_SESSIONE);
     Http::fake();
 
     expect(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', ['persona' => $nelCorpo], ['Persona' => $nellIntestazione]))->toBe([]);
@@ -200,7 +202,8 @@ it('se la richiesta dice la persona nell\'intestazione e nel corpo valgono tutte
 ]);
 
 it('l\'intestazione porta l\'email come la scrive `encodeURIComponent`, e la rotta la legge com\'era: lettere accentate, `+` e apostrofo tornano quelli (sprint 40 · T2.4)', function (string $email, string $nellIntestazione, bool $passa) {
-    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['email' => $email] + GRACE_NELLA_SESSIONE);
+    // Senza id non c'è un'impronta: dalla `v2.23.0` è l'unico caso in cui l'email decide, e quindi in cui si legge com'era.
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['email' => $email, 'id' => null] + GRACE_NELLA_SESSIONE);
     Http::fake();
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
@@ -226,7 +229,7 @@ it('l\'intestazione porta l\'email come la scrive `encodeURIComponent`, e la rot
 
 it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene prima della persona, che dalla `v2.12.0` viene prima del 403 senza workspace, dei 422 della rotta e del 409 workspace_diverso (sprint 40 · T2.5; sprint 51 · T1.2; sprint 52 · T1.3)', function () {
     Http::fake();
-    $diAda = ['Persona' => 'uat-ada%40example.com'];
+    $diAda = ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => improntaDi('uat-ada')];
 
     // Senza sessione: 401, anche con una persona che non si può confrontare.
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
@@ -269,7 +272,7 @@ it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene
 // niente email di chi è entrato.
 it('con la sessione ma senza workspace la richiesta di un\'altra persona riceve 409 persona_diversa con `persona` vuota e niente altro, quella della persona della sessione 403 gettone_senza_workspace e niente altro, quella senza persona 422 persona_mancante; senza sessione il 401 non dice la persona; il backoffice non si chiama (sprint 44 · T4.1, T4.3, T4.4; sprint 51 · T1.2; sprint 52 · T1.3)', function () {
     Http::fake();
-    $diAda = ['Persona' => 'uat-ada%40example.com'];
+    $diAda = ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => improntaDi('uat-ada')];
     $diGrace = ['Persona' => 'uat-grace%40example.com'];
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
@@ -296,3 +299,108 @@ it('con una sessione senza email e senza workspace una richiesta che dice una pe
     }
     Http::assertNothingSent();
 });
+
+// Sprint 67 · T1 (voce #2216, Decisione di zr-pm del 21/10/2026). Dopo un cambio dell'email (zr-home #2214) le altre schede della
+// stessa persona hanno la stessa impronta e l'email di prima: dalla `v2.23.0` l'impronta decide chi è la persona della pagina, e
+// quelle schede non ricevono più il 409 «un'altra persona». L'impronta diversa o assente è il 409 di sempre, qualunque email dica.
+it('con la sessione che ha un\'impronta, una richiesta che dice la sua impronta e un\'email che non è quella della sessione arriva al backoffice da ogni rotta: né il 409 né il 422 (sprint 67 · T1.1)', function (array $corpo, array $intestazioni) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    Http::fake();
+    expect(Persona::impronta())->not->toBeNull()->and(rotteDellaCorniceDalRouter())->not->toBeEmpty();
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $prima = Http::recorded()->count();
+        $avuta = allaCornice($metodo, $indirizzo, $corpo, $intestazioni);
+
+        // Il backoffice finto risponde un 200 vuoto, e la rotta ne fa un suo errore: qui conta solo che lo abbia chiamato.
+        expect(Http::recorded()->count())->toBeGreaterThan($prima, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->not->toContain('persona_diversa')->not->toContain('dati_non_validi')->not->toContain('persona_mancante');
+    }
+})->with([
+    'l\'email di prima nell\'intestazione' => [[], ['Persona' => 'uat-ada%40example.com']],
+    'l\'email di prima nel corpo' => [['persona' => 'uat-ada@example.com'], []],
+    'l\'email di prima in tutti e due i posti' => [['persona' => 'uat-ada@example.com'], ['Persona' => 'uat-ada%40example.com']],
+    'la sua con le maiuscole' => [[], ['Persona' => 'UAT-Grace%40example.com']],
+    'la sua con uno spazio in fondo' => [[], ['Persona' => 'uat-grace%40example.com%20']],
+    'un\'email qualunque' => [[], ['Persona' => 'nessuno%40example.com']],
+]);
+
+it('con la sessione che ha un\'impronta, un\'email che non è la sua e un\'impronta che non è la sua, o che non c\'è, o che non è proprio quella, riceve da ogni rotta 409 persona_diversa con `persona` vuota, e il backoffice non è chiamato (sprint 67 · T1.2)', function (?string $impronta, string $email) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    Http::fake();
+    $dellaSessione = (string) Persona::impronta();
+    $impronta = $impronta === null ? null : str_replace(['{ada}', '{SESSIONE}', '{sessione}'], [improntaDi('uat-ada'), strtoupper($dellaSessione), $dellaSessione], $impronta);
+    if ($impronta === null) {
+        test()->withoutHeader(Persona::INTESTAZIONE);
+    }
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => $email] + ($impronta === null ? [] : [Persona::INTESTAZIONE => $impronta]));
+
+        expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
+            ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    }
+    Http::assertNothingSent();
+})->with([
+    'l\'email di prima con l\'impronta di un\'altra persona' => ['{ada}', 'uat-ada%40example.com'],
+    'l\'email della sessione con l\'impronta di un\'altra persona' => ['{ada}', 'uat-grace%40example.com'],
+    'l\'email di prima senza l\'impronta' => [null, 'uat-ada%40example.com'],
+    'l\'email di prima con un testo qualunque' => ['uat-ada', 'uat-ada%40example.com'],
+    'l\'email di prima con `undefined`' => ['undefined', 'uat-ada%40example.com'],
+    'l\'email di prima con quella giusta in maiuscole' => ['{SESSIONE}', 'uat-ada%40example.com'],
+    'l\'email di prima con quella giusta e un\'altra insieme' => ['{sessione},{ada}', 'uat-ada%40example.com'],
+]);
+
+it('l\'impronta da sola non fa entrare nessuno: senza sessione la richiesta con un\'impronta di chi vuole e un\'email qualunque riceve il 401 da ogni rotta, e non arriva alla rotta (sprint 67 · T1.3)', function () {
+    Http::fake();
+
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $avuta = allaCornice($metodo, $indirizzo, ['persona' => 'uat-ada@example.com'], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => improntaDi('uat-ada')]);
+
+        expect($avuta->getStatusCode())->toBe(401, "{$metodo} {$indirizzo}")->and($avuta->getContent())->not->toContain('persona_diversa');
+    }
+    Http::assertNothingSent();
+});
+
+it('con una sessione senza id l\'email decide come prima, qualunque impronta dica la richiesta: un\'email diversa è 409, la sua passa (sprint 67 · T1.4)', function (string $impronta) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+    expect(Persona::impronta())->toBeNull();
+    $impronta = str_replace('{ada}', improntaDi('uat-ada'), $impronta);
+
+    expect(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', [], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => $impronta]))->toBe([]);
+    Http::assertNothingSent();
+    foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
+        $prima = Http::recorded()->count();
+        allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-grace%40example.com', Persona::INTESTAZIONE => $impronta]);
+
+        expect(Http::recorded()->count())->toBeGreaterThan($prima, "{$metodo} {$indirizzo}");
+    }
+})->with([
+    'l\'impronta di un\'altra persona' => ['{ada}'],
+    'un testo qualunque' => ['uat-ada'],
+]);
+
+it('con una sessione senza id l\'email si confronta com\'è: le maiuscole e uno spazio in fondo sono un\'altra persona, e riceve da ogni rotta il 409 (sprint 67 · T1.4; R3 della review)', function (string $email) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['id' => null] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    expect(Persona::impronta())->toBeNull()
+        ->and(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', [], ['Persona' => $email]))->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'le maiuscole' => ['UAT-Grace%40example.com'],
+    'uno spazio in fondo' => ['uat-grace%40example.com%20'],
+]);
+
+it('con una sessione che ha un\'impronta ma un\'email nulla o vuota nessuna email detta passa, nemmeno con l\'impronta giusta: da ogni rotta 409, e il backoffice non è chiamato (sprint 67 · T1.5; R4 della review)', function (?string $email) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', ['email' => $email] + GRACE_NELLA_SESSIONE);
+    Http::fake();
+
+    expect(Persona::impronta())->not->toBeNull()
+        ->and(rotteCheNonRispondono(409, '{"errore":"persona_diversa","persona":""}', [], ['Persona' => 'uat-grace%40example.com']))->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'nulla' => [null],
+    'vuota' => [''],
+]);

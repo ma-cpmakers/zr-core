@@ -67,10 +67,10 @@ it('con `zr-auth.persona.controllo` acceso SoloDallaPersona non sta sulle scritt
     expect(Http::recorded()->count())->toBe($chiamate);
 });
 
-it('con l\'interruttore acceso una scrittura della cornice che dice una persona che non è quella della sessione riceve il 409 di StessaPersona, `persona` vuota compresa, anche con l\'`X-Zr-Persona` giusta, e il backoffice non è chiamato (sprint 59 · T1.2)', function (bool $conLImpronta) {
+it('con l\'interruttore acceso una scrittura della cornice che dice una persona che non è quella della sessione riceve il 409 di StessaPersona, `persona` vuota compresa, con l\'impronta di quella persona (dalla `v2.23.0` l\'impronta decide, non l\'email), e il backoffice non è chiamato (sprint 59 · T1.2; sprint 67 · T1)', function (bool $conLImpronta) {
     sessioneAMano(WORKSPACE_COL_CONTROLLO);
     Http::fake();
-    $intestazioni = ['Persona' => 'uat-grace%40example.com'] + ($conLImpronta ? [Persona::INTESTAZIONE => (string) Persona::impronta()] : []);
+    $intestazioni = ['Persona' => 'uat-grace%40example.com'] + ($conLImpronta ? [Persona::INTESTAZIONE => improntaDi('uat-grace')] : []);
 
     expect(Persona::impronta())->not->toBeNull()
         // Review della PR #95, R1: con nessuna scrittura trovata il ciclo non girerebbe, e il caso passerebbe senza provare niente.
@@ -87,7 +87,7 @@ it('con l\'interruttore acceso una scrittura della cornice che dice una persona 
     }
     Http::assertNothingSent();
 })->with([
-    'con l\'impronta della persona della sessione' => [true],
+    'con l\'impronta di quella persona' => [true],
     'senza l\'impronta' => [false],
 ]);
 

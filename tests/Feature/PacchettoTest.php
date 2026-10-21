@@ -1199,7 +1199,7 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         // Dalla `v2.21.2` (sprint 64 · T2.1; review della PR #104, R3) l'email non sta più fra ciò che resta dell'ingresso.
         'workspace, ruolo e gettoni restano quelli dell\'ingresso' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Workspace, ruolo e gettoni restano quelli dell\'ingresso.'),
         'l\'email secondo la zr-auth installata' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'L\'email dipende dalla zr-auth installata: fino alla 0.12.62 resta quella dell\'ingresso, e dalla 0.12.63 segue io.mostra'),
-        'la scheda con l\'email di prima si ricarica' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Una scheda rimasta aperta con l\'email di prima riceve alla sua richiesta della cornice il 409 `persona_diversa`, e si ricarica come per un\'altra persona'),
+        'la scheda con l\'email di prima passa' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'Una scheda rimasta aperta con l\'email di prima ha la stessa impronta della persona: dalla `v2.23.0` la sua richiesta della cornice passa come quella di una scheda con l\'email nuova, i dati sono quelli della sessione e `persona` nella risposta è l\'email che la pagina ha detto, così la scheda non si ricarica (fino alla `v2.22` riceveva il 409 `persona_diversa` e si ricaricava come per un\'altra persona)'),
         'i dati li portano da quella stessa richiesta' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'I dati della cornice portano la lingua e il nome della sessione dopo `Sessione::aggiorna`, da quella stessa richiesta'),
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => str_contains(sezioneDelReadme($testo, 'La parte server'), 'ciò che il frontend ha letto dalla sessione prima di chiamare `Cornice::dati()` — di solito la lingua della pagina, in un middleware — in quella richiesta è ancora quello di prima, e dalla richiesta dopo è nuovo'),
         // Dalla v1.8.0 il rimedio di prima è la strada di chi resta col suo codice: la riga è `Cornice::lingua()` (sprint 18 · T2.8).
@@ -1217,7 +1217,7 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
         'a ogni lettura, con Sessione::aggiorna' => true,
         'workspace, ruolo e gettoni restano quelli dell\'ingresso' => true,
         'l\'email secondo la zr-auth installata' => true,
-        'la scheda con l\'email di prima si ricarica' => true,
+        'la scheda con l\'email di prima passa' => true,
         'i dati li portano da quella stessa richiesta' => true,
         'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => true,
         'il rimedio' => true,
@@ -1232,7 +1232,7 @@ it('il README dice, in «La parte server», che a ogni lettura Cornice::dati() r
             'a ogni lettura, con Sessione::aggiorna' => false,
             'workspace, ruolo e gettoni restano quelli dell\'ingresso' => false,
             'l\'email secondo la zr-auth installata' => false,
-            'la scheda con l\'email di prima si ricarica' => false,
+            'la scheda con l\'email di prima passa' => false,
             'i dati li portano da quella stessa richiesta' => false,
             'ciò che il frontend ha letto prima resta fino alla richiesta dopo' => false,
             'il rimedio' => false,
@@ -6212,6 +6212,49 @@ it('la copia del registro si scrive e si azzera in `tests/Pest.php`: lì la chia
         ->and(array_filter($neiFile, fn (array $conta): bool => $conta !== [0, 0]))->toBe([])
         ->and($quante(__DIR__.'/../Pest.php'))->toBe([1, 1])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../Pest.php'), "pest()->extend(TestCase::class)->afterEach(fn () => {$chiamate[1]})->in('Feature');"))->toBe(1);
+});
+
+// Sprint 67 · T2 (voce #2216): dalla `v2.23.0` l'impronta decide chi è la persona della pagina. Il README lo dice in «La parte
+// server», con le due metà (passa con l'impronta giusta, 409 con un'altra o senza), il 401 senza sessione, dove l'email decide
+// ancora e che cosa cambia per i test di un frontend; e non dice più che la scheda con l'email di prima riceve il 409.
+
+it('il README dice, in «La parte server», che dalla `v2.23.0` l\'impronta decide chi è la persona della pagina, quando passa e quando no, dove l\'email decide ancora e che cosa cambia per i test di un frontend, e non dice più che l\'email di prima riceve il 409 (sprint 67 · T2)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(sezioneDelReadme($readme, 'La parte server'), $frase))->toBe(true)
+        ->and(str_contains(sezioneDelReadme(conParteServerECorniceScambiate($readme), 'La parte server'), $frase))->toBe(false);
+})->with([
+    'l\'impronta decide' => ['Dalla `v2.23.0` l\'impronta decide chi è la persona della pagina: se la sessione ne ha una e la richiesta dice quella, la richiesta passa anche con un\'email che non è quella della sessione'],
+    'perché: il cambio dell\'email' => ['la persona l\'ha cambiata da un\'altra scheda, zr-home #2214), e i dati sono sempre quelli della sessione, mentre `persona` nella risposta è l\'email che la pagina ha detto'],
+    'il 409 e il 401' => ['Con un\'altra impronta, o senza, è il 409 di sempre, qualunque email dica, e senza sessione resta il 401: l\'impronta da sola non fa entrare nessuno'],
+    'dove l\'email decide' => ['L\'email decide dove l\'impronta non c\'è — la sessione senza id — e dove la sessione non ha un\'email da confrontare; i 422 della persona restano prima'],
+    'nessuna rotta la legge come dato' => ['Nessuna rotta della cornice legge l\'email detta come dato: l\'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`'],
+    'APP_KEY' => ['Cambiare `APP_KEY` cambia tutte le impronte, e annulla le sessioni se non c\'è `APP_PREVIOUS_KEYS`: con le chiavi di prima le schede aperte ricevono il 409 e si ricaricano'],
+    'i test di un frontend' => ['un caso che aspetta il 409 da una richiesta con un\'altra email e l\'impronta della sessione ora passa, e per provare «un\'altra persona» la richiesta porta l\'impronta di quella persona'],
+]);
+
+it('nessun file di src/ oltre StessaPersona legge la persona detta dalla richiesta, né l\'intestazione `Persona` né `persona` del corpo, e le rotte della cornice dicono `persona` con StessaPersona::chiRisponde(), non con l\'email della sessione: l\'email detta non è un dato per nessuna rotta (sprint 67 · T2, nota di zr-backoffice e R2, R5 della review)', function () {
+    $letture = [];
+    $dellaSessione = [];
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src', FilesystemIterator::SKIP_DOTS)) as $file) {
+        $nome = basename($file->getPathname());
+        $testo = (string) file_get_contents($file->getPathname());
+        if ($nome !== 'StessaPersona.php' && preg_match('/StessaPersona::INTESTAZIONE|(headers->(get|all)|header)\(\s*[\'"]persona[\'"]|(json|input|get|post|query|string|str|only|collect)\(\s*[\'"]persona[\'"]|->persona\b|\$persona\s*=\s*\$[a-z]+->/i', $testo) === 1) {
+            $letture[] = $nome;
+        }
+        if (in_array($nome, ['NotificheDellaCornice.php', 'RicercaDellaCornice.php'], true) && str_contains($testo, "Sessione::utente()['email']")) {
+            $dellaSessione[] = $nome;
+        }
+    }
+
+    expect($letture)->toBe([])->and($dellaSessione)->toBe([]);
+});
+
+it('il README non dice più che una scheda con l\'email di prima riceve il 409 persona_diversa e si ricarica come per un\'altra persona (sprint 67 · T2)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(str_contains($readme, 'aperta con l\'email di prima riceve alla sua richiesta della cornice il 409'))->toBe(false)
+        ->and(str_contains($readme, 'Una scheda rimasta aperta con l\'email di prima ha la stessa impronta della persona'))->toBe(true);
 });
 
 // L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di

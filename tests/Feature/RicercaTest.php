@@ -101,6 +101,22 @@ function cerca(string $q): TestResponse
     return $risposta;
 }
 
+// Sprint 67 · T1 (voce #2216; R2 della review): la scheda con l'email di prima ha la stessa impronta, e la risposta dice `persona`
+// com'è nella pagina. Il JS della cornice confronta quel testo con l'email a schermo e, se è un altro, ricarica la pagina.
+it('la ricerca di una scheda con l\'email di prima e la stessa impronta risponde con `persona` com\'è nella pagina, anche nel 429, e non con l\'email della sessione (sprint 67 · T1.1)', function (bool $frenata) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => $frenata ? troppeRichieste('30') : Http::response(esempioDelContratto())]);
+
+    $risposta = test()->postJson('cornice/ricerca', ['q' => 'UAT'], ['Persona' => rawurlencode('uat-ada-prima@example.com')]);
+
+    expect($risposta->getStatusCode())->toBe($frenata ? 429 : 200)
+        ->and($risposta->json('persona'))->toBe('uat-ada-prima@example.com')
+        ->and($risposta->getContent())->not->toContain('"uat-ada@example.com"');
+})->with([
+    'una ricerca' => [false],
+    'il freno' => [true],
+]);
+
 it('POST /cornice/ricerca cerca nel workspace del gettone con una sola richiesta, ricerca.crea: una POST a /v1/ricerca col termine nel corpo JSON e nient\'altro, e l\'indirizzo senza query; dà tipo, id, titolo e contesto dei risultati, nell\'ordine del backoffice (sprint 5 · T4.1; sprint 25 · T3.1, T3.2)', function () {
     $gettoni = sessioneAMano(WORKSPACE_DELLA_RICERCA);
     // Col gettone dell'accesso il backoffice risponderebbe 403 gettone_senza_workspace: qui dà altri risultati, per vederlo.

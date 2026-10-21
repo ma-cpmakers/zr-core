@@ -328,7 +328,7 @@ guarda l'età della pagina. Dalla `v2.6.0` nemmeno il clic su una
 notifica: la cornice dice di chi è la pagina in ogni sua richiesta, con l'intestazione `Persona`, e la sua parte server
 risponde 409 `persona_diversa` a quella di un'altra persona, anche senza un workspace (dalla `v2.12.0` viene prima del
 403 `gettone_senza_workspace`), e la tua scheda rimasta ferma si ricarica. Dalla `v2.12.0` nessuna delle due risposte dice
-chi è entrato: niente email. Per la cornice tu non scrivi niente: la regola la registra
+chi è entrato: niente email. Dalla `v2.23.0` una scheda con l'email di prima ma la stessa impronta non è un'altra persona: la sua richiesta passa e la scheda non si ricarica (README, «La parte server»). Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
 come lì è scritto: dalla `v2.13.0` a una richiesta che non la dice la rotta risponde 422 `persona_mancante`, senza leggere
 né segnare niente. Così un JS di prima della `v2.6.0` rimasto in una scheda non segna più a chi è entrato: mostra un errore,
