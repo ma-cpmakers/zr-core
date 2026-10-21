@@ -2695,9 +2695,9 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
     // Sprint 26 · T8.4 (voce #1792): dal 12/10/2026 il CRM è per tutti. Chi legge che cosa, e quali restano in arrivo.
-    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in arrivo e non è «Presto»'],
+    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings e Finanze sono in arrivo e non sono «Presto»'],
     'dalla v1.16.0 il CRM non è più in arrivo' => ['Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo dà `disponibile` a ogni workspace'],
-    'quali restano in arrivo' => ['in arrivo restano Bookings e i tre «Presto»'],
+    'quali restano in arrivo' => ['in arrivo restano Bookings e Finanze e i tre «Presto»'],
 ]);
 
 // Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
@@ -2729,7 +2729,7 @@ function frasiDellaGuidaSuInArrivo(): array
         // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
         'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)', PASSO_DEL_REGISTRO],
         'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`', PASSO_DEL_REGISTRO],
-        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»', PASSO_DEL_REGISTRO],
+        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e Finanze e i tre «Presto»', PASSO_DEL_REGISTRO],
     ];
 }
 
@@ -5186,7 +5186,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.826 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.875 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],

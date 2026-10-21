@@ -6,7 +6,7 @@ import type { IconName, Tone } from '../zeiras/index';
 // backoffice dice solo quali prodotti sono attivi in un workspace.
 
 /** Gli id dei prodotti, Dashboard esclusa: ognuno ha il suo nome in ogni lingua, con l'id per chiave. Un prodotto nuovo entra anche qui. */
-export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'reports' | 'automations' | 'content';
+export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'flow' | 'reports' | 'automations' | 'content';
 
 /**
  * Le risorse del registro che la ricerca mostra, `<voce>.<tipo>`: ognuna ha in ogni lingua il nome del suo gruppo, con questa
