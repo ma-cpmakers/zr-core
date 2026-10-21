@@ -403,7 +403,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
-        // Sprint 65 · T2 (voce #2340): +92 byte per l'avatar del menu del profilo nascosto e la barra dei moduli `inert` (Decisione 14804
+        // Sprint 65 · T2 (voce 2340): +92 byte per l'avatar del menu del profilo nascosto e la barra dei moduli `inert` (Decisione 14804
         // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_320);
     });

@@ -8487,7 +8487,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
     });
 });
 
-describe('il menu del profilo e il selettore dei workspace aperti non danno errori di accessibilità (sprint 65 · T1, voce #2340)', () => {
+describe('il menu del profilo e il selettore dei workspace aperti non danno errori di accessibilità (sprint 65 · T1, voce 2340)', () => {
     /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
     const laCornice = async () => {
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
