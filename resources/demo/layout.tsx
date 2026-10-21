@@ -195,7 +195,7 @@ function SenzaDati({ visita }: Props) {
     return (
         <>
             <h1>UAT Senza dati</h1>
-            <p>UAT visita {visita}. I dati della cornice sono null: la pagina si vede da sola, senza barra né topbar. Chiama useCornice lo stesso.</p>
+            <p>UAT visita {visita}. I dati della cornice sono null: la pagina ha sopra la barra minima (il logo, le voci del layout ed «Esci»), senza barra laterale né topbar. Chiama useCornice lo stesso.</p>
             {contatori}
             <Collegamenti />
         </>

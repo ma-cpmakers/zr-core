@@ -1381,9 +1381,20 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
 - **Il layout** del frontend rende `LayoutDellaCornice` ed è un componente a livello di modulo, dato a
   `createInertiaApp({ layout })`: finché è lo stesso componente Inertia lo tiene montato, e uno creato dentro un render
   sarebbe nuovo ogni volta. `LayoutDellaCornice` prende le props di `Cornice`, con `cornice` al posto di `dati`: con `null`,
-  o senza (una pagina fuori dal workspace), la pagina si vede da sola. Il layout gliele dà **per nome**, mai con
+  o senza (una pagina fuori dal workspace), non c'è la cornice e la pagina ha sopra la barra minima (qui sotto). Il layout gliele dà **per nome**, mai con
   `{...props}`: Inertia passa al layout anche le props della pagina, e una prop del server che si chiama `actions` o
   `product` non deve arrivare alla cornice.
+- **Senza dati: la barra minima**, provvisoria (dalla `v2.24.0`). Quando la cornice non c'è — `cornice` `null` o mancante, e
+  niente `subito` —, la pagina ha sopra una barra sola: il logo, le voci del modulo (le `nav` che il layout riceve) ed «Esci».
+  Non chiede niente al backoffice, così chi arriva su una pagina d'esito o d'errore non resta senza strada. Non è una seconda
+  cornice: niente moduli, workspace, ricerca, notifiche, profilo né «+». «Esci» chiama `onLogout`, una voce chiama
+  `onNavigate` col suo id, e la voce `active` porta `aria-current="page"`. I testi sono quelli della cornice, nella lingua
+  del documento (`<html lang>`), in inglese se manca. È un pezzo a richiesta (`barra`, 463 byte con gzip): il layout lo
+  chiede con `import()` solo quando la cornice non c'è, la pagina resta nello stesso posto quando arriva, e se non arriva si
+  vede da sola. Costa 118 byte con gzip nel JS d'ingresso di chi usa il layout (misura dello sprint 68); l'app che prende
+  solo la cornice non cambia. **È provvisoria**: il design system non ha ancora la sua barra minima (è fra le richieste a
+  Luciano), e questa è fatta coi soli suoi pezzi, `Logo` e `Button`. Quando la barra c'è nel design system questa si toglie
+  e la sostituisce lui, con una versione che lo annuncia.
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
   (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
   (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Nessuna voce

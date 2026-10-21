@@ -903,6 +903,7 @@ it('il README dice come si usa il layout della cornice, una cosa per punto (spri
     '(c) il percorso si dà dal layout' => ['Il percorso', ['**Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`'], ['si dà dal layout', 'non si dà dal layout']],
     '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['**Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici'], ['fa due cornici', 'non fa due cornici']],
     '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['**Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser ricarica la pagina'], ['sono link veri', 'non sono link veri']],
+    '(f) senza dati la barra minima è provvisoria, un pezzo a richiesta, e costa 118 byte (sprint 68 · T1.7)' => ['Senza dati: la barra minima', ['**È provvisoria**: il design system non ha ancora la sua barra minima', '**Senza dati: la barra minima**, provvisoria (dalla `v2.24.0`)', '(`barra`, 463 byte con gzip)', 'Costa 118 byte con gzip nel JS d\'ingresso di chi usa il layout'], ['È provvisoria', 'Non è provvisoria']],
 ]);
 
 it('le sei cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3)', function () {

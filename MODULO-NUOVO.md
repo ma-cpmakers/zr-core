@@ -378,6 +378,10 @@ e che cosa dai tu è in README, «La cornice». Le forme:
   cornice si rifà, come per la Dashboard e per i prodotti;
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
+- **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
+  minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: la
+  tua `nav` e il tuo `onNavigate` le dai già al layout (README, «La cornice montata una volta sola»). Quando il design
+  system ha la sua barra minima questa si toglie, e con lei la tua pagina d'esito non cambia.
 
 **Prova**: scrivi due lettere nella ricerca, poi vai a un'altra pagina del modulo da una tua voce: il testo che hai
 scritto è ancora nella ricerca. Il pannello aperto non è una prova: al clic su una voce l'`AppShell` chiude ogni
