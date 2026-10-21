@@ -123,24 +123,26 @@ import * as React from 'react';
   Avatar.Stack = AvatarStack;
 
   /* ---------- AppShell (portale) ---------- */
-  var DEFAULT_NAV = [
-    { group: 'Prodotti', products: true, items: [
-      { id: 'home', label: 'Dashboard', icon: 'grid', home: true },
-      { id: 'pm', label: 'Project Management', icon: 'board' },
-      { id: 'crm', label: 'CRM', icon: 'users', tone: 'sky' },
-      { id: 'bookings', label: 'Bookings', icon: 'calendar', tone: 'sky' },
-      { id: 'reports', label: 'Report', icon: 'chart', tone: 'citrus' },
-      { id: 'automations', label: 'Automazioni', icon: 'bolt', tone: 'plum' },
-      { id: 'content', label: 'Contenuti', icon: 'sparkle', tone: 'coral' }
-    ] }
-  ];
+  /* Menu dei moduli: unico, uguale in ogni schermata e su telefono (decisione del 21 ott 2026).
+     «Modulo» = Board, CRM, Bookings, Finanze…; «prodotto» e «servizio» sono solo le voci del Catalogo del CRM. */
+  var MODULES_NAV = { group: 'Moduli', products: true, items: [
+    { id: 'home', label: 'Dashboard', icon: 'grid', home: true },
+    { id: 'pm', label: 'Board', icon: 'board' },
+    { id: 'crm', label: 'CRM', icon: 'users', tone: 'sky' },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', tone: 'sky' },
+    { id: 'flow', label: 'Finanze', icon: 'euro', tone: 'pine' },
+    { id: 'reports', label: 'Report', icon: 'chart', tone: 'citrus', soon: true },
+    { id: 'automations', label: 'Automazioni', icon: 'bolt', tone: 'plum', soon: true },
+    { id: 'content', label: 'Contenuti', icon: 'sparkle', tone: 'coral', soon: true }
+  ] };
+  var DEFAULT_NAV = [MODULES_NAV];
 
   /* Testi fissi dell'AppShell: tutti sostituibili con la prop labels (it di default) */
   var APPSHELL_LABELS = {
     soon: 'Presto', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace',
-    search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i prodotti: scrivi almeno 2 caratteri.',
+    search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
     notifications: 'Notifiche', unread: 'non lette', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
@@ -177,7 +179,7 @@ import * as React from 'react';
     var nav = p.nav || DEFAULT_NAV;
     var active = p.active || 'home';
     var user = p.user || L.userFallback;
-    var prodGroup = p.product ? nav.find(function (g) { return g.products || g.group === 'Prodotti'; }) : null;
+    var prodGroup = p.product ? nav.find(function (g) { return g.products || (g.group === 'Prodotti' || g.group === 'Moduli'); }) : null;
     var current = prodGroup ? prodGroup.items.find(function (it) { return it.id === p.product; }) : null;
     var openSt = useState(false), open = openSt[0], setOpen = openSt[1];
     var drawerSt = useState(false), drawer = drawerSt[0], setDrawer = drawerSt[1];
@@ -387,7 +389,7 @@ import * as React from 'react';
         switcher,
         h('nav', { className: cx('zr-nav', (open || pop === 'ws') && 'is-dimmed'), 'aria-hidden': open || pop === 'ws' ? 'true' : undefined },
           groups.map(function (g) {
-            return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || g.group === 'Prodotti') && 'is-products') },
+            return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || (g.group === 'Prodotti' || g.group === 'Moduli')) && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),
               g.items.map(item));
           })),
@@ -423,19 +425,21 @@ import * as React from 'react';
   }
 
   /* ---------- ProductTile ---------- */
+  var PRODUCT_TILE_LABELS = { active: 'Attivo', soon: 'In arrivo', soonMeta: 'Ti avviseremo al lancio', open: 'Apri' };
   function ProductTile(p) {
+    var L = Object.assign({}, PRODUCT_TILE_LABELS, p.labels || {});
     var soon = p.status === 'soon';
     var tone = p.tone || 'pine';
     var inner = [
       h('div', { key: 'hd', className: 'zr-tile-head' },
         h('span', { className: cx('zr-iconbox', 'zr-label-' + (soon ? 'neutral' : tone)) }, h(Icon, { name: p.icon || 'grid', size: 22 })),
-        h(Label, { tone: soon ? 'neutral' : 'pine' }, soon ? 'In arrivo' : 'Attivo')),
+        h(Label, { tone: soon ? 'neutral' : 'pine' }, soon ? L.soon : L.active)),
       h('div', { key: 'bd', className: 'zr-tile-body' },
         h('h3', { className: 'zr-tile-name' }, p.name),
         p.description ? h('p', { className: 'zr-tile-desc' }, p.description) : null),
       h('div', { key: 'ft', className: 'zr-tile-foot' },
-        h('span', null, p.meta || (soon ? 'Ti avviseremo al lancio' : '')),
-        soon ? null : h('span', { className: 'zr-tile-go' }, p.cta || 'Apri', h(Icon, { name: 'arrow', size: 16 })))
+        h('span', null, p.meta || (soon ? L.soonMeta : '')),
+        soon ? null : h('span', { className: 'zr-tile-go' }, p.cta || L.open, h(Icon, { name: 'arrow', size: 16 })))
     ];
     if (soon) return h('div', { className: 'zr-tile is-soon', 'aria-disabled': 'true' }, inner);
     return h(p.href ? 'a' : 'button', { className: 'zr-tile', href: p.href, type: p.href ? undefined : 'button', onClick: p.onOpen }, inner);
@@ -556,7 +560,7 @@ import * as React from 'react';
     return h('div', { className: 'zr-board' },
       h('header', { className: 'zr-board-head' },
         p.crumbs === false ? null : h('nav', { className: 'zr-crumbs', 'aria-label': 'Percorso' },
-          h('a', { href: '#' , onClick: function (e) { e.preventDefault(); } }, p.product || 'Project Management'),
+          h('a', { href: '#' , onClick: function (e) { e.preventDefault(); } }, p.product || 'Board'),
           h(Icon, { name: 'chevron', size: 14 }),
           h('a', { href: '#', onClick: function (e) { e.preventDefault(); } }, p.folder || 'Corsi 2026'),
           h(Icon, { name: 'chevron', size: 14 }),
@@ -603,7 +607,7 @@ import * as React from 'react';
 
   /* ---------- DashboardHome ---------- */
   var SAMPLE_PRODUCTS = [
-    { id: 'pm', name: 'Project Management', icon: 'board', tone: 'pine', description: 'Board Kanban in cartelle: organizza attività, scadenze e persone.', meta: '2 cartelle · 5 board' },
+    { id: 'pm', name: 'Board', icon: 'board', tone: 'pine', description: 'Board Kanban in cartelle: organizza attività, scadenze e persone.', meta: '2 cartelle · 5 board' },
     { id: 'crm', name: 'CRM', icon: 'users', tone: 'sky', description: 'Contatti, aziende e trattative in una pipeline semplice.', meta: '248 contatti · 12 trattative' },
     { id: 'reports', name: 'Report', icon: 'chart', tone: 'citrus', description: 'Dashboard di marketing, vendite e attività, sempre aggiornate.', meta: '3 dashboard' },
     { id: 'automations', name: 'Automazioni', icon: 'bolt', tone: 'plum', description: 'Quando succede qualcosa, Zeiras fa il resto: email, attività, avvisi.', meta: '4 attive' },
@@ -638,38 +642,74 @@ import * as React from 'react';
   /* =====================  HOMEPAGE (sito pubblico)  ===================== */
   var SITE_NAV = [
     { label: 'Prodotti', href: '#prodotti' },
+    { label: 'Settori', href: '#settori' },
     { label: 'Come funziona', href: '#come-funziona' },
-    { label: 'Per chi è', href: '#per-chi' },
     { label: 'Prezzi', href: '#prezzi' },
     { label: 'FAQ', href: '#faq' }
   ];
 
+  var SITE_HEADER_LABELS = { login: 'Accedi', signup: 'Inizia gratis', openMenu: 'Apri menu', closeMenu: 'Chiudi menu', nav: 'Sito', home: 'Zeiras, pagina iniziale', language: 'Lingua' };
   function SiteHeader(p) {
     var nav = p.nav || SITE_NAV;
+    var L = Object.assign({}, SITE_HEADER_LABELS, p.labels || {});
     var op = useState(false), open = op[0], setOpen = op[1];
     return h('header', { className: cx('zr-site-head', open && 'is-open') },
       h('div', { className: 'zr-site-wrap zr-site-head-row' },
-        h('a', { href: p.homeHref || '#', className: 'zr-site-logo', 'aria-label': 'Zeiras' }, h(Logo, { size: 26 })),
-        h('nav', { className: 'zr-site-nav', 'aria-label': 'Sito' },
+        h('a', { href: p.homeHref || '#', className: 'zr-site-logo', 'aria-label': L.home }, h(Logo, { size: 26 })),
+        h('nav', { className: 'zr-site-nav', 'aria-label': L.nav },
           nav.map(function (n) { return h('a', { key: n.label, href: n.href, onClick: function () { setOpen(false); } }, n.label); })),
         h('div', { className: 'zr-site-cta' },
-          h('a', { href: p.loginHref || '#', className: 'zr-btn zr-btn-ghost zr-btn-md' }, 'Accedi'),
-          h('a', { href: p.signupHref || '#', className: 'zr-btn zr-btn-primary zr-btn-md' }, 'Inizia gratis')),
-        h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-site-burger', 'aria-label': open ? 'Chiudi menu' : 'Apri menu', 'aria-expanded': open, onClick: function () { setOpen(!open); } },
-          h(Icon, { name: open ? 'close' : 'list', size: 20 }))));
+          p.languages && p.languages.length ? h(LanguageSwitch, { languages: p.languages, variant: 'compact', label: L.language }) : null,
+          h('a', { href: p.loginHref || '#', className: 'zr-btn zr-btn-ghost zr-btn-md' }, L.login),
+          h('a', { href: p.signupHref || '#', className: 'zr-btn zr-btn-primary zr-btn-md' }, L.signup)),
+        h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-site-burger', 'aria-label': open ? L.closeMenu : L.openMenu, 'aria-expanded': open, onClick: function () { setOpen(!open); } },
+          h(Icon, { name: open ? 'close' : 'menu', size: 20 }))));
   }
 
-  function HeroPreview() {
+  /* ---------- LanguageSwitch: lingue del sito pubblico (link con hreflang) ---------- */
+  function LanguageSwitch(p) {
+    var langs = p.languages || [
+      { code: 'it', label: 'Italiano', href: '/it/', current: true },
+      { code: 'es', label: 'Español', href: '/es/' },
+      { code: 'en', label: 'English', href: '/en/' }
+    ];
+    var compact = p.variant === 'compact';
+    return h('nav', { className: cx('zr-lang', compact && 'is-compact', p.className), 'aria-label': p.label || 'Lingua' },
+      compact ? h(Icon, { name: 'globe', size: 16 }) : null,
+      h('ul', null, langs.map(function (l) {
+        return h('li', { key: l.code },
+          h('a', { href: l.href || '#', hrefLang: l.code, lang: l.code, className: l.current ? 'is-current' : undefined,
+            'aria-current': l.current ? 'true' : undefined, 'aria-label': compact ? l.label : undefined, title: compact ? l.label : undefined },
+            compact ? l.code.toUpperCase() : l.label));
+      })));
+  }
+
+  /* ---------- Breadcrumb: percorso delle pagine pubbliche ---------- */
+  function Breadcrumb(p) {
+    var items = p.items || [{ label: 'Zeiras', href: '/it/' }, { label: 'Settori', href: '/it/settori/' }, { label: 'Palestre e personal trainer' }];
+    return h('nav', { className: cx('zr-breadcrumb', p.className), 'aria-label': p.label || 'Percorso' },
+      h('ol', null, items.map(function (it, i) {
+        var last = i === items.length - 1;
+        return h('li', { key: i },
+          last || !it.href ? h('span', { 'aria-current': last ? 'page' : undefined }, it.label) : h('a', { href: it.href }, it.label),
+          last ? null : h(Icon, { name: 'chevron', size: 14 }));
+      })));
+  }
+
+  var HERO_PREVIEW = { title: 'Lancio corso · Board', lanes: [
+    { title: 'Da fare', cards: [{ title: 'Definire gli obiettivi', labels: [{ text: 'Strategia', tone: 'plum' }], due: '3 ott', assignees: ['Luciano Castro'] }, { title: 'Raccogliere testimonianze', labels: [{ text: 'Marketing', tone: 'sky' }], comments: 2 }] },
+    { title: 'In corso', cards: [{ title: 'Scaletta del modulo 2', cover: 'citrus', labels: [{ text: 'Contenuti', tone: 'citrus' }], checklist: { done: 3, total: 5 }, assignees: ['Giulia Bianchi', 'Marco Neri'] }] },
+    { title: 'Fatto', cards: [{ title: 'Titolo del corso', checklist: { done: 2, total: 2 } }] }
+  ] };
+  function HeroPreview(p) {
+    var pv = p.preview || HERO_PREVIEW;
     return h('div', { className: 'zr-hero-shot', 'aria-hidden': true },
-      h('div', { className: 'zr-hero-shot-bar' }, h('i'), h('i'), h('i'), h('span', null, 'Lancio corso · Board')),
+      h('div', { className: 'zr-hero-shot-bar' }, h('i'), h('i'), h('i'), h('span', null, pv.title)),
       h('div', { className: 'zr-hero-shot-lanes' },
-        h('div', { className: 'zr-hero-lane' }, h('div', { className: 'zr-hero-lane-t' }, 'Da fare'),
-          h(KanbanCard, { title: 'Definire gli obiettivi', labels: [{ text: 'Strategia', tone: 'plum' }], due: '3 ott', assignees: ['Luciano Castro'], tabIndex: -1 }),
-          h(KanbanCard, { title: 'Raccogliere testimonianze', labels: [{ text: 'Marketing', tone: 'sky' }], comments: 2, tabIndex: -1 })),
-        h('div', { className: 'zr-hero-lane' }, h('div', { className: 'zr-hero-lane-t' }, 'In corso'),
-          h(KanbanCard, { title: 'Scaletta del modulo 2', cover: 'citrus', labels: [{ text: 'Contenuti', tone: 'citrus' }], checklist: { done: 3, total: 5 }, assignees: ['Giulia Bianchi', 'Marco Neri'], tabIndex: -1 })),
-        h('div', { className: 'zr-hero-lane' }, h('div', { className: 'zr-hero-lane-t' }, 'Fatto'),
-          h(KanbanCard, { title: 'Titolo del corso', checklist: { done: 2, total: 2 }, tabIndex: -1 }))));
+        (pv.lanes || []).map(function (ln, i) {
+          return h('div', { key: i, className: 'zr-hero-lane' }, h('div', { className: 'zr-hero-lane-t' }, ln.title),
+            (ln.cards || []).map(function (c, j) { return h(KanbanCard, Object.assign({ key: j, tabIndex: -1 }, c)); }));
+        })));
   }
 
   function Hero(p) {
@@ -683,13 +723,13 @@ import * as React from 'react';
             h('a', { href: p.signupHref || '#', className: 'zr-btn zr-btn-primary zr-btn-lg' }, p.cta || 'Crea il tuo spazio gratis', h(Icon, { name: 'arrow', size: 18 })),
             h('a', { href: p.secondaryHref || '#come-funziona', className: 'zr-btn zr-btn-secondary zr-btn-lg' }, p.secondaryCta || 'Come funziona')),
           h('p', { className: 'zr-hero-note' }, p.note || 'Nessuna carta di credito · Nessun limite di board')),
-        p.visual || h(HeroPreview)));
+        p.visual || h(HeroPreview, { preview: p.preview })));
   }
 
   function SectionHeading(p) {
-    return h('div', { className: cx('zr-sec-head', p.align === 'center' && 'is-center') },
+    return h('div', { className: cx('zr-sec-head', p.align === 'center' && 'is-center', p.level === 1 && 'is-page') },
       p.overline ? h('span', { className: 'zr-overline' }, p.overline) : null,
-      h('h2', { className: 'zr-sec-title' }, p.title),
+      h(p.level === 1 ? 'h1' : 'h2', { className: 'zr-sec-title' }, p.title),
       p.subtitle ? h('p', { className: 'zr-sec-sub' }, p.subtitle) : null);
   }
 
@@ -721,25 +761,50 @@ import * as React from 'react';
     }));
   }
 
+  var PRICING_LABELS = { soon: 'In arrivo', soonCta: 'In arrivo', cta: 'Inizia gratis' };
+  /* ---------- SectorGrid: le verticalizzazioni, ognuna con la sua pagina ---------- */
+  var SAMPLE_SECTORS = [
+    { title: 'Palestre e personal trainer', text: 'Dalla prova all’iscrizione, ingressi scalati con un tocco, certificati e rinnovi.', icon: 'target', tone: 'pine', tags: ['Iscritti', 'Abbonamenti', 'Check-in'], href: '#palestre' },
+    { title: 'Architetti, geometri e ingegneri', text: 'Richieste, incarichi a fasi legati all’immobile e pratiche con i loro termini.', icon: 'building', tone: 'sky', tags: ['Incarichi', 'Immobili', 'Pratiche'], href: '#tecnici' },
+    { title: 'Liberi professionisti', text: 'Primo colloquio, incarichi o percorsi, sedute e ore scalate da pacchetti.', icon: 'user', tone: 'citrus', tags: ['Clienti', 'Sedute', 'Scadenze'], href: '#professionisti' },
+    { title: 'Agenzie digitali', text: 'Lead, brief e proposte, contratti con ore a consumo e asset dei clienti.', icon: 'megaphone', tone: 'plum', tags: ['Proposte', 'Contratti', 'Rinnovi'], href: '#agenzie' },
+    { title: 'PMI di servizi', text: 'Sopralluoghi, offerte, contratti con canone, interventi e rapportini.', icon: 'settings', tone: 'pine', tags: ['Offerte', 'Interventi', 'Impianti'], href: '#pmi' },
+    { title: 'Scuole di formazione', text: 'Candidature, iscrizioni a edizioni con posti e rate, presenze e attestati.', icon: 'checklist', tone: 'sky', tags: ['Corsisti', 'Edizioni', 'Attestati'], href: '#formazione' }
+  ];
+  function SectorGrid(p) {
+    var items = p.items || SAMPLE_SECTORS;
+    return h('ul', { className: 'zr-sectors' }, items.map(function (x, i) {
+      var inner = [
+        h('span', { key: 'i', className: cx('zr-iconbox', 'zr-label-' + (x.tone || 'pine')) }, h(Icon, { name: x.icon || 'grid', size: 22 })),
+        h('h3', { key: 't' }, x.title),
+        x.text ? h('p', { key: 'x' }, x.text) : null,
+        x.tags && x.tags.length ? h('div', { key: 'g', className: 'zr-sector-tags' }, x.tags.map(function (t) { return h(Label, { key: t, tone: 'neutral' }, t); })) : null,
+        x.href ? h('span', { key: 'c', className: 'zr-tile-go' }, x.cta || p.cta || 'Scopri', h(Icon, { name: 'arrow', size: 16 })) : null
+      ];
+      return h('li', { key: x.href || i }, x.href ? h('a', { className: 'zr-sector', href: x.href }, inner) : h('div', { className: 'zr-sector' }, inner));
+    }));
+  }
+
   function PricingCard(p) {
+    var L = Object.assign({}, PRICING_LABELS, p.labels || {});
     var soon = p.status === 'soon';
     return h('article', { className: cx('zr-price', p.featured && 'is-featured', soon && 'is-soon') },
       h('header', null,
-        h('div', { className: 'zr-price-top' }, h('h3', null, p.name), soon ? h(Label, null, 'In arrivo') : (p.badge ? h(Label, { tone: 'pine' }, p.badge) : null)),
+        h('div', { className: 'zr-price-top' }, h('h3', null, p.name), soon ? h(Label, null, L.soon) : (p.badge ? h(Label, { tone: 'pine' }, p.badge) : null)),
         h('p', { className: 'zr-price-desc' }, p.description)),
       h('div', { className: 'zr-price-amount' }, h('strong', null, p.price), p.period ? h('span', null, p.period) : null),
       h('ul', { className: 'zr-price-list' }, (p.features || []).map(function (f, i) {
         return h('li', { key: i }, h(Icon, { name: 'checklist', size: 16 }), h('span', null, f));
       })),
-      soon ? h('button', { type: 'button', className: 'zr-btn zr-btn-secondary zr-btn-md', disabled: true }, p.cta || 'Disponibile a breve')
-        : h('a', { href: p.href || '#', className: cx('zr-btn', 'zr-btn-md', p.featured ? 'zr-btn-primary' : 'zr-btn-secondary') }, p.cta || 'Inizia gratis'));
+      soon ? h('button', { type: 'button', className: 'zr-btn zr-btn-secondary zr-btn-md', disabled: true }, p.cta || L.soonCta)
+        : h('a', { href: p.href || '#', className: cx('zr-btn', 'zr-btn-md', p.featured ? 'zr-btn-primary' : 'zr-btn-secondary') }, p.cta || L.cta));
   }
 
   function FAQ(p) {
     var items = p.items || [
-      { q: 'Zeiras è davvero gratis?', a: 'Sì. Per i progetti personali puoi usare Zeiras senza costi e senza limiti di board, liste o schede.' },
+      { q: 'Qual è il trucco?', a: 'Nessuno. Per i progetti personali Zeiras è gratis per sempre, senza limiti di board, liste o schede.' },
       { q: 'Serve una carta di credito per iscriversi?', a: 'No. Basta un indirizzo email o un account Google.' },
-      { q: 'Quali prodotti sono disponibili oggi?', a: 'Project Management con board Kanban. CRM, Report, Automazioni e Contenuti AI sono in arrivo e si attiveranno nello stesso spazio di lavoro.' },
+      { q: 'Quali prodotti sono disponibili oggi?', a: 'Board, con board Kanban e Gantt. CRM, Report, Automazioni e Contenuti AI sono in arrivo e si attiveranno nello stesso spazio di lavoro.' },
       { q: 'Posso invitare altre persone?', a: 'Sì, puoi condividere una board con chi vuoi e assegnare le schede ai membri.' },
       { q: 'Posso usarlo per la mia azienda?', a: 'Zeiras nasce per essere adattato a settori diversi. Scrivici per conoscere le versioni dedicate.' }
     ];
@@ -763,10 +828,12 @@ import * as React from 'react';
     name: 'Castro & Partners', legalForm: 'S.r.l.', address: 'Via Margaritone 30, 52100 Arezzo (AR), Italia', vat: '02453920510', taxCode: null,
     rea: 'AR-215964', capital: '40.000 €', pec: 'castroandpartners@pec.it', email: 'contatti@castroandpartners.com', phone: '+39 0575 138 9257'
   };
+  var SITE_FOOTER_LABELS = { tagline: 'La suite semplice e gratuita per organizzare il tuo lavoro.', by: 'Sviluppato da', registeredOffice: 'Sede legale', vat: 'P. IVA', vatTax: 'P. IVA e C.F.', taxCode: 'C.F.', rea: 'REA', capital: 'Capitale sociale', paidUp: 'i.v.', pec: 'PEC', email: 'Email', phone: 'Tel.', rights: 'Tutti i diritti riservati.', legalNav: 'Informazioni legali', missing: 'Dato da inserire', language: 'Lingua', soon: 'In arrivo' };
   function SiteFooter(p) {
+    var L = Object.assign({}, SITE_FOOTER_LABELS, p.labels || {});
     var co = Object.assign({}, PUBLISHER, p.company || {});
     var cols = p.columns || [
-      { title: 'Prodotto', links: ['Project Management', 'CRM', 'Report', 'Automazioni', 'Contenuti AI', 'Prezzi'] },
+      { title: 'Moduli', links: ['Board', 'CRM', 'Bookings', 'Finanze', 'Prezzi'] },
       { title: 'Risorse', links: ['Guida introduttiva', 'Modelli di board', 'Novità', 'Stato del servizio'] },
       { title: 'Azienda', links: ['Chi siamo', 'Contatti', 'Lavora con noi', 'Stampa'] }
     ];
@@ -775,72 +842,81 @@ import * as React from 'react';
       { label: 'Preferenze cookie', onClick: p.onCookiePreferences }, { label: 'Termini di servizio', href: '#termini' },
       { label: 'Note legali', href: '#note-legali' }, { label: 'Accessibilità', href: '#accessibilita' }
     ];
-    function val(v, label) { return v ? v : h('span', { className: 'zr-foot-missing', title: 'Dato da inserire' }, '[' + label + ']'); }
+    function val(v, label) { return v ? v : h('span', { className: 'zr-foot-missing', title: L.missing }, '[' + label + ']'); }
     var fullName = co.legalForm ? co.name + ' ' + co.legalForm : co.name;
     var items = [
-      ['Sede legale', val(co.address, 'indirizzo sede legale')],
-      [co.taxCode ? 'P. IVA' : 'P. IVA e C.F.', val(co.vat, 'partita IVA')],
-      ['C.F.', co.taxCode || null],
-      ['REA', val(co.rea, 'CCIAA e n. REA')],
-      ['Capitale sociale', co.capital ? co.capital + ' i.v.' : val(null, 'capitale sociale i.v.')],
-      ['PEC', co.pec ? h('a', { href: 'mailto:' + co.pec }, co.pec) : val(null, 'indirizzo PEC')],
-      ['Email', co.email ? h('a', { href: 'mailto:' + co.email }, co.email) : null],
-      ['Tel.', co.phone || null]
+      [L.registeredOffice, val(co.address, 'indirizzo sede legale')],
+      [co.taxCode ? L.vat : L.vatTax, val(co.vat, 'partita IVA')],
+      [L.taxCode, co.taxCode || null],
+      [L.rea, val(co.rea, 'CCIAA e n. REA')],
+      [L.capital, co.capital ? co.capital + ' ' + L.paidUp : val(null, 'capitale sociale i.v.')],
+      [L.pec, co.pec ? h('a', { href: 'mailto:' + co.pec }, co.pec) : val(null, 'indirizzo PEC')],
+      [L.email, co.email ? h('a', { href: 'mailto:' + co.email }, co.email) : null],
+      [L.phone, co.phone || null]
     ].filter(function (x) { return x[1] != null; });
     return h('footer', { className: 'zr-site-foot' },
-      h('div', { className: 'zr-site-wrap zr-foot-grid' },
+      h('div', { className: 'zr-site-wrap zr-foot-grid', style: { '--foot-cols': cols.length } },
         h('div', { className: 'zr-foot-brand' },
           h(Logo, { size: 24 }),
-          h('p', null, p.tagline || 'La suite semplice e gratuita per organizzare il tuo lavoro.'),
-          h('p', { className: 'zr-foot-by' }, 'Un prodotto di ', h('strong', null, co.name))),
+          h('p', null, p.tagline || L.tagline),
+          h('p', { className: 'zr-foot-by' }, L.by + ' ', h('strong', null, co.name)),
+          p.languages && p.languages.length ? h(LanguageSwitch, { languages: p.languages, label: L.language }) : null),
         cols.map(function (c) {
           return h('nav', { key: c.title, className: 'zr-foot-col', 'aria-label': c.title },
             h('h3', null, c.title),
-            c.links.map(function (l) { var t = typeof l === 'string' ? l : l.label; return h('a', { key: t, href: (l && l.href) || '#' }, t); }));
+            c.links.map(function (l) {
+              var t = typeof l === 'string' ? l : l.label;
+              /* Pagina non ancora pubblicata: testo senza link, con «In arrivo» (labels.soon) */
+              if (l && typeof l === 'object' && !l.href) return h('span', { key: t, className: 'zr-foot-nolink' }, t, l.soon ? h('span', { className: 'zr-foot-soon' }, L.soon) : null);
+              return h('a', { key: t, href: (l && l.href) || '#' }, t);
+            }));
         })),
       h('div', { className: 'zr-site-wrap zr-foot-company' },
         h('p', { className: 'zr-foot-company-line' },
           h('strong', null, fullName),
           items.map(function (x) { return h('span', { key: x[0] }, x[0] + ': ', x[1]); }))),
       h('div', { className: 'zr-site-wrap zr-foot-legal' },
-        h('span', null, p.legal || '© ' + new Date().getFullYear() + ' ' + fullName + (/\.$/.test(fullName) ? '' : '.') + ' Tutti i diritti riservati.'),
-        h('nav', { className: 'zr-foot-legal-links', 'aria-label': 'Informazioni legali' },
+        h('span', null, p.legal || '© ' + new Date().getFullYear() + ' ' + fullName + (/\.$/.test(fullName) ? '' : '.') + ' ' + L.rights),
+        h('nav', { className: 'zr-foot-legal-links', 'aria-label': L.legalNav },
           legalLinks.map(function (l) {
-            return l.href ? h('a', { key: l.label, href: l.href }, l.label)
-              : h('button', { key: l.label, type: 'button', onClick: l.onClick }, l.label);
+            if (l.href) return h('a', { key: l.label, href: l.href }, l.label);
+            if (l.onClick) return h('button', { key: l.label, type: 'button', onClick: l.onClick }, l.label);
+            return h('span', { key: l.label, className: 'zr-foot-nolink' }, l.label, l.soon ? h('span', { className: 'zr-foot-soon' }, L.soon) : null);
           }))));
   }
 
   function LandingPage(p) {
     var products = p.products || [
-      { id: 'pm', name: 'Project Management', icon: 'board', tone: 'pine', description: 'Board Kanban in cartelle: attività, scadenze, checklist e persone.', meta: 'Disponibile ora', cta: 'Prova gratis' },
-      { id: 'crm', name: 'CRM', icon: 'users', tone: 'sky', status: 'soon', description: 'Contatti, aziende e trattative in una pipeline semplice.' },
-      { id: 'reports', name: 'Report', icon: 'chart', tone: 'citrus', status: 'soon', description: 'Dashboard di marketing e vendite, aggiornate da sole.' },
-      { id: 'automations', name: 'Automazioni', icon: 'bolt', tone: 'plum', status: 'soon', description: 'Email, attività e avvisi che partono da soli.' },
-      { id: 'content', name: 'Contenuti', icon: 'sparkle', tone: 'coral', status: 'soon', description: 'Post, email e articoli generati con l’AI.' }
+      { id: 'pm', name: 'Board', icon: 'board', tone: 'pine', description: 'Board Kanban e Gantt: ogni attività ha un responsabile e una scadenza.' },
+      { id: 'crm', name: 'CRM', icon: 'users', tone: 'sky', description: 'Ogni cliente e ogni trattativa con il passo successivo.' },
+      { id: 'bookings', name: 'Bookings', icon: 'calendar', tone: 'sky', description: 'I clienti prenotano da soli: slot, posti, conferme e promemoria.' },
+      { id: 'reports', name: 'Report', icon: 'chart', tone: 'citrus', description: 'I numeri che contano, aggiornati da soli.' },
+      { id: 'automations', name: 'Automazioni', icon: 'bolt', tone: 'plum', description: 'Promemoria, email e passaggi ripetitivi partono da soli.' },
+      { id: 'content', name: 'Contenuti', icon: 'sparkle', tone: 'coral', description: 'Post, email e testi scritti con l’AI nel tuo stile.' },
+      { id: 'cashflow', name: 'Flusso di cassa', icon: 'euro', tone: 'citrus', description: 'Entrate, uscite e previsioni di cassa.' },
+      { id: 'marketing', name: 'Marketing', icon: 'megaphone', tone: 'plum', description: 'Campagne, liste e risultati in un posto.' },
+      { id: 'collaboration', name: 'Area di collaborazione', icon: 'message', tone: 'sky', description: 'File, messaggi e approvazioni con clienti e collaboratori.' },
+      { id: 'integrations', name: 'Integrazioni', icon: 'link', tone: 'pine', description: 'Collega Zeiras alle tue app con Zapier e Make.' }
     ];
     var plans = p.plans || [
-      { name: 'Personale', badge: 'Per sempre', featured: true, price: '0 €', period: '/ mese', description: 'Per i tuoi progetti personali.', features: ['Board, liste e schede illimitate', 'Cartelle illimitate', 'Condivisione con altre persone', 'Tutti i prodotti al lancio'], cta: 'Inizia gratis' },
-      { name: 'Team', status: 'soon', price: '—', description: 'Per aziende e organizzazioni, anche in versione verticale.', features: ['Spazi di lavoro per il team', 'Ruoli e permessi', 'Supporto dedicato'] }
+      { name: 'Personale', badge: 'Per sempre', featured: true, price: '0 €', period: '/ mese', description: 'Per te e i tuoi progetti. Nessuna scadenza.', features: ['Tutti i 10 prodotti', 'Board, liste e schede illimitate', 'Il modello del tuo settore incluso'], cta: 'Crea il tuo spazio gratis' },
+      { name: 'Business', badge: 'A pagamento', price: 'Su misura', description: 'Il piano a pagamento per aziende, studi, scuole e palestre che lavorano insieme.', features: ['Le stesse board, modificate insieme', 'Workspace del team, ruoli e permessi', 'Supporto dedicato e avvio guidato'], cta: 'Contattaci', href: '#contatti' }
     ];
     return h('div', { className: 'zr-site' },
       h(SiteHeader, { signupHref: p.signupHref, loginHref: p.loginHref }),
       h('main', null,
         h(Hero, { signupHref: p.signupHref }),
         h('section', { id: 'prodotti', className: 'zr-sec' }, h('div', { className: 'zr-site-wrap' },
-          h(SectionHeading, { overline: 'La suite', title: 'Un solo spazio, tutti gli strumenti', subtitle: 'Inizi con il Project Management. CRM, Report, Automazioni e Contenuti arrivano nello stesso posto, già collegati.' }),
-          h('div', { className: 'zr-grid-3' }, products.map(function (x) { return h(ProductTile, Object.assign({ key: x.id }, x, { href: x.status === 'soon' ? undefined : (p.signupHref || '#') })); })))),
+          h(SectionHeading, { overline: 'La suite', title: '10 strumenti. Un solo accesso. Zero euro.', subtitle: 'Tutto quello che ti serve per vendere, organizzare e incassare, già collegato.' }),
+          h('div', { className: 'zr-grid-3', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' } }, products.map(function (x) { return h(ProductTile, Object.assign({ key: x.id, cta: 'Prova gratis' }, x, { href: x.status === 'soon' ? undefined : (p.signupHref || '#') })); })))),
         h('section', { id: 'come-funziona', className: 'zr-sec zr-sec-alt' }, h('div', { className: 'zr-site-wrap' },
           h(SectionHeading, { overline: 'Come funziona', title: 'Operativo in tre passi' }),
           h(StepList, null))),
-        h('section', { id: 'per-chi', className: 'zr-sec' }, h('div', { className: 'zr-site-wrap' },
-          h(SectionHeading, { overline: 'Per chi è', title: 'Pensata per chiunque, adattabile a ogni settore' }),
-          h(AudienceGrid, null))),
-        h('section', { id: 'prezzi', className: 'zr-sec zr-sec-alt' }, h('div', { className: 'zr-site-wrap' },
-          h(SectionHeading, { overline: 'Prezzi', title: 'Gratis, davvero', subtitle: 'Nessuna prova a tempo, nessuna carta di credito.', align: 'center' }),
-          h('div', { className: 'zr-prices' }, plans.map(function (x) { return h(PricingCard, Object.assign({ key: x.name, href: p.signupHref }, x)); })))),
-        h('section', { id: 'faq', className: 'zr-sec' }, h('div', { className: 'zr-site-wrap zr-faq-wrap' },
-          h(SectionHeading, { overline: 'Domande frequenti', title: 'Tutto quello che vuoi sapere' }),
+        h('section', { id: 'prezzi', className: 'zr-sec' }, h('div', { className: 'zr-site-wrap' },
+          h(SectionHeading, { overline: 'Prezzi', title: '0 €. Per sempre.', subtitle: 'Non è una prova: per i tuoi progetti Zeiras resta gratis. Paghi solo la versione Business, per lavorare in team.', align: 'center' }),
+          h('div', { className: 'zr-prices' }, plans.map(function (x) { return h(PricingCard, Object.assign({ key: x.name, href: x.href || p.signupHref }, x)); })))),
+        h('section', { id: 'faq', className: 'zr-sec zr-sec-alt' }, h('div', { className: 'zr-site-wrap zr-faq-wrap' },
+          h(SectionHeading, { overline: 'Domande frequenti', title: 'Le risposte prima delle domande' }),
           h(FAQ, null))),
         h(CtaBand, { href: p.signupHref })),
       h(SiteFooter, null));
@@ -852,6 +928,8 @@ import * as React from 'react';
   var EUR = /* @__PURE__ */ new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   function fmtNum(v) { return NF.format(v); }
   function fmtEur(v) { return EUR.format(v); }
+  var MONEY = {};
+  function fmtMoney(v, cur) { if (!cur || cur === 'EUR') return EUR.format(v); try { if (!MONEY[cur]) MONEY[cur] = new Intl.NumberFormat('it-IT', { style: 'currency', currency: cur, maximumFractionDigits: 0 }); return MONEY[cur].format(v); } catch (e) { return EUR.format(v); } }
   var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }
 
   /* ---------- Form ---------- */
@@ -872,6 +950,72 @@ import * as React from 'react';
       control,
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- MentionField: scegliere un cliente del CRM scrivendo @nome ---------- */
+  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM' };
+  function MentionField(p) {
+    var id = useId('mnt');
+    var L = Object.assign({}, MENTION_LABELS, p.labels || {});
+    var ctrlVal = p.value !== undefined;
+    var vs = useState(p.defaultValue || []), values = ctrlVal ? p.value : vs[0];
+    var ts = useState(p.defaultQuery != null ? '@' + p.defaultQuery : ''), text = p.query != null ? '@' + p.query : ts[0];
+    var os = useState(!!p.defaultOpen), open = p.open !== undefined ? p.open : os[0];
+    var as = useState(0), active = as[0];
+    var multiple = p.multiple !== false;
+    var at = text.lastIndexOf('@');
+    var q = at >= 0 ? text.slice(at + 1).trim().toLowerCase() : null;
+    var taken = values.map(function (v) { return v.id; });
+    var list = q === null ? [] : (p.suggestions || []).filter(function (s) {
+      if (taken.indexOf(s.id) >= 0) return false;
+      var hay = [s.name, s.email, s.phone, s.sub].filter(Boolean).join(' ').toLowerCase();
+      return !q || hay.indexOf(q) >= 0;
+    }).slice(0, p.maxResults || 8);
+    var canCreate = !!(p.onCreate || p.createLabel) && q;
+    var count = list.length + (canCreate ? 1 : 0);
+    var showList = open && q !== null;
+    function setText(t) { if (p.query == null) ts[1](t); var i = t.lastIndexOf('@'); if (p.onQuery) p.onQuery(i >= 0 ? t.slice(i + 1) : null); if (p.open === undefined) os[1](i >= 0); as[1](0); }
+    function setValues(v) { if (!ctrlVal) vs[1](v); if (p.onChange) p.onChange(v); }
+    function pick(s) { setValues(multiple ? values.concat([s]) : [s]); setText(at >= 0 ? text.slice(0, at) : ''); if (p.open === undefined) os[1](false); }
+    function create() { var name = text.slice(at + 1).trim(); if (p.onCreate) p.onCreate(name); setText(text.slice(0, at)); }
+    function remove(v) { setValues(values.filter(function (x) { return x.id !== v.id; })); }
+    function onKey(e) {
+      if (e.key === 'Backspace' && !text && values.length) { remove(values[values.length - 1]); return; }
+      if (!showList || !count) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); as[1]((active + 1) % count); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); as[1]((active - 1 + count) % count); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (active < list.length) pick(list[active]); else create(); }
+      else if (e.key === 'Escape') { e.preventDefault(); if (p.open === undefined) os[1](false); }
+    }
+    var desc = p.error || p.hint !== false ? id + '-d' : undefined;
+    return h('div', { className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className) },
+      p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
+      h('div', { className: 'zr-mention-anchor' },
+      h('div', { className: 'zr-mention-box' },
+        values.map(function (v) {
+          return h('span', { key: v.id, className: 'zr-mention-chip' }, h(Avatar, { name: v.name, size: 'sm' }), h('span', { className: 'zr-mention-chip-name' }, v.name),
+            h('button', { type: 'button', className: 'zr-mention-x', 'aria-label': L.remove + ' ' + v.name, onClick: function () { remove(v); } }, h(Icon, { name: 'close', size: 14 })));
+        }),
+        h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || '@nome'), autoComplete: 'off', role: 'combobox',
+          'aria-expanded': showList, 'aria-controls': id + '-l', 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
+          'aria-activedescendant': showList && count ? id + '-o' + active : undefined,
+          onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey,
+          onBlur: function () { if (p.open === undefined) setTimeout(function () { os[1](false); }, 120); } })),
+      showList ? h('ul', { id: id + '-l', role: 'listbox', className: 'zr-mention-list', 'aria-label': L.results },
+        list.map(function (s, i) {
+          return h('li', { key: s.id, id: id + '-o' + i, role: 'option', 'aria-selected': i === active, className: cx('zr-mention-opt', i === active && 'is-active'),
+            onMouseDown: function (e) { e.preventDefault(); pick(s); }, onMouseEnter: function () { as[1](i); } },
+            h(Avatar, { name: s.name, size: 'md' }),
+            h('span', { className: 'zr-mention-opt-text' }, h('strong', null, s.name), h('span', null, [s.email, s.sub].filter(Boolean).join(' · '))),
+            s.tag ? h(Label, { tone: s.tagTone || 'neutral' }, s.tag) : null);
+        }),
+        canCreate ? h('li', { id: id + '-o' + list.length, role: 'option', 'aria-selected': active === list.length, className: cx('zr-mention-opt', 'is-create', active === list.length && 'is-active'),
+          onMouseDown: function (e) { e.preventDefault(); create(); } },
+          h('span', { className: 'zr-mention-plus', 'aria-hidden': true }, h(Icon, { name: 'plus', size: 16 })),
+          h('span', { className: 'zr-mention-opt-text' }, h('strong', null, (p.createLabel || L.create).replace('{q}', text.slice(at + 1).trim())))) : null,
+        !count ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null) : null),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint !== false ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint || L.hint) : null);
   }
 
   function Checkbox(p) {
@@ -1199,13 +1343,13 @@ import * as React from 'react';
   }
 
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
     return h('article', Object.assign({ tabIndex: 0 }, rest, { className: cx('zr-card zr-deal', p.dragging && 'is-dragging', p.className) }),
       h('div', { className: 'zr-deal-top' }, p.company ? h('span', { className: 'zr-deal-company' }, cIcon ? h(Icon, { name: cIcon, size: 14 }) : null, p.company) : h('span', null), p.owner ? h(Avatar, { name: p.owner, size: 'sm' }) : null),
       h('h4', { className: 'zr-card-title' }, p.title),
       h('div', { className: 'zr-deal-foot' },
-        h('strong', { className: 'zr-deal-amount' }, fmtEur(p.amount)),
+        h('strong', { className: 'zr-deal-amount' }, fmtMoney(p.amount, p.currency)),
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
           p.age ? h('span', { className: cx('zr-meta', p.age > 14 && 'is-overdue'), title: p.ageTitle || 'Giorni in questa fase' }, h(Icon, { name: 'clock', size: 14 }), p.age + ' ' + (p.ageLabel || 'gg')) : null)));
   }
@@ -1220,6 +1364,14 @@ import * as React from 'react';
   function DealPipeline(p) {
     var st = useState(function () { return JSON.parse(JSON.stringify(p.stages || SAMPLE_STAGES)); }), stages = st[0], setStages = st[1];
     var dg = useState(null), drag = dg[0], setDrag = dg[1];
+    var lastStages = useRef(null);
+    React.useEffect(function () {
+      if (!p.stages) return;
+      var j = JSON.stringify(p.stages);
+      if (lastStages.current === null) { lastStages.current = j; return; }
+      if (j !== lastStages.current) { lastStages.current = j; setStages(JSON.parse(j)); }
+    }, [p.stages]);
+    var cur = p.currency || 'EUR';
     var ov = useState(null), over = ov[0], setOver = ov[1];
     function move(id, to) {
       var deal; var n = stages.map(function (s) { return Object.assign({}, s, { deals: s.deals.filter(function (d) { if (d.id === id) { deal = d; return false; } return true; }) }); });
@@ -1233,15 +1385,18 @@ import * as React from 'react';
     var weighted = openStages.reduce(function (a, s) { return a + s.deals.reduce(function (b, d) { return b + d.amount * (d.probability || 0) / 100; }, 0); }, 0);
     return h('div', { className: 'zr-board' },
       h('div', { className: 'zr-board-head zr-board-head-plain' },
-        h(PageHeader, { overline: L.overline, title: p.title || L.title, subtitle: L.open + ' ' + fmtEur(total) + ' · ' + L.weighted + ' ' + fmtEur(Math.round(weighted)),
+        h(PageHeader, { overline: L.overline, title: p.title || L.title, subtitle: L.open + ' ' + fmtMoney(total, cur) + ' · ' + L.weighted + ' ' + fmtMoney(Math.round(weighted), cur),
           actions: [h(Button, { key: 'f', variant: 'secondary', size: 'sm', icon: 'filter', onClick: p.onFilter }, L.filter), h(Button, { key: 'n', size: 'sm', icon: 'plus', onClick: p.onNew }, L.newDeal)] })),
       h('div', { className: 'zr-lanes' }, stages.map(function (s) {
         var sum = s.deals.reduce(function (a, d) { return a + d.amount; }, 0);
         return h(KanbanColumn, { key: s.id, title: s.title, count: s.deals.length, isOver: over === s.id && drag, className: kindOf(s) === 'won' ? 'is-won' : undefined,
           onDragOver: function (e) { e.preventDefault(); if (over !== s.id) setOver(s.id); },
           onDrop: function (e) { e.preventDefault(); if (drag) move(drag, s.id); setDrag(null); setOver(null); },
-          composer: h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, fmtEur(sum))) },
-          s.deals.map(function (d) { return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); } })); }));
+          composer: h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, fmtMoney(sum, cur))) },
+          s.deals.map(function (d) { return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cur, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
+            onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
+            onKeyDown: p.onOpen ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.onOpen(d); } } : undefined,
+            role: p.onOpen ? 'button' : undefined, 'aria-label': p.onOpen ? d.title : undefined })); }));
       })));
   }
 
@@ -1416,7 +1571,7 @@ import * as React from 'react';
     var t = o.topic || 'il nostro nuovo corso';
     var open = { Professionale: 'Parliamo di ', Amichevole: 'Ti è mai capitato di pensare a ', Ispirazionale: 'Ogni grande risultato comincia da ', Diretto: 'In breve: ' }[o.tone] || '';
     var base = [
-      open + t + '. Abbiamo raccolto quello che serve davvero per partire con il piede giusto, senza giri di parole.',
+      open + t + '. Abbiamo raccolto quello che serve per partire con il piede giusto, senza giri di parole.',
       open + t + '? Tre idee pratiche che puoi applicare già da domani, anche se hai poco tempo.',
       open + t + ': cosa abbiamo imparato lavorando con decine di team, e cosa rifaremmo diversamente.'
     ];
@@ -1557,8 +1712,13 @@ export {
   CtaBand,
   SiteFooter,
   LandingPage,
+  LanguageSwitch,
+  SectorGrid,
+  Breadcrumb,
   ICON_NAMES,
   Field,
+  MentionField,
+  MENTION_LABELS,
   Checkbox,
   Switch,
   Tabs,
@@ -1594,5 +1754,6 @@ export {
   Composer,
   Menu,
   APPSHELL_LABELS,
+  MODULES_NAV,
   PUBLISHER,
 };

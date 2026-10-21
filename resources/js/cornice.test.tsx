@@ -201,8 +201,8 @@ function frase(testo: string): RegExp {
 }
 
 /** Gli indirizzi dei prodotti che non sono «Presto» per il registro: gli altri non ne hanno mai uno. */
-const indirizzi: Record<string, string> = { pm: 'https://board.zeiras.com', crm: 'https://crm.zeiras.com', bookings: 'https://bookings.zeiras.com' };
-const ordine = ['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'];
+const indirizzi: Record<string, string> = { pm: 'https://board.zeiras.com', crm: 'https://crm.zeiras.com', bookings: 'https://bookings.zeiras.com', flow: 'https://flow.zeiras.com' };
+const ordine = ['home', 'pm', 'crm', 'bookings', 'flow', 'reports', 'automations', 'content'];
 
 describe('la Cornice', () => {
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
@@ -219,7 +219,7 @@ describe('la Cornice', () => {
         expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Moduli');
         const voci = [...(gruppo?.querySelectorAll<HTMLAnchorElement>('a.zr-nav-item') ?? [])];
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
-            .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
+            .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
         const attesi = ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#'));
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
         // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
@@ -227,7 +227,7 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
         expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
         expect(voci[0].getAttribute('aria-current')).toBe('page');
-        const icone: IconName[] = ['grid', 'board', 'users', 'calendar', 'chart', 'bolt', 'sparkle'];
+        const icone: IconName[] = ['grid', 'board', 'users', 'calendar', 'euro', 'chart', 'bolt', 'sparkle'];
         expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(icone.map(tracciatoDi));
         expect(uno('.zr-product-switch')).toBeNull();
         expect(uno('main')?.textContent).toBe('La pagina');
@@ -258,9 +258,9 @@ describe('la Cornice', () => {
     });
 
     it.each([
-        ['es', ['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas', 'Módulos'],
-        ['en', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
-        ['zz', ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
+        ['es', ['Dashboard', 'Board', 'CRM', 'Reservas', 'Finanzas', 'Informes', 'Automatismos', 'Contenidos'], 'Reservas', 'Módulos'],
+        ['en', ['Dashboard', 'Board', 'CRM', 'Bookings', 'Finance', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
+        ['zz', ['Dashboard', 'Board', 'CRM', 'Bookings', 'Finance', 'Reports', 'Automations', 'Content'], 'Bookings', 'Modules'],
     ])('con la lingua "%s" nei dati la cornice è in quella lingua, o in inglese se zr-core non la ha, qualunque sia la lingua del browser (T4.2; sprint 21 · T1.1: il nome del menu, esteso e chiuso)', async (lingua, nomi, bookings, menu) => {
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('it-IT');
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['it-IT', 'it']);
@@ -346,7 +346,7 @@ describe('la Cornice', () => {
         const ingresso = await import('./index');
 
         expect(ingresso.registro.map((voce) => ingresso.nomeDellaVoce(voce, 'en')))
-            .toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Reports', 'Automations', 'Content']);
+            .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finance', 'Reports', 'Automations', 'Content']);
     });
 
     // Sprint 26 · T8 (voce #1792): dal 12/10/2026 il CRM è per tutti, e nel registro non è più in arrivo.
@@ -354,7 +354,7 @@ describe('la Cornice', () => {
         const ingresso = await import('./index');
 
         // Come lo legge una pagina senza sessione: `voce.in_arrivo`, un sì o un no su ogni voce.
-        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['bookings', 'reports', 'automations', 'content']);
+        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['bookings', 'flow', 'reports', 'automations', 'content']);
         expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm']);
         expect(ingresso.registro.map((voce) => typeof voce.in_arrivo)).toStrictEqual(ordine.map(() => 'boolean'));
         // «Presto» è un'altra cosa, e non cambia: Bookings è in arrivo senza essere «Presto», e il CRM non è né l'uno né l'altro.
@@ -370,7 +370,7 @@ describe('la Cornice', () => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.
-        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['bookings']);
+        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['bookings', 'flow']);
 
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
@@ -490,7 +490,7 @@ describe('la Cornice', () => {
         await mostra(<Cornice dati={{ lingua: 'es', persona: rinominata, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true }} onLogout={esciSenzaEffetto} />);
 
         expect(etichette()).toHaveLength(quante);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-ws-switch')).not.toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('4');
         expect(uno('aside.zr-side')?.textContent).toContain('Marketing');
@@ -511,7 +511,7 @@ describe('la Cornice', () => {
         await mostra(<Cornice dati={{ lingua: 'es', persona: altra, workspace: { nome: 'Otro nombre', slug: dati.workspace.slug }, prodotti: [], in_attesa: true, sessione_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
 
         expect(etichette()).not.toContain('CRM');
-        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(etichette()).not.toContain('Reservas');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')).toBeNull();
         expect(uno('aside.zr-side')?.textContent).toContain('Otro nombre');
@@ -531,7 +531,7 @@ describe('la Cornice', () => {
         const diChiEEntrato = (nome: string) => {
             expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(nome);
             expect(document.body.textContent).not.toContain(dati.persona.email);
-            expect(etichette()).toContain('Gestión de proyectos');
+            expect(etichette()).toContain('Reservas');
             expect(uno('.zr-ws-switch')).toBeNull();
         };
         await mostra(<Cornice dati={diPrima} onLogout={esciSenzaEffetto} />);
@@ -612,7 +612,7 @@ describe('la Cornice', () => {
 
         await mostra(<Cornice dati={{ ...dati, lingua: 'es', persona: altra, prodotti: { pm: 'attivo' }, non_lette: 2, sessione_il: inAttesa.sessione_il, aggiornati_il: '2026-10-13T08:00:04.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 
@@ -792,7 +792,7 @@ describe('la Cornice', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product={prodotto} />);
 
         expect(uno('.zr-product-switch')).toBeNull();
-        expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(7);
+        expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(8);
     });
 
     it('senza la prop `piano` il menu del profilo è Profilo, Impostazioni, Azienda, una linea, Esci, e «Piano» non c\'è; account, impostazioni e notifiche portano su app.zeiras.com, «Esci» chiama il frontend (linea guida 15; sprint 15 · T1.1)', async () => {
@@ -1203,11 +1203,11 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
-        ['it', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
-        ['es', ['Novedades en el workspace', 'Nueva carpeta'], ['hace 5 minutos', 'ayer', '1 oct'], ['Gestión de proyectos', 'CRM', 'Informes', 'Contenidos']],
-        ['en', ['News in the workspace', 'New folder'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Project Management', 'CRM', 'Reports', 'Content']],
+        ['it', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['es', ['Novedades en el workspace', 'Nueva carpeta'], ['hace 5 minutos', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
+        ['en', ['News in the workspace', 'New folder'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Project Management', 'CRM', 'Report', 'Contenuti']],
+        ['it_IT', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
     ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo del suo tipo nella lingua, o quello di ripiego, e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3; sprint 12 · T3.1, T3.2)', async (lingua, [diRipiego, dellaCartella], [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
@@ -1285,7 +1285,7 @@ describe('il pannello delle notifiche', () => {
         expect(righe()).toStrictEqual([con, senza, senza, senza, senza, con, senza, senza]);
         // Il titolo resta quello del tipo, e il prodotto con l'ora restano dov'erano.
         expect(titoli()).toStrictEqual(Array(8).fill('Nuova cartella'));
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Project Management · 5 minuti fa'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 minuti fa'));
     });
 
     /** Una notifica su un'app: il backoffice dà in `risorsa_nome` il codice dell'app, non un nome. */
@@ -1312,7 +1312,7 @@ describe('il pannello delle notifiche', () => {
             conInPiu('uat-n62', { app: null, tipo: 'com.zeiras.app', risorsa_nome: 'pm' }),
         ]);
 
-        expect(secondeRighe()).toStrictEqual(['Project Management', 'Report', 'CRM', null, null, null, null, 'Project Management', null, 'pm', 'pm', 'pm']);
+        expect(secondeRighe()).toStrictEqual(['Board', 'Report', 'CRM', null, null, null, null, 'Board', null, 'pm', 'pm', 'pm']);
         expect(titoli()).toStrictEqual([
             ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova cartella', 'Novità nel workspace', 'Novità nel workspace',
         ]);
@@ -1322,10 +1322,10 @@ describe('il pannello delle notifiche', () => {
     });
 
     it.each([
-        ['es', 'Gestión de proyectos', 'Informes'],
-        ['en', 'Project Management', 'Reports'],
+        ['es', 'Board', 'Informes'],
+        ['en', 'Board', 'Reports'],
         // Una lingua che zr-core non ha: l'inglese, come per ogni altro testo.
-        ['fr', 'Project Management', 'Reports'],
+        ['fr', 'Board', 'Reports'],
     ] as const)('con la lingua "%s" il nome del prodotto di una notifica su un\'app è quello che il prodotto ha in quella lingua (sprint 20 · T1.8)', async (lingua, pm, reports) => {
         vi.stubGlobal('fetch', rotte([suUnApp('uat-n51', 'pm'), suUnApp('uat-n52', 'reports'), conInPiu('uat-n53', { risorsa_nome: 'pm' })]));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
@@ -1416,7 +1416,7 @@ describe('il pannello delle notifiche', () => {
             '\u{2068}Giulia Bianchi\u{2069} ha modificato la scheda «\u{2068}Lancio corso\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda', '\u{2068}Giulia Bianchi\u{2069} ha modificato una scheda',
             '\u{2068}Giulia Bianchi\u{2069} ha eliminato una scheda',
             'Scheda modificata', 'Scheda modificata', 'Scheda modificata', 'Scheda modificata',
-            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un contatto", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', t.notificationTitle,
+            "\u{2068}Giulia Bianchi\u{2069} ti ha assegnato un contatto", '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Board\u{2069}»', t.notificationTitle,
         ]);
         expect(secondeRighe()).toStrictEqual([null, null, null, null, 'Lancio corso', 'Lancio corso', 'Lancio corso', 'Lancio corso', 'UAT Rinnovo', null, 'Lancio corso']);
         // Il nome della cosa si legge una volta sola, e l'avatar di chi ha fatto resta dov'era.
@@ -1472,12 +1472,12 @@ describe('il pannello delle notifiche', () => {
         ]);
 
         expect(titoli()).toStrictEqual([
-            '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo',
+            '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Board\u{2069}»', '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo',
             '\u{2068}Giulia Bianchi\u{2069} è ora nel workspace', '\u{2068}Giulia Bianchi\u{2069} ha tolto una persona dal workspace', '\u{2068}Giulia Bianchi\u{2069} ha cambiato il ruolo di un membro',
             '\u{2068}Giulia Bianchi\u{2069} ha modificato il workspace «\u{2068}UAT Marketing\u{2069}»',
             frasiItaliane['notificationTitle.com.zeiras.app.modificata'], frasiItaliane['notificationTitle.com.zeiras.workspace.membro.creato'],
         ]);
-        expect(secondeRighe()).toStrictEqual([null, null, null, null, null, null, 'Project Management', null]);
+        expect(secondeRighe()).toStrictEqual([null, null, null, null, null, null, 'Board', null]);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/\{who\}|\{what\}|undefined|null|«»|\bpm\b|uat-modulo/);
     });
 
@@ -2359,7 +2359,7 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Project Management · 2 minuti fa', 'Project Management · 10 minuti fa']);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Board · 2 minuti fa', 'Board · 10 minuti fa']);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
         expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
@@ -3338,7 +3338,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate sono di Project Management, e arrivano con `app: 'pm'`.
-    it.each([['it', '5 minuti fa', 'Project Management'], ['en', '5 minutes ago', 'Project Management'], ['es', 'hace 5 minutos', 'Gestión de proyectos']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
+    it.each([['it', '5 minuti fa', 'Board'], ['en', '5 minutes ago', 'Board'], ['es', 'hace 5 minutos', 'Board']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
         const delleViste = titoliPerTipo.filter(([tipo]) => tipo.startsWith('com.zeiras.board.vista.'));
         const elenco = delleViste.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'pm' }));
         vi.stubGlobal('fetch', rotte(elenco));
@@ -4560,9 +4560,9 @@ describe('la ricerca', () => {
     });
 
     it.each([
-        ['it', 'Project Management', ['Board', 'Cartelle']],
-        ['es', 'Gestión de proyectos', ['Tableros', 'Carpetas']],
-        ['en', 'Project Management', ['Boards', 'Folders']],
+        ['it', 'Board', ['Board', 'Cartelle']],
+        ['es', 'Board', ['Tableros', 'Carpetas']],
+        ['en', 'Board', ['Boards', 'Folders']],
     ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (sprint 5 · T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
@@ -4623,9 +4623,9 @@ describe('la ricerca', () => {
     ];
 
     it.each<[lingua: string, gruppi: string[], pm: string, crm: string]>([
-        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Cartelle'], 'Project Management', 'CRM'],
-        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Carpetas'], 'Gestión de proyectos', 'CRM'],
-        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Folders'], 'Project Management', 'CRM'],
+        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Cartelle'], 'Board', 'CRM'],
+        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Carpetas'], 'Board', 'CRM'],
+        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Folders'], 'Board', 'CRM'],
     ])('con la lingua "%s", schede, contatti, aziende e opportunità stanno ognuno nel suo gruppo, con la seconda riga fatta dei testi di `contesto` che ci sono, il nome e il tono del loro modulo e l\'icona del tipo; i gruppi nell\'ordine del primo risultato di ognuno e dentro un gruppo l\'ordine del backoffice; un tipo che il registro non ha e un id fuori forma non compaiono (sprint 25 · T4.1, T4.2)', async (lingua, gruppi, pm, crm) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
@@ -5787,7 +5787,7 @@ describe('la voce attiva della barra', () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} active={null} />);
 
         // Le voci del menu Moduli e «Impostazioni», che l'`AppShell` mette da sé in fondo alla barra.
-        expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'Impostazioni']);
+        expect(tutti('a.zr-nav-item').map(nomeDi)).toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti', 'Impostazioni']);
         expect(segnate()).toStrictEqual([]);
     });
 
@@ -5863,14 +5863,14 @@ describe('la voce attiva della barra', () => {
 
         const conUnaVoce = await delProdotto('board');
         expect(conUnaVoce).toStrictEqual({
-            nome: 'Project Management',
-            inTopbar: 'Project Management',
-            lista: ['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti'],
-            aperto: ['Project Management'],
+            nome: 'Board',
+            inTopbar: 'Board',
+            lista: ['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti'],
+            aperto: ['Board'],
         });
         expect(await delProdotto(null)).toStrictEqual(conUnaVoce);
         // Con la lista aperta l'unica voce segnata è il prodotto aperto, nella lista: nessuna voce del prodotto.
-        expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(['Project Management']);
+        expect(tutti('a.zr-nav-item.is-active').map(nomeDi)).toStrictEqual(['Board']);
     });
 });
 

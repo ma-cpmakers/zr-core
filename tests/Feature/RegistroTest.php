@@ -58,6 +58,7 @@ function mappaDegliIndirizzi(): array
         'pm' => 'https://board.zeiras.com',
         'crm' => 'https://crm.zeiras.com',
         'bookings' => 'https://bookings.zeiras.com',
+        'flow' => 'https://flow.zeiras.com',
         'reports' => 'https://report.zeiras.com',
         'automations' => 'https://auto.zeiras.com',
         'content' => 'https://ai.zeiras.com',
@@ -285,7 +286,7 @@ it('un registro di prova scritto dall\'ultimo caso di un altro file non arriva q
 it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodotti, con icone del set, toni, indirizzi della mappa e «Presto», senza nomi (T4.1, T7.3; sprint 6 · T5.2)', function () {
     $voci = registroDeiProdotti();
 
-    expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
+    expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'flow', 'reports', 'automations', 'content'])
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
@@ -295,14 +296,14 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
+            ...array_fill(0, 5, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
-            'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'reports' => 'chart',
+            'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'flow' => 'euro', 'reports' => 'chart',
             'automations' => 'bolt', 'content' => 'sparkle',
         ])
         ->and(array_column($voci, 'tono', 'id'))->toBe([
-            'pm' => 'pine', 'crm' => 'sky', 'bookings' => 'sky', 'reports' => 'citrus', 'automations' => 'plum', 'content' => 'coral',
+            'pm' => 'pine', 'crm' => 'sky', 'bookings' => 'sky', 'flow' => 'pine', 'reports' => 'citrus', 'automations' => 'plum', 'content' => 'coral',
         ])
         // «Presto» come nell'anteprima dell'AppShell: provvisorio, finché non si sa quali prodotti sono disponibili.
         ->and(array_keys(array_filter(array_column($voci, 'presto', 'id'))))->toBe(['reports', 'automations', 'content'])
@@ -413,7 +414,7 @@ it('il controllo trova un\'icona fuori dal set, un tono che non esiste, un indir
     $voci[2]['nome'] = 'CRM';
     $voci[3]['icona'] = 'calendar-days';
     $voci[3]['indirizzo'] = 'https://cal.zeiras.com';
-    unset($voci[4]['presto']);
+    unset($voci[5]['presto']);
     $voci[1]['risorse'][] = ['tipo' => 'board.board', 'icona' => 'card', 'percorso' => '/b', 'contenitore' => 'sì', 'nome' => 'Board'];
     $voci[1]['risorse'][] = ['tipo' => ' ', 'icona' => 'board', 'percorso' => '/b/{id}/c/{id}', 'contenitore' => false];
     // Un percorso senza `{id}`, o senza la barra davanti, non è il percorso vuoto: resta un problema.
@@ -456,12 +457,12 @@ it('ogni voce del registro dice se il prodotto è in arrivo per chi non ha una s
     $voci = registroDeiProdotti();
 
     expect(array_column($voci, 'in_arrivo', 'id'))->toBe([
-        'home' => false, 'pm' => false, 'crm' => false, 'bookings' => true, 'reports' => true, 'automations' => true, 'content' => true,
+        'home' => false, 'pm' => false, 'crm' => false, 'bookings' => true, 'flow' => true, 'reports' => true, 'automations' => true, 'content' => true,
     ])
         // «Presto» non cambia: con `crm` o `bookings` «Presto» la cornice chiuderebbe la voce in ogni workspace, anche dove il
         // backoffice dà il modulo. Non è la leva per le pagine senza sessione.
         ->and(array_column($voci, 'presto', 'id'))->toBe([
-            'home' => false, 'pm' => false, 'crm' => false, 'bookings' => false, 'reports' => true, 'automations' => true, 'content' => true,
+            'home' => false, 'pm' => false, 'crm' => false, 'bookings' => false, 'flow' => false, 'reports' => true, 'automations' => true, 'content' => true,
         ])
         ->and(problemiDelRegistro($voci))->toBe([]);
 });
@@ -471,13 +472,13 @@ it('il controllo trova la Dashboard in arrivo, una voce senza «in arrivo», una
     $voci[0]['in_arrivo'] = true;
     unset($voci[2]['in_arrivo']);
     $voci[3]['in_arrivo'] = 'sì';
-    $voci[4]['in_arrivo'] = false;
+    $voci[5]['in_arrivo'] = false;
     // Un prodotto in arrivo che non è «Presto» va bene (Bookings), e uno che non è né l'uno né l'altro anche (il CRM).
-    $voci[5]['presto'] = false;
     $voci[6]['presto'] = false;
-    $voci[6]['in_arrivo'] = false;
+    $voci[7]['presto'] = false;
+    $voci[7]['in_arrivo'] = false;
 
-    expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
+    expect(array_column($voci, 'id'))->toBe(['home', 'pm', 'crm', 'bookings', 'flow', 'reports', 'automations', 'content'])
         ->and(problemiDelRegistro($voci))->toEqualCanonicalizing([
             'home: la Dashboard non è mai in arrivo',
             'crm: «in arrivo» non è un sì o un no',
@@ -504,7 +505,7 @@ it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un n
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
-    expect(idDeiProdotti())->toBe(['pm', 'crm', 'bookings', 'reports', 'automations', 'content'])
+    expect(idDeiProdotti())->toBe(['pm', 'crm', 'bookings', 'flow', 'reports', 'automations', 'content'])
         ->and(valoriDelTipo('IdDiProdotto', 'resources/js/registro.ts'))->toEqualCanonicalizing(idDeiProdotti());
 });
 

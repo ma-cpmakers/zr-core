@@ -253,7 +253,7 @@ describe('LayoutDellaCornice', () => {
         expect(barra).not.toBeNull();
         expect(topbar).not.toBeNull();
         expect(titoloDeiProdotti()).toBe('Moduli');
-        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti']);
+        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
         expect(segnaposto()).toBe('Cerca nel workspace…');
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
 
@@ -265,7 +265,7 @@ describe('LayoutDellaCornice', () => {
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('uat');
         // I testi sono quelli di `resources/lingue/es.json`.
         expect(titoloDeiProdotti()).toBe('Módulos');
-        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
+        expect(nomiDeiProdotti()).toStrictEqual(['Dashboard', 'Board', 'CRM', 'Reservas', 'Finanzas', 'Informes', 'Automatismos', 'Contenidos']);
         expect(segnaposto()).toBe('Busca en el workspace…');
         // Il menu del profilo porta il nome nuovo.
         await clic(uno('.zr-avatar-btn'));
@@ -540,7 +540,7 @@ describe('nessuna voce attiva, sotto il layout', () => {
     it('active={null} dato a LayoutDellaCornice arriva alla cornice come null: nessuna voce è accesa, nemmeno la Dashboard (sprint 12 · T5.3)', async () => {
         await visita(dati, <PaginaA key="1" />, { nav: voci, active: null });
 
-        expect(nomiDelleVoci()).toStrictEqual(['Dashboard', 'Project Management', 'CRM', 'Bookings', 'Report', 'Automazioni', 'Contenuti', 'UAT A', 'UAT B', 'Impostazioni']);
+        expect(nomiDelleVoci()).toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti', 'UAT A', 'UAT B', 'Impostazioni']);
         expect(accese()).toStrictEqual([]);
     });
 
@@ -893,7 +893,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: { ...subito, lingua: 'es', persona: rinominata } }, <PaginaB key="2" />);
         expect(uno('#uat-pagina-b')).not.toBeNull();
         expect(etichette()).toContain('CRM');
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('7');
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([rinominata.nome, rinominata.email]);
@@ -909,14 +909,14 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: diAltra }, <PaginaB key="2" />);
         expect(uno('#uat-pagina-b')).not.toBeNull();
         expect(etichette()).not.toContain('CRM');
-        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(etichette()).not.toContain('Reservas');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')).toBeNull();
         await clic(uno('.zr-avatar-btn'));
         expect(tutti('.zr-profile-head > span:not(.zr-avatar) > *').map((riga) => riga.textContent)).toStrictEqual([altra.nome, altra.email]);
 
         await inDue({ subito: diAltra, dopo: { prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:05.000000Z' } }, <PaginaB key="2" />);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
 
@@ -943,7 +943,7 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(await nelMenu()).toStrictEqual([altra.nome, altra.email]);
             expect(document.body.textContent).not.toContain(dati.persona.nome);
             expect(document.body.textContent).not.toContain(dati.persona.email);
-            expect(etichette()).toContain('Gestión de proyectos');
+            expect(etichette()).toContain('Reservas');
             expect(uno('.zr-ws-switch')).toBeNull();
         };
 
@@ -987,7 +987,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('#uat-pagina-b')).not.toBeNull();
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(document.body.textContent).not.toContain(dati.persona.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 
@@ -1025,7 +1025,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: diAdesso }, <PaginaB key="2" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(etichette()).not.toContain('CRM');
-        expect(etichette()).not.toContain('Gestión de proyectos');
+        expect(etichette()).not.toContain('Reservas');
         expect(uno('.zr-ws-switch')).toBeNull();
         expect(uno('.zr-bell-count')).toBeNull();
         await clic(uno('.zr-avatar-btn'));
@@ -1062,7 +1062,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await inDue({ subito: diAdesso, dopo: { prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:04.000000Z' } }, <PaginaB key="2" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
     });
 
@@ -1079,7 +1079,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-bell-count')).toBeNull();
         await inDue({ subito: diPrima, dopo: riletto }, <PaginaA key="1" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
 
         // Un'altra voce di prima, riletta dopo; poi di nuovo la prima, che ora porta il `dopo` riletto allora: restano i dati più recenti.
@@ -1101,7 +1101,7 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(avatar()).toBe(dati.persona.nome);
             expect(document.body.textContent).not.toContain(altra.nome);
             expect(document.body.textContent).not.toContain(altra.email);
-            expect(etichette()).not.toContain('Gestión de proyectos');
+            expect(etichette()).not.toContain('Reservas');
         };
         await inDue({ subito: allora }, <PaginaA key="1" />);
         const inAttesa = etichette();
@@ -1111,7 +1111,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: allora }, <PaginaA key="1" />);
         await inDue({ subito: allora, dopo: rilettoDaAltra }, <PaginaA key="1" />);
         expect(avatar()).toBe(altra.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
 
         // La sessione torna a chi c'era: apre una pagina e, prima che il suo `dopo` arrivi, torna con Indietro su quella voce.
@@ -1153,7 +1153,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(document.body.textContent).not.toContain(dati.persona.nome);
         expect(document.body.textContent).not.toContain(dati.persona.email);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
         expect((uno('.zr-search input[type=search]') as HTMLInputElement).value).toBe('');
         expect(uno('.zr-search-panel')).toBeNull();
@@ -1183,7 +1183,7 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(uno('aside.zr-side')?.textContent).not.toContain(dati.workspace.nome);
             expect(etichette()).toContain(testi('es').dashboard);
             expect(etichette()).not.toContain('CRM');
-            expect(etichette()).not.toContain('Gestión de proyectos');
+            expect(etichette()).not.toContain('Reservas');
             expect(uno('.zr-ws-switch')).toBeNull();
             expect(uno('.zr-bell-count')).toBeNull();
         };
@@ -1223,7 +1223,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await inDue({ subito: diAltra, dopo: { lingua: 'es', persona: altra, workspace: diAltra.workspace, prodotti: { pm: 'attivo' }, non_lette: 2, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaCheGuarda key="1" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
         expect(document.body.textContent).not.toContain(dati.persona.nome);
     });
@@ -1409,8 +1409,8 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(document.body.textContent).not.toContain(nonChi.nome);
             expect(document.body.textContent).not.toContain(nonChi.email);
             expect(etichette()).not.toContain('CRM');
-            expect(etichette()).not.toContain('Gestión de proyectos');
-            expect(etichette()).not.toContain('Project Management');
+            expect(etichette()).not.toContain('Reservas');
+            expect(etichette()).not.toContain('Bookings');
             expect(uno('.zr-ws-switch')).toBeNull();
             expect(uno('.zr-bell-count')).toBeNull();
         };
@@ -1434,7 +1434,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         // Arriva il `dopo` di Augusta: la cornice è la sua per intero, senza un ricaricamento.
         await inDue({ subito: diAugusta('07'), dopo: lettoDaAugusta }, <PaginaColCampo conta={conta} />);
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('2');
         expect(document.body.textContent).not.toContain(dati.persona.nome);
 
@@ -1480,8 +1480,8 @@ describe('la cornice in due dati, sotto il layout', () => {
         // `v2.9.0`, con la stessa persona, vale quella del dato più recente (sprint 43 · T4.1) — dalla `v2.11.0` quella col segno
         // della lingua più avanti (sprint 45 · T3.3) —, qui il `subito` riletto.
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(dati.persona.nome);
-        expect(etichette()).toContain('Gestión de proyectos');
-        expect(etichette()).not.toContain('Project Management');
+        expect(etichette()).toContain('Reservas');
+        expect(etichette()).not.toContain('Bookings');
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="status"]')?.textContent ?? '').not.toBe(testi('it').loading);
 
@@ -1684,7 +1684,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: suo, dopo: { ...letto, lingua: 'es', persona: { nome: 'Augusta King', email: dati.persona.email }, non_lette: 4, aggiornati_il: '2026-10-13T08:00:06.000000Z', sessione_il: '2026-10-13T08:00:06.000000Z' } }, <PaginaColCampo conta={conta} />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Augusta King');
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect(uno('.zr-bell-count')?.textContent).toBe('4');
         expect(uno('aside.zr-side')).toBe(barra);
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
@@ -1702,7 +1702,7 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(document.body.textContent).not.toContain(dati.persona.email);
             expect(uno('aside.zr-side')?.textContent).toContain(altrove.nome);
             expect(uno('aside.zr-side')?.textContent).not.toContain('Acme');
-            expect(etichette()).toContain('Gestión de proyectos');
+            expect(etichette()).toContain('Reservas');
             expect([uno('.zr-ws-switch'), uno('.zr-bell-count')?.textContent]).toStrictEqual([null, '2']);
         };
         await inDue({ subito: diPrima, dopo: dopoDiPrima }, <PaginaA key="1" />);
@@ -1879,7 +1879,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue(allora, <PaginaA key="1" />);
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada King');
-        expect(etichette()).toContain('Gestión de proyectos');
+        expect(etichette()).toContain('Reservas');
         expect([uno('aside.zr-side')?.textContent?.includes(altrove.nome), uno('.zr-bell-count')?.textContent]).toStrictEqual([true, '1']);
     });
 
@@ -2108,8 +2108,8 @@ describe('la cornice in due dati, sotto il layout', () => {
         const letto: DatiDopo = { ...dopo, aziende, lingua: 'it', persona: adaCon(i1), workspace: subito.workspace, aggiornati_il: '2026-10-13T08:00:03.000000Z', sessione_il: '2026-10-13T08:00:03.000000Z', lingua_il: '2026-10-13T08:00:02.000000Z' };
         await inDue({ subito: suo, dopo: letto }, <PaginaA />);
 
-        expect(etichette()).not.toContain('Gestión de proyectos');
-        expect(etichette()).toContain('Project Management');
+        expect(etichette()).not.toContain('Reservas');
+        expect(etichette()).toContain('Bookings');
     });
 
     it.each([

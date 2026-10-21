@@ -48,7 +48,7 @@ function testiItalianiDelDesignSystem(): array
         $testi[$chiave] = $testo($letto);
     }
     // Il menu che l'`AppShell` mostra senza `nav`: il titolo del gruppo dei prodotti, poi la Dashboard e i prodotti, per id.
-    preg_match('/var DEFAULT_NAV = \[(.*?)\];/s', $bundle, $menu);
+    preg_match('/var MODULES_NAV = \{(.*?)\] \};/s', $bundle, $menu);
     preg_match("/group: $stringa, products: true/", $menu[1] ?? '', $prodotti);
     preg_match_all("/\\{ id: '(\\w+)', label: $stringa/", $menu[1] ?? '', $voci, PREG_SET_ORDER);
     $testi += ['products' => $testo($prodotti[1] ?? '')];
@@ -557,7 +557,6 @@ function problemiDelleFrasiConChi(array $testi): array
 function italianoDecisoPrimaDelDesignSystem(): array
 {
     return [
-        'products' => 'Moduli',
         'searchHint' => 'Scrivi almeno 2 caratteri.',
         'searchPlaceholder' => 'Cerca…',
     ];
@@ -714,7 +713,7 @@ it('italiano, spagnolo e inglese hanno ogni testo della cornice e il nome di ogn
         ->and(problemiDelleLingue($lingue))->toBe([])
         ->and($lingue['it'])->toMatchArray(italianoAtteso())
         ->and(array_intersect_key($lingue['it'], array_flip(idDeiProdotti())))->toBe([
-            'pm' => 'Project Management', 'crm' => 'CRM', 'bookings' => 'Bookings', 'reports' => 'Report',
+            'pm' => 'Board', 'crm' => 'CRM', 'bookings' => 'Bookings', 'flow' => 'Finanze', 'reports' => 'Report',
             'automations' => 'Automazioni', 'content' => 'Contenuti',
         ])
         ->and(array_intersect_key($lingue['it'], array_flip(tipiDiRisorsa())))->toBe([
@@ -1275,22 +1274,22 @@ it('il controllo dice che per una lingua che non conosce non ha parole da cercar
         ->toBe(['fr: nessuna parola da cercare per questa lingua']);
 });
 
-it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta: il nome del menu, e il segnaposto e l\'invito della ricerca (sprint 21 · T1; sprint 22 · T8)', function () {
+it('l\'italiano si scosta dal design system solo dove lo dice una decisione, e finché il design system non la porta: il segnaposto e l\'invito della ricerca; dal design system del 21/10/2026 il nome del menu, «Moduli», è quello suo (sprint 21 · T1; sprint 22 · T8)', function () {
     $delDesignSystem = testiItalianiDelDesignSystem();
     $conIlTestoDiPrima = lingueDellaCornice();
     $conIlTestoDiPrima['it']['products'] = 'Prodotti';
     $colSegnapostoDelDesignSystem = lingueDellaCornice();
     $colSegnapostoDelDesignSystem['it']['searchPlaceholder'] = $delDesignSystem['searchPlaceholder'];
 
-    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['products', 'searchHint', 'searchPlaceholder'])
-        // Il design system dice ancora il testo di prima: quando dirà «Moduli», questa riga è rossa e lo scostamento si toglie.
-        ->and($delDesignSystem['products'])->toBe('Prodotti')
-        ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i prodotti: scrivi almeno 2 caratteri.')
+    expect(array_keys(italianoDecisoPrimaDelDesignSystem()))->toBe(['searchHint', 'searchPlaceholder'])
+        // Il design system dice «Moduli» dal 21/10/2026: il nome del menu non è più uno scostamento.
+        ->and($delDesignSystem['products'])->toBe('Moduli')
+        ->and($delDesignSystem['searchHint'])->toBe('Cerca in tutti i moduli: scrivi almeno 2 caratteri.')
         // Il segnaposto del design system promette le stesse fonti in ogni workspace: nella cornice è un problema.
         ->and($delDesignSystem['searchPlaceholder'])->toBe('Cerca progetti, schede, contatti…')
         ->and(problemiDelleLingue($colSegnapostoDelDesignSystem))->toBe(['it: «searchPlaceholder» non è il testo deciso prima del design system'])
-        // Dove c'è una decisione il testo giusto è quello deciso: quello del design system è un problema.
-        ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo deciso prima del design system']);
+        // Il nome del menu ora è quello del design system: «Prodotti» è un problema.
+        ->and(problemiDelleLingue($conIlTestoDiPrima))->toBe(['it: «products» non è il testo del design system']);
 });
 
 // Sprint 34 · T2 (voce #1930). La riga sotto il titolo di una notifica dice quante azioni racconta e in quale board sta la cosa:

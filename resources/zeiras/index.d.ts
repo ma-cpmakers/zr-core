@@ -38,8 +38,12 @@ export interface AppShellProps { active?: string; user?: string; email?: string;
 /** Testi di default (italiano) dell'AppShell: base per le traduzioni passate in `labels`. */
 export declare const APPSHELL_LABELS: Required<AppShellLabels>;
 export declare function AppShell(props: AppShellProps): React.ReactElement;
+/** Menu dei moduli di Zeiras, uguale in ogni schermata: Dashboard, Board, CRM, Bookings, Finanze; Report, Automazioni, Contenuti con «Presto». Usalo come primo gruppo di `nav`. */
+export declare const MODULES_NAV: { group: string; products: true; items: (NavItem & { tone?: Exclude<Tone, 'neutral'>; home?: boolean })[] };
 
-export interface ProductTileProps { name: string; description?: string; icon?: IconName; tone?: Exclude<Tone, 'neutral'>; status?: 'active' | 'soon'; meta?: string; cta?: string; href?: string; onOpen?: () => void }
+/** Testi fissi della card, tradotti dal consumer (default in italiano). */
+export interface ProductTileLabels { active?: string; soon?: string; soonMeta?: string; open?: string }
+export interface ProductTileProps { name: string; description?: string; icon?: IconName; tone?: Exclude<Tone, 'neutral'>; status?: 'active' | 'soon'; meta?: string; cta?: string; href?: string; onOpen?: () => void; labels?: ProductTileLabels }
 export declare function ProductTile(props: ProductTileProps): React.ReactElement;
 
 export interface BoardRef { name: string; cards?: number; href?: string }
@@ -69,31 +73,48 @@ export declare function Composer(props: { onCreate: (text: string) => void; onCa
 /** Pannello di dettaglio a destra (P-15 F1): un record alla volta, senza velo; X ed Esc chiudono; su mobile tutto schermo con «Indietro». */
 export declare function DetailPanel(props: { label: string; head?: React.ReactNode; children?: React.ReactNode; foot?: React.ReactNode; onClose: () => void; onBack?: () => void; backLabel?: string; inline?: boolean; className?: string }): React.ReactElement;
 
-declare global { interface Window { Zeiras: { Logo: typeof Logo; Button: typeof Button; Label: typeof Label; Avatar: typeof Avatar; AvatarStack: typeof AvatarStack; Icon: typeof Icon; AppShell: typeof AppShell; DashboardHome: typeof DashboardHome; ProductTile: typeof ProductTile; ProjectFolder: typeof ProjectFolder; KanbanCard: typeof KanbanCard; KanbanColumn: typeof KanbanColumn; KanbanBoard: typeof KanbanBoard; SiteHeader: typeof SiteHeader; Hero: typeof Hero; SectionHeading: typeof SectionHeading; StepList: typeof StepList; AudienceGrid: typeof AudienceGrid; PricingCard: typeof PricingCard; FAQ: typeof FAQ; CtaBand: typeof CtaBand; SiteFooter: typeof SiteFooter; LandingPage: typeof LandingPage; ICON_NAMES: typeof ICON_NAMES; Field: typeof Field; Checkbox: typeof Checkbox; Switch: typeof Switch; Tabs: typeof Tabs; Alert: typeof Alert; Toast: typeof Toast; Dialog: typeof Dialog; EmptyState: typeof EmptyState; Progress: typeof Progress; Skeleton: typeof Skeleton; PageHeader: typeof PageHeader; DataTable: typeof DataTable; FilterBar: typeof FilterBar; LineChart: typeof LineChart; BarChart: typeof BarChart; DonutChart: typeof DonutChart; Sparkline: typeof Sparkline; StatCard: typeof StatCard; ChartCard: typeof ChartCard; StatusLabel: typeof StatusLabel; RecordHeader: typeof RecordHeader; ActivityTimeline: typeof ActivityTimeline; DescriptionList: typeof DescriptionList; DealCard: typeof DealCard; DealPipeline: typeof DealPipeline; CrmContacts: typeof CrmContacts; ContactDetail: typeof ContactDetail; ReportDashboard: typeof ReportDashboard; AutomationStep: typeof AutomationStep; WorkflowBuilder: typeof WorkflowBuilder; AutomationList: typeof AutomationList; ContentStudio: typeof ContentStudio; DetailPanel: typeof DetailPanel; Composer: typeof Composer; Menu: typeof Menu; APPSHELL_LABELS: typeof APPSHELL_LABELS; APPSHELL_LABELS: Required<AppShellLabels>; PUBLISHER: typeof PUBLISHER } } }
+declare global { interface Window { Zeiras: { Logo: typeof Logo; Button: typeof Button; Label: typeof Label; Avatar: typeof Avatar; AvatarStack: typeof AvatarStack; Icon: typeof Icon; AppShell: typeof AppShell; DashboardHome: typeof DashboardHome; ProductTile: typeof ProductTile; ProjectFolder: typeof ProjectFolder; KanbanCard: typeof KanbanCard; KanbanColumn: typeof KanbanColumn; KanbanBoard: typeof KanbanBoard; SiteHeader: typeof SiteHeader; Hero: typeof Hero; SectionHeading: typeof SectionHeading; StepList: typeof StepList; AudienceGrid: typeof AudienceGrid; PricingCard: typeof PricingCard; FAQ: typeof FAQ; CtaBand: typeof CtaBand; SiteFooter: typeof SiteFooter; LandingPage: typeof LandingPage; LanguageSwitch: typeof LanguageSwitch; SectorGrid: typeof SectorGrid; Breadcrumb: typeof Breadcrumb; ICON_NAMES: typeof ICON_NAMES; Field: typeof Field; MentionField: typeof MentionField; MENTION_LABELS: typeof MENTION_LABELS; Checkbox: typeof Checkbox; Switch: typeof Switch; Tabs: typeof Tabs; Alert: typeof Alert; Toast: typeof Toast; Dialog: typeof Dialog; EmptyState: typeof EmptyState; Progress: typeof Progress; Skeleton: typeof Skeleton; PageHeader: typeof PageHeader; DataTable: typeof DataTable; FilterBar: typeof FilterBar; LineChart: typeof LineChart; BarChart: typeof BarChart; DonutChart: typeof DonutChart; Sparkline: typeof Sparkline; StatCard: typeof StatCard; ChartCard: typeof ChartCard; StatusLabel: typeof StatusLabel; RecordHeader: typeof RecordHeader; ActivityTimeline: typeof ActivityTimeline; DescriptionList: typeof DescriptionList; DealCard: typeof DealCard; DealPipeline: typeof DealPipeline; CrmContacts: typeof CrmContacts; ContactDetail: typeof ContactDetail; ReportDashboard: typeof ReportDashboard; AutomationStep: typeof AutomationStep; WorkflowBuilder: typeof WorkflowBuilder; AutomationList: typeof AutomationList; ContentStudio: typeof ContentStudio; DetailPanel: typeof DetailPanel; Composer: typeof Composer; Menu: typeof Menu; APPSHELL_LABELS: typeof APPSHELL_LABELS; APPSHELL_LABELS: Required<AppShellLabels>; MODULES_NAV: typeof MODULES_NAV; PUBLISHER: typeof PUBLISHER } } }
 
 // ---------- Homepage ----------
 export interface SiteLink { label: string; href: string }
 /** Logo Zeiras: simbolo a tre blocchi + nome. `size` = altezza del simbolo (default 24, minimo 20); `wordmark: false` = solo simbolo. */
 export declare function Logo(props?: { size?: number; wordmark?: boolean; className?: string }): React.ReactElement;
-export declare function SiteHeader(props: { nav?: SiteLink[]; signupHref?: string; loginHref?: string; homeHref?: string }): React.ReactElement;
-export interface HeroProps { kicker?: string; title?: string; subtitle?: string; cta?: string; secondaryCta?: string; note?: string; signupHref?: string; secondaryHref?: string; visual?: React.ReactNode }
+/** Una lingua del sito pubblico: link alla stessa pagina in quella lingua (hreflang). */
+export interface SiteLanguage { code: string; label: string; href: string; current?: boolean }
+export interface SiteHeaderLabels { login?: string; signup?: string; openMenu?: string; closeMenu?: string; nav?: string; home?: string; language?: string }
+export declare function SiteHeader(props: { nav?: SiteLink[]; signupHref?: string; loginHref?: string; homeHref?: string; /** Selettore lingua compatto accanto ad «Accedi» */ languages?: SiteLanguage[]; labels?: SiteHeaderLabels }): React.ReactElement;
+/** Selettore della lingua del sito pubblico: link veri (con hreflang e lang), mai un menu in JavaScript. `compact` in SiteHeader, `list` (default) in SiteFooter. */
+export declare function LanguageSwitch(props: { languages?: SiteLanguage[]; variant?: 'list' | 'compact'; label?: string; className?: string }): React.ReactElement;
+/** Percorso delle pagine pubbliche (BreadcrumbList): l'ultima voce è la pagina attuale, senza link. */
+export declare function Breadcrumb(props: { items?: { label: string; href?: string }[]; label?: string; className?: string }): React.ReactElement;
+export interface SectorItem { title: string; text?: string; icon?: IconName; tone?: Exclude<Tone, 'neutral' | 'coral'>; tags?: string[]; href?: string; cta?: string }
+/** Griglia delle verticalizzazioni (VT-01): una card per settore che porta alla sua pagina /per/:settore. */
+export declare function SectorGrid(props: { items?: SectorItem[]; cta?: string }): React.ReactElement;
+export interface HeroPreview { title: string; lanes: { title: string; cards: KanbanCardProps[] }[] }
+export interface HeroProps { kicker?: string; title?: string; subtitle?: string; cta?: string; secondaryCta?: string; note?: string; signupHref?: string; secondaryHref?: string; visual?: React.ReactNode; /** Contenuto dell'anteprima della board (titolo e liste), tradotto o di settore */ preview?: HeroPreview }
 export declare function Hero(props: HeroProps): React.ReactElement;
-export declare function SectionHeading(props: { overline?: string; title: string; subtitle?: string; align?: 'left' | 'center' }): React.ReactElement;
+export declare function SectionHeading(props: { overline?: string; title: string; subtitle?: string; align?: 'left' | 'center'; /** 1 = titolo della pagina (h1) nelle pagine senza Hero: prezzi, settori, blog */ level?: 1 | 2 }): React.ReactElement;
 export declare function StepList(props: { steps?: { title: string; text: string }[] }): React.ReactElement;
 export declare function AudienceGrid(props: { items?: { title: string; text: string }[] }): React.ReactElement;
-export interface PricingCardProps { name: string; price: string; period?: string; description?: string; features?: string[]; badge?: string; featured?: boolean; status?: 'active' | 'soon'; cta?: string; href?: string }
+export interface PricingCardProps { name: string; price: string; period?: string; description?: string; features?: string[]; badge?: string; featured?: boolean; status?: 'active' | 'soon'; cta?: string; href?: string; labels?: { soon?: string; soonCta?: string; cta?: string } }
 export declare function PricingCard(props: PricingCardProps): React.ReactElement;
 export declare function FAQ(props: { items?: { q: string; a: string }[] }): React.ReactElement;
 export declare function CtaBand(props: { title?: string; subtitle?: string; cta?: string; href?: string }): React.ReactElement;
 export interface Publisher { name: string; legalForm?: string; address?: string; vat?: string; taxCode?: string; rea?: string; capital?: string; pec?: string; email?: string; phone?: string }
 export declare const PUBLISHER: Publisher;
-export declare function SiteFooter(props: { company?: Partial<Publisher>; columns?: { title: string; links: (string | SiteLink)[] }[]; legalLinks?: { label: string; href?: string; onClick?: () => void }[]; onCookiePreferences?: () => void; tagline?: string; legal?: string }): React.ReactElement;
-export declare function LandingPage(props: { signupHref?: string; loginHref?: string; products?: (ProductTileProps & { id: string })[]; plans?: PricingCardProps[] }): React.ReactElement;
+export interface SiteFooterLabels { tagline?: string; by?: string; registeredOffice?: string; vat?: string; vatTax?: string; taxCode?: string; rea?: string; capital?: string; paidUp?: string; pec?: string; email?: string; phone?: string; rights?: string; legalNav?: string; missing?: string; language?: string; /** Etichetta delle voci senza link (default «In arrivo») */ soon?: string }
+export declare function SiteFooter(props: { company?: Partial<Publisher>; /** Una voce senza `href` è testo senza link; con `soon: true` mostra «In arrivo» */ columns?: { title: string; links: (string | SiteLink | { label: string; href?: string; soon?: boolean })[] }[]; legalLinks?: { label: string; href?: string; onClick?: () => void; soon?: boolean }[]; onCookiePreferences?: () => void; tagline?: string; legal?: string; /** Selettore lingua sotto il marchio (P-14) */ languages?: SiteLanguage[]; labels?: SiteFooterLabels }): React.ReactElement;
+export declare function LandingPage(props: { signupHref?: string; loginHref?: string; products?: (ProductTileProps & { id: string })[]; plans?: PricingCardProps[]; sectors?: SectorItem[] }): React.ReactElement;
 
 // ---------- SaaS kit ----------
 export declare const ICON_NAMES: IconName[];
 export interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; hint?: string; error?: string; as?: 'input' | 'textarea' | 'select'; options?: (string | { value: string; label: string })[]; icon?: IconName; rows?: number }
 export declare function Field(props: FieldProps): React.ReactElement;
+export interface MentionOption { id: string | number; name: string; email?: string; phone?: string; sub?: string; tag?: string; tagTone?: Tone }
+export interface MentionLabels { remove?: string; create?: string; empty?: string; hint?: string; results?: string }
+export declare const MENTION_LABELS: Required<MentionLabels>;
+/** Scegliere clienti del CRM scrivendo @nome (P-16, CRM-01 F9). */
+export declare function MentionField(props: { label?: string; suggestions?: MentionOption[]; value?: MentionOption[]; defaultValue?: MentionOption[]; onChange?: (v: MentionOption[]) => void; query?: string; defaultQuery?: string; onQuery?: (q: string | null) => void; open?: boolean; defaultOpen?: boolean; multiple?: boolean; maxResults?: number; onCreate?: (name: string) => void; createLabel?: string; hint?: string | false; error?: string; required?: boolean; placeholder?: string; labels?: MentionLabels; className?: string }): React.ReactElement;
 export declare function Checkbox(props: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; indeterminate?: boolean }): React.ReactElement;
 export declare function Switch(props: { label?: string; checked?: boolean; defaultChecked?: boolean; onChange?: (v: boolean) => void; disabled?: boolean; 'aria-label'?: string }): React.ReactElement;
 export interface TabItem { value: string; label: string; icon?: IconName; count?: number }
@@ -124,12 +145,13 @@ export declare function ActivityTimeline(props: { items: Activity[] }): React.Re
 export declare function DescriptionList(props: { items: { label: string; value: React.ReactNode }[] }): React.ReactElement;
 export interface Deal { id: string; title: string; company: string; amount: number; owner?: string; probability?: number; age?: number }
 /** Icona accanto a `company`: default 'building'; null la nasconde (es. quando il campo contiene una voce di catalogo o una persona). `ageLabel`/`ageTitle`: testi tradotti per i giorni in fase (default «gg», «Giorni in questa fase»). */
-export declare function DealCard(props: Omit<Deal, 'id' | 'company'> & { company?: string; companyIcon?: IconName | null; ageLabel?: string; ageTitle?: string } & React.HTMLAttributes<HTMLElement> & { dragging?: boolean; draggable?: boolean }): React.ReactElement;
+export declare function DealCard(props: Omit<Deal, 'id' | 'company'> & { company?: string; currency?: string; companyIcon?: IconName | null; ageLabel?: string; ageTitle?: string } & React.HTMLAttributes<HTMLElement> & { dragging?: boolean; draggable?: boolean }): React.ReactElement;
 /** Testi della pipeline: vengono dal vocabolario della personalizzazione CRM (CRM-00) e dalle traduzioni; i default sono quelli del CRM «Generico» in italiano. */
 export interface DealPipelineLabels { overline?: string; title?: string; open?: string; weighted?: string; filter?: string; newDeal?: string; total?: string; days?: string; daysTitle?: string }
 /** Fase: `kind` 'won' | 'lost' esclude la colonna dai totali aperti e ponderati; 'won' ha fondo success-soft. Senza `kind` valgono gli id 'won' e 'lost'. */
 export interface DealStage { id: string; title: string; kind?: 'open' | 'won' | 'lost'; deals: Deal[] }
-export declare function DealPipeline(props: { title?: string; stages?: DealStage[]; labels?: DealPipelineLabels; companyIcon?: IconName | null; onNew?: () => void; onFilter?: () => void; onChange?: (s: DealStage[]) => void }): React.ReactElement;
+/** `stages` è anche controllabile: se cambia dall'esterno (nuova trattativa, fase rinominata) la pipeline si riallinea. `onOpen(deal)` al clic o Invio su una card (apre il `DetailPanel`). `currency` (codice ISO, default EUR) per importi e totali. */
+export declare function DealPipeline(props: { title?: string; stages?: DealStage[]; labels?: DealPipelineLabels; companyIcon?: IconName | null; currency?: string; onNew?: () => void; onFilter?: () => void; onChange?: (s: DealStage[]) => void; onOpen?: (deal: Deal) => void }): React.ReactElement;
 export interface Contact { id: string; name: string; email: string; company: string; status: string; owner: string; value: number; last: string }
 export declare function CrmContacts(props: { contacts?: Contact[]; onOpen?: (c: Contact) => void; pageSize?: number }): React.ReactElement;
 export declare function ContactDetail(props: { contact?: { name: string; role: string; company: string; status: string; email: string; phone: string; owner: string }; activities?: Activity[] }): React.ReactElement;

@@ -18,7 +18,7 @@ const FUORI = ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client'];
 // Un testo per ognuno di tre componenti che la cornice non usa: una domanda della pagina pubblica (`FAQ`), il logo del sito
 // (`SiteHeader`), l'intestazione di una colonna (`KanbanColumn`). Poi la tabella (`DataTable`), che entra solo in un'app che la
 // usa, e l'`AppShell`, che è la cornice.
-const DI_ALTRI = ['Zeiras è davvero gratis?', 'zr-site-logo', 'zr-col-head'];
+const DI_ALTRI = ['Qual è il trucco?', 'zr-site-logo', 'zr-col-head'];
 const DELLA_TABELLA = 'zr-table';
 const DEL_PULSANTE = 'zr-btn';
 const DELLA_CORNICE = 'zr-shell';
@@ -79,7 +79,7 @@ const FRASI = { it: 'ha creato la cartella', en: 'created the folder', es: 'ha c
  * Sprint 61 · T1 (voce #2150): altri 7 byte, perché ogni richiesta porta l'impronta della cornice che la fa e non quella
  * dell'ultima montata (zr-pm, 15/10/2026, nota 13713 del progetto: la stessa eccezione, per questa sola correzione).
  */
-const TETTO_DELL_INGRESSO = 17_826;
+const TETTO_DELL_INGRESSO = 17_875;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -351,9 +351,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.826 byte: la misura a fine sprint 50, con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.875 byte: la misura a fine sprint 50 più l\'eccezione di zr-pm del 21/10 (+49), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_826);
+        expect(TETTO_DELL_INGRESSO).toBe(17_875);
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
@@ -365,11 +365,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.826 byte, non più quelli di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.875 byte, non più quelli di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '17.826 byte') > 0, volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.875 byte') > 0, volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {
@@ -446,7 +446,7 @@ describe('l\'ingresso per le app esporta gli stessi nomi dell\'ingresso di sempr
 
 describe('chi installa come oggi non paga niente in più (T1.4)', () => {
     it('nel build dell\'ingresso di sempre il testo di un componente sta una volta sola', () => {
-        expect(volte(ingressoDiSempre.js, 'Zeiras è davvero gratis?')).toBe(1);
+        expect(volte(ingressoDiSempre.js, 'Qual è il trucco?')).toBe(1);
     });
 
     // Lettura della PR #56, R2: il confronto è fra due build fatte qui, non con un numero scritto a mano.

@@ -43,7 +43,7 @@ describe('le lingue della cornice', () => {
 
     it('nomeDellaVoce dà il nome di una voce del registro nella lingua: la Dashboard col testo `dashboard`, un prodotto col suo id (T7.2)', () => {
         expect(registro.map((voce) => nomeDellaVoce(voce, 'es')))
-            .toStrictEqual(['Dashboard', 'Gestión de proyectos', 'CRM', 'Reservas', 'Informes', 'Automatismos', 'Contenidos']);
+            .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Reservas', 'Finanzas', 'Informes', 'Automatismos', 'Contenidos']);
         expect(nomeDellaVoce({ id: 'content' }, 'pt-BR')).toBe('Content');
     });
 
@@ -363,12 +363,12 @@ describe('le lingue della cornice', () => {
     // Sprint 20 · T1.8 (review della PR #24, R1): la seconda riga di una notifica è il nome della cosa, che il backoffice dà in
     // `risorsa_nome`. Per una notifica su un'app dà il codice dell'app: il nome lo dicono il registro e le lingue, come per `app`.
     it.each([
-        ['it', 'Project Management', 'Report', 'Contenuti'],
-        ['es', 'Gestión de proyectos', 'Informes', 'Contenidos'],
-        ['en', 'Project Management', 'Reports', 'Content'],
+        ['it', 'Board', 'Report', 'Contenuti'],
+        ['es', 'Board', 'Informes', 'Contenidos'],
+        ['en', 'Board', 'Reports', 'Content'],
         // Una variante regionale prende la lingua base; una lingua che zr-core non ha, l'inglese.
-        ['es_ES', 'Gestión de proyectos', 'Informes', 'Contenidos'],
-        ['fr', 'Project Management', 'Reports', 'Content'],
+        ['es_ES', 'Board', 'Informes', 'Contenidos'],
+        ['fr', 'Board', 'Reports', 'Content'],
     ] as const)('risorsaDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s": per una notifica su un\'app (un tipo `com.zeiras.app.…`) dà il nome che il prodotto ha nella lingua, mai il codice, e niente se il registro non ha quel codice; per ogni altro tipo dà `risorsa_nome` com\'è, senza gli spazi intorno (sprint 20 · T1.8)', async (lingua, pm, reports, content) => {
         const { risorsaDellaNotifica } = await import('./frasi');
         const suUnApp = (risorsa_nome: unknown, tipo: unknown = 'com.zeiras.app.modificata') => risorsaDellaNotifica({ tipo, risorsa_nome }, lingua);
@@ -402,7 +402,7 @@ describe('le lingue della cornice', () => {
         // Le altre chiavi di una notifica non contano: né `app`, né `soggetto`.
         const delBackoffice = { id: 'uat-n1', tipo: 'com.zeiras.app.modificata', app: null, soggetto: '/v1/app/crm', dati: {}, letta_il: null, creata_il: '2026-10-11T07:00:00Z', autore: null, risorsa_nome: 'pm', per_me: null };
         const dellaCornice = { id: 'uat-n2', creata_il: '2026-10-11T07:00:00Z', letta: false, app: 'crm', tipo: 'com.zeiras.board.scheda.creata', autore_nome: null, risorsa_nome: 'UAT Scrivere il brief', per_me: null };
-        expect([risorsaDellaNotifica(delBackoffice, 'it'), risorsaDellaNotifica(dellaCornice, 'it')]).toStrictEqual(['Project Management', 'UAT Scrivere il brief']);
+        expect([risorsaDellaNotifica(delBackoffice, 'it'), risorsaDellaNotifica(dellaCornice, 'it')]).toStrictEqual(['Board', 'UAT Scrivere il brief']);
     });
 
     // Sprint 17 · T1 (voce #1481): i due testi che il pulsante «Segna tutte come lette» ha mentre la richiesta è in corso e quando
@@ -813,7 +813,7 @@ describe('rigaDellaNotifica', () => {
     it('la frase di un modulo, parola per parola: in italiano «Giulia Bianchi ha attivato o disattivato il modulo «Project Management»» (sprint 31 · T2.2)', async () => {
         const { rigaDellaNotifica } = await import('./frasi');
 
-        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), 'it')).toStrictEqual({ titolo: '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Project Management\u{2069}»' });
+        expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), 'it')).toStrictEqual({ titolo: '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato il modulo «\u{2068}Board\u{2069}»' });
         expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'uat-modulo-che-non-c-e'), 'it')).toStrictEqual({ titolo: '\u{2068}Giulia Bianchi\u{2069} ha attivato o disattivato un modulo' });
         expect(rigaDellaNotifica(diGiulia(SU_UN_APP, 'pm'), 'en').titolo).toMatch(/^\u{2068}Giulia Bianchi\u{2069} turned the module “\u{2068}.+\u{2069}” on or off$/u);
     });
