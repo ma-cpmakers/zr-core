@@ -6228,8 +6228,22 @@ it('il README dice, in «La parte server», che dalla `v2.23.0` l\'impronta deci
     'perché: il cambio dell\'email' => ['la persona l\'ha cambiata da un\'altra scheda, zr-home #2214), e a dire i dati è sempre la sessione'],
     'il 409 e il 401' => ['Con un\'altra impronta, o senza, è il 409 di sempre, qualunque email dica, e senza sessione resta il 401: l\'impronta da sola non fa entrare nessuno'],
     'dove l\'email decide' => ['L\'email decide dove l\'impronta non c\'è — la sessione senza id — e dove la sessione non ha un\'email da confrontare; i 422 della persona restano prima'],
+    'nessuna rotta la legge come dato' => ['Nessuna rotta della cornice legge l\'email detta come dato: l\'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`'],
+    'APP_KEY' => ['Cambiare `APP_KEY` cambia tutte le impronte: le schede aperte ricevono il 409 e si ricaricano'],
     'i test di un frontend' => ['un caso che aspetta il 409 da una richiesta con un\'altra email e l\'impronta della sessione ora passa, e per provare «un\'altra persona» la richiesta porta l\'impronta di quella persona'],
 ]);
+
+it('nessun file di src/ oltre StessaPersona legge la persona detta dalla richiesta, né l\'intestazione `Persona` né `persona` del corpo: l\'email detta non è un dato per nessuna rotta (sprint 67 · T2, nota di zr-backoffice)', function () {
+    $letture = [];
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src', FilesystemIterator::SKIP_DOTS)) as $file) {
+        $testo = (string) file_get_contents($file->getPathname());
+        if (basename($file->getPathname()) !== 'StessaPersona.php' && preg_match('/StessaPersona::INTESTAZIONE|header\(\s*[\'"]Persona[\'"]|(json|input|get|post|query)\(\s*[\'"]persona[\'"]/', $testo) === 1) {
+            $letture[] = basename($file->getPathname());
+        }
+    }
+
+    expect($letture)->toBe([]);
+});
 
 it('il README non dice più che una scheda con l\'email di prima riceve il 409 persona_diversa e si ricarica come per un\'altra persona (sprint 67 · T2)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));

@@ -421,7 +421,7 @@ l'interruttore acceso dà 409 alla ricerca e alle letture della cornice: prima s
 Dalla `v2.20.0` `StessaPersona` confronta anche l'impronta di zr-auth: un'email può passare da un account a un altro, e con
 la sola email una scheda rimasta aperta dell'account di prima leggerebbe e segnerebbe a nome di quello nuovo. I dati della
 cornice (`Cornice::dati()`, `subito()`, e quindi `dopo()` e `ridotta()`) portano in `persona.impronta` l'impronta della persona
-della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id, né l'id né l'email; `null` per una sessione senza id), che
+della sessione (`Persona::impronta()` di zr-auth: un HMAC dell'id della persona, non della sessione — è la stessa in tutte le sue sessioni —, né l'id né l'email; `null` per una sessione senza id), che
 la cornice non mostra mai e manda in `X-Zr-Persona` a ogni richiesta `cornice/*`. Un'impronta detta che non è quella della
 sessione riceve lo stesso 409 `{errore: "persona_diversa", persona: ""}`, anche con l'email giusta, senza chiamare il
 backoffice. Si confronta quando la sessione ne ha una, e si legge come la legge `SoloDallaPersona`: ogni parte fra le virgole
@@ -437,7 +437,9 @@ testo. Dalla `v2.23.0` l'impronta decide chi è la persona della pagina: se la s
 la richiesta passa anche con un'email che non è quella della sessione (la persona l'ha cambiata da un'altra scheda,
 zr-home #2214), e a dire i dati è sempre la sessione. Con un'altra impronta, o senza, è il 409 di sempre, qualunque email dica,
 e senza sessione resta il 401: l'impronta da sola non fa entrare nessuno. L'email decide dove l'impronta non c'è — la
-sessione senza id — e dove la sessione non ha un'email da confrontare; i 422 della persona restano prima. Per i test di un
+sessione senza id — e dove la sessione non ha un'email da confrontare; i 422 della persona restano prima. Nessuna rotta della
+cornice legge l'email detta come dato: l'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`. Cambiare
+`APP_KEY` cambia tutte le impronte: le schede aperte ricevono il 409 e si ricaricano. Per i test di un
 frontend cambia una cosa: un caso che aspetta il 409 da una richiesta con un'altra email e l'impronta della sessione ora
 passa, e per provare «un'altra persona» la richiesta porta l'impronta di quella persona (`improntaDi('…')`, o l'`id` di un
 altro account).
