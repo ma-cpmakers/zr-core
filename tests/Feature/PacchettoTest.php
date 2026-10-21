@@ -4989,6 +4989,9 @@ it('il README dice, nel punto «Menu del profilo e barra dei moduli senza errori
     'il nome e l\'email restano' => ['il nome e l\'email restano scritti accanto'],
     'la barra inert' => ['la barra dei moduli dietro, già nascosta (`aria-hidden`), è anche `inert`'],
     'chiuso torna com\'era' => ['chiuso il selettore torna com\'era'],
+    // Sprint 66 · T1 (voce #2341): il cassetto a 390 px dice di essere una finestra.
+    'il cassetto, da quando' => ['Dalla `v2.22.2`, a 390 px, col menu a cassetto aperto l\'`aside` della navigazione ha anche `role="dialog"` e `aria-modal="true"`'],
+    'il cassetto, quando li perde' => ['richiuso, col pulsante, con Esc o col velo, li perde, e il giro del Tab non cambia'],
     'i test da rileggere' => ['Il modulo non deve fare niente; un test del modulo che cerca per ruolo l\'avatar del menu del profilo non lo trova più'],
     'è provvisorio' => ['È provvisorio: il menu e la barra sono dell\'`AppShell` del design system'],
     'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
@@ -5210,7 +5213,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.327 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.401 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 

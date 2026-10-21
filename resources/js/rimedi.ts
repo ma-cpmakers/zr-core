@@ -182,6 +182,23 @@ function barraInert(cambio: MutationRecord): void {
     }
 }
 
+/**
+ * A 390 px il menu di navigazione aperto, il cassetto, copre la pagina ma non dice di essere una finestra: finché il pulsante
+ * che lo apre dice `aria-expanded="true"` l'`aside` ha `role="dialog"` e `aria-modal="true"`, e alla chiusura li perde. Il
+ * pulsante e l'`aside` sono quelli che l'`AppShell` scrive nella cornice; il giro del Tab non cambia.
+ */
+function cassetto(cambio: MutationRecord): void {
+    const pulsante = cambio.target;
+
+    if (pulsante instanceof Element && pulsante.matches('.zr-shell > .zr-top > .zr-top-menu')) {
+        const lato = document.querySelector('.zr-shell > .zr-side');
+        const dice = pulsante.getAttribute('aria-expanded') === 'true' ? 'setAttribute' : 'removeAttribute';
+
+        lato?.[dice]('role', 'dialog');
+        lato?.[dice]('aria-modal', 'true');
+    }
+}
+
 document.addEventListener('keydown', tabRestaDentro);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
@@ -194,6 +211,7 @@ new MutationObserver((cambi) => {
     for (const cambio of cambi) {
         fuocoAllaCampanella(cambio);
         barraInert(cambio);
+        cassetto(cambio);
         cambio.addedNodes.forEach((aggiunto) => {
             fuocoNelPannelloDelleNotifiche(aggiunto);
             dialogoSopraIlPannello(aggiunto);
@@ -201,7 +219,7 @@ new MutationObserver((cambi) => {
         });
     }
     fuocoAChiLoAveva();
-}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
+}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden', 'aria-expanded'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
