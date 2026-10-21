@@ -440,7 +440,8 @@ zr-home #2214), e i dati sono sempre quelli della sessione, mentre `persona` nel
 un'altra la scheda si ricaricherebbe come per un'altra persona). Con un'altra impronta, o senza, è il 409 di sempre, qualunque email dica,
 e senza sessione resta il 401: l'impronta da sola non fa entrare nessuno. L'email decide dove l'impronta non c'è — la
 sessione senza id — e dove la sessione non ha un'email da confrontare; i 422 della persona restano prima. Nessuna rotta della
-cornice legge l'email detta come dato: l'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`. Cambiare
+cornice legge l'email detta come dato: l'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`. La `persona` della risposta è l'email detta solo se è lunga al più 254 caratteri, quanto un'email:
+una più lunga passa lo stesso, e la risposta dice quella della sessione. Cambiare
 `APP_KEY` cambia tutte le impronte, e annulla le sessioni se non c'è `APP_PREVIOUS_KEYS`: con le chiavi di prima le schede
 aperte ricevono il 409 e si ricaricano. Per i test di un
 frontend cambia una cosa: un caso che aspetta il 409 da una richiesta con un'altra email e l'impronta della sessione ora

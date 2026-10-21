@@ -6229,6 +6229,7 @@ it('il README dice, in «La parte server», che dalla `v2.23.0` l\'impronta deci
     'il 409 e il 401' => ['Con un\'altra impronta, o senza, è il 409 di sempre, qualunque email dica, e senza sessione resta il 401: l\'impronta da sola non fa entrare nessuno'],
     'dove l\'email decide' => ['L\'email decide dove l\'impronta non c\'è — la sessione senza id — e dove la sessione non ha un\'email da confrontare; i 422 della persona restano prima'],
     'nessuna rotta la legge come dato' => ['Nessuna rotta della cornice legge l\'email detta come dato: l\'intestazione `Persona` e `persona` nel corpo li guarda solo `StessaPersona`'],
+    'la lunghezza' => ['La `persona` della risposta è l\'email detta solo se è lunga al più 254 caratteri, quanto un\'email: una più lunga passa lo stesso, e la risposta dice quella della sessione'],
     'APP_KEY' => ['Cambiare `APP_KEY` cambia tutte le impronte, e annulla le sessioni se non c\'è `APP_PREVIOUS_KEYS`: con le chiavi di prima le schede aperte ricevono il 409 e si ricaricano'],
     'i test di un frontend' => ['un caso che aspetta il 409 da una richiesta con un\'altra email e l\'impronta della sessione ora passa, e per provare «un\'altra persona» la richiesta porta l\'impronta di quella persona'],
 ]);

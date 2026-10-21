@@ -404,3 +404,18 @@ it('con una sessione che ha un\'impronta ma un\'email nulla o vuota nessuna emai
     'nulla' => [null],
     'vuota' => [''],
 ]);
+
+it('l\'email che la pagina dice torna nella risposta solo se è lunga come un\'email, al più 254 caratteri: una più lunga passa lo stesso, ma la risposta dice quella della sessione (sprint 67 · T3, nota di zr-backoffice)', function (int $lunghezza, bool $tornaIndietro) {
+    sessioneAMano(WORKSPACE_DELLA_PERSONA, 'en', GRACE_NELLA_SESSIONE);
+    Http::fake(['*' => Http::response(['data' => [], 'successivo' => null])]);
+    $detta = str_repeat('a', $lunghezza - 12).'@example.com';
+
+    $risposta = allaCornice('POST', 'cornice/ricerca', ['q' => 'uat'], ['Persona' => rawurlencode($detta)]);
+
+    expect(strlen($detta))->toBe($lunghezza)
+        ->and($risposta->getStatusCode())->toBe(200)
+        ->and($risposta->json('persona'))->toBe($tornaIndietro ? $detta : 'uat-grace@example.com');
+})->with([
+    'al limite' => [254, true],
+    'oltre' => [255, false],
+]);
