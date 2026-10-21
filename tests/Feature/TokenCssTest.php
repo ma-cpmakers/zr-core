@@ -95,8 +95,11 @@ function problemiDeiToken(string $css, array $variabili): array
 function variabiliDiBundleCss(): array
 {
     preg_match_all('/var\(\s*(--[a-z0-9-]+)/', File::get(__DIR__.'/../../resources/zeiras/bundle.css'), $usate);
+    // Le variabili che un componente scrive da sé nel suo `style` (`'--foot-cols': …` in SiteFooter, col suo valore di ripiego nel
+    // CSS) sono sue, non token: non vengono da zeiras-token.css.
+    preg_match_all("/'(--[a-z0-9-]+)':/", File::get(__DIR__.'/../../resources/zeiras/bundle.js'), $proprie);
 
-    return array_values(array_unique($usate[1]));
+    return array_values(array_diff(array_unique($usate[1]), $proprie[1]));
 }
 
 /**

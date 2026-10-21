@@ -416,7 +416,7 @@ leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allo
 `v1.15.0`): `presto` è della cornice, e per quei due è no. Chi non ha una sessione legge `in_arrivo`. Da sapere:
 «in arrivo» vuol dire due cose.
 `in_arrivo` del registro è un sì o un no per chi non ha una sessione (le pagine senza un workspace a cui chiedere):
-dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto». Dentro
+dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e Finanze e i tre «Presto». Dentro
 la sessione lo stato lo dà il backoffice, workspace per workspace — `attivo`, `disponibile`, `in_arrivo` —, e la cornice
 legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il backoffice non dà il prodotto `attivo` né
 `disponibile` — README, «La cornice».

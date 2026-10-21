@@ -2695,9 +2695,9 @@ it('il README dice, subito dopo il paragrafo di nomeDellaVoce, i due sì o no di
     '«Presto» è anche in arrivo' => ['Ogni prodotto «Presto» è anche in arrivo'],
     'quali, lo dice il registro' => ['quali prodotti lo sono lo dice il registro (`resources/registro/prodotti.json`)'],
     // Sprint 26 · T8.4 (voce #1792): dal 12/10/2026 il CRM è per tutti. Chi legge che cosa, e quali restano in arrivo.
-    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in arrivo e non è «Presto»'],
+    'chi non ha una sessione legge `in_arrivo`' => ['Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings e Finanze sono in arrivo e non sono «Presto»'],
     'dalla v1.16.0 il CRM non è più in arrivo' => ['Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo dà `disponibile` a ogni workspace'],
-    'quali restano in arrivo' => ['in arrivo restano Bookings e i tre «Presto»'],
+    'quali restano in arrivo' => ['in arrivo restano Bookings e Finanze e i tre «Presto»'],
 ]);
 
 // Sprint 26 · T8 (voce #1792): la guida del modulo nuovo dice quando `in_arrivo` si è spento per il CRM, e nel passo del registro
@@ -2729,7 +2729,7 @@ function frasiDellaGuidaSuInArrivo(): array
         // Seconda lettura della PR #59, S1: in arrivo allora, per il registro di allora; dal 12/10/2026 il CRM non lo è più.
         'che cosa mostrava Registrati' => ['Registrati, in zr-home, leggeva `presto` e mostrava «Disponibile» due moduli che il registro dava allora in arrivo, CRM e Bookings (fino alla `v1.15.0`)', PASSO_DEL_REGISTRO],
         'che cosa si legge' => ['Chi non ha una sessione legge `in_arrivo`', PASSO_DEL_REGISTRO],
-        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e i tre «Presto»', PASSO_DEL_REGISTRO],
+        'quali sono in arrivo oggi' => ['dalla `v1.16.0` il CRM non lo è più (dal 12/10/2026 è per tutti), e lo restano Bookings e Finanze e i tre «Presto»', PASSO_DEL_REGISTRO],
     ];
 }
 

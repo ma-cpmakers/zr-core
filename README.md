@@ -1306,12 +1306,10 @@ di un prodotto: lì un prodotto in arrivo si mostra «In arrivo», non «Disponi
 nessuno, salvo i workspace che il backoffice ammette in anteprima. Dentro la sessione lo stato di un prodotto lo dà il
 backoffice, workspace per workspace, e la cornice `in_arrivo` non lo legge: nel workspace di un'anteprima il prodotto si
 apre, se il registro non lo dà «Presto». Ogni prodotto «Presto» è anche in arrivo; quali prodotti lo sono lo dice il
-registro (`resources/registro/prodotti.json`). Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings è in
-arrivo e non è «Presto». Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo
-dà `disponibile` a ogni workspace; in arrivo restano Bookings e i tre «Presto». Fino alla `v1.15.0` il registro dava in
-arrivo anche il CRM.
-
-Dalla `v2.22.0` il registro ha anche Finanze (id `flow`, icona `euro`, tono `pine`, `https://flow.zeiras.com`), in arrivo senza
+registro (`resources/registro/prodotti.json`). Una pagina senza sessione legge `in_arrivo`, non `presto`: Bookings e Finanze sono in
+arrivo e non sono «Presto». Dalla `v1.16.0` il CRM non è più in arrivo (`in_arrivo: false`): dal 12/10/2026 il backoffice lo
+dà `disponibile` a ogni workspace; in arrivo restano Bookings e Finanze e i tre «Presto». Fino alla `v1.15.0` il registro dava in
+arrivo anche il CRM. Dalla `v2.22.0` il registro ha anche Finanze (id `flow`, icona `euro`, tono `pine`, `https://flow.zeiras.com`), in arrivo senza
 essere «Presto»: nessun agente ancora; il nome è «Finanze» in italiano, «Finance» in inglese, «Finanzas» in spagnolo. Il
 modulo di progetto, che ha ancora l'id `pm`, si chiama «Board» in tutte e tre le lingue (prima «Project Management» e «Gestión
 de proyectos»): l'id e l'indirizzo non cambiano, cambia il nome che la cornice mostra.
