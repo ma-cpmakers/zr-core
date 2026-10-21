@@ -45,6 +45,9 @@ final class StessaPersona
     /** L'intestazione con cui la cornice dice di chi è la pagina. */
     public const INTESTAZIONE = 'Persona';
 
+    /** La lunghezza massima di un'email (RFC 5321): oltre, la persona detta dalla pagina non è rimandata nella risposta. */
+    private const EMAIL_PIU_LUNGA = 254;
+
     /** Dove la richiesta tiene l'email che la pagina ha detto, quando l'impronta ha deciso che la persona è quella della sessione. */
     private const PERSONA_DELLA_PAGINA = 'zr-core.persona';
 
@@ -105,9 +108,10 @@ final class StessaPersona
                     return self::diversa();
                 }
             }
-        } else {
+        } elseif (strlen($dette[0]) <= self::EMAIL_PIU_LUNGA) {
             // La risposta dice `persona` com'è nella pagina, non com'è nella sessione: il JS della cornice confronta quel testo con
-            // l'email a schermo e, se è un altro, ricarica la pagina come per un'altra persona.
+            // l'email a schermo e, se è un altro, ricarica la pagina come per un'altra persona. Un testo più lungo di un'email non
+            // si rimanda indietro: la risposta dice quella della sessione.
             $richiesta->attributes->set(self::PERSONA_DELLA_PAGINA, $dette[0]);
         }
 
