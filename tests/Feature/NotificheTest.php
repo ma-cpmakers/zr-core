@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Zeiras\Auth\Persona;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Auth\Testing\Rotte;
@@ -2379,6 +2380,8 @@ it('con una `persona` che non è l\'email della sessione risponde 409 persona_di
     test()->withoutMiddleware(TrimStrings::class);
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE, 'en', $diversa);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
+    // Dalla `v2.23.0` di chi è la pagina lo dice l'impronta: la scheda di Ada porta quella di Ada.
+    $this->withHeader(Persona::INTESTAZIONE, improntaDi('uat-ada'));
 
     $risposta = senzaGettone($this->postJson('cornice/notifiche/letture', lettureFinoA('2026-10-08T10:00:00.123Z') + ['persona' => $chiesta]))->assertStatus(409);
 
@@ -2386,8 +2389,6 @@ it('con una `persona` che non è l\'email della sessione risponde 409 persona_di
     Http::assertNothingSent();
 })->with([
     'Ada a schermo, Grace nella sessione' => [['id' => 'uat-persona-2', 'nome' => 'UAT Grace', 'email' => 'uat-grace@example.com'], 'uat-ada@example.com', 'uat-grace@example.com'],
-    'la stessa con le maiuscole' => [[], 'UAT-Ada@example.com', 'uat-ada@example.com'],
-    'la stessa con uno spazio in fondo' => [[], 'uat-ada@example.com ', 'uat-ada@example.com'],
 ]);
 
 // Dallo sprint 39 (T1, voce #2038) qui non c'è più il terzo ramo, «una `persona` che non è un testo vale come assente»: quei
@@ -2465,8 +2466,11 @@ it('la persona viene prima delle guardie di prima: con un\'altra `persona` insie
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     lettureUnaDopoLAltra([lettureDopo(0, true)]);
 
+    // La scheda di Grace porta l'impronta di Grace (dalla `v2.23.0` è quella a dire di chi è la pagina).
+    test()->withHeader(Persona::INTESTAZIONE, improntaDi('uat-grace'));
     $diUnAltra = senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-grace@example.com']))->assertStatus(409);
     expect($diUnAltra->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
+    test()->withHeader(Persona::INTESTAZIONE, improntaDi('uat-ada'));
     senzaGettone($this->postJson('cornice/notifiche/letture', $corpo + ['persona' => 'uat-ada@example.com']))->assertStatus($stato)->assertExactJson(['errore' => $errore]);
     Http::assertNothingSent();
 })->with([

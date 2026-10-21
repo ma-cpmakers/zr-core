@@ -31,6 +31,11 @@ use Zeiras\Auth\Sessione;
  * Dalla `v2.21.1` una sessione con un id che non dà un'impronta — vuoto, o non un testo — è una persona sconosciuta: ogni
  * richiesta riceve il 409. Senza id (assente o `null`) non si confronta niente, come prima.
  *
+ * Dalla `v2.23.0` l'impronta decide chi è la persona della pagina: se la sessione ne ha una e la richiesta dice quella, l'email che
+ * porta può essere anche quella di prima (la persona l'ha cambiata da un'altra scheda, zr-home #2214) e la richiesta passa; con
+ * un'altra impronta, o senza, è il 409 di sempre, qualunque email dica. L'email decide dove l'impronta non c'è — la sessione
+ * senza id — e dove la sessione non ha un'email da confrontare.
+ *
  * Ciò che la richiesta dice si confronta e basta: di chi sono i dati lo dice sempre e solo la sessione. Gira dopo la guardia
  * di zr-auth (401) e, dalla `v2.12.0`, prima di ConWorkspace (403): senza workspace una scheda di un'altra persona riceve il
  * 409, e il 403 resta della persona della sessione.
@@ -64,17 +69,10 @@ final class StessaPersona
 
         $persona = Sessione::utente()['email'] ?? null;
 
-        foreach ($dette as $detta) {
-            if ($detta !== $persona) {
-                return self::diversa();
-            }
-        }
-
-        // Dalla `v2.20.0` anche l'impronta di zr-auth, quando la sessione ne ha una: con la stessa email, l'impronta di un altro
-        // account è un'altra persona. Si legge come la legge SoloDallaPersona — ogni intestazione, ogni parte fra le virgole —, e
-        // ogni parte detta deve essere quella della sessione. Dalla `v2.21.0` anche una richiesta che non la dice è un'altra
-        // persona, come per SoloDallaPersona: senza l'intestazione, o coi testi `undefined` e `null` che il JS manda con dati che
-        // non la portano (fino alla `v2.20` decideva l'email).
+        // Dalla `v2.20.0` anche l'impronta di zr-auth, quando la sessione ne ha una. Si legge come la legge SoloDallaPersona — ogni
+        // intestazione, ogni parte fra le virgole —, e ogni parte detta deve essere quella della sessione. Dalla `v2.21.0` anche una
+        // richiesta che non la dice è un'altra persona, come per SoloDallaPersona: senza l'intestazione, o coi testi `undefined` e
+        // `null` che il JS manda con dati che non la portano (fino alla `v2.20` decideva l'email).
         $impronta = Persona::impronta();
         // Dalla `v2.21.1` un id che non dà un'impronta — vuoto, o non un testo — è una persona sconosciuta, e la richiesta
         // riceve lo stesso 409: solo la sessione senza id (assente o `null`) resta senza confronto.
@@ -82,15 +80,26 @@ final class StessaPersona
             return self::diversa();
         }
         if ($impronta !== null) {
-            $dette = $richiesta->headers->all(Persona::INTESTAZIONE);
-            if ($dette === []) {
+            $improntaDetta = $richiesta->headers->all(Persona::INTESTAZIONE);
+            if ($improntaDetta === []) {
                 return self::diversa();
             }
-            foreach ($dette as $valore) {
+            foreach ($improntaDetta as $valore) {
                 foreach (explode(',', (string) $valore) as $detta) {
                     if (! hash_equals($impronta, trim($detta))) {
                         return self::diversa();
                     }
+                }
+            }
+        }
+
+        // Dalla `v2.23.0` l'impronta giusta dice che la pagina è della persona della sessione, anche se l'email che porta è quella
+        // di prima (la persona l'ha cambiata da un'altra scheda): l'email decide solo dove l'impronta non c'è, la sessione senza id,
+        // o dove la sessione non ha un'email da confrontare (e allora nessuna email detta è la sua).
+        if ($impronta === null || ! is_string($persona) || $persona === '') {
+            foreach ($dette as $detta) {
+                if ($detta !== $persona) {
+                    return self::diversa();
                 }
             }
         }

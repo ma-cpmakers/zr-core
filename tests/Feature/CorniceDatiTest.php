@@ -18,6 +18,7 @@ use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Errori\GettoneRifiutato;
+use Zeiras\Auth\Persona;
 use Zeiras\Auth\Sessione;
 use Zeiras\Auth\Testing\Gettone;
 use Zeiras\Core\Cornice;
@@ -544,10 +545,10 @@ it('della sessione cambiano solo la lingua e il nome, e dalla zr-auth 0.12.63 l\
         ->and($risposta->json('workspace'))->toBe(['nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
 });
 
-// Sprint 64 · T1.2 (voce #2215). Dopo la lettura che rimette l'email nella sessione, la regola della persona (StessaPersona) la
-// confronta con quella nuova: una scheda rimasta aperta con l'email di prima riceve il 409, e il JS della cornice la ricarica
-// come per un'altra persona. Con una zr-auth più vecchia l'email resta quella dell'ingresso, e i due versi si scambiano.
-it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima riceve 409 persona_diversa senza chiamare il backoffice, e una con l\'email nuova passa; fino alla zr-auth 0.12.62 il contrario (sprint 64 · T1.2)', function () {
+// Sprint 64 · T1.2 (voce #2215), sprint 67 · T1 (voce #2216). Dopo la lettura che rimette l'email nella sessione, una scheda
+// rimasta aperta con l'email di prima ha la stessa impronta: dalla `v2.23.0` è la stessa persona, e non riceve il 409. Lo
+// riceve quella con l'impronta di un'altra persona. Con una zr-auth più vecchia l'email resta quella dell'ingresso.
+it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con l\'email di prima e la stessa impronta passa come una con l\'email nuova, e a dire i dati è la sessione; con l\'impronta di un\'altra persona riceve 409 persona_diversa senza chiamare il backoffice (sprint 64 · T1.2; sprint 67 · T1.1, T1.2)', function () {
     sessioneAMano(marketing());
     backoffice(['/v1/io' => ioMostraCon(['email' => 'uat-ada-nuova@example.com']), '/v1/io/notifiche' => ['data' => [], 'successivo' => null]]);
     $this->get('w/uat-marketing/cornice')->assertOk();
@@ -556,12 +557,16 @@ it('dopo la lettura che le porta l\'email nuova, una richiesta della cornice con
     expect(session(Sessione::CHIAVE.'.utente.email'))->toBe($giusta);
 
     $prima = Http::recorded()->count();
-    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia)])
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia), Persona::INTESTAZIONE => improntaDi('uat-ada-2')])
         ->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
     expect(Http::recorded()->count())->toBe($prima);
 
+    $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($vecchia)])->assertOk()->assertJsonPath('persona', $giusta);
+    $dopoLaVecchia = Http::recorded()->count();
+    expect($dopoLaVecchia)->toBeGreaterThan($prima);
+
     $this->getJson('cornice/notifiche', ['Persona' => rawurlencode($giusta)])->assertOk()->assertJsonPath('persona', $giusta);
-    expect(Http::recorded()->count())->toBeGreaterThan($prima);
+    expect(Http::recorded()->count())->toBeGreaterThan($dopoLaVecchia);
 });
 
 it('ciò che non vale non entra: i dati di un\'altra persona o senza il suo id, una lingua, un nome o un\'email che non sono una stringa con qualcosa dentro, gli stessi valori (sprint 13 · T2.5; review, R1 e S1; sprint 64, review della PR #104, R2 e R4)', function (mixed $utente, string $lingua, string $nome, array $senza = []) {
