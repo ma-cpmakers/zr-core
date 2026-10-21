@@ -4975,6 +4975,26 @@ it('il README dice, nel punto «Il fuoco nel pannello delle notifiche» di «La 
     'l\'evento di Vite' => ['Se non arriva, l\'aiuto di Vite manda su `window` l\'evento `vite:preloadError`: un frontend che a quell\'evento ricarica la pagina la ricarica anche per questo pezzo'],
 ]);
 
+// Sprint 65 · T2 (voce #2340): il menu del profilo e la barra dei moduli senza errori di accessibilità. Altri due rimedi provvisori
+// nello stesso pezzo a richiesta: il README li dice nel loro punto di «La cornice», da quando, che cosa fanno, che il modulo non
+// deve fare niente e che sono provvisori.
+
+it('il README dice, nel punto «Menu del profilo e barra dei moduli senza errori di accessibilità» di «La cornice», da quando e che cosa fanno, che il modulo non deve fare niente e che sono provvisori (sprint 65 · T2)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+
+    expect(str_contains(puntoDellaCornice($readme, 'Menu del profilo e barra dei moduli senza errori di accessibilità'), $frase))->toBe(true)
+        ->and(puntoDellaCornice(conParteServerECorniceScambiate($readme), 'Menu del profilo e barra dei moduli senza errori di accessibilità'))->toBe('');
+})->with([
+    'da quando, e l\'avatar' => ['dalla `v2.22.1`, nel menu del profilo aperto l\'avatar dell\'intestazione è nascosto ai lettori di schermo (`aria-hidden`)'],
+    'il nome e l\'email restano' => ['il nome e l\'email restano scritti accanto'],
+    'la barra inert' => ['la barra dei moduli dietro, già nascosta (`aria-hidden`), è anche `inert`'],
+    'chiuso torna com\'era' => ['chiuso il selettore torna com\'era'],
+    'i test da rileggere' => ['Il modulo non deve fare niente; un test del modulo che cerca per ruolo l\'avatar del menu del profilo non lo trova più'],
+    'è provvisorio' => ['È provvisorio: il menu e la barra sono dell\'`AppShell` del design system'],
+    'si toglie' => ['quando l\'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente'],
+    'se non arriva' => ['se non arriva, il menu e la barra restano com\'erano'],
+]);
+
 // Sprint 30 · T4.8 (voce #1870): con un `Dialog` aperto, o un `DetailPanel` sotto 720 px, Tab resta dentro. È un altro rimedio
 // della cornice a ciò che i componenti non fanno ancora: il README lo dice in un punto suo di «La cornice», provvisorio, con
 // ciò che non copre.
@@ -5190,7 +5210,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.228 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.320 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 

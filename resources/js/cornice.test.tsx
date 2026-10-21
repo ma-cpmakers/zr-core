@@ -8486,3 +8486,68 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         });
     });
 });
+
+describe('il menu del profilo e il selettore dei workspace aperti non danno errori di accessibilità (sprint 65 · T1, voce #2340)', () => {
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const barra = () => uno('.zr-shell nav.zr-nav');
+
+    it('col menu del profilo aperto l\'avatar dell\'intestazione è nascosto, e il nome e l\'email restano nell\'albero di accessibilità (T1.1)', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(uno('.zr-menu-head .zr-avatar')?.getAttribute('aria-hidden')).toBe('true');
+        expect(uno('.zr-menu-head')?.getAttribute('aria-hidden')).toBeNull();
+        expect(uno('.zr-menu-head strong')?.textContent).toBe('Ada Lovelace');
+        expect(uno('.zr-menu-head')?.textContent).toContain('ada@example.com');
+        expect(uno('.zr-menu-head strong')?.closest('[aria-hidden="true"]')).toBeNull();
+    });
+
+    it('l\'avatar del pulsante del profilo, fuori dal menu, resta com\'è: il suo nome è l\'unico che il pulsante dice (T1.1)', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-hidden')).toBeNull();
+        expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe('Ada Lovelace');
+    });
+
+    it('un\'intestazione di menu e una barra nascosta che non sono della cornice non si toccano (T1.1, T1.2)', async () => {
+        await laCornice();
+        const altrove = document.createElement('div');
+        altrove.innerHTML = '<div class="zr-menu zr-profile-menu"><div class="zr-menu-head"><span class="zr-avatar" role="img"></span></div></div><nav class="zr-nav"></nav>';
+
+        await act(async () => {
+            document.body.append(altrove);
+        });
+        await act(async () => {
+            altrove.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+        });
+
+        expect(altrove.querySelector('.zr-avatar')?.getAttribute('aria-hidden')).toBeNull();
+        expect(altrove.querySelector('nav')?.hasAttribute('inert')).toBe(false);
+        altrove.remove();
+    });
+
+    it('col selettore dei workspace aperto la barra dei moduli dietro è inert oltre che nascosta; chiuso il selettore torna com\'era e i suoi link si raggiungono (T1.2)', async () => {
+        await laCornice();
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBe('true');
+        expect(barra()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(barra()?.getAttribute('aria-hidden')).toBeNull();
+        expect(barra()?.hasAttribute('inert')).toBe(false);
+    });
+});
