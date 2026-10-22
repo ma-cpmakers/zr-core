@@ -171,18 +171,46 @@ function avatarFuoriDalMenu(aggiunto: Node): void {
 /**
  * La barra dei moduli dietro il selettore dei workspace o il menu Moduli è nascosta ai lettori di schermo ma i suoi link si
  * raggiungono col Tab (axe: `aria-hidden-focus`): finché è nascosta è anche `inert`, e torna com'era quando il design system
- * toglie `aria-hidden`. La barra è quella che l'`AppShell` scrive nella sidebar, non un elemento della pagina con la stessa classe;
- * il filtro sugli attributi accende da sé l'ascolto degli attributi.
+ * toglie `aria-hidden`. Lo stesso vale per il piede della barra laterale, con «Impostazioni»: il design system lo lascia
+ * attivo, e dal selettore aperto il Tab ci finisce sopra. La barra è quella che l'`AppShell` scrive nella sidebar, non un
+ * elemento della pagina con la stessa classe; il filtro sugli attributi accende da sé l'ascolto degli attributi.
  */
 function barraInert(cambio: MutationRecord): void {
     const barra = cambio.target;
 
     if (barra instanceof Element && barra.matches('.zr-shell > .zr-side > .zr-nav')) {
-        barra.toggleAttribute('inert', barra.getAttribute('aria-hidden') === 'true');
+        const spenta = barra.getAttribute('aria-hidden') === 'true';
+
+        barra.toggleAttribute('inert', spenta);
+        barra.parentElement?.querySelector(':scope > .zr-side-foot')?.toggleAttribute('inert', spenta);
     }
 }
 
+/** La `naviga` della cornice montata: gliela dà la cornice quando chiede questo pezzo. */
+let naviga: ((indirizzo: string) => void) | undefined;
+
+/**
+ * I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: un clic semplice ricarica la pagina
+ * intera, anche dentro lo stesso modulo. Con un indirizzo di questa origine passa da `naviga`, quella che la cornice ha quando
+ * si monta; il tasto centrale, Ctrl, Cmd, Maiusc, Alt, un indirizzo di un'altra origine o un clic già gestito restano del
+ * browser. Provvisorio, finché l'`AppShell` non ha la sua funzione per questi clic.
+ */
+function clicSullaBarra(clic: MouseEvent): void {
+    const collegamento = (clic.target as Element).closest?.<HTMLAnchorElement>('.zr-shell > .zr-side a[href]');
+
+    if (naviga && collegamento && !(clic.defaultPrevented || clic.button || clic.ctrlKey || clic.metaKey || clic.shiftKey || clic.altKey) && collegamento.origin === location.origin) {
+        clic.preventDefault();
+        naviga(collegamento.href);
+    }
+}
+
+/** La cornice dà la sua `naviga`: da qui in poi i clic sulla barra laterale passano da lì. */
+export function via(daUsare: (indirizzo: string) => void): void {
+    naviga = daUsare;
+}
+
 document.addEventListener('keydown', tabRestaDentro);
+document.addEventListener('click', clicSullaBarra);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;
@@ -208,4 +236,3 @@ if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
 }
 
-export {};

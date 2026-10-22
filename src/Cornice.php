@@ -93,7 +93,7 @@ final class Cornice
      * StessaPersona dà 409 a quest'ultima). La cornice la manda in `X-Zr-Persona`, e StessaPersona la
      * confronta: un'email passata da un account a un altro non basta più a una scheda rimasta aperta. Non va mai a schermo.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -126,6 +126,7 @@ final class Cornice
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta()],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
+            ...($letti === null ? [] : self::moduli($workspace['slug'])),
             'aggiornati_il' => $lettura['segno'],
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
@@ -199,7 +200,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function dopo(): ?array
     {
@@ -525,6 +526,30 @@ final class Cornice
         } catch (Throwable) {
             // La riga non lancia.
         }
+    }
+
+    /**
+     * Dove si attiva un modulo (`moduli`, dalla `v2.25.0`): l'indirizzo di Impostazioni › Moduli di zr-home nel workspace dei
+     * dati, solo per chi lo amministra, cioè se il ruolo della sessione è `proprietario` o `amministratore` — come
+     * `puoAmministrare()` di zr-home. Per ogni altro ruolo, o senza, la chiave manca: la cornice non offre un collegamento che
+     * porterebbe a un rifiuto. Offre soltanto: se la persona può davvero attivare un modulo lo decide il backoffice. Il ruolo è
+     * quello della sessione, e per saperlo non parte nessuna lettura in più.
+     *
+     * @return array{moduli?: string}
+     */
+    private static function moduli(string $slug): array
+    {
+        if (! in_array(Sessione::ruolo(), ['proprietario', 'amministratore'], true)) {
+            return [];
+        }
+
+        foreach (Registro::voci() as $voce) {
+            if ($voce['id'] === 'home' && is_string($voce['indirizzo'])) {
+                return ['moduli' => $voce['indirizzo'].'/w/'.rawurlencode($slug).'/impostazioni/moduli'];
+            }
+        }
+
+        return [];
     }
 
     /**

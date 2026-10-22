@@ -5174,6 +5174,19 @@ it('il README non dice più che `azioni` e `board` non arrivano in pagina, né c
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
 
+// Sprint 69 · T2 (voce #2210). Il README e la guida dicono che un modulo `disponibile` non porta più alla sua pagina «non attivo»:
+// porta a Impostazioni › Moduli per chi amministra, e a nessuna parte per gli altri; e che `moduli` nei dati lo dà la parte server.
+it('il README dice `moduli` nei dati, a chi arriva e che non costa una lettura, e dove porta un modulo disponibile; la guida dice la stessa cosa (sprint 69 · T2.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($readme, '`moduli` è l\'indirizzo di Impostazioni › Moduli nel workspace dei dati'))->toBe(1)
+        ->and(substr_count($readme, 'solo se il ruolo della sessione è `proprietario` o `amministratore`'))->toBe(1)
+        ->and(substr_count($readme, 'per saperlo non parte nessuna lettura in più, e al browser arriva l\'indirizzo, mai il `ruolo`'))->toBe(1)
+        ->and(substr_count($readme, 'porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace'))->toBe(1)
+        ->and(substr_count($guida, 'la voce di un modulo `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra'))->toBe(1);
+});
+
 it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le chiede, che cosa si vede se non arrivano e che cosa serve nei test di un frontend (sprint 30 · T1.10)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = [
@@ -5224,11 +5237,13 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.875 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.900 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // Sprint 69 · T1 (voci #2151, #2210, #2033): +25 byte, eccezione di zr-pm (Decisione 15231).
+    'i pesi: i 25 byte dello sprint 69' => ['pesi', 'e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte)'],
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.327 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.450 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
@@ -6274,6 +6289,21 @@ it('il README non dice più che una scheda con l\'email di prima riceve il 409 p
 
     expect(str_contains($readme, 'aperta con l\'email di prima riceve alla sua richiesta della cornice il 409'))->toBe(false)
         ->and(str_contains($readme, 'Una scheda rimasta aperta con l\'email di prima ha la stessa impronta della persona'))->toBe(true);
+});
+
+// Sprint 69 · T3.4 e T2.5 (voci 2033 e 2210). Il README dice che i clic della barra laterale passano da `naviga` ed è provvisorio; la
+// guida e il README dicono dove porta un modulo `disponibile`: la pagina e il campo dei dati.
+it('il README dice che i clic della barra laterale passano da `naviga`, provvisorio, con la `naviga` che la cornice ha quando si monta; README e guida dicono la pagina dei moduli e il campo `moduli` (sprint 69 · T3.4, T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $inizio = (int) strpos($readme, '- **I collegamenti della barra laterale passano da `naviga`**');
+    $punto = substr($readme, $inizio, (int) strpos($readme, "\n- **", $inizio + 10) - $inizio);
+
+    expect($inizio)->toBeGreaterThan(0)
+        ->and(paroleCheMancanoIn($punto, ['**È provvisorio**: finché l\'`AppShell`', 'È la `naviga` che la cornice ha quando si monta', 'la stessa dei suoi altri indirizzi']))->toBe([])
+        ->and(paroleCheMancanoIn(str_replace('**È provvisorio**', '**Definitivo**', $punto), ['**È provvisorio**']))->toBe(['**È provvisorio**'])
+        ->and(str_contains($readme, '/w/<slug>/impostazioni/moduli'))->toBeTrue()
+        ->and(str_contains($guida, '/w/<slug>/impostazioni/moduli') && str_contains($guida, 'campo `moduli` dei dati'))->toBeTrue();
 });
 
 // L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di

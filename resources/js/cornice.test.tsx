@@ -206,13 +206,13 @@ const ordine = ['home', 'pm', 'crm', 'bookings', 'flow', 'reports', 'automations
 
 describe('la Cornice', () => {
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
-        [{ pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' }, ['pm', 'crm']],
+        [{ pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' }, ['pm']],
         [{ pm: 'in_arrivo', crm: 'attivo' }, ['crm']],
-        [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, ['bookings']],
+        [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, []],
         [{}, []],
         // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
         [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
-    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` e `disponibile` verso il workspace, gli altri «Presto» (T4.1, %j)', async (prodotti, conIndirizzo) => {
+    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` senza collegamento e non «Presto» (senza `moduli`), gli altri «Presto» (T4.1; sprint 69 · T2.2, %j)', async (prodotti, conIndirizzo) => {
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
@@ -222,8 +222,10 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
         const attesi = ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#'));
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
+        // Un modulo `disponibile` non è attivo nel workspace: senza `moduli` non porta da nessuna parte, ma non è «Presto».
+        const disponibili = ordine.filter((id) => id in indirizzi && prodotti[id as keyof typeof prodotti] === 'disponibile');
         // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
-        const presto = attesi.map((indirizzo) => indirizzo === '#');
+        const presto = ordine.map((id, posto) => attesi[posto] === '#' && !disponibili.includes(id));
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
         expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
         expect(voci[0].getAttribute('aria-current')).toBe('page');
@@ -231,6 +233,22 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(icone.map(tracciatoDi));
         expect(uno('.zr-product-switch')).toBeNull();
         expect(uno('main')?.textContent).toBe('La pagina');
+    });
+
+    // Sprint 69 · T2.2-T2.3 (voce #2210): un modulo `disponibile` non è attivo nel workspace, e la sua pagina direbbe «non attivo» (403).
+    // Chi può attivarlo ha `moduli` nei dati (la parte server lo dà solo a chi amministra) e la voce porta a Impostazioni › Moduli;
+    // per gli altri è una voce senza collegamento. Un modulo `attivo` porta a sé, e uno in arrivo o senza stato è «Presto».
+    it.each([
+        ['a chi amministra', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', ['#', 'https://board.zeiras.com/w/acme-marketing', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', '#']],
+        ['agli altri', undefined, ['#', 'https://board.zeiras.com/w/acme-marketing', '#', '#']],
+    ])('un modulo disponibile porta %s: Impostazioni › Moduli, o a nessuna parte, e mai «Presto»; l\'attivo porta a sé (sprint 69 · T2.2, T2.3)', async (_chi, moduli, attesi) => {
+        await mostra(<Cornice dati={{ ...dati, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' }, ...(moduli ? { moduli } : {}) }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        const voci = [...tutti('.zr-nav .zr-nav-group a.zr-nav-item')].filter((voce) => ['CRM', 'Board', 'Bookings'].includes(voce.querySelector('.zr-nav-label')?.textContent ?? ''));
+        // Board, CRM, Bookings, nell'ordine del registro; l'indirizzo atteso è di Dashboard no: sono solo le tre.
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['Board', 'CRM', 'Bookings']);
+        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual([attesi[1], attesi[2], attesi[3]]);
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon') !== null)).toStrictEqual([false, false, true]);
     });
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
@@ -362,11 +380,11 @@ describe('la Cornice', () => {
     });
 
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
-        [{ crm: 'attivo', bookings: 'disponibile' }, ['crm', 'bookings']],
+        [{ crm: 'attivo', bookings: 'disponibile' }, ['crm']],
         [{ bookings: 'attivo' }, ['bookings']],
-        [{ crm: 'disponibile' }, ['crm']],
+        [{ crm: 'disponibile' }, []],
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
-    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo` o `disponibile` (sprint 16 · T7.2, %j)', async (prodotti, aperti) => {
+    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` non porta da nessuna parte, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2, %j)', async (prodotti, aperti) => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.
@@ -379,7 +397,7 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.getAttribute('href')))
             .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
-            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? null : 'Presto')));
+            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) || prodotti[id as 'crm'] === 'disponibile' ? null : 'Presto')));
     });
 
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
@@ -1634,6 +1652,30 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif')).toBeNull();
         await clic(uno('.zr-bell'));
         expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([prima, dopo]);
+    });
+
+    // Sprint 69 · T1 (voce #2151, R9 della PR #98): chi è una persona per la cornice è l'email e l'impronta, come per `StessaPersona` e per
+    // il layout: l'impronta che manca e `null` sono la stessa cosa, e senza email né impronta (dati contro il tipo) la persona resta
+    // uguale a sé stessa. Senza il segno della lettura una persona diversa ricarica la pagina; la stessa no, a nessun disegno.
+    it.each([
+        ['senza email e senza impronta (dati contro il tipo), a ogni disegno', { nome: 'Ada' }, { nome: 'Ada' }, 0],
+        ['con l\'impronta `null` e poi senza la chiave', { nome: 'Ada', email: 'ada@example.com', impronta: null }, { nome: 'Ada', email: 'ada@example.com' }, 0],
+        ['senza la chiave e poi con l\'impronta `null`', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'ada@example.com', impronta: null }, 0],
+        ['con la stessa email e un\'altra impronta', { nome: 'Ada', email: 'ada@example.com', impronta: 'aa' }, { nome: 'Ada', email: 'ada@example.com', impronta: 'bb' }, 1],
+        ['con la stessa email e l\'impronta che compare', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'ada@example.com', impronta: 'bb' }, 1],
+        ['con un\'altra email', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'grace@example.com' }, 1],
+    ])('senza il segno della lettura, dati %s: la pagina si ricarica solo se la persona è un\'altra (sprint 69 · T1.1-T1.3)', async (_caso, prima, dopo, ricariche) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const senzaSegno = (persona: Record<string, unknown>) => ({ ...dati, persona, aggiornati_il: undefined, sessione_il: undefined }) as never;
+
+        await mostra(<Cornice dati={senzaSegno(prima)} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={senzaSegno(dopo)} onLogout={esciSenzaEffetto} />);
+        // Una persona che è la stessa non ricarica a nessun disegno: un altro, con gli stessi dati, non cambia il conto.
+        if (ricariche === 0) {
+            await mostra(<Cornice dati={senzaSegno(dopo)} onLogout={esciSenzaEffetto} />);
+        }
+
+        expect(ricarica).toHaveBeenCalledTimes(ricariche);
     });
 
     it('«Segna tutte come lette» manda una sola POST /cornice/notifiche/letture, col gettone CSRF e la creata_il più recente fra le caricate così com\'è, e nessuna PATCH; alla risposta le caricate sono tutte lette e la campanella non ha più un numero, anche con 60 nei dati e 2 caricate (sprint 6 · T4.1)', async () => {
@@ -8585,5 +8627,170 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
 
         expect(barra()?.getAttribute('aria-hidden')).toBeNull();
         expect(barra()?.hasAttribute('inert')).toBe(false);
+    });
+});
+
+// Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: senza
+// questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
+// la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei
+// rimedi, che la cornice chiede quando si monta.
+describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce 2033)', () => {
+    const laCornice = async (naviga: (indirizzo: string) => void) => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} naviga={naviga} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const collegamenti = () => tutti('.zr-shell > .zr-side a[href]') as HTMLAnchorElement[];
+    /** Quelli con un indirizzo vero: una voce «Presto» o senza indirizzo ha `#`, e l'`AppShell` il suo clic lo gestisce da sé. */
+    const conUnIndirizzo = () => collegamenti().filter((uno) => uno.getAttribute('href') !== '#');
+    /** Un clic sul collegamento, e se per il browser era già stato gestito quando è arrivato in cima (la navigazione vera non c'è in jsdom). */
+    const cliccato = (collegamento: Element, init: MouseEventInit = {}) => {
+        const resto = { visto: false, evento: new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }) };
+        const alla = (evento: Event) => {
+            resto.visto = evento.defaultPrevented;
+            evento.preventDefault();
+        };
+        window.addEventListener('click', alla);
+        collegamento.dispatchEvent(resto.evento);
+        window.removeEventListener('click', alla);
+
+        return resto;
+    };
+
+    it('T3.1 un clic semplice su Dashboard, su un modulo e su «Impostazioni», con un indirizzo di questa origine, chiama `naviga` e il browser non lo segue', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const tutte = conUnIndirizzo();
+        expect(tutte.length).toBeGreaterThanOrEqual(3);
+        expect(tutte.some((uno) => uno.closest('.zr-side-foot'))).toBe(true);
+
+        for (const [posto, collegamento] of tutte.entries()) {
+            collegamento.setAttribute('href', `${location.origin}/uat/${posto}?v=1#parte`);
+            naviga.mockClear();
+
+            expect(cliccato(collegamento).visto).toBe(true);
+            expect(naviga.mock.calls).toStrictEqual([[`${location.origin}/uat/${posto}?v=1#parte`]]);
+        }
+    });
+
+    it.each<[string, MouseEventInit]>([
+        ['il tasto centrale', { button: 1 }],
+        ['il tasto destro', { button: 2 }],
+        ['Ctrl', { ctrlKey: true }],
+        ['Cmd', { metaKey: true }],
+        ['Maiusc', { shiftKey: true }],
+        ['Alt', { altKey: true }],
+    ])('T3.2 con %s il clic resta del browser', async (_nome, init) => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [primo = null] = conUnIndirizzo();
+        primo?.setAttribute('href', `${location.origin}/uat`);
+
+        expect(cliccato(primo as Element, init).visto).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T3.2 un indirizzo di un\'altra origine, un indirizzo che non è un sito, e un clic già gestito da altri restano del browser', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [primo = null] = conUnIndirizzo();
+
+        for (const altrove of ['https://altra-origine.example/uat', 'mailto:uat@example.com', 'javascript:void(0)']) {
+            primo?.setAttribute('href', altrove);
+            expect(cliccato(primo as Element).visto).toBe(false);
+        }
+        primo?.setAttribute('href', `${location.origin}/uat`);
+        const gestore = (evento: Event) => evento.preventDefault();
+        document.body.addEventListener('click', gestore);
+        expect(cliccato(primo as Element).visto).toBe(true);
+        document.body.removeEventListener('click', gestore);
+
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T3.2 un collegamento fuori dalla barra laterale della cornice, o in un elemento della pagina con le stesse classi, non è suo', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const fuori = document.createElement('div');
+        fuori.innerHTML = `<div class="zr-side"><a href="${location.origin}/uat">in una barra della pagina</a></div>`;
+        uno('.zr-main')?.append(fuori);
+
+        expect(cliccato(fuori.querySelector('a') as Element).visto).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+        fuori.remove();
+    });
+});
+
+// Sprint 69 · T4 (voce #2344). Col selettore dei workspace o il menu Moduli aperti la barra dei moduli è nascosta e `inert`
+// (sprint 65), ma il piede della barra laterale, con «Impostazioni», restava una fermata del Tab.
+describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce 2344)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const piede = () => uno('.zr-shell > .zr-side > .zr-side-foot');
+
+    it('T4.1 e T4.2 aperto il selettore «Impostazioni» è inert, chiuso torna raggiungibile', async () => {
+        await laCornice();
+        const impostazioni = uno('.zr-side-foot a.zr-nav-item');
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+        expect(impostazioni?.closest('[inert]')).toBeNull();
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(piede()?.hasAttribute('inert')).toBe(true);
+        expect(impostazioni?.closest('[inert]')).not.toBeNull();
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+        expect(impostazioni?.closest('[inert]')).toBeNull();
+    });
+
+    it('T4.1 lo stesso con il menu Moduli esteso', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: [{ id: 'oggi', label: 'Oggi', icon: 'calendar' }] }]} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await clic(uno('.zr-product-switch'));
+        expect(piede()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-product-switch'));
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+    });
+
+    it('T4.1 un elemento della pagina con le stesse classi non diventa inert', async () => {
+        await laCornice();
+        const fuori = document.createElement('div');
+        fuori.innerHTML = '<div class="zr-side"><nav class="zr-nav"></nav><div class="zr-side-foot"></div></div>';
+        uno('.zr-main')?.append(fuori);
+
+        await act(async () => {
+            fuori.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+        });
+
+        expect(fuori.querySelector('.zr-side-foot')?.hasAttribute('inert')).toBe(false);
+        fuori.remove();
+    });
+
+    it('T4.3 il selettore non si chiude quando il fuoco esce: resta aperto finché non arriva Esc, un clic o una scelta', async () => {
+        await laCornice();
+        await clic(uno('.zr-ws-switch'));
+        const voce = uno('.zr-shell > .zr-side .zr-ws-menu [role="option"], .zr-shell > .zr-side .zr-ws-menu button, .zr-shell > .zr-side .zr-ws-menu a') as HTMLElement | null;
+
+        await act(async () => {
+            voce?.focus();
+            (document.activeElement as HTMLElement | null)?.blur();
+            document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+            await prossimoGiro();
+        });
+
+        expect(voce).not.toBeNull();
+        expect(uno('.zr-ws-switch')?.getAttribute('aria-expanded')).toBe('true');
+        expect(piede()?.hasAttribute('inert')).toBe(true);
     });
 });

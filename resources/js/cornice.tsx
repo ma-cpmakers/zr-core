@@ -51,6 +51,11 @@ export interface DatiDellaCornice {
      * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
     aziende?: { id: string; nome: string; workspace: { id?: string | undefined; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[] | undefined;
+    /**
+     * Dove si attiva un modulo (dalla `v2.25.0`): l'indirizzo di Impostazioni › Moduli nel workspace dei dati, che la parte server dà
+     * solo a chi lo amministra. Un modulo `disponibile` nel menu Moduli porta lì; senza, non porta da nessuna parte.
+     */
+    moduli?: string | undefined;
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number | undefined;
     /**
@@ -462,9 +467,11 @@ export function Cornice(props: CorniceProps) {
 
 /**
  * Chi è una persona per la cornice (dalla `v2.20.0`): l'email e l'impronta di zr-auth. Un'email può passare da un account a un
- * altro, e con la stessa email l'impronta dice che è un'altra persona: la cornice si rifà, come con un'altra email.
+ * altro, e con la stessa email l'impronta dice che è un'altra persona: la cornice si rifà, come con un'altra email. Un testo, non
+ * una somma: senza email né impronta (dati contro il tipo) la somma è `NaN`, diversa da sé stessa, e `null` e l'impronta che manca
+ * sono la stessa cosa, come per `StessaPersona` e per il layout (dalla `v2.25.0`).
  */
-const lui = (questi: DatiDellaCornice) => questi.persona.email + questi.persona.impronta;
+const lui = (questi: DatiDellaCornice) => [questi.persona.email, questi.persona.impronta] + '';
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
 function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
@@ -518,8 +525,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // con la lista vuota sarebbero tutti «Presto».
         items: registro.filter((voce) => !ridotta || voce === dashboard).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
-            // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta alla sua pagina, che dice
-            // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
+            // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta a Impostazioni › Moduli
+            // se la persona può attivarlo, e senza collegamento se no (dalla `v2.25.0`; linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
             // registro qui non si legge: è per le pagine senza sessione, e un prodotto in anteprima si apre dove il backoffice lo dà.
             const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
@@ -531,7 +538,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 home: voce === dashboard,
                 soon: presto,
                 // Un prodotto «Presto» non porta da nessuna parte; quello aperto, al clic, chiude solo la lista.
-                href: presto || voce === aperto ? undefined : nelWorkspace(voce.indirizzo, dati.workspace.slug),
+                // Un modulo `disponibile` non è attivo nel workspace: la sua pagina direbbe «non attivo» (403). Chi può attivarlo va a
+                // Impostazioni › Moduli, dove lo attiva (`dati.moduli`, dalla `v2.25.0`: solo per chi amministra); per gli altri è una
+                // voce senza collegamento.
+                href: presto || voce === aperto ? undefined : dati.prodotti[voce.id as IdDiProdotto] === 'disponibile' ? dati.moduli : nelWorkspace(voce.indirizzo, dati.workspace.slug),
             });
         }),
     };
@@ -854,7 +864,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona);
-        void import('./rimedi').catch(() => undefined);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga), () => undefined);
 
         return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
     }, []);

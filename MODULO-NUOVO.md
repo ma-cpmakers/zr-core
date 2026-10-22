@@ -73,7 +73,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
-  registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
+  registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo` (dalla `v2.25.0` la voce di un modulo
+  `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra: la pagina è `/w/<slug>/impostazioni/moduli`, e il suo indirizzo sta nel campo `moduli` dei dati). È la stessa strada per ogni dato o
   metodo di `/v1` che ti manca.
 - **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
   `zr-start-flow`): il backoffice deve conoscere `https://<modulo>/ingresso/ritorno`, l'indirizzo a cui la persona torna
@@ -377,7 +378,9 @@ e che cosa dai tu è in README, «La cornice». Le forme:
   lista di gruppi (`group`, `items`) di `NavItem`, `create` una lista di `MenuItem`, `crumbs` una lista di `ShellCrumb`;
 - **una voce di `nav` del modulo non porta `href`**: al clic la cornice chiama `onNavigate` con l'id della voce, e lì fai
   la visita di Inertia; la cornice resta montata. Con `href` la voce è un link vero: il browser ricarica la pagina e la
-  cornice si rifà, come per la Dashboard e per i prodotti;
+  cornice si rifà, come per la Dashboard e per i prodotti, a meno che tu dia `naviga`: dalla `v2.25.0` il clic semplice con un
+  indirizzo di questa origine passa da lì, e con `onNavigate` insieme hai tutti e due, `onNavigate` con l'id e `naviga` con
+  l'indirizzo;
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
 - **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
@@ -531,7 +534,8 @@ tutto») è arrivato: il prodotto nel registro, il suo stato nel workspace, l'in
 - **Mancanze note del design system**, già chieste a chi lo cura: il `Dialog` non tiene il fuoco dentro di sé; «Chiudi»
   del `Toast` e «Cerca» della `FilterBar` sono testi fissi in italiano. Controlla se una versione nuova le ha chiuse.
 - **Una voce di `nav` senza `href`** ha come indirizzo «#»: «apri in un'altra scheda» non porta alla sua pagina. Con
-  l'indirizzo vero l'`AppShell` chiama `onNavigate` **e** il browser lo segue, ricaricando. Chiesto al design system
+  l'indirizzo vero l'`AppShell` chiama `onNavigate` **e** il browser lo segue, ricaricando (dalla `v2.25.0`, con un indirizzo di questa origine e
+  una `naviga` data alla cornice, lo segue lei con `naviga`: la ricarica non c'è più, la doppia chiamata sì). Chiesto al design system
   (segnalato da zr-crm), aperto.
 - **Contare gli elementi della cornice per classe** si rompe quando la cornice cresce: dalla `v1.9.0` chi conta
   `.zr-ws-item` nel selettore prende anche il pulsante «Nuovo workspace», `.zr-ws-item.zr-ws-new` (zr-home).

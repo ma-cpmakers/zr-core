@@ -339,6 +339,42 @@ it('il ruolo vale dentro la sua azienda: non passa a un\'altra, e quello di un w
         ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
 });
 
+// Sprint 69 · T2 (voce #2210). `moduli` è l'indirizzo di Impostazioni › Moduli di zr-home nel workspace dei dati, e la cornice lo
+// usa per un modulo `disponibile`: lo dà la parte server solo a chi amministra il workspace, cioè col ruolo della sessione
+// `proprietario` o `amministratore` (come `puoAmministrare()` di zr-home); per ogni altro ruolo la chiave manca. Il ruolo è quello
+// della sessione, e per saperlo non parte nessuna lettura in più.
+
+it('`moduli` è l\'indirizzo di Impostazioni › Moduli nel workspace dei dati, solo se il ruolo della sessione è proprietario o amministratore; per ogni altro ruolo la chiave manca; le letture restano quattro (sprint 69 · T2.1, T2.4)', function (mixed $ruolo, bool $dato) {
+    sessioneAMano(marketing());
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => Sessione::utente(), 'workspace' => marketing(), 'ruolo' => $ruolo]);
+    backoffice(['/v1/io' => ioMostra(0)]);
+
+    $dati = Cornice::dati();
+
+    expect(array_key_exists('moduli', (array) $dati))->toBe($dato);
+    if ($dato) {
+        expect($dati['moduli'])->toBe('https://app.zeiras.com/w/uat-marketing/impostazioni/moduli');
+        // Dopo `non_lette`, prima del segno: nessuna chiave si sposta per chi non amministra.
+        expect(array_slice(array_keys($dati), 3, 4))->toBe(['prodotti', 'aziende', 'non_lette', 'moduli']);
+    }
+    expect(Http::recorded())->toHaveCount(4);
+})->with([
+    'proprietario' => ['proprietario', true],
+    'amministratore' => ['amministratore', true],
+    'membro' => ['membro', false],
+    'un ruolo che zr-core non conosce' => ['ospite', false],
+    'un ruolo scritto in un altro modo' => ['Amministratore', false],
+    'nessun ruolo' => [null, false],
+]);
+
+it('i dati ridotti (accettazione_richiesta) non hanno `moduli`, nemmeno per chi amministra (sprint 69 · T2.1)', function () {
+    sessioneAMano(marketing());
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => Sessione::utente(), 'workspace' => marketing(), 'ruolo' => 'proprietario']);
+    backoffice(['/v1/io' => ioMostra(0), '/v1/app' => accettazioneRichiesta()]);
+
+    expect(array_key_exists('moduli', (array) Cornice::dati()))->toBeFalse();
+});
+
 it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del workspace con una richiesta sola, senza tagli (sprint 5 · T1.1)', function (int $nonLette) {
     $gettoni = sessioneAMano(marketing());
     // Col gettone dell'accesso io.mostra non ha un workspace, e le non lette sono null.

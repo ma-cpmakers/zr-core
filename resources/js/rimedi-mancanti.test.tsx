@@ -54,3 +54,35 @@ it('se il pezzo dei rimedi di tastiera non arriva la cornice c\'è lo stesso, la
     window.removeEventListener('unhandledrejection', alRifiuto);
     process.off('unhandledRejection', nonGestite);
 });
+
+// Sprint 69 · T3.3 (voce #2033). Il gestore dei clic sulla barra laterale sta nel pezzo dei rimedi: senza il pezzo i clic restano del
+// browser, e `naviga` non è chiamata.
+it('senza il pezzo dei rimedi un clic su un collegamento della barra laterale resta del browser e `naviga` non è chiamata (sprint 69 · T3.3)', async () => {
+    const naviga = vi.fn();
+    const contenitore = document.createElement('div');
+    document.body.append(contenitore);
+    const radice = createRoot(contenitore);
+
+    await act(async () => radice.render(<Cornice dati={dati} onLogout={() => {}} naviga={naviga} />));
+    await act(async () => {
+        await vi.dynamicImportSettled();
+        await new Promise((fatto) => setTimeout(fatto, 0));
+    });
+    const collegamento = [...contenitore.querySelectorAll<HTMLAnchorElement>('.zr-shell > .zr-side a[href]')].find((uno) => uno.getAttribute('href') !== '#');
+    collegamento?.setAttribute('href', `${location.origin}/uat`);
+    let visto: boolean | undefined;
+    const alla = (evento: Event) => {
+        visto = evento.defaultPrevented;
+        evento.preventDefault();
+    };
+    window.addEventListener('click', alla);
+    collegamento?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    window.removeEventListener('click', alla);
+
+    expect(collegamento).toBeDefined();
+    expect(visto).toBe(false);
+    expect(naviga).not.toHaveBeenCalled();
+
+    await act(async () => radice.unmount());
+    contenitore.remove();
+});
