@@ -1390,9 +1390,9 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   Non chiede niente al backoffice, così chi arriva su una pagina d'esito o d'errore non resta senza strada. Non è una seconda
   cornice: niente moduli, workspace, ricerca, notifiche, profilo né «+». «Esci» chiama `onLogout`, una voce chiama
   `onNavigate` col suo id, e la voce `active` porta `aria-current="page"`. I testi sono quelli della cornice, nella lingua
-  del documento (`<html lang>`), in inglese se manca. È un pezzo a richiesta (`barra`, 463 byte con gzip): il layout lo
+  del documento (`<html lang>`), in inglese se manca. È un pezzo a richiesta (`barra`, 420 byte con gzip): il layout lo
   chiede con `import()` solo quando la cornice non c'è, la pagina resta nello stesso posto quando arriva, e se non arriva si
-  vede da sola. Costa 110 byte con gzip nel JS d'ingresso di chi usa il layout (misura dello sprint 68); l'app che prende
+  vede da sola. Costa 126 byte con gzip nel JS d'ingresso di chi usa il layout con React fuori (la prova del pacchetto); in un frontend che porta React nella build, misurato su zr-crm, +162 (la `v2.24.0` ne costava 278: il pezzo importava `react/jsx-runtime`, che diventava un chunk a sé, e dalla `v2.24.1` non importa niente: `createElement` glielo dà il layout); l'app che prende
   solo la cornice non cambia. **È provvisoria**: il design system non ha ancora la sua barra minima (è fra le richieste a
   Luciano), e questa è fatta coi soli suoi pezzi, `Logo` e `Button`. Quando la barra c'è nel design system questa si toglie
   e la sostituisce lui, con una versione che lo annuncia.
