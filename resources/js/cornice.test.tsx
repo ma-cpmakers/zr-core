@@ -1636,6 +1636,30 @@ describe('il pannello delle notifiche', () => {
         expect(fetchFinto.mock.calls.map(([, opzioni]) => new Headers(opzioni?.headers).get('X-Zr-Persona'))).toStrictEqual([prima, dopo]);
     });
 
+    // Sprint 69 · T1 (voce #2151, R9 della PR #98): chi è una persona per la cornice è l'email e l'impronta, come per `StessaPersona` e per
+    // il layout: l'impronta che manca e `null` sono la stessa cosa, e senza email né impronta (dati contro il tipo) la persona resta
+    // uguale a sé stessa. Senza il segno della lettura una persona diversa ricarica la pagina; la stessa no, a nessun disegno.
+    it.each([
+        ['senza email e senza impronta (dati contro il tipo), a ogni disegno', { nome: 'Ada' }, { nome: 'Ada' }, 0],
+        ['con l\'impronta `null` e poi senza la chiave', { nome: 'Ada', email: 'ada@example.com', impronta: null }, { nome: 'Ada', email: 'ada@example.com' }, 0],
+        ['senza la chiave e poi con l\'impronta `null`', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'ada@example.com', impronta: null }, 0],
+        ['con la stessa email e un\'altra impronta', { nome: 'Ada', email: 'ada@example.com', impronta: 'aa' }, { nome: 'Ada', email: 'ada@example.com', impronta: 'bb' }, 1],
+        ['con la stessa email e l\'impronta che compare', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'ada@example.com', impronta: 'bb' }, 1],
+        ['con un\'altra email', { nome: 'Ada', email: 'ada@example.com' }, { nome: 'Ada', email: 'grace@example.com' }, 1],
+    ])('senza il segno della lettura, dati %s: la pagina si ricarica solo se la persona è un\'altra (sprint 69 · T1.1-T1.3)', async (_caso, prima, dopo, ricariche) => {
+        const ricarica = vi.spyOn(window.location, 'reload').mockImplementation(() => undefined);
+        const senzaSegno = (persona: Record<string, unknown>) => ({ ...dati, persona, aggiornati_il: undefined, sessione_il: undefined }) as never;
+
+        await mostra(<Cornice dati={senzaSegno(prima)} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={senzaSegno(dopo)} onLogout={esciSenzaEffetto} />);
+        // Una persona che è la stessa non ricarica a nessun disegno: un altro, con gli stessi dati, non cambia il conto.
+        if (ricariche === 0) {
+            await mostra(<Cornice dati={senzaSegno(dopo)} onLogout={esciSenzaEffetto} />);
+        }
+
+        expect(ricarica).toHaveBeenCalledTimes(ricariche);
+    });
+
     it('«Segna tutte come lette» manda una sola POST /cornice/notifiche/letture, col gettone CSRF e la creata_il più recente fra le caricate così com\'è, e nessuna PATCH; alla risposta le caricate sono tutte lette e la campanella non ha più un numero, anche con 60 nei dati e 2 caricate (sprint 6 · T4.1)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const lettura = inAttesa();

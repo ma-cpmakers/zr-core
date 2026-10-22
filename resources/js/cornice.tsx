@@ -462,9 +462,11 @@ export function Cornice(props: CorniceProps) {
 
 /**
  * Chi è una persona per la cornice (dalla `v2.20.0`): l'email e l'impronta di zr-auth. Un'email può passare da un account a un
- * altro, e con la stessa email l'impronta dice che è un'altra persona: la cornice si rifà, come con un'altra email.
+ * altro, e con la stessa email l'impronta dice che è un'altra persona: la cornice si rifà, come con un'altra email. Un testo, non
+ * una somma: senza email né impronta (dati contro il tipo) la somma è `NaN`, diversa da sé stessa, e `null` e l'impronta che manca
+ * sono la stessa cosa, come per `StessaPersona` e per il layout (dalla `v2.25.0`).
  */
-const lui = (questi: DatiDellaCornice) => questi.persona.email + questi.persona.impronta;
+const lui = (questi: DatiDellaCornice) => [questi.persona.email, questi.persona.impronta] + '';
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
 function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {

@@ -99,12 +99,12 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.875 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.900 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
-il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm. Hanno
+il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (6), un'eccezione di zr-pm per tre voci (Decisione 15231). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.327 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
