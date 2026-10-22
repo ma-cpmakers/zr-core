@@ -229,6 +229,11 @@ una riga di `io.workspace.elenca` di quell'azienda il `ruolo` della persona è `
 altro caso è `false`: solo `membro`, un ruolo che zr-core non conosce, una riga senza `ruolo`, un'azienda senza workspace.
 Il `ruolo` in un'azienda non vale per un'altra. Sta nella riga dei workspace che `Cornice::dati()` legge già, quindi per
 saperlo non parte nessuna lettura in più, e al browser arriva solo il booleano, mai il `ruolo`.
+`moduli` è l'indirizzo di Impostazioni › Moduli nel workspace dei dati (`https://app.zeiras.com/w/<slug>/impostazioni/moduli`), e
+c'è dalla `v2.25.0`, solo se il ruolo della sessione è `proprietario` o `amministratore`, come `puoAmministrare()` di zr-home; per
+ogni altro ruolo la chiave manca, e non c'è nei dati ridotti. La cornice lo usa per i moduli `disponibile` del menu Moduli. Il ruolo
+è quello della sessione: per saperlo non parte nessuna lettura in più, e al browser arriva l'indirizzo, mai il `ruolo`. La pagina è
+di zr-home: se la persona può davvero attivare un modulo lo decide il backoffice.
 `non_lette` sono le notifiche non lette della persona nel workspace in cui è entrata, come le conta il backoffice
 (`notifiche_non_lette` di `io.mostra`): il numero intero, e oltre 99 la campanella mostra «99+».
 
@@ -657,8 +662,11 @@ cornice === null ? pagina : (
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il
   modulo cambi niente. Sta nello stesso pezzo a richiesta dei due punti sopra: se non arriva, il menu e la barra restano
   com'erano.
-- **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` o `disponibile`
-  porta a `<indirizzo>/w/<slug>` (uno `disponibile` mostra la sua pagina «non attivo nel workspace»); è «Presto», senza
+- **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` porta a
+  `<indirizzo>/w/<slug>`. Uno `disponibile` non è attivo lì, e dalla `v2.25.0` non porta più alla sua pagina «non attivo nel
+  workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace, e per
+  gli altri è una voce senza collegamento, senza «Presto» (il design system non ha un segno «non attivo»: riga 78 delle
+  richieste). È «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.

@@ -5174,6 +5174,19 @@ it('il README non dice più che `azioni` e `board` non arrivano in pagina, né c
 // con `fetch` quando si apre la campanella. Il README dice dove stanno, quando si chiedono e che cosa si vede se non arrivano;
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
 
+// Sprint 69 · T2 (voce #2210). Il README e la guida dicono che un modulo `disponibile` non porta più alla sua pagina «non attivo»:
+// porta a Impostazioni › Moduli per chi amministra, e a nessuna parte per gli altri; e che `moduli` nei dati lo dà la parte server.
+it('il README dice `moduli` nei dati, a chi arriva e che non costa una lettura, e dove porta un modulo disponibile; la guida dice la stessa cosa (sprint 69 · T2.5)', function () {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+    $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect(substr_count($readme, '`moduli` è l\'indirizzo di Impostazioni › Moduli nel workspace dei dati'))->toBe(1)
+        ->and(substr_count($readme, 'solo se il ruolo della sessione è `proprietario` o `amministratore`'))->toBe(1)
+        ->and(substr_count($readme, 'per saperlo non parte nessuna lettura in più, e al browser arriva l\'indirizzo, mai il `ruolo`'))->toBe(1)
+        ->and(substr_count($readme, 'porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace'))->toBe(1)
+        ->and(substr_count($guida, 'la voce di un modulo `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra'))->toBe(1);
+});
+
 it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le chiede, che cosa si vede se non arrivano e che cosa serve nei test di un frontend (sprint 30 · T1.10)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = [

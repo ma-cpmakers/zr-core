@@ -512,4 +512,5 @@ describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS
         expect(barra).not.toBe('');
         expect(gzip(barra)).toBeLessThanOrEqual(463);
     });
+
 });

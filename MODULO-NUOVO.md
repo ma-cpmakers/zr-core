@@ -73,7 +73,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   carica risponde solo per i file delle frasi: ogni altra richiesta passa al `fetch` che c'era.
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
-  registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo`. È la stessa strada per ogni dato o
+  registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo` (dalla `v2.25.0` la voce di un modulo
+  `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra). È la stessa strada per ogni dato o
   metodo di `/v1` che ti manca.
 - **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
   `zr-start-flow`): il backoffice deve conoscere `https://<modulo>/ingresso/ritorno`, l'indirizzo a cui la persona torna

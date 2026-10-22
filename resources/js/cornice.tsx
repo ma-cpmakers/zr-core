@@ -51,6 +51,11 @@ export interface DatiDellaCornice {
      * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
     aziende?: { id: string; nome: string; workspace: { id?: string | undefined; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[] | undefined;
+    /**
+     * Dove si attiva un modulo (dalla `v2.25.0`): l'indirizzo di Impostazioni › Moduli nel workspace dei dati, che la parte server dà
+     * solo a chi lo amministra. Un modulo `disponibile` nel menu Moduli porta lì; senza, non porta da nessuna parte.
+     */
+    moduli?: string | undefined;
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number | undefined;
     /**
@@ -533,7 +538,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 home: voce === dashboard,
                 soon: presto,
                 // Un prodotto «Presto» non porta da nessuna parte; quello aperto, al clic, chiude solo la lista.
-                href: presto || voce === aperto ? undefined : nelWorkspace(voce.indirizzo, dati.workspace.slug),
+                // Un modulo `disponibile` non è attivo nel workspace: la sua pagina direbbe «non attivo» (403). Chi può attivarlo va a
+                // Impostazioni › Moduli, dove lo attiva (`dati.moduli`, dalla `v2.25.0`: solo per chi amministra); per gli altri è una
+                // voce senza collegamento.
+                href: presto || voce === aperto ? undefined : dati.prodotti[voce.id as IdDiProdotto] === 'disponibile' ? dati.moduli : nelWorkspace(voce.indirizzo, dati.workspace.slug),
             });
         }),
     };

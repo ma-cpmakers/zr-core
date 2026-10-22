@@ -206,13 +206,13 @@ const ordine = ['home', 'pm', 'crm', 'bookings', 'flow', 'reports', 'automations
 
 describe('la Cornice', () => {
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
-        [{ pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' }, ['pm', 'crm']],
+        [{ pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' }, ['pm']],
         [{ pm: 'in_arrivo', crm: 'attivo' }, ['crm']],
-        [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, ['bookings']],
+        [{ bookings: 'disponibile', automations: 'attivo', content: 'disponibile' }, []],
         [{}, []],
         // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
         [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
-    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` e `disponibile` verso il workspace, gli altri «Presto» (T4.1, %j)', async (prodotti, conIndirizzo) => {
+    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` senza collegamento e non «Presto» (senza `moduli`), gli altri «Presto» (T4.1; sprint 69 · T2.2, %j)', async (prodotti, conIndirizzo) => {
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
@@ -222,8 +222,10 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
         const attesi = ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#'));
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
+        // Un modulo `disponibile` non è attivo nel workspace: senza `moduli` non porta da nessuna parte, ma non è «Presto».
+        const disponibili = ordine.filter((id) => id in indirizzi && prodotti[id as keyof typeof prodotti] === 'disponibile');
         // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
-        const presto = attesi.map((indirizzo) => indirizzo === '#');
+        const presto = ordine.map((id, posto) => attesi[posto] === '#' && !disponibili.includes(id));
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
         expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
         expect(voci[0].getAttribute('aria-current')).toBe('page');
@@ -231,6 +233,22 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(icone.map(tracciatoDi));
         expect(uno('.zr-product-switch')).toBeNull();
         expect(uno('main')?.textContent).toBe('La pagina');
+    });
+
+    // Sprint 69 · T2.2-T2.3 (voce #2210): un modulo `disponibile` non è attivo nel workspace, e la sua pagina direbbe «non attivo» (403).
+    // Chi può attivarlo ha `moduli` nei dati (la parte server lo dà solo a chi amministra) e la voce porta a Impostazioni › Moduli;
+    // per gli altri è una voce senza collegamento. Un modulo `attivo` porta a sé, e uno in arrivo o senza stato è «Presto».
+    it.each([
+        ['a chi amministra', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', ['#', 'https://board.zeiras.com/w/acme-marketing', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', '#']],
+        ['agli altri', undefined, ['#', 'https://board.zeiras.com/w/acme-marketing', '#', '#']],
+    ])('un modulo disponibile porta %s: Impostazioni › Moduli, o a nessuna parte, e mai «Presto»; l\'attivo porta a sé (sprint 69 · T2.2, T2.3)', async (_chi, moduli, attesi) => {
+        await mostra(<Cornice dati={{ ...dati, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' }, ...(moduli ? { moduli } : {}) }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        const voci = [...tutti('.zr-nav .zr-nav-group a.zr-nav-item')].filter((voce) => ['CRM', 'Board', 'Bookings'].includes(voce.querySelector('.zr-nav-label')?.textContent ?? ''));
+        // Board, CRM, Bookings, nell'ordine del registro; l'indirizzo atteso è di Dashboard no: sono solo le tre.
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['Board', 'CRM', 'Bookings']);
+        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual([attesi[1], attesi[2], attesi[3]]);
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon') !== null)).toStrictEqual([false, false, true]);
     });
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
@@ -362,11 +380,11 @@ describe('la Cornice', () => {
     });
 
     it.each<[DatiDellaCornice['prodotti'], string[]]>([
-        [{ crm: 'attivo', bookings: 'disponibile' }, ['crm', 'bookings']],
+        [{ crm: 'attivo', bookings: 'disponibile' }, ['crm']],
         [{ bookings: 'attivo' }, ['bookings']],
-        [{ crm: 'disponibile' }, ['crm']],
+        [{ crm: 'disponibile' }, []],
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
-    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo` o `disponibile` (sprint 16 · T7.2, %j)', async (prodotti, aperti) => {
+    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` non porta da nessuna parte, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2, %j)', async (prodotti, aperti) => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.
@@ -379,7 +397,7 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.getAttribute('href')))
             .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
-            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? null : 'Presto')));
+            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) || prodotti[id as 'crm'] === 'disponibile' ? null : 'Presto')));
     });
 
     it.each(['es', 'en'])('con la lingua "%s" nei dati ogni testo della cornice è in quella lingua: nessuno resta italiano (T6.3)', async (lingua) => {
