@@ -304,19 +304,19 @@ describe('la Cornice', () => {
     // modulo. Quello corto resta a chi non ha accettato i documenti legali; l'invito corto anche a un browser senza
     // `Intl.ListFormat`.
     it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
         ['it', {}, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
-        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.'],
-        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas y miembros: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
         ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
-        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
-        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, areas, and members: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, areas, contacts, companies, opportunities, and members: type at least 2 characters.'],
         ['en', {}, 'Search the workspace…', 'Search members: type at least 2 characters.'],
         // Una lingua che zr-core non ha: in inglese.
-        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, folders, and members: type at least 2 characters.'],
+        ['zz', { pm: 'attivo', crm: 'disponibile' }, 'Search the workspace…', 'Search cards, boards, areas, and members: type at least 2 characters.'],
     ])('con la lingua "%s" e i moduli %j, il segnaposto del campo di ricerca è quello unico, che non nomina nessuna fonte, e l\'invito prima di due caratteri nomina le fonti dei moduli attivi nel workspace e, dopo, i membri, che ci sono in ogni workspace: mai i due testi dell\'`AppShell` (sprint 25 · T4.3; sprint 27 · T2.4, T7.1, T7.3)', async (lingua, prodotti, segnaposto, invito) => {
         await mostra(<Cornice dati={{ ...dati, lingua, prodotti }} onLogout={esciSenzaEffetto} />);
         expect((uno('.zr-search input') as HTMLInputElement).placeholder).toBe(segnaposto);
@@ -1221,11 +1221,11 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
-        ['it', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
-        ['es', ['Novedades en el workspace', 'Nueva carpeta'], ['hace 5 minutos', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
-        ['en', ['News in the workspace', 'New folder'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
+        ['it', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['es', ['Novedades en el workspace', 'Nueva área'], ['hace 5 minutos', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
+        ['en', ['News in the workspace', 'New area'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', ['Novità nel workspace', 'Nuova cartella'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['it_IT', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
     ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo del suo tipo nella lingua, o quello di ripiego, e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3; sprint 12 · T3.1, T3.2)', async (lingua, [diRipiego, dellaCartella], [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
@@ -1302,7 +1302,7 @@ describe('il pannello delle notifiche', () => {
         const con = ['zr-notif-title', 'zr-notif-sub', 'zr-notif-meta'];
         expect(righe()).toStrictEqual([con, senza, senza, senza, senza, con, senza, senza]);
         // Il titolo resta quello del tipo, e il prodotto con l'ora restano dov'erano.
-        expect(titoli()).toStrictEqual(Array(8).fill('Nuova cartella'));
+        expect(titoli()).toStrictEqual(Array(8).fill('Nuova area'));
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 minuti fa'));
     });
 
@@ -1332,7 +1332,7 @@ describe('il pannello delle notifiche', () => {
 
         expect(secondeRighe()).toStrictEqual(['Board', 'Report', 'CRM', null, null, null, null, 'Board', null, 'pm', 'pm', 'pm']);
         expect(titoli()).toStrictEqual([
-            ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova cartella', 'Novità nel workspace', 'Novità nel workspace',
+            ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova area', 'Novità nel workspace', 'Novità nel workspace',
         ]);
         // Il nome sta nella seconda riga e solo lì: davanti all'ora c'è il prodotto di `app`, che queste notifiche non hanno.
         expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 minuti fa'));
@@ -1377,7 +1377,7 @@ describe('il pannello delle notifiche', () => {
         expect(voci().map((voce) => voce.querySelectorAll('.zr-avatar, .zr-iconbox').length)).toStrictEqual(Array(9).fill(1));
         // Il nome di chi l'ha fatto sta nell'avatar e, dallo sprint 29, nel titolo (una frase con solo chi: qui il nome della
         // cosa non c'è); non al posto del nome della cosa, e un valore che non è un nome non entra da nessuna parte.
-        expect(titoli()).toStrictEqual(['\u{2068}Marta Rossi\u{2069} ha creato una cartella', ...Array(4).fill('Nuova cartella'), '\u{2068}Bruno\u{2069} ha creato una cartella', ...Array(3).fill('Nuova cartella')]);
+        expect(titoli()).toStrictEqual(['\u{2068}Marta Rossi\u{2069} ha creato un\'area', ...Array(4).fill('Nuova area'), '\u{2068}Bruno\u{2069} ha creato un\'area', ...Array(3).fill('Nuova area')]);
         expect(secondeRighe()).toStrictEqual(Array(9).fill(null));
         expect(uno('.zr-notif-list')?.textContent?.match(/Marta|Bruno/g)).toStrictEqual(['Marta', 'Bruno']);
         expect(uno('.zr-notif-list')?.textContent).not.toMatch(/UAT oggetto|example\.com/);
@@ -1390,7 +1390,7 @@ describe('il pannello delle notifiche', () => {
         const avatar = voci()[0].querySelector('.zr-avatar');
 
         expect(lungo).toHaveLength(71);
-        expect(voci()[0].querySelector('.zr-notif-title')?.textContent).toBe(`\u{2068}${lungo.slice(0, 59)}…\u{2069} ha creato una cartella`);
+        expect(voci()[0].querySelector('.zr-notif-title')?.textContent).toBe(`\u{2068}${lungo.slice(0, 59)}…\u{2069} ha creato un'area`);
         expect([avatar?.getAttribute('aria-label'), avatar?.getAttribute('title'), avatar?.textContent]).toStrictEqual([lungo, lungo, 'MR']);
     });
 
@@ -1402,7 +1402,7 @@ describe('il pannello delle notifiche', () => {
             conInPiu('uat-n5c', { autore_nome: 'Marta Rossi', risorsa_nome: invisibili }),
         ]);
 
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(['Nuova cartella', '\u{2068}Marta Rossi\u{2069} ha creato una cartella']);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent)).toStrictEqual(['Nuova area', '\u{2068}Marta Rossi\u{2069} ha creato un\'area']);
         expect(voci().map((voce) => voce.querySelector('.zr-avatar')?.textContent ?? null)).toStrictEqual([null, 'MR']);
         expect(voci().map((voce) => voce.querySelector('.zr-iconbox') !== null)).toStrictEqual([true, false]);
         expect(secondeRighe()).toStrictEqual(['Lancio corso', null]);
@@ -3247,9 +3247,9 @@ describe('il pannello delle notifiche', () => {
         ['com.zeiras.workspace.membro.creato', 'Una persona è entrata nel workspace', 'Someone joined the workspace', 'Una persona entró en el workspace'],
         ['com.zeiras.workspace.membro.modificato', 'Il ruolo di un membro è cambiato', "A member's role changed", 'Cambió el rol de un miembro'],
         ['com.zeiras.workspace.membro.eliminato', 'Una persona è uscita dal workspace', 'Someone left the workspace', 'Una persona salió del workspace'],
-        ['com.zeiras.board.cartella.creata', 'Nuova cartella', 'New folder', 'Nueva carpeta'],
-        ['com.zeiras.board.cartella.modificata', 'Cartella modificata', 'Folder changed', 'Carpeta modificada'],
-        ['com.zeiras.board.cartella.eliminata', 'Cartella eliminata', 'Folder deleted', 'Carpeta eliminada'],
+        ['com.zeiras.board.cartella.creata', 'Nuova area', 'New area', 'Nueva área'],
+        ['com.zeiras.board.cartella.modificata', 'Area modificata', 'Area changed', 'Área modificada'],
+        ['com.zeiras.board.cartella.eliminata', 'Area eliminata', 'Area deleted', 'Área eliminada'],
         ['com.zeiras.board.board.creata', 'Nuova board', 'New board', 'Nuevo tablero'],
         ['com.zeiras.board.board.modificata', 'Board modificata', 'Board changed', 'Tablero modificado'],
         ['com.zeiras.board.lista.creata', 'Nuova lista', 'New list', 'Nueva lista'],
@@ -4602,9 +4602,9 @@ describe('la ricerca', () => {
     });
 
     it.each([
-        ['it', 'Board', ['Board', 'Cartelle']],
-        ['es', 'Board', ['Tableros', 'Carpetas']],
-        ['en', 'Board', ['Boards', 'Folders']],
+        ['it', 'Board', ['Board', 'Aree']],
+        ['es', 'Board', ['Tableros', 'Áreas']],
+        ['en', 'Board', ['Boards', 'Areas']],
     ])('con la lingua "%s" i risultati stanno raggruppati per tipo, col nome e il tono del prodotto che ha quel tipo nel registro e l\'icona del tipo, anche se il risultato porta un `app` di un altro prodotto; un tipo che il registro non ha non compare (sprint 5 · T4.3, T4.4)', async (lingua, prodotto, nomiDeiGruppi) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(risultatiDelServer)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
@@ -4665,9 +4665,9 @@ describe('la ricerca', () => {
     ];
 
     it.each<[lingua: string, gruppi: string[], pm: string, crm: string]>([
-        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Cartelle'], 'Board', 'CRM'],
-        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Carpetas'], 'Board', 'CRM'],
-        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Folders'], 'Board', 'CRM'],
+        ['it', ['Contatti', 'Schede', 'Aziende', 'Opportunità', 'Board', 'Aree'], 'Board', 'CRM'],
+        ['es', ['Contactos', 'Tarjetas', 'Empresas', 'Oportunidades', 'Tableros', 'Áreas'], 'Board', 'CRM'],
+        ['en', ['Contacts', 'Cards', 'Companies', 'Opportunities', 'Boards', 'Areas'], 'Board', 'CRM'],
     ])('con la lingua "%s", schede, contatti, aziende e opportunità stanno ognuno nel suo gruppo, con la seconda riga fatta dei testi di `contesto` che ci sono, il nome e il tono del loro modulo e l\'icona del tipo; i gruppi nell\'ordine del primo risultato di ognuno e dentro un gruppo l\'ordine del backoffice; un tipo che il registro non ha e un id fuori forma non compaiono (sprint 25 · T4.1, T4.2)', async (lingua, gruppi, pm, crm) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(diOgniTipo)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
@@ -7138,8 +7138,8 @@ describe('«Salta al contenuto»', () => {
 // chiesto e che il caso può fermare o rompere, file per file.
 describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint 30 · T1)', () => {
     const elenco = [{ id: 'uat-n81', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }];
-    const inItaliano = '\u{2068}Giulia Bianchi\u{2069} ha creato la cartella «\u{2068}Lancio corso\u{2069}»';
-    const inSpagnolo = '\u{2068}Giulia Bianchi\u{2069} ha creado la carpeta «\u{2068}Lancio corso\u{2069}»';
+    const inItaliano = '\u{2068}Giulia Bianchi\u{2069} ha creato l\'area «\u{2068}Lancio corso\u{2069}»';
+    const inSpagnolo = '\u{2068}Giulia Bianchi\u{2069} ha creado el área «\u{2068}Lancio corso\u{2069}»';
     const titoli = () => tutti('.zr-notif-list .zr-notif-title').map((titolo) => titolo.textContent);
     const errore = () => uno('.zr-notif [role="alert"]');
     const inAttesa = () => uno('.zr-notif [role="status"]') !== null;

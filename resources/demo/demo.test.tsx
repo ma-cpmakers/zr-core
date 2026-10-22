@@ -204,8 +204,8 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     });
 
     it.each([
-        ['', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.', false],
-        ['?senza_crm=1', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.', true],
+        ['', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.', false],
+        ['?senza_crm=1', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.', true],
     ])('senza `?senza_moduli`, con «%s», l\'invito nomina anche le fonti di Project Management, e il CRM è in arrivo solo con `?senza_crm=1`: i casi di sopra non sono verdi da soli (sprint 28 · T5.2)', async (query, invito, crmInArrivo) => {
         await apri(query);
 

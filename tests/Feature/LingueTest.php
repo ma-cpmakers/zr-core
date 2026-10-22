@@ -319,16 +319,16 @@ function frasiDelleNotificheConChi(): array
 {
     return [
         'com.zeiras.board.cartella.creata' => [
-            'chiECosa' => ['it' => '{who} ha creato la cartella «{what}»', 'en' => '{who} created the folder “{what}”', 'es' => '{who} ha creado la carpeta «{what}»'],
-            'chi' => ['it' => '{who} ha creato una cartella', 'en' => '{who} created a folder', 'es' => '{who} ha creado una carpeta'],
+            'chiECosa' => ['it' => '{who} ha creato l\'area «{what}»', 'en' => '{who} created the area “{what}”', 'es' => '{who} ha creado el área «{what}»'],
+            'chi' => ['it' => '{who} ha creato un\'area', 'en' => '{who} created an area', 'es' => '{who} ha creado un área'],
         ],
         'com.zeiras.board.cartella.modificata' => [
-            'chiECosa' => ['it' => '{who} ha modificato la cartella «{what}»', 'en' => '{who} changed the folder “{what}”', 'es' => '{who} ha modificado la carpeta «{what}»'],
-            'chi' => ['it' => '{who} ha modificato una cartella', 'en' => '{who} changed a folder', 'es' => '{who} ha modificado una carpeta'],
+            'chiECosa' => ['it' => '{who} ha modificato l\'area «{what}»', 'en' => '{who} changed the area “{what}”', 'es' => '{who} ha modificado el área «{what}»'],
+            'chi' => ['it' => '{who} ha modificato un\'area', 'en' => '{who} changed an area', 'es' => '{who} ha modificado un área'],
         ],
         'com.zeiras.board.cartella.eliminata' => [
             'chiECosa' => null,
-            'chi' => ['it' => '{who} ha eliminato una cartella', 'en' => '{who} deleted a folder', 'es' => '{who} ha eliminado una carpeta'],
+            'chi' => ['it' => '{who} ha eliminato un\'area', 'en' => '{who} deleted an area', 'es' => '{who} ha eliminado un área'],
         ],
         'com.zeiras.board.board.creata' => [
             'chiECosa' => ['it' => '{who} ha creato la board «{what}»', 'en' => '{who} created the board “{what}”', 'es' => '{who} ha creado el tablero «{what}»'],
@@ -1179,9 +1179,9 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
         ->and(substr_count(implode('', $segnaposto), '.'))->toBe(0);
 })->with([
     // Dallo sprint 27 il primo è il membro del workspace, che nel registro sta nella voce della Dashboard (T1.3).
-    'italiano' => ['it', ['Membri', 'Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
-    'inglese' => ['en', ['Members', 'Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
-    'spagnolo' => ['es', ['Miembros', 'Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
+    'italiano' => ['it', ['Membri', 'Schede', 'Board', 'Aree', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'aree', 'contatti', 'aziende', 'opportunità']],
+    'inglese' => ['en', ['Members', 'Cards', 'Boards', 'Areas', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'areas', 'contacts', 'companies', 'opportunities']],
+    'spagnolo' => ['es', ['Miembros', 'Tarjetas', 'Tableros', 'Áreas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'áreas', 'contactos', 'empresas', 'oportunidades']],
 ]);
 
 // Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice

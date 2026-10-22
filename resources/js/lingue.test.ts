@@ -495,9 +495,9 @@ describe('le lingue della cornice', () => {
 
     it.each<[lingua: string, file: Record<string, string>, gruppi: string[], daElenco: string[]]>([
         // Dallo sprint 27 il primo è il membro del workspace, che nel registro sta nella voce della Dashboard (T1.3).
-        ['it', italiano, ['Membri', 'Schede', 'Board', 'Cartelle', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'cartelle', 'contatti', 'aziende', 'opportunità']],
-        ['es', spagnolo, ['Miembros', 'Tarjetas', 'Tableros', 'Carpetas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'carpetas', 'contactos', 'empresas', 'oportunidades']],
-        ['en', inglese, ['Members', 'Cards', 'Boards', 'Folders', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'folders', 'contacts', 'companies', 'opportunities']],
+        ['it', italiano, ['Membri', 'Schede', 'Board', 'Aree', 'Contatti', 'Aziende', 'Opportunità'], ['membri', 'schede', 'board', 'aree', 'contatti', 'aziende', 'opportunità']],
+        ['es', spagnolo, ['Miembros', 'Tarjetas', 'Tableros', 'Áreas', 'Contactos', 'Empresas', 'Oportunidades'], ['miembros', 'tarjetas', 'tableros', 'áreas', 'contactos', 'empresas', 'oportunidades']],
+        ['en', inglese, ['Members', 'Cards', 'Boards', 'Areas', 'Contacts', 'Companies', 'Opportunities'], ['members', 'cards', 'boards', 'areas', 'contacts', 'companies', 'opportunities']],
     ])('con la lingua "%s", ogni tipo di risorsa del registro ha il nome del suo gruppo e il suo nome da elenco, minuscolo: un tipo che entra nel registro senza i suoi testi fa rosso questo caso (sprint 25 · T4.5)', (_lingua, file, gruppi, daElenco) => {
         expect(tipiDelRegistro).toStrictEqual(['home.workspace.membro', 'pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa']);
         expect(tipiDelRegistro.map((tipo) => file[tipo])).toStrictEqual(gruppi);
@@ -559,12 +559,12 @@ describe('le lingue della cornice', () => {
     });
 
     it.each<[lingua: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
-        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
+        ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
         ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
-        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, opportunities, and members: type at least 2 characters.'],
+        ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, areas, contacts, companies, opportunities, and members: type at least 2 characters.'],
         ['en', {}, 'Search the workspace…', 'Search members: type at least 2 characters.'],
     ])('con la lingua "%s" e i moduli %j, l\'invito nomina i membri dopo le fonti dei moduli attivi, per ultimi, e senza moduli attivi sono la sola fonte, mai l\'invito corto; il segnaposto è lo stesso con qualunque modulo attivo e non nomina nessuna fonte (sprint 27 · T2.4, T7.1, T7.3)', (lingua, prodotti, segnaposto, invito) => {
         expect(testiDellaRicerca(lingua, fontiDellaRicerca(prodotti))).toStrictEqual({ searchPlaceholder: segnaposto, searchHint: invito });
@@ -574,20 +574,20 @@ describe('le lingue della cornice', () => {
         ['it', [], 'Cerca…', 'Scrivi almeno 2 caratteri.'],
         ['it', ['pm.board.scheda'], 'Cerca nel workspace…', 'Cerca schede: scrivi almeno 2 caratteri.'],
         ['it', ['pm.board.scheda', 'pm.board.board'], 'Cerca nel workspace…', 'Cerca schede e board: scrivi almeno 2 caratteri.'],
-        ['it', diProjectManagement, 'Cerca nel workspace…', 'Cerca schede, board e cartelle: scrivi almeno 2 caratteri.'],
+        ['it', diProjectManagement, 'Cerca nel workspace…', 'Cerca schede, board e aree: scrivi almeno 2 caratteri.'],
         ['it', delCrm, 'Cerca nel workspace…', 'Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
         // L'invito le nomina tutte, quante che siano.
-        ['it', [...diProjectManagement, ...delCrm], 'Cerca nel workspace…', 'Cerca schede, board, cartelle, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
+        ['it', [...diProjectManagement, ...delCrm], 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende e opportunità: scrivi almeno 2 caratteri.'],
         ['es', [], 'Busca…', 'Escribe al menos 2 caracteres.'],
-        ['es', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
-        ['es', [...diProjectManagement, ...delCrm], 'Busca en el workspace…', 'Busca tarjetas, tableros, carpetas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
+        ['es', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y áreas: escribe al menos 2 caracteres.'],
+        ['es', [...diProjectManagement, ...delCrm], 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas y oportunidades: escribe al menos 2 caracteres.'],
         ['en', [], 'Search…', 'Type at least 2 characters.'],
-        ['en', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and folders: type at least 2 characters.'],
-        ['en', [...diProjectManagement, ...delCrm], 'Search the workspace…', 'Search cards, boards, folders, contacts, companies, and opportunities: type at least 2 characters.'],
+        ['en', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and areas: type at least 2 characters.'],
+        ['en', [...diProjectManagement, ...delCrm], 'Search the workspace…', 'Search cards, boards, areas, contacts, companies, and opportunities: type at least 2 characters.'],
         // Una variante regionale scritta come `Intl` non la accetta: la lingua dell'elenco è quella del file dei testi.
-        ['es_ES', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y carpetas: escribe al menos 2 caracteres.'],
+        ['es_ES', diProjectManagement, 'Busca en el workspace…', 'Busca tarjetas, tableros y áreas: escribe al menos 2 caracteres.'],
         // Una lingua che zr-core non ha: tutto in inglese, anche la congiunzione.
-        ['pt-BR', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and folders: type at least 2 characters.'],
+        ['pt-BR', diProjectManagement, 'Search the workspace…', 'Search cards, boards, and areas: type at least 2 characters.'],
     ])('con la lingua "%s" e le fonti %j, l\'invito le nomina tutte, con la congiunzione della lingua, e il segnaposto è quello unico, che non ne nomina nessuna; senza fonti i due testi corti (sprint 25 · T4.3; sprint 27 · T7.1, T7.2)', (lingua, fonti, segnaposto, invito) => {
         expect(testiDellaRicerca(lingua, fonti)).toStrictEqual({ searchPlaceholder: segnaposto, searchHint: invito });
     });
@@ -638,9 +638,9 @@ describe('rigaDellaNotifica', () => {
     type Lingua = 'it' | 'en' | 'es';
     /** Per ogni tipo con le frasi, e per lingua: la frase con «Giulia Bianchi» e «Lancio corso» (un tipo `….eliminata` non la ha), e quella con la sola Giulia. */
     const frasi: [tipo: string, perLingua: Record<Lingua, [conCosa: string | null, soloChi: string]>][] = [
-        ['com.zeiras.board.cartella.creata', { it: ['Giulia Bianchi ha creato la cartella «Lancio corso»', 'Giulia Bianchi ha creato una cartella'], en: ['Giulia Bianchi created the folder “Lancio corso”', 'Giulia Bianchi created a folder'], es: ['Giulia Bianchi ha creado la carpeta «Lancio corso»', 'Giulia Bianchi ha creado una carpeta'] }],
-        ['com.zeiras.board.cartella.modificata', { it: ['Giulia Bianchi ha modificato la cartella «Lancio corso»', 'Giulia Bianchi ha modificato una cartella'], en: ['Giulia Bianchi changed the folder “Lancio corso”', 'Giulia Bianchi changed a folder'], es: ['Giulia Bianchi ha modificado la carpeta «Lancio corso»', 'Giulia Bianchi ha modificado una carpeta'] }],
-        ['com.zeiras.board.cartella.eliminata', { it: [null, 'Giulia Bianchi ha eliminato una cartella'], en: [null, 'Giulia Bianchi deleted a folder'], es: [null, 'Giulia Bianchi ha eliminado una carpeta'] }],
+        ['com.zeiras.board.cartella.creata', { it: ['Giulia Bianchi ha creato l\'area «Lancio corso»', 'Giulia Bianchi ha creato un\'area'], en: ['Giulia Bianchi created the area “Lancio corso”', 'Giulia Bianchi created an area'], es: ['Giulia Bianchi ha creado el área «Lancio corso»', 'Giulia Bianchi ha creado un área'] }],
+        ['com.zeiras.board.cartella.modificata', { it: ['Giulia Bianchi ha modificato l\'area «Lancio corso»', 'Giulia Bianchi ha modificato un\'area'], en: ['Giulia Bianchi changed the area “Lancio corso”', 'Giulia Bianchi changed an area'], es: ['Giulia Bianchi ha modificado el área «Lancio corso»', 'Giulia Bianchi ha modificado un área'] }],
+        ['com.zeiras.board.cartella.eliminata', { it: [null, 'Giulia Bianchi ha eliminato un\'area'], en: [null, 'Giulia Bianchi deleted an area'], es: [null, 'Giulia Bianchi ha eliminado un área'] }],
         ['com.zeiras.board.board.creata', { it: ['Giulia Bianchi ha creato la board «Lancio corso»', 'Giulia Bianchi ha creato una board'], en: ['Giulia Bianchi created the board “Lancio corso”', 'Giulia Bianchi created a board'], es: ['Giulia Bianchi ha creado el tablero «Lancio corso»', 'Giulia Bianchi ha creado un tablero'] }],
         ['com.zeiras.board.board.modificata', { it: ['Giulia Bianchi ha modificato la board «Lancio corso»', 'Giulia Bianchi ha modificato una board'], en: ['Giulia Bianchi changed the board “Lancio corso”', 'Giulia Bianchi changed a board'], es: ['Giulia Bianchi ha modificado el tablero «Lancio corso»', 'Giulia Bianchi ha modificado un tablero'] }],
         ['com.zeiras.board.lista.creata', { it: ['Giulia Bianchi ha creato la lista «Lancio corso»', 'Giulia Bianchi ha creato una lista'], en: ['Giulia Bianchi created the list “Lancio corso”', 'Giulia Bianchi created a list'], es: ['Giulia Bianchi ha creado la lista «Lancio corso»', 'Giulia Bianchi ha creado una lista'] }],
@@ -925,7 +925,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
 
         expect(spagnole['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
         expect(spagnole['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Card changed');
-        expect(spagnole['notificationTitle.com.zeiras.board.cartella.creata']).toBe('Nueva carpeta');
+        expect(spagnole['notificationTitle.com.zeiras.board.cartella.creata']).toBe('Nueva área');
         expect(Object.keys(spagnole).sort()).toStrictEqual(Object.keys(frasiInglesi).sort());
 
         frasi.chiesti.length = 0;

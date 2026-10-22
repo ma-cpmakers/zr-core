@@ -1008,7 +1008,7 @@ cornice === null ? pagina : (
   `https://app.zeiras.com/notifiche`, come «Vedi tutte»: il suo tipo non è nel registro (dalla `v1.13.0` ci sono diciotto
   tipi del CRM: quelli di contatti, pipeline, note e aziende, e quelli di opportunità, attività e i quattro «assegnata»;
   dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri
-  tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
+  tipi di Project Management — board, liste, aree, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
   ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
   dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi
   stanno, senza un id; un altro tipo dei motivi di perdita, che il registro non ha, resta senza), le mancano gli id di ogni percorso del suo tipo, o il
@@ -1118,11 +1118,11 @@ cornice === null ? pagina : (
   cambia niente; per i suoi test vedi «Passare alla v2.8».
   Un risultato porta tipo, id e titolo e, dalla `v1.15.0`, il `contesto`: di che
   prodotto è lo dice il registro, dal tipo. Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede
-  (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le
+  (`board.scheda`), le board (`board.board`) e le aree (`board.cartelle`); del CRM i contatti (`crm.persona`), le
   aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`). Fino alla `v1.14.0` mostrava solo board e cartelle.
   Dalla `v1.17.0` la ricerca trova anche i membri del workspace (`workspace.membro`): non sono di un modulo, il backoffice
   li cerca in ogni workspace, anche senza moduli attivi, e nel registro stanno nella voce `home`. I
-  risultati stanno raggruppati per tipo, col nome del tipo nella lingua (Schede, Board, Cartelle, Contatti, Aziende,
+  risultati stanno raggruppati per tipo, col nome del tipo nella lingua (Schede, Board, Aree, Contatti, Aziende,
   Opportunità), il nome e il tono del prodotto e l'icona del tipo; i gruppi escono nell'ordine del backoffice, quello del
   primo risultato di ognuno, e dentro un gruppo i risultati nel suo ordine. Il gruppo dei membri è «Membri» (in inglese
   «Members», in spagnolo «Miembros»), con l'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il
@@ -1130,7 +1130,7 @@ cornice === null ? pagina : (
   caratteri che cambiano la direzione del testo, con a capo e caratteri di controllo ridotti a uno spazio; un risultato
   senza un titolo che si vede non si mostra. Sotto il titolo sta la seconda riga: i testi di
   `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un
-  contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e una cartella non hanno una
+  contatto, pipeline e fase di un'opportunità —, solo quelli che ci sono; un'azienda, una board e un'area non hanno una
   seconda riga; un tipo che il registro non ha non si mostra. Sotto il nome di un membro sta il suo ruolo, nella lingua
   della persona: «Proprietario», «Amministratore», «Membro» (in inglese «Owner», «Admin», «Member», in spagnolo
   «Propietario», «Administrador», «Miembro»). Il backoffice dà un codice (`proprietario`, `amministratore`, `membro`), e la
@@ -1142,8 +1142,8 @@ cornice === null ? pagina : (
   senza un terzo testo. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui id
   non ha la forma di un id (lettere, cifre, `-` e `_`, da 1 a 64): un id così non entra in un indirizzo. Scegliere un
   risultato apre l'indirizzo del suo prodotto, nel workspace dei risultati, seguito dal percorso del tipo: una board si apre
-  su `https://board.zeiras.com/w/<slug>/b/<id>`; una cartella non ha una pagina sua, e si apre sulla pagina del workspace
-  dove stanno le cartelle, `https://board.zeiras.com/w/<slug>`; una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un
+  su `https://board.zeiras.com/w/<slug>/b/<id>`; un'area non ha una pagina sua, e si apre sulla pagina del workspace
+  dove stanno le aree, `https://board.zeiras.com/w/<slug>`; una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un
   contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`,
   un'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`: gli stessi percorsi che aprono le notifiche. Dalla
   `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri: la
@@ -1164,13 +1164,17 @@ cornice === null ? pagina : (
   «Cerca nel workspace…» (in inglese «Search the workspace…», in spagnolo «Busca en el workspace…»). Non nomina le fonti: che
   cosa si può cercare lo dice l'invito che si legge prima di due caratteri. Dalla `v1.15.0` l'invito dice le fonti della
   ricerca nel workspace: i tipi di risorsa dei moduli che lì sono `attivo`, nell'ordine del registro, ognuno col nome da
-  elenco che ha nella lingua (`searchSource.<prodotto>.<tipo>`: «schede», «board», «cartelle», «contatti», «aziende»,
+  elenco che ha nella lingua (`searchSource.<prodotto>.<tipo>`: «schede», «board», «aree», «contatti», «aziende»,
   «opportunità»). Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`:
   «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi. L'invito le nomina
   tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`). Con Project Management attivo e il CRM no: «Cerca schede,
-  board, cartelle e membri: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, folders, and members: type at least
-  2 characters.», in spagnolo «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»); col CRM attivo
+  board, aree e membri: scrivi almeno 2 caratteri.» (in inglese «Search cards, boards, areas, and members: type at least
+  2 characters.», in spagnolo «Busca tarjetas, tableros, áreas y miembros: escribe al menos 2 caracteres.»); col CRM attivo
   l'invito nomina anche contatti, aziende e opportunità, prima dei membri. Un modulo `disponibile` o in arrivo non dà fonti.
+  Dalla `v2.25.1` il contenitore delle board si chiama «Area», come in zr-home e zr-board: «Aree» nel gruppo dei risultati e
+  «aree» nell'invito (in inglese «Areas» e «areas», in spagnolo «Áreas» e «áreas»), e «Nuova area», «{chi} ha creato l'area…»
+  nei titoli delle notifiche; le chiavi, gli id degli eventi (`com.zeiras.board.cartella.*`) e il tipo `board.cartelle` non
+  cambiano.
   Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least
   2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»). Dalla `v1.15.0` alla `v1.16.0` anche il
   segnaposto nominava le fonti, al più tre, e i membri non erano una fonte. Un frontend che ha i due testi nei suoi test li
