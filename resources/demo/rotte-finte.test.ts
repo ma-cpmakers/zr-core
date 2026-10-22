@@ -313,7 +313,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => rigaDellaNotifica(notifica, 'it'))).toEqual([
             { titolo: `${isolato('Bruno Neri')} ha modificato la scheda «${isolato('UAT Bozza')}»`, sotto: `3 volte, nella board «${isolato('UAT Lancio')}»` },
             { titolo: `${isolato('Bruno Neri')} ha creato la scheda «${isolato('UAT Brief')}»`, sotto: `Nella board «${isolato('UAT Lancio')}»` },
-            { titolo: `${isolato('Bruno Neri')} ha modificato la cartella «${isolato('UAT Clienti')}»`, sotto: '3 volte' },
+            { titolo: `${isolato('Bruno Neri')} ha modificato l'area «${isolato('UAT Clienti')}»`, sotto: '3 volte' },
             { titolo: 'Scheda modificata', sotto: 'UAT Piano' },
             { titolo: `${isolato('Bruno Neri')} ha modificato la lista «${isolato('UAT Da fare')}»`, sotto: `2 volte, nella board «${isolato('UAT oicnaL')}»` },
         ]);

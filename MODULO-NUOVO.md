@@ -436,7 +436,7 @@ legge quello: una voce è «Presto» se lo dice il registro (`presto`) o se il b
 
 Per la ricerca che c'è non scrivi niente: è della cornice, che chiede `POST /cornice/ricerca` —
 README, «Le rotte della cornice». Il prefisso `cornice/` è di zr-core: non lo usi per le tue rotte. Dalla `v1.15.0` la
-ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM (dalla `v1.17.0`
+ricerca trova schede, board e aree di Project Management e contatti, aziende e opportunità del CRM (dalla `v1.17.0`
 anche i membri del workspace, che non sono di un modulo): perché trovi
 **le tue** risorse servono due cose, tutte e due da chiedere («Prima di tutto»). A zr-core, il tipo di ogni risorsa nel
 registro (`risorse`: il tipo come lo dà il backoffice, l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e, se

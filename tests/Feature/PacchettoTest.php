@@ -4000,7 +4000,7 @@ it('il README dice, dalla v1.14.0, il titolo e il tipo della notifica a chi vien
     'il contratto la elenca dal 12/10/2026' => ['punto', 'Il contratto la elenca dal 12/10/2026: `app` `pm`, nei `dati` il solo `id` della scheda, e `risorsa_nome` è il titolo della scheda'],
     'dove si apre una scheda' => ['punto', 'Dalla `v1.14.0` una di una scheda di Project Management — nuova, modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`'],
     'una scheda eliminata no' => ['punto', 'una di una scheda eliminata no: la sua pagina non c\'è più'],
-    'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, cartelle, etichette, viste — non hanno una destinazione'],
+    'i tipi con una destinazione' => ['punto', 'dalla `v1.14.0` tre di Project Management: una scheda nuova, modificata o assegnata; una scheda eliminata e gli altri tipi di Project Management — board, liste, aree, etichette, viste — non hanno una destinazione'],
     'le righe del registro' => ['readme', 'Dalla `v1.14.0` ha le sue `notifiche` anche la voce di Project Management: una scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata (`board.scheda.assegnata`), tutte e tre con `/c/{id}`'],
 ]);
 
@@ -4150,9 +4150,9 @@ it('il README dice che dalla v1.17.0 il segnaposto della ricerca è uno solo e c
     'quante ne nominano' => ['ricerca', 'L\'invito le nomina tutte, unite come la lingua unisce un elenco (`Intl.ListFormat`)'],
     // Sprint 27 · T3: dalla `v1.17.0` i membri del workspace sono una fonte, nominata per ultima: l'invito finisce con loro, e i
     // due testi senza fonti non sono più quelli di un workspace senza moduli attivi.
-    'l\'invito in italiano' => ['ricerca', 'Con Project Management attivo e il CRM no: «Cerca schede, board, cartelle e membri: scrivi almeno 2 caratteri.»'],
-    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, folders, and members: type at least 2 characters.»'],
-    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, carpetas y miembros: escribe al menos 2 caracteres.»'],
+    'l\'invito in italiano' => ['ricerca', 'Con Project Management attivo e il CRM no: «Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.»'],
+    'in inglese' => ['ricerca', 'in inglese «Search cards, boards, areas, and members: type at least 2 characters.»'],
+    'in spagnolo' => ['ricerca', 'in spagnolo «Busca tarjetas, tableros, áreas y miembros: escribe al menos 2 caracteres.»'],
     'chi non dà fonti' => ['ricerca', 'Un modulo `disponibile` o in arrivo non dà fonti'],
     'senza fonti' => ['ricerca', 'I due testi senza fonti sono «Cerca…» (in inglese «Search…», in spagnolo «Busca…») e «Scrivi almeno 2 caratteri.» («Type at least 2 characters.», «Escribe al menos 2 caracteres.»)'],
     // Sprint 26 · T5.2 (lettura della PR #56, R9): l'elenco lo scrive il browser, e che cosa si legge dove non lo sa scrivere.
@@ -4266,14 +4266,14 @@ it('il README dice i sei tipi che la ricerca mostra dalla v1.15.0, i gruppi, la 
     expect($testi[$dove])->not->toBe('')
         ->and(str_contains($testi[$dove], $frase))->toBe(true);
 })->with([
-    'i sei tipi' => ['ricerca', 'Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede (`board.scheda`), le board (`board.board`) e le cartelle (`board.cartelle`); del CRM i contatti (`crm.persona`), le aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`)'],
-    'i gruppi e il loro ordine' => ['ricerca', 'col nome del tipo nella lingua (Schede, Board, Cartelle, Contatti, Aziende, Opportunità), il nome e il tono del prodotto e l\'icona del tipo; i gruppi escono nell\'ordine del backoffice, quello del primo risultato di ognuno'],
+    'i sei tipi' => ['ricerca', 'Dalla `v1.15.0` la cornice mostra sei tipi: di Project Management le schede (`board.scheda`), le board (`board.board`) e le aree (`board.cartelle`); del CRM i contatti (`crm.persona`), le aziende (`crm.organizzazione`) e le opportunità (`crm.trattativa`)'],
+    'i gruppi e il loro ordine' => ['ricerca', 'col nome del tipo nella lingua (Schede, Board, Aree, Contatti, Aziende, Opportunità), il nome e il tono del prodotto e l\'icona del tipo; i gruppi escono nell\'ordine del backoffice, quello del primo risultato di ognuno'],
     'la seconda riga' => ['ricerca', 'Sotto il titolo sta la seconda riga: i testi di `contesto` che il registro dice per quel tipo, uniti da « · » — board e lista di una scheda, azienda e ruolo di un contatto, pipeline e fase di un\'opportunità —, solo quelli che ci sono'],
-    'chi non ha la seconda riga' => ['ricerca', 'un\'azienda, una board e una cartella non hanno una seconda riga'],
+    'chi non ha la seconda riga' => ['ricerca', 'un\'azienda, una board e un\'area non hanno una seconda riga'],
     'dove si aprono' => ['ricerca', 'una scheda su `https://board.zeiras.com/w/<slug>/c/<id>`, un contatto su `https://crm.zeiras.com/w/<slug>/contatti/<id>`, un\'azienda su `https://crm.zeiras.com/w/<slug>/aziende/<id>`, un\'opportunità su `https://crm.zeiras.com/w/<slug>/opportunita/<id>`'],
     'una pagina spenta del CRM' => ['ricerca', 'se è spenta la pagina di quel risultato risponde 404, ed è una risposta del CRM'],
     'i test di un frontend: anche i due testi' => ['ricerca', 'Cambiano anche il segnaposto e l\'invito del campo, che non sono più i due testi fissi di prima (più sotto)'],
-    'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e cartelle di Project Management e contatti, aziende e opportunità del CRM'],
+    'la guida: che cosa trova' => ['guida', 'Dalla `v1.15.0` la ricerca trova schede, board e aree di Project Management e contatti, aziende e opportunità del CRM'],
     'la guida: chi nomina il nome da elenco' => ['passo 9', 'quello da elenco, minuscolo, che l\'invito della ricerca nomina dove il tuo modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi)'],
     'la guida: che cosa chiedere a zr-core' => ['guida', 'le chiavi di `contesto` che fanno la seconda riga del risultato) e due nomi in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo'],
     'la guida: che cosa chiedere a zr-backoffice' => ['guida', 'che la sua ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo'],
@@ -4337,7 +4337,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'nei test di un frontend: il solo CRM attivo' => ['ricerca', 'col solo CRM attivo il segnaposto era «Cerca contatti, aziende, opportunità…» e l\'invito «Cerca contatti, aziende e opportunità: scrivi almeno 2 caratteri.» (cerca `opportunità…` e `e opportunità:`; in inglese `opportunities…` e `and opportunities:`, in spagnolo `oportunidades…` e `y oportunidades:`)'],
     'nei test di un frontend: nessun modulo attivo' => ['ricerca', 'senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.»'],
     'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
-    'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le cartelle `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
+    'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le aree `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
     'la riga: il solo ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice'],
     'la riga: mai l\'email' => ['rotta', 'l\'email di un membro non esce mai'],
     'il registro: le risorse' => ['registro', 'Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com\'è nel backoffice (`board.scheda`), l\'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno la seconda riga del risultato'],
