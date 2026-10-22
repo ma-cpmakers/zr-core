@@ -83,15 +83,15 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 38,9 KB | 7,0 KB |
-| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 38,9 KB | 7,0 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,2 KB | 38,8 KB | 7,0 KB |
+| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 39,6 KB | 7,0 KB |
+| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 39,6 KB | 7,0 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,2 KB | 39,6 KB | 7,0 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,3 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,4 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
 con `import()` quando si apre la campanella, non quando si monta. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
@@ -105,7 +105,7 @@ d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione den
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
 il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (6), un'eccezione di zr-pm per tre voci (Decisione 15231). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.327 i rimedi, 1.004 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.450 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
@@ -614,7 +614,7 @@ cornice === null ? pagina : (
   l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
-  1,3 KB con gzip, con quelli dei due punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
+  1,4 KB con gzip, con quelli dei due punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
   a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
@@ -656,12 +656,24 @@ cornice === null ? pagina : (
   dell'intestazione è nascosto ai lettori di schermo (`aria-hidden`), perché un'immagine dentro un `role="menu"` non è
   ammessa (axe: `aria-required-children`); il nome e l'email restano scritti accanto. Con il selettore dei workspace o il
   menu Moduli aperto, la barra dei moduli dietro, già nascosta (`aria-hidden`), è anche `inert`: i suoi link non si
-  raggiungono col Tab (axe: `aria-hidden-focus`), e chiuso il selettore torna com'era. Il modulo non deve fare niente; un
+  raggiungono col Tab (axe: `aria-hidden-focus`), e chiuso il selettore torna com'era. Dalla `v2.25.0` lo è anche il piede della barra
+  laterale, con «Impostazioni»: prima il Tab ci finiva sopra dal selettore aperto, e ora dal selettore resta nel selettore o passa
+  alla pagina (il selettore non si chiude da solo quando il fuoco esce: si chiude con Esc, un clic o una scelta). Il modulo non deve fare niente; un
   test del modulo che cerca per ruolo l'avatar del menu del profilo non lo trova più, e uno che col selettore aperto
   raggiunge un link della barra col Tab va riletto. È provvisorio: il menu e la barra sono dell'`AppShell` del design system,
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il
   modulo cambi niente. Sta nello stesso pezzo a richiesta dei due punti sopra: se non arriva, il menu e la barra restano
   com'erano.
+- **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
+  un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
+  `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
+  modulo. È la `naviga` che la cornice ha quando si monta (la stessa dei suoi altri indirizzi: un frontend che naviga da sé la
+  passa già); una `naviga` data dopo, a cornice montata, non la sostituisce. Col tasto centrale o destro, con Ctrl, Cmd, Maiusc o
+  Alt, con un indirizzo di un'altra origine o con un clic già gestito da altri, il clic resta del browser. Il modulo non deve fare
+  niente; un test che clicca una voce della barra e guarda `location` o `naviga` va riletto. **È provvisorio**: finché l'`AppShell`
+  non ha una sua funzione per il clic su queste voci (è fra le richieste al design system) lo fa la cornice da sé, e quando
+  l'`AppShell` la porta questo si toglie senza che il modulo cambi niente. Sta nello stesso pezzo a richiesta dei punti sopra: se
+  non arriva, i clic restano del browser.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` porta a
   `<indirizzo>/w/<slug>`. Uno `disponibile` non è attivo lì, e dalla `v2.25.0` non porta più alla sua pagina «non attivo nel
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace, e per

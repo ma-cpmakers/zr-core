@@ -410,7 +410,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(rimedi).not.toBe('');
         // Sprint 65 · T2 (voce 2340): +99 byte per l'avatar del menu del profilo nascosto e la barra dei moduli `inert` (Decisione 14804
         // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_327);
+        // Sprint 69 · T3 e T4 (voci #2033 e #2344): +123 byte per i clic della barra laterale che passano da `naviga` e per il piede
+        // della barra laterale `inert` col selettore aperto (misura del 22/10; il tetto lo decide zr-pm).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_450);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
@@ -523,4 +525,17 @@ describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS
         expect(gzip(barra)).toBeLessThanOrEqual(420);
     });
 
+});
+
+// Sprint 69 · T3.3 (voce #2033). Il gestore dei clic sulla barra laterale (`naviga` per Dashboard, moduli e «Impostazioni») sta nel
+// pezzo dei rimedi, che la cornice chiede a cornice montata: nel JS d'ingresso non c'è il suo codice.
+describe('il gestore dei clic sulla barra laterale sta nel pezzo dei rimedi, mai nel JS d\'ingresso (sprint 69 · T3.3)', () => {
+    const DEL_GESTORE = '.zr-side a[href]';
+
+    it('nell\'app che prende solo la cornice e in quella che prende il layout non c\'è nel JS d\'ingresso; sta in un pezzo a richiesta solo, quello dei rimedi', () => {
+        for (const costruita of [soloCornice, conIlLayout]) {
+            expect(volte(costruita.js, DEL_GESTORE)).toBe(0);
+            expect(costruita.pezzi.filter((pezzo) => pezzo.includes(DEL_GESTORE)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([true]);
+        }
+    });
 });

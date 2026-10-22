@@ -8629,3 +8629,168 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         expect(barra()?.hasAttribute('inert')).toBe(false);
     });
 });
+
+// Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: senza
+// questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
+// la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei
+// rimedi, che la cornice chiede quando si monta.
+describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce #2033)', () => {
+    const laCornice = async (naviga: (indirizzo: string) => void) => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} naviga={naviga} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const collegamenti = () => tutti('.zr-shell > .zr-side a[href]') as HTMLAnchorElement[];
+    /** Quelli con un indirizzo vero: una voce «Presto» o senza indirizzo ha `#`, e l'`AppShell` il suo clic lo gestisce da sé. */
+    const conUnIndirizzo = () => collegamenti().filter((uno) => uno.getAttribute('href') !== '#');
+    /** Un clic sul collegamento, e se per il browser era già stato gestito quando è arrivato in cima (la navigazione vera non c'è in jsdom). */
+    const cliccato = (collegamento: Element, init: MouseEventInit = {}) => {
+        const resto = { visto: false, evento: new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }) };
+        const alla = (evento: Event) => {
+            resto.visto = evento.defaultPrevented;
+            evento.preventDefault();
+        };
+        window.addEventListener('click', alla);
+        collegamento.dispatchEvent(resto.evento);
+        window.removeEventListener('click', alla);
+
+        return resto;
+    };
+
+    it('T3.1 un clic semplice su Dashboard, su un modulo e su «Impostazioni», con un indirizzo di questa origine, chiama `naviga` e il browser non lo segue', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const tutte = conUnIndirizzo();
+        expect(tutte.length).toBeGreaterThanOrEqual(3);
+        expect(tutte.some((uno) => uno.closest('.zr-side-foot'))).toBe(true);
+
+        for (const [posto, collegamento] of tutte.entries()) {
+            collegamento.setAttribute('href', `${location.origin}/uat/${posto}?v=1#parte`);
+            naviga.mockClear();
+
+            expect(cliccato(collegamento).visto).toBe(true);
+            expect(naviga.mock.calls).toStrictEqual([[`${location.origin}/uat/${posto}?v=1#parte`]]);
+        }
+    });
+
+    it.each<[string, MouseEventInit]>([
+        ['il tasto centrale', { button: 1 }],
+        ['il tasto destro', { button: 2 }],
+        ['Ctrl', { ctrlKey: true }],
+        ['Cmd', { metaKey: true }],
+        ['Maiusc', { shiftKey: true }],
+        ['Alt', { altKey: true }],
+    ])('T3.2 con %s il clic resta del browser', async (_nome, init) => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [primo = null] = conUnIndirizzo();
+        primo?.setAttribute('href', `${location.origin}/uat`);
+
+        expect(cliccato(primo as Element, init).visto).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T3.2 un indirizzo di un\'altra origine, un indirizzo che non è un sito, e un clic già gestito da altri restano del browser', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [primo = null] = conUnIndirizzo();
+
+        for (const altrove of ['https://altra-origine.example/uat', 'mailto:uat@example.com', 'javascript:void(0)']) {
+            primo?.setAttribute('href', altrove);
+            expect(cliccato(primo as Element).visto).toBe(false);
+        }
+        primo?.setAttribute('href', `${location.origin}/uat`);
+        const gestore = (evento: Event) => evento.preventDefault();
+        document.body.addEventListener('click', gestore);
+        expect(cliccato(primo as Element).visto).toBe(true);
+        document.body.removeEventListener('click', gestore);
+
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T3.2 un collegamento fuori dalla barra laterale della cornice, o in un elemento della pagina con le stesse classi, non è suo', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const fuori = document.createElement('div');
+        fuori.innerHTML = `<div class="zr-side"><a href="${location.origin}/uat">in una barra della pagina</a></div>`;
+        uno('.zr-main')?.append(fuori);
+
+        expect(cliccato(fuori.querySelector('a') as Element).visto).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+        fuori.remove();
+    });
+});
+
+// Sprint 69 · T4 (voce #2344). Col selettore dei workspace o il menu Moduli aperti la barra dei moduli è nascosta e `inert`
+// (sprint 65), ma il piede della barra laterale, con «Impostazioni», restava una fermata del Tab.
+describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce #2344)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const piede = () => uno('.zr-shell > .zr-side > .zr-side-foot');
+
+    it('T4.1 e T4.2 aperto il selettore «Impostazioni» è inert, chiuso torna raggiungibile', async () => {
+        await laCornice();
+        const impostazioni = uno('.zr-side-foot a.zr-nav-item');
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+        expect(impostazioni?.closest('[inert]')).toBeNull();
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(piede()?.hasAttribute('inert')).toBe(true);
+        expect(impostazioni?.closest('[inert]')).not.toBeNull();
+
+        await clic(uno('.zr-ws-switch'));
+
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+        expect(impostazioni?.closest('[inert]')).toBeNull();
+    });
+
+    it('T4.1 lo stesso con il menu Moduli esteso', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="bookings" active="oggi" nav={[{ group: 'Agenda', items: [{ id: 'oggi', label: 'Oggi', icon: 'calendar' }] }]} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+
+        await clic(uno('.zr-product-switch'));
+        expect(piede()?.hasAttribute('inert')).toBe(true);
+
+        await clic(uno('.zr-product-switch'));
+        expect(piede()?.hasAttribute('inert')).toBe(false);
+    });
+
+    it('T4.1 un elemento della pagina con le stesse classi non diventa inert', async () => {
+        await laCornice();
+        const fuori = document.createElement('div');
+        fuori.innerHTML = '<div class="zr-side"><nav class="zr-nav"></nav><div class="zr-side-foot"></div></div>';
+        uno('.zr-main')?.append(fuori);
+
+        await act(async () => {
+            fuori.querySelector('nav')?.setAttribute('aria-hidden', 'true');
+        });
+
+        expect(fuori.querySelector('.zr-side-foot')?.hasAttribute('inert')).toBe(false);
+        fuori.remove();
+    });
+
+    it('T4.3 il selettore non si chiude quando il fuoco esce: resta aperto finché non arriva Esc, un clic o una scelta', async () => {
+        await laCornice();
+        await clic(uno('.zr-ws-switch'));
+        const voce = uno('.zr-shell > .zr-side .zr-ws-menu [role="option"], .zr-shell > .zr-side .zr-ws-menu button, .zr-shell > .zr-side .zr-ws-menu a') as HTMLElement | null;
+
+        await act(async () => {
+            voce?.focus();
+            (document.activeElement as HTMLElement | null)?.blur();
+            document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+            await prossimoGiro();
+        });
+
+        expect(voce).not.toBeNull();
+        expect(uno('.zr-ws-switch')?.getAttribute('aria-expanded')).toBe('true');
+        expect(piede()?.hasAttribute('inert')).toBe(true);
+    });
+});
