@@ -8634,7 +8634,7 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
 // questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
 // la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei
 // rimedi, che la cornice chiede quando si monta.
-describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce #2033)', () => {
+describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce 2033)', () => {
     const laCornice = async (naviga: (indirizzo: string) => void) => {
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} naviga={naviga} />);
         await act(async () => {
@@ -8724,7 +8724,7 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
 
 // Sprint 69 · T4 (voce #2344). Col selettore dei workspace o il menu Moduli aperti la barra dei moduli è nascosta e `inert`
 // (sprint 65), ma il piede della barra laterale, con «Impostazioni», restava una fermata del Tab.
-describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce #2344)', () => {
+describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce 2344)', () => {
     const laCornice = async () => {
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
         await act(async () => {
