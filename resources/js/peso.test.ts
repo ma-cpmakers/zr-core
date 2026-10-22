@@ -404,14 +404,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(1_351);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,3 KB (sprint 31 · T3.7; sprint 65 · T2)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,4 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
         // Sprint 65 · T2 (voce 2340): +99 byte per l'avatar del menu del profilo nascosto e la barra dei moduli `inert` (Decisione 14804
         // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
         // Sprint 69 · T3 e T4 (voci #2033 e #2344): +123 byte per i clic della barra laterale che passano da `naviga` e per il piede
-        // della barra laterale `inert` col selettore aperto (misura del 22/10; il tetto lo decide zr-pm).
+        // della barra laterale `inert` col selettore aperto (misura del 22/10; tetto approvato da zr-pm, nota `Decisione:` 15310 del progetto).
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_450);
     });
 

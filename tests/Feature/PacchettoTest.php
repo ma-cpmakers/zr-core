@@ -6291,6 +6291,21 @@ it('il README non dice più che una scheda con l\'email di prima riceve il 409 p
         ->and(str_contains($readme, 'Una scheda rimasta aperta con l\'email di prima ha la stessa impronta della persona'))->toBe(true);
 });
 
+// Sprint 69 · T3.4 e T2.5 (voci 2033 e 2210). Il README dice che i clic della barra laterale passano da `naviga` ed è provvisorio; la
+// guida e il README dicono dove porta un modulo `disponibile`: la pagina e il campo dei dati.
+it('il README dice che i clic della barra laterale passano da `naviga`, provvisorio, con la `naviga` che la cornice ha quando si monta; README e guida dicono la pagina dei moduli e il campo `moduli` (sprint 69 · T3.4, T2.5)', function () {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
+    $inizio = (int) strpos($readme, '- **I collegamenti della barra laterale passano da `naviga`**');
+    $punto = substr($readme, $inizio, (int) strpos($readme, "\n- **", $inizio + 10) - $inizio);
+
+    expect($inizio)->toBeGreaterThan(0)
+        ->and(paroleCheMancanoIn($punto, ['**È provvisorio**: finché l\'`AppShell`', 'È la `naviga` che la cornice ha quando si monta', 'la stessa dei suoi altri indirizzi']))->toBe([])
+        ->and(paroleCheMancanoIn(str_replace('**È provvisorio**', '**Definitivo**', $punto), ['**È provvisorio**']))->toBe(['**È provvisorio**'])
+        ->and(str_contains($readme, '/w/<slug>/impostazioni/moduli'))->toBeTrue()
+        ->and(str_contains($guida, '/w/<slug>/impostazioni/moduli') && str_contains($guida, 'campo `moduli` dei dati'))->toBeTrue();
+});
+
 // L'altra metà la dicono due casi di due file: questo, l'ultimo di qui, scrive un registro di prova e non lo toglie; il primo di
 // `RegistroTest.php`, il file che gira dopo, trova la parte server senza una copia in mano.
 

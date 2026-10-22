@@ -104,7 +104,7 @@ gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori d
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
-il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (6), un'eccezione di zr-pm per tre voci (Decisione 15231). Hanno
+il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.450 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -658,7 +658,7 @@ cornice === null ? pagina : (
   menu Moduli aperto, la barra dei moduli dietro, già nascosta (`aria-hidden`), è anche `inert`: i suoi link non si
   raggiungono col Tab (axe: `aria-hidden-focus`), e chiuso il selettore torna com'era. Dalla `v2.25.0` lo è anche il piede della barra
   laterale, con «Impostazioni»: prima il Tab ci finiva sopra dal selettore aperto, e ora dal selettore resta nel selettore o passa
-  alla pagina (il selettore non si chiude da solo quando il fuoco esce: si chiude con Esc, un clic o una scelta). Il modulo non deve fare niente; un
+  a un altro elemento della pagina — il pulsante del menu Moduli, la ricerca —, mai alla barra spenta (il selettore non si chiude da solo quando il fuoco esce: si chiude con Esc, un clic o una scelta). Il modulo non deve fare niente; un
   test del modulo che cerca per ruolo l'avatar del menu del profilo non lo trova più, e uno che col selettore aperto
   raggiunge un link della barra col Tab va riletto. È provvisorio: il menu e la barra sono dell'`AppShell` del design system,
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il
@@ -669,8 +669,10 @@ cornice === null ? pagina : (
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
   modulo. È la `naviga` che la cornice ha quando si monta (la stessa dei suoi altri indirizzi: un frontend che naviga da sé la
   passa già); una `naviga` data dopo, a cornice montata, non la sostituisce. Col tasto centrale o destro, con Ctrl, Cmd, Maiusc o
-  Alt, con un indirizzo di un'altra origine o con un clic già gestito da altri, il clic resta del browser. Il modulo non deve fare
-  niente; un test che clicca una voce della barra e guarda `location` o `naviga` va riletto. **È provvisorio**: finché l'`AppShell`
+  Alt, con un indirizzo di un'altra origine o con un clic già gestito da altri, il clic resta del browser. Con più cornici nel documento vale la
+  `naviga` dell'ultima montata. Il modulo non deve fare
+  niente; un test che clicca una voce della barra e guarda `location` o `naviga` va riletto. Se il frontend dà anche `onNavigate`,
+  una voce con un indirizzo li chiama tutti e due: `onNavigate` con l'id, come prima, e `naviga` con l'indirizzo al posto della ricarica. **È provvisorio**: finché l'`AppShell`
   non ha una sua funzione per il clic su queste voci (è fra le richieste al design system) lo fa la cornice da sé, e quando
   l'`AppShell` la porta questo si toglie senza che il modulo cambi niente. Sta nello stesso pezzo a richiesta dei punti sopra: se
   non arriva, i clic restano del browser.
@@ -1442,7 +1444,9 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
 - **Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici, una dentro l'altra: chi passa al layout la
   toglie da ogni pagina che lo usa.
 - **Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser
-  ricarica la pagina, e la cornice si rifà. Resta montata nelle visite di Inertia dentro il frontend.
+  ricarica la pagina, e la cornice si rifà, a meno che il frontend dia `naviga`: dalla `v2.25.0` un clic semplice con un
+  indirizzo di questa origine passa da lì (vedi «I collegamenti della barra laterale passano da `naviga`», qui sotto). Resta
+  montata nelle visite di Inertia dentro il frontend.
 - **L'area della pagina** è una `scroll-region` di Inertia: a ogni visita torna in cima, con Indietro torna dov'era, e una
   visita con `preserveScroll` la lascia dov'è. Con `flush` l'area non scorre: a scorrere è un elemento della pagina, che
   porta da sé l'attributo `scroll-region` se vuole lo stesso.

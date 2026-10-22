@@ -525,8 +525,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // con la lista vuota sarebbero tutti «Presto».
         items: registro.filter((voce) => !ridotta || voce === dashboard).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
-            // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta alla sua pagina, che dice
-            // che non è attivo nel workspace (linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
+            // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta a Impostazioni › Moduli
+            // se la persona può attivarlo, e senza collegamento se no (dalla `v2.25.0`; linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
             // registro qui non si legge: è per le pagine senza sessione, e un prodotto in anteprima si apre dove il backoffice lo dà.
             const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
