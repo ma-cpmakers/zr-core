@@ -506,11 +506,21 @@ describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS
         expect(volte(soloCornice.js, DELLA_BARRA)).toBe(0);
     });
 
-    it('il pezzo pesa, con gzip, al più 463 byte (misura di sprint 68 · T1)', () => {
+    // Patch v2.24.1. Con il JSX il pezzo importava `react/jsx-runtime`: nella build di un frontend che porta React dentro, quel modulo
+    // diventava un chunk a sé (612 byte con gzip), perché il pezzo lo chiede senza il resto di React. Misurato su zr-crm: +278 byte, non +110.
+    it('il pezzo non importa niente, nemmeno `react/jsx-runtime`: `createElement` glielo dà il layout (patch v2.24.1)', () => {
         const [barra = ''] = conIlLayout.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA));
 
         expect(barra).not.toBe('');
-        expect(gzip(barra)).toBeLessThanOrEqual(463);
+        expect(barra).not.toMatch(/\bimport\b[^()]*?\bfrom\s*[\x22\x27\x60]/);
+        expect(barra).not.toContain('react/jsx-runtime');
+    });
+
+    it('il pezzo pesa, con gzip, al più 420 byte (463 fino alla v2.24.0; misura della patch v2.24.1)', () => {
+        const [barra = ''] = conIlLayout.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA));
+
+        expect(barra).not.toBe('');
+        expect(gzip(barra)).toBeLessThanOrEqual(420);
     });
 
 });

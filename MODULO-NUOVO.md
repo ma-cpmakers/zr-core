@@ -384,8 +384,8 @@ e che cosa dai tu è in README, «La cornice». Le forme:
 - **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
   minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: le
   voci le dai al layout come props, `nav`, `active` e `onNavigate`: quelle che la pagina dà con `useCornice` qui non arrivano a
-  nessuno, perché la cornice non c'è, e senza props la barra ha il solo logo ed «Esci». Costa 110 byte con gzip nel JS d'ingresso
-  del tuo layout (README, «La cornice montata una volta sola»). Quando il design
+  nessuno, perché la cornice non c'è, e senza props la barra ha il solo logo ed «Esci». Costa 126 byte con gzip nel JS d'ingresso
+  del tuo layout con React fuori, +162 se la tua build porta React dentro, misurato su zr-crm (README, «La cornice montata una volta sola»). Quando il design
   system ha la sua barra minima questa si toglie, e con lei la tua pagina d'esito non cambia.
 
 **Prova**: scrivi due lettere nella ricerca, poi vai a un'altra pagina del modulo da una tua voce: il testo che hai

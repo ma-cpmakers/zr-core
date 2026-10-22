@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
 import { testi } from './lingue';
 import { segno } from './servizi';
@@ -163,7 +163,7 @@ function SenzaDati({ children, ...barra }: Pick<CorniceProps, 'nav' | 'active' |
     return (
         <>
             {/* Senza dati non c'è la lingua della persona: quella del documento, e i testi che mancano sono in inglese (come nella cornice). */}
-            {Barra && <Barra Button={Button} Logo={Logo} t={testi(document.documentElement.lang)} {...barra} />}
+            {Barra && <Barra h={createElement} Button={Button} Logo={Logo} t={testi(document.documentElement.lang)} {...barra} />}
             {children}
         </>
     );

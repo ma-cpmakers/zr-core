@@ -1,3 +1,4 @@
+import type { createElement } from 'react';
 import type { GruppoDiVoci } from './cornice';
 import type { TestiDellaCornice } from './lingue';
 import type { Button as Pulsante, Logo as Marchio } from './zeiras/componenti';
@@ -9,9 +10,13 @@ import type { Button as Pulsante, Logo as Marchio } from './zeiras/componenti';
 // quando c'è, si toglie e la sostituisce lui. Non è una seconda cornice (linea guida 15): niente moduli, workspace, ricerca né
 // notifiche.
 
-// Il pezzo non importa niente a valore: il layout gli dà i componenti e i testi che ha già nell'ingresso, e la build non spezza in
-// pezzi a parte il modulo dei componenti, le lingue e il registro (misurato: +550 byte per chiunque usi il layout).
+// Il pezzo non importa niente a valore: il layout gli dà i componenti, i testi e `createElement` (`h`) che ha già nell'ingresso, e
+// la build non spezza in pezzi a parte il modulo dei componenti, le lingue e il registro (misurato: +550 byte per chiunque usi il
+// layout). Neanche `react/jsx-runtime`: con il JSX il pezzo lo importa, e nella build di un frontend che porta React dentro quel
+// modulo diventa un chunk a sé, da 612 byte con gzip, perché il pezzo è l'unico a chiedere lui senza il resto di React (misurato su
+// zr-crm, v2.24.0: +278 byte invece dei 110 del solo pezzo). Per questo niente JSX in questo file.
 export interface BarraProps {
+    h: typeof createElement;
     Button: typeof Pulsante;
     Logo: typeof Marchio;
     t: Readonly<TestiDellaCornice>;
@@ -23,10 +28,11 @@ export interface BarraProps {
 
 // Gli stili sono in linea, coi soli token del design system per nome: il design system non ha una classe per questa barra, e il
 // pacchetto non aggiunge un foglio di stile per un pezzo provvisorio.
-export default function Barra({ Button, Logo, t, nav, active, onNavigate, onLogout }: BarraProps) {
-    return (
-        <header
-            style={{
+export default function Barra({ h, Button, Logo, t, nav, active, onNavigate, onLogout }: BarraProps) {
+    return h(
+        'header',
+        {
+            style: {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 'var(--space-3)',
@@ -34,19 +40,18 @@ export default function Barra({ Button, Logo, t, nav, active, onNavigate, onLogo
                 padding: '0 var(--space-4)',
                 background: 'var(--surface-raised)',
                 borderBottom: '1px solid var(--line)',
-            }}
-        >
-            <Logo />
-            <nav aria-label={t.nav} style={{ display: 'flex', flexGrow: 1, gap: 'var(--space-1)', minWidth: 0, overflowX: 'auto' }}>
-                {nav?.flatMap((gruppo) => gruppo.items).map((voce) => (
-                    <Button key={voce.id} size="sm" variant={voce.id === active ? 'secondary' : 'ghost'} icon={voce.icon} aria-current={voce.id === active ? 'page' : undefined} onClick={() => onNavigate?.(voce.id)}>
-                        {voce.label}
-                    </Button>
-                ))}
-            </nav>
-            <Button size="sm" variant="ghost" onClick={onLogout}>
-                {t.logout}
-            </Button>
-        </header>
+            },
+        },
+        h(Logo),
+        h(
+            'nav',
+            { 'aria-label': t.nav, style: { display: 'flex', flexGrow: 1, gap: 'var(--space-1)', minWidth: 0, overflowX: 'auto' } },
+            nav
+                ?.flatMap((gruppo) => gruppo.items)
+                .map((voce) =>
+                    h(Button, { key: voce.id, size: 'sm', variant: voce.id === active ? 'secondary' : 'ghost', icon: voce.icon, 'aria-current': voce.id === active ? 'page' : undefined, onClick: () => onNavigate?.(voce.id) }, voce.label),
+                ),
+        ),
+        h(Button, { size: 'sm', variant: 'ghost', onClick: onLogout }, t.logout),
     );
 }
