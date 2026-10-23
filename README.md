@@ -91,7 +91,7 @@ Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito.
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,4 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,6 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip): ciò che compone le righe delle notifiche e carica le frasi, che la cornice chiede
 con `import()` quando si apre la campanella, non quando si monta. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
@@ -99,13 +99,13 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.900 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.911 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
-il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.450 i rimedi, 1.004 la
+il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 11: il nome del contenuto della pagina nelle tre lingue, per il rimedio che lo mette nel giro del Tab (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15821). Hanno
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.620 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
@@ -595,7 +595,18 @@ cornice === null ? pagina : (
   il `main` ha `tabindex="-1"` finché tiene il fuoco. Un test del modulo sul primo figlio della cornice, su `:first-child`
   o sul primo elemento che prende il fuoco va riletto. È provvisorio: l'`AppShell` del design system
   non ha ancora il suo, e la cornice lo fa coi soli pezzi del design system (il `Button`, la classe `zr-visually-hidden`, i
-  token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente.
+  token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente. Dalla `v2.25.2`, arrivati i
+  rimedi di tastiera, il contenuto ha già una fermata del Tab sua (il punto qui sotto), e il salto la trova e non la cambia.
+- **Il contenuto che scorre è una fermata del Tab**: dalla `v2.25.2` il contenitore che scorre — il `main` dell'`AppShell`,
+  o col percorso il suo `div.zr-main-body` — ha `tabindex="0"`, e il `main` ha un nome, «Contenuto» (`aria-label`, nella
+  lingua della cornice). Chi usa la tastiera lo raggiunge col Tab e lo fa scorrere con le frecce o con PagGiù anche in una
+  pagina senza collegamenti né pulsanti, che prima non poteva scorrere (axe, `scrollable-region-focusable`). Col fuoco ha il
+  contorno del design system, 2 px `--focus` all'interno del bordo. Un `tabindex` che il modulo gli ha già dato resta
+  com'è, e un `main` del modulo fuori dall'`AppShell` non si tocca. Per chi aggiorna: c'è una fermata del Tab in più, dopo
+  la barra in alto e prima del primo elemento della pagina, e un clic su un punto del contenuto che non prende il fuoco lo
+  dà al contenitore; un test del modulo che conta le fermate del Tab, o che guarda l'elemento attivo dopo un clic sulla
+  pagina, va riletto. Sta nel pezzo dei rimedi, che arriva a cornice montata. È provvisorio: quando l'`AppShell` lo fa da
+  sé (è nelle richieste al design system) si toglie, senza che il modulo cambi niente.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna
@@ -614,7 +625,7 @@ cornice === null ? pagina : (
   l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
-  1,4 KB con gzip, con quelli dei due punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
+  1,6 KB con gzip, con quelli dei due punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
   a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab

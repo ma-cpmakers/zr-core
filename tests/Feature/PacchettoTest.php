@@ -5237,13 +5237,15 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.900 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.911 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // Patch v2.25.2 (voce #2394): +11 byte, eccezione di zr-pm (Decisione 15821).
+    'i pesi: gli 11 byte della v2.25.2' => ['pesi', 'e dalla `v2.25.2` altri 11: il nome del contenuto della pagina nelle tre lingue'],
     // Sprint 69 · T1 (voci #2151, #2210, #2033): +25 byte, eccezione di zr-pm (Decisione 15231).
     'i pesi: i 25 byte dello sprint 69' => ['pesi', 'e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte)'],
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.450 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.620 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 

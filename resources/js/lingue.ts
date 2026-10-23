@@ -74,6 +74,11 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      */
     skipToContent: string;
     /**
+     * Il nome del contenuto della pagina, il `main` dell'`AppShell`, che i rimedi mettono nel giro del Tab perché chi usa la
+     * tastiera lo faccia scorrere: l'`AppShell` non gli dà né il fuoco né un nome (provvisorio, dalla `v2.25.2`; README, «La cornice»).
+     */
+    mainContent: string;
+    /**
      * Il segnaposto del campo di ricerca quando la ricerca ha delle fonti nel workspace: uno solo, uguale in ogni workspace e in
      * ogni modulo, e dalla `v1.17.0` non le nomina (le dice l'invito, `searchHintSources`). `searchPlaceholder`, che è
      * dell'`AppShell`, è quello senza fonti: quale vale lo decide la cornice, come per `unreadOne` (`testiDellaRicerca`; README,

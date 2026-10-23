@@ -188,6 +188,7 @@ function barraInert(cambio: MutationRecord): void {
 
 /** La `naviga` della cornice montata: gliela dà la cornice quando chiede questo pezzo. */
 let naviga: ((indirizzo: string) => void) | undefined;
+let nomeDelContenuto = '';
 
 /**
  * I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: un clic semplice ricarica la pagina
@@ -204,10 +205,30 @@ function clicSullaBarra(clic: MouseEvent): void {
     }
 }
 
-/** La cornice dà la sua `naviga`: da qui in poi i clic sulla barra laterale passano da lì. */
-export function via(daUsare: (indirizzo: string) => void): void {
-    naviga = daUsare;
+/**
+ * Il contenuto della pagina nel giro del Tab: chi usa la tastiera non fa scorrere ciò che non prende il fuoco, quando dentro
+ * non c'è niente che lo prenda (axe, `scrollable-region-focusable`). Scorre il `main` dell'`AppShell`, o col percorso il suo
+ * `.zr-main-body`; il nome lo prende il `main`, nella lingua della cornice montata. Un `tabindex` che ha già resta com'è, e un `main` fuori dall'`AppShell` non si
+ * tocca. Provvisorio, finché l'`AppShell` non lo fa da sé (#2394).
+ */
+function contenuto(): void {
+    const main = document.querySelector('.zr-shell > main.zr-main');
+    const scorre = main?.querySelector(':scope > .zr-main-body') ?? main;
+
+    if (scorre && !scorre.hasAttribute('tabindex')) {
+        scorre.setAttribute('tabindex', '0');
+    }
+    // Il nome si riscrive ogni volta: una cornice montata di nuovo, in un'altra lingua, lo dà a `via` dopo il primo giro.
+    main?.setAttribute('aria-label', nomeDelContenuto);
 }
+
+/** La cornice dà la sua `naviga` e il nome del contenuto: da qui in poi i clic sulla barra laterale passano da lì. */
+export function via(daUsare: (indirizzo: string) => void, nome: string): void {
+    naviga = daUsare;
+    nomeDelContenuto = nome;
+    contenuto();
+}
+
 
 document.addEventListener('keydown', tabRestaDentro);
 document.addEventListener('click', clicSullaBarra);
@@ -229,6 +250,7 @@ new MutationObserver((cambi) => {
         });
     }
     fuocoAChiLoAveva();
+    contenuto();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
 
 // Un dialogo già aperto quando il modulo arriva.
@@ -236,3 +258,8 @@ if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
 }
 
+// Il contorno del fuoco del contenuto è quello del design system, in un foglio costruito: la CSP non ammette un `<style>`.
+const foglio = new CSSStyleSheet();
+
+foglio.replaceSync('.zr-shell :is(.zr-main,.zr-main-body):focus-visible{outline:2px solid var(--focus);outline-offset:-2px}');
+document.adoptedStyleSheets.push(foglio);

@@ -6940,6 +6940,19 @@ describe('«Salta al contenuto»', () => {
         <Cornice dati={{ ...dellaCornice, lingua }} onLogout={esciSenzaEffetto}>{figli}</Cornice>
     );
     const conIlFuoco = async (elemento: HTMLElement) => act(async () => elemento.focus());
+    /**
+     * La cornice in pagina, e il salto com'è senza il rimedio del contenuto (`rimedi.ts`, #2394): prima che il pezzo arrivi, o se
+     * non arriva. Arrivato, il pezzo dà al `main` un `tabindex` suo, e il salto lo trova già: è il caso del `tabindex` che il
+     * `main` ha già, e il rimedio ha i suoi casi più avanti.
+     */
+    const mostraSenzaRimedio = async (pagina: ReactElement) => {
+        await mostra(pagina);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        uno('main.zr-main')?.removeAttribute('tabindex');
+        uno('main.zr-main')?.removeAttribute('aria-label');
+    };
 
     it.each([
         ['it', 'Salta al contenuto'],
@@ -6948,7 +6961,7 @@ describe('«Salta al contenuto»', () => {
         // Una lingua che zr-core non ha: l'inglese.
         ['de', 'Skip to content'],
     ])('con la lingua "%s" è il primo elemento che prende il fuoco, prima della barra laterale e della barra in alto, e dice «%s» (T4.1)', async (lingua, testo) => {
-        await mostra(laPagina(lingua));
+        await mostraSenzaRimedio(laPagina(lingua));
 
         const primo = contenitore.querySelector(prendonoIlFuoco);
         expect(primo).toBe(pulsante());
@@ -6959,14 +6972,14 @@ describe('«Salta al contenuto»', () => {
     });
 
     it('senza il fuoco non si vede: il contenitore ha la classe del design system che nasconde, e nessuno stile suo; è il `Button` del design system, secondario e piccolo (T4.2)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
 
         expect([ilSalto().className, ilSalto().getAttribute('style')]).toStrictEqual(['zr-visually-hidden', null]);
         expect([pulsante().className, pulsante().type]).toStrictEqual(['zr-btn zr-btn-secondary zr-btn-sm', 'button']);
     });
 
     it('col fuoco si vede, in alto a sinistra sopra la cornice, coi soli token; quando il fuoco va altrove torna nascosto (T4.2)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
 
         await conIlFuoco(pulsante());
         expect(document.activeElement).toBe(pulsante());
@@ -6984,7 +6997,7 @@ describe('«Salta al contenuto»', () => {
         ['coi dati di sempre', dati],
         ['nello stato ridotto', ridotti],
     ])('%s un clic sul pulsante porta il fuoco al `main` dell\'`AppShell`, e ciò che viene dopo nel documento è della pagina, non della cornice; il pulsante torna nascosto (T4.3, T4.4)', async (_caso, dellaCornice) => {
-        await mostra(laPagina('it', undefined, dellaCornice));
+        await mostraSenzaRimedio(laPagina('it', undefined, dellaCornice));
         const main = uno('main') as HTMLElement;
         // Il `main` è dell'`AppShell`: prima del salto la cornice non gli ha scritto niente.
         expect([main.getAttribute('tabindex'), main.id, main.getAttribute('style')]).toStrictEqual([null, '', null]);
@@ -7002,7 +7015,7 @@ describe('«Salta al contenuto»', () => {
     });
 
     it('il salto si rifà: ogni volta il `main` prende il fuoco col suo `tabindex`, e lo perde quando il fuoco va altrove (T4.3; lettura della PR #61, R4)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
 
         for (const _volta of [1, 2]) {
             await conIlFuoco(pulsante());
@@ -7017,7 +7030,7 @@ describe('«Salta al contenuto»', () => {
     // Lettura della PR #61, R4. Col `tabindex` lasciato sul `main`, dopo un salto ogni clic su un punto della pagina che non
     // prende il fuoco lo darebbe al `main`: il Tab dopo ripartirebbe dal primo elemento del contenuto e non dal punto del clic.
     it('il `tabindex` sta sul `main` solo finché ha il fuoco: quando il fuoco passa a un elemento della pagina il `main` torna com\'era, senza attributi della cornice (lettura della PR #61, R4)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
         const main = uno('main') as HTMLElement;
 
         await conIlFuoco(pulsante());
@@ -7031,7 +7044,7 @@ describe('«Salta al contenuto»', () => {
     // Seconda lettura della PR #61, N5. Il `blur` arriva al `main` anche quando è la finestra a perdere il fuoco, e lì il `main`
     // resta l'elemento attivo: senza l'attributo, al ritorno non terrebbe più il fuoco, e il Tab dopo rifarebbe la barra.
     it('un `blur` che arriva al `main` mentre è ancora l\'elemento attivo non toglie il `tabindex`; lo toglie quello di quando il fuoco passa altrove (seconda lettura della PR #61, N5)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
         const main = uno('main') as HTMLElement;
 
         await conIlFuoco(pulsante());
@@ -7047,7 +7060,7 @@ describe('«Salta al contenuto»', () => {
     });
 
     it('quando il fuoco ha lasciato il `main` il gestore del salto non c\'è più: un `tabindex` che il modulo gli dà dopo resta (seconda lettura della PR #61, N5)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
         const main = uno('main') as HTMLElement;
 
         await conIlFuoco(pulsante());
@@ -7062,7 +7075,7 @@ describe('«Salta al contenuto»', () => {
     });
 
     it('un `tabindex` che il `main` ha già non è della cornice: il salto non lo cambia e non lo toglie (lettura della PR #61, R4)', async () => {
-        await mostra(laPagina());
+        await mostraSenzaRimedio(laPagina());
         const main = uno('main') as HTMLElement;
         main.setAttribute('tabindex', '0');
 
@@ -7083,7 +7096,7 @@ describe('«Salta al contenuto»', () => {
         const delFrontend = document.createElement('main');
         metti(delFrontend);
         try {
-            await mostra(laPagina());
+            await mostraSenzaRimedio(laPagina());
             const main = uno('main.zr-main') as HTMLElement;
             // Il caso non è vuoto: il primo `main` del documento è quello del frontend.
             expect(document.querySelector('main')).toBe(delFrontend);
@@ -7102,7 +7115,7 @@ describe('«Salta al contenuto»', () => {
         const delFrontend = document.createElement('main');
         document.body.prepend(delFrontend);
         try {
-            await mostra(laPagina());
+            await mostraSenzaRimedio(laPagina());
             uno('.zr-shell')?.classList.remove('zr-shell');
 
             await conIlFuoco(pulsante());
@@ -7116,7 +7129,7 @@ describe('«Salta al contenuto»', () => {
     });
 
     it('con una pagina senza niente che prende il fuoco il fuoco sta comunque sul `main` (T4.4)', async () => {
-        await mostra(laPagina('it', <p>Niente da fare qui.</p>, ridotti));
+        await mostraSenzaRimedio(laPagina('it', <p>Niente da fare qui.</p>, ridotti));
 
         await conIlFuoco(pulsante());
         await act(async () => pulsante().click());
@@ -8792,5 +8805,85 @@ describe('col selettore aperto il piede della barra laterale non è una fermata 
         expect(voce).not.toBeNull();
         expect(uno('.zr-ws-switch')?.getAttribute('aria-expanded')).toBe('true');
         expect(piede()?.hasAttribute('inert')).toBe(true);
+    });
+});
+
+describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2.25.2, voce 2394)', () => {
+    /** La cornice in pagina, coi rimedi di tastiera già arrivati: la cornice li chiede quando si monta. */
+    const laCornice = async (elemento: ReactElement) => {
+        await mostra(elemento);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const main = () => uno('.zr-shell > main.zr-main');
+
+    it.each([
+        ['it', 'Contenuto'],
+        ['es', 'Contenido'],
+        ['en', 'Content'],
+        // Una lingua che zr-core non ha: l'inglese.
+        ['de', 'Content'],
+    ])('2394.1 senza percorso scorre il `main`: con la lingua "%s" è nel giro del Tab e si chiama «%s»', async (lingua, nome) => {
+        await laCornice(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
+
+        expect([main()?.getAttribute('tabindex'), main()?.getAttribute('aria-label')]).toStrictEqual(['0', nome]);
+    });
+
+    it('2394.1 col percorso scorre il `.zr-main-body`: la fermata è lui, il nome resta al `main`, che non è una seconda fermata', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={[{ label: 'Board' }, { label: 'Sprint' }]}><p>Niente da fare qui.</p></Cornice>);
+
+        expect([main()?.hasAttribute('tabindex'), main()?.getAttribute('aria-label'), uno('.zr-shell > main.zr-main > .zr-main-body')?.getAttribute('tabindex')]).toStrictEqual([false, 'Contenuto', '0']);
+    });
+
+    it('2394.2 un `tabindex` che il frontend dà al `main` resta com\'è, anche ai cambi della pagina che vengono dopo', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Prima pagina.</p></Cornice>);
+        main()?.setAttribute('tabindex', '-1');
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Seconda pagina.</p></Cornice>);
+
+        expect([main()?.textContent, main()?.getAttribute('tabindex')]).toStrictEqual(['Seconda pagina.', '-1']);
+    });
+
+    it('2394.2 «Salta al contenuto» porta il fuoco al `main` che è già una fermata, e non gli cambia il `tabindex`', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Nuova scheda</button></Cornice>);
+        const salto = contenitore.firstElementChild?.querySelector('button') as HTMLButtonElement;
+
+        await act(async () => salto.focus());
+        await act(async () => salto.click());
+        expect([document.activeElement, main()?.getAttribute('tabindex')]).toStrictEqual([main(), '0']);
+
+        await act(async () => (uno('#della-pagina') as HTMLElement).focus());
+        expect(main()?.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('2394.3 un `main` del frontend fuori dall\'`AppShell` non si tocca', async () => {
+        const delFrontend = document.createElement('main');
+        delFrontend.className = 'zr-main';
+        document.body.prepend(delFrontend);
+        try {
+            await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+            expect([delFrontend.hasAttribute('tabindex'), delFrontend.hasAttribute('aria-label'), main()?.getAttribute('tabindex')]).toStrictEqual([false, false, '0']);
+        } finally {
+            delFrontend.remove();
+        }
+    });
+
+    it('2394.1 una cornice montata di nuovo, coi rimedi già arrivati, ha il suo `main` nel giro del Tab', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const primo = main();
+        // Dentro un altro elemento React la rifà da capo: un `main` nuovo, senza attributi.
+        await laCornice(<div><Cornice dati={dati} onLogout={esciSenzaEffetto} /></div>);
+
+        expect([main() === primo, main()?.getAttribute('tabindex')]).toStrictEqual([false, '0']);
+    });
+
+    it('2394.1 il contorno del fuoco del contenuto è quello del design system, in un foglio costruito (la CSP non ammette un `<style>`)', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        // jsdom legge male `outline` con un `var()` dentro: qui il selettore, lo spostamento e il token; il contorno disegnato lo
+        // prova la UAT in Chromium.
+        const regole = document.adoptedStyleSheets.flatMap((foglio) => [...foglio.cssRules] as CSSStyleRule[]).filter((regola) => regola.selectorText?.includes('zr-main-body'));
+        expect(regole.map((regola) => [regola.selectorText, regola.style.outlineOffset, regola.cssText.includes('var(--focus)')])).toStrictEqual([['.zr-shell :is(.zr-main,.zr-main-body):focus-visible', '-2px', true]]);
     });
 });
