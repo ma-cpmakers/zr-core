@@ -105,7 +105,7 @@ d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione den
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
 il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue, che il rimedio che lo mette nel giro del Tab riceve anche a ogni cambio di lingua (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15823). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.665 i rimedi, 1.004 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.666 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
 
@@ -611,7 +611,10 @@ cornice === null ? pagina : (
   fermata del Tab in più, dopo la barra in alto (e dopo il percorso, se c'è), e un clic sul contenuto gli dà il fuoco; un
   test del modulo che conta le fermate del Tab in una pagina senza elementi che prendono il fuoco va riletto. Sta nel pezzo
   dei rimedi, che arriva a cornice montata. È provvisorio: quando l'`AppShell` lo fa da sé (è nelle richieste al design
-  system) si toglie, senza che il modulo cambi niente.
+  system) si toglie, senza che il modulo cambi niente. Tre limiti noti, che chiudono con l'`AppShell` corretto: un campo
+  nascosto, un titolo con `tabindex="-1"` o un pulsante spento contano come qualcosa che prende il fuoco, e allora la fermata
+  non c'è; in una pagina `flush` il `main` non ha il nome; dove il browser non conosce `:focus-visible` (Safari prima della
+  15.4, Chrome prima dell'86, Firefox prima dell'85) il contorno non c'è e il fuoco sul contenuto scrive un errore in console.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna

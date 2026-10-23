@@ -225,12 +225,13 @@ function contenuto(): void {
     }
     if (fermata !== scorre) {
         fermata?.removeAttribute('tabindex');
+        // Anche il contorno: se la fermata se ne va col fuoco, il `focusout` dopo non è più suo.
+        fermata?.removeAttribute('style');
         scorre?.setAttribute('tabindex', '0');
         fermata = scorre ?? null;
     }
-    if (nomeDelContenuto) {
-        main?.setAttribute('aria-label', nomeDelContenuto);
-    }
+    // Prima di `via`, che arriva subito dopo il pezzo, il nome è vuoto per un giro.
+    main?.setAttribute('aria-label', nomeDelContenuto);
 }
 
 /**

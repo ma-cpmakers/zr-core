@@ -412,9 +412,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
         // Sprint 69 · T3 e T4 (voci #2033 e #2344): +123 byte per i clic della barra laterale che passano da `naviga` e per il piede
         // della barra laterale `inert` col selettore aperto (misura del 22/10; tetto approvato da zr-pm, nota `Decisione:` 15310 del progetto).
-        // Patch v2.25.2 (voce #2394): +215 byte per il contenuto che scorre nel giro del Tab, col suo nome e col contorno del fuoco
-        // del design system, dopo la revisione della PR #121 (misura del 23/10: 1.662; tetto approvato da zr-pm, nota `Decisione:` 15823).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_665);
+        // Patch v2.25.2 (voce #2394): +216 byte per il contenuto che scorre nel giro del Tab, col suo nome e col contorno del fuoco
+        // del design system, dopo le due letture della PR #121 (misura del 23/10: 1.666; tetto approvato da zr-pm, nota `Decisione:` 15827).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_666);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

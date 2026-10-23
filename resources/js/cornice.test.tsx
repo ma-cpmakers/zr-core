@@ -8942,4 +8942,21 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         await act(async () => (main() as HTMLElement).focus());
         expect(main()?.getAttribute('style')).toBe('');
     });
+
+    // Seconda lettura della PR #121, N1: la fermata se ne va mentre ha il fuoco, e il `focusout` dopo non è più suo.
+    it('2394.1 se la fermata se ne va mentre ha il contorno, il contorno se ne va con lei', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Carico…</p></Cornice>);
+        const matches = Element.prototype.matches;
+        vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
+            return selettore === ':focus-visible' || matches.call(this, selettore);
+        });
+        await act(async () => (main() as HTMLElement).focus());
+        expect(main()?.style.outlineOffset).toBe('-2px');
+
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><a href="/schede">Schede</a></Cornice>);
+        await act(async () => (uno('a[href="/schede"]') as HTMLElement).focus());
+
+        expect([main()?.hasAttribute('tabindex'), main()?.getAttribute('style') ?? null]).toStrictEqual([false, null]);
+    });
+
 });
