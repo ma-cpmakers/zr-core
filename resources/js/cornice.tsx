@@ -864,10 +864,13 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona);
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga), () => undefined);
 
         return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
     }, []);
+    // Il pezzo arriva una volta; `via` gli ridà il nome del contenuto a ogni cambio di lingua, anche senza una cornice nuova.
+    useLayoutEffect(() => {
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent), () => undefined);
+    }, [t.mainContent]);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice

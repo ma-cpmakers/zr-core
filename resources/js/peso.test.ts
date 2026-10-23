@@ -79,7 +79,7 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * Sprint 61 · T1 (voce #2150): altri 7 byte, perché ogni richiesta porta l'impronta della cornice che la fa e non quella
  * dell'ultima montata (zr-pm, 15/10/2026, nota 13713 del progetto: la stessa eccezione, per questa sola correzione).
  */
-const TETTO_DELL_INGRESSO = 17_900;
+const TETTO_DELL_INGRESSO = 17_918;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -356,9 +356,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.900 byte: la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49) e del 22/10 (+25), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.918 byte: la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25) e del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_900);
+        expect(TETTO_DELL_INGRESSO).toBe(17_918);
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
@@ -370,11 +370,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.900 byte, non più quelli di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.918 byte, non più quelli di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '17.900 byte') > 0, volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.918 byte') > 0, volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {
@@ -404,7 +404,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(1_351);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,4 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,7 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -412,7 +412,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // di zr-pm: il tetto dei rimedi sale dei byte di C1 e C2, dopo aver stretto il codice nuovo).
         // Sprint 69 · T3 e T4 (voci #2033 e #2344): +123 byte per i clic della barra laterale che passano da `naviga` e per il piede
         // della barra laterale `inert` col selettore aperto (misura del 22/10; tetto approvato da zr-pm, nota `Decisione:` 15310 del progetto).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_450);
+        // Patch v2.25.2 (voce #2394): +216 byte per il contenuto che scorre nel giro del Tab, col suo nome e col contorno del fuoco
+        // del design system, dopo le due letture della PR #121 (misura del 23/10: 1.666; tetto approvato da zr-pm, nota `Decisione:` 15827).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_666);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
@@ -495,7 +497,7 @@ describe('i pesi che il README dice sono quelli misurati qui, e la sua ricetta d
 
 // Sprint 68 · T1 (voce #1399, Decisione 15190 di zr-pm). La barra minima di chi non ha i dati della cornice è PROVVISORIA (il
 // design system non ha la sua) e un pezzo a richiesta: il layout la chiede con `import()` solo quando la cornice non c'è. Nel
-// JS d'ingresso non c'è il suo codice, e l'app che prende solo la cornice (il tetto di 17.900) non cambia.
+// JS d'ingresso non c'è il suo codice, e l'app che prende solo la cornice (il tetto di 17.918) non cambia.
 describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS d\'ingresso (sprint 68 · T1.4)', () => {
     it('nell\'app che prende il layout il suo codice non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello della campanella, della ricerca né dei rimedi', () => {
         expect(volte(conIlLayout.js, DELLA_BARRA)).toBe(0);
