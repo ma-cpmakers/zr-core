@@ -205,24 +205,47 @@ function clicSullaBarra(clic: MouseEvent): void {
     }
 }
 
+/** La fermata che il rimedio ha dato al contenuto: si sposta quando cambia ciò che scorre, e si toglie quando non serve più. */
+let fermata: Element | null = null;
+
 /**
  * Il contenuto della pagina nel giro del Tab: chi usa la tastiera non fa scorrere ciò che non prende il fuoco, quando dentro
  * non c'è niente che lo prenda (axe, `scrollable-region-focusable`). Scorre il `main` dell'`AppShell`, o col percorso il suo
- * `.zr-main-body`; il nome lo prende il `main`, nella lingua della cornice montata. Un `tabindex` che ha già resta com'è, e un `main` fuori dall'`AppShell` non si
- * tocca. Provvisorio, finché l'`AppShell` non lo fa da sé (#2394).
+ * `.zr-main-body`; `is-flush` non scorre. La fermata c'è solo finché dentro non c'è niente che prende il fuoco: con un
+ * pulsante o un collegamento il Tab ci arriva già, e un clic nel contenuto non riporta il Tab all'inizio della pagina. Un
+ * `tabindex` che ha già resta com'è, e un `main` fuori dall'`AppShell` non si tocca; il nome lo prende il `main`, nella lingua
+ * che la cornice dà a `via`, e il contorno del fuoco lo dà `contorno`. Provvisorio, finché l'`AppShell` non lo fa da sé (#2394).
  */
 function contenuto(): void {
-    const main = document.querySelector('.zr-shell > main.zr-main');
-    const scorre = main?.querySelector(':scope > .zr-main-body') ?? main;
+    const main = document.querySelector('.zr-shell > main.zr-main:not(.is-flush)');
+    let scorre = main?.querySelector(':scope > .zr-main-body') ?? main;
 
-    if (scorre && !scorre.hasAttribute('tabindex')) {
-        scorre.setAttribute('tabindex', '0');
+    if (scorre?.querySelector(PRENDONO_IL_FUOCO) || (scorre !== fermata && scorre?.hasAttribute('tabindex'))) {
+        scorre = null;
     }
-    // Il nome si riscrive ogni volta: una cornice montata di nuovo, in un'altra lingua, lo dà a `via` dopo il primo giro.
-    main?.setAttribute('aria-label', nomeDelContenuto);
+    if (fermata !== scorre) {
+        fermata?.removeAttribute('tabindex');
+        scorre?.setAttribute('tabindex', '0');
+        fermata = scorre ?? null;
+    }
+    if (nomeDelContenuto) {
+        main?.setAttribute('aria-label', nomeDelContenuto);
+    }
 }
 
-/** La cornice dà la sua `naviga` e il nome del contenuto: da qui in poi i clic sulla barra laterale passano da lì. */
+/**
+ * Il contorno del fuoco del contenuto, quando il fuoco arriva da tastiera: quello del design system, coi soli token, sull'elemento
+ * (nessuno stile iniettato: il `bundle.css` non ha una regola per lui), sulla sola fermata del rimedio. Il fuoco che esce lo toglie.
+ */
+function contorno(evento: FocusEvent): void {
+    const scorre = evento.target as HTMLElement;
+
+    if (scorre === fermata) {
+        scorre.style.cssText = evento.type === 'focusin' && scorre.matches(':focus-visible') ? 'outline:2px solid var(--focus);outline-offset:-2px' : '';
+    }
+}
+
+/** La cornice dà la sua `naviga` e il nome del contenuto (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
 export function via(daUsare: (indirizzo: string) => void, nome: string): void {
     naviga = daUsare;
     nomeDelContenuto = nome;
@@ -232,6 +255,8 @@ export function via(daUsare: (indirizzo: string) => void, nome: string): void {
 
 document.addEventListener('keydown', tabRestaDentro);
 document.addEventListener('click', clicSullaBarra);
+document.addEventListener('focusin', contorno);
+document.addEventListener('focusout', contorno);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;
@@ -257,9 +282,3 @@ new MutationObserver((cambi) => {
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
 }
-
-// Il contorno del fuoco del contenuto è quello del design system, in un foglio costruito: la CSP non ammette un `<style>`.
-const foglio = new CSSStyleSheet();
-
-foglio.replaceSync('.zr-shell :is(.zr-main,.zr-main-body):focus-visible{outline:2px solid var(--focus);outline-offset:-2px}');
-document.adoptedStyleSheets.push(foglio);

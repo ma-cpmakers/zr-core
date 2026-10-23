@@ -8845,14 +8845,14 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
     });
 
     it('2394.2 «Salta al contenuto» porta il fuoco al `main` che è già una fermata, e non gli cambia il `tabindex`', async () => {
-        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Nuova scheda</button></Cornice>);
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
         const salto = contenitore.firstElementChild?.querySelector('button') as HTMLButtonElement;
 
         await act(async () => salto.focus());
         await act(async () => salto.click());
         expect([document.activeElement, main()?.getAttribute('tabindex')]).toStrictEqual([main(), '0']);
 
-        await act(async () => (uno('#della-pagina') as HTMLElement).focus());
+        await act(async () => salto.focus());
         expect(main()?.getAttribute('tabindex')).toBe('0');
     });
 
@@ -8878,12 +8878,68 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         expect([main() === primo, main()?.getAttribute('tabindex')]).toStrictEqual([false, '0']);
     });
 
-    it('2394.1 il contorno del fuoco del contenuto è quello del design system, in un foglio costruito (la CSP non ammette un `<style>`)', async () => {
-        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+    // Revisione della PR #121, rilievo 1: l'`AppShell` tiene lo stesso `main` e ne cambia i figli.
+    it('2394.1 il percorso che compare e sparisce sposta la fermata fra il `main` e il `.zr-main-body`: mai due fermate', async () => {
+        const corpo = () => uno('.zr-shell > main.zr-main > .zr-main-body');
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Elenco.</p></Cornice>);
+        const stesso = main();
+        expect(main()?.getAttribute('tabindex')).toBe('0');
 
-        // jsdom legge male `outline` con un `var()` dentro: qui il selettore, lo spostamento e il token; il contorno disegnato lo
-        // prova la UAT in Chromium.
-        const regole = document.adoptedStyleSheets.flatMap((foglio) => [...foglio.cssRules] as CSSStyleRule[]).filter((regola) => regola.selectorText?.includes('zr-main-body'));
-        expect(regole.map((regola) => [regola.selectorText, regola.style.outlineOffset, regola.cssText.includes('var(--focus)')])).toStrictEqual([['.zr-shell :is(.zr-main,.zr-main-body):focus-visible', '-2px', true]]);
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={percorso}><p>Dettaglio.</p></Cornice>);
+        expect([main() === stesso, main()?.hasAttribute('tabindex'), corpo()?.getAttribute('tabindex')]).toStrictEqual([true, false, '0']);
+
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Elenco.</p></Cornice>);
+        expect([main()?.getAttribute('tabindex'), corpo()]).toStrictEqual(['0', null]);
+    });
+
+    it('2394.1 una pagina `flush` non scorre: nessuna fermata', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} flush><p>Board.</p></Cornice>);
+
+        expect([main()?.className, main()?.hasAttribute('tabindex')]).toStrictEqual(['zr-main is-flush', false]);
+    });
+
+    // Revisione della PR #121, rilievo 3: con una fermata sul contenuto un clic nel testo gli darebbe il fuoco, e il Tab dopo
+    // ripartirebbe dall'inizio della pagina (il difetto R4 della PR #61).
+    it('2394.1 con un pulsante nella pagina il contenuto non è una fermata; tolto il pulsante lo diventa, e rimesso non lo è più', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button">Nuova scheda</button></Cornice>);
+        expect(main()?.hasAttribute('tabindex')).toBe(false);
+
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
+        expect(main()?.getAttribute('tabindex')).toBe('0');
+
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><a href="/schede">Schede</a></Cornice>);
+        expect(main()?.hasAttribute('tabindex')).toBe(false);
+    });
+
+    // Revisione della PR #121, rilievo 4: la stessa persona cambia lingua e la cornice non si rimonta.
+    it('2394.1 cambiata la lingua senza una cornice nuova, il nome del contenuto è nella lingua nuova', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        expect(main()?.getAttribute('aria-label')).toBe('Contenuto');
+
+        await laCornice(<Cornice dati={{ ...dati, lingua: 'en' }} onLogout={esciSenzaEffetto} />);
+        expect([uno('.zr-visually-hidden button')?.textContent, main()?.getAttribute('aria-label')]).toStrictEqual(['Skip to content', 'Content']);
+    });
+
+    it('2394.1 col fuoco da tastiera il contenuto ha il contorno del design system, coi soli token sull\'elemento; col fuoco da un clic no, e quando il fuoco esce non l\'ha più', async () => {
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
+        const salto = contenitore.firstElementChild?.querySelector('button') as HTMLButtonElement;
+        // jsdom non sa da dove arriva il fuoco: qui lo dice il caso, in Chromium lo prova la UAT.
+        const daTastiera = (si: boolean) => {
+            const matches = Element.prototype.matches;
+            return vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
+                return selettore === ':focus-visible' ? si : matches.call(this, selettore);
+            });
+        };
+
+        const conLaTastiera = daTastiera(true);
+        await act(async () => (main() as HTMLElement).focus());
+        expect([main()?.style.outlineOffset, main()?.style.cssText.includes('var(--focus)')]).toStrictEqual(['-2px', true]);
+        await act(async () => salto.focus());
+        expect(main()?.getAttribute('style')).toBe('');
+
+        conLaTastiera.mockRestore();
+        daTastiera(false);
+        await act(async () => (main() as HTMLElement).focus());
+        expect(main()?.getAttribute('style')).toBe('');
     });
 });
