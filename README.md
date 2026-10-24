@@ -113,9 +113,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 44,3 KB | 8,5 KB |
-| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 44,3 KB | 8,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 44,3 KB | 8,5 KB |
+| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 45,0 KB | 8,5 KB |
+| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 45,0 KB | 8,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 45,0 KB | 8,5 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -138,9 +138,11 @@ sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta 
 il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue, che il rimedio che lo mette nel giro del Tab riceve anche a ogni cambio di lingua (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15823), e dalla `v2.25.3` altri 16: la riga del registro che apre il contatto dalla notifica del credito sotto zero (un'eccezione di zr-pm, Decisione 16110; se una patch libera byte nel registro, il tetto riscende). Dalla `v3.0.0` è sceso
 di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.969 byte la campanella, 1.666 i rimedi, 1.004 la
-ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
-notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.666 i rimedi, 1.004 la
+ricerca. Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Dalla `v2.0.0` l'eccezione per i
+rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
+pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
@@ -863,15 +865,23 @@ cornice === null ? pagina : (
   del CRM: il preavviso di una scadenza, al suo responsabile, «Una scadenza si avvicina» (`crm.scadenza.in_preavviso`), e
   il riepilogo del giorno, quando lo stesso giorno i preavvisi sono più di cinque, «Scadenze in preavviso oggi»
   (`crm.scadenze.riepilogo_del_giorno`). Non sono eventi, e il loro `tipo` non ha `com.zeiras.` davanti. Con loro i
-  titoli sono 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze. Il
+  titoli erano 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze. Il
   24/10/2026 il contratto pubblicato non le ha ancora: i nomi li ha fissati il backoffice, e nei `dati` il preavviso porta
   l'`id` della scadenza e `persona_id` o `organizzazione_id`, il riepilogo il numero. Nella `v2.25.4` un clic su tutte e
   due apre la pagina delle notifiche. Dalla `v3.0.0` il preavviso apre il contatto,
   `https://crm.zeiras.com/w/<slug>/contatti/<persona_id>`, altrimenti l'azienda (`…/aziende/<organizzazione_id>`), altrimenti
   la pagina delle scadenze (`…/scadenze`), e il riepilogo la pagina delle scadenze: l'`id` della scadenza non entra
   nell'indirizzo, perché una scadenza non ha una pagina sua. Dal 24/10/2026 il contratto ha anche i tipi di evento di preventivi,
-  acquisti, consumi, rate, pagamenti e catalogo del CRM: nessuno genera notifiche, e nessuno ha un titolo. Di che prodotto è
-  lo dice `app`: se è il codice di un prodotto del registro, la notifica
+  acquisti, consumi, rate, pagamenti e catalogo del CRM: nessuno genera notifiche, e nessuno ha un titolo. Dalla
+  `v3.2.2` ha un titolo anche la notifica che arriva al responsabile del contatto, o ai proprietari del workspace,
+  quando un cliente chiede una modifica dal link di un preventivo: «Un cliente ha chiesto una modifica al preventivo»
+  (`crm.preventivo.richiesta`). Non è un evento, e il suo `tipo` non ha `com.zeiras.` davanti; gli eventi dei
+  preventivi, compreso `com.zeiras.crm.preventivo.visto`, la prima apertura del link, non generano notifiche. Con lei i
+  titoli sono 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e
+  la richiesta sul preventivo. Nei `dati` porta l'`id` del preventivo e `trattativa_id`, l'opportunità o `null`, mai il
+  testo del cliente, e non ha chi l'ha fatto. Un clic apre il preventivo,
+  `https://crm.zeiras.com/w/<slug>/preventivi/<id>`. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
@@ -949,7 +959,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantasette tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantotto tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
@@ -1429,7 +1439,9 @@ non è nel percorso. Dalla `v2.25.3` la voce del CRM ha anche il credito di un p
 non è nel percorso. Dalla `v3.0.0` il CRM ha anche le due notifiche delle scadenze: il preavviso
 (`crm.scadenza.in_preavviso`), con `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`, altrimenti
 `/scadenze`, e il riepilogo del giorno (`crm.scadenze.riepilogo_del_giorno`), con `/scadenze`; l'`id` della scadenza, che i
-`dati` portano, non è nel percorso. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+`dati` portano, non è nel percorso. Dalla `v3.2.2` il CRM ha anche la richiesta di un cliente sul preventivo
+(`crm.preventivo.richiesta`), con `/preventivi/{id}`: apre il preventivo, e `trattativa_id`, che i `dati` portano, non è
+nel percorso. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com'è nel
 backoffice (`board.scheda`), l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno

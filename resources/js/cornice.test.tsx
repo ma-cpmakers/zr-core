@@ -2552,8 +2552,8 @@ describe('il pannello delle notifiche', () => {
             ids: Object.fromEntries([...percorso.matchAll(/\{([a-z_]+)\}/g)].map(([, chiave = '']) => [chiave, `uat-${chiave.replace('_', '-')}`])),
         }));
 
-        // Sprint 70 · T2: 25 righe, più le due delle Scadenze.
-        expect(righe).toHaveLength(27);
+        // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
+        expect(righe).toHaveLength(28);
         expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
         // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.

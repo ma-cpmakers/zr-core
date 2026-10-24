@@ -1829,6 +1829,13 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'l\'evento del credito sotto zero, con `com.zeiras.` davanti' => ['crm', 'com.zeiras.crm.acquisto.scoperto'],
     'il credito sotto zero, in una notifica di Project Management' => ['pm', 'crm.acquisto.scoperto'],
     'il credito sotto zero, in una notifica che non è di un\'app' => [null, 'crm.acquisto.scoperto'],
+    // v3.2.2: la richiesta sul preventivo apre il preventivo solo col tipo della notifica, senza `com.zeiras.` davanti, e nella
+    // voce del CRM; gli eventi dei preventivi non generano notifiche, e quello della prima apertura non ha una destinazione.
+    'la richiesta sul preventivo, con `com.zeiras.` davanti' => ['crm', 'com.zeiras.crm.preventivo.richiesta'],
+    'la richiesta sul preventivo, in una notifica di Project Management' => ['pm', 'crm.preventivo.richiesta'],
+    'la richiesta sul preventivo, in una notifica che non è di un\'app' => [null, 'crm.preventivo.richiesta'],
+    'la riga della cronologia della richiesta, senza `crm.` davanti' => ['crm', 'preventivo.richiesta'],
+    'la prima apertura di un preventivo' => ['crm', 'com.zeiras.crm.preventivo.visto'],
     'un tipo di domani' => ['crm', 'com.zeiras.crm.uat.domani'],
     'un tipo del registro con un pezzo in più in fondo' => ['crm', 'com.zeiras.crm.persona.creata.v2'],
     'un tipo del registro con un pezzo in più davanti' => ['crm', 'x.com.zeiras.crm.persona.creata'],
@@ -2577,6 +2584,33 @@ it('GET /cornice/notifiche dà al credito sotto zero il solo `persona_id` del co
         ->and(substr_count($corpo, 'uat-acquisto'))->toBe(0)
         ->and(substr_count($corpo, 'uat-persona-2'))->toBe(0)
         ->and(substr_count($corpo, 'persona_id'))->toBe(1);
+});
+
+// v3.2.2 (parole e pagina di zr-crm, Decisione 16510 del #95). La notifica della modifica che un cliente chiede dal link di un
+// preventivo porta nei `dati` l'id del preventivo e quello dell'opportunità, o `null`, mai il testo. Apre il preventivo,
+// `/preventivi/{id}`: al browser va il solo `id`, e quello dell'opportunità resta qui.
+
+it('GET /cornice/notifiche dà alla richiesta sul preventivo il solo `id` del preventivo: `trattativa_id` resta qui, anche quando è `null`, senza `id` gli `ids` sono vuoti e `trattativa_id` non prende il suo posto, e l\'evento con `com.zeiras.` davanti non ne ha; `idsDellaNotifica` dà lo stesso (v3.2.2)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n4', ['id' => 'uat-preventivo-1', 'trattativa_id' => 'uat-opportunita-1'], 'crm.preventivo.richiesta'),
+        notificaConDati('uat-n3', ['id' => 'uat-preventivo-2', 'trattativa_id' => null], 'crm.preventivo.richiesta'),
+        notificaConDati('uat-n2', ['trattativa_id' => 'uat-opportunita-2'], 'crm.preventivo.richiesta'),
+        notificaConDati('uat-n1', ['id' => 'uat-preventivo-3', 'trattativa_id' => 'uat-opportunita-3'], 'com.zeiras.crm.preventivo.richiesta'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['id' => 'uat-preventivo-1'], ['id' => 'uat-preventivo-2'], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Due senza una destinazione: `ids` vuoto, ma un oggetto. Delle opportunità, e del preventivo che non si apre, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-opportunita'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-preventivo-3'))->toBe(0)
+        ->and(substr_count($corpo, 'trattativa_id'))->toBe(0);
 });
 
 it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {

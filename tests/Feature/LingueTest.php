@@ -170,12 +170,13 @@ function tipiDiNotificaDelContratto(): array
  * Dallo sprint 26 (T6) anche quella a chi viene menzionato in un commento, di Project Management: non è un evento.
  * Dalla v2.25.3 anche quella del CRM sul credito di un pacchetto sotto zero: non è un evento nemmeno lei.
  * Dalla v2.25.4 anche le due delle scadenze del CRM, il preavviso e il riepilogo del giorno: non sono eventi.
+ * Dalla v3.2.2 anche quella del CRM sulla modifica che un cliente chiede dal link di un preventivo: non è un evento.
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo())];
 }
 
 /**
@@ -328,6 +329,21 @@ function titoliDelleNotificheDelleScadenze(): array
     ];
 }
 
+/**
+ * Il titolo della notifica che il backoffice manda al responsabile del contatto (o ai proprietari del workspace) quando un
+ * cliente chiede una modifica dal link di un preventivo (#2391 di zr-backoffice), con le parole di zr-crm (Decisione 16510 del
+ * #95). Non è un evento: il `tipo` arriva senza `com.zeiras.` davanti; gli eventi dei preventivi non generano notifiche. Scritto
+ * qui, non letto dai file delle lingue (v3.2.2).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoloDellaNotificaDellaRichiestaSulPreventivo(): array
+{
+    return [
+        'crm.preventivo.richiesta' => ['it' => 'Un cliente ha chiesto una modifica al preventivo', 'en' => 'A client asked for changes to the quote', 'es' => 'Un cliente ha pedido un cambio en el presupuesto'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -436,6 +452,11 @@ function frasiDelleNotificheConChi(): array
         'crm.scadenze.riepilogo_del_giorno' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who}: scadenze in preavviso oggi', 'en' => '{who}: deadlines coming up today', 'es' => '{who}: vencimientos en aviso hoy'],
+        ],
+        // v3.2.2: la richiesta sul preventivo la fa un cliente, non un membro, e la frase con chi c'è come per ogni tipo; il nome no.
+        'crm.preventivo.richiesta' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who}: un cliente ha chiesto una modifica al preventivo', 'en' => '{who}: a client asked for changes to the quote', 'es' => '{who}: un cliente ha pedido un cambio en el presupuesto'],
         ],
         'com.zeiras.crm.persona.creata' => [
             'chiECosa' => null,
@@ -802,14 +823,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 47 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i nove che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero e le due delle scadenze —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 48 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i dieci che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(47)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(48)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -971,6 +992,25 @@ it('le due notifiche delle scadenze hanno il titolo della tabella nella lingua, 
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $testi['notificationTitle.crm.scadenza.in_preavviso'] ?? null, true))->toBe(['notificationTitle.crm.scadenza.in_preavviso'])
         ->and(array_keys($deiTitoli, $testi['notificationTitle.crm.scadenze.riepilogo_del_giorno'] ?? null, true))->toBe(['notificationTitle.crm.scadenze.riepilogo_del_giorno']);
+})->with(['it', 'en', 'es']);
+
+it('la notifica della richiesta sul preventivo ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: l\'evento col prefisso, la riga della cronologia e un pezzo del tipo restano senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (v3.2.2)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoloDellaNotificaDellaRichiestaSulPreventivo();
+    $titolo = $testi['notificationTitle.crm.preventivo.richiesta'] ?? null;
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['crm.preventivo.richiesta'])
+        ->and($titolo)->toBe($tabella['crm.preventivo.richiesta'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.crm.preventivo.richiesta', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.preventivo.richiesta', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.crm.preventivo', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.com.zeiras.crm.preventivo.visto', $testi))->toBe(false)
+        // Una parola per ogni `not->toContain`: con due si ferma alla prima che manca, e una sola nel contratto passerebbe.
+        ->and(tipiDiNotificaDelContratto())->not->toContain('crm.preventivo.richiesta')
+        ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.crm.preventivo.richiesta')
+        // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
+        ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.crm.preventivo.richiesta']);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1416,10 +1456,10 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(75)
+    expect($attese)->toHaveCount(76)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(47)
+        ->and($conLeFrasi)->toHaveCount(48)
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
@@ -1428,6 +1468,8 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
         // v2.25.4: nemmeno le due delle scadenze; il contratto non dà il nome di ciò che scade.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenza.in_preavviso')
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenze.riepilogo_del_giorno')
+        // v3.2.2: nemmeno la richiesta sul preventivo; il contratto non dà il nome né il numero del preventivo.
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.preventivo.richiesta')
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);

@@ -4044,7 +4044,7 @@ it('il README non dice più che il contratto non elenca la notifica a chi viene 
         ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
 });
 
-it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44 o 45, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3; sprint 36 · T5.4; v2.25.3; v2.25.4)', function () {
+it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45 o 47, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3; sprint 36 · T5.4; v2.25.3; v2.25.4)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
 
@@ -4058,7 +4058,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44 o 45, 
         ->and(substr_count($readme, 'i titoli erano 44'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 45'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 45'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 47'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 47'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 47'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 48'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4392,7 +4394,7 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 47, 'es' => 47, 'it' => 47])
+        ->and(array_map('count', $titoli))->toBe(['en' => 48, 'es' => 48, 'it' => 48])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
@@ -4441,10 +4443,10 @@ it('il README dice, dalla v2.25.3, il titolo, il tipo e la chiave della notifica
 ]);
 
 // v2.25.4 (parole di zr-crm, Decisioni 16179 e 16181 del #95). Le due notifiche delle scadenze del CRM, il preavviso e il
-// riepilogo del giorno, hanno un titolo: il README lo dice dove dice il credito sotto zero, coi titoli che ora sono 47, ciò che
+// riepilogo del giorno, hanno un titolo: il README lo dice dove dice il credito sotto zero, coi titoli che allora erano 47, ciò che
 // il contratto pubblicato non ha ancora e dove porta un clic finché il registro non ha le loro righe.
 
-it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle scadenze, che non sono eventi, che con loro i titoli sono 47, che il contratto pubblicato il 24/10/2026 non le ha, che cosa porteranno nei dati e che un clic apre la pagina delle notifiche', function (string $frase) {
+it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle scadenze, che non sono eventi, che con loro i titoli erano 47, che il contratto pubblicato il 24/10/2026 non le ha, che cosa porteranno nei dati e che un clic apre la pagina delle notifiche', function (string $frase) {
     $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
 
     expect($testo)->not->toBe('')
@@ -4452,10 +4454,37 @@ it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle s
 })->with([
     'i titoli e i tipi' => ['Dalla `v2.25.4` hanno un titolo anche le due notifiche delle scadenze del CRM: il preavviso di una scadenza, al suo responsabile, «Una scadenza si avvicina» (`crm.scadenza.in_preavviso`), e il riepilogo del giorno, quando lo stesso giorno i preavvisi sono più di cinque, «Scadenze in preavviso oggi» (`crm.scadenze.riepilogo_del_giorno`)'],
     'senza `com.zeiras.` davanti' => ['Non sono eventi, e il loro `tipo` non ha `com.zeiras.` davanti'],
-    'quanti sono i titoli' => ['Con loro i titoli sono 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze'],
+    // v3.2.2: con la richiesta sul preventivo i titoli sono 48, e i 47 passano al passato.
+    'quanti erano i titoli' => ['Con loro i titoli erano 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze'],
     'il contratto' => ['Il 24/10/2026 il contratto pubblicato non le ha ancora: i nomi li ha fissati il backoffice'],
     'i dati' => ['nei `dati` il preavviso porta l\'`id` della scadenza e `persona_id` o `organizzazione_id`, il riepilogo il numero'],
     'dove si apre' => ['Nella `v2.25.4` un clic su tutte e due apre la pagina delle notifiche'],
+]);
+
+// v3.2.2 (parole e pagina di zr-crm, Decisione 16510 del #95). La notifica della modifica che un cliente chiede dal link di un
+// preventivo ha un titolo e apre il preventivo: il README lo dice nel punto «Le notifiche», coi titoli che ora sono 48, e nelle
+// righe del registro, col tetto della campanella che sale di 16 byte.
+
+it('il README dice, dalla v3.2.2, il titolo e il tipo della notifica della richiesta sul preventivo, che non è un evento e che gli eventi dei preventivi non generano notifiche, che con lei i titoli sono 48, che cosa porta nei dati e che un clic apre il preventivo', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo e il tipo' => ['Dalla `v3.2.2` ha un titolo anche la notifica che arriva al responsabile del contatto, o ai proprietari del workspace, quando un cliente chiede una modifica dal link di un preventivo: «Un cliente ha chiesto una modifica al preventivo» (`crm.preventivo.richiesta`)'],
+    'senza `com.zeiras.` davanti' => ['Non è un evento, e il suo `tipo` non ha `com.zeiras.` davanti; gli eventi dei preventivi, compreso `com.zeiras.crm.preventivo.visto`, la prima apertura del link, non generano notifiche'],
+    'quanti sono i titoli' => ['Con lei i titoli sono 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo'],
+    'i dati' => ['Nei `dati` porta l\'`id` del preventivo e `trattativa_id`, l\'opportunità o `null`, mai il testo del cliente, e non ha chi l\'ha fatto'],
+    'dove si apre' => ['Un clic apre il preventivo, `https://crm.zeiras.com/w/<slug>/preventivi/<id>`'],
+]);
+
+it('il README dice, dalla v3.2.2, la riga del registro della richiesta sul preventivo, e che il tetto della campanella è salito di 16 byte per lei, con la Decisione di zr-pm', function (string $frase) {
+    $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect(substr_count($readme, $frase))->toBe(1);
+})->with([
+    'la riga del registro' => ['Dalla `v3.2.2` il CRM ha anche la richiesta di un cliente sul preventivo (`crm.preventivo.richiesta`), con `/preventivi/{id}`: apre il preventivo, e `trattativa_id`, che i `dati` portano, non è nel percorso'],
+    'il tetto della campanella' => ['Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il preventivo dalla richiesta di un cliente (un\'eccezione di zr-pm, Decisione 16510)'],
 ]);
 
 // Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
@@ -5306,7 +5335,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.969 byte la campanella, 1.666 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.666 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
@@ -5542,7 +5571,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantasette tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantotto tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
