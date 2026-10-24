@@ -762,8 +762,8 @@ cornice === null ? pagina : (
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace.
   Agli altri, dalla `v3.2.3`, la voce non si mostra: chi non può attivare un modulo non lo vede spento, come nella griglia
   della Home (regola #2209; fino alla `v3.2.2` era una voce senza collegamento, senza «Presto»: il design system non ha un
-  segno «non attivo», riga 78 delle richieste). Restano due voci: quella del modulo aperto, perché senza la sua voce
-  l'`AppShell` toglierebbe tutto il menu Moduli, e un prodotto «Presto» del registro, che non è spento ma futuro. È «Presto», senza
+  segno «non attivo», riga 78 delle richieste). Restano due tipi di voce: quella del modulo aperto, perché senza la sua voce
+  l'`AppShell` toglierebbe tutto il menu Moduli, e quelle dei prodotti «Presto» del registro, che non sono spenti ma futuri. È «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.

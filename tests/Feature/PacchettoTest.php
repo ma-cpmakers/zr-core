@@ -5275,7 +5275,7 @@ it('il README dice `moduli` nei dati, a chi arriva e che non costa una lettura, 
         ->and(substr_count($readme, 'porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace'))->toBe(1)
         ->and(substr_count($guida, 'la voce di un modulo `disponibile` porta a Impostazioni › Moduli per chi amministra, e dalla `v3.2.3` agli altri non si mostra, tranne sulla pagina del modulo stesso'))->toBe(1)
         ->and(substr_count($guida, 'o a nessuna parte per chi non amministra'))->toBe(0)
-        ->and(substr_count($readme, 'Restano due voci: quella del modulo aperto, perché senza la sua voce l\'`AppShell` toglierebbe tutto il menu Moduli'))->toBe(1);
+        ->and(substr_count($readme, 'Restano due tipi di voce: quella del modulo aperto, perché senza la sua voce l\'`AppShell` toglierebbe tutto il menu Moduli'))->toBe(1);
 });
 
 it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le chiede, che cosa si vede se non arrivano e che cosa serve nei test di un frontend (sprint 30 · T1.10)', function (string $dove, string $frase) {
