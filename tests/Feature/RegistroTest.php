@@ -542,7 +542,7 @@ it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro d
 // si vede nella pagina della cosa più specifica a cui è attaccata — l'opportunità, poi il contatto, poi l'azienda (sprint 23 ·
 // T3; fino alla `v1.12.0` solo il contatto, `persona_id`) —, anche quando è stata eliminata.
 
-it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventitré, col tipo intero: un contatto apre la sua pagina, e la sua pagina apre anche il credito sotto zero di un pacchetto, col `persona_id` dei `dati` e non l\'`id` dell\'acquisto (v2.25.3), una pipeline le sue impostazioni, un motivo di perdita le Impostazioni del CRM, senza un id (sprint 41 · T2.1), un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
+it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquattro, col tipo intero: un contatto apre la sua pagina, e la sua pagina apre anche il credito sotto zero di un pacchetto, col `persona_id` dei `dati` e non l\'`id` dell\'acquisto (v2.25.3), la richiesta di un cliente sul preventivo apre il preventivo, `/preventivi/{id}` (v3.2.2), una pipeline le sue impostazioni, un motivo di perdita le Impostazioni del CRM, senza un id (sprint 41 · T2.1), un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
     $voci = registroDeiProdotti();
     $dellaNota = ['percorso' => '/opportunita/{trattativa_id}', 'altrimenti' => ['/contatti/{persona_id}', '/aziende/{organizzazione_id}']];
 
@@ -580,8 +580,11 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventitré,
             // poi le scadenze; il riepilogo del giorno le scadenze. L'`id` della scadenza non entra nel percorso.
             ['tipo' => 'crm.scadenza.in_preavviso', 'percorso' => '/contatti/{persona_id}', 'altrimenti' => ['/aziende/{organizzazione_id}', '/scadenze']],
             ['tipo' => 'crm.scadenze.riepilogo_del_giorno', 'percorso' => '/scadenze'],
+            // v3.2.2 (zr-crm, Decisione 16510 del #95): la modifica chiesta da un cliente dal link apre il preventivo; l'id
+            // dell'opportunità, che può essere `null`, non entra nel percorso.
+            ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
-        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0.
+        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
         ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
@@ -606,7 +609,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
         ])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
-        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(23);
+        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(24);
 });
 
 it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ognuno con le regole di `percorso` e nessuno ripetuto, non accetta un\'altra chiave accanto, e sa che un tipo `crm.…` è del CRM e uno `board.…` di Project Management (sprint 23 · T3.6; sprint 24 · T3.5)', function () {
