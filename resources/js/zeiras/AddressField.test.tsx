@@ -61,7 +61,7 @@ describe('il modulo di AddressField è quello che il bundle genera (sprint 72 ·
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
         const senzaCommento = bundle.replace('  /* ---------- AddressField: ', '  /* ---------- Indirizzi: ');
 
-        expect(() => aParte(leggi(senzaCommento), 'AddressField')).toThrow('il commento «/* ---------- AddressField: …», da cui comincia il blocco di AddressField, c\'è 0 volte');
+        expect(() => aParte(leggi(senzaCommento), 'AddressField')).toThrow('il commento «/* ---------- AddressField: …», che segna il blocco di AddressField, c\'è 0 volte');
     });
 });
 

@@ -143,7 +143,33 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
         const senzaCommento = bundle.replace('  /* ---------- MentionField: ', '  /* ---------- Menzioni: ');
 
-        expect(() => aParte(leggi(senzaCommento), 'MentionField')).toThrow('il commento «/* ---------- MentionField: …», da cui comincia il blocco di MentionField, c\'è 0 volte');
+        expect(() => aParte(leggi(senzaCommento), 'MentionField')).toThrow('il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
+    });
+
+    // Lettura della PR #128 (rilievi 1-4): la risalita dalla funzione prende solo righe sue, e dove non sa dire di chi è una
+    // riga si ferma invece di prenderla o perderla in silenzio.
+    const RIGA_DI_USEID = "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }";
+    it.each<[string, (testo: string) => string]>([
+        ['una `var` con uno stato attaccata sopra le etichette, che MentionField non usa', (testo) => testo.replace('\n  var MENTION_LABELS = ', '\n  var cache = new Map();\n  var MENTION_LABELS = ')],
+        ['la funzione di AddressField chiusa senza riga vuota prima delle etichette', (testo) => testo.replace('  }\n\n  var MENTION_LABELS = ', '  }\n  var MENTION_LABELS = ')],
+    ])('con %s il modulo è lo stesso', (_caso, cambia) => {
+        const cambiato = cambia(bundle);
+
+        expect(cambiato).not.toBe(bundle);
+        expect(aParte(leggi(cambiato), 'MentionField')).toBe(generato);
+    });
+
+    it.each<[string, string, (testo: string) => string, string]>([
+        ['una `var` con uno stato fra i due commenti, che AddressField usa', 'AddressField', (testo) => testo.replace("  /* ---------- AddressField: ", "  var SHARED = React.createContext(null);\n  /* ---------- AddressField: ").replace("    var id = useId('adr');", "    var id = useId('adr'); var ctx = React.useContext(SHARED);"), 'AddressField usa «SHARED», dichiarato alla riga'],
+        ['una `var` con uno stato attaccata sopra le etichette, che usano AddressField e un altro', 'AddressField', (testo) => testo.replace('\n  var ADDRESS_LABELS = ', '\n  var SHARED = React.createContext(null);\n  var ADDRESS_LABELS = ').replace("    var id = useId('adr');", "    var id = useId('adr'); var ctx = React.useContext(SHARED);").replace('  function Checkbox(p) {', '  function Checkbox(p) { var c = React.useContext(SHARED);'), 'sta attaccata alla funzione AddressField e dichiara «SHARED», che usa anche il resto del bundle'],
+        ['le etichette su più righe, chiuse da «};»', 'MentionField', (testo) => testo.replace("  var MENTION_LABELS = { remove: 'Togli', ", "  var MENTION_LABELS = {\n    remove: 'Togli',\n    ").replace("results: 'Clienti del CRM' };", "results: 'Clienti del CRM'\n  };"), 'MentionField usa «MENTION_LABELS», che il bundle registra ma non è un componente, dichiarato alla riga'],
+        ['una `function` attaccata sopra le etichette, che MentionField usa', 'MentionField', (testo) => testo.replace('\n  var MENTION_LABELS = ', '\n  function fmt(x) { return x; }\n  var MENTION_LABELS = ').replace("    var id = useId('mnt');", "    var id = fmt(useId('mnt'));"), 'MentionField usa «fmt», dichiarato alla riga'],
+        ['la riga di useId attaccata sopra la funzione', 'MentionField', (testo) => testo.replace(`${RIGA_DI_USEID}\n`, '').replace('  function MentionField(p) {', `${RIGA_DI_USEID}\n  function MentionField(p) {`), 'sta attaccata alla funzione MentionField e dichiara «uid», che usa anche il resto del bundle'],
+    ])('con %s lo script si ferma e dice perché', (_caso, nome, cambia, detto) => {
+        const cambiato = cambia(bundle);
+
+        expect(cambiato).not.toBe(bundle);
+        expect(() => aParte(leggi(cambiato), nome)).toThrow(detto);
     });
 });
 

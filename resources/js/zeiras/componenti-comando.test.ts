@@ -106,8 +106,8 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando(argomenti);
 
         expect([esito.uscita, esito.detto, esito.file === RITOCCATO, readFileSync(nellaCopia(FILE_A_PARTE), 'utf8') === `${generatoAParte}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
-        expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: il commento «/* ---------- MentionField: …», da cui comincia il blocco di MentionField, c\'è 0 volte');
-        expect(esito.errore).toContain('Nessun file è stato scritto, né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js, resources/js/zeiras/AddressField.js: lo script va riallineato alla forma nuova del bundle.');
+        expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
+        expect(esito.errore).toContain('Nessun file è stato scritto: né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js né resources/js/zeiras/AddressField.js: lo script va riallineato alla forma nuova del bundle.');
     });
 
     it('`--controlla` col modulo di AddressField ritoccato a mano, o senza: esce 1 e dice quale file (sprint 72 · T1.3)', () => {

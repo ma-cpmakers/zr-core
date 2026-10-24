@@ -164,9 +164,8 @@ export function genera(bundle) {
 // I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
 // prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
 // nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
-// riga — dalla funzione `<Nome>` risalendo alle righe che le stanno attaccate (le sue `var`, il commento «/* ---------- <Nome>:
-// …» se le sta sopra), fino a una riga vuota, a una chiusura o al commento di un altro componente, e giù fino alla graffa che la
-// chiude, con ciò che il blocco dichiara (per MentionField anche `MENTION_LABELS`, che il modulo ha suo: dal design system
+// riga — dalla funzione `<Nome>` risalendo alle righe attaccate che sono sue (le `var` che usa lei sola, il commento «/*
+// ---------- <Nome>: …» se le sta sopra), e giù fino alla graffa che la chiude, con ciò che il blocco dichiara (per MentionField anche `MENTION_LABELS`, che il modulo ha suo: dal design system
 // ds-1792851600-0de4 il blocco di AddressField sta fra il commento di MentionField e la sua funzione, e dal commento si
 // sarebbe portato anche AddressField) — e le righe private che il blocco usa, nell'ordine del bundle; i
 // componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta: nella stessa app
@@ -290,15 +289,32 @@ export function aParte({ corpo, nomi }, nome) {
     });
 
     const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
-    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», da cui comincia il blocco di ${nome}, c'è ${inizi.length} volte`);
+    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», che segna il blocco di ${nome}, c'è ${inizi.length} volte`);
     const funzione = corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
     vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
     const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
     vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
-    // Il blocco comincia dalla funzione e risale finché la riga di sopra le sta attaccata: non è vuota, non chiude qualcosa e
-    // non è il commento di un altro componente.
+    // Il blocco comincia dalla funzione e risale, una riga alla volta, sulle sole righe che sono sue: il suo commento (e lì si
+    // ferma), o una `var` su una riga sola che dichiara un nome che la funzione usa e che il resto del bundle non usa. Ogni altra
+    // riga — vuota, una chiusura, il commento di un altro componente, una `var` che la funzione non usa — chiude la risalita.
+    // Una `var` attaccata che dichiara un nome usato anche fuori dal blocco ferma lo script: è una riga privata da guardare
+    // (`A_PARTE`), e nel blocco darebbe alla copia uno stato suo senza che nessuno l'abbia guardata.
+    const usatiDallaFunzione = nomiUsati(corpo.slice(funzione, fine + 1));
     let inizio = funzione;
-    while (inizio > 0 && corpo[inizio - 1].trim() !== '' && !/^ {2}[}\]]/.test(corpo[inizio - 1]) && (!corpo[inizio - 1].startsWith('  /* ---------- ') || corpo[inizio - 1].startsWith(INIZIO_DEL_BLOCCO(nome)))) inizio -= 1;
+    while (inizio > 0) {
+        const sopra = corpo[inizio - 1];
+        if (sopra.startsWith(INIZIO_DEL_BLOCCO(nome))) {
+            inizio -= 1;
+            break;
+        }
+        if (!FORME[0].test(sopra)) break;
+        const dichiarati = dichiaratiIn(istruzioneDa(corpo, inizio - 1, numero), numero(inizio - 1));
+        if (!dichiarati.some((dichiarato) => usatiDallaFunzione.has(dichiarato))) break;
+        const usatiFuori = nomiUsati([...corpo.slice(0, inizio - 1), ...corpo.slice(fine + 1)]);
+        const anchePerAltri = dichiarati.find((dichiarato) => usatiFuori.has(dichiarato));
+        vuole(anchePerAltri === undefined, `la riga ${numero(inizio - 1)} sta attaccata alla funzione ${nome} e dichiara «${anchePerAltri}», che usa anche il resto del bundle: è una riga privata da guardare (A_PARTE), non del blocco`);
+        inizio -= 1;
+    }
     const blocco = corpo.slice(inizio, fine + 1);
     const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizio + indice, numero), numero(inizio + indice))));
 
@@ -314,6 +330,9 @@ export function aParte({ corpo, nomi }, nome) {
         const usato = daGuardare.pop();
         if (!rigaDi.has(usato) || daImportare.has(usato)) continue;
         if (nomi.includes(usato)) {
+            // Da ./componenti si prendono solo componenti: un altro nome registrato (le etichette di partenza) il modulo lo ha
+            // suo, nel blocco. Se è rimasto fuori, il blocco ha una forma che la risalita non conosce.
+            vuole(corpo[rigaDi.get(usato)].startsWith(`  function ${usato}(`), `${nome} usa «${usato}», che il bundle registra ma non è un componente, dichiarato alla riga ${numero(rigaDi.get(usato))} fuori dal blocco: il modulo lo prenderebbe da ./componenti invece di averlo suo, e va guardato`);
             daImportare.add(usato);
             continue;
         }

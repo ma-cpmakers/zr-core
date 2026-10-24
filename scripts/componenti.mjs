@@ -41,7 +41,7 @@ try {
         ...Object.keys(A_PARTE).map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome), nome]),
     ];
 } catch (errore) {
-    console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto, né ${fileDelModulo} né ${Object.keys(A_PARTE).map((nome) => `resources/js/zeiras/${nome}.js`).join(', ')}: lo script va riallineato alla forma nuova del bundle.`);
+    console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto: né ${[fileDelModulo, ...Object.keys(A_PARTE).map((nome) => `resources/js/zeiras/${nome}.js`)].join(' né ')}: lo script va riallineato alla forma nuova del bundle.`);
     process.exit(1);
 }
 
