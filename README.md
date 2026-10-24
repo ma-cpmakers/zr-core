@@ -140,8 +140,9 @@ di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la f
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.666 i rimedi, 1.004 la
 ricerca. Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
-preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
-notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
+preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Dalla `v2.0.0` l'eccezione per i
+rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
+pezzo della campanella.
 
 I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, prima e dopo il passaggio: `npm run build`, poi
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è

@@ -173,7 +173,7 @@ describe('le lingue della cornice', () => {
         expect(tipiConosciuti).toHaveLength(48);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 47 titoli sono 47 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 48 titoli sono 48 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
         expect(new Set(titoli).size).toBe(48);
     });
@@ -754,7 +754,7 @@ describe('rigaDellaNotifica', () => {
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
     const NOMI_DEI_CASI = ['Giulia Bianchi', 'Lancio corso', 'Corsi 2026', 'Urgente', 'Da fare', 'Vendite'];
 
-    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli undici del CRM (pipeline, aziende, opportunità e attività, e le tre assegnate) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri dodici del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2; sprint 34 · T3.1, T3.2)', async (lingua) => {
+    it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli undici del CRM (pipeline, aziende, opportunità e attività, e le tre assegnate) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri tredici del CRM e i tre di un membro la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2; sprint 34 · T3.1, T3.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./frasi');
 
         expect(frasi).toHaveLength(47);
