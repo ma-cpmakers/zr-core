@@ -1824,6 +1824,11 @@ it('una notifica di un tipo che nel registro non ha una destinazione ha `ids` vu
     'un\'opportunità nuova, senza `com.zeiras.` davanti' => ['crm', 'crm.trattativa.creata'],
     'un contatto assegnato, in una notifica di Project Management' => ['pm', 'crm.persona.assegnata'],
     'un contatto assegnato, in una notifica che non è di un\'app' => [null, 'crm.persona.assegnata'],
+    // v2.25.3: il credito sotto zero apre il contatto solo col tipo della notifica, senza `com.zeiras.` davanti: l'evento con lo
+    // stesso nome non genera notifiche, e se ne arrivasse una non avrebbe una destinazione.
+    'l\'evento del credito sotto zero, con `com.zeiras.` davanti' => ['crm', 'com.zeiras.crm.acquisto.scoperto'],
+    'il credito sotto zero, in una notifica di Project Management' => ['pm', 'crm.acquisto.scoperto'],
+    'il credito sotto zero, in una notifica che non è di un\'app' => [null, 'crm.acquisto.scoperto'],
     'un tipo di domani' => ['crm', 'com.zeiras.crm.uat.domani'],
     'un tipo del registro con un pezzo in più in fondo' => ['crm', 'com.zeiras.crm.persona.creata.v2'],
     'un tipo del registro con un pezzo in più davanti' => ['crm', 'x.com.zeiras.crm.persona.creata'],
@@ -2546,6 +2551,32 @@ it('GET /cornice/notifiche dà a una menzione in un commento il solo `id` della 
         ->and(substr_count($corpo, 'uat-scheda-2'))->toBe(0)
         ->and(substr_count($corpo, 'uat-commento'))->toBe(0)
         ->and(substr_count($corpo, '_id'))->toBe(0);
+});
+
+// v2.25.3 (parole e pagina di zr-crm, nota 16079 del #95). La notifica del credito di un pacchetto sotto zero porta nei `dati`
+// l'id dell'acquisto e quello del contatto, mai il nome. Apre il contatto, `/contatti/{persona_id}`: al browser va il solo
+// `persona_id`, e l'id dell'acquisto, che non ha una pagina sua, resta qui.
+
+it('GET /cornice/notifiche dà al credito sotto zero il solo `persona_id` del contatto: l\'`id` dell\'acquisto resta qui, senza `persona_id` gli `ids` sono vuoti e l\'`id` non prende il suo posto, e l\'evento con `com.zeiras.` davanti non ne ha; `idsDellaNotifica()` dà lo stesso (v2.25.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n3', ['id' => 'uat-acquisto-1', 'persona_id' => 'uat-persona-1'], 'crm.acquisto.scoperto'),
+        notificaConDati('uat-n2', ['id' => 'uat-acquisto-2'], 'crm.acquisto.scoperto'),
+        notificaConDati('uat-n1', ['id' => 'uat-acquisto-3', 'persona_id' => 'uat-persona-2'], 'com.zeiras.crm.acquisto.scoperto'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['persona_id' => 'uat-persona-1'], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        // Due senza una destinazione: `ids` vuoto, ma un oggetto. Degli acquisti, e del contatto che non si apre, niente.
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-acquisto'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-persona-2'))->toBe(0)
+        ->and(substr_count($corpo, 'persona_id'))->toBe(1);
 });
 
 it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
