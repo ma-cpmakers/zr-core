@@ -65,6 +65,9 @@ const motivi = new URLSearchParams(window.location.search).has('motivi');
 // Con `?crediti=1` (v2.25.3), dopo quelle di `?motivi=1`, c'è la notifica del credito di un pacchetto sotto zero, letta: ha un
 // titolo e, con `?chi=1`, la frase con chi; apre il contatto, col suo `persona_id`.
 const crediti = new URLSearchParams(window.location.search).has('crediti');
+// Con `?scadenze=1` (v3.0.0, sprint 70 · T2), dopo quella di `?crediti=1`, ci sono le due notifiche delle Scadenze del CRM, lette,
+// in quattro forme: il preavviso col contatto, con la sola azienda, senza nessuno dei due, e il riepilogo del giorno.
+const scadenze = new URLSearchParams(window.location.search).has('scadenze');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
 // Con `?accorpata=1` in cima all'elenco c'è una notifica che racconta più azioni (sprint 32 · T3): è nata un'ora fa e l'ultima
@@ -211,6 +214,16 @@ const notificheDiProva = [
     // l'id dell'acquisto resta lì. Un clic apre il contatto.
     ...(crediti
         ? [{ id: 'uat-d1', creata_il: fa(38 * 24 * 60), letta: true, app: 'crm', tipo: 'crm.acquisto.scoperto', ...detti('Giulia Bianchi', 'UAT Pacchetto 10 lezioni', true), ids: { persona_id: 'uat-persona-1' } as Record<string, string> }]
+        : []),
+    // Solo con `?scadenze=1`, dopo quella di `?crediti=1`: le due delle Scadenze, che il backoffice manda da solo, senza chi.
+    // Gli `ids` sono quelli che la parte server dà: del preavviso i soli del percorso che si apre, mai l'`id` della scadenza.
+    ...(scadenze
+        ? ([
+              ['uat-e1', 'crm.scadenza.in_preavviso', { persona_id: 'uat-persona-1' }],
+              ['uat-e2', 'crm.scadenza.in_preavviso', { organizzazione_id: 'uat-azienda-1' }],
+              ['uat-e3', 'crm.scadenza.in_preavviso', {}],
+              ['uat-e4', 'crm.scadenze.riepilogo_del_giorno', {}],
+          ] as [string, string, Record<string, string>][]).map(([id, tipo, ids], indice) => ({ id, creata_il: fa((39 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...nonDetti, ids }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

@@ -27,6 +27,7 @@ import { rotteFinte } from './rotte-finte';
 // o `?frasi=1` (tre di Project Management: chi e che cosa in una frase, solo chi, e il titolo col nome sotto)
 // o `?motivi=1` (le due dei motivi di perdita del CRM: dalla `v2.7.0` aprono le Impostazioni del CRM)
 // o `?crediti=1` (il credito di un pacchetto sotto zero, del CRM: dalla `v2.25.3` apre il contatto)
+// o `?scadenze=1` (le due delle Scadenze del CRM, in quattro forme: dalla `v3.0.0` aprono il contatto, l'azienda o le scadenze)
 // l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
 // azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e
 // un'opportunità col nome nel titolo, e un contatto, un'attività eliminata e un'azienda senza nome con solo chi.
@@ -140,7 +141,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
     }, [senzaCrm, crmAttivo, senzaModuli, lingua, aziende, nonLette, daAccettare]);
-    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1`, `?schede=1`, `?frasi=1`, `?motivi=1` o `?crediti=1`, così le
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1`, `?schede=1`, `?frasi=1`, `?motivi=1`, `?crediti=1` o `?scadenze=1`, così le
     // altre pagine restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
@@ -174,7 +175,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti') || scelti.has('scadenze')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
             {scelti.has('rimedi') ? <ProvaDeiRimedi /> : null}
             {inFondo}
         </Cornice>
