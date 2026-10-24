@@ -75,6 +75,18 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) il modulo le ha
   sue, e si cambiano con la prop `labels`.
 
+  **AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta),
+  `resources/js/zeiras/AddressField`, con le stesse regole: da `…/zeiras/componenti` e da `window.Zeiras` c'è anche lui, nella
+  stessa app si prende da un posto solo, e le etichette di partenza (`ADDRESS_LABELS`) il modulo le ha sue.
+
+  ```ts
+  import { AddressField, type AddressPlace, type AddressSuggestion } from '../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField';
+  ```
+
+  AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dal suo server, a ogni `onQuery`, e
+  li passa al campo in `suggestions`. Il browser non parla con Google, e la CSP della cornice non cambia. Nei frontend la
+  ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l'informativa non sono approvate.
+
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
   una riga.
@@ -101,7 +113,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 44,3 KB | 8,5 KB |
 | la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 44,3 KB | 8,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 122,4 KB | 39,8 KB | 44,3 KB | 8,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 44,3 KB | 8,5 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con

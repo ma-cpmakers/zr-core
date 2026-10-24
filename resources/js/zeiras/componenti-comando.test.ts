@@ -18,6 +18,8 @@ const FILE_DEL_BUNDLE = 'resources/zeiras/bundle.js';
 const FILE_DEL_MODULO = 'resources/js/zeiras/componenti.js';
 // Dalla `v3.1.0` (sprint 71 · T1.3) il comando scrive e controlla anche il modulo di MentionField.
 const FILE_A_PARTE = 'resources/js/zeiras/MentionField.js';
+// Dalla `v3.2.0` (sprint 72 · T1.3) anche quello di AddressField.
+const FILE_DI_ADDRESS = 'resources/js/zeiras/AddressField.js';
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso}`, import.meta.url));
 const radice = mkdtempSync(join(tmpdir(), 'zr-core-componenti-'));
 const copia = join(radice, 'una copia #1 100% ?sì');
@@ -25,6 +27,7 @@ const nellaCopia = (percorso: string) => join(copia, percorso);
 const generato = readFileSync(delRepo(FILE_DEL_MODULO), 'utf8');
 const RITOCCATO = `${generato}// ritoccato a mano\n`;
 const generatoAParte = readFileSync(delRepo(FILE_A_PARTE), 'utf8');
+const generatoDiAddress = readFileSync(delRepo(FILE_DI_ADDRESS), 'utf8');
 
 /** Lancia il comando nella copia, da una cartella che non è la sua: uscita, ciò che scrive e ciò che dice. */
 function comando(argomenti: string[] = [], script = nellaCopia('scripts/componenti.mjs')) {
@@ -41,6 +44,7 @@ beforeEach(() => {
     cpSync(delRepo(FILE_DEL_BUNDLE), nellaCopia(FILE_DEL_BUNDLE));
     writeFileSync(nellaCopia(FILE_DEL_MODULO), generato);
     writeFileSync(nellaCopia(FILE_A_PARTE), generatoAParte);
+    writeFileSync(nellaCopia(FILE_DI_ADDRESS), generatoDiAddress);
 });
 
 afterAll(() => {
@@ -52,7 +56,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando(['--controlla']);
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^resources\/js\/zeiras\/componenti\.js: è quello che resources\/zeiras\/bundle\.js genera \(\d+ nomi esportati\)\nresources\/js\/zeiras\/MentionField\.js: è quello che resources\/zeiras\/bundle\.js genera \(MentionField\)\n$/);
+        expect(esito.detto).toMatch(/^resources\/js\/zeiras\/componenti\.js: è quello che resources\/zeiras\/bundle\.js genera \(\d+ nomi esportati\)\nresources\/js\/zeiras\/MentionField\.js: è quello che resources\/zeiras\/bundle\.js genera \(MentionField\)\nresources\/js\/zeiras\/AddressField\.js: è quello che resources\/zeiras\/bundle\.js genera \(AddressField\)\n$/);
     });
 
     it('`--controlla` col file ritoccato a mano: esce 1, dice che non è quello che il bundle genera, e non lo riscrive', () => {
@@ -76,7 +80,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando();
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^scritto resources\/js\/zeiras\/componenti\.js \(\d+ nomi esportati\)\nscritto resources\/js\/zeiras\/MentionField\.js \(MentionField\)\n$/);
+        expect(esito.detto).toMatch(/^scritto resources\/js\/zeiras\/componenti\.js \(\d+ nomi esportati\)\nscritto resources\/js\/zeiras\/MentionField\.js \(MentionField\)\nscritto resources\/js\/zeiras\/AddressField\.js \(AddressField\)\n$/);
     });
 
     it('`--controlla` col modulo di MentionField ritoccato a mano, o senza: esce 1, dice quale file non è quello che il bundle genera, e non scrive niente (sprint 71 · T1.3)', () => {
@@ -103,7 +107,22 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
 
         expect([esito.uscita, esito.detto, esito.file === RITOCCATO, readFileSync(nellaCopia(FILE_A_PARTE), 'utf8') === `${generatoAParte}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
         expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: il commento «/* ---------- MentionField: …», da cui comincia il blocco di MentionField, c\'è 0 volte');
-        expect(esito.errore).toContain('Nessun file è stato scritto, né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js: lo script va riallineato alla forma nuova del bundle.');
+        expect(esito.errore).toContain('Nessun file è stato scritto, né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js, resources/js/zeiras/AddressField.js: lo script va riallineato alla forma nuova del bundle.');
+    });
+
+    it('`--controlla` col modulo di AddressField ritoccato a mano, o senza: esce 1 e dice quale file (sprint 72 · T1.3)', () => {
+        writeFileSync(nellaCopia(FILE_DI_ADDRESS), `${generatoDiAddress}// ritoccato a mano\n`);
+        const ritoccato = comando(['--controlla']);
+
+        expect([ritoccato.uscita, ritoccato.detto, readFileSync(nellaCopia(FILE_DI_ADDRESS), 'utf8') === `${generatoDiAddress}// ritoccato a mano\n`]).toStrictEqual([1, '', true]);
+        expect(ritoccato.errore).toContain('resources/js/zeiras/AddressField.js non è quello che resources/zeiras/bundle.js genera.');
+        rmSync(nellaCopia(FILE_DI_ADDRESS));
+        const senza = comando(['--controlla']);
+
+        expect([senza.uscita, senza.detto]).toStrictEqual([1, '']);
+        expect(senza.errore).toContain('resources/js/zeiras/AddressField.js non è quello che resources/zeiras/bundle.js genera (il file non c\'è).');
+        expect(comando().uscita).toBe(0);
+        expect(readFileSync(nellaCopia(FILE_DI_ADDRESS), 'utf8')).toBe(generatoDiAddress);
     });
 
     it('senza `--controlla` riscrive anche il modulo di MentionField ritoccato (sprint 71 · T1.3)', () => {

@@ -164,8 +164,11 @@ export function genera(bundle) {
 // I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
 // prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
 // nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
-// riga — dal commento «/* ---------- <Nome>: …» alla graffa che chiude la funzione, con ciò che il blocco dichiara (per
-// MentionField anche `MENTION_LABELS`, che il modulo ha suo) — e le righe private che il blocco usa, nell'ordine del bundle; i
+// riga — dalla funzione `<Nome>` risalendo alle righe che le stanno attaccate (le sue `var`, il commento «/* ---------- <Nome>:
+// …» se le sta sopra), fino a una riga vuota, a una chiusura o al commento di un altro componente, e giù fino alla graffa che la
+// chiude, con ciò che il blocco dichiara (per MentionField anche `MENTION_LABELS`, che il modulo ha suo: dal design system
+// ds-1792851600-0de4 il blocco di AddressField sta fra il commento di MentionField e la sua funzione, e dal commento si
+// sarebbe portato anche AddressField) — e le righe private che il blocco usa, nell'ordine del bundle; i
 // componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta: nella stessa app
 // si prende da un posto solo.
 // Le righe private che un modulo porta sono queste, guardate una per una: una riga con uno stato (un contesto, una cache)
@@ -174,6 +177,14 @@ export function genera(bundle) {
 // non usa più una di queste, lo script si ferma e dice quale: la riga si guarda e l'elenco si riallinea.
 export const A_PARTE = {
     MentionField: [
+        '  var h = React.createElement;',
+        '  var useState = React.useState;',
+        '  var useRef = React.useRef;',
+        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
+        "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
+    ],
+    // Dalla `v3.2.0` (sprint 72, Decisione 16431): le stesse righe di MentionField, perché AddressField usa le stesse.
+    AddressField: [
         '  var h = React.createElement;',
         '  var useState = React.useState;',
         '  var useRef = React.useRef;',
@@ -284,13 +295,17 @@ export function aParte({ corpo, nomi }, nome) {
     vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
     const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
     vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
-    const blocco = corpo.slice(inizi[0], fine + 1);
-    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizi[0] + indice, numero), numero(inizi[0] + indice))));
+    // Il blocco comincia dalla funzione e risale finché la riga di sopra le sta attaccata: non è vuota, non chiude qualcosa e
+    // non è il commento di un altro componente.
+    let inizio = funzione;
+    while (inizio > 0 && corpo[inizio - 1].trim() !== '' && !/^ {2}[}\]]/.test(corpo[inizio - 1]) && (!corpo[inizio - 1].startsWith('  /* ---------- ') || corpo[inizio - 1].startsWith(INIZIO_DEL_BLOCCO(nome)))) inizio -= 1;
+    const blocco = corpo.slice(inizio, fine + 1);
+    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizio + indice, numero), numero(inizio + indice))));
 
     // Dove sta ogni dichiarazione del corpo fuori dal blocco: un nome usato che è lì si porta con la sua riga, o si importa.
     const rigaDi = new Map();
     corpo.forEach((_riga, indice) => {
-        if (indice < inizi[0] || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
+        if (indice < inizio || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
     });
     const daImportare = new Set();
     const righePrivate = new Set();
@@ -319,7 +334,7 @@ export function aParte({ corpo, nomi }, nome) {
     vuole(mancanti.length === 0, `la riga privata «${mancanti[0]?.trim().slice(0, 60)}» dell'elenco di ${nome} (A_PARTE) non c'è più nel bundle, o ${nome} non la usa più: l'elenco va riallineato`);
 
     // Le righe private e il blocco, nell'ordine del bundle: una riga privata che sta dopo il blocco resta dopo.
-    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizi[0] + indice)].sort((a, b) => a - b);
+    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizio + indice)].sort((a, b) => a - b);
 
     return [
         `// Generato da scripts/componenti.mjs: non si ritocca a mano. È ${nome} di resources/zeiras/bundle.js (il design system di`,
@@ -327,7 +342,7 @@ export function aParte({ corpo, nomi }, nome) {
         '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
         "import * as React from 'react';",
         ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
-        ...righe.map((indice, posto) => (posto > 0 && indice === inizi[0] ? ['', corpo[indice]] : [corpo[indice]])).flat(),
+        ...righe.map((indice, posto) => (posto > 0 && indice === inizio ? ['', corpo[indice]] : [corpo[indice]])).flat(),
         '',
         `export { ${nome} };`,
         '',
