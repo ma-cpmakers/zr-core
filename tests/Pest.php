@@ -25,10 +25,22 @@ function registroGiaLetto(?array $voci): void
     (new ReflectionProperty(Registro::class, 'voci'))->setValue(null, $voci);
 }
 
-/** @return list<array<string, mixed>> le voci del registro dei prodotti, resources/registro/prodotti.json, nel loro ordine */
+/**
+ * @return list<array<string, mixed>> le voci del registro dei prodotti, resources/registro/prodotti.json, nel loro ordine; dalla
+ *                                    v3.0.0 con le righe delle notifiche di resources/registro/notifiche.json rimesse in `notifiche`
+ *                                    della voce del loro prodotto, come le dà `Registro::voci()`
+ */
 function registroDeiProdotti(): array
 {
-    return json_decode(File::get(__DIR__.'/../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+    $voci = json_decode(File::get(__DIR__.'/../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+    $righe = json_decode(File::get(__DIR__.'/../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
+    foreach ($voci as $indice => $voce) {
+        if (isset($righe[$voce['id']])) {
+            $voci[$indice]['notifiche'] = $righe[$voce['id']];
+        }
+    }
+
+    return $voci;
 }
 
 /** @return list<string> gli id dei prodotti del registro, Dashboard esclusa: ognuno ha un nome in ogni lingua, con l'id per chiave */

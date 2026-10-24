@@ -4,7 +4,6 @@
 // si riporta nella build il design system intero.
 // L'ordine delle righe è quello di `index.ts`, e non è a caso: la build dà i nomi alle esportazioni del JS d'ingresso secondo
 // l'ordine in cui i moduli si eseguono, e con questo il pezzo della campanella resta nel suo tetto (`peso.test.ts`).
-export { destinazioneDellaNotifica } from './notifiche';
 export { registro, type IdDiProdotto, type VoceDelRegistro } from './registro';
 export { tonoDelWorkspace } from './tono';
 export { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci } from './cornice';

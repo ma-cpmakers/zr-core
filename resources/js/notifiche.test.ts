@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { destinazioneDellaNotifica, registro, type DatiDellaCornice } from './index';
+import righe from '../registro/notifiche.json';
+import { destinazioneDellaNotifica } from './frasi';
+import { registro, type DatiDellaCornice } from './index';
 
 // Sprint 21 · T3 (voce #1641). Dove si apre una notifica: lo dice il registro dei prodotti (`notifiche` della voce), col tipo
 // intero dell'evento e un percorso coi suoi segnaposto, e gli id li porta la notifica (`ids`, dalla parte server). La funzione è
 // quella del pannello della cornice, esportata per chi mostra le notifiche in una pagina sua: un indirizzo, o niente quando il
 // pannello apre la pagina delle notifiche. Parole e indirizzi del CRM sono di zr-crm (11/10/2026).
+// Sprint 70 · T1 (voce #2429): dalla `v3.0.0` le righe non stanno più nelle voci del registro ma in un file loro,
+// `resources/registro/notifiche.json` (per id del prodotto), che legge solo il pezzo della campanella; e la funzione si importa
+// da `./frasi`, non più dai due ingressi.
 
 const prodotti: DatiDellaCornice['prodotti'] = { pm: 'attivo', crm: 'attivo', bookings: 'attivo', reports: 'attivo' };
 const CRM = 'https://crm.zeiras.com/w/acme-marketing';
@@ -31,19 +36,21 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le ventuno destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1; dalla v2.25.3 il credito sotto zero), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
+    it('le ventitré destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1; dalla v2.25.3 il credito sotto zero; dalla v3.0.0 le due delle Scadenze: sprint 70 · T2.1), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
-        expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['pm', 'crm']);
+        // Sprint 70 · T1.4: le voci del registro non hanno più `notifiche`; le righe sono per id del prodotto, nell'ordine del registro.
+        expect(registro.filter((voce) => 'notifiche' in voce)).toStrictEqual([]);
+        expect(Object.keys(righe)).toStrictEqual(['pm', 'crm']);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
         // Sprint 26 · T6 (voce #1773): la quarta, una menzione in un commento, apre la scheda del commento.
-        expect(registro.find((voce) => voce.id === 'pm')?.notifiche).toStrictEqual([
+        expect(righe.pm).toStrictEqual([
             { tipo: 'com.zeiras.board.scheda.creata', percorso: '/c/{id}' },
             { tipo: 'com.zeiras.board.scheda.modificata', percorso: '/c/{id}' },
             { tipo: 'board.scheda.assegnata', percorso: '/c/{id}' },
             { tipo: 'board.commento.menzione', percorso: '/c/{id}' },
         ]);
-        expect(registro.find((voce) => voce.id === 'crm')?.notifiche).toStrictEqual([
+        expect(righe.crm).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.persona.modificata', percorso: '/contatti/{id}' },
             { tipo: 'com.zeiras.crm.pipeline.creata', percorso: '/pipeline/{id}/impostazioni' },
@@ -66,7 +73,20 @@ describe('la destinazione di una notifica', () => {
             { tipo: 'crm.organizzazione.assegnata', percorso: '/aziende/{id}' },
             // v2.25.3 (zr-crm, nota 16079 del #95): il credito sotto zero apre il contatto, non l'acquisto.
             { tipo: 'crm.acquisto.scoperto', percorso: '/contatti/{persona_id}' },
+            // Sprint 70 · T2.1 (zr-backoffice, #2428 SC.6): il preavviso di una scadenza apre il contatto, poi l'azienda, poi le
+            // scadenze; il riepilogo del giorno le scadenze.
+            { tipo: 'crm.scadenza.in_preavviso', percorso: '/contatti/{persona_id}', altrimenti: ['/aziende/{organizzazione_id}', '/scadenze'] },
+            { tipo: 'crm.scadenze.riepilogo_del_giorno', percorso: '/scadenze' },
         ]);
+    });
+
+    it.each([
+        ['crm.scadenza.in_preavviso', { id: 'uat-scadenza-1', persona_id: 'uat-persona-7', organizzazione_id: 'uat-azienda-2' }, '/contatti/uat-persona-7'],
+        ['crm.scadenza.in_preavviso', { id: 'uat-scadenza-1', organizzazione_id: 'uat-azienda-2' }, '/aziende/uat-azienda-2'],
+        ['crm.scadenza.in_preavviso', { id: 'uat-scadenza-1' }, '/scadenze'],
+        ['crm.scadenze.riepilogo_del_giorno', {}, '/scadenze'],
+    ])('una notifica «%s» con gli id %j apre %s nel CRM, mai la scadenza (sprint 70 · T2.1)', (tipo, ids, percorso) => {
+        expect(apre({ app: 'crm', tipo, ids })).toBe(CRM + percorso);
     });
 
     it('un id di 64 caratteri fra lettere, cifre, - e _ passa com\'è, e gli id in più non contano (sprint 21 · T3.1)', () => {
@@ -353,12 +373,13 @@ describe('la destinazione di una notifica', () => {
 describe('la destinazione di una notifica, con un registro di prova', () => {
     afterEach(() => {
         vi.doUnmock('../registro/prodotti.json');
+        vi.doUnmock('../registro/notifiche.json');
         vi.resetModules();
     });
 
     /**
      * La funzione letta con un registro di prova: un prodotto «Presto» con una notifica, e uno aperto con un percorso a due id e
-     * con due tipi che hanno più percorsi (`altrimenti`).
+     * con due tipi che hanno più percorsi (`altrimenti`). Dalla `v3.0.0` le righe stanno in un file loro, per id del prodotto.
      */
     async function conUnRegistroDiProva() {
         vi.resetModules();
@@ -366,19 +387,19 @@ describe('la destinazione di una notifica, con un registro di prova', () => {
             default: {
                 prodotti: [
                     { id: 'home', icona: 'grid', indirizzo: 'https://app.zeiras.com', presto: false, in_arrivo: false },
-                    {
-                        id: 'crm', icona: 'users', tono: 'sky', indirizzo: 'https://crm.zeiras.com', presto: true, in_arrivo: true,
-                        notifiche: [{ tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' }],
-                    },
-                    {
-                        id: 'bookings', icona: 'calendar', tono: 'sky', indirizzo: 'https://bookings.zeiras.com', presto: false, in_arrivo: true,
-                        notifiche: [
-                            { tipo: 'com.zeiras.bookings.uat.scheda', percorso: '/b/{board_id}/c/{id}' },
-                            { tipo: 'com.zeiras.bookings.uat.elenco', percorso: '/elenco' },
-                            { tipo: 'com.zeiras.bookings.uat.scelta', percorso: '/b/{board_id}/c/{id}', altrimenti: ['/b/{board_id}', '/elenco'] },
-                            { tipo: 'com.zeiras.bookings.uat.due', percorso: '/a/{primo_id}', altrimenti: ['/b/{secondo_id}/c/{id}'] },
-                        ],
-                    },
+                    { id: 'crm', icona: 'users', tono: 'sky', indirizzo: 'https://crm.zeiras.com', presto: true, in_arrivo: true },
+                    { id: 'bookings', icona: 'calendar', tono: 'sky', indirizzo: 'https://bookings.zeiras.com', presto: false, in_arrivo: true },
+                ],
+            },
+        }));
+        vi.doMock('../registro/notifiche.json', () => ({
+            default: {
+                crm: [{ tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' }],
+                bookings: [
+                    { tipo: 'com.zeiras.bookings.uat.scheda', percorso: '/b/{board_id}/c/{id}' },
+                    { tipo: 'com.zeiras.bookings.uat.elenco', percorso: '/elenco' },
+                    { tipo: 'com.zeiras.bookings.uat.scelta', percorso: '/b/{board_id}/c/{id}', altrimenti: ['/b/{board_id}', '/elenco'] },
+                    { tipo: 'com.zeiras.bookings.uat.due', percorso: '/a/{primo_id}', altrimenti: ['/b/{secondo_id}/c/{id}'] },
                 ],
             },
         }));

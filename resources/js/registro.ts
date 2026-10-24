@@ -55,7 +55,7 @@ export interface RisorsaDelProdotto {
     codici?: Record<string, string[]>;
 }
 
-/** Una notifica di un prodotto che dal pannello della cornice apre la sua risorsa: il tipo dell'evento, e dove si apre. */
+/** Una riga di `resources/registro/notifiche.json` (dalla `v3.0.0`): una notifica di un prodotto che dal pannello della cornice apre la sua risorsa, il tipo dell'evento e dove si apre. */
 export interface NotificaDelProdotto {
     /**
      * Il tipo intero dell'evento che l'ha generata (`com.zeiras.crm.persona.creata`), com'è nel backoffice. Sta una volta sola in
@@ -99,11 +99,6 @@ export interface VoceDelRegistro {
      * di un modulo: il membro del workspace, che si apre in app.
      */
     risorse?: RisorsaDelProdotto[];
-    /**
-     * Le notifiche del prodotto che dal pannello aprono la loro risorsa (`destinazioneDellaNotifica`): una notifica di un tipo che
-     * non è qui apre la pagina delle notifiche.
-     */
-    notifiche?: NotificaDelProdotto[];
 }
 
 export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegistro[];

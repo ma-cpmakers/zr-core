@@ -192,7 +192,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
         // Ciò che la UAT vede aprirsi nel workspace di prova: il contatto, le impostazioni della pipeline, e per le tre note
         // l'opportunità, il contatto e l'azienda; e niente per il tipo che zr-core non conosce e per le due note senza un legame buono.
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
         expect(notifiche.slice(4, 14).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { crm: 'disponibile' }) ?? null)).toEqual([
             `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/contatti/uat-persona-1`,
@@ -213,16 +213,17 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
     // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
     // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?motivi=1'], ['?crediti=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?motivi=1'], ['?crediti=1'], ['?scadenze=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
-        const { registro } = await import('../js/registro');
+        // Dalla `v3.0.0` le righe delle destinazioni stanno in un file loro, per id del prodotto (sprint 70 · T1).
+        const { default: righe } = await import('../registro/notifiche.json');
 
         await rispostaDi('/cornice/notifiche');
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; ids: Record<string, string> }[];
         // Sprint 23 · T3.5: un tipo può avere più percorsi (`altrimenti`), e la parte server dà gli id di uno solo, quello che si apre.
         const chiesteDaOgniPercorso = ({ app, tipo }: { app: string | null; tipo?: string }) => {
-            const delTipo = registro.find((voce) => voce.id === app)?.notifiche?.find((notifica) => notifica.tipo === tipo);
+            const delTipo = (righe as Record<string, { tipo: string; percorso: string; altrimenti?: string[] }[] | undefined>)[app ?? '']?.find((notifica) => notifica.tipo === tipo);
 
             return [delTipo?.percorso ?? '', ...(delTipo?.altrimenti ?? [])].map((percorso) => [...percorso.matchAll(/\{([^{}]*)\}/g)].map(([, chiave]) => chiave));
         };
@@ -243,7 +244,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; creata_il: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         const apre = (notifica: (typeof notifiche)[number]) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null;
         const [assegnata, menzione, eliminata] = [notifiche[0], notifiche[1], notifiche[6]];
 
@@ -337,7 +338,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual([true, true, true]);
         // Una vista non ha una destinazione nel registro: un clic apre la pagina delle notifiche, anche con Project Management attivo.
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([null, null, null]);
         expect(notifiche.map((notifica) => [typeof notifica.ids, 'dati' in notifica, 'soggetto' in notifica])).toEqual(notifiche.map(() => ['object', false, false]));
     });
@@ -365,7 +366,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
         expect(notifiche.slice(4).map(({ tipo }) => Object.keys(inglese).includes(`notificationTitle.${tipo}`))).toEqual(Array(9).fill(true));
         // Ciò che la UAT vede aprirsi nel workspace di prova; col CRM che non si può aprire, la pagina delle notifiche.
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
         expect(notifiche.slice(4).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }) ?? null)).toEqual([
             `${nelCrm}/opportunita/uat-opp-1`, `${nelCrm}/opportunita/uat-opp-1`,
@@ -383,7 +384,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         const { rigaDellaNotifica } = await import('../js/frasi');
         const isolato = (nome: string) => `\u{2068}${nome}\u{2069}`;
 
@@ -468,13 +469,33 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica({ ...contatto, risorsa_nome: 'UAT Mario Rossi' }, 'it').titolo).toBe(`${CHI} ha modificato un contatto`);
     });
 
+    // v3.0.0 (sprint 70 · T2.1): le due delle Scadenze stanno dietro `?scadenze=1`, in quattro forme, per la UAT delle pagine di prova.
+    it('con `?scadenze=1` in fondo all\'elenco ci sono le due notifiche delle Scadenze, lette e senza chi: il preavviso apre il contatto, l\'azienda o le scadenze, il riepilogo le scadenze (sprint 70 · T2.1)', async () => {
+        await rotte(false, '?scadenze=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = (corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; ids: Record<string, string> }[]).slice(-4);
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
+        const nelCrm = 'https://crm.zeiras.com/w/uat-marketing';
+
+        expect(notifiche.map(({ id, app, tipo, letta, autore_nome }) => [id, app, tipo, letta, autore_nome])).toEqual([
+            ['uat-e1', 'crm', 'crm.scadenza.in_preavviso', true, null],
+            ['uat-e2', 'crm', 'crm.scadenza.in_preavviso', true, null],
+            ['uat-e3', 'crm', 'crm.scadenza.in_preavviso', true, null],
+            ['uat-e4', 'crm', 'crm.scadenze.riepilogo_del_giorno', true, null],
+        ]);
+        expect(notifiche.map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { pm: 'attivo', crm: 'attivo' }))).toEqual([
+            `${nelCrm}/contatti/uat-persona-1`, `${nelCrm}/aziende/uat-azienda-1`, `${nelCrm}/scadenze`, `${nelCrm}/scadenze`,
+        ]);
+    });
+
     // v2.25.3: il credito di un pacchetto sotto zero sta dietro `?crediti=1`, così le pagine di prova di prima restano com'erano.
     it.each([['', false], ['&chi=1', true]])('con `?crediti=1%s` in fondo all\'elenco c\'è la notifica del credito sotto zero del CRM, letta e col solo `persona_id`: ha il titolo nelle tre lingue, con chi la frase, e apre il contatto, se il CRM si può aprire (v2.25.3)', async (inPiu, conChi) => {
         await rotte(false, `?crediti=1${inPiu}`);
 
         const { corpo } = await rispostaDi('/cornice/notifiche');
         const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
-        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { destinazioneDellaNotifica } = await import('../js/frasi');
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('../js/frasi');
         const ultima = notifiche.at(-1)!;
 
@@ -495,6 +516,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?opportunita=1&motivi=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`), 'uat-m1', 'uat-m2']],
         ['?crediti=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-d1']],
         ['?motivi=1&crediti=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-m1', 'uat-m2', 'uat-d1']],
+        ['?crediti=1&scadenze=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-d1', 'uat-e1', 'uat-e2', 'uat-e3', 'uat-e4']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?conto=1', ['uat-k1', 'uat-k2', 'uat-k3', 'uat-k4', 'uat-k5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],

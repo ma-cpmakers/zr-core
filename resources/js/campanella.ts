@@ -225,3 +225,7 @@ export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: un
 
     return sotto === undefined ? { titolo } : { titolo, sotto };
 }
+
+// Dalla `v3.0.0` anche la destinazione di una notifica sta in questo pezzo, con le righe del registro che legge: la cornice la
+// chiede al clic su una notifica, e chi mostra le notifiche in una pagina sua la importa da `./frasi`.
+export { destinazioneDellaNotifica } from './notifiche';

@@ -80,15 +80,22 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * dell'ultima montata (zr-pm, 15/10/2026, nota 13713 del progetto: la stessa eccezione, per questa sola correzione).
  * v2.25.3: altri 16 byte, la riga del registro che apre il contatto dalla notifica del credito sotto zero (zr-pm, 24/10/2026,
  * Decisione 16110: se una patch libera byte nel registro, il tetto riscende).
+ *
+ * Sprint 70 · T1 (voce #2429): è la versione maggiore, la `v3.0.0`. Le righe delle destinazioni delle notifiche escono dal
+ * registro dell'ingresso (`resources/registro/notifiche.json`) e vanno nel pezzo della campanella, con la funzione che le legge:
+ * `destinazioneDellaNotifica` si importa da `./frasi`. Il tetto scende a ciò che l'ingresso pesa (zr-pm, 24/10/2026, Decisione
+ * 16181).
  */
-const TETTO_DELL_INGRESSO = 17_934;
+const TETTO_DELL_INGRESSO = 17_478;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
  */
 const DELLA_CAMPANELLA = '{what}';
 /** Le tre funzioni per chi mostra le notifiche in una pagina sua: dalla `v2.0.0` si importano da `resources/js/frasi`. */
-const PER_LE_PAGINE = ['rigaDellaNotifica', 'risorsaDellaNotifica', 'titoloDellaNotifica'];
+const PER_LE_PAGINE = ['destinazioneDellaNotifica', 'rigaDellaNotifica', 'risorsaDellaNotifica', 'titoloDellaNotifica'];
+/** Ciò che nel codice costruito c'è solo nelle righe delle destinazioni delle notifiche: il tipo di una pipeline nuova (dalla `v3.0.0`). */
+const DELLE_DESTINAZIONI = 'com.zeiras.crm.pipeline.creata';
 /** Ciò che nel codice costruito c'è solo nel pezzo della ricerca: l'indirizzo della sua rotta (dalla `v2.8.0`). */
 const DELLA_RICERCA = '/cornice/ricerca';
 /** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
@@ -358,9 +365,19 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.934 byte: la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.478 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_934);
+        expect(TETTO_DELL_INGRESSO).toBe(17_478);
+    });
+
+    // Sprint 70 · T1.1 (voce #2429): le righe delle destinazioni stanno solo nel pezzo della campanella, che le legge quando un
+    // clic apre una notifica. Nessun ingresso le porta: con `app` che esportava ancora `destinazioneDellaNotifica` l'ingresso
+    // pesava 17.955 byte.
+    it('le righe delle destinazioni delle notifiche non stanno nel JS d\'ingresso, né in quello dei due ingressi: stanno nel pezzo della campanella, una volta (sprint 70 · T1.1)', () => {
+        const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
+
+        expect([soloCornice.js, ingressoPerLeApp.js, ingressoDiSempre.js].map((js) => volte(js, DELLE_DESTINAZIONI))).toStrictEqual([0, 0, 0]);
+        expect(volte(campanella, DELLE_DESTINAZIONI)).toBe(1);
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
@@ -372,11 +389,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.934 byte, non più quelli di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.478 byte, non più quelli di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
-        expect([volte(testo, '17.934 byte') > 0, volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.478 byte') > 0, volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {
@@ -397,13 +414,36 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(volte(readme.replace(/\s+/g, ' '), 'In Chromium (provato il 13/10/2026 con la 151) un `import()` che non è arrivato resta fallito, per quell\'indirizzo, finché la pagina non si ricarica')).toBe(1);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.351 byte: la misura, col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    // Sprint 70 · T3.1 (voce #2429): la `v3.0.0` sposta `destinazioneDellaNotifica` dai due ingressi a `./frasi`, e il README
+    // lo dice: l'import di prima e quello nuovo, il campo che sparisce, i tetti nuovi; e da nessuna parte che si importa ancora
+    // dall'ingresso.
+    it('il README ha «Passare alla v3» con l\'import di prima e quello nuovo, il campo `notifiche` che sparisce e i tetti nuovi, e non dice più che `destinazioneDellaNotifica` si importa dall\'ingresso (sprint 70 · T3.1)', () => {
+        const readme = readFileSync(delRepo('README.md'), 'utf8');
+        const [, passaggio = ''] = /^### Passare alla v3\n(.*?)^##/ms.exec(readme) ?? [];
+        const suUnaRiga = (testo: string) => testo.replace(/\s+/g, ' ');
+
+        expect(passaggio.split('\n').filter((riga) => /^[-+]import /.test(riga))).toStrictEqual([
+            '-import { destinazioneDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/app\';',
+            '+import { destinazioneDellaNotifica } from \'../../vendor/zeiras/zr-core/resources/js/frasi\';',
+        ]);
+        expect([
+            volte(suUnaRiga(passaggio), 'le voci del `registro` non hanno più il campo `notifiche`'),
+            volte(suUnaRiga(passaggio), '17.478 byte con gzip'),
+            volte(suUnaRiga(passaggio), '1.969 il pezzo della campanella'),
+            volte(suUnaRiga(readme), 'che chi mostra le notifiche in una pagina sua importa dall\'ingresso'),
+            volte(suUnaRiga(readme), 'segue si importa ancora dall\'ingresso'),
+        ]).toStrictEqual([1, 1, 1, 0, 0]);
+    });
+
+    it('il pezzo della campanella pesa, con gzip, al più 1.969 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
         // Sprint 36 · T5: il pezzo porta l'indirizzo dei file delle frasi, con l'impronta del contenuto nel nome. Coi due tipi dei
         // motivi di perdita i tre file sono cambiati, e le impronte nuove pesano 2 byte in più: il codice del pezzo è quello di prima.
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_351);
+        // Sprint 70 · T1.5 (voce #2429, Decisione 16181): dalla `v3.0.0` porta anche le righe delle destinazioni e la funzione
+        // che le legge: 1.922 byte alla misura del prototipo, 1.969 con le due righe delle Scadenze (T2) e le impronte di oggi.
+        expect(gzip(campanella)).toBeLessThanOrEqual(1_969);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,7 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2)', () => {
@@ -426,13 +466,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it.each([
         ['per le app', () => ingressoPerLeApp],
         ['di sempre', () => ingressoDiSempre],
-    ])('l\'ingresso %s non esporta le tre funzioni per le pagine, e non porta né le frasi né ciò che compone le righe (sprint 33 · T1.1)', (_nome, costruito) => {
+    ])('l\'ingresso %s non esporta le funzioni per le pagine (dalla v3.0.0 anche `destinazioneDellaNotifica`), e non porta né le frasi né ciò che compone le righe (sprint 33 · T1.1; sprint 70 · T1.3)', (_nome, costruito) => {
         expect(PER_LE_PAGINE.filter((nome) => costruito().esporta.includes(nome))).toStrictEqual([]);
         expect(Object.values(FRASI).filter((frase) => costruito().js.includes(frase))).toStrictEqual([]);
         expect(volte(costruito().js, DELLA_CAMPANELLA)).toBe(0);
     });
 
-    it('`resources/js/frasi` esporta le tre funzioni, e solo quelle, con le frasi di ogni lingua (sprint 33 · T1.1)', () => {
+    it('`resources/js/frasi` esporta le funzioni per le pagine, e solo quelle (dalla v3.0.0 quattro, con `destinazioneDellaNotifica`), con le frasi di ogni lingua (sprint 33 · T1.1; sprint 70 · T1.3)', () => {
         expect(ingressoDelleFrasi.esporta).toStrictEqual(PER_LE_PAGINE);
         expect(Object.values(FRASI).filter((frase) => !ingressoDelleFrasi.js.includes(frase))).toStrictEqual([]);
     });
