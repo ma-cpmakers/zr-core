@@ -4417,7 +4417,7 @@ it('il README dice, dalla v2.3.0, i due tipi dei motivi di perdita del CRM coi l
 
 // v2.25.3 (parole e pagina di zr-crm, nota 16079 del #95). Dal 24/10/2026 il CRM manda una notifica personale quando un consumo
 // porta sotto zero il credito di un pacchetto: dalla `v2.25.3` ha un titolo e apre il contatto. Il README lo dice dove dice la
-// menzione in un commento: titolo, tipo e chiave nel punto «Le notifiche», coi titoli che ora sono 45 e ciò che ne dice il
+// menzione in un commento: titolo, tipo e chiave nel punto «Le notifiche», coi titoli che allora erano 45 e ciò che ne dice il
 // contratto; dove si apre, e che l'id dell'acquisto non entra nell'indirizzo; la riga del registro.
 
 it('il README dice, dalla v2.25.3, il titolo, il tipo e la chiave della notifica del credito sotto zero, che l\'evento con lo stesso nome non ha un titolo, che con lei i titoli erano 45, che cosa ne dice il contratto, che un clic apre il contatto e non porta l\'id dell\'acquisto, e la riga del registro (v2.25.3)', function (string $dove, string $frase) {
@@ -4441,7 +4441,7 @@ it('il README dice, dalla v2.25.3, il titolo, il tipo e la chiave della notifica
 // riepilogo del giorno, hanno un titolo: il README lo dice dove dice il credito sotto zero, coi titoli che ora sono 47, ciò che
 // il contratto pubblicato non ha ancora e dove porta un clic finché il registro non ha le loro righe.
 
-it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle scadenze, che non sono eventi, che con loro i titoli sono 47, che cosa porteranno nei dati e che un clic apre la pagina delle notifiche', function (string $frase) {
+it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle scadenze, che non sono eventi, che con loro i titoli sono 47, che il contratto pubblicato il 24/10/2026 non le ha, che cosa porteranno nei dati e che un clic apre la pagina delle notifiche', function (string $frase) {
     $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
 
     expect($testo)->not->toBe('')
@@ -4450,6 +4450,7 @@ it('il README dice, dalla v2.25.4, i titoli e i tipi delle due notifiche delle s
     'i titoli e i tipi' => ['Dalla `v2.25.4` hanno un titolo anche le due notifiche delle scadenze del CRM: il preavviso di una scadenza, al suo responsabile, «Una scadenza si avvicina» (`crm.scadenza.in_preavviso`), e il riepilogo del giorno, quando lo stesso giorno i preavvisi sono più di cinque, «Scadenze in preavviso oggi» (`crm.scadenze.riepilogo_del_giorno`)'],
     'senza `com.zeiras.` davanti' => ['Non sono eventi, e il loro `tipo` non ha `com.zeiras.` davanti'],
     'quanti sono i titoli' => ['Con loro i titoli sono 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze'],
+    'il contratto' => ['Il 24/10/2026 il contratto pubblicato non le ha ancora: i nomi li ha fissati il backoffice'],
     'i dati' => ['nei `dati` il preavviso porta l\'`id` della scadenza e `persona_id` o `organizzazione_id`, il riepilogo il numero'],
     'dove si apre' => ['Nella `v2.25.4` un clic su tutte e due apre la pagina delle notifiche'],
 ]);
