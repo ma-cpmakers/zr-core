@@ -194,6 +194,8 @@ let ingressoDelleFrasi: Costruito;
 let dalBundle: Costruito;
 let dalModulo: Costruito;
 let conIDatiDiEsempio: Costruito;
+let conMentionAParte: Costruito;
+let conMentionDaComponenti: Costruito;
 
 // Sprint 50 · T1 (voce 2073). I dati di esempio del design system (un `var SAMPLE_… = [` del modulo, come i contatti finti di
 // `CrmContacts`) e i due formattatori dei numeri (`NF`, `EUR`, cioè `new Intl.NumberFormat`) li usano solo componenti che la
@@ -230,6 +232,15 @@ beforeAll(async () => {
     ingressoDelleFrasi = await ingresso('resources/js/frasi.ts');
     dalBundle = await appCheImporta(DAL_BUNDLE);
     dalModulo = await appCheImporta(DAL_MODULO);
+    // Sprint 71 · T1.1 (voce #2433): la cornice nell'ingresso e una pagina a richiesta con MentionField, preso dal suo modulo o
+    // da quello dei componenti.
+    const conLaPaginaCheLoPrende = (da: string, nome: string) => appColTesto([
+        `import { Cornice } from ${JSON.stringify(delRepo('resources/js/app.ts'))};`,
+        'console.log(Cornice);',
+        `globalThis.apri = () => import(${JSON.stringify(delRepo(da))}).then((pagina) => console.log(pagina.${nome}));`,
+    ].join('\n'));
+    conMentionAParte = await conLaPaginaCheLoPrende('resources/js/zeiras/MentionField.js', 'MentionField');
+    conMentionDaComponenti = await conLaPaginaCheLoPrende('resources/js/zeiras/componenti.js', 'MentionField');
     conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
@@ -263,6 +274,28 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     it('pesa più della sola cornice e, con gzip, al più il 70% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(perNome.js)).toBeGreaterThan(gzip(soloCornice.js));
         expect(gzip(perNome.js)).toBeLessThanOrEqual(0.7 * gzip(diSempre.js));
+    });
+});
+
+// Sprint 71 · T1.1, T1.2 (voce #2433, Decisione 16375). `componenti.js` è un modulo solo: se l'ingresso lo importa (la cornice lo
+// fa), sta nell'ingresso con tutto ciò che una qualunque pagina ne usa, anche una pagina a richiesta. MentionField ha per questo un
+// modulo suo: preso da lì, sta nel pezzo della pagina. La classe del suo campo, `zr-mention`, è il segno del suo codice.
+const DI_MENTIONFIELD = 'zr-mention';
+
+describe('MentionField preso dal suo modulo in una pagina a richiesta sta nel pezzo della pagina, non nel JS d\'ingresso (sprint 71 · T1.1, T1.2)', () => {
+    it('dal suo modulo: nel JS d\'ingresso non c\'è, nel pezzo a richiesta sì', () => {
+        expect(conMentionAParte.js).toContain(DELLA_CORNICE);
+        expect(conMentionAParte.js).not.toContain(DI_MENTIONFIELD);
+        expect(conMentionAParte.pezzi.filter((pezzo) => pezzo.includes(DI_MENTIONFIELD))).toHaveLength(1);
+    });
+
+    it('da componenti, com\'era prima: è nel JS d\'ingresso, e l\'ingresso pesa di più', () => {
+        expect(conMentionDaComponenti.js).toContain(DI_MENTIONFIELD);
+        expect(gzip(conMentionDaComponenti.js)).toBeGreaterThan(gzip(conMentionAParte.js));
+    });
+
+    it('l\'app che prende solo la cornice non lo porta', () => {
+        expect(soloCornice.js).not.toContain(DI_MENTIONFIELD);
     });
 });
 

@@ -160,3 +160,89 @@ export function componi({ corpo, nomi }) {
 export function genera(bundle) {
     return componi(leggi(bundle));
 }
+
+// I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
+// prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
+// nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
+// riga — dal commento «/* ---------- <Nome>: …» alla graffa che chiude la funzione — e le righe private che il blocco usa, anche
+// loro com'erano; i componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta:
+// nella stessa app si prende da un posto solo, perché le due copie hanno ognuna le sue righe private (il contatore degli id).
+export const A_PARTE = ['MentionField'];
+
+const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
+// Le dichiarazioni del corpo: le righe che cominciano con `var` o `function` col rientro del bundle, e su quelle righe ogni `var`
+// o `function` fuori dalle graffe («var uid = 0; function useId…»); quelle dentro una funzione sono sue.
+const RIGA_DI_DICHIARAZIONI = /^ {2}(?:var|function) /;
+const DICHIARAZIONE = /^(?:var|function) ([A-Za-z_$][\w$]*)/;
+const NOME_USATO = /(?<![.\w$])[A-Za-z_$][\w$]*/g;
+const TESTO = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"/g;
+
+const nomiUsati = (righe) => new Set(righe.join('\n').replace(TESTO, "''").match(NOME_USATO) ?? []);
+function dichiaratiIn(riga) {
+    if (!RIGA_DI_DICHIARAZIONI.test(riga)) return [];
+    const senzaTesti = riga.replace(TESTO, "''");
+    const dichiarati = [];
+    let profondita = 0;
+    for (let qui = 0; qui < senzaTesti.length; qui++) {
+        const carattere = senzaTesti[qui];
+        if (carattere === '{' || carattere === '(' || carattere === '[') profondita++;
+        else if (carattere === '}' || carattere === ')' || carattere === ']') profondita--;
+        else if (profondita === 0 && (qui === 0 || /[\s;]/.test(senzaTesti[qui - 1]))) {
+            const trovato = DICHIARAZIONE.exec(senzaTesti.slice(qui));
+            if (trovato) dichiarati.push(trovato[1]);
+        }
+    }
+
+    return dichiarati;
+}
+
+/**
+ * Il testo del modulo di `nome` (uno di `A_PARTE`) dal corpo e dai nomi che dà `leggi`. Se il blocco non c'è, o usa una riga
+ * privata che non sta tutta su una riga sua, lancia un errore che dice quale.
+ */
+export function aParte({ corpo, nomi }, nome) {
+    const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
+    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», da cui comincia il blocco di ${nome}, c'è ${inizi.length} volte`);
+    const funzione = corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
+    vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
+    const fine = corpo.indexOf('  }', funzione);
+    vuole(fine > funzione, `la funzione ${nome} non si chiude con una riga «}»`);
+    const blocco = corpo.slice(inizi[0], fine + 1);
+
+    // Dove sta ogni dichiarazione del corpo fuori dal blocco: un nome usato che è lì si porta con la sua riga, o si importa.
+    const rigaDi = new Map();
+    corpo.forEach((riga, indice) => {
+        if (indice < inizi[0] || indice > fine) dichiaratiIn(riga).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
+    });
+    const daImportare = new Set();
+    const righePrivate = new Set();
+    const daGuardare = [...nomiUsati(blocco)];
+    while (daGuardare.length > 0) {
+        const usato = daGuardare.pop();
+        if (!rigaDi.has(usato) || daImportare.has(usato)) continue;
+        if (nomi.includes(usato)) {
+            daImportare.add(usato);
+            continue;
+        }
+        const indice = rigaDi.get(usato);
+        if (righePrivate.has(indice)) continue;
+        const riga = corpo[indice];
+        vuole(/[;}]$/.test(riga) && (!/^ {2}function /.test(riga) || riga.endsWith('}')) && (riga.split('{').length === riga.split('}').length), `${nome} usa «${usato}», che non sta tutto sulla riga ${indice + 4} del bundle: lo script porta nel modulo di ${nome} solo righe private intere`);
+        righePrivate.add(indice);
+        daGuardare.push(...nomiUsati([riga]));
+    }
+
+    return [
+        `// Generato da scripts/componenti.mjs: non si ritocca a mano. È ${nome} di resources/zeiras/bundle.js (il design system di`,
+        '// Zeiras, copia derivata) in un modulo suo: il suo blocco del bundle e le righe private che usa, riga per riga; i componenti che',
+        '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
+        "import * as React from 'react';",
+        ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
+        ...[...righePrivate].sort((a, b) => a - b).map((indice) => corpo[indice]),
+        '',
+        ...blocco,
+        '',
+        `export { ${nome} };`,
+        '',
+    ].join('\n');
+}
