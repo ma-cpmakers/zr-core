@@ -2556,6 +2556,8 @@ describe('il pannello delle notifiche', () => {
         expect(righe).toHaveLength(27);
         expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
+        // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.
+        expect(vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(indirizzo)).filter((indirizzo) => indirizzo.endsWith('/lettura'))).toStrictEqual(elenco.map(({ id }) => `/cornice/notifiche/${id}/lettura`));
     });
 
     // Sprint 21 · T5 (voce #1706): una vista salvata è di Project Management, che nel registro non ha destinazioni. Gli id

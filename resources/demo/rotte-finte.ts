@@ -223,7 +223,7 @@ const notificheDiProva = [
               ['uat-e2', 'crm.scadenza.in_preavviso', { organizzazione_id: 'uat-azienda-1' }],
               ['uat-e3', 'crm.scadenza.in_preavviso', {}],
               ['uat-e4', 'crm.scadenze.riepilogo_del_giorno', {}],
-          ] as [string, string, Record<string, string>][]).map(([id, tipo, ids], indice) => ({ id, creata_il: fa((39 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...nonDetti, ids }))
+          ] as [string, string, Record<string, string>][]).map(([id, tipo, ids], indice) => ({ id, creata_il: fa((38 * 24 + 4 * (indice + 1)) * 60), letta: true, app: 'crm', tipo, ...nonDetti, ids }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

@@ -21,7 +21,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
   system intero, e lo scrive in `window.Zeiras`, con `window.React`; quello per le app (`resources/js/app`, dalla `v1.15.0`)
   dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. Dalla `v2.0.0` le tre funzioni per le
-  pagine che mostrano le notifiche hanno un ingresso loro, `resources/js/frasi`. I font arrivano da Google
+  pagine che mostrano le notifiche hanno un ingresso loro, `resources/js/frasi`, e dalla `v3.0.0` anche la quarta,
+  `destinazioneDellaNotifica`. I font arrivano da Google
   Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
   `font-src https://fonts.gstatic.com`.
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il

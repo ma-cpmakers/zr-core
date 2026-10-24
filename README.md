@@ -100,7 +100,7 @@ del registro che dicono dove si apre ogni notifica, con la funzione che le legge
 (circa 1,0 KB con gzip): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.478 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
@@ -197,7 +197,9 @@ una pagina caricata a richiesta. Il perché: le righe delle destinazioni e la fu
 di ogni app, anche di quelle che non mostrano le notifiche in una pagina loro; ora la cornice le chiede col pezzo della
 campanella, che al clic su una notifica c'è già. I tetti nuovi (vedi «Quanto pesa», sopra): 17.478 byte con gzip il JS
 d'ingresso dell'app che prende solo la cornice, 456 meno di prima, e 1.969 il pezzo della campanella, che porta le righe.
-La parte server (`GET /cornice/notifiche`, `idsDellaNotifica`) dà gli stessi `ids` di prima.
+La parte server (`GET /cornice/notifiche`, `idsDellaNotifica`) dà gli stessi `ids` di prima ai tipi che avevano già una riga;
+ai due delle Scadenze, che nella `v2.25.4` non l'avevano e avevano `ids` vuoti, dà quelli del percorso che si apre
+(`persona_id`, altrimenti `organizzazione_id`, altrimenti nessuno).
 
 ## La parte server
 
