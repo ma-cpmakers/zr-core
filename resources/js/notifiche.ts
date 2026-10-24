@@ -1,9 +1,12 @@
 import type { DatiDellaCornice } from './cornice';
 import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
-import { nelWorkspace, prodottoDelRegistro, raggiungibile } from './registro';
+import righe from '../registro/notifiche.json';
+import { nelWorkspace, prodottoDelRegistro, raggiungibile, type NotificaDelProdotto } from './registro';
 
-// Dove si apre una notifica. Lo dice il registro dei prodotti, non il codice: la voce dell'app da cui la notifica viene ha, fra
-// le sue `notifiche`, il tipo intero dell'evento e il percorso nel prodotto — o più d'uno, in ordine —, coi segnaposto degli id.
+// Dove si apre una notifica. Lo dice il registro dei prodotti, non il codice: le righe dell'app da cui la notifica viene, in
+// `resources/registro/notifiche.json` (per id del prodotto), hanno il tipo intero dell'evento e il percorso nel prodotto — o più
+// d'uno, in ordine —, coi segnaposto degli id. Dalla `v3.0.0` le righe non stanno nelle voci del registro: le legge solo questo
+// modulo, che entra nel pezzo della campanella (`./campanella` lo riesporta), e la cornice lo chiede al clic su una notifica.
 // Gli id li porta la notifica (`ids`): dei `dati` dell'evento la parte server dà i soli del percorso che si apre, già
 // controllati. Qui si controllano di nuovo, e con loro lo slug, perché ciò che arriva dal browser non entra in un indirizzo
 // com'è. Le due forme, di un id e di uno slug, stanno in `forme.ts`.
@@ -24,7 +27,7 @@ const SEGNAPOSTO = /\{(id|[a-z][a-z_]*_id)\}/g;
  */
 export function destinazioneDellaNotifica(notifica: { app?: unknown; tipo?: unknown; ids?: unknown }, slug: string, prodotti: DatiDellaCornice['prodotti']): string | undefined {
     const voce = prodottoDelRegistro(typeof notifica.app === 'string' ? notifica.app : undefined);
-    const delTipo = voce?.notifiche?.find(({ tipo }) => tipo === notifica.tipo);
+    const delTipo = (voce && (righe as Record<string, NotificaDelProdotto[] | undefined>)[voce.id])?.find(({ tipo }) => tipo === notifica.tipo);
     if (typeof slug !== 'string' || !FORMA_DI_UNO_SLUG.test(slug) || voce === undefined || voce.id === 'home' || delTipo === undefined || voce.presto || !raggiungibile(prodotti[voce.id])) {
         return undefined;
     }

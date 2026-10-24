@@ -2,7 +2,7 @@ import inglesi from '../lingue/notifiche/en.json';
 import { frasiDiOgniLingua, rigaConLeFrasi, titoloConLeFrasi } from './campanella';
 import type { FrasiDelleNotifiche } from './lingue';
 
-export { risorsaDellaNotifica } from './campanella';
+export { destinazioneDellaNotifica, risorsaDellaNotifica } from './campanella';
 
 // Le notifiche in una pagina che non è il pannello della cornice (zr-home, la pagina di tutte le notifiche): gli stessi titoli
 // e le stesse righe, subito, senza aspettare niente. Per questo qui le frasi di tutte le lingue sono importate per intero; la
@@ -10,7 +10,9 @@ export { risorsaDellaNotifica } from './campanella';
 // queste funzioni non porta le frasi nel JS d'ingresso. Le lingue si compongono alla prima chiamata. I file sono gli stessi
 // che carica la cornice, ma lei ne ha solo l'indirizzo e li chiede con `fetch`: per la build quelli sono file a sé. Dalla
 // `v2.0.0` questo è l'ingresso delle tre funzioni per le pagine: i due ingressi del pacchetto non le riesportano, perché ciò
-// che compone le righe (`./campanella`) resti fuori dal JS d'ingresso di chi non le usa.
+// che compone le righe (`./campanella`) resti fuori dal JS d'ingresso di chi non le usa. Dalla `v3.0.0` è anche l'ingresso di
+// `destinazioneDellaNotifica`, che i due ingressi non esportano più: le righe del registro che legge stanno nel pezzo della
+// campanella.
 
 const file = import.meta.glob<FrasiDelleNotifiche>('../lingue/notifiche/*.json', { eager: true, import: 'default' });
 let diOgniLingua: ((lingua: string) => Readonly<FrasiDelleNotifiche>) | undefined;

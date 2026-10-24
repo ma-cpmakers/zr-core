@@ -6,7 +6,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
 import type { IconName } from '../zeiras/index';
 import { Cornice, type StatoDellaRicerca } from './cornice';
-import { destinazioneDellaNotifica, tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
+import righeDelleNotifiche from '../registro/notifiche.json';
+import { destinazioneDellaNotifica } from './frasi';
+import { tonoDelWorkspace, type DatiDellaCornice, type GruppoDiVoci } from './index';
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
@@ -2540,6 +2542,22 @@ describe('il pannello delle notifiche', () => {
         expect(dellaFunzione(senzaCrm)).toStrictEqual(conGliId.map(() => undefined));
     });
 
+    // Sprint 70 · T1.2 (voce #2429): dalla `v3.0.0` le righe delle destinazioni le legge il pezzo della campanella. Ogni riga
+    // del registro, con gli id del suo primo percorso, apre quel percorso nel suo modulo: lo stesso indirizzo della v2.25.4,
+    // composto qui dalla riga e non dalla funzione.
+    it('un clic su una notifica di ogni riga delle destinazioni apre il suo primo percorso nel suo modulo, con gli id al posto dei segnaposto (sprint 70 · T1.2)', async () => {
+        const righe = Object.entries(righeDelleNotifiche).flatMap(([app, delProdotto]) => delProdotto.map(({ tipo, percorso }) => ({ app, tipo, percorso })));
+        const elenco = righe.map(({ app, tipo, percorso }, indice) => ({
+            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app, tipo,
+            ids: Object.fromEntries([...percorso.matchAll(/\{([a-z_]+)\}/g)].map(([, chiave = '']) => [chiave, `uat-${chiave.replace('_', '-')}`])),
+        }));
+
+        // Sprint 70 · T2: 25 righe, più le due delle Scadenze.
+        expect(righe).toHaveLength(27);
+        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
+            `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
+    });
+
     // Sprint 21 · T5 (voce #1706): una vista salvata è di Project Management, che nel registro non ha destinazioni. Gli id
     // la notifica li porta lo stesso (`id`, `board_id`): un indirizzo per una vista non lo decide zr-core.
     const delleViste = ['creata', 'modificata', 'eliminata'].map((cosa, indice) => ({
@@ -2936,8 +2954,8 @@ describe('il pannello delle notifiche', () => {
     });
 
     // v2.25.4 (zr-crm, Decisioni 16179 e 16181 del #95). Le due notifiche delle scadenze del CRM, il preavviso al responsabile e il
-    // riepilogo del giorno, hanno un titolo; le manda il backoffice da solo, senza chi. Il registro non ha ancora le loro righe (le
-    // porta la v3.0.0): un clic apre la pagina delle notifiche e non le segna lette, anche con gli id che il preavviso porterà.
+    // riepilogo del giorno, hanno un titolo; le manda il backoffice da solo, senza chi. Nella v2.25.4 un clic apriva la pagina
+    // delle notifiche: le loro righe le porta la v3.0.0 (sprint 70 · T2, più sotto).
     const delleScadenze = [
         { ...delCreditoSottoZero, id: 'uat-n80', tipo: 'crm.scadenza.in_preavviso', autore_nome: null, risorsa_nome: null, ids: { id: 'uat-scadenza-1', persona_id: 'uat-persona-7' } as Record<string, string> },
         { ...delCreditoSottoZero, id: 'uat-n81', tipo: 'crm.scadenze.riepilogo_del_giorno', autore_nome: null, risorsa_nome: null, ids: {} as Record<string, string> },
@@ -2957,16 +2975,34 @@ describe('il pannello delle notifiche', () => {
         expect(secondeRighe()).toStrictEqual([null, null]);
     });
 
-    it('un clic su una delle due notifiche delle scadenze apre la pagina delle notifiche e non la segna letta: il registro non ha ancora le loro righe (v2.25.4)', async () => {
-        const fetchFinto = rotteDelClic([{ data: delleScadenze }]);
+    // Sprint 70 · T2.1 (voce #2429; forma delle righe confermata da zr-backoffice, #2428 SC.6). Il preavviso apre il contatto del
+    // responsabile, altrimenti l'azienda, altrimenti la pagina delle scadenze; il riepilogo del giorno apre le scadenze. L'`id`
+    // della scadenza non entra mai nell'indirizzo: la scadenza non ha una pagina sua.
+    it.each<[string, Record<string, string>, string]>([
+        ['col contatto', { persona_id: 'uat-persona-7', organizzazione_id: 'uat-azienda-2' }, '/contatti/uat-persona-7'],
+        ['con l\'azienda e senza il contatto', { organizzazione_id: 'uat-azienda-2' }, '/aziende/uat-azienda-2'],
+        ['senza contatto e senza azienda', {}, '/scadenze'],
+        ['con l\'`id` della scadenza e nient\'altro', { id: 'uat-scadenza-1' }, '/scadenze'],
+    ])('un clic sul preavviso di una scadenza apre la sua pagina nel CRM e la segna letta — %s (sprint 70 · T2.1)', async (_quale, ids, percorso) => {
+        const fetchFinto = rotteDelClic([{ data: [{ ...delleScadenze[0]!, ids }] }]);
         vi.stubGlobal('fetch', fetchFinto);
         const naviga = vi.fn();
-        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
 
         await apre(0);
-        await apre(1);
-        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche], [paginaDelleNotifiche]]);
-        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+        expect(naviga.mock.calls).toStrictEqual([[nelCrm + percorso]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n80')]);
+    });
+
+    it('un clic sul riepilogo delle scadenze del giorno apre la pagina delle scadenze nel CRM e la segna letta (sprint 70 · T2.1)', async () => {
+        const fetchFinto = rotteDelClic([{ data: [delleScadenze[1]!] }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/scadenze`]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n81')]);
     });
 
     it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {

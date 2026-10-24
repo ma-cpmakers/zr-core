@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
-import { destinazioneDellaNotifica } from './notifiche';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
@@ -938,7 +937,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         if (letturaInVolo.current) return;
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
-        const risorsa = notifica === undefined || elencoDi === undefined ? undefined : destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+        const risorsa = notifica === undefined || elencoDi === undefined ? undefined : campanella?.destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined) {
             letturaInVolo.current = true;
@@ -946,7 +945,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             leggi(notifica!.id, elencoDi!, notifica!.letta).then((letta) => ((letturaInVolo.current = false), letta && naviga(risorsa)));
             return;
         }
-        naviga(risorsa ?? dashboard.indirizzo + pagineDiApp.notifiche);
+        naviga(dashboard.indirizzo + pagineDiApp.notifiche);
     };
 
     // L'avviso di chi non ha accettato i documenti legali, sopra la pagina: titolo, frase e un pulsante che porta alla pagina

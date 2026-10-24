@@ -1,0 +1,33 @@
+{
+    "pm": [
+        { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
+        { "tipo": "com.zeiras.board.scheda.modificata", "percorso": "/c/{id}" },
+        { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" },
+        { "tipo": "board.commento.menzione", "percorso": "/c/{id}" }
+    ],
+    "crm": [
+        { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },
+        { "tipo": "com.zeiras.crm.persona.modificata", "percorso": "/contatti/{id}" },
+        { "tipo": "com.zeiras.crm.pipeline.creata", "percorso": "/pipeline/{id}/impostazioni" },
+        { "tipo": "com.zeiras.crm.pipeline.modificata", "percorso": "/pipeline/{id}/impostazioni" },
+        { "tipo": "com.zeiras.crm.motivo.creato", "percorso": "/impostazioni" },
+        { "tipo": "com.zeiras.crm.motivo.modificato", "percorso": "/impostazioni" },
+        { "tipo": "com.zeiras.crm.nota.creata", "percorso": "/opportunita/{trattativa_id}", "altrimenti": ["/contatti/{persona_id}", "/aziende/{organizzazione_id}"] },
+        { "tipo": "com.zeiras.crm.nota.modificata", "percorso": "/opportunita/{trattativa_id}", "altrimenti": ["/contatti/{persona_id}", "/aziende/{organizzazione_id}"] },
+        { "tipo": "com.zeiras.crm.nota.eliminata", "percorso": "/opportunita/{trattativa_id}", "altrimenti": ["/contatti/{persona_id}", "/aziende/{organizzazione_id}"] },
+        { "tipo": "com.zeiras.crm.organizzazione.creata", "percorso": "/aziende/{id}" },
+        { "tipo": "com.zeiras.crm.organizzazione.modificata", "percorso": "/aziende/{id}" },
+        { "tipo": "com.zeiras.crm.trattativa.creata", "percorso": "/opportunita/{id}" },
+        { "tipo": "com.zeiras.crm.trattativa.modificata", "percorso": "/opportunita/{id}" },
+        { "tipo": "crm.trattativa.assegnata", "percorso": "/opportunita/{id}" },
+        { "tipo": "com.zeiras.crm.attivita.creata", "percorso": "/da-fare" },
+        { "tipo": "com.zeiras.crm.attivita.modificata", "percorso": "/da-fare" },
+        { "tipo": "com.zeiras.crm.attivita.eliminata", "percorso": "/da-fare" },
+        { "tipo": "crm.attivita.assegnata", "percorso": "/da-fare" },
+        { "tipo": "crm.persona.assegnata", "percorso": "/contatti/{id}" },
+        { "tipo": "crm.organizzazione.assegnata", "percorso": "/aziende/{id}" },
+        { "tipo": "crm.acquisto.scoperto", "percorso": "/contatti/{persona_id}" },
+        { "tipo": "crm.scadenza.in_preavviso", "percorso": "/contatti/{persona_id}", "altrimenti": ["/aziende/{organizzazione_id}", "/scadenze"] },
+        { "tipo": "crm.scadenze.riepilogo_del_giorno", "percorso": "/scadenze" }
+    ]
+}

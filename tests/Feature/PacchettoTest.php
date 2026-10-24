@@ -3769,8 +3769,9 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     'la versione, e che cosa si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'i due casi del CRM della `v1.11.0`; la nota ha il suo caso (sprint 23 · T3.7)' => ['punto', 'una notifica di un contatto del CRM apre `https://crm.zeiras.com/w/<slug>/contatti/<id>`, una di una pipeline le sue impostazioni, una di un\'azienda'],
     'il caso delle aziende (sprint 21 · T5.2)' => ['punto', 'una di un\'azienda l\'elenco delle aziende col suo pannello aperto (`https://crm.zeiras.com/w/<slug>/aziende/<id>`)'],
-    'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (`notifiche` della voce del modulo, più sotto), e gli id sono quelli di `ids`'],
-    'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa dall\'ingresso'],
+    // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` le righe stanno in un file loro, e la funzione si importa da `…/resources/js/frasi`.
+    'dove sta scritto' => ['punto', 'Dove si apre ogni tipo lo dice il registro (dalla `v3.0.0` le righe di `resources/registro/notifiche.json`, più sotto), e gli id sono quelli di `ids`'],
+    'la funzione' => ['punto', 'la regola è `destinazioneDellaNotifica`, che chi mostra le notifiche in una pagina sua importa da `…/resources/js/frasi` (dalla `v3.0.0`: prima dall\'ingresso, vedi «Passare alla v3»)'],
     'quando no' => ['punto', 'Una notifica che non ha dove andare apre `https://app.zeiras.com/notifiche`, come «Vedi tutte»'],
     'un id non è un permesso (review della PR #31, R12)' => ['punto', 'Un id non è un permesso: chi riceve la notifica può non poter vedere quella risorsa, la cornice non lo controlla, e lo decide il modulo che apre la pagina'],
     'oggi il backoffice non le manda (review della PR #31, R3)' => ['punto', 'Per quel contratto i dodici tipi nuovi non generano ancora notifiche per i colleghi: titoli e destinazioni sono pronti per quando il backoffice le manderà'],
@@ -3782,11 +3783,11 @@ it('il README dice che dalla v1.11.0 un clic su una notifica apre la sua risorsa
     // Sprint 22 · T3.4 (seconda lettura della PR #31, S5): la forma, non solo gli esempi di ciò che non la ha.
     'nemmeno con uno slug malfatto, e la forma di uno slug (review della PR #31, R7; sprint 22 · T3.4)' => ['paragrafo', 'nemmeno con uno `slug` che non ha la forma di uno slug: minuscole e cifre, a pezzi uniti da un trattino (`acme`, `acme-marketing`)'],
     'gli slug che la forma non la hanno (sprint 22 · T3.4)' => ['paragrafo', 'Uno vuoto, `..`, uno con una barra, `Acme`, `acme_marketing` non la hanno: anche allora non dà niente'],
-    'il registro' => ['paragrafo', 'la voce di un modulo ha in `notifiche` una riga per tipo, col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
+    'il registro' => ['paragrafo', 'dalla `v3.0.0` in `resources/registro/notifiche.json`, che ha sotto l\'id di ogni modulo una riga per tipo (fino alla `v2.25.4` stavano in `notifiche` della voce del modulo, un campo che dalla `v3.0.0` le voci non hanno più), col tipo intero dell\'evento (`com.zeiras.crm.nota.creata`) e il percorso nel modulo dopo `/w/<slug>`'],
     // Review della PR #31, R1 e R6: di `dati` passano i soli id che il registro chiede per quel tipo, non ogni `id` e `*_id`.
     'gli ids nella riga della rotta' => ['rotta', 'dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave'],
     // Review della PR #51, R2: dalla `v1.13.0` un tipo può avere più percorsi, e gli id sono quelli di uno solo, quello che si apre.
-    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, nella voce della sua app'],
+    'che cosa passa di dati' => ['rotta', 'di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, fra le righe della sua app'],
     'più percorsi, nella riga della rotta (review della PR #51, R2)' => ['rotta', 'dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un\'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`'],
     'vuoto anche con una destinazione (review della PR #51, R2)' => ['rotta', 'e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un\'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`'],
     'la forma del valore' => ['rotta', 'e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64)'],
@@ -4905,9 +4906,11 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
     }
 
     // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
-    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json'))))->toBe(['Registro.php'])
-        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(1)
+    // Sprint 70 · T1.4 (voce #2429): dalla `v3.0.0` i file sono due, le voci e le righe delle notifiche, e li legge `Registro`.
+    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json'))))->toBe(['Registro.php'])
+        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(2)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/prodotti.json')"))->toBe(1)
+        ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/notifiche.json')"))->toBe(1)
         ->and(array_map(fn (string $rotta): array => [substr_count($sorgenti[$rotta], 'file_get_contents('), substr_count($sorgenti[$rotta], 'Registro::voci()')], ['Http/RicercaDellaCornice.php', 'Http/NotificheDellaCornice.php']))
         ->toBe([[0, 1], [0, 1]]);
 });
@@ -5282,7 +5285,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.934 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.478 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
     'i pesi: i 18 byte della v2.25.2' => ['pesi', 'e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue'],
     // Sprint 69 · T1 (voci #2151, #2210, #2033): +25 byte, eccezione di zr-pm (Decisione 15231).
@@ -5290,7 +5295,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.666 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.969 byte la campanella, 1.666 i rimedi, 1.004 la ricerca'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 

@@ -499,9 +499,22 @@ it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un n
         'presto' => 'boolean',
         'in_arrivo' => 'boolean',
         'risorse?' => 'RisorsaDelProdotto[]',
-        // Sprint 21 · T3: le notifiche che aprono la loro risorsa.
-        'notifiche?' => 'NotificaDelProdotto[]',
+        // Sprint 21 · T3: le notifiche che aprono la loro risorsa erano `notifiche?`; dalla `v3.0.0` (sprint 70 · T1.4) stanno in
+        // resources/registro/notifiche.json, e la voce non ha più il campo.
     ]);
+});
+
+// Sprint 70 · T1.4 (voce #2429): dalla `v3.0.0` le righe delle notifiche stanno in un file loro, per id del prodotto, e le voci
+// del file del registro non hanno più `notifiche`. La parte server le rimette nella voce del loro prodotto: le rotte le trovano
+// dove le trovavano, e gli `ids` sono quelli di prima.
+it('le voci del file del registro non hanno `notifiche`; le righe stanno in resources/registro/notifiche.json, per id del prodotto e nell\'ordine del registro, e `Registro::voci()` le rimette nella voce del loro prodotto (sprint 70 · T1.4)', function () {
+    $file = json_decode(File::get(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+    $righe = json_decode(File::get(__DIR__.'/../../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
+        ->and(array_keys($righe))->toBe(['pm', 'crm'])
+        ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(27);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
@@ -529,7 +542,7 @@ it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro d
 // si vede nella pagina della cosa più specifica a cui è attaccata — l'opportunità, poi il contatto, poi l'azienda (sprint 23 ·
 // T3; fino alla `v1.12.0` solo il contatto, `persona_id`) —, anche quando è stata eliminata.
 
-it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventuno, col tipo intero: un contatto apre la sua pagina, e la sua pagina apre anche il credito sotto zero di un pacchetto, col `persona_id` dei `dati` e non l\'`id` dell\'acquisto (v2.25.3), una pipeline le sue impostazioni, un motivo di perdita le Impostazioni del CRM, senza un id (sprint 41 · T2.1), un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
+it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventitré, col tipo intero: un contatto apre la sua pagina, e la sua pagina apre anche il credito sotto zero di un pacchetto, col `persona_id` dei `dati` e non l\'`id` dell\'acquisto (v2.25.3), una pipeline le sue impostazioni, un motivo di perdita le Impostazioni del CRM, senza un id (sprint 41 · T2.1), un\'azienda la sua pagina in `/aziende`, mai in `/organizzazioni`, un\'opportunità la sua in `/opportunita`, mai in `/trattative`, un\'attività «Da fare», senza un id, e una nota la cosa più specifica a cui è attaccata: l\'opportunità, altrimenti il contatto, altrimenti l\'azienda; nessun altro prodotto ne ha (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4)', function () {
     $voci = registroDeiProdotti();
     $dellaNota = ['percorso' => '/opportunita/{trattativa_id}', 'altrimenti' => ['/contatti/{persona_id}', '/aziende/{organizzazione_id}']];
 
@@ -563,8 +576,12 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventuno, c
             // v2.25.3: il credito di un pacchetto sotto zero apre il contatto (zr-crm, nota 16079 del #95). L'`id` dei `dati` è
             // quello dell'acquisto, che non ha una pagina sua; arriva senza `com.zeiras.` davanti, come i quattro «assegnata».
             ['tipo' => 'crm.acquisto.scoperto', 'percorso' => '/contatti/{persona_id}'],
+            // Sprint 70 · T2.1 (voce #2429; zr-backoffice, #2428 SC.6): il preavviso di una scadenza apre il contatto, poi l'azienda,
+            // poi le scadenze; il riepilogo del giorno le scadenze. L'`id` della scadenza non entra nel percorso.
+            ['tipo' => 'crm.scadenza.in_preavviso', 'percorso' => '/contatti/{persona_id}', 'altrimenti' => ['/aziende/{organizzazione_id}', '/scadenze']],
+            ['tipo' => 'crm.scadenze.riepilogo_del_giorno', 'percorso' => '/scadenze'],
         ])
-        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3.
+        // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0.
         ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
@@ -589,7 +606,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
         ])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
-        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(21);
+        ->and($voci[2]['notifiche'] ?? [])->toHaveCount(23);
 });
 
 it('il controllo accetta `altrimenti` solo come lista non vuota di percorsi, ognuno con le regole di `percorso` e nessuno ripetuto, non accetta un\'altra chiave accanto, e sa che un tipo `crm.…` è del CRM e uno `board.…` di Project Management (sprint 23 · T3.6; sprint 24 · T3.5)', function () {
