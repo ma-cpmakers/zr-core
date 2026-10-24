@@ -83,9 +83,11 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   import { AddressField, type AddressPlace, type AddressSuggestion } from '../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField';
   ```
 
-  AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dal suo server, a ogni `onQuery`, e
-  li passa al campo in `suggestions`. Il browser non parla con Google, e la CSP della cornice non cambia. Nei frontend la
-  ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l'informativa non sono approvate.
+  AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dalla sua parte server, a ogni
+  `onQuery`, e li passa al campo in `suggestions`. Per un modulo di Zeiras a parlare con Google è un metodo di
+  zr-backoffice, non il server del modulo. Il browser non parla con Google, e la CSP della cornice non cambia. Nei
+  frontend la ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l'informativa non
+  sono approvate.
 
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
