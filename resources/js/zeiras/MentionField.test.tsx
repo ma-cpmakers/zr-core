@@ -83,8 +83,8 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         ['due nomi con la virgola', (testo) => testo.replace(RIGA_DI_USEREF, '  var a = 1, useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
         ['un nome fra graffe', (testo) => testo.replace(RIGA_DI_USEREF, '  var { useRef } = React;'), 'la riga 6 («var { useRef } = React;») ha una forma che lo script non conosce'],
         ['un `const`', (testo) => testo.replace(RIGA_DI_USEREF, '  const useRef = React.useRef;'), 'la riga 6 («const useRef = React.useRef;») ha una forma che lo script non conosce'],
-        ['un\'espressione regolare con una parentesi prima di un\'altra dichiarazione', (testo) => testo.replace(RIGA_DI_CX, `  var RX = /[(]/; ${RIGA_DI_CX.trim()}`), 'la riga 8 ha una barra e più di una dichiarazione'],
-        ['una proprietà data a MentionField dopo il blocco', (testo) => testo.replace('  function Checkbox(p) {', '  MentionField.Prova = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a MentionField, che è del blocco di MentionField'],
+        ['un\'espressione regolare con una parentesi prima di un\'altra dichiarazione', (testo) => testo.replace(RIGA_DI_CX, `  var RX = /[(]/; ${RIGA_DI_CX.trim()}`), 'le graffe della dichiarazione della riga 8 non si chiudono dove comincia la riga seguente col rientro del bundle'],
+        ['una proprietà data a MentionField dopo il blocco', (testo) => testo.replace('  function Checkbox(p) {', '  MentionField.Prova = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a MentionField, che il modulo di MentionField porta'],
         ['un nome dato a MentionField con un testo', (testo) => testo.replace('  function Checkbox(p) {', "  MentionField.displayName = 'M';\n  function Checkbox(p) {"), '(«MentionField.displayName = \'M\';») ha una forma che lo script non conosce'],
         ['la funzione chiusa da «};»', (testo) => {
             const delBundle = testo.split('\n');
@@ -92,6 +92,13 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
 
             return delBundle.join('\n');
         }, 'la funzione MentionField non si chiude con una riga «}»'],
+        // Seconda lettura della PR #126: le stesse cose su una riga `function`, sulla riga che continua una `var`, su un nome
+        // privato che il modulo porta, e con un apostrofo in un commento.
+        ['una riga `function` con due nomi dopo', (testo) => testo.replace(RIGA_DI_USEREF, '  function rr() {} var zz = 1, useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
+        ['una riga `function` con un\'espressione regolare con una parentesi', (testo) => testo.replace(RIGA_DI_USEREF, '  function rr() { return /[(]/; } var useRef = React.useRef;'), 'le graffe della dichiarazione della riga 6 non si chiudono'],
+        ['un secondo nome sulla riga che continua una `var`', (testo) => testo.replace(RIGA_DI_USEREF, '  var zq9 = [1,\n    2], useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
+        ['una proprietà data a una riga privata', (testo) => testo.replace('  function Checkbox(p) {', '  cx.sep = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a cx, che il modulo di MentionField porta'],
+        ['un apostrofo in un commento su una riga privata', (testo) => testo.replace(RIGA_DI_USEREF, "  var useRef = React.useRef; /* l'id */"), 'MentionField usa «useRef», dichiarato alla riga 6 del bundle, e la riga non è fra le righe private'],
         ['una riga privata nuova', (testo) => testo.replace('    var id = useId(\'mnt\');', '    var id = useId(\'mnt\'); var w = useWidth();'), 'MentionField usa «useWidth», dichiarato alla riga'],
     ])('con %s lo script si ferma e dice dove', (_caso, cambia, detto) => {
         const cambiato = cambia(bundle);
