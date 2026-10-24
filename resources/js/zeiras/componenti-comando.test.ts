@@ -94,6 +94,18 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect(senza.errore).toContain('resources/js/zeiras/MentionField.js non è quello che resources/zeiras/bundle.js genera (il file non c\'è).');
     });
 
+    // Lettura della PR #126 (rilievo 8): un bundle che `leggi` accetta e il blocco di MentionField no.
+    it.each([[['--controlla']], [[]]])('con un bundle che non ha più il blocco di MentionField (argomenti: %j) esce 1, dice che cosa non torna e non scrive nessuno dei due file (sprint 71 · T1.3)', (argomenti) => {
+        writeFileSync(nellaCopia(FILE_DEL_BUNDLE), readFileSync(delRepo(FILE_DEL_BUNDLE), 'utf8').replace('  /* ---------- MentionField: ', '  /* ---------- Menzioni: '));
+        writeFileSync(nellaCopia(FILE_DEL_MODULO), RITOCCATO);
+        writeFileSync(nellaCopia(FILE_A_PARTE), `${generatoAParte}// ritoccato a mano\n`);
+        const esito = comando(argomenti);
+
+        expect([esito.uscita, esito.detto, esito.file === RITOCCATO, readFileSync(nellaCopia(FILE_A_PARTE), 'utf8') === `${generatoAParte}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
+        expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: il commento «/* ---------- MentionField: …», da cui comincia il blocco di MentionField, c\'è 0 volte');
+        expect(esito.errore).toContain('Nessun file è stato scritto, né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js: lo script va riallineato alla forma nuova del bundle.');
+    });
+
     it('senza `--controlla` riscrive anche il modulo di MentionField ritoccato (sprint 71 · T1.3)', () => {
         writeFileSync(nellaCopia(FILE_A_PARTE), `${generatoAParte}// ritoccato a mano\n`);
 

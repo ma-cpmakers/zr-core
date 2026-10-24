@@ -85,7 +85,8 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
 - `resources/js/zeiras/componenti.js` esce da `npm run componenti`, dal bundle del design system (`resources/zeiras/bundle.js`): gli
-  stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`. Non si ritocca a mano, e a un
+  stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`; dalla `v3.1.0` anche
+  `resources/js/zeiras/MentionField.js`, il suo blocco in un modulo suo (righe private nell'elenco `A_PARTE` dello script). Non si ritocca a mano, e a un
   riallineamento che cambia il bundle si rigenera nello stesso commit; se il bundle ha un'altra forma lo script si ferma e si
   riallinea lo script.
 - I pesi che il README dice (la tabella delle tre app di prova) sono quelli che misura `resources/js/peso.test.ts`, entro mezzo

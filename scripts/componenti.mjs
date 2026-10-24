@@ -38,10 +38,10 @@ let file;
 try {
     file = [
         [fileDelModulo, componi(letto), `${letto.nomi.length} nomi esportati`],
-        ...A_PARTE.map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome), nome]),
+        ...Object.keys(A_PARTE).map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome), nome]),
     ];
 } catch (errore) {
-    console.error(`${fileDelBundle}: ${errore.message}\n${fileDelModulo} non è stato scritto: lo script va riallineato alla forma nuova del bundle.`);
+    console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto, né ${fileDelModulo} né ${Object.keys(A_PARTE).map((nome) => `resources/js/zeiras/${nome}.js`).join(', ')}: lo script va riallineato alla forma nuova del bundle.`);
     process.exit(1);
 }
 

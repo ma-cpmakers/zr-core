@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { aParte, A_PARTE, leggi } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
 import * as componenti from './componenti';
-import { MentionField, type MentionOption } from './MentionField';
+import { MentionField, type MentionLabels, type MentionOption } from './MentionField';
 import generato from './MentionField.js?raw';
 import { Zeiras } from './index';
 
@@ -29,7 +29,7 @@ const senzaNumeriDegliId = (html: string) => html.replace(/mnt-\d+/g, 'mnt-N');
 
 describe('il modulo di MentionField è quello che il bundle genera (sprint 71 · T1.3)', () => {
     it('MentionField è l\'unico componente a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
-        expect(A_PARTE).toStrictEqual(['MentionField']);
+        expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField']);
         expect(aParte(letto(), 'MentionField')).toBe(generato);
     });
 
@@ -43,11 +43,11 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     it('ha il blocco del bundle riga per riga, dal commento alla graffa che chiude la funzione, e le righe private che usa, com\'erano', () => {
         const delBundle = bundle.split('\n');
         const inizio = delBundle.findIndex((riga) => riga.startsWith('  /* ---------- MentionField: '));
-        const fine = delBundle.indexOf('  }', delBundle.indexOf('  function MentionField(p) {'));
-        const blocco = delBundle.slice(inizio, fine + 1);
+        // Il blocco del design system di oggi è di 65 righe, e dopo la sua graffa il bundle va a capo e comincia Checkbox.
+        const blocco = delBundle.slice(inizio, inizio + 65);
         const daQui = righe.indexOf(blocco[0] ?? '');
 
-        expect([inizio > 0, fine > inizio, daQui > 0]).toStrictEqual([true, true, true]);
+        expect([inizio > 0, daQui > 0, blocco.at(-1), delBundle[inizio + 65], delBundle[inizio + 66]]).toStrictEqual([true, true, '  }', '', '  function Checkbox(p) {']);
         expect(righe.slice(daQui, daQui + blocco.length)).toStrictEqual(blocco);
         expect(righe.slice(5, daQui - 1)).toStrictEqual([
             '  var h = React.createElement;',
@@ -56,6 +56,8 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
             "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
             "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
         ]);
+        expect(righe.slice(5, daQui - 1)).toStrictEqual(A_PARTE.MentionField);
+        expect(righe.slice(daQui + blocco.length)).toStrictEqual(['', 'export { MentionField };', '']);
         expect(righe.slice(5, daQui - 1).every((riga) => delBundle.includes(riga))).toBe(true);
     });
 
@@ -69,7 +71,40 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         const conUnaRigaSpezzata = bundle.replace('  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(\' \'); }', "  function cx() {\n    return Array.prototype.filter.call(arguments, Boolean).join(' ');\n  }");
 
         expect(conUnaRigaSpezzata).not.toBe(bundle);
-        expect(() => aParte(leggi(conUnaRigaSpezzata), 'MentionField')).toThrow(/MentionField usa «cx», che non sta tutto sulla riga \d+ del bundle/);
+        expect(() => aParte(leggi(conUnaRigaSpezzata), 'MentionField')).toThrow('MentionField usa «cx», dichiarato alla riga 8 del bundle, e la riga non è fra le righe private che lo script porta nel suo modulo (A_PARTE)');
+    });
+
+    // Lettura della PR #126 (rilievi 1, 3, 4, 5): un nome che il blocco usa, dichiarato in una forma che lo script non legge,
+    // sparirebbe dal modulo senza errore; ciò che il bundle dice di MentionField fuori dal blocco non entrerebbe; una funzione
+    // chiusa da «};» prenderebbe la chiusura di Checkbox. Ognuna ferma lo script.
+    const RIGA_DI_USEREF = '  var useRef = React.useRef;';
+    const RIGA_DI_CX = "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }";
+    it.each<[string, (testo: string) => string, string]>([
+        ['due nomi con la virgola', (testo) => testo.replace(RIGA_DI_USEREF, '  var a = 1, useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
+        ['un nome fra graffe', (testo) => testo.replace(RIGA_DI_USEREF, '  var { useRef } = React;'), 'la riga 6 («var { useRef } = React;») ha una forma che lo script non conosce'],
+        ['un `const`', (testo) => testo.replace(RIGA_DI_USEREF, '  const useRef = React.useRef;'), 'la riga 6 («const useRef = React.useRef;») ha una forma che lo script non conosce'],
+        ['un\'espressione regolare con una parentesi prima di un\'altra dichiarazione', (testo) => testo.replace(RIGA_DI_CX, `  var RX = /[(]/; ${RIGA_DI_CX.trim()}`), 'la riga 8 ha una barra e più di una dichiarazione'],
+        ['una proprietà data a MentionField dopo il blocco', (testo) => testo.replace('  function Checkbox(p) {', '  MentionField.Prova = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a MentionField, che è del blocco di MentionField'],
+        ['un nome dato a MentionField con un testo', (testo) => testo.replace('  function Checkbox(p) {', "  MentionField.displayName = 'M';\n  function Checkbox(p) {"), '(«MentionField.displayName = \'M\';») ha una forma che lo script non conosce'],
+        ['la funzione chiusa da «};»', (testo) => {
+            const delBundle = testo.split('\n');
+            delBundle[delBundle.indexOf('  }', delBundle.indexOf('  function MentionField(p) {'))] = '  };';
+
+            return delBundle.join('\n');
+        }, 'la funzione MentionField non si chiude con una riga «}»'],
+        ['una riga privata nuova', (testo) => testo.replace('    var id = useId(\'mnt\');', '    var id = useId(\'mnt\'); var w = useWidth();'), 'MentionField usa «useWidth», dichiarato alla riga'],
+    ])('con %s lo script si ferma e dice dove', (_caso, cambia, detto) => {
+        const cambiato = cambia(bundle);
+
+        expect(cambiato).not.toBe(bundle);
+        expect(() => aParte(leggi(cambiato), 'MentionField')).toThrow(detto);
+    });
+
+    it('se il blocco non usa più una riga privata dell\'elenco, lo script si ferma: l\'elenco va riallineato', () => {
+        const senzaCx = bundle.replace("className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className)", "className: 'zr-field zr-mention'").replace("className: cx('zr-mention-opt', i === active && 'is-active')", "className: 'zr-mention-opt'").replace("className: cx('zr-mention-opt', 'is-create', active === list.length && 'is-active')", "className: 'zr-mention-opt is-create'");
+
+        expect(senzaCx).not.toBe(bundle);
+        expect(() => aParte(leggi(senzaCx), 'MentionField')).toThrow('la riga privata «function cx() { return Array.prototype.filter.call(arguments» dell\'elenco di MentionField (A_PARTE) non c\'è più nel bundle, o MentionField non la usa più');
     });
 
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
@@ -86,6 +121,13 @@ describe('il MentionField del modulo fa ciò che fa quello di componenti (sprint
 
     it('da componenti e da window.Zeiras resta, ed è un altro oggetto: la copia di componenti non è cambiata', () => {
         expect([typeof componenti.MentionField, Zeiras.MentionField === componenti.MentionField, MentionField === componenti.MentionField]).toStrictEqual(['function', true, false]);
+    });
+
+    it('i tipi del modulo sono quelli del design system: le etichette e le opzioni', () => {
+        const etichette: MentionLabels = { results: 'Aziende del CRM', empty: 'Nessuna azienda con questo nome', remove: 'Togli' };
+        const html = renderToStaticMarkup(createElement(MentionField, { label: 'Azienda', suggestions: AZIENDE, labels: etichette, defaultOpen: true, defaultQuery: 'zzz' }));
+
+        expect([html.includes('Nessuna azienda con questo nome'), html.includes('aria-label="Aziende del CRM"')]).toStrictEqual([true, true]);
     });
 
     it.each<[string, Parameters<typeof MentionField>[0]]>([

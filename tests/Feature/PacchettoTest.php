@@ -3733,6 +3733,8 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
         fileDelloZipDiHead(),
         fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
             && $file !== 'resources/js/zeiras/componenti.js'
+            // Sprint 71: anche il modulo di MentionField, righe del bundle uguali.
+            && $file !== 'resources/js/zeiras/MentionField.js'
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 

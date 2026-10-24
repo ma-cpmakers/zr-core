@@ -11,7 +11,7 @@ export function leggi(bundle: string): { corpo: string[]; nomi: string[] };
 export function genera(bundle: string): string;
 
 /** I componenti che hanno anche un modulo loro, resources/js/zeiras/<Nome>.js (dalla `v3.1.0`). */
-export const A_PARTE: readonly string[];
+export const A_PARTE: Readonly<Record<string, readonly string[]>>;
 
-/** Il testo del modulo di `nome` (uno di `A_PARTE`) da ciò che dà `leggi`; se il blocco non c'è, o usa una riga privata spezzata, lancia un errore. */
+/** Il testo del modulo di `nome` (una chiave di `A_PARTE`) da ciò che dà `leggi`; se il blocco non c'è, o usa una riga privata spezzata, lancia un errore. */
 export function aParte(letto: { corpo: string[]; nomi: string[] }, nome: string): string;

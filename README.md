@@ -72,7 +72,8 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Nella stessa app si prende da un
   posto solo: le due copie hanno ognuna il suo contatore degli id dei campi, e due campi presi da posti diversi nella stessa
   pagina possono avere lo stesso id. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
-  componente del design system, riga per riga.
+  componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) il modulo le ha
+  sue, e si cambiano con la prop `labels`.
 
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
