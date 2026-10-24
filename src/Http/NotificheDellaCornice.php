@@ -362,10 +362,16 @@ final class NotificheDellaCornice
      * prima, e valgono 1 e null. Se ci sono, con un'altra forma è lo stesso guasto: mai un testo al posto del conto. Di `board`
      * passa solo il nome, come `board_nome`: né l'id, né una chiave messa domani dal backoffice arrivano in pagina.
      *
+     * Una notifica può dire anche quando accade la cosa che racconta (una prenotazione: il suo inizio): `quando`, con l'istante
+     * (`il`, ISO in UTC con la Z) e il fuso in cui si legge (`fuso`, un nome IANA). È facoltativa e non fa la notifica: passa
+     * solo in quella forma, coi due testi e nient'altro, e ogni altra forma vale null, come un backoffice che non la manda (la
+     * data è un di più del titolo: senza, la notifica si mostra lo stesso). Se il browser non conosce il fuso, il titolo è
+     * quello senza la data.
+     *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
      * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null, quando: array{il: string, fuso: string}|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -388,7 +394,26 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             'azioni' => $notifica['azioni'] ?? 1, 'board_nome' => $notifica['board']['nome'] ?? null,
+            'quando' => self::quandoDi($notifica['quando'] ?? null),
         ];
+    }
+
+    /**
+     * Il `quando` di una notifica nella sola forma che passa alla pagina — `il` un istante ISO in UTC con la Z, `fuso` un nome
+     * IANA, e nessun'altra chiave —, o null.
+     *
+     * @return array{il: string, fuso: string}|null
+     */
+    private static function quandoDi(mixed $quando): ?array
+    {
+        if (! is_array($quando) || (array_keys($quando) !== ['il', 'fuso'] && array_keys($quando) !== ['fuso', 'il'])
+            || ! is_string($quando['il']) || ! is_string($quando['fuso'])
+            || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/D', $quando['il']) !== 1
+            || preg_match('#^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$#D', $quando['fuso']) !== 1) {
+            return null;
+        }
+
+        return ['il' => $quando['il'], 'fuso' => $quando['fuso']];
     }
 
     /**

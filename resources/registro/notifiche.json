@@ -30,5 +30,10 @@
         { "tipo": "crm.scadenza.in_preavviso", "percorso": "/contatti/{persona_id}", "altrimenti": ["/aziende/{organizzazione_id}", "/scadenze"] },
         { "tipo": "crm.scadenze.riepilogo_del_giorno", "percorso": "/scadenze" },
         { "tipo": "crm.preventivo.richiesta", "percorso": "/preventivi/{id}" }
+    ],
+    "bookings": [
+        { "tipo": "com.zeiras.bookings.prenotazione.creata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "com.zeiras.bookings.prenotazione.cambiata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "com.zeiras.bookings.prenotazione.annullata", "percorso": "/prenotazioni/{id}" }
     ]
 }

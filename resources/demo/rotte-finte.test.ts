@@ -489,6 +489,27 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
     });
 
+    // Sprint 74 · T1: le tre di Bookings e il preavviso di una scadenza col nome stanno dietro `?prenotazioni=1`, per la UAT.
+    it('con `?prenotazioni=1` in cima all\'elenco ci sono le tre di Bookings e il preavviso di una scadenza, con `quando`: i titoli hanno la data nel fuso della notifica, e le tre aprono la prenotazione (sprint 74 · T1)', async () => {
+        await rotte(false, '?prenotazioni=1');
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = (corpo.data as { id: string; app: string | null; tipo?: string; quando?: unknown; ids: Record<string, string> }[]).slice(0, 4);
+        const { destinazioneDellaNotifica, rigaDellaNotifica } = await import('../js/frasi');
+        const { frasiInMemoria } = await import('../js/prove');
+        await frasiInMemoria();
+        const senzaIsolanti = (testo: string) => testo.replace(/[\u2068\u2069]/g, '');
+
+        expect(notifiche.map(({ id }) => id)).toEqual(['uat-b1', 'uat-b2', 'uat-b3', 'uat-b4']);
+        expect(notifiche.map((notifica) => senzaIsolanti(rigaDellaNotifica(notifica, 'it').titolo))).toEqual([
+            'Mario Rossi ha prenotato Personal training, mer 4 nov, 10:00',
+            'Mario Rossi ha spostato Personal training a mer 4 nov, 18:00',
+            'Mario Rossi ha annullato Personal training',
+            'Certificato medico scade il 3 novembre 2026',
+        ]);
+        expect(notifiche.slice(0, 3).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { bookings: 'attivo' }))).toEqual([1, 2, 3].map((n) => `https://bookings.zeiras.com/w/uat-marketing/prenotazioni/uat-prenotazione-${n}`));
+    });
+
     // v3.2.2: la richiesta di un cliente sul preventivo sta dietro `?preventivi=1`, per la UAT delle pagine di prova.
     it.each([[''], ['&chi=1']])('con `?preventivi=1%s` in fondo all\'elenco c\'è la notifica della richiesta sul preventivo, letta, senza chi e col solo `id` del preventivo: ha il titolo nelle tre lingue e apre il preventivo, se il CRM si può aprire (v3.2.2)', async (inPiu) => {
         await rotte(false, `?preventivi=1${inPiu}`);

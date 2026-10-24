@@ -417,6 +417,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [true, true]]);
     });
 
+    // Sprint 74 · T1.6 (voce #2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
+    // scrive il pezzo della campanella, non il JS d'ingresso.
+    it.each(app)('«%s»: la data delle notifiche non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 74 · T1.6)', (_nome, costruita) => {
+        expect(volte(costruita().js, 'weekday')).toBe(0);
+        expect(costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA)).map((pezzo) => volte(pezzo, 'weekday'))).toStrictEqual([1]);
+    });
+
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
         expect(costruita().js).not.toContain(DEI_RIMEDI);
         expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
@@ -500,7 +507,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.985 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.199 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -509,7 +516,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Sprint 70 · T1.5 (voce #2429, Decisione 16181): dalla `v3.0.0` porta anche le righe delle destinazioni e la funzione
         // che le legge: 1.922 byte alla misura del prototipo, 1.969 con le due righe delle Scadenze (T2) e le impronte di oggi.
         // Patch v3.2.2 (Decisione 16510 di zr-pm): +16 byte per la riga che apre il preventivo dalla richiesta di un cliente.
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_985);
+        // Sprint 74 · T1.6 (voce #2548, eccezione di zr-pm: la misura vera): le tre righe di Bookings e la data delle notifiche,
+        // con la frase con la data provata prima di quella senza (2.162; il prototipo del refining, rimisurato, 2.153), e la frase
+        // senza chi col solo giorno, per il preavviso di una scadenza del CRM (zr-pm): 2.199.
+        expect(gzip(campanella)).toBeLessThanOrEqual(2_199);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,7 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2)', () => {

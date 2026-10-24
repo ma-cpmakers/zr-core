@@ -58,7 +58,10 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca, ed è la sola per un tipo di cui il
   backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome
   di un contatto è un dato personale): per questo delle quattro
-  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
+  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v3.3.0` la frase
+  può dire anche quando accade la cosa: il backoffice manda `quando` (l'istante e il fuso) e la cornice scrive la data
+  nella lingua di chi legge, al posto di `{when}` (giorno e ora) o di `{date}` (il solo giorno); un modulo che la vuole
+  chiede la frase all'agente di zr-core coi suoi testi, e il campo al backoffice. Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
   (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li chiede con `fetch` quando si apre la campanella:
   nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto

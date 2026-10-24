@@ -110,6 +110,13 @@ export type FrasiDelleNotifiche = {
      * del nome di chi e `{what}` al posto del nome della cosa (`rigaConLeFrasi`). La ha chi ha anche il titolo.
      */
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
+    /**
+     * La stessa frase con anche la data (dalla `v3.3.0`): `{when}` al posto del giorno e dell'ora di `quando`, nel suo fuso. La
+     * cornice la prova prima di quella senza, quando la notifica ha un `quando` che sa scrivere.
+     */
+    [conChiCosaEQuando: `notificationTitleWhoWhatWhen.${string}`]: string | undefined;
+    /** La frase di una notifica senza chi, col nome della cosa e il solo giorno di `quando` al posto di `{date}` (dalla `v3.3.0`): «Certificato medico scade il 3 novembre 2026». */
+    [conCosaEGiorno: `notificationTitleWhatWhen.${string}`]: string | undefined;
     /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
     /**

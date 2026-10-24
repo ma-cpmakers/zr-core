@@ -41,7 +41,8 @@ describe('la destinazione di una notifica', () => {
 
         // Sprint 70 · T1.4: le voci del registro non hanno più `notifiche`; le righe sono per id del prodotto, nell'ordine del registro.
         expect(registro.filter((voce) => 'notifiche' in voce)).toStrictEqual([]);
-        expect(Object.keys(righe)).toStrictEqual(['pm', 'crm']);
+        // Sprint 74 · T1.3: anche Bookings, con le tre righe delle prenotazioni.
+        expect(Object.keys(righe)).toStrictEqual(['pm', 'crm', 'bookings']);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
         // Sprint 26 · T6 (voce #1773): la quarta, una menzione in un commento, apre la scheda del commento.
         expect(righe.pm).toStrictEqual([
@@ -194,6 +195,20 @@ describe('la destinazione di una notifica', () => {
 
     // v3.2.2 (zr-crm, Decisione 16510 del #95). La modifica che un cliente chiede dal link apre il preventivo col suo `id`:
     // l'opportunità non prende il suo posto, e l'evento con lo stesso nome col prefisso non ha una destinazione.
+    // Sprint 74 · T1.3 (voce #2548). Le tre notifiche di Bookings aprono la prenotazione, col suo `id`, nel workspace della
+    // notifica; con Bookings che il workspace non ha, o senza un id che si possa scrivere, il pannello apre la pagina delle notifiche.
+    it.each(['creata', 'cambiata', 'annullata'])('una notifica `com.zeiras.bookings.prenotazione.%s` apre la prenotazione nel suo workspace; con Bookings spento, con un id fuori forma, senza `com.zeiras.` o di un\'altra app no (sprint 74 · T1.3)', (fine) => {
+        const tipo = `com.zeiras.bookings.prenotazione.${fine}`;
+
+        expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } })).toBe('https://bookings.zeiras.com/w/acme-marketing/prenotazioni/uat-prenotazione-1');
+        expect(destinazioneDellaNotifica({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, 'altro-ws', prodotti)).toBe('https://bookings.zeiras.com/w/altro-ws/prenotazioni/uat-prenotazione-1');
+        expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, { pm: 'attivo', crm: 'attivo' })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo, ids: { id: '../x' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo: `bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+    });
+
     it('una notifica della richiesta sul preventivo apre il preventivo col suo `id`; senza `id`, con la sola opportunità, con un id fuori forma o col tipo col prefisso, il pannello apre la pagina delle notifiche (v3.2.2)', () => {
         expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');
         expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1', trattativa_id: 'uat-opportunita-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');

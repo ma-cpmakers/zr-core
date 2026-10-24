@@ -29,6 +29,8 @@ import { rotteFinte } from './rotte-finte';
 // o `?crediti=1` (il credito di un pacchetto sotto zero, del CRM: dalla `v2.25.3` apre il contatto)
 // o `?scadenze=1` (le due delle Scadenze del CRM, in quattro forme: dalla `v3.0.0` aprono il contatto, l'azienda o le scadenze)
 // o `?preventivi=1` (la richiesta di un cliente sul preventivo, del CRM: dalla `v3.2.2` apre il preventivo)
+// o `?prenotazioni=1` (dalla `v3.3.0` le tre di Bookings con la data, che aprono la prenotazione con Bookings attivo, e il
+// preavviso di una scadenza col nome e il giorno)
 // l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
 // azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e
 // un'opportunità col nome nel titolo, e un contatto, un'attività eliminata e un'azienda senza nome con solo chi.
@@ -136,13 +138,14 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     // nuovi, e dopo «Segna tutte come lette» un clic che naviga rimetterebbe il numero sulla campanella.
     const dati = useMemo(() => {
         const colCrm: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : crmAttivo ? { ...datiDiProva.prodotti, crm: 'attivo' } : datiDiProva.prodotti;
-        const prodotti: DatiDellaCornice['prodotti'] = senzaModuli ? { ...datiDiProva.prodotti, pm: 'disponibile', reports: 'disponibile' } : colCrm;
+        const conBookings: DatiDellaCornice['prodotti'] = scelti.has('prenotazioni') ? { ...colCrm, bookings: 'attivo' } : colCrm;
+        const prodotti: DatiDellaCornice['prodotti'] = senzaModuli ? { ...datiDiProva.prodotti, pm: 'disponibile', reports: 'disponibile' } : conBookings;
 
         const ridotti = daAccettare ? { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
 
         return { ...datiScrittiUndefined, ...datiDiProva, prodotti, lingua, aziende, non_lette: nonLette, ...ridotti };
     }, [senzaCrm, crmAttivo, senzaModuli, lingua, aziende, nonLette, daAccettare]);
-    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1`, `?schede=1`, `?frasi=1`, `?motivi=1`, `?crediti=1`, `?scadenze=1` o `?preventivi=1`, così le
+    // L'ultimo indirizzo che la cornice ha aperto: in pagina solo con `?crm=1`, `?viste=1`, `?opportunita=1`, `?schede=1`, `?frasi=1`, `?motivi=1`, `?crediti=1`, `?scadenze=1`, `?preventivi=1` o `?prenotazioni=1`, così le
     // altre pagine restano com'erano.
     const [aperto, setAperto] = useState<string>();
 
@@ -176,7 +179,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti') || scelti.has('scadenze') || scelti.has('preventivi')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti') || scelti.has('scadenze') || scelti.has('preventivi') || scelti.has('prenotazioni')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
             {scelti.has('rimedi') ? <ProvaDeiRimedi /> : null}
             {inFondo}
         </Cornice>

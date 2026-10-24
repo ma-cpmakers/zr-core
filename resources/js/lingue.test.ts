@@ -144,8 +144,9 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
         expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 48, in ogni lingua, anche con un file che ne ha uno in più.
-        expect(tipiCheHa(frasiInglesi)).toHaveLength(48);
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 51 (dallo sprint 74 anche i tre di Bookings), in ogni lingua,
+        // anche con un file che ne ha uno in più.
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(51);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -166,16 +167,16 @@ describe('le lingue della cornice', () => {
         ['it', frasiItaliane, 'Nuova scheda'],
         ['es', frasiSpagnole, 'Nueva tarjeta'],
         ['en', frasiInglesi, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 48 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 51 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(48);
+        expect(tipiConosciuti).toHaveLength(51);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 48 titoli sono 48 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 51 titoli sono 51 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(48);
+        expect(new Set(titoli).size).toBe(51);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -749,6 +750,8 @@ describe('rigaDellaNotifica', () => {
         es: [(modulo) => `Giulia Bianchi ha activado o desactivado el módulo «${modulo}»`, 'Giulia Bianchi ha activado o desactivado un módulo'],
     };
     const SU_UN_APP = 'com.zeiras.app.modificata';
+    /** Sprint 74 · T1: i tre tipi di Bookings, che hanno anche la frase con la data; le loro frasi le prova «le notifiche di Bookings, con la data». */
+    const DI_BOOKINGS = ['com.zeiras.bookings.prenotazione.creata', 'com.zeiras.bookings.prenotazione.cambiata', 'com.zeiras.bookings.prenotazione.annullata'];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
@@ -835,10 +838,10 @@ describe('rigaDellaNotifica', () => {
 
     it('ogni tipo che ha un titolo ha le sue frasi; uno che zr-core non conosce, o che non è un testo, resta com\'è anche con chi (sprint 29 · T2.5; sprint 31 · T2.1)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
-        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP]);
+        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS]);
         const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(conUnTitolo).toHaveLength(48);
+        expect(conUnTitolo).toHaveLength(51);
         expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
@@ -886,15 +889,16 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 76, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 85, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}`, `{what}` e `{when}`, `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1; sprint 74 · T1.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
-        expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).sort());
-        expect(chiavi).toHaveLength(76);
+        expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).concat(DI_BOOKINGS.flatMap((tipo) => [`notificationTitleWhoWhatWhen.${tipo}`, `notificationTitleWhoWhat.${tipo}`, `notificationTitleWho.${tipo}`])).sort());
+        // Sprint 74 · T1: 76, e le tre di ognuna delle tre notifiche di Bookings, con la data, con chi e che cosa e con solo chi.
+        expect(chiavi).toHaveLength(85);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
-            expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);
+            expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, { notificationTitleWhoWhatWhen: ['{what}', '{when}', '{who}'], notificationTitleWhoWhat: ['{what}', '{who}'] }[famiglia] ?? ['{who}']]);
             expect([chiave, typeof file[`notificationTitle.${tipo}`]]).toStrictEqual([chiave, 'string']);
         }
     });
@@ -1051,7 +1055,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             }
             expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
         }
-        expect(tipi).toHaveLength(48 + 4);
+        expect(tipi).toHaveLength(51 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
                 expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);
@@ -1063,7 +1067,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
-        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?)?|Under)\../.test(chiave);
+        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What(When)?)?|WhatWhen)?|Under)\../.test(chiave);
 
         for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
             expect(typeof testiDelFile.notificationTitle).toBe('string');
@@ -1565,5 +1569,87 @@ describe('la riga sotto il titolo: quante azioni, e in quale board (sprint 34 ·
         // Frasi arrivate senza quelle della riga di sotto (un file di prima, ancora in memoria): la riga non c'è.
         const diPrima = Object.fromEntries(Object.entries(frasiItaliane).filter(([chiave]) => !chiave.startsWith('notificationUnder'))) as FrasiDelleNotifiche;
         expect(rigaConLeFrasi(diPrima, { ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda });
+    });
+});
+
+// Sprint 74 · T1 (voce #2548). Le tre notifiche di Bookings dicono quando: la parte server passa `quando` (l'istante in UTC e il
+// fuso della pagina), e la cornice scrive il giorno e l'ora in quel fuso e nella lingua di chi legge, al posto di `{when}` nella
+// frase con la data. Senza un `quando` che sa scrivere il titolo è quello di prima, senza la data: mai un segnaposto, mai
+// «Invalid Date», mai un posto vuoto.
+describe('le notifiche di Bookings, con la data', () => {
+    const frasiDi = { it: frasiItaliane, en: frasiInglesi, es: frasiSpagnole } as Record<string, FrasiDelleNotifiche>;
+    const ROMA = { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' };
+    const TOKYO = { il: '2026-11-04T09:00:00Z', fuso: 'Asia/Tokyo' };
+    const prenotazione = (fine: string, quando?: unknown) => ({ tipo: `com.zeiras.bookings.prenotazione.${fine}`, autore_nome: 'Mario Rossi', risorsa_nome: 'Personal training', quando });
+    const isolati = (titolo: string) => ['Mario Rossi', 'Personal training'].reduce((testo, nome) => testo.replace(nome, `⁨${nome}⁩`), titolo);
+    const conLaData = (titolo: string, data: string) => `${isolati(titolo)}⁨${data}⁩`;
+    const riga = (fine: string, lingua: string, quando?: unknown) => rigaConLeFrasi(frasiDi[lingua]!, prenotazione(fine, quando), lingua);
+
+    it.each([
+        ['it', 'creata', 'Mario Rossi ha prenotato Personal training, ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['it', 'cambiata', 'Mario Rossi ha spostato Personal training a ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['it', 'annullata', 'Mario Rossi ha annullato Personal training, ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['en', 'creata', 'Mario Rossi booked Personal training, ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['en', 'cambiata', 'Mario Rossi moved Personal training to ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['en', 'annullata', 'Mario Rossi cancelled Personal training, ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['es', 'creata', 'Mario Rossi ha reservado Personal training, ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+        ['es', 'cambiata', 'Mario Rossi ha movido Personal training al ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+        ['es', 'annullata', 'Mario Rossi ha cancelado Personal training, ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+    ])('in "%s" la notifica `.%s` ha il titolo con chi, che cosa e quando, nel fuso della notifica e non in UTC o in quello del browser (sprint 74 · T1.1, T1.2)', (lingua, fine, titolo, aRoma, aTokyo) => {
+        expect(riga(fine, lingua, ROMA)).toStrictEqual({ titolo: conLaData(titolo, aRoma) });
+        expect(riga(fine, lingua, TOKYO)).toStrictEqual({ titolo: conLaData(titolo, aTokyo) });
+    });
+
+    it.each([
+        ['it', 'creata', 'Mario Rossi ha prenotato Personal training', 'Mario Rossi ha prenotato', 'Nuova prenotazione'],
+        ['it', 'cambiata', 'Mario Rossi ha spostato Personal training', 'Mario Rossi ha spostato una prenotazione', 'Prenotazione spostata'],
+        ['it', 'annullata', 'Mario Rossi ha annullato Personal training', 'Mario Rossi ha annullato una prenotazione', 'Prenotazione annullata'],
+        ['en', 'creata', 'Mario Rossi booked Personal training', 'Mario Rossi made a booking', 'New booking'],
+        ['en', 'cambiata', 'Mario Rossi moved Personal training', 'Mario Rossi moved a booking', 'Booking moved'],
+        ['en', 'annullata', 'Mario Rossi cancelled Personal training', 'Mario Rossi cancelled a booking', 'Booking cancelled'],
+        ['es', 'creata', 'Mario Rossi ha reservado Personal training', 'Mario Rossi ha hecho una reserva', 'Nueva reserva'],
+        ['es', 'cambiata', 'Mario Rossi ha movido Personal training', 'Mario Rossi ha movido una reserva', 'Reserva movida'],
+        ['es', 'annullata', 'Mario Rossi ha cancelado Personal training', 'Mario Rossi ha cancelado una reserva', 'Reserva cancelada'],
+    ])('in "%s" la notifica `.%s` senza un `quando` che si sa scrivere ha il titolo senza la data; senza il nome della cosa quello con solo chi, senza chi il suo titolo (sprint 74 · T1.2, T1.4)', (lingua, fine, conCosa, soloChi, diRipiego) => {
+        const quandiCheNonSiScrivono: unknown[] = [
+            undefined, null, '2026-11-04T09:00:00Z', 7, [], {}, { il: '2026-11-04T09:00:00Z' }, { fuso: 'Europe/Rome' },
+            { il: '2026-11-04T09:00:00Z', fuso: 'Europa/Roma' }, { il: '2026-11-04T09:00:00Z', fuso: '' }, { il: '2026-11-04T09:00:00Z', fuso: 7 },
+            { il: 'domani', fuso: 'Europe/Rome' }, { il: '', fuso: 'Europe/Rome' }, { il: null, fuso: 'Europe/Rome' },
+        ];
+        for (const quando of quandiCheNonSiScrivono) {
+            const { titolo } = riga(fine, lingua, quando);
+            expect([quando, titolo]).toStrictEqual([quando, isolati(conCosa)]);
+            expect(titolo).not.toMatch(/\{when\}|Invalid|NaN|⁨⁩|, $| $/);
+        }
+        expect(rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, ROMA), risorsa_nome: null }, lingua)).toStrictEqual({ titolo: isolati(soloChi) });
+        expect(rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, ROMA), autore_nome: null }, lingua)).toStrictEqual({ titolo: diRipiego, sotto: 'Personal training' });
+    });
+
+    // Sprint 74 · T1.7 (zr-pm, zr-crm): il preavviso di una scadenza non ha chi; col nome del tipo (`risorsa_nome`) e `quando`
+    // il titolo dice che cosa scade e il giorno, nel fuso della notifica, col mese per esteso e l'anno, senza l'ora.
+    it.each([
+        ['it', 'Certificato medico scade il ', '3 novembre 2026'],
+        ['en', 'Certificato medico is due ', 'November 3, 2026'],
+        ['es', 'Certificato medico vence el ', '3 de noviembre de 2026'],
+    ])('in "%s" il preavviso di una scadenza col nome e la data ha il titolo con che cosa e il giorno nel fuso della notifica; senza il nome o la data, il titolo di prima (sprint 74 · T1.7)', (lingua, titolo, giorno) => {
+        const scadenza = (risorsa_nome: unknown, quando: unknown, autore_nome: unknown = null) => rigaConLeFrasi(frasiDi[lingua]!, { tipo: 'crm.scadenza.in_preavviso', autore_nome, risorsa_nome, quando }, lingua);
+        // Mezzanotte del 3 novembre a Roma: in UTC è ancora il 2.
+        const MEZZANOTTE = { il: '2026-11-02T23:00:00Z', fuso: 'Europe/Rome' };
+        const conLaData = `${titolo.replace('Certificato medico', '\u2068Certificato medico\u2069')}\u2068${giorno}\u2069`;
+        const diPrima = frasiDi[lingua]!['notificationTitle.crm.scadenza.in_preavviso'];
+
+        expect(scadenza('Certificato medico', MEZZANOTTE)).toStrictEqual({ titolo: conLaData });
+        expect(scadenza('Certificato medico', MEZZANOTTE, 'Giulia Bianchi')).toStrictEqual({ titolo: conLaData });
+        expect(scadenza(null, MEZZANOTTE)).toStrictEqual({ titolo: diPrima });
+        for (const quando of [null, undefined, { il: '2026-11-02T23:00:00Z' }, { il: '2026-11-02T23:00:00Z', fuso: 'Europa/Roma' }]) {
+            expect(scadenza('Certificato medico', quando)).toStrictEqual({ titolo: diPrima, sotto: 'Certificato medico' });
+        }
+        expect(typeof diPrima).toBe('string');
+    });
+
+    it('la frase con la data non si usa senza la data, nemmeno quando manca quella senza; e `{when}` dentro un nome resta testo (sprint 74 · T1.4)', () => {
+        const { 'notificationTitleWhoWhat.com.zeiras.bookings.prenotazione.creata': _tolta, ...frasi } = frasiItaliane as FrasiDelleNotifiche;
+        expect(rigaConLeFrasi(frasi, prenotazione('creata'), 'it')).toStrictEqual({ titolo: isolati('Mario Rossi ha prenotato'), sotto: 'Personal training' });
+        expect(rigaConLeFrasi(frasiItaliane, { ...prenotazione('creata', ROMA), autore_nome: 'Mario {when}' }, 'it').titolo).toBe('⁨Mario {when}⁩ ha prenotato ⁨Personal training⁩, ⁨mer 4 nov, 10:00⁩');
     });
 });
