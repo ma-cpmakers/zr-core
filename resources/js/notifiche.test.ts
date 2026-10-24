@@ -36,7 +36,7 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le ventitré destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1; dalla v2.25.3 il credito sotto zero; dalla v3.0.0 le due delle Scadenze: sprint 70 · T2.1), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
+    it('le ventiquattro destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1; dalla v2.25.3 il credito sotto zero; dalla v3.0.0 le due delle Scadenze: sprint 70 · T2.1; dalla v3.2.2 la richiesta sul preventivo), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
         // Sprint 70 · T1.4: le voci del registro non hanno più `notifiche`; le righe sono per id del prodotto, nell'ordine del registro.
@@ -77,6 +77,8 @@ describe('la destinazione di una notifica', () => {
             // scadenze; il riepilogo del giorno le scadenze.
             { tipo: 'crm.scadenza.in_preavviso', percorso: '/contatti/{persona_id}', altrimenti: ['/aziende/{organizzazione_id}', '/scadenze'] },
             { tipo: 'crm.scadenze.riepilogo_del_giorno', percorso: '/scadenze' },
+            // v3.2.2 (zr-crm, Decisione 16510 del #95): la modifica chiesta da un cliente dal link apre il preventivo.
+            { tipo: 'crm.preventivo.richiesta', percorso: '/preventivi/{id}' },
         ]);
     });
 
@@ -188,6 +190,18 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { id: 'uat-acquisto-1' } })).toBeUndefined();
         expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: {} })).toBeUndefined();
         expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { persona_id: '../x' } })).toBeUndefined();
+    });
+
+    // v3.2.2 (zr-crm, Decisione 16510 del #95). La modifica che un cliente chiede dal link apre il preventivo col suo `id`:
+    // l'opportunità non prende il suo posto, e l'evento con lo stesso nome col prefisso non ha una destinazione.
+    it('una notifica della richiesta sul preventivo apre il preventivo col suo `id`; senza `id`, con la sola opportunità, con un id fuori forma o col tipo col prefisso, il pannello apre la pagina delle notifiche (v3.2.2)', () => {
+        expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');
+        expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1', trattativa_id: 'uat-opportunita-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');
+        expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { trattativa_id: 'uat-opportunita-1' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: {} })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: '../x' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'com.zeiras.crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1' } })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1' } })).toBeUndefined();
     });
 
     // Sprint 23 · T3 (voce #1743). I nove tipi che dallo sprint 22 (T5, voce #1720) avevano un titolo e nessuna destinazione ora

@@ -489,6 +489,22 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ]);
     });
 
+    // v3.2.2: la richiesta di un cliente sul preventivo sta dietro `?preventivi=1`, per la UAT delle pagine di prova.
+    it.each([[''], ['&chi=1']])('con `?preventivi=1%s` in fondo all\'elenco c\'è la notifica della richiesta sul preventivo, letta, senza chi e col solo `id` del preventivo: ha il titolo nelle tre lingue e apre il preventivo, se il CRM si può aprire (v3.2.2)', async (inPiu) => {
+        await rotte(false, `?preventivi=1${inPiu}`);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica, rigaDellaNotifica, titoloDellaNotifica } = await import('../js/frasi');
+        const ultima = notifiche.at(-1)!;
+
+        expect([ultima.id, ultima.app, ultima.tipo, ultima.letta, ultima.autore_nome, ultima.risorsa_nome, ultima.ids]).toEqual(['uat-r1', 'crm', 'crm.preventivo.richiesta', true, null, null, { id: 'uat-preventivo-1' }]);
+        expect(destinazioneDellaNotifica(ultima, 'uat-marketing', { pm: 'attivo', crm: 'attivo' })).toBe('https://crm.zeiras.com/w/uat-marketing/preventivi/uat-preventivo-1');
+        expect(destinazioneDellaNotifica(ultima, 'uat-marketing', { pm: 'attivo' })).toBeUndefined();
+        expect(['it', 'en', 'es'].map((lingua) => titoloDellaNotifica('crm.preventivo.richiesta', lingua))).toEqual(['Un cliente ha chiesto una modifica al preventivo', 'A client asked for changes to the quote', 'Un cliente ha pedido un cambio en el presupuesto']);
+        expect(rigaDellaNotifica(ultima, 'it').titolo).toBe('Un cliente ha chiesto una modifica al preventivo');
+    });
+
     // v2.25.3: il credito di un pacchetto sotto zero sta dietro `?crediti=1`, così le pagine di prova di prima restano com'erano.
     it.each([['', false], ['&chi=1', true]])('con `?crediti=1%s` in fondo all\'elenco c\'è la notifica del credito sotto zero del CRM, letta e col solo `persona_id`: ha il titolo nelle tre lingue, con chi la frase, e apre il contatto, se il CRM si può aprire (v2.25.3)', async (inPiu, conChi) => {
         await rotte(false, `?crediti=1${inPiu}`);

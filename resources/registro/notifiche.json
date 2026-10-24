@@ -28,6 +28,7 @@
         { "tipo": "crm.organizzazione.assegnata", "percorso": "/aziende/{id}" },
         { "tipo": "crm.acquisto.scoperto", "percorso": "/contatti/{persona_id}" },
         { "tipo": "crm.scadenza.in_preavviso", "percorso": "/contatti/{persona_id}", "altrimenti": ["/aziende/{organizzazione_id}", "/scadenze"] },
-        { "tipo": "crm.scadenze.riepilogo_del_giorno", "percorso": "/scadenze" }
+        { "tipo": "crm.scadenze.riepilogo_del_giorno", "percorso": "/scadenze" },
+        { "tipo": "crm.preventivo.richiesta", "percorso": "/preventivi/{id}" }
     ]
 }
