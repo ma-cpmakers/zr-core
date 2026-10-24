@@ -28,8 +28,8 @@ const AZIENDE: MentionOption[] = [
 const senzaNumeriDegliId = (html: string) => html.replace(/mnt-\d+/g, 'mnt-N');
 
 describe('il modulo di MentionField è quello che il bundle genera (sprint 71 · T1.3)', () => {
-    it('MentionField è l\'unico componente a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
-        expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField']);
+    it('MentionField e AddressField (dalla `v3.2.0`) sono i componenti a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
+        expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField', 'AddressField']);
         expect(aParte(letto(), 'MentionField')).toBe(generato);
     });
 
@@ -40,14 +40,19 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         expect(aParte(leggi(cambiato), 'MentionField')).not.toBe(generato);
     });
 
-    it('ha il blocco del bundle riga per riga, dal commento alla graffa che chiude la funzione, e le righe private che usa, com\'erano', () => {
+    // Sprint 72 · T1.3 (voce #2454): nel design system ds-1792851600-0de4 il blocco di AddressField sta fra il commento di
+    // MentionField e la sua funzione. Il blocco di un componente comincia dalla funzione e risale alle righe che le stanno
+    // attaccate (le sue `var`, il suo commento): fino a una riga vuota, a una chiusura o al commento di un altro componente.
+    it('ha il blocco del bundle riga per riga, dalle righe attaccate alla funzione alla graffa che la chiude, e le righe private che usa, com\'erano', () => {
         const delBundle = bundle.split('\n');
-        const inizio = delBundle.findIndex((riga) => riga.startsWith('  /* ---------- MentionField: '));
-        // Il blocco del design system di oggi è di 65 righe, e dopo la sua graffa il bundle va a capo e comincia Checkbox.
-        const blocco = delBundle.slice(inizio, inizio + 65);
+        const funzione = delBundle.indexOf('  function MentionField(p) {');
+        // Nel design system di oggi il blocco è di 64 righe: `MENTION_LABELS` e la funzione; prima una riga vuota, dopo la sua
+        // graffa il bundle va a capo e comincia Checkbox.
+        const inizio = funzione - 1;
+        const blocco = delBundle.slice(inizio, inizio + 64);
         const daQui = righe.indexOf(blocco[0] ?? '');
 
-        expect([inizio > 0, daQui > 0, blocco.at(-1), delBundle[inizio + 65], delBundle[inizio + 66]]).toStrictEqual([true, true, '  }', '', '  function Checkbox(p) {']);
+        expect([delBundle[inizio - 1], blocco[0]?.startsWith('  var MENTION_LABELS = '), daQui > 0, blocco.at(-1), delBundle[inizio + 64], delBundle[inizio + 65]]).toStrictEqual(['', true, true, '  }', '', '  function Checkbox(p) {']);
         expect(righe.slice(daQui, daQui + blocco.length)).toStrictEqual(blocco);
         expect(righe.slice(5, daQui - 1)).toStrictEqual([
             '  var h = React.createElement;',
@@ -59,6 +64,27 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         expect(righe.slice(5, daQui - 1)).toStrictEqual(A_PARTE.MentionField);
         expect(righe.slice(daQui + blocco.length)).toStrictEqual(['', 'export { MentionField };', '']);
         expect(righe.slice(5, daQui - 1).every((riga) => delBundle.includes(riga))).toBe(true);
+    });
+
+    it('non porta niente del blocco di AddressField, che nel bundle sta fra il suo commento e la sua funzione (sprint 72 · T1.3)', () => {
+        const delBundle = bundle.split('\n');
+        const commento = delBundle.findIndex((riga) => riga.startsWith('  /* ---------- MentionField: '));
+
+        expect([delBundle[commento + 1]?.startsWith('  /* ---------- AddressField: '), commento < delBundle.indexOf('  function AddressField(p) {'), delBundle.indexOf('  function AddressField(p) {') < delBundle.indexOf('  function MentionField(p) {')]).toStrictEqual([true, true, true]);
+        expect(['zr-address', 'ADDRESS_LABELS', 'AddressField', '/* ---------- '].filter((testo) => generato.includes(testo))).toStrictEqual([]);
+        // Una riga di meno della `v3.1.0` (79 col fondo): il commento di MentionField, che non sta più attaccato alla funzione.
+        expect(righe.length).toBe(78);
+    });
+
+    it('col commento attaccato alla funzione, come nel design system di prima, il blocco comincia dal commento', () => {
+        const delBundle = bundle.split('\n');
+        const commento = delBundle.findIndex((riga) => riga.startsWith('  /* ---------- MentionField: '));
+        const rigaDelCommento = delBundle[commento] ?? '';
+        delBundle.splice(commento, 1);
+        delBundle.splice(delBundle.indexOf('  function MentionField(p) {') - 1, 0, rigaDelCommento);
+        const modulo = aParte(leggi(delBundle.join('\n')), 'MentionField').split('\n');
+
+        expect(modulo.slice(modulo.indexOf(rigaDelCommento) - 1, modulo.indexOf(rigaDelCommento) + 3).map((riga) => riga.slice(0, 24))).toStrictEqual(['', rigaDelCommento.slice(0, 24), '  var MENTION_LABELS = {', '  function MentionField(']);
     });
 
     it('da ./componenti prende per nome tre componenti registrati, e niente altro: né MentionField né una riesportazione', () => {
@@ -108,7 +134,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     });
 
     it('se il blocco non usa più una riga privata dell\'elenco, lo script si ferma: l\'elenco va riallineato', () => {
-        const senzaCx = bundle.replace("className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className)", "className: 'zr-field zr-mention'").replace("className: cx('zr-mention-opt', i === active && 'is-active')", "className: 'zr-mention-opt'").replace("className: cx('zr-mention-opt', 'is-create', active === list.length && 'is-active')", "className: 'zr-mention-opt is-create'");
+        const senzaCx = bundle.replace("className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className)", "className: 'zr-field zr-mention'").replaceAll("className: cx('zr-mention-opt', i === active && 'is-active')", "className: 'zr-mention-opt'").replace("className: cx('zr-mention-opt', 'is-create', active === list.length && 'is-active')", "className: 'zr-mention-opt is-create'");
 
         expect(senzaCx).not.toBe(bundle);
         expect(() => aParte(leggi(senzaCx), 'MentionField')).toThrow('la riga privata «function cx() { return Array.prototype.filter.call(arguments» dell\'elenco di MentionField (A_PARTE) non c\'è più nel bundle, o MentionField non la usa più');
@@ -117,7 +143,33 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
         const senzaCommento = bundle.replace('  /* ---------- MentionField: ', '  /* ---------- Menzioni: ');
 
-        expect(() => aParte(leggi(senzaCommento), 'MentionField')).toThrow('il commento «/* ---------- MentionField: …», da cui comincia il blocco di MentionField, c\'è 0 volte');
+        expect(() => aParte(leggi(senzaCommento), 'MentionField')).toThrow('il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
+    });
+
+    // Lettura della PR #128 (rilievi 1-4): la risalita dalla funzione prende solo righe sue, e dove non sa dire di chi è una
+    // riga si ferma invece di prenderla o perderla in silenzio.
+    const RIGA_DI_USEID = "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }";
+    it.each<[string, (testo: string) => string]>([
+        ['una `var` con uno stato attaccata sopra le etichette, che MentionField non usa', (testo) => testo.replace('\n  var MENTION_LABELS = ', '\n  var cache = new Map();\n  var MENTION_LABELS = ')],
+        ['la funzione di AddressField chiusa senza riga vuota prima delle etichette', (testo) => testo.replace('  }\n\n  var MENTION_LABELS = ', '  }\n  var MENTION_LABELS = ')],
+    ])('con %s il modulo è lo stesso', (_caso, cambia) => {
+        const cambiato = cambia(bundle);
+
+        expect(cambiato).not.toBe(bundle);
+        expect(aParte(leggi(cambiato), 'MentionField')).toBe(generato);
+    });
+
+    it.each<[string, string, (testo: string) => string, string]>([
+        ['una `var` con uno stato fra i due commenti, che AddressField usa', 'AddressField', (testo) => testo.replace("  /* ---------- AddressField: ", "  var SHARED = React.createContext(null);\n  /* ---------- AddressField: ").replace("    var id = useId('adr');", "    var id = useId('adr'); var ctx = React.useContext(SHARED);"), 'AddressField usa «SHARED», dichiarato alla riga'],
+        ['una `var` con uno stato attaccata sopra le etichette, che usano AddressField e un altro', 'AddressField', (testo) => testo.replace('\n  var ADDRESS_LABELS = ', '\n  var SHARED = React.createContext(null);\n  var ADDRESS_LABELS = ').replace("    var id = useId('adr');", "    var id = useId('adr'); var ctx = React.useContext(SHARED);").replace('  function Checkbox(p) {', '  function Checkbox(p) { var c = React.useContext(SHARED);'), 'sta attaccata alla funzione AddressField e dichiara «SHARED», che usa anche il resto del bundle'],
+        ['le etichette su più righe, chiuse da «};»', 'MentionField', (testo) => testo.replace("  var MENTION_LABELS = { remove: 'Togli', ", "  var MENTION_LABELS = {\n    remove: 'Togli',\n    ").replace("results: 'Clienti del CRM' };", "results: 'Clienti del CRM'\n  };"), 'MentionField usa «MENTION_LABELS», che il bundle registra alla riga'],
+        ['una `function` attaccata sopra le etichette, che MentionField usa', 'MentionField', (testo) => testo.replace('\n  var MENTION_LABELS = ', '\n  function fmt(x) { return x; }\n  var MENTION_LABELS = ').replace("    var id = useId('mnt');", "    var id = fmt(useId('mnt'));"), 'MentionField usa «fmt», dichiarato alla riga'],
+        ['la riga di useId attaccata sopra la funzione', 'MentionField', (testo) => testo.replace(`${RIGA_DI_USEID}\n`, '').replace('  function MentionField(p) {', `${RIGA_DI_USEID}\n  function MentionField(p) {`), 'sta attaccata alla funzione MentionField e dichiara «uid», che usa anche il resto del bundle'],
+    ])('con %s lo script si ferma e dice perché', (_caso, nome, cambia, detto) => {
+        const cambiato = cambia(bundle);
+
+        expect(cambiato).not.toBe(bundle);
+        expect(() => aParte(leggi(cambiato), nome)).toThrow(detto);
     });
 });
 

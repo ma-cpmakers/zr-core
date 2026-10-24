@@ -9,7 +9,6 @@ import { Avatar, Icon, Label } from './componenti';
   function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
   var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }
 
-  /* ---------- MentionField: scegliere un cliente del CRM scrivendo @nome ---------- */
   var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM' };
   function MentionField(p) {
     var id = useId('mnt');

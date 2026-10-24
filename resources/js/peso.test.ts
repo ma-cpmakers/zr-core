@@ -196,6 +196,8 @@ let dalModulo: Costruito;
 let conIDatiDiEsempio: Costruito;
 let conMentionAParte: Costruito;
 let conMentionDaComponenti: Costruito;
+let conAddressAParte: Costruito;
+let conAddressDaComponenti: Costruito;
 
 // Sprint 50 · T1 (voce 2073). I dati di esempio del design system (un `var SAMPLE_… = [` del modulo, come i contatti finti di
 // `CrmContacts`) e i due formattatori dei numeri (`NF`, `EUR`, cioè `new Intl.NumberFormat`) li usano solo componenti che la
@@ -241,6 +243,9 @@ beforeAll(async () => {
     ].join('\n'));
     conMentionAParte = await conLaPaginaCheLoPrende('resources/js/zeiras/MentionField.js', 'MentionField');
     conMentionDaComponenti = await conLaPaginaCheLoPrende('resources/js/zeiras/componenti.js', 'MentionField');
+    // Sprint 72 · T1.1 (voce #2454): lo stesso con AddressField.
+    conAddressAParte = await conLaPaginaCheLoPrende('resources/js/zeiras/AddressField.js', 'AddressField');
+    conAddressDaComponenti = await conLaPaginaCheLoPrende('resources/js/zeiras/componenti.js', 'AddressField');
     conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
@@ -296,6 +301,28 @@ describe('MentionField preso dal suo modulo in una pagina a richiesta sta nel pe
 
     it('l\'app che prende solo la cornice non lo porta', () => {
         expect(soloCornice.js).not.toContain(DI_MENTIONFIELD);
+    });
+});
+
+// Sprint 72 · T1.1, T1.2 (voce #2454, Decisione 16431): AddressField come MentionField. La classe del suo campo, `zr-address`, è
+// il segno del suo codice (le classi `zr-mention-*` le usa anche lui, e non lo distinguono).
+const DI_ADDRESSFIELD = 'zr-address';
+
+describe('AddressField preso dal suo modulo in una pagina a richiesta sta nel pezzo della pagina, non nel JS d\'ingresso (sprint 72 · T1.1, T1.2)', () => {
+    it('dal suo modulo: nel JS d\'ingresso non c\'è, nel pezzo a richiesta sì, e MentionField non c\'è da nessuna parte', () => {
+        expect(conAddressAParte.js).toContain(DELLA_CORNICE);
+        expect(conAddressAParte.js).not.toContain(DI_ADDRESSFIELD);
+        expect(conAddressAParte.pezzi.filter((pezzo) => pezzo.includes(DI_ADDRESSFIELD))).toHaveLength(1);
+        expect([conAddressAParte.js, ...conAddressAParte.pezzi].filter((testo) => testo.includes('zr-mention-chip'))).toStrictEqual([]);
+    });
+
+    it('da componenti: è nel JS d\'ingresso, e l\'ingresso pesa di più', () => {
+        expect(conAddressDaComponenti.js).toContain(DI_ADDRESSFIELD);
+        expect(gzip(conAddressDaComponenti.js)).toBeGreaterThan(gzip(conAddressAParte.js));
+    });
+
+    it('l\'app che prende solo la cornice non lo porta, né la pagina che prende MentionField dal suo modulo', () => {
+        expect([soloCornice.js, conMentionAParte.js, ...conMentionAParte.pezzi].filter((testo) => testo.includes(DI_ADDRESSFIELD))).toStrictEqual([]);
     });
 });
 

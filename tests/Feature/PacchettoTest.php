@@ -4811,8 +4811,9 @@ function ingressoJs(string $file): string
 
 it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
     $zip = fileDelloZipDiHead();
-    // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi.
-    $delPacchetto = ['resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts'];
+    // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi, dalla `v3.2.0` (sprint 72 · T1.5) quello di
+    // AddressField.
+    $delPacchetto = ['resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/AddressField.d.ts'];
     $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
 
     expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
@@ -4855,6 +4856,10 @@ it('il README dice, in «Come si installa in un frontend», i due ingressi, il p
     'MentionField a parte (sprint 71 · T1.5)' => ['**MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una pagina o in un dialogo che si carica a richiesta (`import()`)'],
     'MentionField, l\'import' => ['import { MentionField, type MentionOption } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField\';'],
     'MentionField, da un posto solo' => ['Nella stessa app si prende da un posto solo: le due copie hanno ognuna il suo contatore degli id dei campi'],
+    'AddressField a parte (sprint 72 · T1.5)' => ['**AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta), `resources/js/zeiras/AddressField`, con le stesse regole'],
+    'AddressField, l\'import' => ['import { AddressField, type AddressPlace, type AddressSuggestion } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField\';'],
+    'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dal suo server, a ogni `onQuery`, e li passa al campo in `suggestions`. Il browser non parla con Google, e la CSP della cornice non cambia.'],
+    'AddressField, spento' => ['Nei frontend la ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l\'informativa non sono approvate.'],
     'l\'import dei componenti' => ['import * as Zeiras from \'../../vendor/zeiras/zr-core/resources/js/zeiras/componenti\';'],
     'che cosa non si scrive' => ['Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.'],
     'l\'ingresso di sempre' => ['**L\'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in `window.Zeiras`, con `window.React`. Resta com\'è, coi nomi di prima'],

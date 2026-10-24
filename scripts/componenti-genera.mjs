@@ -164,9 +164,12 @@ export function genera(bundle) {
 // I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
 // prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
 // nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
-// riga — dal commento «/* ---------- <Nome>: …» alla graffa che chiude la funzione, con ciò che il blocco dichiara (per
+// riga — dalla funzione `<Nome>` risalendo alle righe attaccate che sono sue (le `var` che usa lei sola, il commento «/*
+// ---------- <Nome>: …» se le sta sopra), e giù fino alla graffa che la chiude, con ciò che il blocco dichiara (per
 // MentionField anche `MENTION_LABELS`, che il modulo ha suo) — e le righe private che il blocco usa, nell'ordine del bundle; i
-// componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta: nella stessa app
+// componenti che il bundle registra li prende da `./componenti` per nome. Il blocco non comincia dal commento perché nel design
+// system ds-1792851600-0de4 quello di AddressField sta fra il commento di MentionField e la sua funzione. Da `componenti` il
+// componente resta: nella stessa app
 // si prende da un posto solo.
 // Le righe private che un modulo porta sono queste, guardate una per una: una riga con uno stato (un contesto, una cache)
 // copiata darebbe alla copia uno stato suo, e il componente non vedrebbe più quello di `componenti`. `uid` è guardata: le due
@@ -174,6 +177,14 @@ export function genera(bundle) {
 // non usa più una di queste, lo script si ferma e dice quale: la riga si guarda e l'elenco si riallinea.
 export const A_PARTE = {
     MentionField: [
+        '  var h = React.createElement;',
+        '  var useState = React.useState;',
+        '  var useRef = React.useRef;',
+        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
+        "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
+    ],
+    // Dalla `v3.2.0` (sprint 72, Decisione 16431): le stesse righe di MentionField, perché AddressField usa le stesse.
+    AddressField: [
         '  var h = React.createElement;',
         '  var useState = React.useState;',
         '  var useRef = React.useRef;',
@@ -279,18 +290,39 @@ export function aParte({ corpo, nomi }, nome) {
     });
 
     const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
-    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», da cui comincia il blocco di ${nome}, c'è ${inizi.length} volte`);
+    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», che segna il blocco di ${nome}, c'è ${inizi.length} volte`);
     const funzione = corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
     vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
     const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
     vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
-    const blocco = corpo.slice(inizi[0], fine + 1);
-    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizi[0] + indice, numero), numero(inizi[0] + indice))));
+    // Il blocco comincia dalla funzione e risale, una riga alla volta, sulle sole righe che sono sue: il suo commento (e lì si
+    // ferma), o una `var` su una riga sola che dichiara un nome che la funzione usa e che il resto del bundle non usa. Ogni altra
+    // riga — vuota, una chiusura, il commento di un altro componente, una `var` che la funzione non usa — chiude la risalita.
+    // Una `var` attaccata che dichiara un nome usato anche fuori dal blocco ferma lo script: è una riga privata da guardare
+    // (`A_PARTE`), e nel blocco darebbe alla copia uno stato suo senza che nessuno l'abbia guardata.
+    const usatiDallaFunzione = nomiUsati(corpo.slice(funzione, fine + 1));
+    let inizio = funzione;
+    while (inizio > 0) {
+        const sopra = corpo[inizio - 1];
+        if (sopra.startsWith(INIZIO_DEL_BLOCCO(nome))) {
+            inizio -= 1;
+            break;
+        }
+        if (!FORME[0].test(sopra)) break;
+        const dichiarati = dichiaratiIn(istruzioneDa(corpo, inizio - 1, numero), numero(inizio - 1));
+        if (!dichiarati.some((dichiarato) => usatiDallaFunzione.has(dichiarato))) break;
+        const usatiFuori = nomiUsati([...corpo.slice(0, inizio - 1), ...corpo.slice(fine + 1)]);
+        const anchePerAltri = dichiarati.find((dichiarato) => usatiFuori.has(dichiarato));
+        vuole(anchePerAltri === undefined, `la riga ${numero(inizio - 1)} sta attaccata alla funzione ${nome} e dichiara «${anchePerAltri}», che usa anche il resto del bundle: è una riga privata da guardare (A_PARTE), non del blocco`);
+        inizio -= 1;
+    }
+    const blocco = corpo.slice(inizio, fine + 1);
+    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizio + indice, numero), numero(inizio + indice))));
 
     // Dove sta ogni dichiarazione del corpo fuori dal blocco: un nome usato che è lì si porta con la sua riga, o si importa.
     const rigaDi = new Map();
     corpo.forEach((_riga, indice) => {
-        if (indice < inizi[0] || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
+        if (indice < inizio || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
     });
     const daImportare = new Set();
     const righePrivate = new Set();
@@ -299,6 +331,9 @@ export function aParte({ corpo, nomi }, nome) {
         const usato = daGuardare.pop();
         if (!rigaDi.has(usato) || daImportare.has(usato)) continue;
         if (nomi.includes(usato)) {
+            // Da ./componenti si prendono solo componenti: un altro nome registrato (le etichette di partenza) il modulo lo ha
+            // suo, nel blocco. Se è rimasto fuori, il blocco ha una forma che la risalita non conosce.
+            vuole(corpo[rigaDi.get(usato)].startsWith(`  function ${usato}(`), `${nome} usa «${usato}», che il bundle registra alla riga ${numero(rigaDi.get(usato))}, fuori dal blocco, non come «function ${usato}(»: se è suo (le etichette di partenza) il blocco ha una forma che la risalita non conosce; se è un nome comune da prendere da ./componenti, l'elenco dei nomi che si importano va riallineato`);
             daImportare.add(usato);
             continue;
         }
@@ -319,7 +354,7 @@ export function aParte({ corpo, nomi }, nome) {
     vuole(mancanti.length === 0, `la riga privata «${mancanti[0]?.trim().slice(0, 60)}» dell'elenco di ${nome} (A_PARTE) non c'è più nel bundle, o ${nome} non la usa più: l'elenco va riallineato`);
 
     // Le righe private e il blocco, nell'ordine del bundle: una riga privata che sta dopo il blocco resta dopo.
-    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizi[0] + indice)].sort((a, b) => a - b);
+    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizio + indice)].sort((a, b) => a - b);
 
     return [
         `// Generato da scripts/componenti.mjs: non si ritocca a mano. È ${nome} di resources/zeiras/bundle.js (il design system di`,
@@ -327,7 +362,7 @@ export function aParte({ corpo, nomi }, nome) {
         '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
         "import * as React from 'react';",
         ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
-        ...righe.map((indice, posto) => (posto > 0 && indice === inizi[0] ? ['', corpo[indice]] : [corpo[indice]])).flat(),
+        ...righe.map((indice, posto) => (posto > 0 && indice === inizio ? ['', corpo[indice]] : [corpo[indice]])).flat(),
         '',
         `export { ${nome} };`,
         '',
