@@ -2935,6 +2935,40 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
     });
 
+    // v2.25.4 (zr-crm, Decisioni 16179 e 16181 del #95). Le due notifiche delle scadenze del CRM, il preavviso al responsabile e il
+    // riepilogo del giorno, hanno un titolo; le manda il backoffice da solo, senza chi. Il registro non ha ancora le loro righe (le
+    // porta la v3.0.0): un clic apre la pagina delle notifiche e non le segna lette, anche con gli id che il preavviso porterà.
+    const delleScadenze = [
+        { ...delCreditoSottoZero, id: 'uat-n80', tipo: 'crm.scadenza.in_preavviso', autore_nome: null, risorsa_nome: null, ids: { id: 'uat-scadenza-1', persona_id: 'uat-persona-7' } as Record<string, string> },
+        { ...delCreditoSottoZero, id: 'uat-n81', tipo: 'crm.scadenze.riepilogo_del_giorno', autore_nome: null, risorsa_nome: null, ids: {} as Record<string, string> },
+    ];
+
+    it.each([
+        ['it', 'Una scadenza si avvicina', 'Scadenze in preavviso oggi'],
+        ['en', 'A deadline is coming up', 'Deadlines coming up today'],
+        ['es', 'Se acerca un vencimiento', 'Vencimientos en aviso hoy'],
+    ] as const)('con la lingua "%s", nel pannello le due notifiche delle scadenze hanno i loro titoli, «%s» e «%s», senza una seconda riga (v2.25.4)', async (lingua, preavviso, riepilogo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: delleScadenze }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([preavviso, riepilogo]);
+        expect([preavviso, riepilogo]).not.toContain(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual([null, null]);
+    });
+
+    it('un clic su una delle due notifiche delle scadenze apre la pagina delle notifiche e non la segna letta: il registro non ha ancora le loro righe (v2.25.4)', async () => {
+        const fetchFinto = rotteDelClic([{ data: delleScadenze }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        await apre(1);
+        expect(naviga.mock.calls).toStrictEqual([[paginaDelleNotifiche], [paginaDelleNotifiche]]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
     it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
         const fetchFinto = rotteDelClic([{ data: delleSchede }]);
         vi.stubGlobal('fetch', fetchFinto);

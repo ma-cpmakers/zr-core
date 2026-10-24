@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 52,4 KB | 17,5 KB | 40,7 KB | 7,7 KB |
-| la cornice e due componenti per nome | 55,7 KB | 18,7 KB | 40,7 KB | 7,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 40,7 KB | 7,7 KB |
+| solo la cornice, dall'ingresso per le app | 52,4 KB | 17,5 KB | 41,7 KB | 7,9 KB |
+| la cornice e due componenti per nome | 55,7 KB | 18,7 KB | 41,7 KB | 7,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 41,7 KB | 7,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -800,9 +800,16 @@ cornice === null ? pagina : (
   sotto zero il credito di un pacchetto: «Credito sotto zero: cliente da avvisare». Non è un evento: il suo `tipo` è
   `crm.acquisto.scoperto`, senza `com.zeiras.` davanti, e la chiave del titolo è
   `notificationTitle.crm.acquisto.scoperto`; l'evento `com.zeiras.crm.acquisto.scoperto` non genera notifiche e non ha
-  un titolo. Con lei i titoli sono 45: 38 tipi di evento, i cinque «assegnata», la menzione e il credito sotto zero. È
+  un titolo. Con lei i titoli erano 45: 38 tipi di evento, i cinque «assegnata», la menzione e il credito sotto zero. È
   nel contratto dal 24/10/2026: `app` `crm`, nei `dati` l'`id` dell'acquisto e `persona_id`, il contatto, mai il nome, e
-  `risorsa_nome` è il nome della voce del catalogo. Dal 24/10/2026 il contratto ha anche i tipi di evento di preventivi,
+  `risorsa_nome` è il nome della voce del catalogo. Dalla `v2.25.4` hanno un titolo anche le due notifiche delle scadenze
+  del CRM: il preavviso di una scadenza, al suo responsabile, «Una scadenza si avvicina» (`crm.scadenza.in_preavviso`), e
+  il riepilogo del giorno, quando lo stesso giorno i preavvisi sono più di cinque, «Scadenze in preavviso oggi»
+  (`crm.scadenze.riepilogo_del_giorno`). Non sono eventi, e il loro `tipo` non ha `com.zeiras.` davanti. Con loro i
+  titoli sono 47: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero e le due delle scadenze. Il
+  24/10/2026 il contratto pubblicato non le ha ancora: i nomi li ha fissati il backoffice, e nei `dati` il preavviso porta
+  l'`id` della scadenza e `persona_id` o `organizzazione_id`, il riepilogo il numero. Nella `v2.25.4` un clic su tutte e
+  due apre la pagina delle notifiche. Dal 24/10/2026 il contratto ha anche i tipi di evento di preventivi,
   acquisti, consumi, rate, pagamenti e catalogo del CRM: nessuno genera notifiche, e nessuno ha un titolo. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
@@ -882,7 +889,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantacinque tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantasette tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
