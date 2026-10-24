@@ -37,9 +37,10 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * Di che app è un tipo di notifica, dal suo inizio: il backoffice dice `app` dall'evento, e la cornice cerca la destinazione
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
- * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3).
+ * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3). Dallo sprint 74 anche
+ * Bookings, coi tre tipi delle prenotazioni: `com.zeiras.bookings.` davanti.
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'com.zeiras.bookings.' => 'bookings'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -512,10 +513,27 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
     $righe = json_decode(File::get(__DIR__.'/../../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
 
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
-        ->and(array_keys($righe))->toBe(['pm', 'crm'])
+        ->and(array_keys($righe))->toBe(['pm', 'crm', 'bookings'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
         // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo.
-        ->and(count($righe['pm']) + count($righe['crm']))->toBe(28);
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(28)
+        // Sprint 74 · T1.3: e le tre di Bookings.
+        ->and(count($righe['bookings']))->toBe(3);
+});
+
+// Sprint 74 · T1.3 (voce #2548). Le tre notifiche di Bookings — un ospite ha prenotato, spostato o annullato — aprono il pannello
+// della prenotazione, col suo `id`.
+it('nel registro le notifiche di Bookings sono tre, col tipo intero, e aprono tutte la prenotazione, `/prenotazioni/{id}` (sprint 74 · T1.3)', function () {
+    $voci = registroDeiProdotti();
+
+    expect(problemiDelRegistro($voci))->toBe([])
+        ->and($voci[3]['id'])->toBe('bookings')
+        ->and($voci[3]['indirizzo'])->toBe('https://bookings.zeiras.com')
+        ->and($voci[3]['notifiche'] ?? null)->toBe([
+            ['tipo' => 'com.zeiras.bookings.prenotazione.creata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'com.zeiras.bookings.prenotazione.cambiata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'com.zeiras.bookings.prenotazione.annullata', 'percorso' => '/prenotazioni/{id}'],
+        ]);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {

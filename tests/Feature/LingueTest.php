@@ -176,7 +176,7 @@ function tipiDiNotificaDelContratto(): array
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings())];
 }
 
 /**
@@ -344,6 +344,22 @@ function titoloDellaNotificaDellaRichiestaSulPreventivo(): array
     ];
 }
 
+/**
+ * I titoli delle tre notifiche di Bookings: un ospite ha prenotato, spostato o annullato dalla pagina pubblica (spec dei metodi
+ * di zr-bookings §3.3, decisione di zr-pm del 24/10). Sono tipi di notifica, non eventi del contratto, e hanno `com.zeiras.`
+ * davanti. Scritti qui, non letti dai file delle lingue (sprint 74 · T1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDiBookings(): array
+{
+    return [
+        'com.zeiras.bookings.prenotazione.creata' => ['it' => 'Nuova prenotazione', 'en' => 'New booking', 'es' => 'Nueva reserva'],
+        'com.zeiras.bookings.prenotazione.cambiata' => ['it' => 'Prenotazione spostata', 'en' => 'Booking moved', 'es' => 'Reserva movida'],
+        'com.zeiras.bookings.prenotazione.annullata' => ['it' => 'Prenotazione annullata', 'en' => 'Booking cancelled', 'es' => 'Reserva cancelada'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -458,6 +474,20 @@ function frasiDelleNotificheConChi(): array
             'chiECosa' => null,
             'chi' => ['it' => '{who}: un cliente ha chiesto una modifica al preventivo', 'en' => '{who}: a client asked for changes to the quote', 'es' => '{who}: un cliente ha pedido un cambio en el presupuesto'],
         ],
+        // Sprint 74 · T1: le tre di Bookings, con le parole della spec dei testi di zr-bookings; con la data stanno in
+        // frasiDelleNotificheConLaData(), e queste sono quelle senza.
+        'com.zeiras.bookings.prenotazione.creata' => [
+            'chiECosa' => ['it' => '{who} ha prenotato {what}', 'en' => '{who} booked {what}', 'es' => '{who} ha reservado {what}'],
+            'chi' => ['it' => '{who} ha prenotato', 'en' => '{who} made a booking', 'es' => '{who} ha hecho una reserva'],
+        ],
+        'com.zeiras.bookings.prenotazione.cambiata' => [
+            'chiECosa' => ['it' => '{who} ha spostato {what}', 'en' => '{who} moved {what}', 'es' => '{who} ha movido {what}'],
+            'chi' => ['it' => '{who} ha spostato una prenotazione', 'en' => '{who} moved a booking', 'es' => '{who} ha movido una reserva'],
+        ],
+        'com.zeiras.bookings.prenotazione.annullata' => [
+            'chiECosa' => ['it' => '{who} ha annullato {what}', 'en' => '{who} cancelled {what}', 'es' => '{who} ha cancelado {what}'],
+            'chi' => ['it' => '{who} ha annullato una prenotazione', 'en' => '{who} cancelled a booking', 'es' => '{who} ha cancelado una reserva'],
+        ],
         'com.zeiras.crm.persona.creata' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who} ha creato un contatto', 'en' => '{who} created a contact', 'es' => '{who} ha creado un contacto'],
@@ -566,10 +596,27 @@ function frasiDelleNotificheConChi(): array
     ];
 }
 
-/** @return list<string> le chiavi delle frasi con chi: `notificationTitleWhoWhat.<tipo>` e `notificationTitleWho.<tipo>` */
+/**
+ * Le frasi con chi, che cosa e quando (`notificationTitleWhoWhatWhen.<tipo>`, coi posti `{who}`, `{what}` e `{when}`): la cornice
+ * le prova per prime quando la notifica ha un `quando` che sa scrivere, e al posto di `{when}` mette il giorno e l'ora nel fuso
+ * della notifica e nella lingua di chi legge. Le tre di Bookings, con le parole della spec dei testi di zr-bookings (sprint 74 ·
+ * T1). La tabella è scritta qui, non letta dai file delle lingue.
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function frasiDelleNotificheConLaData(): array
+{
+    return [
+        'com.zeiras.bookings.prenotazione.creata' => ['it' => '{who} ha prenotato {what}, {when}', 'en' => '{who} booked {what}, {when}', 'es' => '{who} ha reservado {what}, {when}'],
+        'com.zeiras.bookings.prenotazione.cambiata' => ['it' => '{who} ha spostato {what} a {when}', 'en' => '{who} moved {what} to {when}', 'es' => '{who} ha movido {what} al {when}'],
+        'com.zeiras.bookings.prenotazione.annullata' => ['it' => '{who} ha annullato {what}, {when}', 'en' => '{who} cancelled {what}, {when}', 'es' => '{who} ha cancelado {what}, {when}'],
+    ];
+}
+
+/** @return list<string> le chiavi delle frasi con chi: `notificationTitleWhoWhatWhen.<tipo>`, `notificationTitleWhoWhat.<tipo>` e `notificationTitleWho.<tipo>` */
 function chiaviDelleFrasiConChi(): array
 {
-    $chiavi = [];
+    $chiavi = array_map(fn (string $tipo): string => "notificationTitleWhoWhatWhen.$tipo", array_keys(frasiDelleNotificheConLaData()));
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
         if ($frasi['chiECosa'] !== null) {
             $chiavi[] = "notificationTitleWhoWhat.$tipo";
@@ -582,8 +629,8 @@ function chiaviDelleFrasiConChi(): array
 
 /**
  * Cosa non torna nelle frasi con chi di una lingua: una frase di un tipo che non ha un titolo (`notificationTitle.<tipo>`), o
- * una che non ha esattamente i suoi segnaposto, una volta ciascuno: `{who}` e `{what}` quella con chi e che cosa, il solo
- * `{who}` l'altra.
+ * una che non ha esattamente i suoi segnaposto, una volta ciascuno: `{who}`, `{what}` e `{when}` quella con chi, che cosa e
+ * quando (dallo sprint 74), `{who}` e `{what}` quella con chi e che cosa, il solo `{who}` l'altra.
  *
  * @param  array<string, mixed>  $testi
  * @return list<string>
@@ -592,14 +639,18 @@ function problemiDelleFrasiConChi(array $testi): array
 {
     $problemi = [];
     foreach ($testi as $chiave => $testo) {
-        if (preg_match('/^notificationTitleWho(What)?\.(.+)$/', (string) $chiave, $parti) !== 1) {
+        if (preg_match('/^notificationTitleWho(What|WhatWhen)?\.(.+)$/', (string) $chiave, $parti) !== 1) {
             continue;
         }
         if (! array_key_exists('notificationTitle.'.$parti[2], $testi)) {
             $problemi[] = "«{$chiave}» è di un tipo che non ha un titolo";
         }
         preg_match_all('/\{[^{}]*\}/', is_string($testo) ? $testo : '', $segnaposto);
-        $attesi = $parti[1] === 'What' ? ['{what}', '{who}'] : ['{who}'];
+        $attesi = match ($parti[1]) {
+            'WhatWhen' => ['{what}', '{when}', '{who}'],
+            'What' => ['{what}', '{who}'],
+            default => ['{who}'],
+        };
         $trovati = $segnaposto[0];
         sort($trovati);
         if ($trovati !== $attesi) {
@@ -823,14 +874,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 48 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i dieci che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 51 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i tredici che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le tre di Bookings —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(48)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(51)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1011,6 +1062,20 @@ it('la notifica della richiesta sul preventivo ha il titolo della tabella nella 
         ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.crm.preventivo.richiesta')
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.crm.preventivo.richiesta']);
+})->with(['it', 'en', 'es']);
+
+// Sprint 74 · T1 (voce #2548). Le tre notifiche di Bookings hanno un titolo per tipo nella lingua, sotto il tipo com'è nel
+// backoffice, con `com.zeiras.` davanti: è il titolo di chi non ha le frasi, e quello di una notifica senza chi.
+it('le tre notifiche di Bookings hanno il titolo della tabella nella lingua, sotto il tipo intero; il tipo senza `com.zeiras.` non ha un titolo, e nessun\'altra notifica si chiama così (sprint 74 · T1.2)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    foreach (titoliDelleNotificheDiBookings() as $tipo => $titolo) {
+        expect($testi["notificationTitle.$tipo"] ?? null)->toBe($titolo[$codice])
+            ->and(array_key_exists('notificationTitle.'.substr($tipo, strlen('com.zeiras.')), $testi))->toBe(false)
+            ->and(array_keys($deiTitoli, $titolo[$codice], true))->toBe(["notificationTitle.$tipo"])
+            ->and(tipiDiNotificaDelContratto())->not->toContain($tipo);
+    }
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1448,6 +1513,9 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
         }
         $attese["notificationTitleWho.$tipo"] = $frasi['chi'][$codice];
     }
+    foreach (frasiDelleNotificheConLaData() as $tipo => $frase) {
+        $attese["notificationTitleWhoWhatWhen.$tipo"] = $frase[$codice];
+    }
     $delleFrasi = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWho'), ARRAY_FILTER_USE_KEY);
     ksort($attese);
     ksort($delleFrasi);
@@ -1456,11 +1524,15 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(76)
+    // Sprint 74 · T1: 76 e le nove di Bookings, tre per famiglia.
+    expect($attese)->toHaveCount(85)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(48)
-        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
+        ->and($conLeFrasi)->toHaveCount(51)
+        ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(31)
+        // Sprint 74 · T1: la frase con la data l'hanno solo i tre di Bookings, e ognuno ha anche quella senza.
+        ->and(array_keys(frasiDelleNotificheConLaData()))->toBe(array_keys(titoliDelleNotificheDiBookings()))
+        ->and(array_diff_key(frasiDelleNotificheConLaData(), array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null)))->toBe([])
         // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
         // v2.25.3: nemmeno il credito sotto zero; il nome che arriva è quello della voce del catalogo, non del cliente.
@@ -1484,11 +1556,14 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         'notificationTitleWhoWhat.com.zeiras.board.scheda.creata' => '{who} y {who} han creado la tarjeta «{what}»',
         'notificationTitleWho.com.zeiras.board.scheda.creata' => '{quien} ha creado una tarjeta',
         'notificationTitleWho.com.zeiras.board.scheda.spostata' => '{who} ha movido una tarjeta',
+        'notificationTitleWhoWhatWhen.com.zeiras.board.scheda.creata' => '{who} ha creado la tarjeta «{what}»',
+        'notificationTitleWhoWhat.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}», {when}',
     ];
     $giuste = [
         'notificationTitle.board.scheda.assegnata' => 'Se te ha asignado una tarjeta',
         'notificationTitleWhoWhat.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}»',
         'notificationTitleWho.board.scheda.assegnata' => '{who} te ha asignado una tarjeta',
+        'notificationTitleWhoWhatWhen.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}», {when}',
         'unreadOne' => 'Tienes {n} sin leer',
     ];
 
@@ -1498,5 +1573,8 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         '«notificationTitleWhoWhat.com.zeiras.board.scheda.creata» ha {what} {who} {who} invece di {what} {who}',
         '«notificationTitleWho.com.zeiras.board.scheda.creata» ha {quien} invece di {who}',
         '«notificationTitleWho.com.zeiras.board.scheda.spostata» è di un tipo che non ha un titolo',
+        '«notificationTitleWhoWhatWhen.com.zeiras.board.scheda.creata» ha {what} {who} invece di {what} {when} {who}',
+        '«notificationTitleWhoWhat.board.scheda.assegnata» è di un tipo che non ha un titolo',
+        '«notificationTitleWhoWhat.board.scheda.assegnata» ha {what} {when} {who} invece di {what} {who}',
     ])->and(problemiDelleFrasiConChi($giuste))->toBe([]);
 });
