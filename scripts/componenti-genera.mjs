@@ -165,10 +165,11 @@ export function genera(bundle) {
 // prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
 // nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
 // riga — dalla funzione `<Nome>` risalendo alle righe attaccate che sono sue (le `var` che usa lei sola, il commento «/*
-// ---------- <Nome>: …» se le sta sopra), e giù fino alla graffa che la chiude, con ciò che il blocco dichiara (per MentionField anche `MENTION_LABELS`, che il modulo ha suo: dal design system
-// ds-1792851600-0de4 il blocco di AddressField sta fra il commento di MentionField e la sua funzione, e dal commento si
-// sarebbe portato anche AddressField) — e le righe private che il blocco usa, nell'ordine del bundle; i
-// componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta: nella stessa app
+// ---------- <Nome>: …» se le sta sopra), e giù fino alla graffa che la chiude, con ciò che il blocco dichiara (per
+// MentionField anche `MENTION_LABELS`, che il modulo ha suo) — e le righe private che il blocco usa, nell'ordine del bundle; i
+// componenti che il bundle registra li prende da `./componenti` per nome. Il blocco non comincia dal commento perché nel design
+// system ds-1792851600-0de4 quello di AddressField sta fra il commento di MentionField e la sua funzione. Da `componenti` il
+// componente resta: nella stessa app
 // si prende da un posto solo.
 // Le righe private che un modulo porta sono queste, guardate una per una: una riga con uno stato (un contesto, una cache)
 // copiata darebbe alla copia uno stato suo, e il componente non vedrebbe più quello di `componenti`. `uid` è guardata: le due
@@ -332,7 +333,7 @@ export function aParte({ corpo, nomi }, nome) {
         if (nomi.includes(usato)) {
             // Da ./componenti si prendono solo componenti: un altro nome registrato (le etichette di partenza) il modulo lo ha
             // suo, nel blocco. Se è rimasto fuori, il blocco ha una forma che la risalita non conosce.
-            vuole(corpo[rigaDi.get(usato)].startsWith(`  function ${usato}(`), `${nome} usa «${usato}», che il bundle registra ma non è un componente, dichiarato alla riga ${numero(rigaDi.get(usato))} fuori dal blocco: il modulo lo prenderebbe da ./componenti invece di averlo suo, e va guardato`);
+            vuole(corpo[rigaDi.get(usato)].startsWith(`  function ${usato}(`), `${nome} usa «${usato}», che il bundle registra alla riga ${numero(rigaDi.get(usato))}, fuori dal blocco, non come «function ${usato}(»: se è suo (le etichette di partenza) il blocco ha una forma che la risalita non conosce; se è un nome comune da prendere da ./componenti, l'elenco dei nomi che si importano va riallineato`);
             daImportare.add(usato);
             continue;
         }
