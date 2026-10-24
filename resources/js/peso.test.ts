@@ -417,7 +417,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [true, true]]);
     });
 
-    // Sprint 74 · T1.6 (voce #2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
+    // Sprint 74 · T1.6 (voce 2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
     // scrive il pezzo della campanella, non il JS d'ingresso.
     it.each(app)('«%s»: la data delle notifiche non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 74 · T1.6)', (_nome, costruita) => {
         expect(volte(costruita().js, 'weekday')).toBe(0);
@@ -516,7 +516,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Sprint 70 · T1.5 (voce #2429, Decisione 16181): dalla `v3.0.0` porta anche le righe delle destinazioni e la funzione
         // che le legge: 1.922 byte alla misura del prototipo, 1.969 con le due righe delle Scadenze (T2) e le impronte di oggi.
         // Patch v3.2.2 (Decisione 16510 di zr-pm): +16 byte per la riga che apre il preventivo dalla richiesta di un cliente.
-        // Sprint 74 · T1.6 (voce #2548, eccezione di zr-pm: la misura vera): le tre righe di Bookings e la data delle notifiche,
+        // Sprint 74 · T1.6 (voce 2548, eccezione di zr-pm: la misura vera): le tre righe di Bookings e la data delle notifiche,
         // con la frase con la data provata prima di quella senza (2.162; il prototipo del refining, rimisurato, 2.153), e la frase
         // senza chi col solo giorno, per il preavviso di una scadenza del CRM (zr-pm): 2.199.
         expect(gzip(campanella)).toBeLessThanOrEqual(2_199);

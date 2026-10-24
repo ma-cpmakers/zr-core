@@ -297,7 +297,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 5, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
+            // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
+            ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'flow' => 'euro', 'reports' => 'chart',
@@ -604,7 +606,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquatt
             ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
         // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm', 'bookings'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });

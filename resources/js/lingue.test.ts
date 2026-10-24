@@ -1572,7 +1572,7 @@ describe('la riga sotto il titolo: quante azioni, e in quale board (sprint 34 ·
     });
 });
 
-// Sprint 74 · T1 (voce #2548). Le tre notifiche di Bookings dicono quando: la parte server passa `quando` (l'istante in UTC e il
+// Sprint 74 · T1 (voce 2548). Le tre notifiche di Bookings dicono quando: la parte server passa `quando` (l'istante in UTC e il
 // fuso della pagina), e la cornice scrive il giorno e l'ora in quel fuso e nella lingua di chi legge, al posto di `{when}` nella
 // frase con la data. Senza un `quando` che sa scrivere il titolo è quello di prima, senza la data: mai un segnaposto, mai
 // «Invalid Date», mai un posto vuoto.

@@ -102,7 +102,7 @@ function lingueDellaCornice(): array
  */
 function problemiDeiDueFile(array $testi, array $frasi): array
 {
-    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What)?)?|Under)\../', $chiave) === 1;
+    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What(When)?)?|WhatWhen)?|Under)\../', $chiave) === 1;
 
     $problemi = [];
     foreach (array_diff(array_keys($testi), array_keys($frasi)) as $codice) {
