@@ -4858,7 +4858,7 @@ it('il README dice, in «Come si installa in un frontend», i due ingressi, il p
     'MentionField, da un posto solo' => ['Nella stessa app si prende da un posto solo: le due copie hanno ognuna il suo contatore degli id dei campi'],
     'AddressField a parte (sprint 72 · T1.5)' => ['**AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta), `resources/js/zeiras/AddressField`, con le stesse regole'],
     'AddressField, l\'import' => ['import { AddressField, type AddressPlace, type AddressSuggestion } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField\';'],
-    'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dal suo server, a ogni `onQuery`, e li passa al campo in `suggestions`. Il browser non parla con Google, e la CSP della cornice non cambia.'],
+    'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dalla parte server (per un modulo di Zeiras, a un metodo di zr-backoffice), a ogni `onQuery`, e li passa al campo in `suggestions`. Il browser non parla con Google, e la CSP della cornice non cambia.'],
     'AddressField, spento' => ['Nei frontend la ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l\'informativa non sono approvate.'],
     'l\'import dei componenti' => ['import * as Zeiras from \'../../vendor/zeiras/zr-core/resources/js/zeiras/componenti\';'],
     'che cosa non si scrive' => ['Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.'],
