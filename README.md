@@ -60,6 +60,21 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
 
   Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.
 
+  **MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una
+  pagina o in un dialogo che si carica a richiesta (`import()`). Il modulo dei componenti è uno solo: la cornice lo importa,
+  quindi sta nel JS d'ingresso, e con lui ogni componente che una qualunque pagina ne prende, anche a richiesta. Preso dal suo
+  modulo, MentionField sta nel pezzo della pagina che lo usa e il JS del primo carico non lo porta.
+
+  ```ts
+  import { MentionField, type MentionOption } from '../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField';
+  ```
+
+  Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Nella stessa app si prende da un
+  posto solo: le due copie hanno ognuna il suo contatore degli id dei campi, e due campi presi da posti diversi nella stessa
+  pagina possono avere lo stesso id. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
+  componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) il modulo le ha
+  sue, e si cambiano con la prop `labels`.
+
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
   una riga.

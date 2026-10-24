@@ -160,3 +160,176 @@ export function componi({ corpo, nomi }) {
 export function genera(bundle) {
     return componi(leggi(bundle));
 }
+
+// I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
+// prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
+// nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
+// riga — dal commento «/* ---------- <Nome>: …» alla graffa che chiude la funzione, con ciò che il blocco dichiara (per
+// MentionField anche `MENTION_LABELS`, che il modulo ha suo) — e le righe private che il blocco usa, nell'ordine del bundle; i
+// componenti che il bundle registra li prende da `./componenti` per nome. Da `componenti` il componente resta: nella stessa app
+// si prende da un posto solo.
+// Le righe private che un modulo porta sono queste, guardate una per una: una riga con uno stato (un contesto, una cache)
+// copiata darebbe alla copia uno stato suo, e il componente non vedrebbe più quello di `componenti`. `uid` è guardata: le due
+// copie contano gli id ognuna per sé, e la regola del posto solo lo evita. Se il blocco usa una riga privata che qui non c'è, o
+// non usa più una di queste, lo script si ferma e dice quale: la riga si guarda e l'elenco si riallinea.
+export const A_PARTE = {
+    MentionField: [
+        '  var h = React.createElement;',
+        '  var useState = React.useState;',
+        '  var useRef = React.useRef;',
+        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
+        "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
+    ],
+};
+
+const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
+const NOME = '[A-Za-z_$][\\w$]*';
+// Le forme che una riga del corpo col rientro del bundle (due spazi) può avere: una dichiarazione `var` o `function` di un nome
+// solo, un commento, una chiusura (`}`, `};`, `];`, `].map(…`), un nome dato a una proprietà di un altro (`Avatar.Stack =
+// AvatarStack;`). Ogni altra forma — `const`, `let`, `var { … } =`, un'istruzione — ferma lo script: un nome dichiarato in una
+// forma che lo script non legge sparirebbe dal modulo senza errore.
+const FORME = [new RegExp(`^ {2}var ${NOME} = `), new RegExp(`^ {2}function ${NOME}\\(`), /^ {2}\/[*/]/, /^ {2}[}\]]/, new RegExp(`^ {2}(${NOME})\\.${NOME} = ${NOME};$`)];
+const DICHIARAZIONE = new RegExp(`^(?:var|function) (${NOME})`);
+// Un nome usato: non dopo un punto (una proprietà), fuori dai testi e dai commenti.
+const NOME_USATO = /(?<![.\w$])[A-Za-z_$][\w$]*/g;
+
+/**
+ * Il testo senza testi né commenti, letti insieme da sinistra a destra: un testo diventa `''`, un commento uno spazio. Così un
+ * apostrofo in un commento non apre un testo, e un `//` in un testo non apre un commento.
+ */
+function pulito(testo) {
+    let fuori = '';
+    for (let qui = 0; qui < testo.length; qui++) {
+        const carattere = testo[qui];
+        if (carattere === "'" || carattere === '"') {
+            let fine = qui + 1;
+            while (fine < testo.length && testo[fine] !== carattere && testo[fine] !== '\n') fine += testo[fine] === '\\' ? 2 : 1;
+            fuori += "''";
+            qui = fine;
+        } else if (testo.startsWith('/*', qui)) {
+            const fine = testo.indexOf('*/', qui + 2);
+            fuori += ' ';
+            qui = fine < 0 ? testo.length : fine + 1;
+        } else if (testo.startsWith('//', qui)) {
+            const fine = testo.indexOf('\n', qui);
+            fuori += ' ';
+            qui = (fine < 0 ? testo.length : fine) - 1;
+        } else {
+            fuori += carattere;
+        }
+    }
+
+    return fuori;
+}
+const nomiUsati = (righe) => new Set(pulito(righe.join('\n')).match(NOME_USATO) ?? []);
+const profonditaDi = (testo) => [...pulito(testo)].reduce((conto, carattere) => conto + ('{(['.includes(carattere) ? 1 : '})]'.includes(carattere) ? -1 : 0), 0);
+
+/**
+ * L'istruzione che comincia alla riga `indice` del corpo, se è una dichiarazione `var` o `function`: le sue righe, fino a quella
+ * che chiude le graffe. Se le graffe non si chiudono prima della riga col rientro del bundle che viene dopo (un'espressione
+ * regolare può avere parentesi che il conto sbaglierebbe), lo script si ferma. `null` se la riga non comincia una dichiarazione.
+ */
+function istruzioneDa(corpo, indice, numero) {
+    if (!/^ {2}(?:var|function) /.test(corpo[indice])) return null;
+    let fine = indice;
+    while (profonditaDi(corpo.slice(indice, fine + 1).join('\n')) > 0) {
+        fine++;
+        vuole(fine < corpo.length && (!/^ {2}\S/.test(corpo[fine]) || profonditaDi(corpo.slice(indice, fine + 1).join('\n')) <= 0), `le graffe della dichiarazione della riga ${numero(indice)} non si chiudono dove comincia la riga seguente col rientro del bundle: lo script non sa dire che cosa dichiara`);
+    }
+    vuole(profonditaDi(corpo.slice(indice, fine + 1).join('\n')) === 0, `le graffe della dichiarazione della riga ${numero(indice)} non tornano: lo script non sa dire che cosa dichiara`);
+
+    return corpo.slice(indice, fine + 1).join('\n');
+}
+
+/**
+ * I nomi che un'istruzione del corpo dichiara fuori dalle graffe («var uid = 0; function useId…»): quelli dentro una funzione
+ * sono suoi. Una virgola fuori dalle graffe (più nomi in una dichiarazione), o una riga `var` con una barra e un'altra
+ * dichiarazione (un'espressione regolare può avere parentesi che il conto sbaglierebbe), ferma lo script.
+ */
+function dichiaratiIn(istruzione, numero) {
+    if (istruzione === null) return [];
+    const testo = pulito(istruzione);
+    const dichiarati = [];
+    let profondita = 0;
+    for (let qui = 2; qui < testo.length; qui++) {
+        const carattere = testo[qui];
+        if ('{(['.includes(carattere)) profondita++;
+        else if ('})]'.includes(carattere)) profondita--;
+        else if (profondita === 0 && carattere === ',') vuole(false, `la riga ${numero} dichiara più nomi con la virgola: lo script legge un nome per dichiarazione`);
+        else if (profondita === 0 && /[\s;]/.test(testo[qui - 1] ?? ' ')) {
+            const trovato = DICHIARAZIONE.exec(testo.slice(qui));
+            if (trovato) dichiarati.push(trovato[1]);
+        }
+    }
+    // Una riga `var` con una barra (un'espressione regolare) e un'altra dichiarazione dopo un `;`: il conto delle graffe potrebbe
+    // non vederla, e si conta sul testo. Nel corpo di una `function` le dichiarazioni sono sue.
+    vuole(!/^ {2}var /.test(istruzione) || !testo.includes('/') || !/;\s*(?:var|function) /.test(testo), `la riga ${numero} ha una barra e più di una dichiarazione: lo script non sa dire con certezza quali nomi dichiara`);
+
+    return dichiarati;
+}
+
+/**
+ * Il testo del modulo di `nome` (una chiave di `A_PARTE`) dal corpo e dai nomi che dà `leggi`. Se una cosa non è come lo script
+ * la conosce — il blocco, una forma di riga, una riga privata che non è nell'elenco — lancia un errore che dice quale.
+ */
+export function aParte({ corpo, nomi }, nome) {
+    const numero = (indice) => indice + 4;
+    corpo.forEach((riga, indice) => {
+        vuole(!/^ {2}\S/.test(riga) || FORME.some((forma) => forma.test(riga)), `la riga ${numero(indice)} («${riga.trim().slice(0, 60)}») ha una forma che lo script non conosce`);
+    });
+
+    const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
+    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», da cui comincia il blocco di ${nome}, c'è ${inizi.length} volte`);
+    const funzione = corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
+    vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
+    const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
+    vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
+    const blocco = corpo.slice(inizi[0], fine + 1);
+    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizi[0] + indice, numero), numero(inizi[0] + indice))));
+
+    // Dove sta ogni dichiarazione del corpo fuori dal blocco: un nome usato che è lì si porta con la sua riga, o si importa.
+    const rigaDi = new Map();
+    corpo.forEach((_riga, indice) => {
+        if (indice < inizi[0] || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
+    });
+    const daImportare = new Set();
+    const righePrivate = new Set();
+    const daGuardare = [...nomiUsati(blocco)];
+    while (daGuardare.length > 0) {
+        const usato = daGuardare.pop();
+        if (!rigaDi.has(usato) || daImportare.has(usato)) continue;
+        if (nomi.includes(usato)) {
+            daImportare.add(usato);
+            continue;
+        }
+        const indice = rigaDi.get(usato);
+        if (righePrivate.has(indice)) continue;
+        vuole(A_PARTE[nome].includes(corpo[indice]), `${nome} usa «${usato}», dichiarato alla riga ${numero(indice)} del bundle, e la riga non è fra le righe private che lo script porta nel suo modulo (A_PARTE): va guardata, e l'elenco riallineato`);
+        righePrivate.add(indice);
+        daGuardare.push(...nomiUsati([corpo[indice]]));
+    }
+    // Una proprietà data fuori dal blocco a un nome che il modulo porta (del blocco, o di una sua riga privata) non entrerebbe.
+    const portati = new Set([...delBlocco, ...[...righePrivate].flatMap((indice) => dichiaratiIn(corpo[indice], numero(indice)))]);
+    corpo.forEach((riga, indice) => {
+        const assegnato = FORME[4].exec(riga)?.[1];
+        vuole(assegnato === undefined || !portati.has(assegnato), `la riga ${numero(indice)} dà una proprietà a ${assegnato}, che il modulo di ${nome} porta: lo script non porta quella riga`);
+    });
+    const portate = [...righePrivate].map((indice) => corpo[indice]);
+    const mancanti = A_PARTE[nome].filter((riga) => !portate.includes(riga));
+    vuole(mancanti.length === 0, `la riga privata «${mancanti[0]?.trim().slice(0, 60)}» dell'elenco di ${nome} (A_PARTE) non c'è più nel bundle, o ${nome} non la usa più: l'elenco va riallineato`);
+
+    // Le righe private e il blocco, nell'ordine del bundle: una riga privata che sta dopo il blocco resta dopo.
+    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizi[0] + indice)].sort((a, b) => a - b);
+
+    return [
+        `// Generato da scripts/componenti.mjs: non si ritocca a mano. È ${nome} di resources/zeiras/bundle.js (il design system di`,
+        '// Zeiras, copia derivata) in un modulo suo: il suo blocco del bundle e le righe private che usa, riga per riga; i componenti che',
+        '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
+        "import * as React from 'react';",
+        ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
+        ...righe.map((indice, posto) => (posto > 0 && indice === inizi[0] ? ['', corpo[indice]] : [corpo[indice]])).flat(),
+        '',
+        `export { ${nome} };`,
+        '',
+    ].join('\n');
+}
