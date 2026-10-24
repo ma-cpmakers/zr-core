@@ -514,7 +514,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
         ->and(array_keys($righe))->toBe(['pm', 'crm'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
-        ->and(count($righe['pm']) + count($righe['crm']))->toBe(27);
+        // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo.
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(28);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
