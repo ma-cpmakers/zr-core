@@ -5261,7 +5261,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Indietro, 54 in tutto. Sprint 37 · T4.5 (voce #1999): e 68 della scheda ferma, 122 in tutto.
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.918 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.934 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
     'i pesi: i 18 byte della v2.25.2' => ['pesi', 'e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue'],
     // Sprint 69 · T1 (voci #2151, #2210, #2033): +25 byte, eccezione di zr-pm (Decisione 15231).

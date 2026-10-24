@@ -2890,6 +2890,51 @@ describe('il pannello delle notifiche', () => {
         expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
     });
 
+    // v2.25.3 (zr-crm, nota 16079 del #95). Quando un consumo porta sotto zero il credito di un pacchetto, il CRM manda al
+    // responsabile del contatto una notifica che non è un evento: il tipo arriva senza `com.zeiras.` davanti. Un clic apre il
+    // contatto, `/contatti/<persona_id>`, e la segna letta; l'`id` dell'acquisto, che non ha una pagina sua, non entra
+    // nell'indirizzo. Sotto il titolo, il nome della voce del catalogo.
+    const delCreditoSottoZero = { id: 'uat-n78', creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'crm' as string | null, tipo: 'crm.acquisto.scoperto', autore_nome: 'Bruno Neri', risorsa_nome: 'UAT Pacchetto 10 lezioni', per_me: true, ids: { persona_id: 'uat-persona-7' } as Record<string, string> };
+
+    it.each<[string, Record<string, string>]>([
+        ['col solo `persona_id`, come lo dà la parte server', { persona_id: 'uat-persona-7' }],
+        ['anche se fra gli `ids` arrivasse l\'`id` dell\'acquisto', { persona_id: 'uat-persona-7', id: 'uat-acquisto-3' }],
+    ])('un clic su una notifica del credito sotto zero apre il contatto nel CRM, `/contatti/<persona_id>`, e la segna letta — %s (v2.25.3)', async (_quale, ids) => {
+        const fetchFinto = rotteDelClic([{ data: [{ ...delCreditoSottoZero, ids }] }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 1 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        expect(naviga.mock.calls).toStrictEqual([['https://crm.zeiras.com/w/acme-marketing/contatti/uat-persona-7']]);
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([laLettura('uat-n78')]);
+    });
+
+    it.each([['it', 'Credito sotto zero: cliente da avvisare'], ['en', 'Credit below zero: client to notify'], ['es', 'Crédito bajo cero: cliente por avisar']])('con la lingua "%s", nel pannello una notifica del credito sotto zero si chiama «%s», mai col titolo di ripiego, e sotto ha il nome della voce del catalogo (v2.25.3)', async (lingua, titolo) => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: [{ ...delCreditoSottoZero, autore_nome: null }] }]));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 1 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(titoli()).toStrictEqual([titolo]);
+        expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(secondeRighe()).toStrictEqual(['UAT Pacchetto 10 lezioni']);
+    });
+
+    it('un clic sul credito sotto zero col tipo dell\'evento, `com.zeiras.` davanti, o con `app` `pm` o senza `app`, apre la pagina delle notifiche e non la segna letta (v2.25.3)', async () => {
+        const quasi: [app: string | null, tipo: string][] = [['crm', 'com.zeiras.crm.acquisto.scoperto'], ['pm', 'crm.acquisto.scoperto'], [null, 'crm.acquisto.scoperto']];
+        const elenco = quasi.map(([app, tipo], indice) => ({ ...delCreditoSottoZero, id: `uat-n${59 - indice}`, app, tipo }));
+        const fetchFinto = rotteDelClic([{ data: elenco }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        for (let indice = 0; indice < elenco.length; indice++) {
+            await apre(indice);
+        }
+        expect(naviga.mock.calls).toStrictEqual(quasi.map(() => [paginaDelleNotifiche]));
+        expect(richieste(fetchFinto).filter((richiesta) => richiesta.startsWith('PATCH'))).toStrictEqual([]);
+    });
+
     it('in un workspace dove Project Management non si può aprire un clic su una scheda assegnata apre la pagina delle notifiche, mai la scheda, e non la segna letta (sprint 24 · T3.2)', async () => {
         const fetchFinto = rotteDelClic([{ data: delleSchede }]);
         vi.stubGlobal('fetch', fetchFinto);
@@ -3286,14 +3331,16 @@ describe('il pannello delle notifiche', () => {
         // Sprint 36 · T5: i motivi di perdita del CRM, in fondo: più sopra le righe si prendono per posto.
         ['com.zeiras.crm.motivo.creato', 'Nuovo motivo di perdita', 'New loss reason', 'Nuevo motivo de pérdida'],
         ['com.zeiras.crm.motivo.modificato', 'Motivo di perdita modificato', 'Loss reason changed', 'Motivo de pérdida modificado'],
+        // v2.25.3: il credito sotto zero del CRM, con le parole di zr-crm (nota 16079 del #95), in fondo anche lui.
+        ['crm.acquisto.scoperto', 'Credito sotto zero: cliente da avvisare', 'Credit below zero: client to notify', 'Crédito bajo cero: cliente por avisar'],
     ];
     /** Il titolo di ripiego, per lingua. */
     const diRipiego: Record<string, string> = { it: 'Novità nel workspace', en: 'News in the workspace', es: 'Novedades en el workspace' };
     const titoli = () => voci().map((voce) => voce.querySelector('.zr-notif-title')?.textContent);
 
-    it('la tabella dei titoli ha 44 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; sprint 36 · T5.1)', () => {
-        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(44);
-        expect(titoliPerTipo).toHaveLength(44);
+    it('la tabella dei titoli ha 45 tipi, tutti diversi (sprint 12 · T3.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; sprint 36 · T5.1; v2.25.3)', () => {
+        expect(new Set(titoliPerTipo.map(([tipo]) => tipo)).size).toBe(45);
+        expect(titoliPerTipo).toHaveLength(45);
     });
 
     it.each(titoliPerTipo.flatMap(([tipo, it, en, es]) => [[tipo, 'it', it], [tipo, 'en', en], [tipo, 'es', es]]))(
@@ -3395,9 +3442,9 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 16 · T5 (voce #1479): fuori dalla cornice il titolo di un tipo lo dà `titoloDellaNotifica`, dall'ingresso del
     // pacchetto, ed è la funzione del pannello: tipo per tipo, i due testi sono uno solo.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 44 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s", titoloDellaNotifica dà a ogni tipo lo stesso titolo che il pannello mostra a una notifica di quel tipo: quello dei 45 che zr-core conosce, e quello di ripiego agli altri (sprint 16 · T5.1; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./frasi');
-        // I 44 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
+        // I 45 tipi della tabella, poi ciò che zr-core non conosce: un tipo nuovo, un nome che ogni oggetto ha, il vuoto, ciò che
         // non è un testo; in fondo all'elenco, una notifica senza `tipo`.
         const tipi: unknown[] = [...titoliPerTipo.map(([tipo]) => tipo), 'com.zeiras.crm.contatto.creato', 'constructor', '', null, 7, ['com.zeiras.board.scheda.creata']];
         const elenco = [...tipi.map((tipo, indice) => ({ ...nata(`uat-n${190 - indice}`, '2026-10-06T11:55:00Z'), tipo })), nata('uat-n50', '2026-10-06T11:50:00Z')];
@@ -3407,11 +3454,11 @@ describe('il pannello delle notifiche', () => {
         await clic(uno('.zr-bell'));
         const dellaFunzione = [...tipi.map((tipo) => titoloDellaNotifica(tipo, lingua)), titoloDellaNotifica(undefined, lingua)];
         expect(titoli()).toStrictEqual(dellaFunzione);
-        // Non sono due elenchi di ripieghi: i primi 44 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
+        // Non sono due elenchi di ripieghi: i primi 45 sono i titoli della tabella nella lingua (in inglese, se zr-core non la
         // ha), e gli altri sette il ripiego.
         const deiTesti = lingua in diRipiego ? lingua : 'en';
-        expect(dellaFunzione.slice(0, 44)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
-        expect(dellaFunzione.slice(44)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
+        expect(dellaFunzione.slice(0, 45)).toStrictEqual(titoliPerTipo.map((riga) => riga[['', 'it', 'en', 'es'].indexOf(deiTesti)]));
+        expect(dellaFunzione.slice(45)).toStrictEqual(Array.from({ length: 7 }, () => diRipiego[deiTesti]));
     });
 
     it.each<[lingua: string, nonLetteNeiDati: number | undefined, nonLetteCaricate: number, nome: string]>([
