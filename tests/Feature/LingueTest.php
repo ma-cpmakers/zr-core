@@ -169,12 +169,13 @@ function tipiDiNotificaDelContratto(): array
  * chi viene assegnata una scheda, che non è un evento nemmeno lei (sprint 24 · T3).
  * Dallo sprint 26 (T6) anche quella a chi viene menzionato in un commento, di Project Management: non è un evento.
  * Dalla v2.25.3 anche quella del CRM sul credito di un pacchetto sotto zero: non è un evento nemmeno lei.
+ * Dalla v2.25.4 anche le due delle scadenze del CRM, il preavviso e il riepilogo del giorno: non sono eventi.
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze())];
 }
 
 /**
@@ -311,6 +312,22 @@ function titoloDellaNotificaDelCreditoSottoZero(): array
     ];
 }
 
+/**
+ * I titoli delle due notifiche delle scadenze del CRM (CRM-09), con le parole di zr-crm (Decisioni 16179 e 16181 del #95): il
+ * preavviso di una scadenza, al suo responsabile, e il riepilogo del giorno, che prende il posto dei preavvisi quando lo stesso
+ * giorno sono più di cinque. Non sono eventi: il `tipo` arriva senza `com.zeiras.` davanti, come quello del credito sotto zero.
+ * Scritti qui, non letti dai file delle lingue (v2.25.4).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDelleScadenze(): array
+{
+    return [
+        'crm.scadenza.in_preavviso' => ['it' => 'Una scadenza si avvicina', 'en' => 'A deadline is coming up', 'es' => 'Se acerca un vencimiento'],
+        'crm.scadenze.riepilogo_del_giorno' => ['it' => 'Scadenze in preavviso oggi', 'en' => 'Deadlines coming up today', 'es' => 'Vencimientos en aviso hoy'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -410,6 +427,15 @@ function frasiDelleNotificheConChi(): array
         'crm.acquisto.scoperto' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who} ha registrato un consumo oltre i crediti: cliente da avvisare', 'en' => '{who} recorded usage beyond the credits: client to notify', 'es' => '{who} registró un consumo por encima de los créditos: cliente por avisar'],
+        ],
+        // v2.25.4: le due delle scadenze le manda il backoffice da solo, e la frase con chi c'è come per ogni tipo; il nome no.
+        'crm.scadenza.in_preavviso' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who}: una scadenza si avvicina', 'en' => '{who}: a deadline is coming up', 'es' => '{who}: se acerca un vencimiento'],
+        ],
+        'crm.scadenze.riepilogo_del_giorno' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who}: scadenze in preavviso oggi', 'en' => '{who}: deadlines coming up today', 'es' => '{who}: vencimientos en aviso hoy'],
         ],
         'com.zeiras.crm.persona.creata' => [
             'chiECosa' => null,
@@ -776,14 +802,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 45 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i sette che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento e il credito sotto zero —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 47 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i nove che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero e le due delle scadenze —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(45)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(47)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -925,6 +951,26 @@ it('la notifica del credito sotto zero ha il titolo della tabella nella lingua, 
         ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.crm.acquisto.scoperto')
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.crm.acquisto.scoperto']);
+})->with(['it', 'en', 'es']);
+
+it('le due notifiche delle scadenze hanno il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: l\'evento col prefisso, il tipo al plurale o al singolare sbagliato e un pezzo del tipo restano senza titolo, non sono tipi di evento del contratto, e ognuna ha un titolo suo (v2.25.4)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelleNotificheDelleScadenze();
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['crm.scadenza.in_preavviso', 'crm.scadenze.riepilogo_del_giorno'])
+        ->and($testi['notificationTitle.crm.scadenza.in_preavviso'] ?? null)->toBe($tabella['crm.scadenza.in_preavviso'][$codice])
+        ->and($testi['notificationTitle.crm.scadenze.riepilogo_del_giorno'] ?? null)->toBe($tabella['crm.scadenze.riepilogo_del_giorno'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.crm.scadenza.in_preavviso', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.crm.scadenze.in_preavviso', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.crm.scadenza.riepilogo_del_giorno', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.crm.scadenza', $testi))->toBe(false)
+        // Una parola per ogni `not->toContain`: con due si ferma alla prima che manca, e una sola nel contratto passerebbe.
+        ->and(tipiDiNotificaDelContratto())->not->toContain('crm.scadenza.in_preavviso')
+        ->and(tipiDiNotificaDelContratto())->not->toContain('crm.scadenze.riepilogo_del_giorno')
+        // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
+        ->and(array_keys($deiTitoli, $testi['notificationTitle.crm.scadenza.in_preavviso'] ?? null, true))->toBe(['notificationTitle.crm.scadenza.in_preavviso'])
+        ->and(array_keys($deiTitoli, $testi['notificationTitle.crm.scadenze.riepilogo_del_giorno'] ?? null, true))->toBe(['notificationTitle.crm.scadenze.riepilogo_del_giorno']);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1353,7 +1399,7 @@ it('ogni lingua ha le tre frasi della riga sotto il titolo di una notifica, nel 
 // Sprint 29 · T2 (voce #1865). Una notifica di Project Management dice chi ha fatto che cosa: le frasi sono testi delle lingue,
 // due famiglie di chiavi accanto ai titoli. Il nome di chi e quello della cosa li mette la cornice al posto dei segnaposto.
 
-it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 73 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2; sprint 36 · T5.1; v2.25.3)', function (string $codice) {
+it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo chi, e ventotto anche quella con chi e che cosa: 75 chiavi, coi testi della tabella e ognuna coi suoi segnaposto una volta sola (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1, T3.2; sprint 36 · T5.1; v2.25.3; v2.25.4)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $attese = [];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
@@ -1370,15 +1416,18 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(73)
+    expect($attese)->toHaveCount(75)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(45)
+        ->and($conLeFrasi)->toHaveCount(47)
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
         // v2.25.3: nemmeno il credito sotto zero; il nome che arriva è quello della voce del catalogo, non del cliente.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.acquisto.scoperto')
+        // v2.25.4: nemmeno le due delle scadenze; il contratto non dà il nome di ciò che scade.
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenza.in_preavviso')
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenze.riepilogo_del_giorno')
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);
