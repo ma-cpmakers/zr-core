@@ -5263,7 +5263,8 @@ it('il README non dice più che `azioni` e `board` non arrivano in pagina, né c
 // la guida lo dice a un modulo che nasce; e tutti e due dicono la riga che serve ai test di un frontend.
 
 // Sprint 69 · T2 (voce #2210). Il README e la guida dicono che un modulo `disponibile` non porta più alla sua pagina «non attivo»:
-// porta a Impostazioni › Moduli per chi amministra, e a nessuna parte per gli altri; e che `moduli` nei dati lo dà la parte server.
+// porta a Impostazioni › Moduli per chi amministra, e agli altri non si mostra (dalla `v3.2.3`, voce #2544; fino alla `v3.2.2`
+// era una voce che non portava a nessuna parte); e che `moduli` nei dati lo dà la parte server.
 it('il README dice `moduli` nei dati, a chi arriva e che non costa una lettura, e dove porta un modulo disponibile; la guida dice la stessa cosa (sprint 69 · T2.5)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
@@ -5272,7 +5273,9 @@ it('il README dice `moduli` nei dati, a chi arriva e che non costa una lettura, 
         ->and(substr_count($readme, 'solo se il ruolo della sessione è `proprietario` o `amministratore`'))->toBe(1)
         ->and(substr_count($readme, 'per saperlo non parte nessuna lettura in più, e al browser arriva l\'indirizzo, mai il `ruolo`'))->toBe(1)
         ->and(substr_count($readme, 'porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace'))->toBe(1)
-        ->and(substr_count($guida, 'la voce di un modulo `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra'))->toBe(1);
+        ->and(substr_count($guida, 'la voce di un modulo `disponibile` porta a Impostazioni › Moduli per chi amministra, e dalla `v3.2.3` agli altri non si mostra, tranne sulla pagina del modulo stesso'))->toBe(1)
+        ->and(substr_count($guida, 'o a nessuna parte per chi non amministra'))->toBe(0)
+        ->and(substr_count($readme, 'Restano due voci: quella del modulo aperto, perché senza la sua voce l\'`AppShell` toglierebbe tutto il menu Moduli'))->toBe(1);
 });
 
 it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le chiede, che cosa si vede se non arrivano e che cosa serve nei test di un frontend (sprint 30 · T1.10)', function (string $dove, string $frase) {
@@ -5326,9 +5329,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
-    // Patch v3.2.3 (voce #2544): 17.490, il modulo spento che non si mostra a chi non può attivarlo (Decisione 16812).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.490 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
-    'i pesi: i 12 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 12 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
+    // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.495 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: i 17 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 17 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
     'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
     'i pesi: i 18 byte della v2.25.2' => ['pesi', 'e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue'],

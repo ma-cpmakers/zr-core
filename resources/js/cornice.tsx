@@ -522,8 +522,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         products: true,
         // A chi non ha accettato i documenti legali resta la sola Dashboard: gli altri moduli il backoffice non li ha dati, e
         // con la lista vuota sarebbero tutti «Presto». Un modulo `disponibile` lo vede solo chi può attivarlo (`dati.moduli`):
-        // agli altri non si mostra spento, come nella griglia della Home (regola #2209; voce #2544, dalla `v3.2.3`).
-        items: registro.filter((voce) => (!ridotta || voce === dashboard) && (dati.moduli || dati.prodotti[voce.id as IdDiProdotto] !== 'disponibile')).map((voce) => {
+        // agli altri non si mostra spento, come nella griglia della Home (regola 2209; voce 2544, dalla `v3.2.3`). Restano sempre
+        // un «Presto» del registro, che non è spento ma futuro, e il modulo aperto: senza la sua voce l'`AppShell` toglierebbe
+        // tutto il menu Moduli, Dashboard compresa.
+        items: registro.filter((voce) => (!ridotta || voce === dashboard) && (voce.presto || voce === aperto || dati.moduli || dati.prodotti[voce.id as IdDiProdotto] !== 'disponibile')).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
             // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta a Impostazioni › Moduli
             // (dalla `v2.25.0`; linea guida 15): qui arriva solo se la persona può attivarlo. La Dashboard non ha uno stato: porta sempre. `in_arrivo` del

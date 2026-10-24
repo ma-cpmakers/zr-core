@@ -130,16 +130,16 @@ del registro che dicono dove si apre ogni notifica, con la funzione che le legge
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.490 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.495 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
 il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue, che il rimedio che lo mette nel giro del Tab riceve anche a ogni cambio di lingua (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15823), e dalla `v2.25.3` altri 16: la riga del registro che apre il contatto dalla notifica del credito sotto zero (un'eccezione di zr-pm, Decisione 16110; se una patch libera byte nel registro, il tetto riscende). Dalla `v3.0.0` è sceso
 di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS
-d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 12 byte in più: un modulo
-spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisione 16812; se una patch libera
-byte, il tetto riscende). Hanno
+d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 17 byte in più: un modulo
+spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
+libera byte, il tetto riscende). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.666 i rimedi, 1.004 la
 ricerca. Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Dalla `v2.0.0` l'eccezione per i
@@ -228,7 +228,7 @@ l'indirizzo; un frontend che non usa né l'una né l'altro non cambia niente. Co
 `…/resources/js/frasi` da una pagina che sta nel JS d'ingresso si porta lì anche il pezzo della campanella: si importa da
 una pagina caricata a richiesta. Il perché: le righe delle destinazioni e la funzione che le legge erano nel JS d'ingresso
 di ogni app, anche di quelle che non mostrano le notifiche in una pagina loro; ora la cornice le chiede col pezzo della
-campanella, che al clic su una notifica c'è già. I tetti nuovi (vedi «Quanto pesa», sopra): 17.478 byte con gzip il JS
+campanella, che al clic su una notifica c'è già. I tetti della `v3.0.0` (vedi «Quanto pesa», sopra, per quelli di adesso): 17.478 byte con gzip il JS
 d'ingresso dell'app che prende solo la cornice, 456 meno di prima, e 1.969 il pezzo della campanella, che porta le righe.
 La parte server (`GET /cornice/notifiche`, `idsDellaNotifica`) dà gli stessi `ids` di prima ai tipi che avevano già una riga;
 ai due delle Scadenze, che nella `v2.25.4` non l'avevano e avevano `ids` vuoti, dà quelli del percorso che si apre
@@ -762,7 +762,8 @@ cornice === null ? pagina : (
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace.
   Agli altri, dalla `v3.2.3`, la voce non si mostra: chi non può attivare un modulo non lo vede spento, come nella griglia
   della Home (regola #2209; fino alla `v3.2.2` era una voce senza collegamento, senza «Presto»: il design system non ha un
-  segno «non attivo», riga 78 delle richieste). È «Presto», senza
+  segno «non attivo», riga 78 delle richieste). Restano due voci: quella del modulo aperto, perché senza la sua voce
+  l'`AppShell` toglierebbe tutto il menu Moduli, e un prodotto «Presto» del registro, che non è spento ma futuro. È «Presto», senza
   indirizzo, un prodotto che il registro dà «Presto», che il backoffice dà `in_arrivo` (o in uno stato che zr-core non
   conosce) o che non elenca. La Dashboard porta
   sempre a `https://app.zeiras.com/w/<slug>`.

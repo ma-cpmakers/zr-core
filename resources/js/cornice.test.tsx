@@ -28,7 +28,7 @@ import * as componenti from './zeiras/componenti';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** I dati di chi non amministra il workspace: senza `moduli`, e quindi senza le voci dei moduli spenti (voce #2544). */
+/** I dati di chi non amministra il workspace: senza `moduli`, e quindi senza le voci dei moduli spenti (voce 2544). */
 const datiDiUnMembro: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'Ada Lovelace', email: 'ada@example.com' },
@@ -217,15 +217,16 @@ describe('la Cornice', () => {
         [{}, []],
         // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
         [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
-    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` assente a chi non ha `moduli`, gli altri «Presto» (T4.1; sprint 69 · T2.2; voce #2544 T1.1, T1.3, %j)', async (prodotti, conIndirizzo) => {
+    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` assente a chi non ha `moduli`, gli altri «Presto» (T4.1; sprint 69 · T2.2; voce 2544 T1.1, T1.3, %j)', async (prodotti, conIndirizzo) => {
         await mostra(<Cornice dati={{ ...datiDiUnMembro, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
         expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Moduli');
         const voci = [...(gruppo?.querySelectorAll<HTMLAnchorElement>('a.zr-nav-item') ?? [])];
         // Un modulo `disponibile` non è attivo nel workspace, e chi non ha `moduli` non può attivarlo: la sua voce non c'è, come
-        // nella griglia della Home (regola #2209). Restano gli attivi e i «Presto».
-        const visibili = ordine.map((id) => prodotti[id as keyof typeof prodotti] !== 'disponibile');
+        // nella griglia della Home (regola 2209). Restano gli attivi e i «Presto», anche quelli del registro che il backoffice
+        // desse `disponibile` (Report, Automazioni, Contenuti): un «Presto» non è spento, è futuro.
+        const visibili = ordine.map((id) => ['reports', 'automations', 'content'].includes(id) || prodotti[id as keyof typeof prodotti] !== 'disponibile');
         const fra = <T,>(valori: T[]) => valori.filter((_valore, posto) => visibili[posto]);
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
             .toStrictEqual(fra(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']));
@@ -244,12 +245,12 @@ describe('la Cornice', () => {
 
     // Sprint 69 · T2.2-T2.3 (voce #2210): un modulo `disponibile` non è attivo nel workspace, e la sua pagina direbbe «non attivo» (403).
     // Chi può attivarlo ha `moduli` nei dati (la parte server lo dà solo a chi amministra) e la voce porta a Impostazioni › Moduli;
-    // per gli altri la voce non c'è (dalla voce #2544, regola #2209 della Home: chi non può attivare un modulo non lo vede
+    // per gli altri la voce non c'è (dalla voce 2544, regola 2209 della Home: chi non può attivare un modulo non lo vede
     // spento; nella v2.25.0 era una voce senza collegamento). Un modulo `attivo` porta a sé, e uno in arrivo o senza stato è «Presto».
     it.each([
         ['chi amministra vede il CRM spento, che porta a Impostazioni › Moduli', dati, ['Board', 'CRM', 'Bookings'], ['https://board.zeiras.com/w/acme-marketing', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', '#']],
         ['gli altri non lo vedono', datiDiUnMembro, ['Board', 'Bookings'], ['https://board.zeiras.com/w/acme-marketing', '#']],
-    ])('un modulo disponibile: %s, e non è mai «Presto»; l\'attivo porta a sé e il «Presto» resta (sprint 69 · T2.2, T2.3; voce #2544 T1.1-T1.3)', async (_chi, base, etichette, attesi) => {
+    ])('un modulo disponibile: %s, e non è mai «Presto»; l\'attivo porta a sé e il «Presto» resta (sprint 69 · T2.2, T2.3; voce 2544 T1.1-T1.3)', async (_chi, base, etichette, attesi) => {
         await mostra(<Cornice dati={{ ...base, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' } }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const voci = [...tutti('.zr-nav .zr-nav-group a.zr-nav-item')].filter((voce) => ['CRM', 'Board', 'Bookings'].includes(voce.querySelector('.zr-nav-label')?.textContent ?? ''));
@@ -257,6 +258,21 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(etichette);
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon') !== null)).toStrictEqual(attesi.map((indirizzo) => indirizzo === '#'));
+    });
+
+    // Voce 2544 (revisione della PR #132): il modulo aperto resta in elenco anche se è spento e la persona non può attivarlo.
+    // Senza la sua voce l'`AppShell` non trova il prodotto aperto e toglie tutto il menu Moduli, Dashboard compresa.
+    it('a chi non amministra, sulla pagina di un modulo spento, il menu Moduli resta chiuso nel pulsante di quel modulo, e gli altri moduli spenti non ci sono (voce 2544, T1.3)', async () => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'disponibile' } }} onLogout={esciSenzaEffetto} product="crm"><p>La pagina</p></Cornice>);
+
+        const pulsante = uno('.zr-product-switch');
+        expect(pulsante?.querySelector('.zr-product-name')?.textContent).toBe('CRM');
+        expect(pulsante?.querySelector('.zr-product-over')?.textContent).toBe('Moduli');
+        // Il pulsante riapre la lista: la Dashboard, il CRM aperto e segnato, e non Bookings, spento e non aperto.
+        await clic(pulsante);
+        expect(tutti('.zr-product-menu a.zr-nav-item').map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
+            .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
+        expect(uno('.zr-product-menu a[aria-current="true"]')?.querySelector('.zr-nav-label')?.textContent).toBe('CRM');
     });
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
@@ -392,7 +408,7 @@ describe('la Cornice', () => {
         [{ bookings: 'attivo' }, ['bookings']],
         [{ crm: 'disponibile' }, []],
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
-    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` porta chi amministra a Impostazioni › Moduli, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2; voce #2544, %j)', async (prodotti, aperti) => {
+    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` porta chi amministra a Impostazioni › Moduli, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2; voce 2544, %j)', async (prodotti, aperti) => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.

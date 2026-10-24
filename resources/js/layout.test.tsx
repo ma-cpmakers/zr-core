@@ -14,7 +14,7 @@ import { chiediLaRicerca } from './servizi';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** I dati di chi amministra il workspace: con `moduli`, il CRM spento è nel menu Moduli (a chi non amministra non si mostra, voce #2544). */
+/** I dati di chi amministra il workspace: con `moduli`, il CRM spento è nel menu Moduli (a chi non amministra non si mostra, voce 2544). */
 const dati: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'Ada Lovelace', email: 'ada@example.com' },
@@ -26,7 +26,7 @@ const dati: DatiDellaCornice = {
 /** I dati della pagina dopo, nello stesso workspace: un altro oggetto, il workspace con un altro nome, un altro numero di non lette. */
 const datiDopo: DatiDellaCornice = { ...dati, workspace: { nome: 'Marketing Europa', slug: 'acme-marketing' }, non_lette: 3 };
 /** I dati di una visita che porta un altro workspace: un altro slug. */
-const datiAltroWorkspace: DatiDellaCornice = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, non_lette: 5 };
+const datiAltroWorkspace: DatiDellaCornice = { ...dati, workspace: { nome: 'Vendite', slug: 'acme-vendite' }, moduli: 'https://app.zeiras.com/w/acme-vendite/impostazioni/moduli', non_lette: 5 };
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /** Le notifiche come le dà GET /cornice/notifiche, dalla più recente. */
@@ -898,7 +898,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     it('il workspace di `dopo` vale su quello di `subito`: se fra le due richieste la sessione è passata a un altro workspace, moduli, nome e slug sono dello stesso workspace (review della PR #67, R6)', async () => {
         // `moduli` è di quel workspace, come lo dà la parte server.
-        await inDue({ subito, dopo: { ...dopo, workspace: datiAltroWorkspace.workspace, moduli: `https://app.zeiras.com/w/${datiAltroWorkspace.workspace.slug}/impostazioni/moduli` } }, <PaginaA />);
+        await inDue({ subito, dopo: { ...dopo, workspace: datiAltroWorkspace.workspace, moduli: datiAltroWorkspace.moduli } }, <PaginaA />);
 
         expect(uno('aside.zr-side')?.textContent).toContain('Vendite');
         expect(uno('aside.zr-side')?.textContent).not.toContain('Marketing');
