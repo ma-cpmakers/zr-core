@@ -5326,7 +5326,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 42 · T2.5 (voce #2054): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 · T5.4
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.478 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // Patch v3.2.3 (voce #2544): 17.490, il modulo spento che non si mostra a chi non può attivarlo (Decisione 16812).
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.490 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: i 12 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 12 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
     'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
     'i pesi: i 18 byte della v2.25.2' => ['pesi', 'e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue'],

@@ -521,11 +521,12 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         group: t.products,
         products: true,
         // A chi non ha accettato i documenti legali resta la sola Dashboard: gli altri moduli il backoffice non li ha dati, e
-        // con la lista vuota sarebbero tutti «Presto».
-        items: registro.filter((voce) => !ridotta || voce === dashboard).map((voce) => {
+        // con la lista vuota sarebbero tutti «Presto». Un modulo `disponibile` lo vede solo chi può attivarlo (`dati.moduli`):
+        // agli altri non si mostra spento, come nella griglia della Home (regola #2209; voce #2544, dalla `v3.2.3`).
+        items: registro.filter((voce) => (!ridotta || voce === dashboard) && (dati.moduli || dati.prodotti[voce.id as IdDiProdotto] !== 'disponibile')).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
             // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta a Impostazioni › Moduli
-            // se la persona può attivarlo, e senza collegamento se no (dalla `v2.25.0`; linea guida 15). La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
+            // (dalla `v2.25.0`; linea guida 15): qui arriva solo se la persona può attivarlo. La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
             // registro qui non si legge: è per le pagine senza sessione, e un prodotto in anteprima si apre dove il backoffice lo dà.
             const presto = voce.id !== 'home' && (voce.presto || !raggiungibile(dati.prodotti[voce.id]));
 
@@ -538,8 +539,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 soon: presto,
                 // Un prodotto «Presto» non porta da nessuna parte; quello aperto, al clic, chiude solo la lista.
                 // Un modulo `disponibile` non è attivo nel workspace: la sua pagina direbbe «non attivo» (403). Chi può attivarlo va a
-                // Impostazioni › Moduli, dove lo attiva (`dati.moduli`, dalla `v2.25.0`: solo per chi amministra); per gli altri è una
-                // voce senza collegamento.
+                // Impostazioni › Moduli, dove lo attiva (`dati.moduli`, dalla `v2.25.0`: solo per chi amministra); agli altri la voce
+                // non si mostra (sopra).
                 href: presto || voce === aperto ? undefined : dati.prodotti[voce.id as IdDiProdotto] === 'disponibile' ? dati.moduli : nelWorkspace(voce.indirizzo, dati.workspace.slug),
             });
         }),

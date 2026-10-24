@@ -28,12 +28,15 @@ import * as componenti from './zeiras/componenti';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const dati: DatiDellaCornice = {
+/** I dati di chi non amministra il workspace: senza `moduli`, e quindi senza le voci dei moduli spenti (voce #2544). */
+const datiDiUnMembro: DatiDellaCornice = {
     lingua: 'it',
     persona: { nome: 'Ada Lovelace', email: 'ada@example.com' },
     workspace: { nome: 'Marketing', slug: 'acme-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'attivo', reports: 'attivo' },
 };
+/** I dati di chi amministra il workspace: con `moduli`, il CRM spento c'è e porta a Impostazioni › Moduli. */
+const dati: DatiDellaCornice = { ...datiDiUnMembro, moduli: 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli' };
 /**
  * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, solo Project Management ha risorse nel registro; per ultimo il
  * membro del workspace, che non è di un modulo e c'è in ogni workspace.
@@ -214,43 +217,46 @@ describe('la Cornice', () => {
         [{}, []],
         // Uno stato che zr-core non conosce (la parte server lo passa com'è) è «Presto»: portano solo `attivo` e `disponibile`.
         [{ pm: 'sospeso', crm: 'attivo' } as unknown as DatiDellaCornice['prodotti'], ['crm']],
-    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` senza collegamento e non «Presto» (senza `moduli`), gli altri «Presto» (T4.1; sprint 69 · T2.2, %j)', async (prodotti, conIndirizzo) => {
-        await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+    ])('senza product il menu è esteso: Dashboard verso app.zeiras.com, `attivo` verso il workspace, `disponibile` assente a chi non ha `moduli`, gli altri «Presto» (T4.1; sprint 69 · T2.2; voce #2544 T1.1, T1.3, %j)', async (prodotti, conIndirizzo) => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const gruppo = uno('.zr-nav .zr-nav-group');
         expect(gruppo?.querySelector('.zr-nav-title')?.textContent).toBe('Moduli');
         const voci = [...(gruppo?.querySelectorAll<HTMLAnchorElement>('a.zr-nav-item') ?? [])];
+        // Un modulo `disponibile` non è attivo nel workspace, e chi non ha `moduli` non può attivarlo: la sua voce non c'è, come
+        // nella griglia della Home (regola #2209). Restano gli attivi e i «Presto».
+        const visibili = ordine.map((id) => prodotti[id as keyof typeof prodotti] !== 'disponibile');
+        const fra = <T,>(valori: T[]) => valori.filter((_valore, posto) => visibili[posto]);
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent))
-            .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
-        const attesi = ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#'));
+            .toStrictEqual(fra(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']));
+        const attesi = fra(ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
-        // Un modulo `disponibile` non è attivo nel workspace: senza `moduli` non porta da nessuna parte, ma non è «Presto».
-        const disponibili = ordine.filter((id) => id in indirizzi && prodotti[id as keyof typeof prodotti] === 'disponibile');
         // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
-        const presto = ordine.map((id, posto) => attesi[posto] === '#' && !disponibili.includes(id));
+        const presto = attesi.map((indirizzo) => indirizzo === '#');
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
         expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
         expect(voci[0].getAttribute('aria-current')).toBe('page');
         const icone: IconName[] = ['grid', 'board', 'users', 'calendar', 'euro', 'chart', 'bolt', 'sparkle'];
-        expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(icone.map(tracciatoDi));
+        expect(voci.map((voce) => voce.querySelector('path')?.getAttribute('d'))).toStrictEqual(fra(icone).map(tracciatoDi));
         expect(uno('.zr-product-switch')).toBeNull();
         expect(uno('main')?.textContent).toBe('La pagina');
     });
 
     // Sprint 69 · T2.2-T2.3 (voce #2210): un modulo `disponibile` non è attivo nel workspace, e la sua pagina direbbe «non attivo» (403).
     // Chi può attivarlo ha `moduli` nei dati (la parte server lo dà solo a chi amministra) e la voce porta a Impostazioni › Moduli;
-    // per gli altri è una voce senza collegamento. Un modulo `attivo` porta a sé, e uno in arrivo o senza stato è «Presto».
+    // per gli altri la voce non c'è (dalla voce #2544, regola #2209 della Home: chi non può attivare un modulo non lo vede
+    // spento; nella v2.25.0 era una voce senza collegamento). Un modulo `attivo` porta a sé, e uno in arrivo o senza stato è «Presto».
     it.each([
-        ['a chi amministra', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', ['#', 'https://board.zeiras.com/w/acme-marketing', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', '#']],
-        ['agli altri', undefined, ['#', 'https://board.zeiras.com/w/acme-marketing', '#', '#']],
-    ])('un modulo disponibile porta %s: Impostazioni › Moduli, o a nessuna parte, e mai «Presto»; l\'attivo porta a sé (sprint 69 · T2.2, T2.3)', async (_chi, moduli, attesi) => {
-        await mostra(<Cornice dati={{ ...dati, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' }, ...(moduli ? { moduli } : {}) }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        ['chi amministra vede il CRM spento, che porta a Impostazioni › Moduli', dati, ['Board', 'CRM', 'Bookings'], ['https://board.zeiras.com/w/acme-marketing', 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli', '#']],
+        ['gli altri non lo vedono', datiDiUnMembro, ['Board', 'Bookings'], ['https://board.zeiras.com/w/acme-marketing', '#']],
+    ])('un modulo disponibile: %s, e non è mai «Presto»; l\'attivo porta a sé e il «Presto» resta (sprint 69 · T2.2, T2.3; voce #2544 T1.1-T1.3)', async (_chi, base, etichette, attesi) => {
+        await mostra(<Cornice dati={{ ...base, prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' } }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
         const voci = [...tutti('.zr-nav .zr-nav-group a.zr-nav-item')].filter((voce) => ['CRM', 'Board', 'Bookings'].includes(voce.querySelector('.zr-nav-label')?.textContent ?? ''));
-        // Board, CRM, Bookings, nell'ordine del registro; l'indirizzo atteso è di Dashboard no: sono solo le tre.
-        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['Board', 'CRM', 'Bookings']);
-        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual([attesi[1], attesi[2], attesi[3]]);
-        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon') !== null)).toStrictEqual([false, false, true]);
+        // Board, CRM, Bookings, nell'ordine del registro: la Dashboard e i «Presto» del registro non contano qui.
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(etichette);
+        expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon') !== null)).toStrictEqual(attesi.map((indirizzo) => indirizzo === '#'));
     });
 
     it('con product="bookings" il menu si chiude nel pulsante di Bookings, e sotto ci sono le voci del prodotto (T6.2)', async () => {
@@ -386,7 +392,7 @@ describe('la Cornice', () => {
         [{ bookings: 'attivo' }, ['bookings']],
         [{ crm: 'disponibile' }, []],
         [{ crm: 'in_arrivo', bookings: 'in_arrivo' }, []],
-    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` non porta da nessuna parte, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2, %j)', async (prodotti, aperti) => {
+    ])('la cornice non legge `in_arrivo` del registro: un prodotto in arrivo per chi non ha una sessione si apre nel workspace dove il backoffice lo dà `attivo`; dove lo dà `disponibile` porta chi amministra a Impostazioni › Moduli, e non è «Presto» (sprint 16 · T7.2; sprint 69 · T2.2; voce #2544, %j)', async (prodotti, aperti) => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.
@@ -397,7 +403,7 @@ describe('la Cornice', () => {
         const voci = tutti('.zr-nav .zr-nav-group a.zr-nav-item').slice(2, 4);
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['CRM', 'Bookings']);
         expect(voci.map((voce) => voce.getAttribute('href')))
-            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
+            .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : prodotti[id as 'crm'] === 'disponibile' ? dati.moduli : '#')));
         expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
             .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) || prodotti[id as 'crm'] === 'disponibile' ? null : 'Presto')));
     });
