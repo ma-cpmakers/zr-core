@@ -83,9 +83,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 51,9 KB | 17,3 KB | 39,6 KB | 7,0 KB |
-| la cornice e due componenti per nome | 55,2 KB | 18,4 KB | 39,6 KB | 7,0 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,2 KB | 39,6 KB | 7,0 KB |
+| solo la cornice, dall'ingresso per le app | 52,4 KB | 17,5 KB | 40,7 KB | 7,7 KB |
+| la cornice e due componenti per nome | 55,7 KB | 18,7 KB | 40,7 KB | 7,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 40,7 KB | 7,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -99,12 +99,12 @@ con `import()` quando si apre la campanella, non quando si monta. Il sesto, dall
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.918 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.934 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
 sicurezza fra persone), e dalla `v2.20.1` altri 7, perché ogni richiesta porta l'impronta della cornice che la fa, e dalla `v2.22.0` altri 49: il design system nuovo, con
-il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue, che il rimedio che lo mette nel giro del Tab riceve anche a ogni cambio di lingua (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15823). Hanno
+il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle tre lingue (12), un'altra eccezione dichiarata di zr-pm, e dalla `v2.25.0` altri 25: la cornice riconosce «senza impronta» come il layout (4 byte), un modulo non attivo non porta più al suo 403 (14) e il pezzo dei rimedi riceve `naviga` (9), un'eccezione di zr-pm per tre voci (Decisione 15231), e dalla `v2.25.2` altri 18: il nome del contenuto della pagina nelle tre lingue, che il rimedio che lo mette nel giro del Tab riceve anche a ogni cambio di lingua (un'eccezione di zr-pm per un difetto grave di tastiera, Decisione 15823), e dalla `v2.25.3` altri 16: la riga del registro che apre il contatto dalla notifica del credito sotto zero (un'eccezione di zr-pm, Decisione 16110; se una patch libera byte nel registro, il tetto riscende). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.351 byte la campanella, 1.666 i rimedi, 1.004 la
 ricerca. Dalla `v2.0.0` l'eccezione per i rimedi provvisori di tastiera è finita: ciò che compone le righe delle
 notifiche è uscito dal JS d'ingresso, e sta nel pezzo della campanella.
@@ -793,10 +793,17 @@ cornice === null ? pagina : (
   notifiche e non ha un titolo. I titoli restavano 42: 36 tipi di evento, i cinque «assegnata» e la menzione. Dalla `v2.3.0`
   hanno un titolo i due tipi di evento che il contratto ha dal 13/10/2026 per i motivi di perdita del CRM:
   `com.zeiras.crm.motivo.creato`, «Nuovo motivo di perdita», e `com.zeiras.crm.motivo.modificato`, «Motivo di perdita
-  modificato». Con loro il contratto ha 39 tipi di evento e i titoli sono 44: 38 tipi di evento, i cinque «assegnata» e la
+  modificato». Con loro il contratto ha 39 tipi di evento e i titoli erano 44: 38 tipi di evento, i cinque «assegnata» e la
   menzione. Dal 14/10/2026 il contratto ha 40 tipi di evento: il quarantesimo,
   `com.zeiras.crm.campo.modificato` (le impostazioni di un campo del CRM cambiate), non genera notifiche e non ha un
-  titolo. I titoli restano 44. Di che prodotto è
+  titolo. I titoli restano 44. Dalla `v2.25.3` ha un titolo anche la notifica che il CRM manda quando un consumo porta
+  sotto zero il credito di un pacchetto: «Credito sotto zero: cliente da avvisare». Non è un evento: il suo `tipo` è
+  `crm.acquisto.scoperto`, senza `com.zeiras.` davanti, e la chiave del titolo è
+  `notificationTitle.crm.acquisto.scoperto`; l'evento `com.zeiras.crm.acquisto.scoperto` non genera notifiche e non ha
+  un titolo. Con lei i titoli sono 45: 38 tipi di evento, i cinque «assegnata», la menzione e il credito sotto zero. È
+  nel contratto dal 24/10/2026: `app` `crm`, nei `dati` l'`id` dell'acquisto e `persona_id`, il contatto, mai il nome, e
+  `risorsa_nome` è il nome della voce del catalogo. Dal 24/10/2026 il contratto ha anche i tipi di evento di preventivi,
+  acquisti, consumi, rate, pagamenti e catalogo del CRM: nessuno genera notifiche, e nessuno ha un titolo. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -875,7 +882,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantaquattro tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantacinque tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
@@ -1009,7 +1016,9 @@ cornice === null ? pagina : (
   modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`; una di una scheda eliminata no:
   la sua pagina non c'è più. Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso
   indirizzo: l'id è quello della scheda, e `commento_id` non entra nell'indirizzo, perché Project Management non ha una
-  pagina che porti dritto a un commento. Una nota apre la cosa più
+  pagina che porti dritto a un commento. Dalla `v2.25.3` il credito di un pacchetto sotto zero apre il contatto,
+  `https://crm.zeiras.com/w/<slug>/contatti/<persona_id>`: l'id dell'acquisto non entra nell'indirizzo, perché un
+  acquisto non ha una pagina sua. Una nota apre la cosa più
   specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
   `v1.12.0` apriva solo il contatto, e senza quello la pagina delle notifiche). Dove si apre ogni tipo lo dice il registro (`notifiche`
   della voce del modulo, più sotto), e gli id sono quelli di `ids`: la regola è `destinazioneDellaNotifica`, che chi
@@ -1030,7 +1039,8 @@ cornice === null ? pagina : (
   tipi di Project Management — board, liste, aree, etichette, viste — non hanno una destinazione; dalla `v1.16.0` ne
   ha una anche una menzione in un commento; i due tipi dei motivi di perdita del CRM, che hanno un titolo dalla `v2.3.0`,
   dalla `v2.7.0` ne hanno una: aprono le Impostazioni del CRM (`https://crm.zeiras.com/w/<slug>/impostazioni`), dove i motivi
-  stanno, senza un id; un altro tipo dei motivi di perdita, che il registro non ha, resta senza), le mancano gli id di ogni percorso del suo tipo, o il
+  stanno, senza un id; un altro tipo dei motivi di perdita, che il registro non ha, resta senza; dalla `v2.25.3` ne ha
+  una il credito di un pacchetto sotto zero, che apre il contatto), le mancano gli id di ogni percorso del suo tipo, o il
   modulo in quel
   workspace non si può aprire («Presto», o né `attivo` né
   `disponibile`). L'indirizzo passa da `naviga`, come gli altri che la cornice apre.
@@ -1344,6 +1354,8 @@ backoffice, senza `com.zeiras.` davanti. Dalla `v1.14.0` ha le sue `notifiche` a
 scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata
 (`board.scheda.assegnata`), tutte e tre con `/c/{id}`. Dalla `v1.16.0` c'è la quarta, una menzione in un commento
 (`board.commento.menzione`), con `/c/{id}` anche lei: l'id è quello della scheda, e `commento_id`, che i `dati` portano,
+non è nel percorso. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
+(`crm.acquisto.scoperto`), con `/contatti/{persona_id}`: apre il contatto, e l'`id` dell'acquisto, che i `dati` portano,
 non è nel percorso. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com'è nel

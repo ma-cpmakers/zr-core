@@ -47,7 +47,8 @@
                 { "tipo": "com.zeiras.crm.attivita.eliminata", "percorso": "/da-fare" },
                 { "tipo": "crm.attivita.assegnata", "percorso": "/da-fare" },
                 { "tipo": "crm.persona.assegnata", "percorso": "/contatti/{id}" },
-                { "tipo": "crm.organizzazione.assegnata", "percorso": "/aziende/{id}" }
+                { "tipo": "crm.organizzazione.assegnata", "percorso": "/aziende/{id}" },
+                { "tipo": "crm.acquisto.scoperto", "percorso": "/contatti/{persona_id}" }
             ]
         },
         { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true },

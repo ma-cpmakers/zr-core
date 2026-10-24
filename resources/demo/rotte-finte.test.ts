@@ -213,7 +213,7 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
     // Review della PR #31, R1: la parte server dà, di `dati`, i soli id del percorso che si apre per il tipo della notifica,
     // nella voce della sua app. Le notifiche di prova non ne portano altri: né l'id di una vista, né quello di una nota, né
     // quello di una persona entrata nel workspace; dallo sprint 24 una scheda porta il suo, perché si apre.
-    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?motivi=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
+    it.each([[''], ['?chi=1'], ['?crm=1'], ['?viste=1'], ['?opportunita=1'], ['?schede=1'], ['?frasi=1'], ['?motivi=1'], ['?crediti=1'], ['?chi=1&crm=1&viste=1&opportunita=1&arriva=1'], ['?chi=1&schede=1&arriva=1']])('ogni notifica di prova porta solo gli id che la parte server dà: quelli del percorso che si apre per il suo tipo, con %j (sprint 21 · review della PR #31, R1)', async (query) => {
         await rotte(false, query);
         const { registro } = await import('../js/registro');
 
@@ -468,6 +468,23 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica({ ...contatto, risorsa_nome: 'UAT Mario Rossi' }, 'it').titolo).toBe(`${CHI} ha modificato un contatto`);
     });
 
+    // v2.25.3: il credito di un pacchetto sotto zero sta dietro `?crediti=1`, così le pagine di prova di prima restano com'erano.
+    it.each([['', false], ['&chi=1', true]])('con `?crediti=1%s` in fondo all\'elenco c\'è la notifica del credito sotto zero del CRM, letta e col solo `persona_id`: ha il titolo nelle tre lingue, con chi la frase, e apre il contatto, se il CRM si può aprire (v2.25.3)', async (inPiu, conChi) => {
+        await rotte(false, `?crediti=1${inPiu}`);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; per_me: boolean | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica } = await import('../js/index');
+        const { rigaDellaNotifica, titoloDellaNotifica } = await import('../js/frasi');
+        const ultima = notifiche.at(-1)!;
+
+        expect([ultima.id, ultima.app, ultima.tipo, ultima.letta, ultima.autore_nome, ultima.risorsa_nome, ultima.per_me, ultima.ids]).toEqual(['uat-d1', 'crm', 'crm.acquisto.scoperto', true, conChi ? 'Giulia Bianchi' : null, conChi ? 'UAT Pacchetto 10 lezioni' : null, conChi ? true : null, { persona_id: 'uat-persona-1' }]);
+        expect(destinazioneDellaNotifica(ultima, 'uat-marketing', { pm: 'attivo', crm: 'attivo' })).toBe('https://crm.zeiras.com/w/uat-marketing/contatti/uat-persona-1');
+        expect(destinazioneDellaNotifica(ultima, 'uat-marketing', { pm: 'attivo' })).toBeUndefined();
+        expect(['it', 'en', 'es'].map((lingua) => titoloDellaNotifica('crm.acquisto.scoperto', lingua))).toEqual(['Credito sotto zero: cliente da avvisare', 'Credit below zero: client to notify', 'Crédito bajo cero: cliente por avisar']);
+        expect(rigaDellaNotifica(ultima, 'it').titolo).toBe(conChi ? '\u{2068}Giulia Bianchi\u{2069} ha registrato un consumo oltre i crediti: cliente da avvisare' : 'Credito sotto zero: cliente da avvisare');
+    });
+
     it.each([
         ['', ['uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?crm=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 12 }, (_, indice) => `uat-c${indice + 1}`)]],
@@ -476,6 +493,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         ['?frasi=1', ['uat-4', 'uat-3', 'uat-f1', 'uat-f2', 'uat-f3', 'uat-2', 'uat-1']],
         ['?motivi=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-m1', 'uat-m2']],
         ['?opportunita=1&motivi=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', ...Array.from({ length: 9 }, (_, indice) => `uat-o${indice + 1}`), 'uat-m1', 'uat-m2']],
+        ['?crediti=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-d1']],
+        ['?motivi=1&crediti=1', ['uat-4', 'uat-3', 'uat-2', 'uat-1', 'uat-m1', 'uat-m2', 'uat-d1']],
         ['?accorpata=1', ['uat-a1', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?conto=1', ['uat-k1', 'uat-k2', 'uat-k3', 'uat-k4', 'uat-k5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],
         ['?nomi_crm=1', ['uat-z1', 'uat-z2', 'uat-z3', 'uat-z4', 'uat-z5', 'uat-4', 'uat-3', 'uat-2', 'uat-1']],

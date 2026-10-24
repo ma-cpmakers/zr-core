@@ -62,6 +62,9 @@ const schede = new URLSearchParams(window.location.search).has('schede');
 // Con `?motivi=1` (sprint 36 · T5) in fondo all'elenco ci sono le due notifiche dei motivi di perdita del CRM, lette: hanno un
 // titolo e, con `?chi=1`, la frase con chi; dalla `v2.7.0` aprono le Impostazioni del CRM, senza un id.
 const motivi = new URLSearchParams(window.location.search).has('motivi');
+// Con `?crediti=1` (v2.25.3), dopo quelle di `?motivi=1`, c'è la notifica del credito di un pacchetto sotto zero, letta: ha un
+// titolo e, con `?chi=1`, la frase con chi; apre il contatto, col suo `persona_id`.
+const crediti = new URLSearchParams(window.location.search).has('crediti');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
 // Con `?accorpata=1` in cima all'elenco c'è una notifica che racconta più azioni (sprint 32 · T3): è nata un'ora fa e l'ultima
@@ -202,6 +205,12 @@ const notificheDiProva = [
     // `v2.7.0` aprono le Impostazioni del CRM, un percorso senza segnaposto: nessun id.
     ...(motivi
         ? ['com.zeiras.crm.motivo.creato', 'com.zeiras.crm.motivo.modificato'].map((tipo, indice) => ({ id: `uat-m${indice + 1}`, creata_il: fa((36 + indice) * 24 * 60), letta: true, app: 'crm', tipo, ...detti('Giulia Bianchi', null, null), ids: {} as Record<string, string> }))
+        : []),
+    // Solo con `?crediti=1`, dopo quelle di `?motivi=1`: il credito di un pacchetto sotto zero (v2.25.3), col tipo com'è nel
+    // backoffice, senza `com.zeiras.` davanti, e rivolta alla persona. Porta il solo `persona_id`, come dalla parte server:
+    // l'id dell'acquisto resta lì. Un clic apre il contatto.
+    ...(crediti
+        ? [{ id: 'uat-d1', creata_il: fa(38 * 24 * 60), letta: true, app: 'crm', tipo: 'crm.acquisto.scoperto', ...detti('Giulia Bianchi', 'UAT Pacchetto 10 lezioni', true), ids: { persona_id: 'uat-persona-1' } as Record<string, string> }]
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

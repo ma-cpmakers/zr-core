@@ -31,7 +31,7 @@ describe('la destinazione di una notifica', () => {
 
     // Sprint 23 · T3: una nota ha tre percorsi, dal più specifico: l'opportunità, poi (`altrimenti`) il contatto, poi l'azienda.
     // Un'attività non ha una pagina sua: apre «Da fare», un percorso senza un id.
-    it('le venti destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
+    it('le ventuno destinazioni del CRM sono quelle del registro (dalla `v2.7.0` anche i due motivi di perdita: sprint 41 · T2.1; dalla v2.25.3 il credito sotto zero), e ogni tipo ha il suo percorso; ne ha quattro anche Project Management, tre di una scheda e una di una menzione in un commento, e nessun altro prodotto (sprint 21 · T3.1, T5.2; sprint 23 · T3.1-T3.4; sprint 24 · T3.4; sprint 26 · T6.2)', () => {
         const dellaNota = { percorso: '/opportunita/{trattativa_id}', altrimenti: ['/contatti/{persona_id}', '/aziende/{organizzazione_id}'] };
 
         expect(registro.filter((voce) => voce.notifiche !== undefined).map((voce) => voce.id)).toStrictEqual(['pm', 'crm']);
@@ -64,6 +64,8 @@ describe('la destinazione di una notifica', () => {
             { tipo: 'crm.attivita.assegnata', percorso: '/da-fare' },
             { tipo: 'crm.persona.assegnata', percorso: '/contatti/{id}' },
             { tipo: 'crm.organizzazione.assegnata', percorso: '/aziende/{id}' },
+            // v2.25.3 (zr-crm, nota 16079 del #95): il credito sotto zero apre il contatto, non l'acquisto.
+            { tipo: 'crm.acquisto.scoperto', percorso: '/contatti/{persona_id}' },
         ]);
     });
 
@@ -126,6 +128,10 @@ describe('la destinazione di una notifica', () => {
         ['di una menzione in un commento, con un pezzo in più in fondo', { app: 'pm', tipo: 'board.commento.menzione.poi', ids: { id: 'uat-scheda-1' } }],
         ['di una menzione in un commento, con l\'app del CRM', { app: 'crm', tipo: 'board.commento.menzione', ids: { id: 'uat-scheda-1' } }],
         ['di una menzione in un commento, senza app', { app: null, tipo: 'board.commento.menzione', ids: { id: 'uat-scheda-1' } }],
+        // v2.25.3: il credito sotto zero si apre (più sotto) solo col tipo della notifica, senza `com.zeiras.` davanti, nella voce del CRM.
+        ['dell\'evento del credito sotto zero, con `com.zeiras.` davanti', { app: 'crm', tipo: 'com.zeiras.crm.acquisto.scoperto', ids: { persona_id: 'uat-persona-1' } }],
+        ['del credito sotto zero, con l\'app di Project Management', { app: 'pm', tipo: 'crm.acquisto.scoperto', ids: { persona_id: 'uat-persona-1' } }],
+        ['del credito sotto zero, senza app', { app: null, tipo: 'crm.acquisto.scoperto', ids: { persona_id: 'uat-persona-1' } }],
         ['del CRM, di un tipo che zr-core non conosce', delCrm('persona.assegnata', { id: 'uat-persona-1' })],
         ['del CRM, di un tipo che ne continua uno conosciuto', delCrm('persona.creata.v2', { id: 'uat-persona-1' })],
         ['del CRM, col solo pezzo di un tipo conosciuto', delCrm('persona', { id: 'uat-persona-1' })],
@@ -152,6 +158,16 @@ describe('la destinazione di una notifica', () => {
         ['del CRM, con un tipo che non è un testo', { app: 'crm', tipo: ['com.zeiras.crm.persona.creata'], ids: { id: 'uat-persona-1' } }],
     ])('una notifica %s non ha una destinazione nel registro: niente, e il pannello apre la pagina delle notifiche (sprint 21 · T3.2)', (_quale, notifica) => {
         expect(apre(notifica)).toBeUndefined();
+    });
+
+    // v2.25.3 (zr-crm, nota 16079 del #95). Il credito di un pacchetto sotto zero apre il contatto col `persona_id` dei `dati`:
+    // l'`id` è quello dell'acquisto, che non ha una pagina sua, e non prende il posto del contatto.
+    it('una notifica del credito sotto zero apre il contatto col suo `persona_id`; con il solo `id` dell\'acquisto, o con un id fuori forma, il pannello apre la pagina delle notifiche (v2.25.3)', () => {
+        expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { persona_id: 'uat-persona-1' } })).toBe(CRM + '/contatti/uat-persona-1');
+        expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { persona_id: 'uat-persona-1', id: 'uat-acquisto-1' } })).toBe(CRM + '/contatti/uat-persona-1');
+        expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { id: 'uat-acquisto-1' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: {} })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'crm.acquisto.scoperto', ids: { persona_id: '../x' } })).toBeUndefined();
     });
 
     // Sprint 23 · T3 (voce #1743). I nove tipi che dallo sprint 22 (T5, voce #1720) avevano un titolo e nessuna destinazione ora
