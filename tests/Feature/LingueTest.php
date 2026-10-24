@@ -776,7 +776,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 45 tipi di notifica, 38 dei 40 tipi di evento del contratto (i due che non generano notifiche non hanno un titolo) più i sette che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento e il credito sotto zero —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 45 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i sette che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento e il credito sotto zero —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),

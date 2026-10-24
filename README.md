@@ -802,7 +802,8 @@ cornice === null ? pagina : (
   `notificationTitle.crm.acquisto.scoperto`; l'evento `com.zeiras.crm.acquisto.scoperto` non genera notifiche e non ha
   un titolo. Con lei i titoli sono 45: 38 tipi di evento, i cinque «assegnata», la menzione e il credito sotto zero. È
   nel contratto dal 24/10/2026: `app` `crm`, nei `dati` l'`id` dell'acquisto e `persona_id`, il contatto, mai il nome, e
-  `risorsa_nome` è il nome della voce del catalogo. Di che prodotto è
+  `risorsa_nome` è il nome della voce del catalogo. Dal 24/10/2026 il contratto ha anche i tipi di evento di preventivi,
+  acquisti, consumi, rate, pagamenti e catalogo del CRM: nessuno genera notifiche, e nessuno ha un titolo. Di che prodotto è
   lo dice `app`: se è il codice di un prodotto del registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
