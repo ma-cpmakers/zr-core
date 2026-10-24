@@ -74,7 +74,7 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
 - **Il prodotto nel workspace di prova** — a zr-backoffice (la skill `zr-start-flow`): il backoffice deve dare il tuo
   prodotto `attivo` o `disponibile` in quel workspace, se no nel menu Moduli la tua voce resta «Presto» anche col
   registro a posto; per entrare nel modulo (la Prova del passo 2) serve `attivo` (dalla `v2.25.0` la voce di un modulo
-  `disponibile` porta a Impostazioni › Moduli, o a nessuna parte per chi non amministra: la pagina è `/w/<slug>/impostazioni/moduli`, e il suo indirizzo sta nel campo `moduli` dei dati). È la stessa strada per ogni dato o
+  `disponibile` porta a Impostazioni › Moduli per chi amministra, e dalla `v3.2.3` agli altri non si mostra, tranne sulla pagina del modulo stesso: la pagina è `/w/<slug>/impostazioni/moduli`, e il suo indirizzo sta nel campo `moduli` dei dati). È la stessa strada per ogni dato o
   metodo di `/v1` che ti manca.
 - **L'indirizzo di ritorno dell'ingresso** — a chi fa l'infrastruttura (a chi, e come, lo dice la skill
   `zr-start-flow`): il backoffice deve conoscere `https://<modulo>/ingresso/ritorno`, l'indirizzo a cui la persona torna
