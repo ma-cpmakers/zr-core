@@ -613,10 +613,28 @@ function frasiDelleNotificheConLaData(): array
     ];
 }
 
-/** @return list<string> le chiavi delle frasi con chi: `notificationTitleWhoWhatWhen.<tipo>`, `notificationTitleWhoWhat.<tipo>` e `notificationTitleWho.<tipo>` */
+/**
+ * Le frasi con che cosa e la data, senza chi (`notificationTitleWhatWhen.<tipo>`, coi posti `{what}` e `{date}`): per una
+ * notifica che non ha un autore. La cornice la prova quando la notifica ha il nome della cosa e un `quando` che sa scrivere, e
+ * al posto di `{date}` mette il giorno, il mese per esteso e l'anno, senza l'ora. Quella del preavviso di una scadenza del CRM,
+ * con le parole di zr-crm (sprint 74 · T1.7, zr-pm). La tabella è scritta qui, non letta dai file delle lingue.
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function frasiDelleNotificheSenzaChiConLaData(): array
+{
+    return [
+        'crm.scadenza.in_preavviso' => ['it' => '{what} scade il {date}', 'en' => '{what} is due {date}', 'es' => '{what} vence el {date}'],
+    ];
+}
+
+/** @return list<string> le chiavi delle frasi coi nomi: `notificationTitleWhatWhen.<tipo>`, `notificationTitleWhoWhatWhen.<tipo>`, `notificationTitleWhoWhat.<tipo>` e `notificationTitleWho.<tipo>` */
 function chiaviDelleFrasiConChi(): array
 {
-    $chiavi = array_map(fn (string $tipo): string => "notificationTitleWhoWhatWhen.$tipo", array_keys(frasiDelleNotificheConLaData()));
+    $chiavi = [
+        ...array_map(fn (string $tipo): string => "notificationTitleWhatWhen.$tipo", array_keys(frasiDelleNotificheSenzaChiConLaData())),
+        ...array_map(fn (string $tipo): string => "notificationTitleWhoWhatWhen.$tipo", array_keys(frasiDelleNotificheConLaData())),
+    ];
     foreach (frasiDelleNotificheConChi() as $tipo => $frasi) {
         if ($frasi['chiECosa'] !== null) {
             $chiavi[] = "notificationTitleWhoWhat.$tipo";
@@ -630,7 +648,8 @@ function chiaviDelleFrasiConChi(): array
 /**
  * Cosa non torna nelle frasi con chi di una lingua: una frase di un tipo che non ha un titolo (`notificationTitle.<tipo>`), o
  * una che non ha esattamente i suoi segnaposto, una volta ciascuno: `{who}`, `{what}` e `{when}` quella con chi, che cosa e
- * quando (dallo sprint 74), `{who}` e `{what}` quella con chi e che cosa, il solo `{who}` l'altra.
+ * quando (dallo sprint 74), `{what}` e `{date}` quella con che cosa e la data, senza chi (dallo sprint 74), `{who}` e `{what}`
+ * quella con chi e che cosa, il solo `{who}` l'altra.
  *
  * @param  array<string, mixed>  $testi
  * @return list<string>
@@ -639,7 +658,7 @@ function problemiDelleFrasiConChi(array $testi): array
 {
     $problemi = [];
     foreach ($testi as $chiave => $testo) {
-        if (preg_match('/^notificationTitleWho(What|WhatWhen)?\.(.+)$/', (string) $chiave, $parti) !== 1) {
+        if (preg_match('/^notificationTitle(Who|WhoWhat|WhoWhatWhen|WhatWhen)\.(.+)$/', (string) $chiave, $parti) !== 1) {
             continue;
         }
         if (! array_key_exists('notificationTitle.'.$parti[2], $testi)) {
@@ -647,8 +666,9 @@ function problemiDelleFrasiConChi(array $testi): array
         }
         preg_match_all('/\{[^{}]*\}/', is_string($testo) ? $testo : '', $segnaposto);
         $attesi = match ($parti[1]) {
-            'WhatWhen' => ['{what}', '{when}', '{who}'],
-            'What' => ['{what}', '{who}'],
+            'WhatWhen' => ['{date}', '{what}'],
+            'WhoWhatWhen' => ['{what}', '{when}', '{who}'],
+            'WhoWhat' => ['{what}', '{who}'],
             default => ['{who}'],
         };
         $trovati = $segnaposto[0];
@@ -1542,6 +1562,9 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenze.riepilogo_del_giorno')
         // v3.2.2: nemmeno la richiesta sul preventivo; il contratto non dà il nome né il numero del preventivo.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.preventivo.richiesta')
+        // Sprint 74 · T1.7: la frase senza chi, con la data, l'ha solo il preavviso di una scadenza del CRM.
+        ->and(array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWhatWhen.'), ARRAY_FILTER_USE_KEY))
+        ->toBe(array_map(fn (array $frase) => $frase[$codice], array_combine(array_map(fn (string $tipo) => "notificationTitleWhatWhen.$tipo", array_keys(frasiDelleNotificheSenzaChiConLaData())), frasiDelleNotificheSenzaChiConLaData())))
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);
@@ -1558,12 +1581,14 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         'notificationTitleWho.com.zeiras.board.scheda.spostata' => '{who} ha movido una tarjeta',
         'notificationTitleWhoWhatWhen.com.zeiras.board.scheda.creata' => '{who} ha creado la tarjeta «{what}»',
         'notificationTitleWhoWhat.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}», {when}',
+        'notificationTitleWhatWhen.com.zeiras.board.scheda.creata' => '{who} ha creado «{what}» el {when}',
     ];
     $giuste = [
         'notificationTitle.board.scheda.assegnata' => 'Se te ha asignado una tarjeta',
         'notificationTitleWhoWhat.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}»',
         'notificationTitleWho.board.scheda.assegnata' => '{who} te ha asignado una tarjeta',
         'notificationTitleWhoWhatWhen.board.scheda.assegnata' => '{who} te ha asignado la tarjeta «{what}», {when}',
+        'notificationTitleWhatWhen.board.scheda.assegnata' => 'La tarjeta «{what}» vence el {date}',
         'unreadOne' => 'Tienes {n} sin leer',
     ];
 
@@ -1576,5 +1601,6 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         '«notificationTitleWhoWhatWhen.com.zeiras.board.scheda.creata» ha {what} {who} invece di {what} {when} {who}',
         '«notificationTitleWhoWhat.board.scheda.assegnata» è di un tipo che non ha un titolo',
         '«notificationTitleWhoWhat.board.scheda.assegnata» ha {what} {when} {who} invece di {what} {who}',
+        '«notificationTitleWhatWhen.com.zeiras.board.scheda.creata» ha {what} {when} {who} invece di {date} {what}',
     ])->and(problemiDelleFrasiConChi($giuste))->toBe([]);
 });
