@@ -4252,6 +4252,28 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
     'vince sempre' => ['per questo vince su ogni classe di utilità di Tailwind'],
 ]);
 
+// Sprint 75 · T1.4 (voce #2570; revisione della PR #134, rilievi 1 e 4): il README dice le due strade del CSS, e chi resta su
+// `bundle.css`. Con `zeiras.css` un campo preso da `componenti` resterebbe senza stili; con `bundle.css` i due campi si prendono
+// dallo stesso posto, perché gli stili che un modulo porta arrivano dopo il bundle.
+it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v3\.3$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+    $testo = $dove === 'Il CSS' ? capoversoDelCss($readme) : suUnaRiga($passaggio[1] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'le due strade' => ['Il CSS', '@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
+    'per chi è zeiras.css' => ['Il CSS', 'È per chi prende quei due campi **solo** dai loro moduli'],
+    'chi resta su bundle.css' => ['Il CSS', 'Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`'],
+    'perché' => ['Il CSS', 'quel campo resterebbe senza stili'],
+    'dallo stesso posto' => ['Il CSS', 'Con `bundle.css` i due campi si prendono dallo stesso posto'],
+    'nessuno deve cambiare' => ['Passare alla v3.3', 'Nessun frontend deve cambiare niente: `bundle.css` resta com\'era.'],
+    'la riga che cambia' => ['Passare alla v3.3', '+@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\';'],
+    'chi non lo fa' => ['Passare alla v3.3', 'Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa'],
+    'il caso misto' => ['Passare alla v3.3', 'Chi è in questo caso prende anche AddressField dal suo modulo, o MentionField da `componenti`'],
+]);
+
 // Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
 // dal file. Uno spezzato da un a capo si copia in due pezzi, e nei test di un frontend non trova niente: ogni riga del punto
 // chiude gli accenti che apre.

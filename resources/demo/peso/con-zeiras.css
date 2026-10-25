@@ -1,0 +1,4 @@
+/* Il CSS di un frontend che prende MentionField e AddressField solo dai loro moduli, come lo dice il README («Il CSS»): zeiras.css,
+   poi i token. Lo costruisce resources/js/peso.test.ts. */
+@import '../../css/zeiras.css';
+@import '../../css/zeiras-token.css';

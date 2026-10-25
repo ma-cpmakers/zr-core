@@ -119,8 +119,10 @@ interface Costruito {
     esporta: string[];
     /** Il CSS d'ingresso: quello dei pezzi che la pagina scarica subito (sprint 75 · T2). */
     css: string;
-    /** Il CSS dei pezzi a richiesta, uno per pezzo che ne ha. */
+    /** Il CSS dei pezzi a richiesta, uno per pezzo che ne ha (un file che due pezzi importano sta in tutti e due). */
     cssARichiesta: string[];
+    /** I file CSS a richiesta, ognuno una volta: ciò che la pagina scarica, al più, oltre al CSS d'ingresso. */
+    fogliARichiesta: string[];
 }
 
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../${percorso}`, import.meta.url));
@@ -134,7 +136,9 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const pezzi = uscite.filter((uscita) => uscita.type === 'chunk');
     const frasi = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
     const fogli = new Map(uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.css')).map((uscita) => [uscita.fileName, uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : '']));
-    const cssDi = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])].map((nome) => fogli.get(nome) ?? '').join('\n');
+    const nomiDelCss = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])];
+    const cssDi = (pezzo: (typeof pezzi)[number]) => nomiDelCss(pezzo).map((nome) => fogli.get(nome) ?? '').join('\n');
+    const dIngresso = new Set(pezzi.filter((pezzo) => !pezzo.isDynamicEntry).flatMap(nomiDelCss));
 
     return {
         js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
@@ -144,6 +148,7 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
         css: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map(cssDi).join('\n'),
         cssARichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map(cssDi).filter((css) => css !== ''),
+        fogliARichiesta: [...new Set(pezzi.filter((pezzo) => pezzo.isDynamicEntry).flatMap(nomiDelCss))].filter((nome) => !dIngresso.has(nome)).map((nome) => fogli.get(nome) ?? ''),
     };
 }
 
@@ -261,17 +266,17 @@ beforeAll(async () => {
     conAddressAParte = await conLaPaginaCheLoPrende('resources/js/zeiras/AddressField.js', 'AddressField');
     conAddressDaComponenti = await conLaPaginaCheLoPrende('resources/js/zeiras/componenti.js', 'AddressField');
     // Sprint 75 · T2 (voce #2570): la cornice nell'ingresso, MentionField e AddressField presi dai loro moduli in due pagine a
-    // richiesta, e il CSS come lo importa un frontend (il design system, poi i token): una volta `bundle.css`, una `zeiras.css`.
+    // richiesta, e il CSS come lo importa un frontend, in un suo file coi due `@import` (il design system, poi i token): una volta
+    // `bundle.css`, una `zeiras.css` (revisione della PR #134, rilievo 5).
     const iDueCon = (css: string) => appColTesto([
         `import ${JSON.stringify(delRepo(css))};`,
-        `import ${JSON.stringify(delRepo('resources/css/zeiras-token.css'))};`,
         `import { Cornice } from ${JSON.stringify(delRepo('resources/js/app.ts'))};`,
         'console.log(Cornice);',
         `globalThis.menzioni = () => import(${JSON.stringify(delRepo('resources/js/zeiras/MentionField.js'))}).then((pagina) => console.log(pagina.MentionField));`,
         `globalThis.indirizzi = () => import(${JSON.stringify(delRepo('resources/js/zeiras/AddressField.js'))}).then((pagina) => console.log(pagina.AddressField));`,
     ].join('\n'));
-    iDueConIlBundle = await iDueCon('resources/zeiras/bundle.css');
-    iDueConZeirasCss = await iDueCon('resources/css/zeiras.css');
+    iDueConIlBundle = await iDueCon('resources/demo/peso/con-bundle.css');
+    iDueConZeirasCss = await iDueCon('resources/demo/peso/con-zeiras.css');
     conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
@@ -384,9 +389,9 @@ describe('con zeiras.css gli stili di MentionField e AddressField arrivano col l
     it.each([
         ['la cornice e i due campi a richiesta, con `bundle.css`', () => iDueConIlBundle],
         ['la cornice e i due campi a richiesta, con `zeiras.css`', () => iDueConZeirasCss],
-    ])('«%s»: i quattro numeri della sua riga nel README, in KB, senza e con gzip: il CSS d\'ingresso e quello dei pezzi a richiesta', (nome, misurato) => {
+    ])('«%s»: i quattro numeri della sua riga nel README, in KB, senza e con gzip: il CSS d\'ingresso e i file CSS a richiesta, ognuno una volta', (nome, misurato) => {
         const [intero, compresso, aRichiesta, aRichiestaCompressi, ...altri] = pesiNelReadme(nome);
-        const fogli = misurato().cssARichiesta;
+        const fogli = misurato().fogliARichiesta;
 
         expect(intero).toBeCloseTo(inKb(Buffer.byteLength(misurato().css)), 0);
         expect(compresso).toBeCloseTo(inKb(gzip(misurato().css)), 0);

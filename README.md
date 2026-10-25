@@ -54,8 +54,11 @@ zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 ```
 
 Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`: con `zeiras.css`
-quel campo resterebbe senza stili. Con `bundle.css` e un modulo dei due, gli stili del campo arrivano due volte, uguali, e ciò
-che si vede non cambia. Chi non cambia niente resta com'è.
+quel campo resterebbe senza stili. Con `bundle.css` i due campi si prendono dallo stesso posto, tutti e due dai loro moduli o
+tutti e due da `…/zeiras/componenti`: gli stili che un modulo porta arrivano dopo il bundle, e con MentionField dal suo modulo e
+AddressField da `componenti` la lista di AddressField si allunga (da 300 a 360 px, e sotto i 720 px senza limite). Dai due moduli,
+con `bundle.css`, gli stili dei campi arrivano due volte, uguali, e ciò che si vede non cambia. Chi non cambia niente resta
+com'è.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
@@ -171,11 +174,12 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 68,4 KB | 11,5 KB | 5,7 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 65,3 KB | 11,0 KB | 5,7 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 68,4 KB | 11,5 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 65,3 KB | 11,0 KB | 3,1 KB | 1,1 KB |
 
-Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» è il CSS che arriva coi due
-pezzi, lo stesso nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel CSS d'ingresso.
+Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
+arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
+CSS d'ingresso.
 
 **I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
 pacchetto. Vogliono `target` ES2022 o più recente, con la sua libreria (dalla `v1.9.0`). Reggono `strict`, `noUnusedLocals` e
@@ -275,6 +279,11 @@ CSS:
 
 Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa: con `zeiras.css` quel campo
 resterebbe senza stili. Il risparmio è di circa 0,5 KB con gzip (vedi «Quanto pesa il CSS», sopra).
+
+Una cosa cambia, con `bundle.css`, per chi prende MentionField dal suo modulo (dalla `v3.1.0`) e AddressField da
+`…/zeiras/componenti` o da `window.Zeiras` (nessun frontend, il 25/10/2026): dalla `v3.3.0` il modulo di MentionField porta i
+suoi stili, che arrivano dopo il bundle e allungano la lista di AddressField. Chi è in questo caso prende anche AddressField dal
+suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra).
 
 ## La parte server
 
