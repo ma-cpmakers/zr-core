@@ -13,8 +13,8 @@ namespace Zeiras\Core\Http;
 final class Quando
 {
     /**
-     * `quando` nella sola forma che passa alla pagina — `il` un istante ISO in UTC con la Z, `fuso` un nome IANA, e nessun'altra
-     * chiave —, o null.
+     * `quando` nella sola forma che passa alla pagina — `il` un istante ISO in UTC con la Z che è una data del calendario, `fuso`
+     * un nome IANA che PHP conosce, e nessun'altra chiave —, o null.
      *
      * @return array{il: string, fuso: string}|null
      */
@@ -22,8 +22,10 @@ final class Quando
     {
         if (! is_array($quando) || (array_keys($quando) !== ['il', 'fuso'] && array_keys($quando) !== ['fuso', 'il'])
             || ! is_string($quando['il']) || ! is_string($quando['fuso'])
-            || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/D', $quando['il']) !== 1
-            || preg_match('#^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$#D', $quando['fuso']) !== 1) {
+            || preg_match('/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,6})?Z$/D', $quando['il'], $parti) !== 1
+            || ($data = \DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i:s', $parti[1], new \DateTimeZone('UTC'))) === false
+            || $data->format('Y-m-d\\TH:i:s') !== $parti[1]
+            || ! in_array($quando['fuso'], \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)) {
             return null;
         }
 

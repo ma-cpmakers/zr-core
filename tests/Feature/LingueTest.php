@@ -1244,7 +1244,8 @@ it('il controllo vede il nome di un documento e una versione, in mezzo a una fra
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
     // Sprint 74 · T2.5 (voce 2549): un id del registro non è un testo, anche quando una lingua ha un testo uguale. Il nome da
     // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', lingueDellaCornice())))), idDeiProdotti()));
+    // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1253,7 +1254,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show')
         ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);

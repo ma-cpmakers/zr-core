@@ -1,4 +1,4 @@
-import { fileDelleLingue, nomeDellaVoce, nomePulito, testi, type FrasiDelleNotifiche } from './lingue';
+import { fileDelleLingue, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, type FrasiDelleNotifiche } from './lingue';
 import { prodottoDelRegistro } from './registro';
 
 // Ciò che serve a pannello delle notifiche aperto, e solo allora: come si compone la riga di una notifica e come si caricano
@@ -36,8 +36,9 @@ const POSTI_DEI_NOMI = /\{(who|what|when|date)\}/g;
  * passaggio solo, così un `{what}` scritto dentro il nome di una persona resta com'è, e da una funzione, così `$&` non è un
  * comando. Ogni nome sta fra U+2068 e U+2069, i caratteri che lo isolano dalla direzione della frase: un nome in arabo o in
  * ebraico non sposta le parole intorno. Li mette questa funzione, sempre in coppia: i nomi arrivano già puliti (`nomePulito`).
- * Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa o la data e non c'è: in pagina non arriva mai
- * un posto vuoto.
+ * Niente (`undefined`) se la frase non è un testo, o se chiede il nome della cosa e non c'è. La data non la controlla: una frase
+ * con `{when}` o `{date}` la chiede solo chi ha la data già scritta (`rigaConLeFrasi`), così in pagina non arriva mai un posto
+ * vuoto.
  */
 export function fraseConINomi(frase: unknown, chi: string, cosa?: string, quando?: string): string | undefined {
     if (typeof frase !== 'string' || !frase || (cosa === undefined && frase.includes('{what}'))) {
@@ -204,14 +205,14 @@ function contoEBoard(frasi: FrasiDelleNotifiche, notifica: { azioni?: unknown; b
 }
 
 /**
- * La data di `quando` (`il`, un istante; `fuso`, il nome IANA in cui si legge), nella lingua e nella forma di `forma`: il giorno
+ * La data di `quando` (`il`, un istante; `fuso`, il nome IANA in cui si legge), nella lingua dei testi (`linguaDeiTesti`, come la frase) e nella forma di `forma`: il giorno
  * e l'ora («mer 4 nov, 10:00») o il solo giorno («3 novembre 2026»). Niente (`undefined`) se non si sa scrivere — non è un oggetto, l'istante non è una data, il fuso non c'è o il browser non lo
  * conosce —: la data, in una notifica, è un di più.
  */
 function dataDi(quando: any, lingua: string, forma: Intl.DateTimeFormatOptions): string | undefined {
     // `trim` vuole due testi: senza `fuso` Intl userebbe quello del browser, e senza `il` (o con null) un'altra data.
     try {
-        return new Intl.DateTimeFormat(lingua, { ...forma, timeZone: quando.fuso.trim() }).format(new Date(quando.il.trim()));
+        return new Intl.DateTimeFormat(linguaDeiTesti(lingua), { ...forma, timeZone: quando.fuso.trim() }).format(new Date(quando.il.trim()));
     } catch {
         return undefined;
     }

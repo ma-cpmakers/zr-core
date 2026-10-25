@@ -1639,6 +1639,18 @@ describe('le notifiche di Bookings, con la data', () => {
         expect(rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, ROMA), autore_nome: null }, lingua)).toStrictEqual({ titolo: diRipiego, sotto: 'Personal training' });
     });
 
+    // Revisione dello sprint 74 (R1): la data si scrive nella lingua dei testi (`linguaDeiTesti`), come la ricerca e la data
+    // relativa del pannello: con «es_ES» Intl rifiuterebbe il codice, e con una lingua che la cornice non ha la frase è inglese.
+    it.each([
+        ['es_ES', 'es', 'Mario Rossi ha reservado Personal training, ', 'mié, 4 nov, 10:00', '3 de noviembre de 2026'],
+        ['zz', 'en', 'Mario Rossi booked Personal training, ', 'Wed, Nov 4, 10:00 AM', 'November 3, 2026'],
+        ['fr', 'en', 'Mario Rossi booked Personal training, ', 'Wed, Nov 4, 10:00 AM', 'November 3, 2026'],
+    ])('con la lingua "%s" la data del titolo è nella lingua dei testi ("%s"), come la frase (revisione dello sprint 74, R1)', (lingua, deiTesti, titolo, aRoma, giorno) => {
+        expect(rigaConLeFrasi(frasiDi[deiTesti]!, prenotazione('creata', ROMA), lingua)).toStrictEqual({ titolo: conLaData(titolo, aRoma) });
+        const scadenza = rigaConLeFrasi(frasiDi[deiTesti]!, { tipo: 'crm.scadenza.in_preavviso', autore_nome: null, risorsa_nome: 'Certificato medico', quando: { il: '2026-11-02T23:00:00Z', fuso: 'Europe/Rome' } }, lingua);
+        expect(scadenza.titolo.endsWith(`\u2068${giorno}\u2069`)).toBe(true);
+    });
+
     // Sprint 74 · T1.7 (zr-pm, zr-crm): il preavviso di una scadenza non ha chi; col nome del tipo (`risorsa_nome`) e `quando`
     // il titolo dice che cosa scade e il giorno, nel fuso della notifica, col mese per esteso e l'anno, senza l'ora.
     it.each([

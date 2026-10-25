@@ -2686,6 +2686,11 @@ it('GET /cornice/notifiche dà `quando` null per ogni altra forma, e la notifica
     '`fuso` vuoto' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => '']],
     '`fuso` con uno spazio' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/ Rome']],
     '`fuso` con un segnaposto' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => '{when}']],
+    // Revisione dello sprint 74 (R3): la forma giusta non basta, la data e il fuso devono esistere.
+    '`il` un giorno che non c\'è' => [['il' => '2026-13-45T99:99:99Z', 'fuso' => 'Europe/Rome']],
+    '`il` il 30 febbraio' => [['il' => '2026-02-30T09:00:00Z', 'fuso' => 'Europe/Rome']],
+    '`fuso` che IANA non ha' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europa/Roma']],
+    '`fuso` di 300 caratteri' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => str_repeat('A', 300)]],
 ]);
 
 it('un backoffice di prima non manda `quando`, e la pagina ha `quando` null (sprint 74 · T1.5)', function () {
