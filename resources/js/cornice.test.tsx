@@ -9102,9 +9102,9 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
 
 });
 
-describe('il pannello delle notifiche senza punti di riferimento, e la barra in alto sotto la ricerca aperta (sprint 76, voce #2627)', () => {
-    const laCornice = async () => {
-        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+describe('il pannello delle notifiche senza punti di riferimento, e la barra in alto sotto la ricerca aperta (sprint 76, voce 2627)', () => {
+    const laCornice = async (cornice: ReactElement = <Cornice dati={dati} onLogout={esciSenzaEffetto} />) => {
+        await mostra(cornice);
         await act(async () => {
             await vi.dynamicImportSettled();
         });
@@ -9202,6 +9202,21 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
 
         expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(false);
         expect(azioni()?.style.visibility).toBe('');
+    });
+
+    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiude la ricerca dell'`AppShell` (la chiude il `mousedown` fuori), e
+    // l'elenco aperto copre ancora la barra: le azioni restano nascoste finché la ricerca non si chiude.
+    it('T2.1 col fuoco uscito dal campo e l\'elenco ancora aperto la ricerca copre la barra, e campanella e profilo restano nascosti', async () => {
+        largaAlPiu720(true);
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
+        await nelCampo();
+
+        await act(async () => {
+            (uno('.zr-main button') as HTMLElement).focus();
+            await prossimoGiro();
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), campo() === document.activeElement, azioni()?.style.visibility]).toStrictEqual([true, false, 'hidden']);
     });
 
     it('T2.3 chiusa la ricerca col fuoco ancora nel campo, la ricerca copre ancora la barra; quando il campo perde il fuoco campanella e profilo tornano', async () => {

@@ -802,9 +802,11 @@ cornice === null ? pagina : (
   leggeva come un secondo banner e un contentinfo dentro la pagina (`landmark-banner-is-top-level`,
   `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
-  prendono il fuoco (`visibility: hidden` sull'elemento delle azioni): prima restavano bersagli coperti a metà dal campo
-  (axe: `target-size`). Chiusa la ricerca tornano com'erano, 44×44 px. Sopra 720 px non cambia niente. Il modulo non deve fare
-  niente; un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
+  prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Tab fuori dal campo non chiude la
+  ricerca, che resta sopra la barra: le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, la scelta di un
+  risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
+  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
