@@ -345,8 +345,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
                 'contesto' => ['ruolo'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
             ],
         ])
-        // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno.
-        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm'])
+        // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno. Dallo sprint 74 (T2)
+        // Bookings, le cui risorse `registroDeiProdotti()` rimette nella voce da resources/registro/ricerca.json (caso più sotto).
+        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
         // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è. Dallo
         // sprint 28 ha dei codici anche l'opportunità, per l'esito.
         ->and(array_keys(array_filter(array_merge(...array_map(

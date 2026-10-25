@@ -124,8 +124,8 @@ final class RicercaDellaCornice
             if (! in_array($chiave, $chiavi, true)) {
                 continue;
             }
-            $valore = $chiave === 'quando' ? Quando::di($valore) : $valore;
-            if ((is_string($valore) && $valore !== '') || is_array($valore)) {
+            $valore = $chiave === 'quando' ? Quando::di($valore) : (is_string($valore) && $valore !== '' ? $valore : null);
+            if ($valore !== null) {
                 $testi[$chiave] = $valore;
             }
         }
