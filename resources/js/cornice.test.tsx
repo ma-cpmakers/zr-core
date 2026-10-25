@@ -9101,3 +9101,140 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
     });
 
 });
+
+describe('il pannello delle notifiche senza punti di riferimento, e la barra in alto sotto la ricerca aperta (sprint 76, voce 2627)', () => {
+    const laCornice = async (cornice: ReactElement = <Cornice dati={dati} onLogout={esciSenzaEffetto} />) => {
+        await mostra(cornice);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => uno(selettore)?.getAttribute('role') ?? null);
+    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
+    const azioni = () => uno('.zr-top > .zr-top-actions');
+    const campo = () => uno('.zr-top .zr-search input') as HTMLInputElement;
+    /** Il fuoco nel campo della ricerca, poi fuori: dopo l'uscita si aspetta il giro, come il rimedio. */
+    const nelCampo = async () => act(async () => {
+        campo().focus();
+        await prossimoGiro();
+    });
+
+    it('T1.1 col pannello aperto testa e piede hanno `role="none"`; la barra in alto resta un banner', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-bell'));
+
+        expect(uno('.zr-notif .zr-pop-foot')).not.toBeNull();
+        expect(ruoli()).toStrictEqual(['none', 'none', null]);
+    });
+
+    it('T1.1 un `header` e un `footer` con le stesse classi fuori dal pannello dell\'`AppShell` non si toccano', async () => {
+        await laCornice();
+        const pannello = '<div class="zr-pop zr-notif"><header class="zr-pop-head"></header><footer class="zr-pop-foot"></footer></div>';
+        const fuori = document.createElement('div');
+        const nellaPagina = document.createElement('div');
+        fuori.innerHTML = pannello;
+        nellaPagina.innerHTML = pannello;
+
+        await act(async () => {
+            document.body.append(fuori.firstElementChild as HTMLElement);
+            uno('.zr-main')?.append(nellaPagina.firstElementChild as HTMLElement);
+        });
+
+        expect([...document.querySelectorAll('.zr-pop-head, .zr-pop-foot')].map((parte) => parte.getAttribute('role'))).toStrictEqual([null, null, null, null]);
+        document.querySelectorAll('.zr-notif').forEach((estraneo) => estraneo.remove());
+    });
+
+    it('T1.2 chiuso e riaperto il pannello, testa e piede hanno di nuovo `role="none"`', async () => {
+        await laCornice();
+        await clic(uno('.zr-bell'));
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-notif')).toBeNull();
+
+        await clic(uno('.zr-bell'));
+
+        expect(ruoli()).toStrictEqual(['none', 'none', null]);
+    });
+
+    it('T2.1 a 720 px o meno, col fuoco nel campo della ricerca, campanella e profilo non si vedono', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        expect(azioni()?.style.visibility).toBe('');
+
+        await nelCampo();
+
+        expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(true);
+        expect(azioni()?.style.visibility).toBe('hidden');
+    });
+
+    it('T2.2 sopra 720 px, e dove `matchMedia` non c\'è, la ricerca aperta lascia campanella e profilo come sono', async () => {
+        for (const passo of [() => largaAlPiu720(false), () => vi.stubGlobal('matchMedia', undefined)]) {
+            passo();
+            await laCornice();
+
+            await nelCampo();
+
+            expect(azioni()?.style.visibility).toBe('');
+            await act(async () => campo().blur());
+        }
+    });
+
+    it.each<[string, () => Promise<void>]>([
+        ['Esc', async () => act(async () => {
+            campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await prossimoGiro();
+        })],
+        // Il clic fuori chiude la ricerca col `mousedown` dell'`AppShell`, che lo ascolta dal giro dopo l'apertura, e toglie il
+        // fuoco al campo, come in un browser.
+        ['un clic fuori', async () => act(async () => {
+            await prossimoGiro();
+            uno('.zr-main')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            campo().blur();
+            await prossimoGiro();
+        })],
+    ])('T2.3 dopo %s campanella e profilo tornano visibili', async (_nome, chiudi) => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+        expect(azioni()?.style.visibility).toBe('hidden');
+
+        await chiudi();
+
+        expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(false);
+        expect(azioni()?.style.visibility).toBe('');
+    });
+
+    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiude la ricerca dell'`AppShell` (la chiude il `mousedown` fuori), e
+    // l'elenco aperto copre ancora la barra: le azioni restano nascoste finché la ricerca non si chiude.
+    it('T2.1 col fuoco uscito dal campo e l\'elenco ancora aperto la ricerca copre la barra, e campanella e profilo restano nascosti', async () => {
+        largaAlPiu720(true);
+        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
+        await nelCampo();
+
+        await act(async () => {
+            (uno('.zr-main button') as HTMLElement).focus();
+            await prossimoGiro();
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), campo() === document.activeElement, azioni()?.style.visibility]).toStrictEqual([true, false, 'hidden']);
+    });
+
+    it('T2.3 chiusa la ricerca col fuoco ancora nel campo, la ricerca copre ancora la barra; quando il campo perde il fuoco campanella e profilo tornano', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+        await act(async () => {
+            await prossimoGiro();
+            uno('.zr-main')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            await prossimoGiro();
+        });
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), azioni()?.style.visibility]).toStrictEqual([false, 'hidden']);
+
+        await act(async () => {
+            campo().blur();
+            await prossimoGiro();
+        });
+
+        expect(azioni()?.style.visibility).toBe('');
+    });
+});
