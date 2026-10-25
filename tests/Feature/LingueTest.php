@@ -171,12 +171,13 @@ function tipiDiNotificaDelContratto(): array
  * Dalla v2.25.3 anche quella del CRM sul credito di un pacchetto sotto zero: non è un evento nemmeno lei.
  * Dalla v2.25.4 anche le due delle scadenze del CRM, il preavviso e il riepilogo del giorno: non sono eventi.
  * Dalla v3.2.2 anche quella del CRM sulla modifica che un cliente chiede dal link di un preventivo: non è un evento.
+ * Dalla v3.5.0 anche quella di Project Management sulle schede rimaste senza assegnatario: non è un evento.
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario())];
 }
 
 /**
@@ -344,6 +345,20 @@ function titoloDellaNotificaDellaRichiestaSulPreventivo(): array
     ];
 }
 
+/**
+ * Il titolo della notifica che il backoffice manda al proprietario e agli amministratori quando una persona lascia il workspace
+ * e restano schede vive senza nessun assegnatario (#2596 di zr-backoffice), con le parole di Project Management. Non è un
+ * evento: il `tipo` arriva senza `com.zeiras.` davanti. Scritto qui, non letto dai file delle lingue (v3.5.0).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoloDellaNotificaDelleSchedeSenzaAssegnatario(): array
+{
+    return [
+        'board.schede.senza_assegnatario' => ['it' => 'Restano schede senza assegnatario', 'en' => 'Some cards have no assignee', 'es' => 'Quedan tarjetas sin asignar'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -457,6 +472,11 @@ function frasiDelleNotificheConChi(): array
         'crm.preventivo.richiesta' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who}: un cliente ha chiesto una modifica al preventivo', 'en' => '{who}: a client asked for changes to the quote', 'es' => '{who}: un cliente ha pedido un cambio en el presupuesto'],
+        ],
+        // v3.5.0: chi ha lasciato il workspace è l'autore della notifica; il nome di una scheda non c'è, solo il loro numero.
+        'board.schede.senza_assegnatario' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha lasciato il workspace: restano schede senza assegnatario', 'en' => '{who} left the workspace: some cards have no assignee', 'es' => '{who} ha dejado el workspace: quedan tarjetas sin asignar'],
         ],
         'com.zeiras.crm.persona.creata' => [
             'chiECosa' => null,
@@ -823,14 +843,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 48 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i dieci che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 49 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più gli undici che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(48)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(49)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1011,6 +1031,24 @@ it('la notifica della richiesta sul preventivo ha il titolo della tabella nella 
         ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.crm.preventivo.richiesta')
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.crm.preventivo.richiesta']);
+})->with(['it', 'en', 'es']);
+
+it('la notifica delle schede senza assegnatario ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: il tipo col prefisso, un pezzo del tipo e la scheda al singolare restano senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (sprint 77 · T3.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoloDellaNotificaDelleSchedeSenzaAssegnatario();
+    $titolo = $testi['notificationTitle.board.schede.senza_assegnatario'] ?? null;
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['board.schede.senza_assegnatario'])
+        ->and($titolo)->toBe($tabella['board.schede.senza_assegnatario'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.board.schede.senza_assegnatario', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.board.schede', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.board.scheda.senza_assegnatario', $testi))->toBe(false)
+        // Una parola per ogni `not->toContain`: con due si ferma alla prima che manca, e una sola nel contratto passerebbe.
+        ->and(tipiDiNotificaDelContratto())->not->toContain('board.schede.senza_assegnatario')
+        ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.board.schede.senza_assegnatario')
+        // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
+        ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.schede.senza_assegnatario']);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1456,10 +1494,10 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    expect($attese)->toHaveCount(76)
+    expect($attese)->toHaveCount(77)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(48)
+        ->and($conLeFrasi)->toHaveCount(49)
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 34 · T3.2: l'assegnazione di un contatto non ha la frase col nome, nemmeno se un nome arrivasse.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.persona.assegnata')
@@ -1470,6 +1508,8 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.scadenze.riepilogo_del_giorno')
         // v3.2.2: nemmeno la richiesta sul preventivo; il contratto non dà il nome né il numero del preventivo.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.crm.preventivo.richiesta')
+        // v3.5.0: nemmeno le schede senza assegnatario; il backoffice ne dà solo il numero.
+        ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.board.schede.senza_assegnatario')
         // Tutte insieme: un rosso le mostra tutte, non solo la prima che manca.
         ->and($delleFrasi)->toBe($attese)
         ->and(problemiDelleFrasiConChi($testi))->toBe([]);

@@ -577,7 +577,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.985 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 1.988 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2) e le impronte delle frasi della v3.5.0, col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -586,7 +586,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Sprint 70 · T1.5 (voce #2429, Decisione 16181): dalla `v3.0.0` porta anche le righe delle destinazioni e la funzione
         // che le legge: 1.922 byte alla misura del prototipo, 1.969 con le due righe delle Scadenze (T2) e le impronte di oggi.
         // Patch v3.2.2 (Decisione 16510 di zr-pm): +16 byte per la riga che apre il preventivo dalla richiesta di un cliente.
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_985);
+        // Sprint 77 · v3.5.0 (zr-pm-07, 25/10): +3 byte. Il codice del pezzo è quello di prima: coi titoli delle schede senza
+        // assegnatario i tre file delle frasi sono cambiati, e le impronte nuove nei loro nomi si comprimono peggio (1.984 → 1.988).
+        expect(gzip(campanella)).toBeLessThanOrEqual(1_988);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,8 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76)', () => {
