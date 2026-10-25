@@ -367,6 +367,12 @@ Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato 
 che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
 a te: citalo nell'informativa sui cookie del modulo, come cookie tecnico.
 
+Se una tua pagina deve mandare la persona a creare un workspace, l'indirizzo lo dà `Cornice::nuovoWorkspace()` (dalla
+`v3.5.0`): la pagina di zr-home che apre il dialogo «Nuovo workspace», solo per chi è proprietario o amministratore
+nell'azienda del workspace della sessione, come il pulsante del selettore. Con `null` la tua pagina spiega e non mostra il
+pulsante. Il percorso di zr-home non lo scrivi tu, e la chiami nella pagina che la usa: legge il backoffice a ogni
+chiamata, e un suo errore arriva a te come da `Cornice::dati()` (README, «Un workspace nuovo da una pagina del modulo»).
+
 ## 7. La cornice montata una volta sola
 
 **Scrivi**, nel file d'ingresso di Inertia (`resources/js/app.tsx`), il layout del frontend: un componente a livello di

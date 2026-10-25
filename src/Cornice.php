@@ -358,6 +358,41 @@ final class Cornice
     }
 
     /**
+     * Dove si crea un workspace (dalla `v3.5.0`), per una pagina di un modulo che manda la persona a farne uno: l'indirizzo di
+     * «Nuovo workspace» di zr-home nel workspace della sessione (`https://app.zeiras.com/w/<slug>/nuovo-workspace`), con la
+     * regola del pulsante del selettore, `nuovo_workspace` di `aziende()`: la persona è `proprietario` o `amministratore` in
+     * almeno un workspace dell'azienda del workspace della sessione. Il ruolo della sessione non conta, e quello di un'altra
+     * azienda nemmeno. In ogni altro caso null, e il modulo spiega senza offrire la strada: anche se il workspace della sessione
+     * non è nell'elenco. Offre soltanto: se la persona può davvero lo decide il backoffice (io.workspace.crea).
+     *
+     * Senza sessione o senza workspace dà null e non chiama il backoffice. Altrimenti legge io.workspace.elenca col gettone
+     * della persona, ogni volta, e nient'altro; un errore non diventa null (il modulo direbbe «non puoi» a chi può): arriva a
+     * chi chiama com'è, e una riga senza `slug` o `azienda_id` testuali è BackofficeNonRisponde. Anche il 403
+     * `accettazione_richiesta`, che `dati()` prende per i dati ridotti. L'azienda non si confronta con io.aziende.elenca, come
+     * nella pagina di zr-home: se quell'elenco non la ha, il selettore manca e qui l'indirizzo c'è.
+     */
+    public static function nuovoWorkspace(): ?string
+    {
+        $slug = Sessione::workspace()['slug'] ?? null;
+
+        if (Sessione::utente() === null || ! is_string($slug)) {
+            return null;
+        }
+
+        $righe = [];
+        foreach (Api::persona()->tutti('/v1/io/workspace') as $workspace) {
+            [$diSlug, $azienda] = self::testi($workspace, ['slug', 'azienda_id'], 'GET /v1/io/workspace');
+            $righe[] = [$diSlug, $azienda, in_array($workspace['ruolo'] ?? null, ['proprietario', 'amministratore'], true)];
+        }
+
+        // L'azienda del workspace della sessione, dalla sua riga: senza la riga non c'è un'azienda in cui guardare.
+        $sua = array_values(array_filter($righe, fn (array $riga) => $riga[0] === $slug))[0][1] ?? null;
+        $puo = $sua !== null && array_filter($righe, fn (array $riga) => $riga[1] === $sua && $riga[2]) !== [];
+
+        return $puo ? self::inHome($slug, '/nuovo-workspace') : null;
+    }
+
+    /**
      * La lettura di io.mostra di questa richiesta, una sola per `lingua()` e `dati()`: prende il segno, legge, dà la risposta a
      * `Sessione::aggiorna` e tiene fra gli attributi della richiesta di chi è (l'id della persona e il workspace della
      * sessione), il segno, l'esito (le non lette, o l'errore al loro posto) e se una `dati()` l'ha già usata. Della risposta
@@ -543,13 +578,21 @@ final class Cornice
             return [];
         }
 
+        $moduli = self::inHome($slug, '/impostazioni/moduli');
+
+        return $moduli === null ? [] : ['moduli' => $moduli];
+    }
+
+    /** Una pagina di zr-home nel workspace con quello slug, dall'indirizzo della voce `home` del registro; null se non ce l'ha. */
+    private static function inHome(string $slug, string $pagina): ?string
+    {
         foreach (Registro::voci() as $voce) {
             if ($voce['id'] === 'home' && is_string($voce['indirizzo'])) {
-                return ['moduli' => $voce['indirizzo'].'/w/'.rawurlencode($slug).'/impostazioni/moduli'];
+                return $voce['indirizzo'].'/w/'.rawurlencode($slug).$pagina;
             }
         }
 
-        return [];
+        return null;
     }
 
     /**
