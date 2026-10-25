@@ -353,7 +353,8 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(array_keys(array_filter(array_merge(...array_map(
             fn (array $voce): array => array_column($voce['risorse'] ?? [], 'codici', 'tipo'),
             $voci,
-        )))))->toBe(['workspace.membro', 'crm.trattativa']);
+        // Dallo sprint 74 (T2.2) anche la prenotazione di Bookings, per lo stato.
+        )))))->toBe(['workspace.membro', 'crm.trattativa', 'bookings.prenotazione']);
 });
 
 it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole e diverse, e una chiave che una risorsa non ha (sprint 25 · T4.5)', function () {
