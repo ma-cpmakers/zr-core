@@ -43,6 +43,20 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
+**`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
+`resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
+È per chi prende quei due campi **solo** dai loro moduli, in pagine caricate a richiesta: il CSS del primo carico pesa circa
+0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»). Si importa al posto di `bundle.css`, nello stesso ordine:
+
+```css
+@import '../../vendor/zeiras/zr-core/resources/css/zeiras.css';
+@import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
+```
+
+Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`: con `zeiras.css`
+quel campo resterebbe senza stili. Con `bundle.css` e un modulo dei due, gli stili del campo arrivano due volte, uguali, e ciò
+che si vede non cambia. Chi non cambia niente resta com'è.
+
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
 notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche per la quarta, `destinazioneDellaNotifica`
@@ -151,6 +165,18 @@ I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, pr
 completo lo dice `grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l`: risponde 0
 dall'ingresso per le app, 1 finché un file importa dall'ingresso di sempre.
 
+**Quanto pesa il CSS** (dalla `v3.3.0`), su un'app di prova con la cornice e MentionField e AddressField presi dai loro moduli
+in due pagine a richiesta, col CSS del design system e quello dei token, costruita come le tre di sopra (la CI la ricostruisce e
+la pesa a ogni giro):
+
+| App di prova | CSS | con gzip | a richiesta | con gzip |
+|---|---|---|---|---|
+| la cornice e i due campi a richiesta, con `bundle.css` | 68,4 KB | 11,5 KB | 5,7 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 65,3 KB | 11,0 KB | 5,7 KB | 1,7 KB |
+
+Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» è il CSS che arriva coi due
+pezzi, lo stesso nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel CSS d'ingresso.
+
 **I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
 pacchetto. Vogliono `target` ES2022 o più recente, con la sua libreria (dalla `v1.9.0`). Reggono `strict`, `noUnusedLocals` e
 `noUnusedParameters` e, dalla `v1.9.0`, le nove opzioni più strette che la CI di zr-core accende a ogni giro (il suo
@@ -233,6 +259,22 @@ d'ingresso dell'app che prende solo la cornice, 456 meno di prima, e 1.969 il pe
 La parte server (`GET /cornice/notifiche`, `idsDellaNotifica`) dà gli stessi `ids` di prima ai tipi che avevano già una riga;
 ai due delle Scadenze, che nella `v2.25.4` non l'avevano e avevano `ids` vuoti, dà quelli del percorso che si apre
 (`persona_id`, altrimenti `organizzazione_id`, altrimenti nessuno).
+
+### Passare alla v3.3
+
+Nessun frontend deve cambiare niente: `bundle.css` resta com'era. La `v3.3.0` aggiunge `resources/css/zeiras.css`, per chi
+prende MentionField e AddressField solo dai loro moduli (`…/resources/js/zeiras/MentionField` e `…/AddressField`): il CSS del
+primo carico non porta i loro stili, che arrivano col modulo, nelle pagine caricate a richiesta. Il passaggio è una riga del
+CSS:
+
+```diff
+-@import '../../vendor/zeiras/zr-core/resources/zeiras/bundle.css';
++@import '../../vendor/zeiras/zr-core/resources/css/zeiras.css';
+ @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
+```
+
+Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa: con `zeiras.css` quel campo
+resterebbe senza stili. Il risparmio è di circa 0,5 KB con gzip (vedi «Quanto pesa il CSS», sopra).
 
 ## La parte server
 

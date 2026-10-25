@@ -117,6 +117,10 @@ interface Costruito {
     /** I nomi dei file delle frasi nella build. */
     fileDelleFrasi: string[];
     esporta: string[];
+    /** Il CSS d'ingresso: quello dei pezzi che la pagina scarica subito (sprint 75 · T2). */
+    css: string;
+    /** Il CSS dei pezzi a richiesta, uno per pezzo che ne ha. */
+    cssARichiesta: string[];
 }
 
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../${percorso}`, import.meta.url));
@@ -129,6 +133,8 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const uscite = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : []));
     const pezzi = uscite.filter((uscita) => uscita.type === 'chunk');
     const frasi = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
+    const fogli = new Map(uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.css')).map((uscita) => [uscita.fileName, uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : '']));
+    const cssDi = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])].map((nome) => fogli.get(nome) ?? '').join('\n');
 
     return {
         js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
@@ -136,6 +142,8 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
         pezzi: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
         fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
+        css: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map(cssDi).join('\n'),
+        cssARichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map(cssDi).filter((css) => css !== ''),
     };
 }
 
@@ -202,6 +210,8 @@ let conMentionAParte: Costruito;
 let conMentionDaComponenti: Costruito;
 let conAddressAParte: Costruito;
 let conAddressDaComponenti: Costruito;
+let iDueConIlBundle: Costruito;
+let iDueConZeirasCss: Costruito;
 
 // Sprint 50 · T1 (voce 2073). I dati di esempio del design system (un `var SAMPLE_… = [` del modulo, come i contatti finti di
 // `CrmContacts`) e i due formattatori dei numeri (`NF`, `EUR`, cioè `new Intl.NumberFormat`) li usano solo componenti che la
@@ -250,6 +260,18 @@ beforeAll(async () => {
     // Sprint 72 · T1.1 (voce #2454): lo stesso con AddressField.
     conAddressAParte = await conLaPaginaCheLoPrende('resources/js/zeiras/AddressField.js', 'AddressField');
     conAddressDaComponenti = await conLaPaginaCheLoPrende('resources/js/zeiras/componenti.js', 'AddressField');
+    // Sprint 75 · T2 (voce #2570): la cornice nell'ingresso, MentionField e AddressField presi dai loro moduli in due pagine a
+    // richiesta, e il CSS come lo importa un frontend (il design system, poi i token): una volta `bundle.css`, una `zeiras.css`.
+    const iDueCon = (css: string) => appColTesto([
+        `import ${JSON.stringify(delRepo(css))};`,
+        `import ${JSON.stringify(delRepo('resources/css/zeiras-token.css'))};`,
+        `import { Cornice } from ${JSON.stringify(delRepo('resources/js/app.ts'))};`,
+        'console.log(Cornice);',
+        `globalThis.menzioni = () => import(${JSON.stringify(delRepo('resources/js/zeiras/MentionField.js'))}).then((pagina) => console.log(pagina.MentionField));`,
+        `globalThis.indirizzi = () => import(${JSON.stringify(delRepo('resources/js/zeiras/AddressField.js'))}).then((pagina) => console.log(pagina.AddressField));`,
+    ].join('\n'));
+    iDueConIlBundle = await iDueCon('resources/zeiras/bundle.css');
+    iDueConZeirasCss = await iDueCon('resources/css/zeiras.css');
     conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
@@ -327,6 +349,56 @@ describe('AddressField preso dal suo modulo in una pagina a richiesta sta nel pe
 
     it('l\'app che prende solo la cornice non lo porta, né la pagina che prende MentionField dal suo modulo', () => {
         expect([soloCornice.js, conMentionAParte.js, ...conMentionAParte.pezzi].filter((testo) => testo.includes(DI_ADDRESSFIELD))).toStrictEqual([]);
+    });
+});
+
+// Sprint 75 · T2 (voce #2570, Decisione 17002). `zeiras.css` è `bundle.css` senza gli stili di MentionField e AddressField, che
+// arrivano col modulo di ognuno: in un'app che li prende dai loro moduli, a richiesta, il CSS del primo carico non li porta. Il
+// confronto è fra due build fatte qui, mai con un numero scritto a mano.
+const DEI_DUE_CAMPI = /\.zr-(?:mention|address)\b/;
+
+describe('con zeiras.css gli stili di MentionField e AddressField arrivano col loro modulo, non nel CSS d\'ingresso (sprint 75 · T1.3)', () => {
+    it('con bundle.css stanno nel CSS d\'ingresso; con zeiras.css no, e stanno nel CSS dei due pezzi a richiesta', () => {
+        expect(iDueConIlBundle.css).toMatch(DEI_DUE_CAMPI);
+        expect(iDueConZeirasCss.css).toContain('.zr-shell');
+        expect(iDueConZeirasCss.css).not.toMatch(DEI_DUE_CAMPI);
+        expect(iDueConZeirasCss.cssARichiesta.join('\n')).toMatch(/\.zr-mention-x\b/);
+        expect(iDueConZeirasCss.cssARichiesta.join('\n')).toMatch(/\.zr-address\b/);
+    });
+
+    it('il pezzo di AddressField porta anche le regole `.zr-mention-*` che il campo usa (T1.2)', () => {
+        const dell = iDueConZeirasCss.cssARichiesta.filter((css) => /\.zr-address\b/.test(css));
+
+        expect(dell).toHaveLength(1);
+        for (const classe of ['.zr-mention-x', '.zr-mention-list', '.zr-mention-opt']) {
+            expect(dell[0]).toMatch(new RegExp(`\\${classe}\\b`));
+        }
+    });
+
+    // Minificati dalla build i due blocchi pesano meno che nel file: 515 byte con gzip -9 tolti da `bundle.css`, 472 dal CSS
+    // d'ingresso costruito, il 25/10/2026. Di qui il tetto di 450, scritto nell'AC.
+    it('il CSS d\'ingresso pesa, con gzip -9, almeno 450 byte meno che con bundle.css', () => {
+        expect(gzip(iDueConIlBundle.css) - gzip(iDueConZeirasCss.css)).toBeGreaterThanOrEqual(450);
+    });
+
+    it.each([
+        ['la cornice e i due campi a richiesta, con `bundle.css`', () => iDueConIlBundle],
+        ['la cornice e i due campi a richiesta, con `zeiras.css`', () => iDueConZeirasCss],
+    ])('«%s»: i quattro numeri della sua riga nel README, in KB, senza e con gzip: il CSS d\'ingresso e quello dei pezzi a richiesta', (nome, misurato) => {
+        const [intero, compresso, aRichiesta, aRichiestaCompressi, ...altri] = pesiNelReadme(nome);
+        const fogli = misurato().cssARichiesta;
+
+        expect(intero).toBeCloseTo(inKb(Buffer.byteLength(misurato().css)), 0);
+        expect(compresso).toBeCloseTo(inKb(gzip(misurato().css)), 0);
+        expect(aRichiesta).toBeCloseTo(inKb(fogli.reduce((somma, foglio) => somma + Buffer.byteLength(foglio), 0)), 0);
+        expect(aRichiestaCompressi).toBeCloseTo(inKb(fogli.reduce((somma, foglio) => somma + gzip(foglio), 0)), 0);
+        expect(altri).toStrictEqual([]);
+    });
+
+    it('il font di Google resta la prima regola del CSS d\'ingresso, in tutte e due', () => {
+        for (const costruita of [iDueConIlBundle, iDueConZeirasCss]) {
+            expect(costruita.css.trimStart()).toMatch(/^@import (?:url\()?["']?https:\/\/fonts\.googleapis\.com\//);
+        }
     });
 });
 

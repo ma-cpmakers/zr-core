@@ -101,6 +101,8 @@ Un modulo che nasce parte dall'ingresso per le app (dalla `v1.15.0`): la cornice
 `vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da
 `vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi. La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
 file statici: README, «La favicon». Il design system nella build è quello di zr-core: non ne tieni una copia tua.
+Se MentionField e AddressField li prendi solo dai loro moduli, in pagine caricate a richiesta, il primo `@import` può essere
+`zeiras.css` al posto di `bundle.css` (dalla `v3.3.0`): README, «Passare alla v3.3».
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
 la build passano; nella build il design system non entra intero:
