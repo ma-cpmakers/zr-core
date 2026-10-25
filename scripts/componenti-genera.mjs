@@ -229,8 +229,12 @@ export function dividiIlCss(css) {
     const resto = righe.filter((_riga, indice) => !tolte.has(indice));
     // Il prefisso delle classi di un blocco (`zr-mention` da `.zr-mention-anchor`) fuori dal blocco vuol dire un blocco spezzato:
     // un commento in mezzo agli stili del componente, e il resto dei suoi stili lasciato in zeiras.css.
+    // Il prefisso viene dalla prima classe del blocco che il resto non ha (revisione della PR #134, seconda lettura).
+    const delResto = new Set(classiIn(resto));
     for (const nome of Object.keys(A_PARTE)) {
-        const [prefisso] = /^zr-[a-z]+/.exec(classiIn(blocchi[nome])[0]);
+        const sua = classiIn(blocchi[nome]).find((classe) => !delResto.has(classe) && /^zr-[a-z]+/.test(classe));
+        vuole(sua !== undefined, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
+        const [prefisso] = /^zr-[a-z]+/.exec(sua);
         const fuori = resto.filter((riga) => new RegExp(`\\.${prefisso}(?![a-z])`).test(riga));
         vuole(fuori.length === 0, `in bundle.css ${fuori.length} righe con le classi .${prefisso} stanno fuori dagli stili di ${nome}, dopo un commento: «${fuori[0]?.slice(0, 60)}»`);
     }
