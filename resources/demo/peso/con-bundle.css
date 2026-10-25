@@ -1,0 +1,3 @@
+/* Il CSS di un frontend come lo dice il README («Il CSS»): il design system, poi i token. Lo costruisce resources/js/peso.test.ts. */
+@import '../../zeiras/bundle.css';
+@import '../../css/zeiras-token.css';

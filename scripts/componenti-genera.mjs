@@ -194,6 +194,72 @@ export const A_PARTE = {
 };
 
 const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
+
+// Dalla `v3.3.0` (sprint 75, voce 2570): gli stili di ogni componente di `A_PARTE` escono anche da resources/zeiras/bundle.css,
+// così un'app che li prende dai loro moduli a richiesta non li porta nel CSS del primo carico. Nel bundle gli stili di un
+// componente cominciano con una riga «/* <Nome>» (seguita da uno spazio, dai due punti o dalla chiusura del commento) e finiscono
+// prima della riga che comincia il commento seguente, o a fine file.
+const INIZIO_DEGLI_STILI = (nome) => new RegExp(`^/\\* ${nome}(?:[ :]|\\*/)`);
+const CLASSE = /\.(zr-[\w-]+)/g;
+const classiIn = (righe) => [...new Set([...righe.join('\n').matchAll(CLASSE)].map((trovata) => trovata[1]))];
+const GENERATO_DAL_CSS = (cheCosa) => `/* Generato da scripts/componenti.mjs: non si ritocca a mano. ${cheCosa} A un riallineamento si rigenera con \`npm run componenti\`. */`;
+
+/**
+ * Il bundle CSS diviso: `zeiras` (resources/css/zeiras.css) è il bundle senza gli stili dei componenti di `A_PARTE`, le altre
+ * righe com'erano e nel loro ordine; `stili[nome]` (resources/css/zeiras/<Nome>.css) sono quelli di un componente; `proprie[nome]`
+ * le classi che solo i suoi stili definiscono (una classe che sta negli stili di due componenti è del primo dei due). Se gli stili
+ * di un componente non ci sono, ci sono due volte o non hanno una classe loro, lancia un errore.
+ */
+export function dividiIlCss(css) {
+    const righe = css.split('\n');
+    const tolte = new Set();
+    const blocchi = {};
+    for (const nome of Object.keys(A_PARTE)) {
+        const inizi = righe.flatMap((riga, indice) => (INIZIO_DEGLI_STILI(nome).test(riga) ? [indice] : []));
+        vuole(inizi.length === 1, `il commento «/* ${nome} …», che segna gli stili di ${nome} in bundle.css, c'è ${inizi.length} volte`);
+        const [inizio] = inizi;
+        const seguente = righe.findIndex((riga, indice) => indice > inizio && riga.startsWith('/* '));
+        let fine = seguente === -1 ? righe.length : seguente;
+        while (fine > inizio + 1 && righe[fine - 1].trim() === '') fine -= 1;
+        for (let indice = inizio; indice < fine; indice += 1) tolte.add(indice);
+        // La riga vuota che separa gli stili da ciò che sta sopra va via con loro.
+        if (inizio > 0 && righe[inizio - 1].trim() === '') tolte.add(inizio - 1);
+        blocchi[nome] = righe.slice(inizio, fine);
+    }
+    const resto = righe.filter((_riga, indice) => !tolte.has(indice));
+    // Il prefisso delle classi di un blocco (`zr-mention` da `.zr-mention-anchor`) fuori dal blocco vuol dire un blocco spezzato:
+    // un commento in mezzo agli stili del componente, e il resto dei suoi stili lasciato in zeiras.css.
+    // Il prefisso viene dalla prima classe del blocco che il resto non ha (revisione della PR #134, seconda lettura).
+    const delResto = new Set(classiIn(resto));
+    for (const nome of Object.keys(A_PARTE)) {
+        const sua = classiIn(blocchi[nome]).find((classe) => !delResto.has(classe) && /^zr-[a-z]+/.test(classe));
+        vuole(sua !== undefined, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
+        const [prefisso] = /^zr-[a-z]+/.exec(sua);
+        const fuori = resto.filter((riga) => new RegExp(`\\.${prefisso}(?![a-z])`).test(riga));
+        vuole(fuori.length === 0, `in bundle.css ${fuori.length} righe con le classi .${prefisso} stanno fuori dagli stili di ${nome}, dopo un commento: «${fuori[0]?.slice(0, 60)}»`);
+    }
+    const prese = new Set(classiIn(resto));
+    const proprie = {};
+    for (const nome of Object.keys(A_PARTE).sort((a, b) => righe.indexOf(blocchi[a][0]) - righe.indexOf(blocchi[b][0]))) {
+        proprie[nome] = classiIn(blocchi[nome]).filter((classe) => !prese.has(classe));
+        vuole(proprie[nome].length > 0, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
+        proprie[nome].forEach((classe) => prese.add(classe));
+    }
+    const nomi = Object.keys(A_PARTE);
+
+    return {
+        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo.`), ...resto].join('\n'),
+        stili: Object.fromEntries(nomi.map((nome) => [nome, [GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/${nome}.js.`), ...blocchi[nome], ''].join('\n')])),
+        proprie,
+    };
+}
+
+/** I componenti di `A_PARTE` di cui queste righe usano una classe propria (come nome intero), nell'ordine di `A_PARTE`. */
+function stiliUsati(righe, { proprie }) {
+    const testo = righe.join('\n');
+
+    return Object.keys(A_PARTE).filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
+}
 const NOME = '[A-Za-z_$][\\w$]*';
 // Le forme che una riga del corpo col rientro del bundle (due spazi) può avere: una dichiarazione `var` o `function` di un nome
 // solo, un commento, una chiusura (`}`, `};`, `];`, `].map(…`), un nome dato a una proprietà di un altro (`Avatar.Stack =
@@ -283,7 +349,7 @@ function dichiaratiIn(istruzione, numero) {
  * Il testo del modulo di `nome` (una chiave di `A_PARTE`) dal corpo e dai nomi che dà `leggi`. Se una cosa non è come lo script
  * la conosce — il blocco, una forma di riga, una riga privata che non è nell'elenco — lancia un errore che dice quale.
  */
-export function aParte({ corpo, nomi }, nome) {
+export function aParte({ corpo, nomi }, nome, divisi = undefined) {
     const numero = (indice) => indice + 4;
     corpo.forEach((riga, indice) => {
         vuole(!/^ {2}\S/.test(riga) || FORME.some((forma) => forma.test(riga)), `la riga ${numero(indice)} («${riga.trim().slice(0, 60)}») ha una forma che lo script non conosce`);
@@ -362,6 +428,7 @@ export function aParte({ corpo, nomi }, nome) {
         '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
         "import * as React from 'react';",
         ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
+        ...(divisi === undefined ? [] : stiliUsati(righe.map((indice) => corpo[indice]), divisi).map((altro) => `import '../../css/zeiras/${altro}.css';`)),
         ...righe.map((indice, posto) => (posto > 0 && indice === inizio ? ['', corpo[indice]] : [corpo[indice]])).flat(),
         '',
         `export { ${nome} };`,

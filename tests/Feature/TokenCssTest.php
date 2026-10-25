@@ -167,7 +167,11 @@ it('nessun valore dei token è scritto a mano nel codice di zr-core: niente esad
         ...File::allFiles(__DIR__.'/../../resources/css'),
         ...File::allFiles(__DIR__.'/../../resources/views'),
         ...File::allFiles(__DIR__.'/../../src'),
-    ])->reject(fn (SplFileInfo $sorgente) => $sorgente->getRealPath() === realpath(__DIR__.'/../../resources/css/zeiras-token.css'));
+    ])->reject(fn (SplFileInfo $sorgente) => $sorgente->getRealPath() === realpath(__DIR__.'/../../resources/css/zeiras-token.css'))
+        // Sprint 75 · T1.1: i CSS che `npm run componenti` divide da bundle.css sono righe del design system, come il bundle
+        // (la CI li confronta con ciò che il bundle genera: una riga scritta a mano lì dentro la ferma).
+        ->reject(fn (SplFileInfo $sorgente) => $sorgente->getRealPath() === realpath(__DIR__.'/../../resources/css/zeiras.css')
+            || dirname((string) $sorgente->getRealPath()) === realpath(__DIR__.'/../../resources/css/zeiras'));
 
     expect($file->map->getRelativePathname()->all())->toContain('index.ts', 'zeiras/react-globale.ts', 'favicon.blade.php', 'ZrCoreServiceProvider.php', 'Favicon.php')
         ->and(valoriAMano($file))->toBe([]);

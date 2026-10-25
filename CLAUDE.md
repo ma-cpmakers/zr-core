@@ -86,7 +86,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   rigenerano nello stesso commit.
 - `resources/js/zeiras/componenti.js` esce da `npm run componenti`, dal bundle del design system (`resources/zeiras/bundle.js`): gli
   stessi componenti come modulo ES, esportati per nome, da cui li prendono la cornice e `Zeiras`; dalla `v3.1.0` anche
-  `resources/js/zeiras/MentionField.js` e dalla `v3.2.0` `AddressField.js`, il blocco di ognuno in un modulo suo (righe private nell'elenco `A_PARTE` dello script; il blocco risale dalla funzione, non dal commento). Non si ritocca a mano, e a un
+  `resources/js/zeiras/MentionField.js` e dalla `v3.2.0` `AddressField.js`, il blocco di ognuno in un modulo suo (righe private nell'elenco `A_PARTE` dello script; il blocco risale dalla funzione, non dal commento). Dalla `v3.3.0` esce di lì anche il CSS diviso da `bundle.css`: `resources/css/zeiras.css` (il bundle senza i blocchi di MentionField e AddressField) e `resources/css/zeiras/{MentionField,AddressField}.css`, che il modulo di ognuno importa (quale lo dicono le classi che usa). Non si ritocca a mano, e a un
   riallineamento che cambia il bundle si rigenera nello stesso commit; se il bundle ha un'altra forma lo script si ferma e si
   riallinea lo script.
 - I pesi che il README dice (la tabella delle tre app di prova) sono quelli che misura `resources/js/peso.test.ts`, entro mezzo

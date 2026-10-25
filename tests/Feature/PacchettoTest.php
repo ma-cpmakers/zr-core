@@ -3735,6 +3735,9 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
             && $file !== 'resources/js/zeiras/componenti.js'
             // Sprint 71: anche il modulo di MentionField, righe del bundle uguali.
             && $file !== 'resources/js/zeiras/MentionField.js'
+            // Sprint 75: e i CSS che `npm run componenti` divide da bundle.css, righe del bundle uguali.
+            && $file !== 'resources/css/zeiras.css'
+            && ! str_starts_with($file, 'resources/css/zeiras/')
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 
@@ -4247,6 +4250,28 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
     'un layer dichiarato' => ['@layer'],
     // Lettura della PR #61, R11: non vince su «ogni» classe di qualunque Tailwind.
     'vince sempre' => ['per questo vince su ogni classe di utilità di Tailwind'],
+]);
+
+// Sprint 75 · T1.4 (voce #2570; revisione della PR #134, rilievi 1 e 4): il README dice le due strade del CSS, e chi resta su
+// `bundle.css`. Con `zeiras.css` un campo preso da `componenti` resterebbe senza stili; con `bundle.css` i due campi si prendono
+// dallo stesso posto, perché gli stili che un modulo porta arrivano dopo il bundle.
+it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v3\.3$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+    $testo = $dove === 'Il CSS' ? capoversoDelCss($readme) : suUnaRiga($passaggio[1] ?? '');
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'le due strade' => ['Il CSS', '@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
+    'per chi è zeiras.css' => ['Il CSS', 'È per chi prende quei due campi **solo** dai loro moduli'],
+    'chi resta su bundle.css' => ['Il CSS', 'Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`'],
+    'perché' => ['Il CSS', 'quel campo resterebbe senza stili'],
+    'dallo stesso posto' => ['Il CSS', 'Con `bundle.css` i due campi si prendono dallo stesso posto'],
+    'nessuno deve cambiare' => ['Passare alla v3.3', 'Nessun frontend deve cambiare niente: `bundle.css` resta com\'era.'],
+    'la riga che cambia' => ['Passare alla v3.3', '+@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\';'],
+    'chi non lo fa' => ['Passare alla v3.3', 'Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa'],
+    'il caso misto' => ['Passare alla v3.3', 'Chi è in questo caso prende anche AddressField dal suo modulo, o MentionField da `componenti`'],
 ]);
 
 // Seconda lettura della PR #60, S1: i frammenti che il punto dà da cercare — `e opportunità:`, `boards and folders` — si copiano
@@ -4841,8 +4866,8 @@ function ingressoJs(string $file): string
 it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
     $zip = fileDelloZipDiHead();
     // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi, dalla `v3.2.0` (sprint 72 · T1.5) quello di
-    // AddressField.
-    $delPacchetto = ['resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/AddressField.d.ts'];
+    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css.
+    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/AddressField.d.ts'];
     $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
 
     expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
@@ -5422,7 +5447,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
 
-    expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/zeiras/bundle.css'])
+    // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
+    expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
         ->and(substr_count($cornice, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
