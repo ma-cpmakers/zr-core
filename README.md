@@ -1311,7 +1311,7 @@ cornice === null ? pagina : (
   risultato porta, poi lo stato: «mer 4 nov, 10:00 · Confermata». Gli stati sono quattro, `confermata`, `svolta`,
   `non_presentato` e `annullata` («Confermata», «Svolta», «Non presentato», «Annullata»); un altro codice non si mostra.
   `quando` arriva dalla parte server solo come `{il, fuso}`, l'istante in UTC con la Z e il nome IANA del fuso, come quello
-  di una notifica (un giorno che il calendario ha, un fuso che IANA conosce): in ogni altra forma non passa, e la seconda riga dice solo lo stato. Le risorse di Bookings non stanno
+  di una notifica (un giorno che il calendario ha, un fuso che il PHP del server conosce, scritto com'è in IANA): in ogni altra forma non passa, e la seconda riga dice solo lo stato. Le risorse di Bookings non stanno
   nella sua voce del registro: stanno in `resources/registro/ricerca.json`, e i loro testi in `resources/lingue/ricerca/`,
   un file per lingua; li legge solo il pezzo della ricerca, e la voce ne ha i tipi in `fonti`, che servono all'invito
   prima che il pezzo arrivi. Nel registro esportato la voce di Bookings ha quindi `fonti` e non `risorse`.
