@@ -375,6 +375,108 @@ it('i dati ridotti (accettazione_richiesta) non hanno `moduli`, nemmeno per chi 
     expect(array_key_exists('moduli', (array) Cornice::dati()))->toBeFalse();
 });
 
+// Sprint 77 · T1 (voce #2677, da zr-crm #2673). `Cornice::nuovoWorkspace()` dà a una pagina di un modulo l'indirizzo di «Nuovo
+// workspace» di zr-home nel workspace della sessione, con la regola del pulsante del selettore: proprietario o amministratore in
+// almeno un workspace dell'azienda del workspace della sessione. Agli altri null, e il modulo spiega senza pulsante. Una lettura
+// sola, io.workspace.elenca col gettone della persona; un errore del backoffice arriva a chi chiama.
+
+/**
+ * Le righe di io.workspace.elenca per nuovoWorkspace(): una per [slug, azienda, ruolo]; senza il terzo la riga non ha `ruolo`.
+ *
+ * @param  list<array{0: string, 1: string, 2?: mixed}>  $righe
+ * @return array<string, mixed> per backoffice()
+ */
+function workspaceDelleAziende(array $righe): array
+{
+    return ['/v1/io/workspace' => ['data' => array_map(
+        fn (array $riga, int $posto) => ['id' => "uat-ws-{$posto}", 'nome' => "UAT workspace {$posto}", 'slug' => $riga[0], ...(array_key_exists(2, $riga) ? ['ruolo' => $riga[2]] : []), 'azienda_id' => $riga[1]],
+        $righe,
+        array_keys($righe),
+    ), 'successivo' => null]];
+}
+
+it('nuovoWorkspace() dà l\'indirizzo di «Nuovo workspace» nel workspace della sessione solo se la persona è proprietario o amministratore in un workspace della sua azienda; altrimenti null (sprint 77 · T1.1)', function (array $righe, bool $puo) {
+    sessioneAMano(marketing());
+    backoffice(workspaceDelleAziende($righe));
+
+    expect(Cornice::nuovoWorkspace())->toBe($puo ? 'https://app.zeiras.com/w/uat-marketing/nuovo-workspace' : null);
+})->with([
+    'proprietario qui' => [[['uat-marketing', 'az-a', 'proprietario']], true],
+    'amministratore qui' => [[['uat-marketing', 'az-a', 'amministratore']], true],
+    'membro qui' => [[['uat-marketing', 'az-a', 'membro']], false],
+    // Il selettore gli mostra «Nuovo workspace»: il ruolo vale per l'azienda.
+    'membro qui, amministratore in un altro workspace della stessa azienda' => [[['uat-marketing', 'az-a', 'membro'], ['uat-altro', 'az-a', 'amministratore']], true],
+    'proprietario in un workspace della stessa azienda, prima di questo' => [[['uat-altro', 'az-a', 'proprietario'], ['uat-marketing', 'az-a', 'membro']], true],
+    'membro qui, proprietario in un workspace di un\'altra azienda' => [[['uat-marketing', 'az-a', 'membro'], ['uat-altro', 'az-b', 'proprietario']], false],
+    'un ruolo che zr-core non conosce' => [[['uat-marketing', 'az-a', 'ospite']], false],
+    'un ruolo scritto in un altro modo' => [[['uat-marketing', 'az-a', 'Amministratore']], false],
+    'una riga senza ruolo' => [[['uat-marketing', 'az-a']], false],
+    'un ruolo che è true' => [[['uat-marketing', 'az-a', true]], false],
+]);
+
+it('nuovoWorkspace() non guarda il ruolo della sessione: decide la riga dell\'elenco (sprint 77 · T1.1)', function (string $sessione, string $riga, bool $puo) {
+    sessioneAMano(marketing());
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => Sessione::utente(), 'workspace' => marketing(), 'ruolo' => $sessione]);
+    backoffice(workspaceDelleAziende([['uat-marketing', 'az-a', $riga]]));
+
+    expect(Cornice::nuovoWorkspace())->toBe($puo ? 'https://app.zeiras.com/w/uat-marketing/nuovo-workspace' : null);
+})->with([
+    'proprietario nella sessione, membro nell\'elenco' => ['proprietario', 'membro', false],
+    'membro nella sessione, amministratore nell\'elenco' => ['membro', 'amministratore', true],
+]);
+
+it('nuovoWorkspace() dà null senza sessione o senza workspace, e non chiama il backoffice (sprint 77 · T1.2)', function (bool $sessione) {
+    backoffice(workspaceDelleAziende([['uat-marketing', 'az-a', 'proprietario']]));
+    if ($sessione) {
+        sessioneAMano(null);
+    }
+
+    expect(Cornice::nuovoWorkspace())->toBeNull();
+    Http::assertNothingSent();
+})->with([
+    'nessuna sessione' => [false],
+    'una sessione senza workspace' => [true],
+]);
+
+it('nuovoWorkspace() dà null se il workspace della sessione non è nell\'elenco: il ruolo di un altro non passa a lui (sprint 77 · T1.2)', function () {
+    sessioneAMano(marketing());
+    backoffice(workspaceDelleAziende([['uat-altro', 'az-a', 'proprietario'], ['uat-terzo', 'az-b', 'amministratore']]));
+
+    expect(Cornice::nuovoWorkspace())->toBeNull();
+});
+
+it('nuovoWorkspace() fa una lettura sola, io.workspace.elenca col gettone della persona, e ne legge tutte le pagine (sprint 77 · T1.3)', function () {
+    $gettoni = sessioneAMano(marketing());
+    backoffice(['/v1/io/workspace' => Http::sequence()
+        ->push(['data' => [['id' => 'uat-ws-0', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing', 'ruolo' => 'membro', 'azienda_id' => 'az-a']], 'successivo' => 'uat-cursore-2'])
+        ->push(['data' => [['id' => 'uat-ws-1', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite', 'ruolo' => 'amministratore', 'azienda_id' => 'az-a']], 'successivo' => null])]);
+
+    expect(Cornice::nuovoWorkspace())->toBe('https://app.zeiras.com/w/uat-marketing/nuovo-workspace')
+        ->and(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all())->toBe(['/v1/io/workspace', '/v1/io/workspace'])
+        ->and(richiesteA('/v1/io/workspace')->every(fn (Request $richiesta) => $richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['accesso'])))->toBeTrue();
+});
+
+it('se il backoffice non risponde, o risponde con un errore, nuovoWorkspace() non dà null: l\'errore arriva a chi chiama (sprint 77 · T1.3)', function (Closure $risposta, string $tipo) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/io/workspace' => $risposta]);
+
+    expect(fn () => Cornice::nuovoWorkspace())->toThrow($tipo);
+})->with([
+    'un 500' => [fn () => Http::response('', 500), BackofficeNonRisponde::class],
+    'la connessione cade' => [fn () => Http::failedConnection(), BackofficeNonRisponde::class],
+    'un errore di /v1' => [fn () => Http::response((string) json_encode(['type' => 'about:blank', 'title' => 'uat', 'status' => 403, 'detail' => 'uat', 'codice' => 'gettone_senza_workspace']), 403, ['Content-Type' => 'application/problem+json']), ErroreApi::class],
+    'il gettone rifiutato' => [fn () => Http::response((string) json_encode(['type' => 'about:blank', 'title' => 'uat', 'status' => 401, 'detail' => 'uat', 'codice' => 'gettone_scaduto']), 401, ['Content-Type' => 'application/problem+json']), GettoneRifiutato::class],
+    'una riga senza slug' => [fn () => Http::response(['data' => [['id' => 'uat-ws-0', 'nome' => 'UAT', 'ruolo' => 'proprietario', 'azienda_id' => 'az-a']], 'successivo' => null]), BackofficeNonRisponde::class],
+    'una riga con azienda_id che non è un testo' => [fn () => Http::response(['data' => [['id' => 'uat-ws-0', 'nome' => 'UAT', 'slug' => 'uat-marketing', 'ruolo' => 'proprietario', 'azienda_id' => 7]], 'successivo' => null]), BackofficeNonRisponde::class],
+]);
+
+it('nuovoWorkspace() codifica lo slug per l\'indirizzo, come `moduli` (sprint 77 · T1.4)', function () {
+    sessioneAMano(['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat marketing/2']);
+    backoffice(workspaceDelleAziende([['uat marketing/2', 'az-a', 'proprietario']]));
+
+    expect(Cornice::nuovoWorkspace())->toBe('https://app.zeiras.com/w/uat%20marketing%2F2/nuovo-workspace');
+});
+
 it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del workspace con una richiesta sola, senza tagli (sprint 5 · T1.1)', function (int $nonLette) {
     $gettoni = sessioneAMano(marketing());
     // Col gettone dell'accesso io.mostra non ha un workspace, e le non lette sono null.
