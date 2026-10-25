@@ -350,10 +350,10 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
         // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è. Dallo
         // sprint 28 ha dei codici anche l'opportunità, per l'esito.
+        // Dallo sprint 74 (T2.2) anche la prenotazione di Bookings, per lo stato.
         ->and(array_keys(array_filter(array_merge(...array_map(
             fn (array $voce): array => array_column($voce['risorse'] ?? [], 'codici', 'tipo'),
             $voci,
-        // Dallo sprint 74 (T2.2) anche la prenotazione di Bookings, per lo stato.
         )))))->toBe(['workspace.membro', 'crm.trattativa', 'bookings.prenotazione']);
 });
 
