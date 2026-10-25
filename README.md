@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 45,0 KB | 8,5 KB |
-| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 45,0 KB | 8,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 45,0 KB | 8,5 KB |
+| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 46,0 KB | 8,5 KB |
+| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 46,0 KB | 8,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 46,0 KB | 8,5 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -157,10 +157,12 @@ di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la f
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 17 byte in più: un modulo
 spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
 libera byte, il tetto riscende). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.768 i rimedi, 1.004 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la
 ricerca. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
 per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
-preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Dalla `v2.0.0` l'eccezione per i
+preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
+del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
+che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -488,6 +490,28 @@ da mostrare. E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessio
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
 `bootstrap/app.php`); senza, sono un 500.
+
+### Un workspace nuovo da una pagina del modulo
+
+Una pagina di un modulo che deve mandare la persona a creare un workspace — per esempio quando un'installazione non si può
+fare nel workspace in cui è — prende l'indirizzo da `Cornice::nuovoWorkspace()` (dalla `v3.5.0`), e non scrive il percorso
+di zr-home nel suo codice. Dà `https://app.zeiras.com/w/<slug>/nuovo-workspace`, con lo slug del workspace della sessione
+codificato per un indirizzo, ed è la pagina che apre «Nuovo workspace» in fondo al selettore: la Dashboard di quel workspace
+col dialogo aperto. La pagina e il dialogo sono di zr-home, e se la persona può davvero creare il workspace lo decide il
+backoffice (`io.workspace.crea`): zr-core dà soltanto la strada.
+
+```php
+$nuovo = Cornice::nuovoWorkspace();   // null: la pagina spiega, senza il pulsante
+```
+
+La regola è quella del selettore, `nuovo_workspace`: l'indirizzo c'è se la persona è `proprietario` o `amministratore` in
+almeno un workspace dell'azienda del workspace della sessione. Il ruolo della sessione non conta, e quello di un'altra
+azienda nemmeno. In ogni altro caso dà `null` — solo `membro`, un ruolo che zr-core non conosce, il workspace della sessione
+che l'elenco non ha —, e allora la pagina spiega e non offre la strada. Senza sessione, o senza workspace, dà `null` senza
+chiamare il backoffice. Altrimenti legge `/v1/io/workspace` col gettone della persona, tutte le pagine, a ogni chiamata, e
+nient'altro: va chiamata nella pagina che la usa, non in un middleware. Un errore del backoffice non diventa `null`, che
+direbbe «non puoi» a chi può: `BackofficeNonRisponde`, `ErroreApi` e `GettoneRifiutato` arrivano al modulo come da
+`Cornice::dati()`, e una riga senza `slug` o `azienda_id` testuali è `BackofficeNonRisponde`.
 
 ### Le rotte della cornice
 
@@ -945,10 +969,16 @@ cornice === null ? pagina : (
   quando un cliente chiede una modifica dal link di un preventivo: «Un cliente ha chiesto una modifica al preventivo»
   (`crm.preventivo.richiesta`). Non è un evento, e il suo `tipo` non ha `com.zeiras.` davanti; gli eventi dei
   preventivi, compreso `com.zeiras.crm.preventivo.visto`, la prima apertura del link, non generano notifiche. Con lei i
-  titoli sono 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e
+  titoli erano 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e
   la richiesta sul preventivo. Nei `dati` porta l'`id` del preventivo e `trattativa_id`, l'opportunità o `null`, mai il
   testo del cliente, e non ha chi l'ha fatto. Un clic apre il preventivo,
-  `https://crm.zeiras.com/w/<slug>/preventivi/<id>`. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  `https://crm.zeiras.com/w/<slug>/preventivi/<id>`. Dalla `v3.5.0` ha un titolo anche la notifica che arriva al
+  proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario:
+  «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`). Non è un evento nemmeno lei, e il suo `tipo` non
+  ha `com.zeiras.` davanti; chi l'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede
+  senza assegnatario»). Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
+  zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario. Nei `dati` porta solo il numero
+  delle schede, nessun id: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -1027,7 +1057,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantotto tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantanove tipi che hanno un titolo; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta

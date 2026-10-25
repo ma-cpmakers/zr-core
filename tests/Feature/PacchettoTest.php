@@ -4047,7 +4047,7 @@ it('il README non dice più che il contratto non elenca la notifica a chi viene 
         ->and(str_contains(suUnaRiga(str_replace(' ', "\n", $frase)), $frase))->toBe(true);
 });
 
-it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45 o 47, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3; sprint 36 · T5.4; v2.25.3; v2.25.4)', function () {
+it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45, 47 o 48, né che le schede non hanno una destinazione, e `MODULO-NUOVO.md` porta la scheda assegnata come esempio di una notifica che non è un evento, col titolo e la pagina (sprint 24 · T3.5; sprint 26 · T6.3; sprint 36 · T5.4; v2.25.3; v2.25.4; v3.5.0)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $guida = suUnaRiga((string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md'));
 
@@ -4063,7 +4063,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45 o 
         ->and(substr_count($readme, 'i titoli erano 45'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 47'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 47'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 48'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 48'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 48'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 49'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4419,7 +4421,7 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 48, 'es' => 48, 'it' => 48])
+        ->and(array_map('count', $titoli))->toBe(['en' => 49, 'es' => 49, 'it' => 49])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
@@ -4498,7 +4500,8 @@ it('il README dice, dalla v3.2.2, il titolo e il tipo della notifica della richi
 })->with([
     'il titolo e il tipo' => ['Dalla `v3.2.2` ha un titolo anche la notifica che arriva al responsabile del contatto, o ai proprietari del workspace, quando un cliente chiede una modifica dal link di un preventivo: «Un cliente ha chiesto una modifica al preventivo» (`crm.preventivo.richiesta`)'],
     'senza `com.zeiras.` davanti' => ['Non è un evento, e il suo `tipo` non ha `com.zeiras.` davanti; gli eventi dei preventivi, compreso `com.zeiras.crm.preventivo.visto`, la prima apertura del link, non generano notifiche'],
-    'quanti sono i titoli' => ['Con lei i titoli sono 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo'],
+    // v3.5.0: con le schede senza assegnatario i titoli sono 49, e i 48 passano al passato.
+    'quanti erano i titoli' => ['Con lei i titoli erano 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e la richiesta sul preventivo'],
     'i dati' => ['Nei `dati` porta l\'`id` del preventivo e `trattativa_id`, l\'opportunità o `null`, mai il testo del cliente, e non ha chi l\'ha fatto'],
     'dove si apre' => ['Un clic apre il preventivo, `https://crm.zeiras.com/w/<slug>/preventivi/<id>`'],
 ]);
@@ -4510,6 +4513,39 @@ it('il README dice, dalla v3.2.2, la riga del registro della richiesta sul preve
 })->with([
     'la riga del registro' => ['Dalla `v3.2.2` il CRM ha anche la richiesta di un cliente sul preventivo (`crm.preventivo.richiesta`), con `/preventivi/{id}`: apre il preventivo, e `trattativa_id`, che i `dati` portano, non è nel percorso'],
     'il tetto della campanella' => ['Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il preventivo dalla richiesta di un cliente (un\'eccezione di zr-pm, Decisione 16510)'],
+]);
+
+// Sprint 77 · T3 (zr-backoffice #2596, parole di Project Management). La notifica delle schede rimaste senza assegnatario quando
+// una persona lascia il workspace ha un titolo: il README lo dice nel punto «Le notifiche», coi titoli che ora sono 49.
+
+it('il README dice, dalla v3.5.0, il titolo e il tipo della notifica delle schede senza assegnatario, a chi arriva, che non è un evento, che con lei i titoli sono 49, che cosa porta nei dati e che un clic apre la pagina delle notifiche (sprint 77 · T3.1)', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo e il tipo' => ['Dalla `v3.5.0` ha un titolo anche la notifica che arriva al proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario: «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`)'],
+    'senza `com.zeiras.` davanti' => ['Non è un evento nemmeno lei, e il suo `tipo` non ha `com.zeiras.` davanti'],
+    'chi l\'ha fatto' => ['chi l\'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede senza assegnatario»)'],
+    'quanti sono i titoli' => ['Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario'],
+    'i dati e dove si apre' => ['Nei `dati` porta solo il numero delle schede, nessun id: un clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 77 · T2.1 (voce #2677). README e guida dicono `Cornice::nuovoWorkspace()`: l'indirizzo, quando dà null, che pagina e
+// dialogo sono di zr-home e che un errore del backoffice non diventa null.
+
+it('README e guida dicono Cornice::nuovoWorkspace(): l\'indirizzo di zr-home, la regola del selettore, null per gli altri, e che un errore arriva al modulo (sprint 77 · T2.1)', function (string $dove, string $frase) {
+    $testo = suUnaRiga((string) file_get_contents(__DIR__.'/../../'.$dove));
+
+    expect(substr_count($testo, $frase))->toBe(1);
+})->with([
+    'il titolo' => ['README.md', '### Un workspace nuovo da una pagina del modulo'],
+    'l\'indirizzo' => ['README.md', 'prende l\'indirizzo da `Cornice::nuovoWorkspace()` (dalla `v3.5.0`), e non scrive il percorso di zr-home nel suo codice. Dà `https://app.zeiras.com/w/<slug>/nuovo-workspace`'],
+    'di chi è la pagina' => ['README.md', 'La pagina e il dialogo sono di zr-home, e se la persona può davvero creare il workspace lo decide il backoffice (`io.workspace.crea`): zr-core dà soltanto la strada'],
+    'la regola' => ['README.md', 'La regola è quella del selettore, `nuovo_workspace`: l\'indirizzo c\'è se la persona è `proprietario` o `amministratore` in almeno un workspace dell\'azienda del workspace della sessione. Il ruolo della sessione non conta'],
+    'gli errori' => ['README.md', 'Un errore del backoffice non diventa `null`, che direbbe «non puoi» a chi può'],
+    'la guida' => ['MODULO-NUOVO.md', 'Se una tua pagina deve mandare la persona a creare un workspace, l\'indirizzo lo dà `Cornice::nuovoWorkspace()` (dalla `v3.5.0`)'],
+    'la guida: null' => ['MODULO-NUOVO.md', 'Con `null` la tua pagina spiega e non mostra il pulsante. Il percorso di zr-home non lo scrivi tu'],
 ]);
 
 // Sprint 28 · T1.5 (voce #1826): dalla `v1.18.0` un'opportunità chiusa mostra l'esito nella seconda riga, e una aperta no. Il
@@ -5365,7 +5401,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.985 byte la campanella, 1.768 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la ricerca'],
+    // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
+    'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
 ]);
 
@@ -5602,7 +5640,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantotto tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantanove tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
