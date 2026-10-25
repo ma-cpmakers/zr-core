@@ -1,13 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, createElement, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
-import { aParte, A_PARTE, leggi } from '../../../scripts/componenti-genera.mjs';
+import { aParte, A_PARTE, dividiIlCss, leggi } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
 import * as componenti from './componenti';
 import { MentionField, type MentionLabels, type MentionOption } from './MentionField';
 import generato from './MentionField.js?raw';
 import { Zeiras } from './index';
+// Gli stili del bundle (dalla `v3.3.0`, sprint 75 · T1.2): il modulo importa quelli dei componenti di cui usa le classi. Un CSS
+// con `?raw` vitest lo dà vuoto: si legge dal disco.
+const bundleCss = readFileSync(resolve(process.cwd(), 'resources/zeiras/bundle.css'), 'utf8');
 
 // Sprint 71 · T1 (voce #2433, Decisione 16375). MentionField ha un modulo suo, resources/js/zeiras/MentionField.js: chi lo usa
 // solo in una pagina a richiesta lo prende da lì, e il JS d'ingresso non lo porta (lo prova peso.test.ts). Il modulo esce da
@@ -30,14 +35,14 @@ const senzaNumeriDegliId = (html: string) => html.replace(/mnt-\d+/g, 'mnt-N');
 describe('il modulo di MentionField è quello che il bundle genera (sprint 71 · T1.3)', () => {
     it('MentionField e AddressField (dalla `v3.2.0`) sono i componenti a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
         expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField', 'AddressField']);
-        expect(aParte(letto(), 'MentionField')).toBe(generato);
+        expect(aParte(letto(), 'MentionField', dividiIlCss(bundleCss))).toBe(generato);
     });
 
     it('con un carattere cambiato nel blocco del bundle non è più uguale: un bundle riallineato senza rigenerare non passa', () => {
         const cambiato = bundle.replace("create: 'Crea «{q}» nel CRM'", "create: 'Crea «{q}» nel CRM!'");
 
         expect(cambiato).not.toBe(bundle);
-        expect(aParte(leggi(cambiato), 'MentionField')).not.toBe(generato);
+        expect(aParte(leggi(cambiato), 'MentionField', dividiIlCss(bundleCss))).not.toBe(generato);
     });
 
     // Sprint 72 · T1.3 (voce #2454): nel design system ds-1792851600-0de4 il blocco di AddressField sta fra il commento di
@@ -54,16 +59,16 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
 
         expect([delBundle[inizio - 1], blocco[0]?.startsWith('  var MENTION_LABELS = '), daQui > 0, blocco.at(-1), delBundle[inizio + 64], delBundle[inizio + 65]]).toStrictEqual(['', true, true, '  }', '', '  function Checkbox(p) {']);
         expect(righe.slice(daQui, daQui + blocco.length)).toStrictEqual(blocco);
-        expect(righe.slice(5, daQui - 1)).toStrictEqual([
+        expect(righe.slice(6, daQui - 1)).toStrictEqual([
             '  var h = React.createElement;',
             '  var useState = React.useState;',
             '  var useRef = React.useRef;',
             "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
             "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
         ]);
-        expect(righe.slice(5, daQui - 1)).toStrictEqual(A_PARTE.MentionField);
+        expect(righe.slice(6, daQui - 1)).toStrictEqual(A_PARTE.MentionField);
         expect(righe.slice(daQui + blocco.length)).toStrictEqual(['', 'export { MentionField };', '']);
-        expect(righe.slice(5, daQui - 1).every((riga) => delBundle.includes(riga))).toBe(true);
+        expect(righe.slice(6, daQui - 1).every((riga) => delBundle.includes(riga))).toBe(true);
     });
 
     it('non porta niente del blocco di AddressField, che nel bundle sta fra il suo commento e la sua funzione (sprint 72 · T1.3)', () => {
@@ -73,7 +78,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         expect([delBundle[commento + 1]?.startsWith('  /* ---------- AddressField: '), commento < delBundle.indexOf('  function AddressField(p) {'), delBundle.indexOf('  function AddressField(p) {') < delBundle.indexOf('  function MentionField(p) {')]).toStrictEqual([true, true, true]);
         expect(['zr-address', 'ADDRESS_LABELS', 'AddressField', '/* ---------- '].filter((testo) => generato.includes(testo))).toStrictEqual([]);
         // Una riga di meno della `v3.1.0` (79 col fondo): il commento di MentionField, che non sta più attaccato alla funzione.
-        expect(righe.length).toBe(78);
+        expect(righe.length).toBe(79); // 78 fino alla `v3.2.x`: dalla `v3.3.0` c'è anche l'import dei suoi stili (sprint 75 · T1.2)
     });
 
     it('col commento attaccato alla funzione, come nel design system di prima, il blocco comincia dal commento', () => {
@@ -82,7 +87,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         const rigaDelCommento = delBundle[commento] ?? '';
         delBundle.splice(commento, 1);
         delBundle.splice(delBundle.indexOf('  function MentionField(p) {') - 1, 0, rigaDelCommento);
-        const modulo = aParte(leggi(delBundle.join('\n')), 'MentionField').split('\n');
+        const modulo = aParte(leggi(delBundle.join('\n')), 'MentionField', dividiIlCss(bundleCss)).split('\n');
 
         expect(modulo.slice(modulo.indexOf(rigaDelCommento) - 1, modulo.indexOf(rigaDelCommento) + 3).map((riga) => riga.slice(0, 24))).toStrictEqual(['', rigaDelCommento.slice(0, 24), '  var MENTION_LABELS = {', '  function MentionField(']);
     });
@@ -97,7 +102,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         const conUnaRigaSpezzata = bundle.replace('  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(\' \'); }', "  function cx() {\n    return Array.prototype.filter.call(arguments, Boolean).join(' ');\n  }");
 
         expect(conUnaRigaSpezzata).not.toBe(bundle);
-        expect(() => aParte(leggi(conUnaRigaSpezzata), 'MentionField')).toThrow('MentionField usa «cx», dichiarato alla riga 8 del bundle, e la riga non è fra le righe private che lo script porta nel suo modulo (A_PARTE)');
+        expect(() => aParte(leggi(conUnaRigaSpezzata), 'MentionField', dividiIlCss(bundleCss))).toThrow('MentionField usa «cx», dichiarato alla riga 8 del bundle, e la riga non è fra le righe private che lo script porta nel suo modulo (A_PARTE)');
     });
 
     // Lettura della PR #126 (rilievi 1, 3, 4, 5): un nome che il blocco usa, dichiarato in una forma che lo script non legge,
@@ -130,20 +135,20 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         const cambiato = cambia(bundle);
 
         expect(cambiato).not.toBe(bundle);
-        expect(() => aParte(leggi(cambiato), 'MentionField')).toThrow(detto);
+        expect(() => aParte(leggi(cambiato), 'MentionField', dividiIlCss(bundleCss))).toThrow(detto);
     });
 
     it('se il blocco non usa più una riga privata dell\'elenco, lo script si ferma: l\'elenco va riallineato', () => {
         const senzaCx = bundle.replace("className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className)", "className: 'zr-field zr-mention'").replaceAll("className: cx('zr-mention-opt', i === active && 'is-active')", "className: 'zr-mention-opt'").replace("className: cx('zr-mention-opt', 'is-create', active === list.length && 'is-active')", "className: 'zr-mention-opt is-create'");
 
         expect(senzaCx).not.toBe(bundle);
-        expect(() => aParte(leggi(senzaCx), 'MentionField')).toThrow('la riga privata «function cx() { return Array.prototype.filter.call(arguments» dell\'elenco di MentionField (A_PARTE) non c\'è più nel bundle, o MentionField non la usa più');
+        expect(() => aParte(leggi(senzaCx), 'MentionField', dividiIlCss(bundleCss))).toThrow('la riga privata «function cx() { return Array.prototype.filter.call(arguments» dell\'elenco di MentionField (A_PARTE) non c\'è più nel bundle, o MentionField non la usa più');
     });
 
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
         const senzaCommento = bundle.replace('  /* ---------- MentionField: ', '  /* ---------- Menzioni: ');
 
-        expect(() => aParte(leggi(senzaCommento), 'MentionField')).toThrow('il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
+        expect(() => aParte(leggi(senzaCommento), 'MentionField', dividiIlCss(bundleCss))).toThrow('il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
     });
 
     // Lettura della PR #128 (rilievi 1-4): la risalita dalla funzione prende solo righe sue, e dove non sa dire di chi è una
@@ -156,7 +161,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         const cambiato = cambia(bundle);
 
         expect(cambiato).not.toBe(bundle);
-        expect(aParte(leggi(cambiato), 'MentionField')).toBe(generato);
+        expect(aParte(leggi(cambiato), 'MentionField', dividiIlCss(bundleCss))).toBe(generato);
     });
 
     it.each<[string, string, (testo: string) => string, string]>([
