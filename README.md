@@ -506,12 +506,16 @@ $nuovo = Cornice::nuovoWorkspace();   // null: la pagina spiega, senza il pulsan
 
 La regola è quella del selettore, `nuovo_workspace`: l'indirizzo c'è se la persona è `proprietario` o `amministratore` in
 almeno un workspace dell'azienda del workspace della sessione. Il ruolo della sessione non conta, e quello di un'altra
-azienda nemmeno. In ogni altro caso dà `null` — solo `membro`, un ruolo che zr-core non conosce, il workspace della sessione
+azienda nemmeno. L'azienda non si confronta con `/v1/io/aziende`, come fa la pagina di zr-home: se quell'elenco non la
+ha, il selettore non c'è e la cornice non mostra il pulsante, ma la pagina del modulo può avere l'indirizzo. In ogni altro
+caso dà `null` — solo `membro`, un ruolo che zr-core non conosce, il workspace della sessione
 che l'elenco non ha —, e allora la pagina spiega e non offre la strada. Senza sessione, o senza workspace, dà `null` senza
 chiamare il backoffice. Altrimenti legge `/v1/io/workspace` col gettone della persona, tutte le pagine, a ogni chiamata, e
 nient'altro: va chiamata nella pagina che la usa, non in un middleware. Un errore del backoffice non diventa `null`, che
-direbbe «non puoi» a chi può: `BackofficeNonRisponde`, `ErroreApi` e `GettoneRifiutato` arrivano al modulo come da
-`Cornice::dati()`, e una riga senza `slug` o `azienda_id` testuali è `BackofficeNonRisponde`.
+direbbe «non puoi» a chi può: `BackofficeNonRisponde`, `ErroreApi` e `GettoneRifiutato` arrivano al modulo come da ogni
+chiamata di zr-auth, e una riga senza `slug` o `azienda_id` testuali è `BackofficeNonRisponde`. Anche il 403
+`accettazione_richiesta` arriva com'è, e da zr-auth risponde da sé: `Cornice::dati()` lo prende e dà i dati ridotti, questo
+metodo no.
 
 ### Le rotte della cornice
 

@@ -367,7 +367,9 @@ final class Cornice
      *
      * Senza sessione o senza workspace dà null e non chiama il backoffice. Altrimenti legge io.workspace.elenca col gettone
      * della persona, ogni volta, e nient'altro; un errore non diventa null (il modulo direbbe «non puoi» a chi può): arriva a
-     * chi chiama come in `dati()`, e una riga senza `slug` o `azienda_id` testuali è BackofficeNonRisponde.
+     * chi chiama com'è, e una riga senza `slug` o `azienda_id` testuali è BackofficeNonRisponde. Anche il 403
+     * `accettazione_richiesta`, che `dati()` prende per i dati ridotti. L'azienda non si confronta con io.aziende.elenca, come
+     * nella pagina di zr-home: se quell'elenco non la ha, il selettore manca e qui l'indirizzo c'è.
      */
     public static function nuovoWorkspace(): ?string
     {
