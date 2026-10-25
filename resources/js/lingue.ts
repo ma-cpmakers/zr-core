@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { CodiceDelContesto, IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
+import type { CodiceDelContesto, IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -10,14 +10,14 @@ import type { CodiceDelContesto, IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
  * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
- * minuscolo, per `searchSource.<voce>.<tipo>`, il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
+ * minuscolo, per `searchSource.<voce>.<tipo>` (anche delle risorse di `resources/registro/ricerca.json`, `TipoDellaRicerca`), il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
  * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Le frasi delle notifiche non sono qui: stanno in
  * un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  */
 export type TestiDellaCornice = Required<AppShellLabels> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
-    Record<`searchSource.${TipoDiRisorsa}`, string> &
+    Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> &
     Record<`searchContext.${CodiceDelContesto}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
@@ -223,7 +223,7 @@ const POSTO_DELLE_FONTI = '{sources}';
  * `Intl.ListFormat` anche quando ha il resto di `Intl`: lì l'invito è quello senza fonti, quante che siano le fonti, il
  * segnaposto resta quello unico, e niente lancia.
  */
-export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
+export function testiDellaRicerca(lingua: string, fonti: readonly (TipoDiRisorsa | TipoDellaRicerca)[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
     const conFonti = fonti.length > 0;
 

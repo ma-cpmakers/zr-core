@@ -271,6 +271,40 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     'un tipo che somiglia a uno del registro' => ['board.schede', 'null'],
 ]);
 
+// Sprint 74 · T2 (voce 2549): una prenotazione di Bookings porta nel contesto quando comincia (`quando`, l'istante in UTC e il fuso
+// in cui si legge) e il suo stato, un codice. `quando` passa solo nella forma concordata con zr-backoffice (G7), come quello di una
+// notifica; ogni altra forma non passa, e lo stato resta. Ogni altra chiave — un'email, un telefono — si ferma qui.
+it('una prenotazione di Bookings esce con `quando` solo nella forma concordata, l\'istante in UTC con la Z e il fuso IANA, e con `stato` com\'è; un\'altra chiave non passa (sprint 74 · T2.1, T2.2, T2.6; G7)', function (mixed $contesto, ?array $perLaCornice) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice('bookings.prenotazione', 'uat-b1', 'UAT Mario Rossi · Personal training', $contesto)], 'successivo' => null])]);
+
+    cerca('UAT')->assertOk()->assertExactJson(['data' => [
+        ['tipo' => 'bookings.prenotazione', 'id' => 'uat-b1', 'titolo' => 'UAT Mario Rossi · Personal training', 'contesto' => $perLaCornice],
+    ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
+})->with([
+    'la forma concordata' => [['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome'], 'stato' => 'confermata'], ['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome'], 'stato' => 'confermata']],
+    'il fuso prima dell\'istante' => [['quando' => ['fuso' => 'America/New_York', 'il' => '2026-11-04T09:00:00Z']], ['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'America/New_York']]],
+    'l\'istante coi millesimi' => [['quando' => ['il' => '2026-11-04T09:00:00.250Z', 'fuso' => 'Europe/Rome']], ['quando' => ['il' => '2026-11-04T09:00:00.250Z', 'fuso' => 'Europe/Rome']]],
+    'l\'istante con lo scarto e non la Z' => [['quando' => ['il' => '2026-11-04T10:00:00+01:00', 'fuso' => 'Europe/Rome'], 'stato' => 'svolta'], ['stato' => 'svolta']],
+    'l\'istante senza l\'ora' => [['quando' => ['il' => '2026-11-04', 'fuso' => 'Europe/Rome'], 'stato' => 'svolta'], ['stato' => 'svolta']],
+    'una chiave in più in `quando`' => [['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome', 'ora_locale' => '10:00'], 'stato' => 'svolta'], ['stato' => 'svolta']],
+    'senza il fuso' => [['quando' => ['il' => '2026-11-04T09:00:00Z'], 'stato' => 'annullata'], ['stato' => 'annullata']],
+    'un fuso che non è un nome IANA' => [['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome; <b>'], 'stato' => 'annullata'], ['stato' => 'annullata']],
+    '`quando` scritto come testo' => [['quando' => '2026-11-04T09:00:00Z', 'stato' => 'non_presentato'], ['stato' => 'non_presentato']],
+    '`quando` null' => [['quando' => null, 'stato' => 'non_presentato'], ['stato' => 'non_presentato']],
+    'lo stato vuoto' => [['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome'], 'stato' => ''], ['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome']]],
+    'un codice di stato che il registro non ha passa com\'è: lo scarta la cornice' => [['stato' => 'in_attesa'], ['stato' => 'in_attesa']],
+    'un\'email e un telefono del cliente' => [['cliente_email' => 'uat-mario@example.com', 'telefono' => '+39 000', 'stato' => 'confermata'], ['stato' => 'confermata']],
+    'niente di buono' => [['quando' => ['il' => 'domani'], 'stato' => null], null],
+]);
+
+it('un calendario di prenotazione non ha chiavi di `contesto`, e `quando` non passa per un tipo a cui il registro non lo dà (sprint 74 · T2.3; G7)', function (string $tipo) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', ['quando' => ['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome'], 'stato' => 'confermata'])], 'successivo' => null])]);
+
+    expect(cerca('UAT')->assertOk()->json('data.0.contesto'))->toBeNull();
+})->with(['bookings.calendario', 'crm.organizzazione', 'board.board']);
+
 it('le chiavi di `contesto` sono quelle del registro dei moduli, non un elenco scritto nella rotta: con un registro di prova che al contatto dà `reparto`, passa `reparto` e non `ruolo`, e una scheda, che lì non ha chiavi, ha null (sprint 25 · T6, R1)', function () {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
     Http::fake(['*' => Http::response(['data' => [

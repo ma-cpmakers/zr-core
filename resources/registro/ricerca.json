@@ -1,0 +1,6 @@
+{
+    "bookings": [
+        { "tipo": "bookings.prenotazione", "icona": "calendar", "percorso": "/prenotazioni/{id}", "contenitore": false, "contesto": ["quando", "stato"], "codici": { "stato": ["confermata", "svolta", "non_presentato", "annullata"] } },
+        { "tipo": "bookings.calendario", "icona": "calendar", "percorso": "/calendari/{id}", "contenitore": false }
+    ]
+}

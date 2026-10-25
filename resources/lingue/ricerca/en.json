@@ -1,0 +1,8 @@
+{
+    "bookings.bookings.prenotazione": "Bookings",
+    "bookings.bookings.calendario": "Booking calendars",
+    "searchContext.bookings.bookings.prenotazione.stato.confermata": "Confirmed",
+    "searchContext.bookings.bookings.prenotazione.stato.svolta": "Completed",
+    "searchContext.bookings.bookings.prenotazione.stato.non_presentato": "No-show",
+    "searchContext.bookings.bookings.prenotazione.stato.annullata": "Cancelled"
+}

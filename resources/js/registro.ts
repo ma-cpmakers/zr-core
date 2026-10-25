@@ -17,6 +17,15 @@ export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'flow' | 'reports' | 'aut
 export type TipoDiRisorsa = 'home.workspace.membro' | 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
 
 /**
+ * Le risorse della ricerca che non stanno nelle voci del registro ma in `resources/registro/ricerca.json` (dalla `v3.3.0`, quelle di
+ * Bookings), `<voce>.<tipo>`: come si mostrano, il nome del loro gruppo e i testi dei loro codici li legge solo il pezzo della
+ * ricerca (coi testi in `resources/lingue/ricerca/`); nelle lingue della cornice hanno solo il nome da elenco, con `searchSource.`
+ * davanti, perché l'invito le nomina prima che il pezzo arrivi (i tipi stanno in `fonti` della voce). Una risorsa nuova di quel
+ * file entra anche qui.
+ */
+export type TipoDellaRicerca = 'bookings.bookings.prenotazione' | 'bookings.bookings.calendario';
+
+/**
  * I codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>` (`codici`): ognuno
  * ha il suo testo in ogni lingua, con `searchContext.` davanti. Un codice nuovo entra anche qui. Dell'esito di un'opportunità
  * i codici sono due: `aperta`, che il backoffice dà per un'opportunità aperta, non è un codice e non ha un testo.
@@ -99,6 +108,12 @@ export interface VoceDelRegistro {
      * di un modulo: il membro del workspace, che si apre in app.
      */
     risorse?: RisorsaDelProdotto[];
+    /**
+     * Dalla `v3.3.0`, al posto di `risorse` per un prodotto le cui risorse stanno in `resources/registro/ricerca.json` (Bookings):
+     * i loro tipi, nell'ordine di quel file. Sono ciò che l'invito della ricerca deve sapere prima che il pezzo della ricerca
+     * arrivi (`fontiDellaRicerca`); come si mostrano e dove si aprono lo dice quel file, che legge solo il pezzo.
+     */
+    fonti?: string[];
 }
 
 export const registro: readonly VoceDelRegistro[] = dati.prodotti as VoceDelRegistro[];
@@ -119,10 +134,12 @@ export function nelWorkspace(indirizzo: string, slug: string): string {
  * prodotto `disponibile` o in arrivo non dà fonti. I membri non sono di un'app: li cerca in ogni workspace, e sono una fonte
  * anche dove nessun prodotto è attivo. Vengono per ultimi, benché la loro voce sia la prima del registro: l'invito della
  * ricerca nomina le fonti in quest'ordine, prima quelle dei prodotti attivi e in fondo i membri. `prodotti` è lo stato di
- * ogni prodotto nel workspace, come nei dati della cornice.
+ * ogni prodotto nel workspace, come nei dati della cornice. I tipi di un prodotto le cui risorse stanno in
+ * `resources/registro/ricerca.json` (Bookings) sono quelli di `fonti` della sua voce: quel file è del pezzo della ricerca, e
+ * qui non entra (importato anche da qui, finirebbe intero nel JS d'ingresso).
  */
-export function fontiDellaRicerca(prodotti: Partial<Record<IdDiProdotto, string | undefined>>): TipoDiRisorsa[] {
-    const tipiDi = (voce: VoceDelRegistro) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}` as TipoDiRisorsa);
+export function fontiDellaRicerca(prodotti: Partial<Record<IdDiProdotto, string | undefined>>): (TipoDiRisorsa | TipoDellaRicerca)[] {
+    const tipiDi = (voce: VoceDelRegistro) => (voce.risorse?.map((risorsa) => risorsa.tipo) ?? voce.fonti ?? []).map((tipo) => `${voce.id}.${tipo}` as TipoDiRisorsa | TipoDellaRicerca);
 
     return [
         ...registro.flatMap((voce) => (voce.id !== 'home' && prodotti[voce.id] === 'attivo' ? tipiDi(voce) : [])),

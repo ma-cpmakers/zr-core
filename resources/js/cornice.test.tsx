@@ -38,10 +38,11 @@ const datiDiUnMembro: DatiDellaCornice = {
 /** I dati di chi amministra il workspace: con `moduli`, il CRM spento c'è e porta a Impostazioni › Moduli. */
 const dati: DatiDellaCornice = { ...datiDiUnMembro, moduli: 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli' };
 /**
- * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, solo Project Management ha risorse nel registro; per ultimo il
- * membro del workspace, che non è di un modulo e c'è in ogni workspace.
+ * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, Project Management e, dalla `v3.3.0`, Bookings (voce 2549, T2.5:
+ * i tipi da `fonti` della sua voce) hanno risorse da cercare; per ultimo il membro del workspace, che non è di un modulo e c'è in
+ * ogni workspace.
  */
-const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'home.workspace.membro'] as const;
+const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'bookings.bookings.prenotazione', 'bookings.bookings.calendario', 'home.workspace.membro'] as const;
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /**
@@ -328,10 +329,17 @@ describe('la Cornice', () => {
     // modulo. Quello corto resta a chi non ha accettato i documenti legali; l'invito corto anche a un browser senza
     // `Intl.ListFormat`.
     it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        // Sprint 74 · T2.5 (voce 2549): Bookings attivo dà prenotazioni e calendari, dopo le fonti dei moduli che lo precedono nel registro.
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['es', { crm: 'attivo', bookings: 'attivo' }, 'Busca en el workspace…', 'Busca contactos, empresas, oportunidades, reservas, calendarios y miembros: escribe al menos 2 caracteres.'],
+        ['en', { bookings: 'attivo' }, 'Search the workspace…', 'Search bookings, calendars, and members: type at least 2 characters.'],
         ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
         ['it', {}, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
         ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas y miembros: escribe al menos 2 caracteres.'],
         ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
@@ -5077,6 +5085,110 @@ describe('la ricerca', () => {
         expect(secondeRighe()).toStrictEqual([attesa]);
         // Ciò che l'`AppShell` riceve: senza testi la seconda riga manca, non è vuota.
         expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([attesa]);
+    });
+
+    // Sprint 74 · T2 (voce 2549): le prenotazioni e i calendari di Bookings nella ricerca. Le loro risorse stanno in
+    // `resources/registro/ricerca.json` e i loro testi in `resources/lingue/ricerca/`, che legge solo il pezzo della ricerca. La
+    // seconda riga di una prenotazione dice quando comincia, nella lingua e nel fuso che il risultato porta, e lo stato.
+    const prenotazione = (contesto: unknown, id = '01k7p1n1') => ({ tipo: 'bookings.prenotazione', id, titolo: 'Mario Rossi · Personal training', contesto });
+    const quando = (fuso = 'Europe/Rome') => ({ il: '2026-11-04T09:00:00Z', fuso });
+
+    it.each<[lingua: string, gruppo: string, seconda: string]>([
+        ['it', 'Prenotazioni', 'mer 4 nov, 10:00 · Confermata'],
+        ['es', 'Reservas', 'mié, 4 nov, 10:00 · Confirmada'],
+        ['en', 'Bookings', 'Wed, Nov 4, 10:00 AM · Confirmed'],
+        // Una lingua che zr-core non ha: in inglese, anche la data.
+        ['zz', 'Bookings', 'Wed, Nov 4, 10:00 AM · Confirmed'],
+        // Una variante regionale che `Intl` rifiuta (`es_ES`): la data nella lingua del file dei testi, non vuota.
+        ['es_ES', 'Reservas', 'mié, 4 nov, 10:00 · Confirmada'],
+    ])('con la lingua "%s", una prenotazione sta nel suo gruppo e la seconda riga dice giorno e ora nel fuso del risultato, poi lo stato nella lingua (sprint 74 · T2.1)', async (lingua, gruppo, seconda) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([prenotazione({ quando: quando(), stato: 'confermata' })])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Mario Rossi · Personal training']);
+        expect(tutti('.zr-search-panel .zr-search-group').map((riga) => riga.textContent)).toStrictEqual([gruppo]);
+        expect(secondeRighe()).toStrictEqual([seconda]);
+    });
+
+    it('l\'ora della prenotazione è quella del fuso che il risultato porta: né quella in UTC né quella del browser (sprint 74 · T2.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            prenotazione({ quando: quando('America/New_York'), stato: 'confermata' }, '01k7p1n1'),
+            prenotazione({ quando: quando('Asia/Tokyo'), stato: 'confermata' }, '01k7p1n2'),
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual(['mer 4 nov, 04:00 · Confermata', 'mer 4 nov, 18:00 · Confermata']);
+    });
+
+    it.each<[lingua: string, testi: string[]]>([
+        ['it', ['Confermata', 'Svolta', 'Non presentato', 'Annullata']],
+        ['es', ['Confirmada', 'Realizada', 'No presentado', 'Cancelada']],
+        ['en', ['Confirmed', 'Completed', 'No-show', 'Cancelled']],
+    ])('con la lingua "%s", i quattro stati di una prenotazione hanno il loro testo; un codice che il registro non ha, o il testo di uno stato al posto del codice, non entra nella seconda riga (sprint 74 · T2.2)', async (lingua, testi) => {
+        const stati = ['confermata', 'svolta', 'non_presentato', 'annullata', 'in_attesa', 'Confermata'];
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(stati.map((stato, indice) => prenotazione({ stato }, `01k7p2n${indice}`)))));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([...testi, null, null]);
+        const pannello = uno('.zr-search-panel')?.textContent ?? '';
+        expect(['confermata', 'non_presentato', 'in_attesa'].filter((codice) => pannello.includes(codice))).toStrictEqual([]);
+    });
+
+    it.each<[lingua: string, gruppo: string]>([
+        ['it', 'Calendari di prenotazione'],
+        ['es', 'Calendarios de reservas'],
+        ['en', 'Booking calendars'],
+    ])('con la lingua "%s", un calendario di prenotazione sta nel suo gruppo, senza seconda riga, accanto a quello delle prenotazioni (sprint 74 · T2.3)', async (lingua, gruppo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'bookings.calendario', id: '01k7c4l1', titolo: 'Sala pesi', contesto: { stato: 'confermata' } },
+            prenotazione({ stato: 'svolta' }),
+        ])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Sala pesi', 'Mario Rossi · Personal training']);
+        expect(tutti('.zr-search-panel .zr-search-group').map((riga) => riga.textContent)).toStrictEqual([gruppo, { it: 'Prenotazioni', es: 'Reservas', en: 'Bookings' }[lingua]]);
+        expect(secondeRighe()).toStrictEqual([null, { it: 'Svolta', es: 'Realizada', en: 'Completed' }[lingua]]);
+    });
+
+    it.each<[tipo: string, id: string, indirizzo: string]>([
+        ['bookings.prenotazione', '01k7p3n1', 'https://bookings.zeiras.com/w/zeta-ricerca/prenotazioni/01k7p3n1'],
+        ['bookings.calendario', '01k7c3l1', 'https://bookings.zeiras.com/w/zeta-ricerca/calendari/01k7c3l1'],
+    ])('scegliere un risultato `%s` apre la sua pagina in Bookings, nel workspace che la risposta dice e non in quello della pagina (sprint 74 · T2.4)', async (tipo, id, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo, id, titolo: 'Uno da aprire', contesto: null }], 'zeta-ricerca')));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        await act(async () => {
+            righe()[0]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it.each<[caso: string, contesto: unknown, attesa: string | null]>([
+        ['con `quando` null dice solo lo stato', { quando: null, stato: 'svolta' }, 'Svolta'],
+        ['senza `quando` dice solo lo stato', { stato: 'annullata' }, 'Annullata'],
+        ['con `quando` senza il fuso dice solo lo stato', { quando: { il: '2026-11-04T09:00:00Z' }, stato: 'svolta' }, 'Svolta'],
+        ['con `quando` senza l\'istante dice solo lo stato', { quando: { fuso: 'Europe/Rome' }, stato: 'svolta' }, 'Svolta'],
+        ['con un fuso che `Intl` rifiuta dice solo lo stato', { quando: quando('Marte/Olympus'), stato: 'svolta' }, 'Svolta'],
+        ['con un istante che non è una data dice solo lo stato', { quando: { il: 'domani', fuso: 'Europe/Rome' }, stato: 'svolta' }, 'Svolta'],
+        ['con `quando` scritto come testo dice solo lo stato', { quando: '2026-11-04T09:00:00Z', stato: 'svolta' }, 'Svolta'],
+        ['con `quando` a metà e senza stato non ha una seconda riga', { quando: { il: 'domani', fuso: 'Europe/Rome' } }, null],
+        ['col solo `quando` dice giorno e ora', { quando: quando() }, 'mer 4 nov, 10:00'],
+        ['senza contesto non ha una seconda riga', null, null],
+    ])('una prenotazione %s: mai «Invalid Date», e la lista dei risultati resta intera (sprint 74 · T2.6)', async (_caso, contesto, attesa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([prenotazione(contesto, '01k7p4n1'), { tipo: 'crm.persona', id: '01k7p4n2', titolo: 'Ada Lovelace', contesto: { ruolo: 'Direttrice' } }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Mario Rossi · Personal training', 'Ada Lovelace']);
+        expect(secondeRighe()).toStrictEqual([attesa, 'Direttrice']);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain('Invalid');
     });
 
     it.each<[come: string, scegli: () => void]>([

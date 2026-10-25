@@ -4947,8 +4947,10 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
 
     // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
     // Sprint 70 · T1.4 (voce #2429): dalla `v3.0.0` i file sono due, le voci e le righe delle notifiche, e li legge `Registro`.
-    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json'))))->toBe(['Registro.php'])
-        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(2)
+    // Sprint 74 · T2 (voce 2549): dalla `v3.3.0` tre, con le risorse della ricerca di Bookings.
+    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json') || str_contains($codice, 'registro/ricerca.json'))))->toBe(['Registro.php'])
+        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(3)
+        ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/ricerca.json')"))->toBe(1)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/prodotti.json')"))->toBe(1)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/notifiche.json')"))->toBe(1)
         ->and(array_map(fn (string $rotta): array => [substr_count($sorgenti[$rotta], 'file_get_contents('), substr_count($sorgenti[$rotta], 'Registro::voci()')], ['Http/RicercaDellaCornice.php', 'Http/NotificheDellaCornice.php']))

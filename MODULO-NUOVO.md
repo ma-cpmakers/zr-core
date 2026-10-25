@@ -448,7 +448,11 @@ in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che l'invi
 modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi). Una chiave di `contesto` che
 porta un codice vuole anche `codici` (passo 8). Un risultato di
 un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
-ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
+ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo. Dalla `v3.3.0` zr-core può tenere le risorse di un modulo
+fuori dalla sua voce, perché non pesino nel JS d'ingresso di ogni app: è il caso di Bookings, le cui risorse stanno in un
+file del pezzo della ricerca e nella voce restano solo i tipi (`fonti`). Dove stanno lo decide zr-core: tu chiedi le
+stesse cose. Se il backoffice dà, per riconoscere una risorsa, quando accade (l'inizio di una prenotazione), la forma è
+`{il, fuso}`, come per una notifica, e la seconda riga la scrive la cornice nella lingua e nel fuso.
 
 Dalla `v2.8.0` il codice della ricerca arriva al primo uso, quando la persona mette il fuoco nel campo: per il tuo modulo
 non c'è niente da scrivere. Se non arriva, sotto il campo c'è l'errore della ricerca, e si riprova scrivendo

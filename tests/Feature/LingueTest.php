@@ -747,6 +747,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         'searchPlaceholderSources', 'searchHintSources',
         ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...array_keys(frasiSottoIlTitolo()), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
+        // Sprint 74 · T2.5 (voce 2549): delle risorse di resources/registro/ricerca.json le lingue della cornice hanno il solo nome da elenco.
+        ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDellaRicerca()),
         // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
         ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
     ];
@@ -1240,7 +1242,9 @@ it('il controllo vede il nome di un documento e una versione, in mezzo a una fra
 });
 
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
-    $testi = array_values(array_unique(array_merge(...array_values(array_map('array_values', lingueDellaCornice())))));
+    // Sprint 74 · T2.5 (voce 2549): un id del registro non è un testo, anche quando una lingua ha un testo uguale. Il nome da
+    // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', lingueDellaCornice())))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1249,7 +1253,8 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni')
+        ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);
 });

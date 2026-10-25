@@ -5,9 +5,10 @@ import italiano from '../lingue/it.json';
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
+import risorseDellaRicerca from '../registro/ricerca.json';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
 import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
-import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
+import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
 // italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system (o, dove c'è una decisione, quello
@@ -24,6 +25,8 @@ const diProjectManagement: TipoDiRisorsa[] = ['pm.board.scheda', 'pm.board.board
 const delCrm: TipoDiRisorsa[] = ['crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'];
 /** La fonte che non è di un modulo: il membro del workspace, che nel registro sta nella voce della Dashboard. */
 const deiMembri: TipoDiRisorsa[] = ['home.workspace.membro'];
+/** Le fonti di Bookings (dalla `v3.3.0`, voce 2549): i tipi di `fonti` della sua voce, le cui risorse stanno in `resources/registro/ricerca.json`. */
+const diBookings: TipoDellaRicerca[] = ['bookings.bookings.prenotazione', 'bookings.bookings.calendario'];
 
 describe('le lingue della cornice', () => {
     it("dove una lingua non ha un testo, o l'ha vuoto, quel testo è in inglese (T5.2)", () => {
@@ -593,12 +596,18 @@ describe('le lingue della cornice', () => {
     // Sprint 27 · T2 (voce #1787): il membro del workspace non è di un modulo, e il backoffice lo cerca in ogni workspace: è una
     // fonte anche dove nessun modulo è attivo. Nel registro sta nella prima voce, quella della Dashboard, ma fra le fonti viene
     // per ultimo: l'invito nomina prima quelle dei moduli.
-    it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: TipoDiRisorsa[]]>([
+    it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: (TipoDiRisorsa | TipoDellaRicerca)[]]>([
         ['Project Management attivo e il CRM solo disponibile', { pm: 'attivo', crm: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
         // Nell'ordine del registro, non in quello dei dati.
         ['tutti e due attivi', { crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm, ...deiMembri]],
         ['il CRM attivo e Project Management in arrivo', { pm: 'in_arrivo', crm: 'attivo' }, [...delCrm, ...deiMembri]],
-        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, deiMembri],
+        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', flow: 'attivo', reports: 'attivo' }, deiMembri],
+        // Sprint 74 · T2.5 (voce 2549): Bookings attivo dà i tipi di `fonti` della sua voce, al suo posto nell'ordine del registro;
+        // disponibile o in arrivo, niente.
+        ['Bookings attivo', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, [...diBookings, ...deiMembri]],
+        ['tre moduli attivi', { bookings: 'attivo', crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm, ...diBookings, ...deiMembri]],
+        ['Bookings disponibile', { pm: 'attivo', bookings: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
+        ['Bookings in arrivo', { bookings: 'in_arrivo' }, deiMembri],
         ['nessun modulo', {}, deiMembri],
         ['uno stato che zr-core non conosce, e uno scritto `undefined`', { pm: 'sospeso', crm: undefined }, deiMembri],
     ])('con %s, le fonti della ricerca sono i tipi di risorsa dei moduli attivi nel workspace, nell\'ordine del registro, e per ultimo il membro del workspace, che c\'è in ogni workspace (sprint 25 · T4.3; sprint 27 · T2.4)', (_caso, prodotti, fonti) => {
@@ -609,6 +618,11 @@ describe('le lingue della cornice', () => {
         ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        // Sprint 74 · T2.5 (voce 2549): il segnaposto resta quello unico anche con Bookings; l'invito lo nomina solo dov'è attivo.
+        ['it', { crm: 'attivo', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità, prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { crm: 'attivo', bookings: 'disponibile' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['es', { bookings: 'attivo' }, 'Busca en el workspace…', 'Busca reservas, calendarios y miembros: escribe al menos 2 caracteres.'],
+        ['en', { bookings: 'attivo' }, 'Search the workspace…', 'Search bookings, calendars, and members: type at least 2 characters.'],
         ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
         ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
         ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, areas, contacts, companies, opportunities, and members: type at least 2 characters.'],
@@ -1651,5 +1665,43 @@ describe('le notifiche di Bookings, con la data', () => {
         const { 'notificationTitleWhoWhat.com.zeiras.bookings.prenotazione.creata': _tolta, ...frasi } = frasiItaliane as FrasiDelleNotifiche;
         expect(rigaConLeFrasi(frasi, prenotazione('creata'), 'it')).toStrictEqual({ titolo: isolati('Mario Rossi ha prenotato'), sotto: 'Personal training' });
         expect(rigaConLeFrasi(frasiItaliane, { ...prenotazione('creata', ROMA), autore_nome: 'Mario {when}' }, 'it').titolo).toBe('⁨Mario {when}⁩ ha prenotato ⁨Personal training⁩, ⁨mer 4 nov, 10:00⁩');
+    });
+});
+
+// Sprint 74 · T2 (voce 2549): le risorse della ricerca di Bookings stanno in `resources/registro/ricerca.json`, i loro testi in
+// `resources/lingue/ricerca/`, e li legge solo il pezzo della ricerca; nella voce del registro ci sono solo i loro tipi (`fonti`),
+// e nelle lingue della cornice i loro nomi da elenco, per l'invito.
+describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => {
+    const dellaRicerca = risorseDellaRicerca as Record<string, RisorsaDelProdotto[]>;
+    const fileDellaRicerca = import.meta.glob<Record<string, unknown>>('../lingue/ricerca/*.json', { eager: true, import: 'default' });
+    /** Le chiavi dei testi del pezzo: il nome del gruppo di ogni risorsa, `<voce>.<tipo>`, e il testo di ogni suo codice. */
+    const chiavi = Object.entries(dellaRicerca).flatMap(([id, risorse]) =>
+        risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
+    );
+
+    it('ogni lingua della cornice ha il suo file dei testi della ricerca, con tutte e sole le chiavi delle risorse di ricerca.json, nell\'ordine, e testi non vuoti senza spazi ai bordi (T2.1, T2.2, T2.3)', () => {
+        expect(Object.keys(fileDellaRicerca).map((percorso) => percorso.replace(/^.*\/|\.json$/g, '')).sort()).toStrictEqual([...lingue].sort());
+        expect(chiavi).toStrictEqual([
+            'bookings.bookings.prenotazione', 'searchContext.bookings.bookings.prenotazione.stato.confermata', 'searchContext.bookings.bookings.prenotazione.stato.svolta',
+            'searchContext.bookings.bookings.prenotazione.stato.non_presentato', 'searchContext.bookings.bookings.prenotazione.stato.annullata', 'bookings.bookings.calendario',
+        ]);
+        for (const testi of Object.values(fileDellaRicerca)) {
+            expect(Object.keys(testi).sort()).toStrictEqual([...chiavi].sort());
+            expect(Object.values(testi).filter((testo) => typeof testo !== 'string' || testo === '' || testo.trim() !== testo)).toStrictEqual([]);
+        }
+    });
+
+    it('una voce del registro ha `risorse` o `fonti`, mai tutte e due; `fonti` sono i tipi delle sue risorse in ricerca.json, nel loro ordine, e ognuno ha il suo nome da elenco nelle lingue della cornice (T2.5)', () => {
+        expect(registro.filter((voce) => voce.risorse && voce.fonti).map((voce) => voce.id)).toStrictEqual([]);
+        expect(registro.filter((voce) => voce.fonti).map((voce) => [voce.id, voce.fonti])).toStrictEqual(Object.entries(dellaRicerca).map(([id, risorse]) => [id, risorse.map((risorsa) => risorsa.tipo)]));
+        const tipi: TipoDellaRicerca[] = ['bookings.bookings.prenotazione', 'bookings.bookings.calendario'];
+        expect(Object.entries(dellaRicerca).flatMap(([id, risorse]) => risorse.map((risorsa) => `${id}.${risorsa.tipo}`))).toStrictEqual(tipi);
+        expect([italiano, spagnolo, inglese].map((file) => tipi.map((tipo) => (file as Record<string, string>)[`searchSource.${tipo}`]))).toStrictEqual([
+            ['prenotazioni', 'calendari'],
+            ['reservas', 'calendarios'],
+            ['bookings', 'calendars'],
+        ]);
+        // Il nome del gruppo e i testi dei codici non stanno nelle lingue della cornice: sono del pezzo.
+        expect([italiano, spagnolo, inglese].flatMap((file) => chiavi.filter((chiave) => Object.hasOwn(file, chiave)))).toStrictEqual([]);
     });
 });

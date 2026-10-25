@@ -75,6 +75,8 @@
     "searchSource.crm.crm.persona": "contacts",
     "searchSource.crm.crm.organizzazione": "companies",
     "searchSource.crm.crm.trattativa": "opportunities",
+    "searchSource.bookings.bookings.prenotazione": "bookings",
+    "searchSource.bookings.bookings.calendario": "calendars",
     "searchContext.home.workspace.membro.ruolo.proprietario": "Owner",
     "searchContext.home.workspace.membro.ruolo.amministratore": "Admin",
     "searchContext.home.workspace.membro.ruolo.membro": "Member",

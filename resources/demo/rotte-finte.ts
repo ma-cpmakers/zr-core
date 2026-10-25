@@ -278,6 +278,15 @@ const risultatiDiProva = [
             { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
         ]
         : []),
+    // Solo con `?prenotazioni=1` (v3.3.0, sprint 74 · T2), dove Bookings è attivo: due prenotazioni, una con `quando` e lo stato,
+    // una con `quando` null, e un calendario, com'è ciò che la rotta vera lascia uscire.
+    ...(prenotazioni
+        ? [
+            { tipo: 'bookings.prenotazione', id: 'uat-b1', titolo: 'UAT Mario Rossi · Personal training', contesto: { quando: { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' }, stato: 'confermata' } },
+            { tipo: 'bookings.prenotazione', id: 'uat-b2', titolo: 'UAT Lucia Verdi · Massaggio', contesto: { quando: null, stato: 'annullata' } },
+            { tipo: 'bookings.calendario', id: 'uat-c1', titolo: 'UAT Sala pesi', contesto: null },
+        ]
+        : []),
     // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il solo `ruolo`, e come codice: è ciò
     // che la rotta vera lascia uscire (mai l'email), e il suo testo nella lingua lo mette la cornice.
     { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } },

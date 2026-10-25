@@ -28,15 +28,20 @@ function registroGiaLetto(?array $voci): void
 /**
  * @return list<array<string, mixed>> le voci del registro dei prodotti, resources/registro/prodotti.json, nel loro ordine; dalla
  *                                    v3.0.0 con le righe delle notifiche di resources/registro/notifiche.json rimesse in `notifiche`
- *                                    della voce del loro prodotto, come le dà `Registro::voci()`
+ *                                    della voce del loro prodotto, e dalla v3.3.0 con le risorse della ricerca di
+ *                                    resources/registro/ricerca.json rimesse in `risorse` (Bookings), come le dà `Registro::voci()`
  */
 function registroDeiProdotti(): array
 {
     $voci = json_decode(File::get(__DIR__.'/../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
     $righe = json_decode(File::get(__DIR__.'/../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
+    $risorse = json_decode(File::get(__DIR__.'/../resources/registro/ricerca.json'), true, flags: JSON_THROW_ON_ERROR);
     foreach ($voci as $indice => $voce) {
         if (isset($righe[$voce['id']])) {
             $voci[$indice]['notifiche'] = $righe[$voce['id']];
+        }
+        if (isset($risorse[$voce['id']])) {
+            $voci[$indice]['risorse'] = $risorse[$voce['id']];
         }
     }
 
@@ -49,12 +54,16 @@ function idDeiProdotti(): array
     return array_values(array_diff(array_column(registroDeiProdotti(), 'id'), ['home']));
 }
 
-/** @return list<string> i tipi di risorsa del registro che la ricerca mostra, `<prodotto>.<tipo>`: ognuno ha un nome in ogni lingua, con questa chiave */
+/**
+ * @return list<string> i tipi di risorsa del registro che la ricerca mostra, `<prodotto>.<tipo>`: ognuno ha un nome in ogni lingua,
+ *                      con questa chiave. Senza quelli di resources/registro/ricerca.json (`fonti` della voce: `tipiDellaRicerca()`),
+ *                      i cui testi sono del pezzo della ricerca
+ */
 function tipiDiRisorsa(): array
 {
     $tipi = [];
     foreach (registroDeiProdotti() as $voce) {
-        foreach ($voce['risorse'] ?? [] as $risorsa) {
+        foreach (isset($voce['fonti']) ? [] : $voce['risorse'] ?? [] as $risorsa) {
             $tipi[] = $voce['id'].'.'.$risorsa['tipo'];
         }
     }
@@ -64,13 +73,50 @@ function tipiDiRisorsa(): array
 
 /**
  * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>`:
+ *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti; senza quelli delle risorse di
+ *                      resources/registro/ricerca.json, i cui testi sono del pezzo della ricerca
+ */
+function codiciDelContestoDellaRicerca(): array
+{
+    $codici = [];
+    foreach (json_decode(File::get(__DIR__.'/../resources/registro/ricerca.json'), true, flags: JSON_THROW_ON_ERROR) as $id => $risorse) {
+        foreach ($risorse as $risorsa) {
+            foreach ($risorsa['codici'] ?? [] as $chiave => $elenco) {
+                foreach ($elenco as $codice) {
+                    $codici[] = $id.'.'.$risorsa['tipo'].'.'.$chiave.'.'.$codice;
+                }
+            }
+        }
+    }
+
+    return $codici;
+}
+
+/**
+ * @return list<string> i tipi delle risorse di resources/registro/ricerca.json (dalla v3.3.0, Bookings), `<prodotto>.<tipo>`:
+ *                      nelle lingue della cornice hanno solo il nome da elenco (`searchSource.`), il resto sta in resources/lingue/ricerca
+ */
+function tipiDellaRicerca(): array
+{
+    $tipi = [];
+    foreach (json_decode(File::get(__DIR__.'/../resources/registro/ricerca.json'), true, flags: JSON_THROW_ON_ERROR) as $id => $risorse) {
+        foreach ($risorse as $risorsa) {
+            $tipi[] = $id.'.'.$risorsa['tipo'];
+        }
+    }
+
+    return $tipi;
+}
+
+/**
+ * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa del suo file, `<voce>.<tipo>.<chiave>.<codice>`:
  *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti
  */
 function codiciDelContesto(): array
 {
     $codici = [];
     foreach (registroDeiProdotti() as $voce) {
-        foreach ($voce['risorse'] ?? [] as $risorsa) {
+        foreach (isset($voce['fonti']) ? [] : $voce['risorse'] ?? [] as $risorsa) {
             foreach ($risorsa['codici'] ?? [] as $chiave => $elenco) {
                 foreach ($elenco as $codice) {
                     $codici[] = $voce['id'].'.'.$risorsa['tipo'].'.'.$chiave.'.'.$codice;

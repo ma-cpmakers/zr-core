@@ -113,9 +113,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 49,4 KB | 9,3 KB |
-| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 49,4 KB | 9,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 49,4 KB | 9,3 KB |
+| solo la cornice, dall'ingresso per le app | 50,6 KB | 17,2 KB | 51,4 KB | 9,8 KB |
+| la cornice e due componenti per nome | 53,9 KB | 18,3 KB | 51,4 KB | 9,8 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,4 KB | 40,6 KB | 51,4 KB | 9,8 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -126,11 +126,11 @@ pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profil
 della campanella (circa 1,3 KB con gzip; dalla `v3.0.0` circa 1,9 KB): ciò che compone le righe delle notifiche e carica le
 frasi, che la cornice chiede con `import()` quando si apre la campanella, non quando si monta, e dalla `v3.0.0` anche le righe
 del registro che dicono dove si apre ogni notifica, con la funzione che le legge. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
-(circa 1,0 KB con gzip): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
+(circa 1,5 KB con gzip dalla `v3.3.0`): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.495 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.575 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -139,9 +139,12 @@ il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle 
 di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 17 byte in più: un modulo
 spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
-libera byte, il tetto riscende). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.199 byte la campanella, 1.666 i rimedi, 1.004 la
-ricerca. Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+libera byte, il tetto riscende). Dalla `v3.3.0` sono 80 byte in più: l'invito della ricerca nomina le prenotazioni e i
+calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre lingue (un'eccezione di zr-pm: la misura
+vera; le loro risorse e i loro testi stanno nel pezzo della ricerca). Hanno
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.199 byte la campanella, 1.666 i rimedi, 1.536 la
+ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 532 nella `v3.3.0`: le prenotazioni e i calendari di
+Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Nella `v3.3.0` è salito di altri
 214: le tre righe di Bookings e la data delle notifiche, col giorno e l'ora o il solo giorno (un'eccezione di zr-pm: la
 misura vera). Dalla `v2.0.0` l'eccezione per i
@@ -1299,6 +1302,19 @@ cornice === null ? pagina : (
   «aree» nell'invito (in inglese «Areas» e «areas», in spagnolo «Áreas» e «áreas»), e «Nuova area», «{who} ha creato l'area…»
   nei titoli delle notifiche; le chiavi, gli id degli eventi (`com.zeiras.board.cartella.*`) e il tipo `board.cartelle` non
   cambiano.
+  Dalla `v3.3.0` la ricerca trova anche le prenotazioni e i calendari di Bookings, dove Bookings è `attivo`: l'invito li
+  nomina dopo le fonti dei moduli che lo precedono nel registro («prenotazioni», «calendari»; in inglese «bookings»,
+  «calendars», in spagnolo «reservas», «calendarios»), e il segnaposto resta quello unico. Una prenotazione sta nel gruppo
+  «Prenotazioni» e un calendario in «Calendari di prenotazione» (in inglese «Bookings» e «Booking calendars», in spagnolo
+  «Reservas» e «Calendarios de reservas»); si aprono in Bookings, `/prenotazioni/{id}` e `/calendari/{id}` nel workspace
+  dei risultati. La seconda riga di una prenotazione dice quando comincia, nella lingua dei testi e nel fuso che il
+  risultato porta, poi lo stato: «mer 4 nov, 10:00 · Confermata». Gli stati sono quattro, `confermata`, `svolta`,
+  `non_presentato` e `annullata` («Confermata», «Svolta», «Non presentato», «Annullata»); un altro codice non si mostra.
+  `quando` arriva dalla parte server solo come `{il, fuso}`, l'istante in UTC con la Z e il nome IANA del fuso, come quello
+  di una notifica: in ogni altra forma non passa, e la seconda riga dice solo lo stato. Le risorse di Bookings non stanno
+  nella sua voce del registro: stanno in `resources/registro/ricerca.json`, e i loro testi in `resources/lingue/ricerca/`,
+  un file per lingua; li legge solo il pezzo della ricerca, e la voce ne ha i tipi in `fonti`, che servono all'invito
+  prima che il pezzo arrivi. Nel registro esportato la voce di Bookings ha quindi `fonti` e non `risorse`.
   Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least
   2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»). Dalla `v1.15.0` alla `v1.16.0` anche il
   segnaposto nominava le fonti, al più tre, e i membri non erano una fonte. Un frontend che ha i due testi nei suoi test li

@@ -6,8 +6,10 @@
 
 import type { ShellSearchResult } from '../zeiras/index';
 import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
-import { nomeDellaVoce, nomePulito, type TestiDellaCornice } from './lingue';
-import { nelWorkspace, prodottoDelRegistro, registro, type CodiceDelContesto, type RisorsaDelProdotto, type TipoDiRisorsa } from './registro';
+import dellaRicerca from '../registro/ricerca.json';
+import inglesi from '../lingue/ricerca/en.json';
+import { linguaDeiTesti, nomeDellaVoce, nomePulito, type TestiDellaCornice } from './lingue';
+import { nelWorkspace, prodottoDelRegistro, registro, type CodiceDelContesto, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
 import type { StatoDellaRicerca } from './cornice';
 import type { chiama, Persona, RisultatoDellaRicerca } from './servizi';
 
@@ -39,9 +41,44 @@ export async function cerca(parola: string, segnale: AbortSignal, persona: Perso
 
 /**
  * Di che voce del registro è ogni tipo di risorsa, e come si mostra: un tipo sta in una voce sola. La voce è un prodotto, o la
- * Dashboard per ciò che non è di un modulo (il membro del workspace).
+ * Dashboard per ciò che non è di un modulo (il membro del workspace). Le risorse di un prodotto stanno nella sua voce, o (dalla
+ * `v3.3.0`, Bookings) in `resources/registro/ricerca.json`, che legge solo questo pezzo, sotto l'id del prodotto.
  */
-const risorsePerTipo = new Map(registro.flatMap((dellaVoce) => (dellaVoce.risorse ?? []).map((risorsa) => [risorsa.tipo, { dellaVoce, risorsa }] as const)));
+const risorsePerTipo = new Map(
+    registro.flatMap((dellaVoce) =>
+        (dellaVoce.risorse ?? (dellaRicerca as Partial<Record<string, RisorsaDelProdotto[]>>)[dellaVoce.id] ?? []).map((risorsa) => [risorsa.tipo, { dellaVoce, risorsa }] as const),
+    ),
+);
+
+/**
+ * I testi delle risorse di `resources/registro/ricerca.json` — il nome del gruppo, `<voce>.<tipo>`, e il testo di ogni codice,
+ * `searchContext.<voce>.<tipo>.<chiave>.<codice>` —: stanno in `resources/lingue/ricerca/`, un file per lingua col codice per
+ * nome come le lingue della cornice, e li legge solo questo pezzo. Il file è quello della lingua dei testi della cornice
+ * (`linguaDeiTesti`): una lingua della cornice che lì non ha il suo file, o un testo che manca o è vuoto, si mostra in inglese.
+ */
+type TestiDellaRicerca = Record<TipoDellaRicerca, string> & Record<`searchContext.${string}`, string>;
+const file = import.meta.glob<Partial<TestiDellaRicerca>>('../lingue/ricerca/*.json', { eager: true, import: 'default' });
+
+/** I testi di una lingua per una riga della ricerca: quelli della cornice e quelli delle risorse di `ricerca.json`. */
+function testiPerLaRiga(lingua: string, t: TestiDellaCornice): Record<string, string> {
+    const scelti: Partial<Record<string, string>> = file[`../lingue/ricerca/${linguaDeiTesti(lingua)}.json`] ?? {};
+
+    return { ...t, ...Object.fromEntries(Object.entries(inglesi as Record<string, string>).map(([chiave, inglese]) => [chiave, scelti[chiave]?.trim() || inglese])) };
+}
+
+/**
+ * La data e l'ora di `quando` (`il`, un istante; `fuso`, il nome IANA in cui si legge) nella lingua dei testi (`linguaDeiTesti`): «mer 4 nov, 10:00», come
+ * il titolo di una notifica. Niente (`undefined`) se non si sa scrivere — non è un oggetto, l'istante non è una data, il fuso
+ * non c'è o il browser non lo conosce —: la data è un di più della seconda riga.
+ */
+function dataDi(quando: any, lingua: string | undefined): string | undefined {
+    // `trim` vuole due testi: senza `fuso` Intl userebbe quello del browser, e senza `il` (o con null) un'altra data.
+    try {
+        return new Intl.DateTimeFormat(lingua, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: quando.fuso.trim() }).format(new Date(quando.il.trim()));
+    } catch {
+        return undefined;
+    }
+}
 
 /**
  * Ciò che unisce due testi in una riga. Non è un testo delle lingue, ed è scritto qui apposta: è il segno che il design system
@@ -61,13 +98,15 @@ const FRA_DUE_TESTI = ' · ';
  * senza codici porta un testo, e si mostra com'è arrivato, pulito come un nome (`nomePulito`: il ruolo di un contatto del CRM). Niente (`undefined`) senza testi,
  * senza `contesto`, o per un tipo che nel registro non ha chiavi.
  */
-function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDelProdotto, t: TestiDellaCornice): string | undefined {
+function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDelProdotto, t: Record<string, string>, lingua: string): string | undefined {
     const chiavi = risorsa.contesto;
     if (typeof contesto !== 'object' || contesto === null || chiavi === undefined) {
         return undefined;
     }
     const presenti = chiavi.flatMap((chiave) => {
-        const testo = nomePulito(Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined);
+        const valore = Object.hasOwn(contesto, chiave) ? (contesto as Record<string, unknown>)[chiave] : undefined;
+        // `quando` non è un testo: è l'inizio di una prenotazione, che si scrive nella lingua e nel suo fuso.
+        const testo = chiave === 'quando' ? dataDi(valore, linguaDeiTesti(lingua)) : nomePulito(valore);
         if (testo === undefined) {
             return [];
         }
@@ -77,7 +116,7 @@ function secondaRiga(contesto: unknown, tipo: TipoDiRisorsa, risorsa: RisorsaDel
             return [testo];
         }
 
-        return codici.includes(testo) ? [t[`searchContext.${tipo}.${chiave}.${testo}` as `searchContext.${CodiceDelContesto}`]] : [];
+        return codici.includes(testo) ? [t[`searchContext.${tipo}.${chiave}.${testo}` as `searchContext.${CodiceDelContesto}`]!] : [];
     });
 
     return presenti.length === 0 ? undefined : presenti.join(FRA_DUE_TESTI);
@@ -106,13 +145,14 @@ function nellaRicerca(risultato: RisultatoDellaRicerca, lingua: string, t: Testi
     const { dellaVoce, risorsa } = trovata;
     const tipo = `${dellaVoce.id}.${risorsa.tipo}` as TipoDiRisorsa;
     const delProdotto = prodottoDelRegistro(dellaVoce.id);
+    const testi = testiPerLaRiga(lingua, t);
 
     return senzaUndefined<ShellSearchResult>({
         // Unico fra i tipi: una board e una cartella possono avere lo stesso id.
         id: `${tipo}.${id}`,
         title,
-        subtitle: secondaRiga(risultato.contesto, tipo, risorsa, t),
-        group: t[tipo],
+        subtitle: secondaRiga(risultato.contesto, tipo, risorsa, testi, lingua),
+        group: testi[tipo],
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: risorsa.icona,
         tone: dellaVoce.tono,

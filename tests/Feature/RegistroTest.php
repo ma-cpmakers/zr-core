@@ -297,8 +297,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`.
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
+            // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`, e (T2) `fonti`, coi tipi delle sue risorse della ricerca, che
+            // `Registro::voci()` rimette in `risorse` da resources/registro/ricerca.json.
+            ['fonti', 'icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
@@ -502,6 +503,8 @@ it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un n
         'presto' => 'boolean',
         'in_arrivo' => 'boolean',
         'risorse?' => 'RisorsaDelProdotto[]',
+        // Sprint 74 · T2 (voce 2549): i tipi delle risorse di resources/registro/ricerca.json, per l'invito della ricerca.
+        'fonti?' => 'string[]',
         // Sprint 21 · T3: le notifiche che aprono la loro risorsa erano `notifiche?`; dalla `v3.0.0` (sprint 70 · T1.4) stanno in
         // resources/registro/notifiche.json, e la voce non ha più il campo.
     ]);
@@ -546,6 +549,30 @@ it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc ch
 it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<prodotto>.<tipo>`: tsc chiede all\'inglese il nome di ognuna (T5.3; sprint 5 · T4.5)', function () {
     expect(tipiDiRisorsa())->toBe(['home.workspace.membro', 'pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'])
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
+});
+
+// Sprint 74 · T2 (voce 2549): le risorse della ricerca di Bookings stanno in resources/registro/ricerca.json, per id del prodotto,
+// e le legge solo il pezzo della ricerca; la voce ne ha i tipi in `fonti`, per l'invito. La parte server le rimette nella voce, in
+// `risorse`: la ricerca ne prende le chiavi di `contesto` come per ogni altra risorsa.
+it('le risorse della ricerca di Bookings stanno in resources/registro/ricerca.json: la voce del file ha i loro tipi in `fonti` e non ha `risorse`, `Registro::voci()` le rimette nella voce, e `TipoDellaRicerca` di registro.ts le elenca (sprint 74 · T2.1-T2.5)', function () {
+    $file = json_decode(File::get(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+    $risorse = json_decode(File::get(__DIR__.'/../../resources/registro/ricerca.json'), true, flags: JSON_THROW_ON_ERROR);
+    $bookings = collect(Registro::voci())->firstWhere('id', 'bookings');
+
+    expect(array_keys($risorse))->toBe(['bookings'])
+        ->and(array_values(array_filter($file, fn (array $voce): bool => isset($voce['fonti']) && isset($voce['risorse']))))->toBe([])
+        ->and(array_column(array_filter($file, fn (array $voce): bool => isset($voce['fonti'])), 'fonti', 'id'))->toBe(['bookings' => ['bookings.prenotazione', 'bookings.calendario']])
+        ->and(array_column($risorse['bookings'], 'tipo'))->toBe($bookings['fonti'])
+        ->and($bookings['risorse'])->toBe([
+            ['tipo' => 'bookings.prenotazione', 'icona' => 'calendar', 'percorso' => '/prenotazioni/{id}', 'contenitore' => false, 'contesto' => ['quando', 'stato'], 'codici' => ['stato' => ['confermata', 'svolta', 'non_presentato', 'annullata']]],
+            ['tipo' => 'bookings.calendario', 'icona' => 'calendar', 'percorso' => '/calendari/{id}', 'contenitore' => false],
+        ])
+        ->and(tipiDellaRicerca())->toBe(['bookings.bookings.prenotazione', 'bookings.bookings.calendario'])
+        ->and(valoriDelTipo('TipoDellaRicerca', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDellaRicerca())
+        // I testi del pezzo: un file per lingua della cornice, con il nome del gruppo e i testi dei codici, e solo quelli.
+        ->and(collect(File::files(__DIR__.'/../../resources/lingue/ricerca'))->map(fn ($f) => $f->getFilename())->sort()->values()->all())->toBe(['en.json', 'es.json', 'it.json'])
+        ->and(collect(['it', 'es', 'en'])->map(fn (string $codice) => array_keys(json_decode(File::get(__DIR__."/../../resources/lingue/ricerca/$codice.json"), true, flags: JSON_THROW_ON_ERROR)))->unique(fn (array $chiavi) => implode(',', $chiavi))->values()->all())
+        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContestoDellaRicerca())]]);
 });
 
 it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4)', function () {

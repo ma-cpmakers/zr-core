@@ -394,26 +394,8 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             'azioni' => $notifica['azioni'] ?? 1, 'board_nome' => $notifica['board']['nome'] ?? null,
-            'quando' => self::quandoDi($notifica['quando'] ?? null),
+            'quando' => Quando::di($notifica['quando'] ?? null),
         ];
-    }
-
-    /**
-     * Il `quando` di una notifica nella sola forma che passa alla pagina — `il` un istante ISO in UTC con la Z, `fuso` un nome
-     * IANA, e nessun'altra chiave —, o null.
-     *
-     * @return array{il: string, fuso: string}|null
-     */
-    private static function quandoDi(mixed $quando): ?array
-    {
-        if (! is_array($quando) || (array_keys($quando) !== ['il', 'fuso'] && array_keys($quando) !== ['fuso', 'il'])
-            || ! is_string($quando['il']) || ! is_string($quando['fuso'])
-            || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/D', $quando['il']) !== 1
-            || preg_match('#^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$#D', $quando['fuso']) !== 1) {
-            return null;
-        }
-
-        return ['il' => $quando['il'], 'fuso' => $quando['fuso']];
     }
 
     /**
