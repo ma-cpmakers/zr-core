@@ -15,6 +15,9 @@
 function fuocoNelPannelloDelleNotifiche(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-shell .zr-top-actions > .zr-notif')) {
         aggiunto.querySelector<HTMLElement>('.zr-notif-tabs [role="tab"][aria-selected="true"]')?.focus();
+        // Testa e piede del pannello sono un `<header>` e un `<footer>` dentro la pagina: axe li legge come un secondo banner e un
+        // contentinfo (`landmark-*`). Col ruolo neutro restano com'erano, fuori dai punti di riferimento (voce #2627).
+        aggiunto.querySelectorAll('header,footer').forEach((parte) => parte.setAttribute('role', 'none'));
     }
 }
 
@@ -186,6 +189,20 @@ function barraInert(cambio: MutationRecord): void {
     }
 }
 
+/**
+ * Sotto 720 px la ricerca aperta — col fuoco nel campo, o coi risultati — copre la barra in alto, e la campanella e il profilo
+ * restano bersagli coperti a metà (axe `target-size`): finché la ricerca la copre, le azioni della barra non si vedono e non
+ * prendono il fuoco, e tornano appena si chiude. Dove `matchMedia` non c'è non si nasconde niente (voce #2627).
+ */
+function azioniSottoLaRicerca(): void {
+    const ricerca = document.querySelector('.zr-shell .zr-top > .zr-search');
+    const azioni = ricerca?.parentElement?.querySelector<HTMLElement>(':scope > .zr-top-actions');
+
+    if (azioni) {
+        azioni.style.visibility = typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) ? 'hidden' : '';
+    }
+}
+
 /** La `naviga` della cornice montata: gliela dà la cornice quando chiede questo pezzo. */
 let naviga: ((indirizzo: string) => void) | undefined;
 let nomeDelContenuto = '';
@@ -258,6 +275,9 @@ document.addEventListener('keydown', tabRestaDentro);
 document.addEventListener('click', clicSullaBarra);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);
+// La ricerca si apre e si chiude coi suoi risultati, e lo vede l'osservatore; il campo che perde il fuoco dopo la chiusura no.
+// All'uscita il fuoco non è ancora arrivato dove va: si guarda al giro dopo.
+document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;
@@ -275,6 +295,7 @@ new MutationObserver((cambi) => {
             avatarFuoriDalMenu(aggiunto);
         });
     }
+    azioniSottoLaRicerca();
     fuocoAChiLoAveva();
     contenuto();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
