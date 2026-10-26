@@ -60,29 +60,10 @@ function fuocoAChiLoAveva(): void {
     }
 }
 
-/**
- * Le voci «Presto» della barra laterale e del menu Moduli non portano da nessuna parte (`aria-disabled`), ma fermavano il Tab, e un
- * lettore di schermo le leggeva «CRMPresto» (riga 6 delle richieste al design system): escono dal giro del Tab e il loro nome è
- * quello della voce e lo stato, separati. Una voce che smette di essere «Presto» torna com'era: l'`AppShell` non dà a queste voci
- * né `tabindex` né un nome suo. Si rifà a ogni cambio della pagina e quando il pezzo arriva. Provvisorio, finché l'`AppShell` non
- * lo fa da sé.
- */
-function vociPresto(): void {
-    document.querySelectorAll('.zr-shell a.zr-nav-item').forEach((voce) => {
-        if (voce.matches('.is-soon')) {
-            voce.setAttribute('tabindex', '-1');
-            voce.setAttribute('aria-label', [...voce.children].map((parte) => parte.textContent).filter(Boolean).join(', '));
-        } else {
-            voce.removeAttribute('tabindex');
-            voce.removeAttribute('aria-label');
-        }
-    });
-}
-
 /** Ciò che questo pezzo rifà a ogni gruppo di cambi della pagina: l'osservatore è quello del pezzo dei rimedi. */
 export function aOgniCambio(): void {
     fuocoAChiLoAveva();
-    vociPresto();
+    fuocoAlPiu();
 }
 
 /** Un `Dialog` aperto che non è un'anteprima, dentro il suo velo. */
@@ -184,32 +165,60 @@ function fuoriDalSelettore(uscita: FocusEvent): void {
     }
 }
 
+/**
+ * Scelta una voce del menu «+» con Invio o con lo spazio, il menu esce dal documento con dentro l'elemento attivo e il fuoco
+ * restava alla pagina: torna al «+», come dopo Esc (riga 11 delle richieste al design system). Se la voce dà il fuoco a un
+ * altro elemento non si toglie, e con un dialogo aperto — la voce lo ha aperto — non va al «+» dietro il velo. Il menu è quello
+ * che il «+» della cornice tiene aperto. Nel pezzo dei rimedi fino alla v3.8.1, che ha fatto posto lì alle voci «Presto»: se la
+ * scelta è il primo tasto, che chiede il pezzo, o se il pezzo non arriva, il fuoco resta alla pagina com'era. Se la voce apre il
+ * dialogo più tardi (dopo una richiesta, o un dialogo a richiesta) il fuoco va al «+» prima: il README lo dice. Provvisorio,
+ * finché il `Menu` non lo fa da sé.
+ */
+let dalPiu: [menu: Element, piu: HTMLElement] | undefined;
+
+function sceltaDalPiu(tasto: KeyboardEvent): void {
+    const voce = tasto.target as Element;
+    const piu = document.querySelector<HTMLElement>('.zr-shell .zr-create[aria-expanded="true"]');
+
+    if ((tasto.key === 'Enter' || tasto.key === ' ') && piu && voce.matches?.('.zr-shell .zr-menu > [role="menuitem"]')) {
+        dalPiu = [voce.parentElement!, piu];
+    }
+}
+
+/** Uscito il menu del «+» scelto con la tastiera, il fuoco che non è di nessuno torna al «+». */
+function fuocoAlPiu(): void {
+    if (dalPiu && !dalPiu[0].isConnected) {
+        if (document.activeElement === document.body && !document.querySelector(DIALOGO_APERTO)) {
+            dalPiu[1].focus();
+        }
+        dalPiu = undefined;
+    }
+}
+
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
- * dice se qualcun altro lo aveva già fermato. Un Tab senza Ctrl, Alt né Meta il pezzo dei rimedi lo ferma, perché il fuoco non
- * esca da un dialogo prima del rimedio: se nessun rimedio lo tiene, il fuoco va dove l'avrebbe portato il browser, alla
- * fermata dopo l'elemento attivo nell'ordine della pagina (o prima, con Maiusc). Un `tabindex` da 1 in su non cambia
+ * dice se qualcun altro lo aveva già fermato; `tab`, se è il Tab che il pezzo dei rimedi ha fermato perché qualcuno trattiene il
+ * fuoco. Se nessun rimedio lo tiene, il fuoco va dove l'avrebbe portato il browser: alla prima fermata dopo l'elemento attivo
+ * nell'ordine della pagina (o all'ultima prima, con Maiusc), anche quando l'attivo non è una fermata (R1 della revisione 381).
+ * Un altro tasto non sposta il fuoco, nemmeno se qualcuno lo ha fermato (R3). Un `tabindex` da 1 in su non cambia
  * quell'ordine, qui.
  */
-export function ripeti(tasto: KeyboardEvent, fermato: boolean): void {
+export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): void {
     const copia = new KeyboardEvent('keydown', tasto);
+    const attivo = document.activeElement ?? document.body;
 
     Object.defineProperty(copia, 'target', { value: tasto.target });
     if (fermato) {
         copia.preventDefault();
     }
     gestori.forEach((gestore) => gestore(copia));
-    if (tasto.defaultPrevented && !fermato && !copia.defaultPrevented) {
-        const giro = [...document.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
-        const qui = giro.indexOf(document.activeElement as HTMLElement);
-
-        giro[tasto.shiftKey ? (qui < 0 ? giro.length : qui) - 1 : qui + 1]?.focus();
+    if (tab && !copia.defaultPrevented) {
+        [...document.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter((fermata) => eUnaFermata(fermata) && attivo.compareDocumentPosition(fermata) & (tasto.shiftKey ? Node.DOCUMENT_POSITION_PRECEDING : Node.DOCUMENT_POSITION_FOLLOWING)).at(tasto.shiftKey ? -1 : 0)?.focus();
     }
 }
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
 document.addEventListener('focusout', fuoriDalSelettore);
-vociPresto();

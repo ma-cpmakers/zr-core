@@ -4306,7 +4306,7 @@ it('il README dice, in «Passare alla v3.8», versione per versione che cosa cam
     'la v3.6.0, che cosa si tocca' => ['`createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte'],
     'la v3.6.1' => ['| `v3.6.1` |'],
     'la v3.7.0' => ['| `v3.7.0` |'],
-    'la v3.8.0, nei test' => ['un caso che preme Tab in un dialogo, o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto)'],
+    'la v3.8.0, nei test' => ['un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto)'],
     'la v3.8.1, nei test' => ['Un caso che si aspettava il contrario va riletto'],
     'più versioni in un colpo' => ['un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano'],
     'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
@@ -5471,7 +5471,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.296 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.336 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
     'i pesi: i 404 byte della v3.7.0' => ['pesi', 'Dalla `v3.7.0` è sceso di 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d\'ingresso, nel pezzo a richiesta degli avvisi'],
     'i pesi: il settimo' => ['pesi', 'Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi (circa 0,8 KB con gzip)'],

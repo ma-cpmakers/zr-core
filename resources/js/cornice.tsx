@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
-import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
@@ -415,6 +415,9 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
     );
 }
 
+/** Il pezzo dei testi degli avvisi: chi lo chiede di nuovo dopo un fallimento lo chiede come gli altri pezzi a richiesta. */
+const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
+
 /**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
  * niente di lì. Ogni modulo del registro si apre come uno `disponibile`, e se in quel workspace non è attivo lo dice il modulo,
@@ -517,12 +520,21 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     const t = testi(lingua);
     // I testi dei due avvisi stanno in un pezzo a richiesta (dalla `v3.7.0`), chiesto la prima volta che la cornice è ridotta
     // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
+    // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
+    // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
     const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
     useLayoutEffect(() => {
-        if (ridotta === 'error') {
-            import('./avvisi').then(setAvvisi, () => undefined);
+        if (ridotta === 'error' && !avvisi) {
+            const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
+            const ogni = setInterval(chiedi, 5e3);
+
+            chiedi();
+
+            return () => clearInterval(ogni);
         }
-    }, [ridotta]);
+
+        return undefined;
+    }, [ridotta, avvisi]);
     const a = avvisi?.testiDegliAvvisi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci

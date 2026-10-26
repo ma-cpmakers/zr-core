@@ -147,15 +147,18 @@ del registro che dicono dove si apre ogni notifica, con la funzione che le legge
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi
 (circa 0,8 KB con gzip): i testi dei due avvisi della cornice ridotta, nelle tre lingue — chi non ha accettato i documenti
 legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. L'ottavo, dalla `v3.8.0`, è il
-pezzo della tastiera (circa 1,2 KB con gzip): i rimedi che servono solo a chi preme un tasto — «Tab dentro un dialogo aperto» e
-Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip), che lo
+pezzo della tastiera (circa 1,2 KB con gzip nella `v3.8.0`, circa 1,4 KB dalla `v3.8.1`): i rimedi che servono solo a chi preme un tasto — «Tab dentro un dialogo aperto» e
+Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip nella `v3.8.0`, ed è a circa 1,8 KB dalla `v3.8.1`), che lo
 chiede al primo tasto premuto: chi usa solo il mouse non lo scarica. I tasti premuti prima che arrivi non si perdono: il pezzo
-dei rimedi li tiene e glieli ripete quando arriva, e un Tab lo ferma, perché il fuoco non esca da un dialogo prima del rimedio
-(arrivato il pezzo, il fuoco va dove l'avrebbe portato il browser, o resta nel dialogo). Un tasto premuto prima che arrivi
+dei rimedi li tiene e glieli ripete quando arriva. Un Tab lo ferma quando un `Dialog` aperto, o un `DetailPanel` a tutta pagina
+sotto 720 px, trattiene il fuoco, perché il fuoco non ne esca prima del rimedio (arrivato il pezzo, il fuoco va dove l'avrebbe
+portato il browser, o resta nel dialogo), e i tasti premuti dopo quel Tab, finché il pezzo non arriva, si fermano: arriverebbero
+all'elemento da cui il Tab voleva uscire. Altrove il Tab resta del browser (dalla `v3.8.1`: nella `v3.8.0` si fermava in tutta la
+pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto premuto prima che arrivi
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.296 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.336 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -173,7 +176,8 @@ margine: un'eccezione di zr-pm), e altri 25: la ricerca che non resta in caricam
 che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropartita, zr-pm). Dalla `v3.7.0` è sceso di
 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
 l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
-alzare la soglia; il margine sta nel peso tolto, non nel tetto). Hanno
+alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` è salito di 40 byte, alla misura più 20: la
+cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -331,8 +335,8 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i menu della barra in alto sopra il pannello di dettaglio («Esci» si clicca a pannello aperto); i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | l'ora di una notifica si legge corta («10 min fa», non «10 minuti fa»); scritta una parola, il pannello della ricerca è in caricamento fino alla risposta: un caso che cerca «Nessun risultato» la aspetta; con la ricerca aperta c'è una fermata del Tab in più, il pannello; un clic su una voce del percorso di questa origine chiama `naviga` e non cambia `location` | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
 | `v3.6.1` | le scadenze di una scheda e il promemoria di una To-do aprono la scheda e la To-do; l'invito accettato apre Impostazioni › Membri della Dashboard | niente | un caso che apre una di quelle notifiche e si aspetta la pagina delle notifiche trova la scheda, la To-do o Impostazioni › Membri | un clic su quelle notifiche apre la pagina, non più la pagina delle notifiche |
 | `v3.7.0` | i testi dei due avvisi della cornice ridotta (documenti da accettare, Zeiras che non risponde) in un pezzo a richiesta, fuori dal JS d'ingresso: 403 byte in meno, tetto 17.296 | niente | un caso che cerca uno dei due avvisi subito dopo il disegno lo aspetta (`await act(() => vi.dynamicImportSettled())`) | l'avviso compare con l'accettazione richiesta, e senza backoffice («Zeiras non risponde») |
-| `v3.8.0` | i rimedi della sola tastiera (il Tab che resta dentro un `Dialog` aperto, Esc dal pannello della ricerca) in un pezzo a richiesta, chiesto al primo tasto: chi usa solo il mouse non lo scarica | niente | il primo tasto premuto porta il pezzo: un caso che preme Tab in un dialogo, o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto); il tasto non si perde, arriva quando arriva il pezzo | Tab in un dialogo aperto resta dentro anche come primo tasto della pagina |
-| `v3.8.1` | rimedi di tastiera e di lettore di schermo: le voci «Presto» fuori dal giro del Tab, col nome «CRM, Presto»; nel selettore dei workspace Home e Fine, e il fuoco che esce lo chiude; il fuoco che esce dalla ricerca la chiude, e la parola resta; scelto un risultato il campo si svuota; scelta una voce del «+» con la tastiera il fuoco torna al «+»; nelle notifiche col nome nel titolo l'avatar è nascosto ai lettori di schermo | niente | dopo il primo tasto (il pezzo della tastiera): una voce «Presto» non ferma il Tab e il suo nome è «<voce>, Presto»; col selettore aperto il fuoco che va fuori lo chiude. Dal montaggio (il pezzo dei rimedi): il fuoco che esce dalla ricerca la chiude; dopo un risultato il campo è vuoto; dopo una voce del «+» scelta con Invio il fuoco è sul «+»; l'avatar di una notifica col nome nel titolo non si trova per ruolo. Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: S.1, S.2, P.2, le righe `.7` e `.8` della ricerca |
+| `v3.8.0` | i rimedi della sola tastiera (il Tab che resta dentro un `Dialog` aperto, Esc dal pannello della ricerca) in un pezzo a richiesta, chiesto al primo tasto: chi usa solo il mouse non lo scarica | niente | il primo tasto premuto porta il pezzo: un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto); il tasto non si perde, arriva quando arriva il pezzo | Tab in un dialogo aperto resta dentro anche come primo tasto della pagina |
+| `v3.8.1` | rimedi di tastiera e di lettore di schermo: le voci «Presto» fuori dal giro del Tab, col nome «CRM, Presto»; nel selettore dei workspace Home e Fine, e il fuoco che esce lo chiude; il fuoco che esce dalla ricerca la chiude, e la parola resta; scelto un risultato il campo si svuota; scelta una voce del «+» con la tastiera il fuoco torna al «+»; nelle notifiche col nome nel titolo l'avatar è nascosto ai lettori di schermo; il primo Tab si ferma solo con un dialogo aperto; il pezzo degli avvisi che non arriva si richiede | niente | dopo il primo tasto (il pezzo della tastiera): col selettore aperto il fuoco che va fuori lo chiude; dopo una voce del «+» scelta con Invio il fuoco è sul «+». Dal montaggio (il pezzo dei rimedi): una voce «Presto» non ferma il Tab e il suo nome è «<voce>, Presto»; il fuoco che esce dalla ricerca la chiude; dopo un risultato il campo è vuoto; un Tab fuori da un dialogo non aspetta più il pezzo; l'avatar di una notifica col nome nel titolo non si trova per ruolo. Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: S.1, S.2, P.2, le righe `.7` e `.8` della ricerca |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -851,8 +855,9 @@ cornice === null ? pagina : (
   trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene (un menu che sta
   altrove nella pagina, senza il fuoco, non cambia niente); non interviene
   nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
-  Dalla `v3.8.0` il rimedio sta nel pezzo della tastiera, che arriva al primo tasto premuto: un Tab premuto prima si ferma,
-  e arrivato il pezzo il fuoco va nel dialogo, o dove l'avrebbe portato il browser.
+  Dalla `v3.8.0` il rimedio sta nel pezzo della tastiera, che arriva al primo tasto premuto: un Tab premuto prima, con un
+  dialogo aperto, si ferma, e arrivato il pezzo il fuoco va nel dialogo, o dove l'avrebbe portato il browser, anche da un
+  elemento fuori dal giro come il titolo del dialogo; i tasti premuti dopo quel Tab, prima del pezzo, si fermano (dalla `v3.8.1`).
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
   `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
@@ -897,7 +902,8 @@ cornice === null ? pagina : (
   `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). Dalla `v3.8.1`, in una notifica il cui titolo dice già il
   nome di chi ha fatto, l'avatar con quel nome è nascosto ai lettori di schermo (`aria-hidden`): prima il nome si sentiva due
   volte, dall'avatar e dal titolo; dove il titolo non lo dice — una frase senza chi, un nome tagliato — l'avatar resta com'è, e
-  un test del modulo che cerca per ruolo l'avatar di una notifica col nome nel titolo non lo trova più. A 720 px o meno, finché la ricerca
+  un test del modulo che cerca per ruolo l'avatar di una notifica col nome nel titolo non lo trova più. Il nome si cerca intero,
+  come la riga lo scrive: l'avatar di «Ada» resta in una notifica di «Adamo». A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
   all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.8.1` il fuoco che esce dalla
@@ -916,19 +922,23 @@ cornice === null ? pagina : (
 - **Scelta una voce del «+» con la tastiera, il fuoco torna al «+»**: dalla `v3.8.1`, scelta una voce del menu «+» con Invio o
   con lo spazio, il menu si chiude, la voce fa la sua parte e il fuoco torna sul «+», come dopo Esc: prima restava alla pagina, e
   il Tab ripartiva dall'inizio. Se la voce dà il fuoco a un altro elemento — un dialogo che si apre, un campo — resta lì, e
-  con un dialogo aperto dalla voce non va al «+» dietro il velo. Il modulo non deve fare niente. Sta nel pezzo dei rimedi, non
-  in quello della tastiera, che è al suo tetto, ed è provvisorio: quando il `Menu` del design system lo fa da sé (riga 11 delle
-  richieste al design system) si toglie, e se il pezzo non arriva il fuoco resta alla pagina com'era.
+  con un dialogo aperto dalla voce non va al «+» dietro il velo. Un dialogo che la voce apre più tardi — dopo una richiesta, o un
+  dialogo a richiesta — trova il fuoco già sul «+», dietro il velo: in quel caso il fuoco nel dialogo lo dà il modulo. Il modulo
+  non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
+  (riga 11 delle richieste al design system) si toglie, e se il pezzo non arriva, o se la scelta è il primo tasto premuto, il
+  fuoco resta alla pagina com'era.
 - **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
   portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
   schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della
   cornice. Una voce che smette di essere «Presto» torna com'era. Il modulo non deve fare niente; un test del modulo che col Tab
-  raggiunge una voce «Presto» va riletto. Sta nel pezzo della tastiera, che arriva al primo tasto: prima del primo tasto le voci
-  sono quelle dell'`AppShell`. È provvisorio: quando l'`AppShell` lo fa da sé (riga 6 delle richieste al design system) si toglie.
+  raggiunge una voce «Presto» va riletto. Sta nel pezzo dei rimedi, che arriva quando la cornice si monta: il nome lo sente
+  anche chi usa un lettore di schermo col tocco, senza un tasto. Tocca solo le voci della barra laterale: un collegamento della
+  pagina con la classe `zr-nav-item` resta com'è. È provvisorio: quando l'`AppShell` lo fa da sé (riga 6 delle richieste al design system) si toglie.
 - **Home, Fine e il Tab nel selettore dei workspace**: dalla `v3.8.1`, col selettore «Azienda › workspace» aperto Home porta il
   fuoco alla prima voce e Fine all'ultima (prima non facevano niente; le frecce le muove l'`AppShell`), e il fuoco che va a un
   elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
   resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
+  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina.
   Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
@@ -1596,7 +1606,9 @@ cornice === null ? pagina : (
   `acceptanceOff`). Dalla `v3.7.0` stanno in `resources/lingue/avvisi/`, coi tre di «Zeiras non risponde», e non nel JS
   d'ingresso: la cornice li chiede in un pezzo a richiesta quando passa a uno dei due stati, e l'avviso, con la frase di
   campanella e ricerca, c'è quando il pezzo è arrivato; fino ad allora campanella e ricerca, già spente, dicono i testi di
-  sempre. Un caso di un frontend che cerca l'avviso subito dopo il disegno prima lo aspetta:
+  sempre. Se il pezzo non arriva — la rete, o un rilascio che ha tolto i file coi nomi di prima mentre la scheda resta aperta —,
+  dalla `v3.8.1` la cornice lo richiede ogni 5 secondi, con l'attesa degli altri pezzi a richiesta, finché resta ridotta e la
+  scheda è in primo piano. Un caso di un frontend che cerca l'avviso subito dopo il disegno prima lo aspetta:
   `await act(() => vi.dynamicImportSettled())`. Una lingua nuova porta anche il suo file degli avvisi; senza, gli avvisi
   sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».

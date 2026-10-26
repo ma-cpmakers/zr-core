@@ -31,11 +31,32 @@ function fuocoNelPannelloDelleNotifiche(aggiunto: Node): void {
 function avatarGiaNelTitolo(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement && aggiunto.closest('.zr-shell .zr-top-actions > .zr-notif')) {
         aggiunto.parentElement?.querySelectorAll('.zr-notif-item > .zr-avatar').forEach((avatar) => {
-            if (avatar.nextElementSibling?.firstElementChild?.textContent?.includes(avatar.getAttribute('aria-label')!)) {
+            if (avatar.nextElementSibling?.firstElementChild?.textContent?.includes(`\u2068${avatar.getAttribute('aria-label')}\u2069`)) {
                 avatar.setAttribute('aria-hidden', 'true');
             }
         });
     }
+}
+
+/**
+ * Le voci «Presto» della barra laterale e del menu Moduli non portano da nessuna parte (`aria-disabled`), ma fermavano il Tab, e un
+ * lettore di schermo le leggeva «CRMPresto» (riga 6 delle richieste al design system): escono dal giro del Tab e il loro nome è
+ * quello della voce e lo stato, separati. Una voce che smette di essere «Presto» torna com'era: l'`AppShell` non dà a queste voci
+ * né `tabindex` né un nome suo. Sta qui e non nel pezzo di tastiera: il nome serve anche a chi non preme un tasto che arrivi alla
+ * pagina (R4 della revisione 381). Solo le voci della barra laterale, dove stanno barra e menu Moduli: un collegamento della
+ * pagina con la stessa classe resta com'è (R9). Si rifà a ogni cambio della pagina e quando il pezzo arriva. Provvisorio,
+ * finché l'`AppShell` non lo fa da sé.
+ */
+function vociPresto(): void {
+    document.querySelectorAll('.zr-shell > .zr-side a.zr-nav-item').forEach((voce) => {
+        if (voce.matches('.is-soon')) {
+            voce.setAttribute('tabindex', '-1');
+            voce.setAttribute('aria-label', [...voce.children].map((parte) => parte.textContent).filter(Boolean).join(', '));
+        } else {
+            voce.removeAttribute('tabindex');
+            voce.removeAttribute('aria-label');
+        }
+    });
 }
 
 /**
@@ -220,34 +241,6 @@ function sceltoUnRisultato(evento: Event): void {
 }
 
 /**
- * Scelta una voce del menu «+» con Invio o con lo spazio, il menu esce dal documento con dentro l'elemento attivo e il fuoco
- * restava alla pagina: torna al «+», come dopo Esc (riga 11 delle richieste al design system). Se la voce dà il fuoco a un
- * altro elemento non si toglie, e con un dialogo aperto — la voce lo ha aperto — non va al «+» dietro il velo. Il menu è quello
- * che il «+» della cornice tiene aperto. Sta qui e non nel pezzo di tastiera, che è al suo tetto: è un tasto premuto con questo
- * pezzo già in pagina, e se il pezzo non arriva il fuoco resta alla pagina com'era. Provvisorio, finché il `Menu` non lo fa da sé.
- */
-let dalPiu: [menu: Element, piu: HTMLElement] | undefined;
-
-function sceltaDalPiu(tasto: KeyboardEvent): void {
-    const voce = tasto.target as Element;
-    const piu = document.querySelector<HTMLElement>('.zr-shell .zr-create[aria-expanded="true"]');
-
-    if ((tasto.key === 'Enter' || tasto.key === ' ') && piu && voce.matches?.('.zr-shell .zr-menu > [role="menuitem"]')) {
-        dalPiu = [voce.parentElement!, piu];
-    }
-}
-
-/** Uscito il menu del «+» scelto con la tastiera, il fuoco che non è di nessuno torna al «+». */
-function fuocoAlPiu(): void {
-    if (dalPiu && !dalPiu[0].isConnected) {
-        if (document.activeElement === document.body && !document.querySelector(DIALOGO_APERTO)) {
-            dalPiu[1].focus();
-        }
-        dalPiu = undefined;
-    }
-}
-
-/**
  * Col fuoco che esce dalla ricerca — dal campo o dal suo pannello — verso un altro elemento, la ricerca restava aperta e copriva
  * il titolo della pagina (righe 7 e 90 delle richieste al design system): si chiude con Esc dal campo, come la chiude una
  * persona, e la parola resta. Fra campo e pannello non si chiude, e nemmeno quando il fuoco lascia la finestra. Solo la ricerca
@@ -272,25 +265,33 @@ export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: t
 
 /** Il pezzo di tastiera, quando è arrivato. */
 let tastiera: typeof import('./tastiera') | undefined;
-/** I tasti premuti prima che arrivi, ognuno con «qualcun altro lo aveva già fermato». */
-const tasti: [KeyboardEvent, boolean][] = [];
+/** I tasti premuti prima che arrivi, ognuno con «qualcun altro lo aveva già fermato» e «è il Tab che si è fermato qui». */
+const tasti: [KeyboardEvent, boolean, boolean][] = [];
+/** Un Tab si è fermato qui: i tasti che arrivano dopo di lui, prima del pezzo, si fermano anche loro. */
+let tenuto = false;
 
 /**
  * Il primo tasto premuto chiede il pezzo di tastiera (`tastiera.ts`), e i tasti che arrivano prima di lui si tengono: quando
  * arriva li ripete (zr-pm, 26/10/2026: il primo tasto non si perde). Un Tab senza Ctrl, Alt né Meta che nessuno ha fermato si
- * ferma, perché il fuoco non esca da un dialogo prima del rimedio: è il pezzo a spostarlo, quando arriva. In ascolto sulla
- * finestra, cioè dopo il documento, la pagina e l'`AppShell`. Se il pezzo non arriva i tasti non si tengono più, e quelli
- * tenuti restano fermi.
+ * ferma solo quando qualcuno trattiene il fuoco — un `Dialog` aperto, o un `DetailPanel` a tutta pagina sotto 720 px —, perché
+ * il fuoco non ne esca prima del rimedio: è il pezzo a spostarlo, quando arriva. Altrove il Tab resta del browser, che sa da
+ * dove partire anche dopo un clic a metà pagina (R1 della revisione 381). I tasti premuti dopo un Tab fermato, finché il pezzo
+ * non arriva, si fermano: arriverebbero all'elemento da cui il Tab voleva uscire (R2). In ascolto sulla finestra, cioè dopo il
+ * documento, la pagina e l'`AppShell`. Se il pezzo non arriva i tasti non si tengono più, e quelli tenuti restano fermi.
  */
 function primoTasto(tasto: KeyboardEvent): void {
-    if (tasti.push([tasto, tasto.defaultPrevented]) < 2) {
+    const fermato = tasto.defaultPrevented;
+    const tab = !tenuto && !fermato && tasto.key === 'Tab' && !(tasto.ctrlKey || tasto.altKey || tasto.metaKey) && conLaCornice()
+        && !!(document.querySelector(DIALOGO_APERTO) || (self.matchMedia?.('(max-width: 720px)').matches && document.querySelector('.zr-detail:not(.is-inline)')));
+
+    if (tasti.push([tasto, fermato, tab]) < 2) {
         void import('./tastiera').then((arrivato) => {
             removeEventListener('keydown', primoTasto);
             tastiera = arrivato;
-            tasti.forEach((tenuto) => arrivato.ripeti(...tenuto));
+            tasti.forEach((premuto) => arrivato.ripeti(...premuto));
         }, () => removeEventListener('keydown', primoTasto));
     }
-    if (tasto.key === 'Tab' && !(tasto.ctrlKey || tasto.altKey || tasto.metaKey)) {
+    if ((tenuto ||= tab)) {
         tasto.preventDefault();
     }
 }
@@ -299,7 +300,6 @@ addEventListener('keydown', primoTasto);
 document.addEventListener('click', clicSullaBarra);
 document.addEventListener('click', sceltoUnRisultato, true);
 document.addEventListener('keydown', sceltoUnRisultato, true);
-document.addEventListener('keydown', sceltaDalPiu);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);
 document.addEventListener('focusout', fuoriDallaRicerca);
@@ -326,10 +326,11 @@ new MutationObserver((cambi) => {
     }
     azioniSottoLaRicerca();
     tastiera?.aOgniCambio();
-    fuocoAlPiu();
+    vociPresto();
     contenuto();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
 
+vociPresto();
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
