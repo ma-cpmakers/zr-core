@@ -161,13 +161,25 @@ function dialogoSopraIlPannello(aggiunto: Node): void {
 }
 
 /**
+ * Ciò che entra fra le azioni della barra in alto: i due menu che la barra apre, il profilo e le notifiche, quelli che
+ * l'`AppShell` scrive lì e non elementi della pagina con la stessa classe (le `actions` del modulo, se entrano dopo, prendono
+ * lo stesso gradino, e stanno comunque nella barra, sopra cui il pannello non va). I pulsanti ci sono già quando la cornice si
+ * monta, e non si toccano.
+ *
  * Nel menu del profilo aperto l'avatar dell'intestazione è un `role="img"` dentro un `role="menu"`, dove un'immagine non è
  * ammessa: axe lo dà critico (`aria-required-children`). Il nome e l'email stanno scritti accanto, quindi l'avatar si nasconde
- * e basta; il menu è quello che l'`AppShell` scrive nella barra in alto, non un elemento della pagina con la stessa classe.
+ * e basta; gli avatar delle notifiche restano come sono.
+ *
+ * Tutti e due stanno a `--z-dropdown`, e un `DetailPanel` non modale, che comincia sotto la barra, a `--z-dialog`: col pannello
+ * aperto finivano sotto, e «Esci» non si cliccava col mouse (riga 102 delle richieste al design system). Aperti, salgono di un
+ * gradino sopra il pannello, col token, e restano sotto i dialoghi e il cassetto (`--z-dialog` + 2). Sotto 720 px il pannello
+ * è modale, a tutto schermo e allo stesso gradino, e viene dopo nel documento: copre la barra come prima. Si toglie quando il
+ * design system mette i menu della barra sopra il pannello.
  */
 function avatarFuoriDalMenu(aggiunto: Node): void {
-    if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-shell .zr-top-actions > .zr-profile-menu')) {
-        aggiunto.querySelector('.zr-avatar')?.setAttribute('aria-hidden', 'true');
+    if (aggiunto instanceof HTMLElement && aggiunto.matches('.zr-top-actions > *')) {
+        aggiunto.style.setProperty('z-index', 'calc(var(--z-dialog) + 1)');
+        aggiunto.querySelector('.zr-profile-head .zr-avatar')?.setAttribute('aria-hidden', 'true');
     }
 }
 

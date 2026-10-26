@@ -9083,6 +9083,44 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
     });
 });
 
+// Riga 102 delle richieste al design system (zr-pm-07, 26/10/2026). Il `DetailPanel` non modale sta a `--z-dialog` e i menu
+// della barra in alto a `--z-dropdown`: col pannello aperto il menu del profilo e il pannello delle notifiche finivano sotto,
+// e «Esci» non si cliccava col mouse. Aperti, la cornice li alza di un gradino sopra il pannello, col token (in un DOM senza
+// geometria si guarda lo stile scritto; la prova che il clic arriva è in `scripts/uat-cornice.mjs`).
+describe('i menu della barra in alto stanno sopra il pannello di dettaglio (riga 102 delle richieste)', () => {
+    const SOPRA_IL_PANNELLO = 'calc(var(--z-dialog) + 1)';
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+
+    it('aperti, il menu del profilo e il pannello delle notifiche hanno il gradino sopra il pannello', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+        expect(uno('.zr-top-actions > .zr-profile-menu')?.style.getPropertyValue('z-index')).toBe(SOPRA_IL_PANNELLO);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-top-actions > .zr-pop')?.style.getPropertyValue('z-index')).toBe(SOPRA_IL_PANNELLO);
+    });
+
+    it('i pulsanti della barra e un menu nella pagina restano come sono', async () => {
+        await laCornice();
+        const nellaPagina = document.createElement('div');
+        nellaPagina.innerHTML = '<div class="zr-menu" role="menu"></div>';
+
+        await clic(uno('.zr-avatar-btn'));
+        await act(async () => {
+            uno('.zr-main')?.append(nellaPagina.firstElementChild as HTMLElement);
+        });
+
+        expect(uno('.zr-bell')?.style.getPropertyValue('z-index')).toBe('');
+        expect(uno('.zr-avatar-btn')?.style.getPropertyValue('z-index')).toBe('');
+        expect(uno('.zr-main > .zr-menu')?.style.getPropertyValue('z-index')).toBe('');
+    });
+});
+
 // Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: senza
 // questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
 // la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei

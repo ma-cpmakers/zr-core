@@ -313,12 +313,12 @@ controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer upda
 | `v3.3.0` | `resources/css/zeiras.css`, il CSS del primo carico senza gli stili di MentionField e AddressField | niente; se il modulo li prende solo dai loro moduli, una riga del CSS («Passare alla v3.3») | le pagine con i due campi hanno i loro stili |
 | `v3.4.0` | la testa e il piede del pannello delle notifiche non sono punti di riferimento; a 720 px o meno le azioni della barra in alto, con le `actions` del modulo, si nascondono sotto la ricerca aperta | niente; un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto | axe a 390 px con la ricerca aperta, senza `target-size` |
 | `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente |
-| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
+| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i menu della barra in alto sopra il pannello di dettaglio («Esci» si clicca a pannello aperto); i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
 1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc), il «+», la campanella, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+Esc), il «+», la campanella, i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
 e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
 da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
 viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
@@ -899,6 +899,13 @@ cornice === null ? pagina : (
   `onCrumb(voce, indice)`, ma senza l'evento: **non navigate da `onCrumb`**, perché il browser segue già il link, e con
   `naviga` la visita partirebbe due volte. `onCrumb` resta per ciò che non è navigare (una misura, un registro). È provvisorio
   come il punto sopra: quando l'`AppShell` dà l'evento a `onCrumb` (è fra le richieste al design system) si toglie.
+- **I menu della barra in alto sopra il pannello di dettaglio**: dalla `v3.6.0`, il menu del profilo e il pannello delle
+  notifiche, aperti, salgono di un gradino sopra un `DetailPanel` non modale (uno stile sull'elemento, `z-index:
+  calc(var(--z-dialog) + 1)`): prima finivano sotto il pannello, e col pannello aperto «Esci» non si cliccava col mouse (da
+  tastiera sì). Restano sotto i dialoghi e sotto il cassetto del menu; sotto i 720 px il pannello è a tutto schermo e copre la
+  barra come prima. Il modulo non deve fare niente. È provvisorio: quando il design system mette i menu della barra sopra il
+  pannello (è fra le richieste al design system) si toglie. Sta nello stesso pezzo a richiesta dei punti sopra: se non arriva,
+  i menu restano sotto il pannello.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` porta a
   `<indirizzo>/w/<slug>`. Uno `disponibile` non è attivo lì, e dalla `v2.25.0` non porta più alla sua pagina «non attivo nel
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace.

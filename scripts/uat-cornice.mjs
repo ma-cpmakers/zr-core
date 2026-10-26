@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * La UAT della cornice v3.6 in un modulo, dopo l'aggiornamento: axe a 1280 e a 390 px, la ricerca, il percorso, il «+» e la
- * campanella, su una pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
+ * La UAT della cornice v3.6 in un modulo, dopo l'aggiornamento: axe a 1280 e a 390 px, la ricerca, il percorso, il «+», la
+ * campanella e i menu della barra sopra il pannello di dettaglio, su una pagina vera del modulo. Non sta nello zip del
+ * pacchetto: si prende dal repo al tag.
  *
  *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>]
  *
@@ -299,6 +300,59 @@ async function percorso(page) {
     scrivi(dopo[0] === voce && dopo[1] ? '✅' : '❌', 'B.1', 'un clic sul percorso apre la pagina senza ricaricarla, da `naviga` (#2722)', `${voce} → ${dopo[0]}, ${dopo[1] ? 'senza ricarica' : 'pagina ricaricata (il layout dà `naviga`?)'}`);
 }
 
+/**
+ * I menu della barra in alto sopra il pannello di dettaglio (riga 102 delle richieste al design system). Se la pagina non ha
+ * un `DetailPanel` aperto, ne mette uno finto: un elemento con la classe del design system in fondo al documento, che il CSS
+ * del design system mette dove sta il pannello vero (fisso, sotto la barra, a destra, a `--z-dialog`). «Esci» (l'ultima voce
+ * del menu del profilo) non si clicca: il browser della UAT è condiviso, e uscire chiuderebbe la sessione di tutti. Si prova
+ * con un clic di prova di Playwright (`trial`), che fa tutti i controlli di un clic vero — compreso che il punto non sia
+ * coperto — senza premere, e col punto che il browser dà al centro della voce.
+ */
+async function sopraIlPannello(page) {
+    const finto = await page.evaluate(() => {
+        if (document.querySelector('.zr-detail:not(.is-inline)')) {
+            return false;
+        }
+        const pannello = document.createElement('aside');
+        pannello.className = 'zr-detail';
+        pannello.dataset.uat = '';
+        document.body.append(pannello);
+        return true;
+    });
+    const pannello = await page.evaluate(() => {
+        const stile = getComputedStyle(document.querySelector('.zr-detail'));
+        return `${stile.position}, z-index ${stile.zIndex}, top ${stile.top}`;
+    });
+    const coperto = async (menu, voce) => {
+        const punto = await page.evaluate(([menu, voce]) => {
+            const dentro = [...document.querySelectorAll(voce)].pop();
+            const r = dentro?.getBoundingClientRect();
+            const sotto = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+            return sotto ? (document.querySelector(menu)?.contains(sotto) ? 'il menu' : sotto.closest('.zr-detail') ? 'il pannello' : sotto.className) : 'niente';
+        }, [menu, voce]);
+        const prova = await page.locator(voce).last().click({ trial: true, timeout: 3000 }).then(() => 'clic di prova riuscito', (errore) => `clic di prova fallito: ${String(errore.message).split('\n')[0]}`);
+        return [punto === 'il menu' && prova === 'clic di prova riuscito', `al centro c'è ${punto}; ${prova}`];
+    };
+
+    await page.click('.zr-shell .zr-avatar-btn');
+    await page.waitForSelector('.zr-top-actions > .zr-profile-menu', { timeout: 3000 }).catch(() => undefined);
+    const [esci, comeEsci] = await coperto('.zr-top-actions > .zr-profile-menu', '.zr-top-actions > .zr-profile-menu [role=menuitem]');
+    scrivi(esci ? '✅' : '❌', 'D.1', '«Esci» si clicca col pannello di dettaglio aperto (riga 102)', `${finto ? 'pannello finto' : 'pannello della pagina'} (${pannello}); ${comeEsci}`);
+    await page.screenshot({ path: join(cartella, 'pannello-profilo-1280.png') });
+    await page.keyboard.press('Escape');
+    await pausa(300);
+
+    await page.click('.zr-shell .zr-bell');
+    await page.waitForSelector('.zr-top-actions > .zr-pop', { timeout: 5000 }).catch(() => undefined);
+    await pausa(500);
+    const [notifiche, comeNotifiche] = await coperto('.zr-top-actions > .zr-pop', '.zr-top-actions > .zr-pop .zr-pop-foot button');
+    scrivi(notifiche ? '✅' : '❌', 'D.2', 'il pannello delle notifiche sta sopra il pannello di dettaglio (riga 102)', `«Vedi tutte»: ${comeNotifiche}`);
+    await page.screenshot({ path: join(cartella, 'pannello-notifiche-1280.png') });
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    await page.evaluate(() => document.querySelector('.zr-detail[data-uat]')?.remove());
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -313,6 +367,7 @@ async function uat(page, apri) {
     await ricerca(page, true);
     await piu(page);
     await campanella(page, true);
+    await sopraIlPannello(page);
     await percorso(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
