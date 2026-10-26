@@ -118,7 +118,7 @@ export type FrasiDelleNotifiche = {
     [conCosaEData: `notificationTitleWhatWhen.${string}`]: string | undefined;
     /** La frase con la sola data, il giorno e l'ora di `quando` al posto di `{when}`, per quando il nome della cosa non c'è (dalla `v3.6.0`): «Nuova prenotazione, mer 4 nov, 10:00». */
     [conLaData: `notificationTitleWhen.${string}`]: string | undefined;
-    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
+    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo, fuori dai tre di Bookings, che non dicono mai chi (dalla `v3.6.0`). */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
     /**
      * La riga sotto il titolo quando lì non c'è il nome della cosa: quante azioni la notifica racconta e in quale board sta la

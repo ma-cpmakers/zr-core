@@ -490,21 +490,6 @@ function frasiDelleNotificheConChi(): array
             'chiECosa' => null,
             'chi' => ['it' => '{who}: un cliente ha chiesto una modifica al preventivo', 'en' => '{who}: a client asked for changes to the quote', 'es' => '{who}: un cliente ha pedido un cambio en el presupuesto'],
         ],
-        // Sprint 74 · T1: le tre di Bookings. Chi prenota è un ospite, non un membro, e il backoffice non ne dà il nome (`autore`
-        // null, Decisione di zr-pm del 26/10): la frase con chi c'è come per ogni tipo, quella con chi e che cosa no. Le frasi con
-        // la data, senza chi, stanno in frasiDelleNotificheSenzaChiConLaData() e frasiDelleNotificheConLaSolaData().
-        'bookings.prenotazione.creata' => [
-            'chiECosa' => null,
-            'chi' => ['it' => '{who} ha prenotato', 'en' => '{who} made a booking', 'es' => '{who} ha hecho una reserva'],
-        ],
-        'bookings.prenotazione.spostata' => [
-            'chiECosa' => null,
-            'chi' => ['it' => '{who} ha spostato una prenotazione', 'en' => '{who} moved a booking', 'es' => '{who} ha movido una reserva'],
-        ],
-        'bookings.prenotazione.annullata' => [
-            'chiECosa' => null,
-            'chi' => ['it' => '{who} ha annullato una prenotazione', 'en' => '{who} cancelled a booking', 'es' => '{who} ha cancelado una reserva'],
-        ],
         // v3.5.0: chi ha lasciato il workspace è l'autore della notifica; il nome di una scheda non c'è, solo il loro numero.
         'board.schede.senza_assegnatario' => [
             'chiECosa' => null,
@@ -1592,15 +1577,19 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     ksort($attese);
     ksort($delleFrasi);
     $conLeFrasi = array_keys(frasiDelleNotificheConChi());
-    $conUnTitolo = array_values(array_unique(tipiDiNotificaConUnTitolo()));
+    // Sprint 74 · T1 (Decisione di zr-pm del 26/10; revisione, R1): i tre di Bookings non hanno frasi con chi. Chi prenota è un
+    // ospite, non un membro, e il titolo non lo nomina mai, nemmeno se il backoffice ne mandasse il nome: le loro frasi sono
+    // quelle con la data, senza chi (frasiDelleNotificheSenzaChiConLaData(), frasiDelleNotificheConLaSolaData()).
+    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings())));
     sort($conLeFrasi);
     sort($conUnTitolo);
 
-    // Sprint 74 · T1: 77 e le tre con chi di Bookings (le loro frasi con la data non cominciano con `notificationTitleWho`).
-    expect($attese)->toHaveCount(80)
+    // Sprint 74 · T1: nessuna di Bookings (le loro frasi, con la data, non cominciano con `notificationTitleWho`).
+    expect($attese)->toHaveCount(77)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(52)
+        ->and($conLeFrasi)->toHaveCount(49)
+        ->and(array_filter(array_keys($delleFrasi), fn (string $chiave) => str_contains($chiave, '.bookings.')))->toBe([])
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 74 · T1 (Decisione di zr-pm del 26/10): nessuna frase col nome dell'ospite, che il backoffice non dà; la frase con
         // la sola data l'hanno solo i tre di Bookings, e ognuno ha anche quella col nome del servizio e la data.

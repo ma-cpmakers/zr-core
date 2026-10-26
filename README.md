@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,6 KB | 17,2 KB | 52,0 KB | 9,8 KB |
-| la cornice e due componenti per nome | 53,9 KB | 18,3 KB | 52,0 KB | 9,8 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,4 KB | 40,6 KB | 52,0 KB | 9,8 KB |
+| solo la cornice, dall'ingresso per le app | 50,6 KB | 17,2 KB | 51,2 KB | 9,8 KB |
+| la cornice e due componenti per nome | 53,9 KB | 18,3 KB | 51,2 KB | 9,8 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,4 KB | 40,6 KB | 51,2 KB | 9,8 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -160,8 +160,9 @@ libera byte, il tetto riscende). Dalla `v3.6.0` sono 80 byte in più: l'invito d
 calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre lingue (un'eccezione di zr-pm: la misura
 vera; le loro risorse e i loro testi stanno nel pezzo della ricerca). Hanno
 un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.768 i rimedi, 1.538 la
-ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: le prenotazioni e i calendari di
-Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera). Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
+ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
+le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
 per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
 del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
@@ -1066,7 +1067,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i cinquantadue tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i quarantanove tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta

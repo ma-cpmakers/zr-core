@@ -135,9 +135,6 @@
     "notificationTitleWho.com.zeiras.workspace.membro.modificato": "{who} changed a member's role",
     "notificationTitleWho.com.zeiras.workspace.membro.eliminato": "{who} removed someone from the workspace",
     "notificationTitleWho.com.zeiras.app.modificata": "{who} turned a module on or off",
-    "notificationTitleWho.bookings.prenotazione.creata": "{who} made a booking",
-    "notificationTitleWho.bookings.prenotazione.spostata": "{who} moved a booking",
-    "notificationTitleWho.bookings.prenotazione.annullata": "{who} cancelled a booking",
     "notificationUnder.countBoard": "{n} times, on the board “{board}”",
     "notificationUnder.count": "{n} times",
     "notificationUnder.board": "On the board “{board}”"
