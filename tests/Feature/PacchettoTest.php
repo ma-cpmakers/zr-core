@@ -5403,7 +5403,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.768 i rimedi, 1.538 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.870 i rimedi, 1.538 la ricerca'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],

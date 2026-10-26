@@ -610,7 +610,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_201);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,8 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,9 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -622,7 +622,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // del design system, dopo le due letture della PR #121 (misura del 23/10: 1.666; tetto approvato da zr-pm, nota `Decisione:` 15827).
         // Sprint 76 (voce #2627): +102 byte per la testa e il piede del pannello delle notifiche con `role="none"` e per le azioni
         // della barra nascoste sotto la ricerca aperta a 720 px o meno (misura del 25/10: 1.768; deroga a misura vera, Decisione 17522).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_768);
+        // Sprint 74 (voci #2720 e #2722): +67 byte per il pannello della ricerca nel giro del Tab, col suo nome e col contorno, e +15
+        // per i clic sul percorso che passano da `naviga` (misura del 26/10: 1.850; tetto alla misura più 20, Decisione 18266).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_870);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

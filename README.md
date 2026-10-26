@@ -138,7 +138,7 @@ Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito.
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,8 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,9 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip; dalla `v3.0.0` circa 1,9 KB): ciò che compone le righe delle notifiche e carica le
 frasi, che la cornice chiede con `import()` quando si apre la campanella, non quando si monta, e dalla `v3.0.0` anche le righe
@@ -161,11 +161,12 @@ calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre
 vera; le loro risorse e i loro testi stanno nel pezzo della ricerca), e altri 75 fino a 17.650: la ricerca che passa al
 caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e il nome del «+» che dà il modulo (un'eccezione
 di zr-pm, Decisione 18231). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.768 i rimedi, 1.538 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.870 i rimedi, 1.538 la
 ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
-per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm), e di altri 102 nella `v3.6.0`: 82 per il pannello della ricerca
+nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
 del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
 che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Nella `v3.6.0` è salito di altri
