@@ -852,10 +852,16 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Nello stato ridotto e in attesa l'`AppShell` non chiama la cornice, e nel freno la cornice resta all'errore: lì il tasto non
     // cambia niente. L'ascolto sta sulla finestra, dopo quello di React: sul campo, lo stato cambiato durante l'evento ridisegnava
     // l'`AppShell` col valore di prima, e in un browser vero il campo teneva solo il primo carattere (jsdom non lo vede; lo prova
-    // R.0 di `scripts/uat-cornice.mjs`). `.zr-search` è solo dell'`AppShell`, e lì l'unico campo è quello della ricerca.
+    // R.0 di `scripts/uat-cornice.mjs`). Conta solo il campo della ricerca dell'`AppShell`, nella sua barra in alto; un evento che non
+    // viene da un elemento (la finestra, il documento) non ha `matches` e passa. Fra il disegno dell'`AppShell` e questo ascolto,
+    // per un microtask, nel pannello c'è ancora lo stato di prima: il browser non lo disegna (R.2 dello script lo conta a parte).
     const alTasto = useRef((e: Event) => {
         const campo = e.target as HTMLInputElement;
-        if (campo.closest('.zr-search') && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
+        if (campo.matches?.('.zr-top .zr-search input') && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
+            // La richiesta della parola di prima si annulla: la sua risposta, se arriva prima che l'`AppShell` chiami la cornice,
+            // non si scrive sotto la parola nuova.
+            ricercaInVolo.current?.abort();
+            ricercaInVolo.current = undefined;
             setRicerca({ stato: 'loading' });
         }
     }).current;

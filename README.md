@@ -317,7 +317,9 @@ controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer upda
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
 1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc), il «+», la campanella, il percorso.
+Esc), il «+», la campanella, il percorso. A 1280 px batte cinque parole: `--parola` tre volte, che deve trovare qualcosa nel
+workspace, e due che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza. axe
+viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
 
 ## La parte server
 

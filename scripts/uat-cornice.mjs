@@ -15,6 +15,7 @@
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -34,6 +35,8 @@ if (!indirizzo) {
 }
 mkdirSync(cartella, { recursive: true });
 
+/** L'SRI di `axe.min.js` 4.10.3 su cdnjs (api.cdnjs.com, `fields=sri`), senza il prefisso `sha512-`. */
+const AXE_DA_CDNJS = 'Y6Vva0IT8gxKyqgZjlEfG76U48eXakSZ8UqY6vMQMe6xES2So8WuItGYcHi3tH1OAlMKjTWjSeN/5x2aysOXIQ==';
 const dalProgetto = createRequire(join(process.cwd(), 'package.json'));
 async function sorgenteDiAxe() {
     if (process.env.AXE) {
@@ -46,7 +49,12 @@ async function sorgenteDiAxe() {
         if (!risposta.ok) {
             throw new Error(`axe-core da cdnjs: ${risposta.status}`);
         }
-        return risposta.text();
+        // Gira nella pagina, anche nel browser condiviso con la sessione: si esegue solo il file che cdnjs dichiara (il suo SRI).
+        const testo = await risposta.text();
+        if (createHash('sha512').update(testo).digest('base64') !== AXE_DA_CDNJS) {
+            throw new Error('axe-core da cdnjs: l\'impronta non è quella attesa, non si esegue');
+        }
+        return testo;
     }
 }
 const axe = await sorgenteDiAxe();
@@ -102,13 +110,13 @@ const statoDellaRicerca = () => {
 
 async function ricerca(page, largo) {
     const id = largo ? 'R' : 'R390';
-    // Gli stati del pannello mentre si scrive, uno per cambio.
+    // Gli stati del pannello mentre si scrive, uno per cambio, con l'ora: il registro parte prima di Ctrl+K.
     await page.evaluate((stato) => {
         const leggi = new Function(`return (${stato})()`);
-        window.__uatStati = [];
+        window.__uatStati = [{ stato: leggi(), t: performance.now() }];
         new MutationObserver(() => {
             const adesso = leggi();
-            if (window.__uatStati.at(-1) !== adesso) window.__uatStati.push(adesso);
+            if (window.__uatStati.at(-1).stato !== adesso) window.__uatStati.push({ stato: adesso, t: performance.now() });
         }).observe(document.body, { childList: true, subtree: true });
     }, statoDellaRicerca.toString());
 
@@ -119,25 +127,49 @@ async function ricerca(page, largo) {
     if (!nelCampo) {
         await page.click('.zr-shell .zr-top > .zr-search input');
     }
-    await page.keyboard.type(parola, { delay: 90 });
+    // A 1280 px cinque parole, come le batte una persona: dal campo vuoto, dopo una parola con risultati e dopo una senza
+    // (AC T4.5 di #2062); l'ultima trova qualcosa, per il Tab nel pannello. A 390 px una sola.
+    const senza = ['qzxv', 'qzxw'];
+    const parole = largo ? [parola, senza[0], parola, senza[1], parola] : [parola];
+    const battute = [];
+    let stato = 'chiuso';
+    for (const [quale, testo] of parole.entries()) {
+        await page.evaluate(() => window.__uatStati.splice(0, window.__uatStati.length - 1));
+        if (quale > 0) {
+            await page.keyboard.press('Control+a');
+        }
+        await page.keyboard.type(testo, { delay: 90 });
+        const valore = await page.evaluate(() => document.querySelector('.zr-shell .zr-top > .zr-search input')?.value);
+        // Si aspetta oltre i 300 ms dopo cui l'`AppShell` chiama la cornice, poi la fine del caricamento.
+        await pausa(500);
+        stato = await page.evaluate(statoDellaRicerca);
+        for (let attesa = 0; attesa < 50 && stato === 'caricamento'; attesa++) {
+            await pausa(200);
+            stato = await page.evaluate(statoDellaRicerca);
+        }
+        battute.push({ testo, valore, stato, stati: await page.evaluate(() => window.__uatStati.slice()) });
+    }
     // Il campo tiene tutti i caratteri scritti: un ascolto della cornice che cambia lo stato durante l'evento del tasto può
     // riportarlo al primo (26/10, sprint 74 · T4: vitest non lo vede, Chromium sì). Gira a ogni tag.
-    const nelValore = await page.evaluate(() => document.querySelector('.zr-shell .zr-top > .zr-search input')?.value);
-    scrivi(nelValore === parola ? '✅' : '❌', `${id}.0`, `scritti ${parola.length} caratteri, il campo li tiene tutti`, `campo: «${nelValore}»`);
-    let stato = 'caricamento';
-    for (let attesa = 0; attesa < 50 && stato === 'caricamento'; attesa++) {
-        await pausa(200);
-        stato = await page.evaluate(statoDellaRicerca);
-    }
+    const tagliate = battute.filter(({ testo, valore }) => valore !== testo);
+    scrivi(tagliate.length ? '❌' : '✅', `${id}.0`, `${battute.length} parole scritte, il campo tiene tutti i caratteri`, battute.map(({ valore }) => `«${valore}»`).join(', '));
     await page.screenshot({ path: join(cartella, `ricerca-${largo ? 1280 : 390}.png`) });
     if (largo) {
-        // #2062: dal primo tasto della parola nuova il pannello è in caricamento, finché non arriva la risposta: niente
-        // «Nessun risultato» né i risultati di prima nel mezzo.
-        const stati = await page.evaluate(() => window.__uatStati);
-        const ultimoCaricamento = stati.lastIndexOf('caricamento');
-        const primaDellUltimo = stati.slice(stati.indexOf('caricamento') + 1, ultimoCaricamento);
-        const sbagliati = primaDellUltimo.filter((uno) => uno === 'vuoto' || uno === 'risultati');
-        scrivi(ultimoCaricamento < 0 ? '➖' : sbagliati.length ? '❌' : '✅', 'R.2', 'scrivendo, il pannello resta in caricamento fino alla risposta (#2062)', `stati: ${stati.join(' → ')}`);
+        // #2062: dal tasto della parola nuova all'ultimo caricamento il pannello non mostra «Nessun risultato» né i risultati di
+        // prima. Uno stato che resta meno di 16 ms (un microtask, prima che il browser disegni: il disegno dell'`AppShell` prima
+        // dell'ascolto della cornice) non si vede, e si conta a parte.
+        const giudizi = battute.map(({ testo, stati }) => {
+            const ultimoCaricamento = stati.map(({ stato: uno }) => uno).lastIndexOf('caricamento');
+            const nelMezzo = stati.slice(1, Math.max(ultimoCaricamento, 1)).map((uno, posto) => ({ ...uno, dura: stati[posto + 2].t - uno.t }));
+            const sbagliati = nelMezzo.filter(({ stato: uno, dura }) => (uno === 'vuoto' || uno === 'risultati') && dura >= 16);
+            const lampi = nelMezzo.filter(({ stato: uno, dura }) => (uno === 'vuoto' || uno === 'risultati') && dura < 16).length;
+            const sequenza = stati.map(({ stato: uno, t }, posto) => posto ? `${uno} ${Math.round(t - stati[0].t)}` : uno).join(' → ');
+            return { bene: ultimoCaricamento > 0 && !sbagliati.length, prova: `«${testo}»: ${sequenza}${lampi ? ` (lampi sotto 16 ms: ${lampi})` : ''}` };
+        });
+        const provati = new Set(battute.map(({ stato: uno }) => uno));
+        const dueEsiti = provati.has('vuoto') && provati.has('risultati');
+        const esito = giudizi.some(({ bene }) => !bene) ? '❌' : dueEsiti ? '✅' : '➖';
+        scrivi(esito, 'R.2', 'cinque parole: dal tasto il pannello è in caricamento fino alla risposta, mai «Nessun risultato» né i risultati di prima (#2062)', `${dueEsiti ? '' : `«${parola}» o le parole senza risultati non hanno dato i due esiti: rilanciare con --parola; `}${giudizi.map(({ prova }) => prova).join(' · ')}`);
     }
     let nelPannello = false;
     if (stato !== 'risultati') {

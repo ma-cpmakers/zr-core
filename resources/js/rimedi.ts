@@ -205,8 +205,10 @@ function azioniSottoLaRicerca(): void {
 
 /**
  * L'`AppShell` chiude la ricerca con Esc solo dal campo: col fuoco nel pannello dei risultati (una fermata del Tab, #2720) Esc
- * non faceva niente, e sotto 720 px la barra in alto restava senza campanella. Da lì lo stesso Esc passa al campo, che chiude
- * la ricerca come sempre. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 131 delle richieste al design system).
+ * non faceva niente, e sotto 720 px la barra in alto restava senza campanella. Da lì il rimedio rimanda lo stesso tasto Esc
+ * al campo, e l'`AppShell` chiude la ricerca come quando Esc parte dal campo: il pannello se ne va e il fuoco non resta nel
+ * campo, va al documento (il README lo dice). Provvisorio, finché l'`AppShell` non lo fa da sé (riga 131 delle richieste al
+ * design system).
  */
 function escDalPannello(tasto: KeyboardEvent): void {
     if (tasto.key === 'Escape' && tasto.target === fermate[1]) {

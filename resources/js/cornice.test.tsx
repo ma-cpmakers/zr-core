@@ -4835,6 +4835,38 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «uat»']);
     });
 
+    it.each([
+        ['senza risultati', []],
+        ['con risultati', vecchi],
+    ])('la risposta della parola di prima che arriva %s dopo il tasto, prima che l\'`AppShell` chiami la cornice, non si scrive sotto la parola nuova: resta il caricamento (voce 2062 · T4.1, T4.2)', async (_caso, diPrima) => {
+        const ua = inAttesaDellaRicerca();
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? ua.promessa : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+
+        await batti('uat');
+        await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+        await ua.arriva(trovati(diPrima));
+        expect(testoDelPannello()).toBe('Sto cercando…');
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); await giro(); });
+        await uat.arriva(trovati(nuovi));
+        expect(titoli()).toStrictEqual(['Risultato di «uat»']);
+    });
+
+    it('nel freno dopo un 429 un tasto non mette la ricerca in caricamento: resta l\'errore (voce 2062 · T4.3)', async () => {
+        const frenata = { ok: false, status: 429, headers: new Headers({ 'Retry-After': '30' }), json: async () => ({ errore: 'troppe_richieste' }) } as unknown as Response;
+        vi.stubGlobal('fetch', vi.fn(async () => frenata));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
+
+        await batti('uat');
+        expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
+        expect(inCaricamento()).toBeUndefined();
+    });
+
     it('sotto i 2 caratteri un tasto lascia l\'invito, e tornati alla parola di prima ci sono i suoi risultati: il caricamento non resta (voce 2062 · T4.3)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
@@ -4856,6 +4888,29 @@ describe('la ricerca', () => {
             delModulo.dispatchEvent(new Event('input', { bubbles: true }));
         });
         delModulo.remove();
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
+    it('un campo dentro una `.zr-search` della pagina non mette la ricerca in caricamento, e un `input` sulla finestra passa senza errore (voce 2062 · T4.4)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        const delModulo = document.createElement('div');
+        delModulo.className = 'zr-search';
+        delModulo.append(document.createElement('input'));
+        document.body.append(delModulo);
+        const errori = vi.fn();
+        window.addEventListener('error', errori);
+        await act(async () => {
+            const campo = delModulo.firstChild as HTMLInputElement;
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'uat');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            window.dispatchEvent(new Event('input'));
+            document.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        window.removeEventListener('error', errori);
+        delModulo.remove();
+        expect(errori).not.toHaveBeenCalled();
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
@@ -9618,7 +9673,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
     });
     // Dalla UAT in Chromium (26/10): l'`AppShell` chiude la ricerca con Esc solo dal campo; col fuoco nel pannello Esc non
     // faceva niente, e sotto 720 px la barra in alto restava senza campanella (riga 131 delle richieste al design system).
-    it('T7.5 Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
+    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
         await laCornice();
         await cerca();
         await act(async () => pannello()?.focus());
@@ -9630,7 +9685,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement?.closest('.zr-search') ?? null]).toStrictEqual([false, null, null]);
     });
 
-    it('T7.5 un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
+    it('T7 bis · un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
         await laCornice();
         await cerca();
         await act(async () => pannello()?.focus());
