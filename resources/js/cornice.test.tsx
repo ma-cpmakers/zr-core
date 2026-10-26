@@ -8382,6 +8382,63 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
     });
 });
 
+// Riga 11 delle richieste al design system: scelta una voce del menu «+» con la tastiera, il menu se ne va con dentro il fuoco,
+// e il fuoco restava alla pagina. Torna al «+», come dopo Esc; a chi lo prende nel frattempo non si toglie.
+describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+» (riga 11)', () => {
+    const piu = () => uno('.zr-shell .zr-create') as HTMLButtonElement;
+    const voce = (nome: string) => tutti('.zr-menu [role="menuitem"]').find((una) => una.textContent === nome) ?? null;
+    /** Come Invio o lo spazio su un pulsante: il tasto, poi il clic che il browser fa da sé. */
+    const scegli = async (elemento: HTMLElement | null, key: string) => act(async () => {
+        elemento?.focus();
+        elemento?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        elemento?.click();
+        await prossimoGiro();
+    });
+    const laCornice = async (create: { label: string; onClick?: () => void }[]) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={create}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await act(async () => piu().focus());
+        await clic(piu());
+    };
+
+    it.each(['Enter', ' '])('scelta una voce col tasto «%s», il menu si chiude, la voce fa la sua parte e il fuoco è sul «+»', async (key) => {
+        const fatto = vi.fn();
+        await laCornice([{ label: 'Nuova scheda', onClick: fatto }]);
+        expect(document.activeElement).toBe(voce('Nuova scheda'));
+
+        await scegli(voce('Nuova scheda'), key);
+
+        expect(fatto).toHaveBeenCalledOnce();
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(piu());
+    });
+
+    it('una voce che dà il fuoco a un altro elemento — un dialogo che si apre, un campo — lo lascia lì', async () => {
+        await laCornice([{ label: 'Nuova scheda', onClick: () => document.getElementById('della-pagina')?.focus() }]);
+
+        await scegli(voce('Nuova scheda'), 'Enter');
+
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+    });
+
+    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo', async () => {
+        const velo = document.createElement('div');
+        velo.className = 'zr-scrim';
+        velo.innerHTML = '<div class="zr-dialog" role="dialog"><button type="button">Nel dialogo</button></div>';
+        await laCornice([{ label: 'Nuova scheda', onClick: () => document.body.append(velo) }]);
+
+        await scegli(voce('Nuova scheda'), 'Enter');
+
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).not.toBe(piu());
+        velo.remove();
+    });
+});
+
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
     const { Dialog, DetailPanel, Menu } = componenti;
     const senzaEffetto = () => {};

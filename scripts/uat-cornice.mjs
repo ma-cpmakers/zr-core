@@ -297,6 +297,15 @@ async function piu(page) {
     await page.screenshot({ path: join(cartella, 'piu-1280.png') });
     await page.keyboard.press('Escape');
     await pausa(300);
+    // Dopo Esc il fuoco è sul «+»: Invio apre il menu (il fuoco va sulla prima voce), Invio la sceglie, e il fuoco torna al «+»
+    // (riga 11 delle richieste al design system, rimedio della v3.8.1).
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const sullaVoce = await page.evaluate(() => document.activeElement?.getAttribute('role') === 'menuitem');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const dopo = await page.evaluate(() => ({ menu: !!document.querySelector('[role=menu]'), piu: document.activeElement?.matches('.zr-shell .zr-create') ?? false, attivo: document.activeElement?.tagName }));
+    scrivi(sullaVoce && !dopo.menu && dopo.piu ? '✅' : '❌', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `voce col fuoco: ${sullaVoce}, menu aperto: ${dopo.menu}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
 }
 
 async function percorso(page) {

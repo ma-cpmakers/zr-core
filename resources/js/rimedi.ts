@@ -219,6 +219,34 @@ function sceltoUnRisultato(evento: Event): void {
     }
 }
 
+/**
+ * Scelta una voce del menu «+» con Invio o con lo spazio, il menu esce dal documento con dentro l'elemento attivo e il fuoco
+ * restava alla pagina: torna al «+», come dopo Esc (riga 11 delle richieste al design system). Se la voce dà il fuoco a un
+ * altro elemento non si toglie, e con un dialogo aperto — la voce lo ha aperto — non va al «+» dietro il velo. Il menu è quello
+ * che il «+» della cornice tiene aperto. Sta qui e non nel pezzo di tastiera, che è al suo tetto: è un tasto premuto con questo
+ * pezzo già in pagina, e se il pezzo non arriva il fuoco resta alla pagina com'era. Provvisorio, finché il `Menu` non lo fa da sé.
+ */
+let dalPiu: [menu: Element, piu: HTMLElement] | undefined;
+
+function sceltaDalPiu(tasto: KeyboardEvent): void {
+    const voce = tasto.target as Element;
+    const piu = document.querySelector<HTMLElement>('.zr-shell .zr-create[aria-expanded="true"]');
+
+    if ((tasto.key === 'Enter' || tasto.key === ' ') && piu && voce.matches?.('.zr-shell .zr-menu > [role="menuitem"]')) {
+        dalPiu = [voce.parentElement!, piu];
+    }
+}
+
+/** Uscito il menu del «+» scelto con la tastiera, il fuoco che non è di nessuno torna al «+». */
+function fuocoAlPiu(): void {
+    if (dalPiu && !dalPiu[0].isConnected) {
+        if (document.activeElement === document.body && !document.querySelector(DIALOGO_APERTO)) {
+            dalPiu[1].focus();
+        }
+        dalPiu = undefined;
+    }
+}
+
 /** La cornice dà la sua `naviga` e i nomi (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
 export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: typeof nomi): void {
     naviga = daUsare;
@@ -256,6 +284,7 @@ addEventListener('keydown', primoTasto);
 document.addEventListener('click', clicSullaBarra);
 document.addEventListener('click', sceltoUnRisultato, true);
 document.addEventListener('keydown', sceltoUnRisultato, true);
+document.addEventListener('keydown', sceltaDalPiu);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);
 // La ricerca si apre e si chiude coi suoi risultati, e lo vede l'osservatore; il campo che perde il fuoco dopo la chiusura no.
@@ -281,6 +310,7 @@ new MutationObserver((cambi) => {
     }
     azioniSottoLaRicerca();
     tastiera?.fuocoAChiLoAveva();
+    fuocoAlPiu();
     contenuto();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });
 

@@ -908,6 +908,12 @@ cornice === null ? pagina : (
   niente; un test del modulo che dopo la scelta di un risultato legge la parola nel campo va riletto. È provvisorio: quando
   l'`AppShell` svuota il campo da sé (riga 60 delle richieste al design system) si toglie, e se il pezzo dei rimedi non arriva
   la parola resta com'era.
+- **Scelta una voce del «+» con la tastiera, il fuoco torna al «+»**: dalla `v3.8.1`, scelta una voce del menu «+» con Invio o
+  con lo spazio, il menu si chiude, la voce fa la sua parte e il fuoco torna sul «+», come dopo Esc: prima restava alla pagina, e
+  il Tab ripartiva dall'inizio. Se la voce dà il fuoco a un altro elemento — un dialogo che si apre, un campo — resta lì, e
+  con un dialogo aperto dalla voce non va al «+» dietro il velo. Il modulo non deve fare niente. Sta nel pezzo dei rimedi, non
+  in quello della tastiera, che è al suo tetto, ed è provvisorio: quando il `Menu` del design system lo fa da sé (riga 11 delle
+  richieste al design system) si toglie, e se il pezzo non arriva il fuoco resta alla pagina com'era.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
