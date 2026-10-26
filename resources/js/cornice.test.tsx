@@ -4877,7 +4877,7 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
-    it('un campo della pagina fuori dalla ricerca non la mette in caricamento: l\'ascolto del tasto sta sulla finestra e guarda solo il campo della ricerca (voce 2062 · T4.4)', async () => {
+    it('un campo della pagina fuori dalla ricerca non la mette in caricamento: l\'ascolto del tasto sta sulla finestra e guarda solo il campo della ricerca (voce 2062 · l\'ascolto del tasto)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('ua');
@@ -4891,7 +4891,7 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
-    it('un campo dentro una `.zr-search` della pagina non mette la ricerca in caricamento, e un `input` sulla finestra passa senza errore (voce 2062 · T4.4)', async () => {
+    it('un campo dentro una `.zr-search` della pagina non mette la ricerca in caricamento, e un `input` sulla finestra passa senza errore (voce 2062 · l\'ascolto del tasto)', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('ua');
@@ -4914,7 +4914,7 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
-    it('smontata, la cornice toglie dalla finestra l\'ascolto del tasto che vi aveva messo (voce 2062 · T4.4)', async () => {
+    it('smontata, la cornice toglie dalla finestra l\'ascolto del tasto che vi aveva messo (voce 2062 · l\'ascolto del tasto)', async () => {
         const messi = vi.spyOn(window, 'addEventListener');
         const tolti = vi.spyOn(window, 'removeEventListener');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);

@@ -110,14 +110,27 @@ const statoDellaRicerca = () => {
 
 async function ricerca(page, largo) {
     const id = largo ? 'R' : 'R390';
-    // Gli stati del pannello mentre si scrive, uno per cambio, con l'ora: il registro parte prima di Ctrl+K.
+    // Gli stati del pannello mentre si scrive, con l'ora: il registro parte prima di Ctrl+K. Una riga nuova quando cambia il
+    // genere, il testo del pannello (la parola in «Nessun risultato per», i titoli) o ciò che è nel campo, letti a ogni
+    // cambio del DOM (`MutationObserver`: anche ciò che il browser non disegna) e a ogni fotogramma (ciò che si vede: il
+    // valore del campo non è un cambio del DOM, e i risultati di prima sotto una parola allungata non cambiano il pannello).
     await page.evaluate((stato) => {
         const leggi = new Function(`return (${stato})()`);
-        window.__uatStati = [{ stato: leggi(), t: performance.now() }];
-        new MutationObserver(() => {
-            const adesso = leggi();
-            if (window.__uatStati.at(-1).stato !== adesso) window.__uatStati.push({ stato: adesso, t: performance.now() });
-        }).observe(document.body, { childList: true, subtree: true });
+        const adesso = () => ({
+            stato: leggi(),
+            testo: document.querySelector('.zr-shell .zr-top > .zr-search > .zr-search-panel')?.textContent ?? '',
+            valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
+            t: performance.now(),
+        });
+        window.__uatStati = [adesso()];
+        const registra = () => {
+            const ora = adesso();
+            const prima = window.__uatStati.at(-1);
+            if (prima.stato !== ora.stato || prima.testo !== ora.testo || prima.valore !== ora.valore) window.__uatStati.push(ora);
+        };
+        new MutationObserver(registra).observe(document.body, { childList: true, subtree: true, characterData: true });
+        const fotogramma = () => (registra(), requestAnimationFrame(fotogramma));
+        requestAnimationFrame(fotogramma);
     }, statoDellaRicerca.toString());
 
     await page.keyboard.press('Control+k');
@@ -127,18 +140,20 @@ async function ricerca(page, largo) {
     if (!nelCampo) {
         await page.click('.zr-shell .zr-top > .zr-search input');
     }
-    // A 1280 px cinque parole, come le batte una persona: dal campo vuoto, dopo una parola con risultati e dopo una senza
-    // (AC T4.5 di #2062); l'ultima trova qualcosa, per il Tab nel pannello. A 390 px una sola.
-    const senza = ['qzxv', 'qzxw'];
-    const parole = largo ? [parola, senza[0], parola, senza[1], parola] : [parola];
+    // A 1280 px sei parole, come le batte una persona (AC T4.5 di #2062): dal campo vuoto; dopo una parola con risultati e dopo
+    // una senza, sia riscritta da capo (tutto selezionato) sia allungata di qualche lettera; l'ultima trova qualcosa, per il Tab
+    // nel pannello. A 390 px una sola.
+    const senza = 'qzxv';
+    const parole = largo ? [parola, senza, `${senza}w`, parola, `${parola}qz`, parola] : [parola];
     const battute = [];
     let stato = 'chiuso';
     for (const [quale, testo] of parole.entries()) {
         await page.evaluate(() => window.__uatStati.splice(0, window.__uatStati.length - 1));
-        if (quale > 0) {
-            await page.keyboard.press('Control+a');
+        const allungata = quale > 0 && testo.startsWith(parole[quale - 1]);
+        if (quale > 0 && !allungata) {
+            await page.keyboard.press('ControlOrMeta+a');
         }
-        await page.keyboard.type(testo, { delay: 90 });
+        await page.keyboard.type(allungata ? testo.slice(parole[quale - 1].length) : testo, { delay: 90 });
         const valore = await page.evaluate(() => document.querySelector('.zr-shell .zr-top > .zr-search input')?.value);
         // Si aspetta oltre i 300 ms dopo cui l'`AppShell` chiama la cornice, poi la fine del caricamento.
         await pausa(500);
@@ -158,18 +173,24 @@ async function ricerca(page, largo) {
         // #2062: dal tasto della parola nuova all'ultimo caricamento il pannello non mostra «Nessun risultato» né i risultati di
         // prima. Uno stato che resta meno di 16 ms (un microtask, prima che il browser disegni: il disegno dell'`AppShell` prima
         // dell'ascolto della cornice) non si vede, e si conta a parte.
-        const giudizi = battute.map(({ testo, stati }) => {
+        // Una parola che finisce in errore (il backoffice che frena) non prova niente: ➖ col perché.
+        const giudizi = battute.map(({ testo, stato: finale, stati }) => {
             const ultimoCaricamento = stati.map(({ stato: uno }) => uno).lastIndexOf('caricamento');
             const nelMezzo = stati.slice(1, Math.max(ultimoCaricamento, 1)).map((uno, posto) => ({ ...uno, dura: stati[posto + 2].t - uno.t }));
             const sbagliati = nelMezzo.filter(({ stato: uno, dura }) => (uno === 'vuoto' || uno === 'risultati') && dura >= 16);
             const lampi = nelMezzo.filter(({ stato: uno, dura }) => (uno === 'vuoto' || uno === 'risultati') && dura < 16).length;
             const sequenza = stati.map(({ stato: uno, t }, posto) => posto ? `${uno} ${Math.round(t - stati[0].t)}` : uno).join(' → ');
-            return { bene: ultimoCaricamento > 0 && !sbagliati.length, prova: `«${testo}»: ${sequenza}${lampi ? ` (lampi sotto 16 ms: ${lampi})` : ''}` };
+            return { bene: finale === 'errore' ? undefined : ultimoCaricamento > 0 && !sbagliati.length, prova: `«${testo}»: ${sequenza}${lampi ? ` (lampi sotto 16 ms: ${lampi})` : ''}` };
         });
         const provati = new Set(battute.map(({ stato: uno }) => uno));
         const dueEsiti = provati.has('vuoto') && provati.has('risultati');
-        const esito = giudizi.some(({ bene }) => !bene) ? '❌' : dueEsiti ? '✅' : '➖';
-        scrivi(esito, 'R.2', 'cinque parole: dal tasto il pannello è in caricamento fino alla risposta, mai «Nessun risultato» né i risultati di prima (#2062)', `${dueEsiti ? '' : `«${parola}» o le parole senza risultati non hanno dato i due esiti: rilanciare con --parola; `}${giudizi.map(({ prova }) => prova).join(' · ')}`);
+        const inErrore = giudizi.some(({ bene }) => bene === undefined);
+        const esito = giudizi.some(({ bene }) => bene === false) ? '❌' : dueEsiti && !inErrore ? '✅' : '➖';
+        const perche = [
+            dueEsiti ? '' : `«${parola}» o «${senza}» non hanno dato i due esiti: rilanciare con --parola; `,
+            inErrore ? 'una parola è finita in errore (il freno del backoffice?): rilanciare fra un minuto; ' : '',
+        ].join('');
+        scrivi(esito, 'R.2', 'sei parole: dal tasto il pannello è in caricamento fino alla risposta, mai «Nessun risultato» né i risultati di prima (#2062)', `${perche}${giudizi.map(({ prova }) => prova).join(' · ')}`);
     }
     let nelPannello = false;
     if (stato !== 'risultati') {
