@@ -267,22 +267,23 @@ export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: t
 let tastiera: typeof import('./tastiera') | undefined;
 /** I tasti premuti prima che arrivi, ognuno con «qualcun altro lo aveva già fermato» e «è il Tab che si è fermato qui». */
 const tasti: [KeyboardEvent, boolean, boolean][] = [];
-/** Un Tab si è fermato qui: i tasti che arrivano dopo di lui, prima del pezzo, si fermano anche loro. */
+/** Un Tab si è fermato qui: i tasti che arrivano dopo di lui, prima del pezzo e finché qualcuno trattiene il fuoco, si fermano anche loro. */
 let tenuto = false;
 
 /**
  * Il primo tasto premuto chiede il pezzo di tastiera (`tastiera.ts`), e i tasti che arrivano prima di lui si tengono: quando
  * arriva li ripete (zr-pm, 26/10/2026: il primo tasto non si perde). Un Tab senza Ctrl, Alt né Meta che nessuno ha fermato si
  * ferma solo quando qualcuno trattiene il fuoco — un `Dialog` aperto, o un `DetailPanel` a tutta pagina sotto 720 px —, perché
- * il fuoco non ne esca prima del rimedio: è il pezzo a spostarlo, quando arriva. Altrove il Tab resta del browser, che sa da
- * dove partire anche dopo un clic a metà pagina (R1 della revisione 381). I tasti premuti dopo un Tab fermato, finché il pezzo
- * non arriva, si fermano: arriverebbero all'elemento da cui il Tab voleva uscire (R2). In ascolto sulla finestra, cioè dopo il
+ * il fuoco non ne esca prima del rimedio: è il pezzo a spostarlo, quando arriva, uno per ogni Tab. Altrove il Tab resta del
+ * browser, che sa da dove partire anche dopo un clic a metà pagina (R1 della revisione 381). I tasti premuti dopo un Tab
+ * fermato, finché il pezzo non arriva e finché qualcuno trattiene il fuoco, si fermano e si perdono: arriverebbero all'elemento
+ * da cui il Tab voleva uscire (R2; N1 e N2 della seconda lettura). In ascolto sulla finestra, cioè dopo il
  * documento, la pagina e l'`AppShell`. Se il pezzo non arriva i tasti non si tengono più, e quelli tenuti restano fermi.
  */
 function primoTasto(tasto: KeyboardEvent): void {
     const fermato = tasto.defaultPrevented;
-    const tab = !tenuto && !fermato && tasto.key === 'Tab' && !(tasto.ctrlKey || tasto.altKey || tasto.metaKey) && conLaCornice()
-        && !!(document.querySelector(DIALOGO_APERTO) || (self.matchMedia?.('(max-width: 720px)').matches && document.querySelector('.zr-detail:not(.is-inline)')));
+    const trattiene = conLaCornice() && !!(document.querySelector(DIALOGO_APERTO) || (self.matchMedia?.('(max-width: 720px)').matches && document.querySelector('.zr-detail:not(.is-inline)')));
+    const tab = trattiene && !fermato && tasto.key === 'Tab' && !(tasto.ctrlKey || tasto.altKey || tasto.metaKey);
 
     if (tasti.push([tasto, fermato, tab]) < 2) {
         void import('./tastiera').then((arrivato) => {
@@ -291,7 +292,7 @@ function primoTasto(tasto: KeyboardEvent): void {
             tasti.forEach((premuto) => arrivato.ripeti(...premuto));
         }, () => removeEventListener('keydown', primoTasto));
     }
-    if ((tenuto ||= tab)) {
+    if ((tenuto = trattiene && (tenuto || tab))) {
         tasto.preventDefault();
     }
 }

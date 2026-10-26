@@ -202,7 +202,8 @@ const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu];
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
  * dice se qualcun altro lo aveva già fermato; `tab`, se è il Tab che il pezzo dei rimedi ha fermato perché qualcuno trattiene il
  * fuoco. Se nessun rimedio lo tiene, il fuoco va dove l'avrebbe portato il browser: alla prima fermata dopo l'elemento attivo
- * nell'ordine della pagina (o all'ultima prima, con Maiusc), anche quando l'attivo non è una fermata (R1 della revisione 381).
+ * nell'ordine della pagina (o all'ultima prima, con Maiusc), anche quando l'attivo non è una fermata (R1 della revisione 381),
+ * se qualcuno trattiene ancora il fuoco: chiuso il dialogo nel frattempo, il fuoco resta dov'è (N3 della seconda lettura).
  * Un altro tasto non sposta il fuoco, nemmeno se qualcuno lo ha fermato (R3). Un `tabindex` da 1 in su non cambia
  * quell'ordine, qui.
  */
@@ -215,7 +216,7 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
         copia.preventDefault();
     }
     gestori.forEach((gestore) => gestore(copia));
-    if (tab && !copia.defaultPrevented) {
+    if (tab && !copia.defaultPrevented && chiTrattieneIlFuoco()) {
         [...document.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter((fermata) => eUnaFermata(fermata) && attivo.compareDocumentPosition(fermata) & (tasto.shiftKey ? Node.DOCUMENT_POSITION_PRECEDING : Node.DOCUMENT_POSITION_FOLLOWING)).at(tasto.shiftKey ? -1 : 0)?.focus();
     }
 }

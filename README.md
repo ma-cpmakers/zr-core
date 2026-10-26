@@ -151,13 +151,14 @@ pezzo della tastiera (circa 1,2 KB con gzip nella `v3.8.0`, circa 1,4 KB dalla `
 Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip nella `v3.8.0`, ed è a circa 1,8 KB dalla `v3.8.1`), che lo
 chiede al primo tasto premuto: chi usa solo il mouse non lo scarica. I tasti premuti prima che arrivi non si perdono: il pezzo
 dei rimedi li tiene e glieli ripete quando arriva. Un Tab lo ferma quando un `Dialog` aperto, o un `DetailPanel` a tutta pagina
-sotto 720 px, trattiene il fuoco, perché il fuoco non ne esca prima del rimedio (arrivato il pezzo, il fuoco va dove l'avrebbe
-portato il browser, o resta nel dialogo), e i tasti premuti dopo quel Tab, finché il pezzo non arriva, si fermano: arriverebbero
+sotto 720 px, trattiene il fuoco, perché il fuoco non ne esca prima del rimedio (arrivato il pezzo, ogni Tab porta il fuoco dove
+l'avrebbe portato il browser, o lo tiene nel dialogo; se nel frattempo il dialogo si è chiuso, il fuoco resta dov'è), e gli altri
+tasti premuti dopo quel Tab, finché il pezzo non arriva e il dialogo resta aperto, si fermano e si perdono: arriverebbero
 all'elemento da cui il Tab voleva uscire. Altrove il Tab resta del browser (dalla `v3.8.1`: nella `v3.8.0` si fermava in tutta la
 pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto premuto prima che arrivi
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.336 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
@@ -857,7 +858,8 @@ cornice === null ? pagina : (
   nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
   Dalla `v3.8.0` il rimedio sta nel pezzo della tastiera, che arriva al primo tasto premuto: un Tab premuto prima, con un
   dialogo aperto, si ferma, e arrivato il pezzo il fuoco va nel dialogo, o dove l'avrebbe portato il browser, anche da un
-  elemento fuori dal giro come il titolo del dialogo; i tasti premuti dopo quel Tab, prima del pezzo, si fermano (dalla `v3.8.1`).
+  elemento fuori dal giro come il titolo del dialogo; gli altri tasti premuti dopo quel Tab, prima del pezzo e col dialogo
+  aperto, si fermano e si perdono (dalla `v3.8.1`): un caso che in un dialogo preme Tab e poi scrive aspetta il pezzo fra i due.
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
   `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
@@ -925,8 +927,8 @@ cornice === null ? pagina : (
   con un dialogo aperto dalla voce non va al «+» dietro il velo. Un dialogo che la voce apre più tardi — dopo una richiesta, o un
   dialogo a richiesta — trova il fuoco già sul «+», dietro il velo: in quel caso il fuoco nel dialogo lo dà il modulo. Il modulo
   non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
-  (riga 11 delle richieste al design system) si toglie, e se il pezzo non arriva, o se la scelta è il primo tasto premuto, il
-  fuoco resta alla pagina com'era.
+  (riga 11 delle richieste al design system) si toglie, e se il pezzo non arriva, o se la voce è scelta prima che arrivi (il
+  primo tasto premuto lo chiede), il fuoco resta alla pagina com'era.
 - **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
   portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
   schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della
@@ -1606,9 +1608,10 @@ cornice === null ? pagina : (
   `acceptanceOff`). Dalla `v3.7.0` stanno in `resources/lingue/avvisi/`, coi tre di «Zeiras non risponde», e non nel JS
   d'ingresso: la cornice li chiede in un pezzo a richiesta quando passa a uno dei due stati, e l'avviso, con la frase di
   campanella e ricerca, c'è quando il pezzo è arrivato; fino ad allora campanella e ricerca, già spente, dicono i testi di
-  sempre. Se il pezzo non arriva — la rete, o un rilascio che ha tolto i file coi nomi di prima mentre la scheda resta aperta —,
-  dalla `v3.8.1` la cornice lo richiede ogni 5 secondi, con l'attesa degli altri pezzi a richiesta, finché resta ridotta e la
-  scheda è in primo piano. Un caso di un frontend che cerca l'avviso subito dopo il disegno prima lo aspetta:
+  sempre. Se il pezzo non arriva perché la rete è caduta per un momento, dalla `v3.8.1` la cornice lo richiede ogni 5 secondi,
+  con l'attesa degli altri pezzi a richiesta, finché resta ridotta e la scheda è in primo piano. Dopo un rilascio che ha tolto
+  i file coi nomi di prima, con la scheda aperta, richiederlo non basta: l'aiuto di Vite manda su `window` l'evento
+  `vite:preloadError`, e un frontend che a quell'evento ricarica la pagina la ricarica anche per questo pezzo. Un caso di un frontend che cerca l'avviso subito dopo il disegno prima lo aspetta:
   `await act(() => vi.dynamicImportSettled())`. Una lingua nuova porta anche il suo file degli avvisi; senza, gli avvisi
   sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».

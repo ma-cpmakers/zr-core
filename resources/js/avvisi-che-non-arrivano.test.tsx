@@ -4,10 +4,11 @@ import { expect, it, vi } from 'vitest';
 import italiani from '../lingue/avvisi/it.json';
 import { Cornice } from './cornice';
 
-// v3.8.1 (R5 della revisione 381): il pezzo dei testi degli avvisi che non arriva — la rete, o un rilascio che ha tolto i file
-// coi nomi di prima mentre la scheda resta aperta — si richiede, con l'attesa degli altri pezzi a richiesta, finché la cornice è
+// v3.8.1 (R5 della revisione 381): il pezzo dei testi degli avvisi che non arriva — la rete che cade per un momento — si richiede, con l'attesa degli altri pezzi a richiesta, finché la cornice è
 // ridotta e la scheda è in primo piano (zr-pm, 26/10/2026): l'avviso
-// dell'accettazione, col suo pulsante, arriva lo stesso. In un file suo: un modulo si carica una volta per file.
+// dell'accettazione, col suo pulsante, arriva lo stesso. In un file suo: un modulo si carica una volta per file. Il secondo
+// tentativo qui passa da `importa` e non dall'indirizzo con la coda: vitest riscrive `import(` e `pezzoARichiesta` non ci trova
+// il nome della build; l'indirizzo con la coda lo provano `lingue.test.ts` e la UAT.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,6 +51,12 @@ it('il pezzo degli avvisi che la prima volta non arriva si richiede dopo l\'atte
 
     expect(chiesto.volte).toBe(2);
     expect(sopraLaPagina()).toBe(italiani.acceptanceTitle + italiani.acceptanceText + italiani.acceptanceAction);
+    // Arrivato, non si chiede più.
+    await act(async () => {
+        await vi.advanceTimersByTimeAsync(60e3);
+        await vi.dynamicImportSettled();
+    });
+    expect(chiesto.volte).toBe(2);
     await act(async () => radice.unmount());
     vi.useRealTimers();
 });
