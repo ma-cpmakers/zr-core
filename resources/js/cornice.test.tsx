@@ -4855,6 +4855,19 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «uat»']);
     });
 
+    it('un `input` che lascia nel campo la parola che c\'era (la stessa incollata sopra la selezione) non mette la ricerca in caricamento: l\'`AppShell` non chiama la cornice, e restano i risultati (voce 2062 · T4.2)', async () => {
+        const fetchFinto = vi.fn(async () => trovati(vecchi));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+
+        await batti('ua');
+        expect(inCaricamento()).toBeUndefined();
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000); await giro(); });
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
     it('nel freno dopo un 429 un tasto non mette la ricerca in caricamento: resta l\'errore (voce 2062 · T4.3)', async () => {
         const frenata = { ok: false, status: 429, headers: new Headers({ 'Retry-After': '30' }), json: async () => ({ errore: 'troppe_richieste' }) } as unknown as Response;
         vi.stubGlobal('fetch', vi.fn(async () => frenata));

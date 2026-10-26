@@ -855,9 +855,13 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // R.0 di `scripts/uat-cornice.mjs`). Conta solo il campo della ricerca dell'`AppShell`, nella sua barra in alto; un evento che non
     // viene da un elemento (la finestra, il documento) non ha `matches` e passa. Fra il disegno dell'`AppShell` e questo ascolto,
     // per un microtask, nel pannello c'è ancora lo stato di prima: il browser non lo disegna (R.2 dello script lo conta a parte).
+    // Un `input` che lascia nel campo il valore di prima (la stessa parola incollata sopra la selezione) non arriva all'`AppShell`,
+    // che non chiama la cornice: lì il tasto non cambia niente, o la ricerca resterebbe in caricamento. `visto` è l'ultimo valore
+    // del campo che l'ascolto ha visto: una variabile del primo disegno, l'unico di cui l'ascolto resta (`useRef`).
+    let visto: string | undefined;
     const alTasto = useRef((e: Event) => {
         const campo = e.target as HTMLInputElement;
-        if (campo.matches?.('.zr-top .zr-search input') && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
+        if (campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
             // La richiesta della parola di prima si annulla: la sua risposta, se arriva prima che l'`AppShell` chiami la cornice,
             // non si scrive sotto la parola nuova.
             ricercaInVolo.current?.abort();
