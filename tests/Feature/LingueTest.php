@@ -172,12 +172,13 @@ function tipiDiNotificaDelContratto(): array
  * Dalla v2.25.4 anche le due delle scadenze del CRM, il preavviso e il riepilogo del giorno: non sono eventi.
  * Dalla v3.2.2 anche quella del CRM sulla modifica che un cliente chiede dal link di un preventivo: non è un evento.
  * Dalla v3.5.0 anche quella di Project Management sulle schede rimaste senza assegnatario: non è un evento.
+ * Dalla v3.6.0 anche le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l'invito accettato.
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti())];
 }
 
 /**
@@ -376,6 +377,24 @@ function titoloDellaNotificaDelleSchedeSenzaAssegnatario(): array
     ];
 }
 
+/**
+ * I titoli di quattro notifiche che non sono eventi, col `tipo` senza `com.zeiras.` davanti (zr-backoffice-55, 26/10/2026): il
+ * promemoria di una To-do e la scheda che scade domani o oggi, con le parole di Project Management — la scadenza è divisa in
+ * due tipi, Decisione di zr-pm del 26/10, e non ha chi —, e l'invito accettato, senza prodotto, che ha chi: chi ha accettato.
+ * Scritti qui, non letti dai file delle lingue (v3.6.0).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDiPromemoriaScadenzeEInviti(): array
+{
+    return [
+        'board.todo.promemoria' => ['it' => 'Promemoria: hai una cosa da fare', 'en' => 'Reminder: you have something to do', 'es' => 'Recordatorio: tienes algo que hacer'],
+        'board.scheda.scade_domani' => ['it' => 'Una scheda scade domani', 'en' => 'A card is due tomorrow', 'es' => 'Una tarjeta vence mañana'],
+        'board.scheda.scade_oggi' => ['it' => 'Una scheda scade oggi', 'en' => 'A card is due today', 'es' => 'Una tarjeta vence hoy'],
+        'io.invito.accettato' => ['it' => 'Il tuo invito è stato accettato', 'en' => 'Your invitation was accepted', 'es' => 'Tu invitación fue aceptada'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -489,6 +508,11 @@ function frasiDelleNotificheConChi(): array
         'crm.preventivo.richiesta' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who}: un cliente ha chiesto una modifica al preventivo', 'en' => '{who}: a client asked for changes to the quote', 'es' => '{who}: un cliente ha pedido un cambio en el presupuesto'],
+        ],
+        // v3.6.0: chi ha accettato l'invito è l'autore della notifica (zr-backoffice-55); il nome della cosa non c'è.
+        'io.invito.accettato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha accettato il tuo invito', 'en' => '{who} accepted your invitation', 'es' => '{who} aceptó tu invitación'],
         ],
         // v3.5.0: chi ha lasciato il workspace è l'autore della notifica; il nome di una scheda non c'è, solo il loro numero.
         'board.schede.senza_assegnatario' => [
@@ -907,14 +931,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 52 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i quattordici che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario e le tre di Bookings —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 56 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciotto che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l\'invito accettato —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(52)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(56)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1132,6 +1156,26 @@ it('la notifica delle schede senza assegnatario ha il titolo della tabella nella
         ->and(tipiDiNotificaDelContratto())->not->toContain('com.zeiras.board.schede.senza_assegnatario')
         // Un titolo suo: nessun'altra notifica, e nemmeno il ripiego, si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.schede.senza_assegnatario']);
+})->with(['it', 'en', 'es']);
+
+// Sprint 74 (zr-backoffice-55, 26/10): il promemoria di una To-do, le due scadenze di una scheda (un tipo per giorno, Decisione
+// di zr-pm) e l'invito accettato hanno un titolo per tipo nella lingua, sotto il tipo com'è nel backoffice.
+it('il promemoria di una To-do, le due scadenze di una scheda e l\'invito accettato hanno il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: il tipo col prefisso e la scadenza non divisa restano senza titolo, non sono tipi di evento del contratto, e nessun\'altra notifica si chiama così (v3.6.0)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys(titoliDiPromemoriaScadenzeEInviti()))->toBe(['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'io.invito.accettato']);
+    foreach (titoliDiPromemoriaScadenzeEInviti() as $tipo => $titolo) {
+        expect($testi["notificationTitle.$tipo"] ?? null)->toBe($titolo[$codice])
+            ->and(array_key_exists("notificationTitle.com.zeiras.$tipo", $testi))->toBe(false)
+            ->and(array_keys($deiTitoli, $titolo[$codice], true))->toBe(["notificationTitle.$tipo"])
+            ->and(tipiDiNotificaDelContratto())->not->toContain($tipo);
+    }
+    // Una parola per ogni `not->toHaveKey`: con due si ferma alla prima che manca.
+    expect($testi)->not->toHaveKey('notificationTitle.board.scheda.scade')
+        ->and($testi)->not->toHaveKey('notificationTitleWho.board.todo.promemoria')
+        ->and($testi)->not->toHaveKey('notificationTitleWho.board.scheda.scade_oggi')
+        ->and($testi['notificationTitleWho.io.invito.accettato'] ?? null)->toBe(frasiDelleNotificheConChi()['io.invito.accettato']['chi'][$codice]);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1580,15 +1624,16 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     // Sprint 74 · T1 (Decisione di zr-pm del 26/10; revisione, R1): i tre di Bookings non hanno frasi con chi. Chi prenota è un
     // ospite, non un membro, e il titolo non lo nomina mai, nemmeno se il backoffice ne mandasse il nome: le loro frasi sono
     // quelle con la data, senza chi (frasiDelleNotificheSenzaChiConLaData(), frasiDelleNotificheConLaSolaData()).
-    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings())));
+    // v3.6.0: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che il backoffice manda da sé, senza chi.
+    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi']));
     sort($conLeFrasi);
     sort($conUnTitolo);
 
     // Sprint 74 · T1: nessuna di Bookings (le loro frasi, con la data, non cominciano con `notificationTitleWho`).
-    expect($attese)->toHaveCount(77)
+    expect($attese)->toHaveCount(78)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(49)
+        ->and($conLeFrasi)->toHaveCount(50)
         ->and(array_filter(array_keys($delleFrasi), fn (string $chiave) => str_contains($chiave, '.bookings.')))->toBe([])
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 74 · T1 (Decisione di zr-pm del 26/10): nessuna frase col nome dell'ospite, che il backoffice non dà; la frase con

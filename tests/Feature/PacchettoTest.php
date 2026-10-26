@@ -4065,7 +4065,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45, 4
         ->and(substr_count($readme, 'i titoli erano 47'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 48'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 48'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 49'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 49'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 49'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 56'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4421,7 +4423,7 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 52, 'es' => 52, 'it' => 52])
+        ->and(array_map('count', $titoli))->toBe(['en' => 56, 'es' => 56, 'it' => 56])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
@@ -4527,8 +4529,26 @@ it('il README dice, dalla v3.5.0, il titolo e il tipo della notifica delle sched
     'il titolo e il tipo' => ['Dalla `v3.5.0` ha un titolo anche la notifica che arriva al proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario: «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`)'],
     'senza `com.zeiras.` davanti' => ['Non è un evento nemmeno lei, e il suo `tipo` non ha `com.zeiras.` davanti'],
     'chi l\'ha fatto' => ['chi l\'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede senza assegnatario»)'],
-    'quanti sono i titoli' => ['Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario'],
+    // v3.6.0: con le tre di Bookings e le quattro del promemoria, delle scadenze di una scheda e dell'invito i titoli sono 56, e i 49 passano al passato.
+    'quanti erano i titoli' => ['Con lei i titoli erano 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario'],
     'i dati e dove si apre' => ['Nei `dati` porta solo il numero delle schede, nessun id: un clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 74 (zr-backoffice-55, 26/10). Il promemoria di una To-do, le due scadenze di una scheda e l'invito accettato hanno un
+// titolo: il README lo dice nel punto «Le notifiche», coi titoli che ora sono 56.
+it('il README dice, dalla v3.6.0, i titoli e i tipi del promemoria di una To-do, delle due scadenze di una scheda e dell\'invito accettato, chi l\'ha fatto, che con loro i titoli sono 56 e che un clic apre la pagina delle notifiche', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'non sono eventi' => ['Dalla `v3.6.0` hanno un titolo anche quattro notifiche che non sono eventi, col `tipo` senza `com.zeiras.` davanti'],
+    'il promemoria' => ['il promemoria di una To-do, «Promemoria: hai una cosa da fare» (`board.todo.promemoria`)'],
+    'le due scadenze' => ['«Una scheda scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`)'],
+    'l\'invito' => ['senza prodotto l\'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`)'],
+    'chi l\'ha fatto' => ['dell\'invito chi l\'ha fatto è chi ha accettato («Marta Rossi ha accettato il tuo invito»)'],
+    'quanti sono i titoli' => ['Con loro e con le tre di Bookings (più sotto) i titoli sono 56'],
+    'dove si apre' => ['Nessuna delle quattro ha una destinazione: un clic apre la pagina delle notifiche'],
 ]);
 
 // Sprint 77 · T2.1 (voce #2677). README e guida dicono `Cornice::nuovoWorkspace()`: l'indirizzo, quando dà null, che pagina e
@@ -5643,7 +5663,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantanove tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i cinquanta tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi, e dal promemoria di una To-do e dalle due scadenze di una scheda, che non hanno chi; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.
