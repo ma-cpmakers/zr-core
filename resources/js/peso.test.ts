@@ -102,12 +102,13 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * rialzo senza contropartita: dal prossimo byte in più, prima di chiedere si porta a zr-pm che cosa togliere dall'ingresso,
  * per esempio spostandolo in un pezzo a richiesta (zr-pm, 26/10/2026).
  *
- * v3.7.0: 17.400, 300 in meno (zr-pm, 26/10/2026: l'ingresso sotto i 17.400 togliendo peso, senza alzare la soglia). I sette
+ * v3.7.0: 17.296, 404 in meno (zr-pm, 26/10/2026: l'ingresso sotto i 17.400 togliendo peso, senza alzare la soglia). I sette
  * testi dei due avvisi della cornice ridotta, nelle tre lingue, sono usciti dall'ingresso: stanno in `resources/lingue/avvisi/`
  * e nel pezzo a richiesta degli avvisi (`DEGLI_AVVISI`), che la cornice chiede solo in quei due stati. L'ingresso pesa 403 byte
- * in meno (17.276, misurato sopra la v3.6.1), e il margine che resta è quello che zr-pm ha chiesto di recuperare.
+ * in meno (17.276, misurato sopra la v3.6.1), e il tetto è la misura più 20, la regola fissa: il margine non sta nel tetto ma
+ * nel peso tolto, e chi lo vuole usare porta la sua misura (zr-pm, 26/10/2026).
  */
-const TETTO_DELL_INGRESSO = 17_400;
+const TETTO_DELL_INGRESSO = 17_296;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -534,9 +535,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
     // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
     // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.400 byte: il tetto della v3.7.0 (−300, i testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.296 byte: il tetto della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_400);
+        expect(TETTO_DELL_INGRESSO).toBe(17_296);
     });
 
     // Sprint 70 · T1.1 (voce #2429): le righe delle destinazioni stanno solo nel pezzo della campanella, che le legge quando un
@@ -550,22 +551,20 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
-    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). Dalla v3.7.0 la tolleranza è di 149 byte: il tetto è
-    // il 17.400 che zr-pm ha chiesto (26/10/2026), con l'ingresso a 17.276, e il margine è quello da recuperare per le voci che
-    // vengono. E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
+    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
     // (T1.4: 515 alla misura di T1): qui la stessa app, costruita col modulo dei componenti senza i segni.
-    it('il tetto sta a meno di 150 byte da ciò che l\'ingresso pesa (100 fino alla v3.6), e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
-        expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(150);
+    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
+        expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);
         expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(1);
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.400 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.296 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
         expect(volte(testo, '17.478')).toBe(file === 'README.md' ? 1 : 0);
-        expect([volte(testo, '17.400 byte') > 0, volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.296 byte') > 0, volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,

@@ -149,7 +149,7 @@ primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Il settimo, da
 legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.400 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.296 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -165,8 +165,9 @@ caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e i
 di zr-pm, Decisione 18231), e altri 25: il colore che il workspace ha scelto, nel selettore (8 byte misurati, e 20 di
 margine: un'eccezione di zr-pm), e altri 25: la ricerca che non resta in caricamento quando nel campo si incolla la parola
 che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropartita, zr-pm). Dalla `v3.7.0` è sceso di
-300 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
-e l'ingresso pesa 403 byte in meno (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza alzare la soglia). Hanno
+404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
+l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
+alzare la soglia; il margine sta nel peso tolto, non nel tetto). Hanno
 un tetto anche i quattro pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.538 la
 ricerca e, dalla `v3.7.0`, 778 gli avvisi (la misura più 20). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -319,7 +320,7 @@ controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer upda
 | `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente |
 | `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i menu della barra in alto sopra il pannello di dettaglio («Esci» si clicca a pannello aperto); i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
 | `v3.6.1` | le scadenze di una scheda e il promemoria di una To-do aprono la scheda e la To-do; l'invito accettato apre Impostazioni › Membri della Dashboard | niente | un clic su quelle notifiche apre la pagina, non più la pagina delle notifiche |
-| `v3.7.0` | i testi dei due avvisi della cornice ridotta (documenti da accettare, Zeiras che non risponde) in un pezzo a richiesta, fuori dal JS d'ingresso: 403 byte in meno, tetto 17.400 | niente nel codice; nei test, un caso che cerca uno dei due avvisi subito dopo il disegno lo aspetta (`await act(() => vi.dynamicImportSettled())`) | l'avviso compare con l'accettazione richiesta, e senza backoffice («Zeiras non risponde») |
+| `v3.7.0` | i testi dei due avvisi della cornice ridotta (documenti da accettare, Zeiras che non risponde) in un pezzo a richiesta, fuori dal JS d'ingresso: 403 byte in meno, tetto 17.296 | niente nel codice; nei test, un caso che cerca uno dei due avvisi subito dopo il disegno lo aspetta (`await act(() => vi.dynamicImportSettled())`) | l'avviso compare con l'accettazione richiesta, e senza backoffice («Zeiras non risponde») |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
