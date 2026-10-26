@@ -395,6 +395,8 @@ e che cosa dai tu è in README, «La cornice». Le forme:
   l'indirizzo;
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
+  Al clic su una voce del percorso la visita la fa `naviga` (dalla `v3.6.0`): da `onCrumb`, che arriva senza l'evento,
+  non navigate;
 - **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
   minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: le
   voci le dai al layout come props, `nav`, `active` e `onNavigate`: quelle che la pagina dà con `useCornice` qui non arrivano a

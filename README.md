@@ -864,6 +864,12 @@ cornice === null ? pagina : (
   non ha una sua funzione per il clic su queste voci (è fra le richieste al design system) lo fa la cornice da sé, e quando
   l'`AppShell` la porta questo si toglie senza che il modulo cambi niente. Sta nello stesso pezzo a richiesta dei punti sopra: se
   non arriva, i clic restano del browser.
+- **Anche i collegamenti del percorso passano da `naviga`**: dalla `v3.6.0`, le voci del percorso con un indirizzo di questa
+  origine fanno come quelle della barra laterale, con le stesse eccezioni (tasti, altre origini, clic già gestiti). La voce
+  senza indirizzo (`#`) la ferma l'`AppShell`, e l'ultima, la pagina, non è un collegamento. L'`AppShell` chiama ancora
+  `onCrumb(voce, indice)`, ma senza l'evento: **non navigate da `onCrumb`**, perché il browser segue già il link, e con
+  `naviga` la visita partirebbe due volte. `onCrumb` resta per ciò che non è navigare (una misura, un registro). È provvisorio
+  come il punto sopra: quando l'`AppShell` dà l'evento a `onCrumb` (è fra le richieste al design system) si toglie.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` porta a
   `<indirizzo>/w/<slug>`. Uno `disponibile` non è attivo lì, e dalla `v2.25.0` non porta più alla sua pagina «non attivo nel
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace.
@@ -1701,7 +1707,8 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   della cornice, e dato dopo il montaggio la monterebbe due volte. Viene dai dati del server: la pagina lo dà con
   `Pagina.layout = (props) => ({ crumbs: … })`, una funzione a freccia, e il layout del frontend lo passa. La funzione dà
   sempre la chiave `crumbs`, anche `{ crumbs: undefined }` quando il percorso non c'è: con un oggetto vuoto (`{}`) Inertia
-  toglie il layout intero, e quella pagina resta senza cornice.
+  toglie il layout intero, e quella pagina resta senza cornice. Un clic su una voce del percorso passa da `naviga`, dalla
+  `v3.6.0`: non navigate da `onCrumb`.
 - **Quando cambia il workspace** — una visita porta un altro slug nei dati — la cornice si rifà, e la pagina con lei: la
   ricerca coi suoi risultati, i pannelli e le notifiche sono di un workspace, e quelli di prima non restano davanti a chi
   è passato a un altro. Fra pagine dello stesso workspace resta montata.

@@ -9057,6 +9057,78 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
     });
 });
 
+// Sprint 74 · T9 (voce #2722, sì di zr-pm-07 del 26/10/2026). Le voci del percorso sono link veri, e l'`AppShell` chiama
+// `onCrumb` senza l'evento: il modulo non può fermare il browser, e un clic ricarica la pagina intera. Come per la barra
+// laterale (#2033) il clic semplice con un indirizzo di questa origine passa da `naviga`; provvisorio.
+describe('i clic sul percorso passano da `naviga` (sprint 74, voce 2722)', () => {
+    const percorso = [{ label: 'UAT Board', href: `${location.origin}/uat/board?v=1#parte` }, { label: 'UAT Senza indirizzo' }, { label: 'UAT Pagina' }];
+    const laCornice = async (naviga: (indirizzo: string) => void, onCrumb = vi.fn()) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} naviga={naviga} crumbs={percorso} onCrumb={onCrumb} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const voci = () => tutti('.zr-shell > main > .zr-crumbbar a') as HTMLAnchorElement[];
+    /** Un clic sul collegamento, e se per il browser era già stato gestito quando è arrivato in cima (la navigazione vera non c'è in jsdom). */
+    const cliccato = (collegamento: Element, init: MouseEventInit = {}) => {
+        const resto = { visto: false };
+        const alla = (evento: Event) => {
+            resto.visto = evento.defaultPrevented;
+            evento.preventDefault();
+        };
+        window.addEventListener('click', alla);
+        collegamento.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }));
+        window.removeEventListener('click', alla);
+
+        return resto.visto;
+    };
+
+    it('T9.1 un clic semplice su una voce con un indirizzo di questa origine chiama `naviga` con quell\'indirizzo, e il browser non lo segue; T9.3 l\'indirizzo resta sulla voce', async () => {
+        const naviga = vi.fn();
+        const onCrumb = vi.fn();
+        await laCornice(naviga, onCrumb);
+
+        expect(voci().map((voce) => voce.getAttribute('href'))).toStrictEqual([percorso[0]?.href, '#']);
+        expect(cliccato(voci()[0] as Element)).toBe(true);
+        expect(naviga.mock.calls).toStrictEqual([[percorso[0]?.href]]);
+        // `onCrumb` la chiama l'`AppShell`, come prima: il modulo non deve navigare da lì.
+        expect(onCrumb).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, MouseEventInit]>([
+        ['il tasto centrale', { button: 1 }],
+        ['Ctrl', { ctrlKey: true }],
+        ['Cmd', { metaKey: true }],
+        ['Maiusc', { shiftKey: true }],
+        ['Alt', { altKey: true }],
+    ])('T9.2 con %s il clic sul percorso resta del browser', async (_nome, init) => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+
+        expect(cliccato(voci()[0] as Element, init)).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T9.2 un indirizzo di un\'altra origine, la voce senza indirizzo e l\'ultima voce non passano da `naviga`; un percorso della pagina con le stesse classi non è suo', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [prima, senza] = voci();
+
+        prima?.setAttribute('href', 'https://altra-origine.example/uat');
+        expect(cliccato(prima as Element)).toBe(false);
+        // `#`: il clic lo ferma l'`AppShell`.
+        expect(cliccato(senza as Element)).toBe(true);
+        expect(cliccato(uno('.zr-crumbbar [aria-current="page"]') as Element)).toBe(false);
+        const fuori = document.createElement('div');
+        fuori.innerHTML = `<div class="zr-crumbbar"><nav class="zr-crumbs zr-shell-crumbs"><a href="${location.origin}/uat">nella pagina</a></nav></div>`;
+        uno('.zr-main-body')?.append(fuori);
+        expect(cliccato(fuori.querySelector('a') as Element)).toBe(false);
+        fuori.remove();
+
+        expect(naviga).not.toHaveBeenCalled();
+    });
+});
+
 // Sprint 69 · T4 (voce #2344). Col selettore dei workspace o il menu Moduli aperti la barra dei moduli è nascosta e `inert`
 // (sprint 65), ma il piede della barra laterale, con «Impostazioni», restava una fermata del Tab.
 describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce 2344)', () => {

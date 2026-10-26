@@ -209,13 +209,13 @@ let naviga: ((indirizzo: string) => void) | undefined;
 let nomi: [contenuto: string, risultati: string] = ['', ''];
 
 /**
- * I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: un clic semplice ricarica la pagina
- * intera, anche dentro lo stesso modulo. Con un indirizzo di questa origine passa da `naviga`, quella che la cornice ha quando
+ * I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») e del percorso sono link veri: un clic semplice
+ * ricarica la pagina intera, anche dentro lo stesso modulo, e `onCrumb` arriva senza l'evento (#2722). Con un indirizzo di questa origine passa da `naviga`, quella che la cornice ha quando
  * si monta; il tasto centrale, Ctrl, Cmd, Maiusc, Alt, un indirizzo di un'altra origine o un clic già gestito restano del
- * browser. Provvisorio, finché l'`AppShell` non ha la sua funzione per questi clic.
+ * browser. Provvisorio, finché l'`AppShell` non ha la sua funzione per questi clic e non dà l'evento a `onCrumb`.
  */
 function clicSullaBarra(clic: MouseEvent): void {
-    const collegamento = (clic.target as Element).closest?.<HTMLAnchorElement>('.zr-shell > .zr-side a[href]');
+    const collegamento = (clic.target as Element).closest?.<HTMLAnchorElement>('.zr-shell > .zr-side a[href], .zr-shell > main > .zr-crumbbar a[href]');
 
     if (naviga && collegamento && !(clic.defaultPrevented || clic.button || clic.ctrlKey || clic.metaKey || clic.shiftKey || clic.altKey) && collegamento.origin === location.origin) {
         clic.preventDefault();
