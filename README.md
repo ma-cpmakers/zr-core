@@ -765,6 +765,14 @@ cornice === null ? pagina : (
   nascosto, un titolo con `tabindex="-1"` o un pulsante spento contano come qualcosa che prende il fuoco, e allora la fermata
   non c'è; in una pagina `flush` il `main` non ha il nome; dove il browser non conosce `:focus-visible` (Safari prima della
   15.4, Chrome prima dell'86, Firefox prima dell'85) il contorno non c'è e il fuoco sul contenuto scrive un errore in console.
+- **Il pannello della ricerca è una fermata del Tab**: dalla `v3.6.0`, con la ricerca aperta il pannello dei risultati ha
+  `tabindex="0"`, `role="group"` e un nome, «Risultati della ricerca» nella lingua della cornice. Quando i risultati non ci
+  stanno il pannello scorre, e dentro niente prende il fuoco (il fuoco resta nel campo, che indica il risultato scelto con
+  le frecce): prima chi usa la tastiera non poteva farlo scorrere (axe, `scrollable-region-focusable`). Col Tab dal campo il
+  fuoco va al pannello, che scorre con le frecce, e ha il contorno del design system come il contenuto. Un elemento del modulo
+  con la classe del pannello non si tocca. Per chi aggiorna: con la ricerca aperta c'è una fermata del Tab in più, dopo il
+  campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Sta nel pezzo dei rimedi, ed è provvisorio
+  come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna

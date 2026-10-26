@@ -9419,3 +9419,79 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         expect(azioni()?.style.visibility).toBe('');
     });
 });
+
+// Sprint 74 · T7 (voce #2720, dalla UAT di #2625 di zr-board): il pannello della ricerca scorre e dentro niente prende il fuoco
+// (il fuoco resta nel campo, che ha `aria-activedescendant`): axe dà `scrollable-region-focusable`. Rimedio provvisorio, come
+// per il contenuto (#2394).
+describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint 74, voce 2720)', () => {
+    // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const laCornice = async (lingua = 'it') => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: 'UAT Lancio' }], workspace: dati.workspace.slug })));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const pannello = () => uno('.zr-shell .zr-top > .zr-search > .zr-search-panel') as HTMLElement | null;
+    /** Una parola nel campo, come una persona, e i risultati che arrivano dopo i 300 ms dell'`AppShell`. */
+    const cerca = async () => {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            await vi.dynamicImportSettled();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'uat');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.advanceTimersByTimeAsync(300);
+            await vi.dynamicImportSettled();
+            await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(1);
+    };
+    const fermata = () => [pannello()?.getAttribute('tabindex'), pannello()?.getAttribute('role'), pannello()?.getAttribute('aria-label')];
+
+    it.each([
+        ['it', 'Risultati della ricerca'],
+        ['es', 'Resultados de la búsqueda'],
+        ['en', 'Search results'],
+    ])('T7.2 con la lingua "%s" il pannello coi risultati è nel giro del Tab, un gruppo che si chiama «%s»', async (lingua, nome) => {
+        await laCornice(lingua);
+        await cerca();
+
+        expect(fermata()).toStrictEqual(['0', 'group', nome]);
+    });
+
+    it('T7.2 col fuoco da tastiera il pannello ha il contorno del design system, coi soli token sull\'elemento; quando il fuoco esce non l\'ha più', async () => {
+        await laCornice();
+        await cerca();
+        const matches = Element.prototype.matches;
+        vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
+            return selettore === ':focus-visible' || matches.call(this, selettore);
+        });
+
+        await act(async () => pannello()?.focus());
+        expect([pannello()?.style.outlineOffset, pannello()?.style.cssText.includes('var(--focus)')]).toStrictEqual(['-2px', true]);
+        await act(async () => (uno('.zr-search input') as HTMLElement).focus());
+        expect(pannello()?.getAttribute('style')).toBe('');
+    });
+
+    it('T7.3 un elemento della pagina con la classe del pannello non si tocca', async () => {
+        await laCornice();
+        const estraneo = document.createElement('div');
+        estraneo.className = 'zr-search-panel';
+        await act(async () => {
+            uno('.zr-main')?.append(estraneo);
+        });
+        await cerca();
+
+        expect([estraneo.hasAttribute('tabindex'), estraneo.hasAttribute('role'), estraneo.hasAttribute('aria-label')]).toStrictEqual([false, false, false]);
+        expect(fermata()[0]).toBe('0');
+    });
+});

@@ -882,10 +882,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
 
         return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
     }, []);
-    // Il pezzo arriva una volta; `via` gli ridà il nome del contenuto a ogni cambio di lingua, anche senza una cornice nuova.
+    // Il pezzo arriva una volta; `via` gli ridà i nomi del contenuto e dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
     useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent), () => undefined);
-    }, [t.mainContent]);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
+    }, [t.mainContent, t.searchResults]);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice

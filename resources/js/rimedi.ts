@@ -205,7 +205,8 @@ function azioniSottoLaRicerca(): void {
 
 /** La `naviga` della cornice montata: gliela dà la cornice quando chiede questo pezzo. */
 let naviga: ((indirizzo: string) => void) | undefined;
-let nomeDelContenuto = '';
+/** I nomi del contenuto e del pannello della ricerca, nella lingua della cornice. */
+let nomi: [contenuto: string, risultati: string] = ['', ''];
 
 /**
  * I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: un clic semplice ricarica la pagina
@@ -222,51 +223,63 @@ function clicSullaBarra(clic: MouseEvent): void {
     }
 }
 
-/** La fermata che il rimedio ha dato al contenuto: si sposta quando cambia ciò che scorre, e si toglie quando non serve più. */
-let fermata: Element | null = null;
+/** Le fermate che il rimedio ha dato, al contenuto (0) e al pannello della ricerca (1): si spostano quando cambia ciò che scorre, e si tolgono quando non servono più. */
+const fermate: (Element | null)[] = [null, null];
 
 /**
- * Il contenuto della pagina nel giro del Tab: chi usa la tastiera non fa scorrere ciò che non prende il fuoco, quando dentro
- * non c'è niente che lo prenda (axe, `scrollable-region-focusable`). Scorre il `main` dell'`AppShell`, o col percorso il suo
- * `.zr-main-body`; `is-flush` non scorre. La fermata c'è solo finché dentro non c'è niente che prende il fuoco: con un
- * pulsante o un collegamento il Tab ci arriva già, e un clic nel contenuto non riporta il Tab all'inizio della pagina. Un
- * `tabindex` che ha già resta com'è, e un `main` fuori dall'`AppShell` non si tocca; il nome lo prende il `main`, nella lingua
- * che la cornice dà a `via`, e il contorno del fuoco lo dà `contorno`. Provvisorio, finché l'`AppShell` non lo fa da sé (#2394).
+ * Ciò che scorre nel giro del Tab: chi usa la tastiera non fa scorrere ciò che non prende il fuoco, quando dentro non c'è
+ * niente che lo prenda (axe, `scrollable-region-focusable`). La fermata c'è solo finché dentro non c'è niente che prende il
+ * fuoco: con un pulsante o un collegamento il Tab ci arriva già, e un clic dentro non riporta il Tab all'inizio della pagina.
+ * Un `tabindex` che ha già resta com'è; il contorno del fuoco lo dà `contorno`.
  */
-function contenuto(): void {
-    const main = document.querySelector('.zr-shell > main.zr-main:not(.is-flush)');
-    let scorre = main?.querySelector(':scope > .zr-main-body') ?? main;
-
-    if (scorre?.querySelector(PRENDONO_IL_FUOCO) || (scorre !== fermata && scorre?.hasAttribute('tabindex'))) {
+function fermata(quale: number, scorre: Element | null | undefined): void {
+    if (scorre?.querySelector(PRENDONO_IL_FUOCO) || (scorre !== fermate[quale] && scorre?.hasAttribute('tabindex'))) {
         scorre = null;
     }
-    if (fermata !== scorre) {
-        fermata?.removeAttribute('tabindex');
+    if (fermate[quale] !== scorre) {
+        fermate[quale]?.removeAttribute('tabindex');
         // Anche il contorno: se la fermata se ne va col fuoco, il `focusout` dopo non è più suo.
-        fermata?.removeAttribute('style');
+        fermate[quale]?.removeAttribute('style');
         scorre?.setAttribute('tabindex', '0');
-        fermata = scorre ?? null;
+        fermate[quale] = scorre ?? null;
     }
-    // Prima di `via`, che arriva subito dopo il pezzo, il nome è vuoto per un giro.
-    main?.setAttribute('aria-label', nomeDelContenuto);
 }
 
 /**
- * Il contorno del fuoco del contenuto, quando il fuoco arriva da tastiera: quello del design system, coi soli token, sull'elemento
- * (nessuno stile iniettato: il `bundle.css` non ha una regola per lui), sulla sola fermata del rimedio. Il fuoco che esce lo toglie.
+ * Il contenuto della pagina e il pannello della ricerca nel giro del Tab (`fermata`). Del contenuto scorre il `main`
+ * dell'`AppShell`, o col percorso il suo `.zr-main-body`; `is-flush` non scorre; un `main` fuori dall'`AppShell` non si tocca, e
+ * il nome lo prende il `main` (#2394). Il pannello della ricerca scorre quando i risultati non ci stanno, e il fuoco resta nel
+ * campo, che ha `aria-activedescendant`: il pannello è un gruppo, col nome dei risultati; uno della pagina con la stessa classe
+ * non è suo (#2720). I nomi sono nella lingua che la cornice dà a `via`. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function contenuto(): void {
+    const main = document.querySelector('.zr-shell > main.zr-main:not(.is-flush)');
+    const pannello = document.querySelector('.zr-shell .zr-top > .zr-search > .zr-search-panel');
+
+    fermata(0, main?.querySelector(':scope > .zr-main-body') ?? main);
+    fermata(1, pannello);
+    // Prima di `via`, che arriva subito dopo il pezzo, i nomi sono vuoti per un giro.
+    main?.setAttribute('aria-label', nomi[0]);
+    pannello?.setAttribute('role', 'group');
+    pannello?.setAttribute('aria-label', nomi[1]);
+}
+
+/**
+ * Il contorno del fuoco di una fermata del rimedio, quando il fuoco arriva da tastiera: quello del design system, coi soli token, sull'elemento
+ * (nessuno stile iniettato: il `bundle.css` non ha una regola per lui), sulle sole fermate del rimedio. Il fuoco che esce lo toglie.
  */
 function contorno(evento: FocusEvent): void {
     const scorre = evento.target as HTMLElement;
 
-    if (scorre === fermata) {
+    if (fermate.includes(scorre)) {
         scorre.style.cssText = evento.type === 'focusin' && scorre.matches(':focus-visible') ? 'outline:2px solid var(--focus);outline-offset:-2px' : '';
     }
 }
 
-/** La cornice dà la sua `naviga` e il nome del contenuto (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
-export function via(daUsare: (indirizzo: string) => void, nome: string): void {
+/** La cornice dà la sua `naviga` e i nomi (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
+export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: typeof nomi): void {
     naviga = daUsare;
-    nomeDelContenuto = nome;
+    nomi = nomiDellaCornice;
     contenuto();
 }
 
