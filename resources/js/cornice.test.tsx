@@ -14,6 +14,7 @@ import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
 import * as dellaCampanella from './campanella';
 import { frasiARichiesta } from './campanella';
+import { testiDegliAvvisi } from './avvisi';
 import * as delleLingue from './lingue';
 import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
@@ -825,7 +826,7 @@ describe('la Cornice', () => {
 
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const titolo = testi('it').downTitle;
+        const titolo = testiDegliAvvisi('it').downTitle;
         await mostra(<Cornice dati={{ ...dati, prodotti: [], non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect(contenitore.textContent).toContain(titolo);
 
@@ -1220,7 +1221,7 @@ describe('il pannello delle notifiche', () => {
 
         await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
 
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t.acceptanceOff);
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(testiDegliAvvisi('it').acceptanceOff);
         expect(uno('.zr-notif [role="status"]')).toBeNull();
     });
 
@@ -7688,7 +7689,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([]);
         expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
         // Non è un `403 accettazione_richiesta`: niente avviso sopra la pagina, e la campanella ha ancora il suo numero.
-        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
         expect(fetchFinto).toHaveBeenCalledOnce();
 
@@ -7775,7 +7776,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(inAttesa()).toBe(false);
         expect(titoli()).toStrictEqual([]);
         expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
-        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
         expect(uno('.zr-shell')).not.toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
 
@@ -8069,7 +8070,7 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
 
         await apri();
 
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testi('it').acceptanceOff);
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testiDegliAvvisi('it').acceptanceOff);
         expect(fetchFinto).not.toHaveBeenCalled();
         expect(scelta()).not.toBeNull();
         expect(document.activeElement).toBe(scelta());

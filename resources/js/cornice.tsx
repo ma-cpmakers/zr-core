@@ -515,6 +515,15 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
     };
     const t = testi(lingua);
+    // I testi dei due avvisi stanno in un pezzo a richiesta (dalla `v3.7.0`), chiesto la prima volta che la cornice è ridotta
+    // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
+    const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
+    useLayoutEffect(() => {
+        if (ridotta === 'error') {
+            import('./avvisi').then(setAvvisi, () => undefined);
+        }
+    }, [ridotta]);
+    const a = avvisi?.testiDegliAvvisi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
     // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
@@ -1002,15 +1011,16 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di
     // quello dell'accettazione: la pagina resta dov'è quando compare e quando se ne va.
-    const avvisoSopraLaPagina = daAccettare || dati.non_letti ? (
+    const avvisoSopraLaPagina = a && ridotta === 'error' ? (
         <div className="zr-stack">
-            <Alert tone="warning" title={daAccettare ? t.acceptanceTitle : t.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button> : undefined}>
-                {daAccettare ? t.acceptanceText : t.downText}
+            <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
+                {daAccettare ? a.acceptanceText : a.downText}
             </Alert>
             <div />
         </div>
     ) : null;
-    const spenta = daAccettare ? t.acceptanceOff : t.downOff;
+    // Serve solo con l'avviso, e con l'avviso i testi ci sono.
+    const spenta = (daAccettare ? a?.acceptanceOff : a?.downOff)!;
 
     const shell = (
         <AppShell

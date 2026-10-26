@@ -43,32 +43,6 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      */
     unreadNone: string;
     /**
-     * Il titolo dell'avviso che la cornice mette sopra la pagina a chi non ha ancora accettato i documenti legali in vigore.
-     * I quattro testi dell'accettazione non nominano un documento né una versione: quali mancano lo sa la pagina
-     * dell'accettazione, che è di zr-home, non la cornice (README, «La cornice»).
-     */
-    acceptanceTitle: string;
-    /** La frase dello stesso avviso: che cosa fare, e che cosa resta spento fino ad allora. */
-    acceptanceText: string;
-    /** Il pulsante dello stesso avviso: porta alla pagina dell'accettazione. */
-    acceptanceAction: string;
-    /**
-     * Ciò che campanella e ricerca dicono a chi non ha accettato, al posto delle notifiche e dei risultati. L'`AppShell` non
-     * ha un testo per «non disponibile»: la cornice gli dà questo al posto dei suoi tre (`notificationsError`, `searchHint`,
-     * `searchError`), su una copia.
-     */
-    acceptanceOff: string;
-    /**
-     * Il titolo dell'avviso che la cornice mette sopra la pagina quando la parte server non ha potuto leggere il backoffice
-     * (`Cornice::dopo()` con `non_letti`, dalla `v2.1.0`): l'avviso non ha un pulsante, perché non c'è niente da fare se non
-     * riprovare.
-     */
-    downTitle: string;
-    /** La frase dello stesso avviso: che cosa manca, e che torna da sé. */
-    downText: string;
-    /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
-    downOff: string;
-    /**
      * Il pulsante «Salta al contenuto», il primo elemento della cornice da tastiera: porta il fuoco al contenuto della pagina.
      * L'`AppShell` non ne ha uno suo: finché non lo porta lo scrive la cornice, coi pezzi del design system (README, «La cornice»).
      */

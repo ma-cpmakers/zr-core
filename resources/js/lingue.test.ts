@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import avvisiInglesi from '../lingue/avvisi/en.json';
+import avvisiSpagnoli from '../lingue/avvisi/es.json';
+import avvisiItaliani from '../lingue/avvisi/it.json';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
@@ -6,6 +9,7 @@ import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
 import risorseDellaRicerca from '../registro/ricerca.json';
+import { testiDegliAvvisi } from './avvisi';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
 import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
@@ -515,19 +519,18 @@ describe('le lingue della cornice', () => {
 
     // Sprint 24 · T2 (voce #1745): i testi di chi non ha accettato i documenti legali in vigore. Titolo, frase e pulsante
     // dell'avviso sopra la pagina, e la frase di campanella e ricerca spente: nessuno nomina un documento.
-    it('i quattro testi di chi non ha accettato i documenti legali sono chiavi di zr-core nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 24 · T2.4)', () => {
+    it('i quattro testi di chi non ha accettato i documenti legali sono chiavi di zr-core nelle tre lingue, nei file degli avvisi e non fra i testi della cornice, e in una lingua che zr-core non ha sono in inglese (sprint 24 · T2.4; dalla v3.7.0 nel pezzo degli avvisi)', () => {
         const chiavi = ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff'] as const;
         const inInglese = ['There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'];
-        expect([italiano, spagnolo, inglese].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
+        expect([avvisiItaliani, avvisiSpagnoli, avvisiInglesi].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
             ['Ci sono documenti da accettare', 'Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.', 'Vai ai documenti', 'Non disponibile finché non accetti i documenti.'],
             ['Hay documentos por aceptar', 'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.', 'Ir a los documentos', 'No disponible hasta que aceptes los documentos.'],
             inInglese,
         ]);
-        expect(chiavi.map((chiave) => testi('pt-BR')[chiave])).toStrictEqual(inInglese);
-
-        // Una lingua che ha solo un testo dell'`AppShell`: i quattro di zr-core li prende dall'inglese.
-        const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
-        expect([tedesco.notifications, ...chiavi.map((chiave) => tedesco[chiave])]).toStrictEqual(['Benachrichtigungen', ...inInglese]);
+        expect(chiavi.map((chiave) => testiDegliAvvisi('pt-BR')[chiave])).toStrictEqual(inInglese);
+        expect(chiavi.map((chiave) => testiDegliAvvisi('it-IT')[chiave])).toStrictEqual(chiavi.map((chiave) => avvisiItaliani[chiave]));
+        expect([testiDegliAvvisi('es_ES').downTitle, testiDegliAvvisi('IT').downOff]).toStrictEqual([avvisiSpagnoli.downTitle, avvisiItaliani.downOff]);
+        expect([italiano, spagnolo, inglese].map((file) => chiavi.filter((chiave) => chiave in file))).toStrictEqual([[], [], []]);
     });
 
     // Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ha un

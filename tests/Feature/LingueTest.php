@@ -76,14 +76,17 @@ function fileDelleLingue(string $cartella): array
 /**
  * @return array<string, array<string, mixed>> ogni lingua di resources/lingue, per codice (il nome del file): i testi e, dallo
  *                                             sprint 30, le frasi delle notifiche, che stanno in resources/lingue/notifiche in
- *                                             un file con lo stesso nome. Che i due file non si pestino lo dice `problemiDeiDueFile`
+ *                                             un file con lo stesso nome. Che i due file non si pestino lo dice `problemiDeiDueFile`.
+ *                                             Dalla `v3.7.0` anche i testi dei due avvisi della cornice ridotta, che stanno in
+ *                                             resources/lingue/avvisi (`chiaviDegliAvvisi`)
  */
 function lingueDellaCornice(): array
 {
     $frasi = fileDelleLingue('notifiche/');
+    $avvisi = fileDelleLingue('avvisi/');
     $lingue = [];
     foreach (fileDelleLingue('') as $codice => $testi) {
-        $lingue[$codice] = [...$testi, ...($frasi[$codice] ?? [])];
+        $lingue[$codice] = [...$testi, ...($frasi[$codice] ?? []), ...($avvisi[$codice] ?? [])];
     }
 
     return $lingue;
@@ -1188,6 +1191,27 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
         ->and(array_filter($testi, fn (array $delCodice): bool => ! is_string($delCodice['notificationTitle'] ?? null)))->toBe([])
         // Insieme, né un testo di meno né uno di più: è il controllo di sempre, sui due file di ogni lingua.
         ->and(problemiDelleLingue(lingueDellaCornice()))->toBe([]);
+});
+
+/**
+ * I sette testi dei due avvisi della cornice ridotta — chi non ha accettato i documenti legali e Zeiras che non risponde —:
+ * dalla `v3.7.0` stanno in resources/lingue/avvisi, un file per lingua col nome del file dei testi, e la cornice li chiede in un
+ * pezzo a richiesta (`resources/js/avvisi.ts`) solo in quei due stati, fuori dal JS d'ingresso (zr-pm, 26/10/2026).
+ *
+ * @return list<string>
+ */
+function chiaviDegliAvvisi(): array
+{
+    return ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff'];
+}
+
+it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni lingua dei testi con lo stesso nome, coi soli sette testi degli avvisi; fra i testi della cornice non ci sono più (v3.7.0)', function () {
+    $testi = fileDelleLingue('');
+    $avvisi = fileDelleLingue('avvisi/');
+
+    expect(array_keys($avvisi))->toEqualCanonicalizing(array_keys($testi))
+        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $avvisi))->toBe(array_fill_keys(array_keys($avvisi), chiaviDegliAvvisi()))
+        ->and(array_filter(array_map(fn (array $delCodice): array => array_values(array_intersect(chiaviDegliAvvisi(), array_keys($delCodice))), $testi)))->toBe([]);
 });
 
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
