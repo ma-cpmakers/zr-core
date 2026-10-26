@@ -27,7 +27,7 @@ export interface LayoutDellaCorniceProps extends Omit<CorniceProps, 'dati'> {
     dopo?: DatiDopo | null | undefined;
 }
 
-const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'actions', 'flush'] as const;
+const nomiDellaPagina = ['nav', 'active', 'onNavigate', 'create', 'createLabel', 'actions', 'flush'] as const;
 
 /**
  * Ciò che una pagina dà alla cornice con `useCornice`. Il percorso no: sposta la pagina dentro un altro elemento dell'`AppShell`,
@@ -71,7 +71,7 @@ const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${person
  */
 const stessaPersona = (uno: DatiDellaCornice, altro: DatiDellaCornice) => !!uno.persona.email && lui(uno.persona) === lui(altro.persona);
 
-export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
+export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
     // `dopo` sta sopra, con tutto ciò che porta (dalla `v2.9.0` meno la lingua, se `subito` è della stessa persona ed è più recente: qui sotto): è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
     // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
@@ -136,7 +136,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.
-    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, actions, flush, onLogout, naviga, piano } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
+    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
 
     // La `key` è lo slug del workspace: ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i
     // pannelli, le notifiche) è di quel workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con
@@ -200,7 +200,7 @@ function CorniceMontata({ children, ...dellaCornice }: CorniceProps) {
 
 /**
  * Dalla pagina, o dal suo involucro, mentre è montata sotto `LayoutDellaCornice`: dà alla cornice le voci del prodotto (`nav`),
- * la voce attiva (`active`; `null`: nessuna), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e
+ * la voce attiva (`active`; `null`: nessuna), `onNavigate`, le voci del menu «+» (`create`) e il suo nome (`createLabel`), le azioni in topbar (`actions`) e
  * l'area senza margine (`flush`). Vince sulle props del layout, e quando la pagina se ne va ciò che aveva dato sparisce. Le
  * funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo involucro, non in tutti e
  * due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando una si smonta sparisce anche

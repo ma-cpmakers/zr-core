@@ -568,6 +568,30 @@ describe('useCornice', () => {
         expect(creaBoard).not.toHaveBeenCalled();
     });
 
+    // Sprint 74 · T6 (voce #2719, Decisione 18231): il «+» e il suo menu hanno il nome che il modulo dà, dal layout o dalla
+    // pagina come le voci; senza, «Crea» nella lingua della persona.
+    it('il «+» e il suo menu si chiamano come dice `createLabel`, dato al layout o con `useCornice`; senza, «Crea» nella lingua (voce 2719, T6.1, T6.2)', async () => {
+        const nomeDelPiu = () => [uno('button.zr-create')?.getAttribute('aria-label'), uno('[role=menu]')?.getAttribute('aria-label')];
+        const crea = [{ label: 'UAT Opportunità', onClick: vi.fn() }];
+
+        await visita(dati, <PaginaB key="1" />, { create: crea, createLabel: 'Nuovo nel CRM' });
+        await clic(uno('button.zr-create'));
+        expect(nomeDelPiu()).toStrictEqual(['Nuovo nel CRM', 'Nuovo nel CRM']);
+        await clic(uno('button.zr-create'));
+
+        await visita(dati, <PaginaCheDa key="2" cose={{ create: crea, createLabel: 'Nuovo in Bookings' }} />);
+        await clic(uno('button.zr-create'));
+        expect(nomeDelPiu()).toStrictEqual(['Nuovo in Bookings', 'Nuovo in Bookings']);
+        await clic(uno('button.zr-create'));
+
+        for (const [lingua, nome] of [['it', 'Crea'], ['es', 'Crear'], ['en', 'Create']] as const) {
+            await visita({ ...dati, lingua }, <PaginaCheDa key={lingua} cose={{ create: crea }} />);
+            await clic(uno('button.zr-create'));
+            expect(nomeDelPiu(), lingua).toStrictEqual([nome, nome]);
+            await clic(uno('button.zr-create'));
+        }
+    });
+
     it('le funzioni possono essere nuove a ogni render: una pagina che cambia stato due volte viene resa tre volte, e il clic sul «+» chiama l\'ultima funzione (sprint 9 · T2.4)', async () => {
         const conta = { render: 0 };
         const segna = vi.fn();

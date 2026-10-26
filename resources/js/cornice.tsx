@@ -131,6 +131,8 @@ export interface CorniceProps {
     onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
     /** Le voci del menu «+»: i tipi che il prodotto crea. */
     create?: MenuItem[] | undefined;
+    /** Il nome del «+» e del suo menu («Nuovo nel CRM», dalla `v3.6.0`); senza, «Crea» nella lingua della persona. */
+    createLabel?: string | undefined;
     /** Altro in topbar. */
     actions?: ReactNode;
     /** L'area della pagina senza margine (la board). */

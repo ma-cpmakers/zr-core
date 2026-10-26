@@ -899,19 +899,19 @@ it('il README dice come si usa il layout della cornice, una cosa per punto (spri
 })->with([
     // Di ogni punto la frase intera, dal grassetto: le stesse parole con un «non» davanti non passano.
     '(a) LayoutDellaCornice in un componente a livello di modulo, dato a createInertiaApp' => ['Il layout', ['**Il layout** del frontend rende `LayoutDellaCornice` ed è un componente a livello di modulo, dato a `createInertiaApp({ layout })`'], ['ed è un componente', 'e non è un componente']],
-    '(b) useCornice con le sei cose che accetta' => ['La pagina', ['**La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`actions`', '`flush`'], ['dà alla cornice montata', 'non dà alla cornice montata']],
+    '(b) useCornice con le sette cose che accetta' => ['La pagina', ['**La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`createLabel`', '`actions`', '`flush`'], ['dà alla cornice montata', 'non dà alla cornice montata']],
     '(c) il percorso si dà dal layout' => ['Il percorso', ['**Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`'], ['si dà dal layout', 'non si dà dal layout']],
     '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['**Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici'], ['fa due cornici', 'non fa due cornici']],
     '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['**Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser ricarica la pagina'], ['sono link veri', 'non sono link veri']],
     '(f) senza dati la barra minima è provvisoria, un pezzo a richiesta, e costa 126 byte (sprint 68 · T1.7; patch v2.24.1)' => ['Senza dati: la barra minima', ['**È provvisoria**: il design system non ha ancora la sua barra minima', '**Senza dati: la barra minima**, provvisoria (dalla `v2.24.0`)', '(`barra`, 420 byte con gzip)', 'Costa 126 byte con gzip nel JS d\'ingresso di chi usa il layout con React fuori'], ['È provvisoria', 'Non è provvisoria']],
 ]);
 
-it('le sei cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3)', function () {
+it('le sette cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3; sprint 74 · T6.1)', function () {
     $layout = (string) file_get_contents(__DIR__.'/../../resources/js/layout.tsx');
     preg_match('/^const nomiDellaPagina = \[([^\]]*)\] as const;$/m', $layout, $elenco);
     preg_match_all('/\'(\w+)\'/', $elenco[1] ?? '', $nomi);
 
-    expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'actions', 'flush']);
+    expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'createLabel', 'actions', 'flush']);
 });
 
 // Sprint 68 · T2 (voce #2115): una pagina che è insieme la rotta di `entra()` e quella della richiesta rimandata.

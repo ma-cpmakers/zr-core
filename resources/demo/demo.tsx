@@ -79,7 +79,7 @@ const vociDelProdotto: GruppoDiVoci[] = [
 // se una non lo accetta `tsc` si ferma col file stretto, e se ne nasce una che qui manca si ferma anche con quello di base.
 type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;
 const propsScritteUndefined = {
-    product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined, create: undefined,
+    product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined, create: undefined, createLabel: undefined,
     actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
 } satisfies OgniFacoltativa<CorniceProps> satisfies Partial<CorniceProps>;
 const datiScrittiUndefined = { aziende: undefined, moduli: undefined, non_lette: undefined, aggiornati_il: undefined, sessione_il: undefined, lingua_il: undefined, accettazione_richiesta: undefined, in_attesa: undefined, non_letti: undefined } satisfies OgniFacoltativa<DatiDellaCornice> satisfies Partial<DatiDellaCornice>;

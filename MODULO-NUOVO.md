@@ -387,6 +387,7 @@ e che cosa dai tu è in README, «La cornice». Le forme:
 - i tipi di ciò che dai sono `LayoutDellaCorniceProps` (il layout) e `CorniceDellaPagina` (`useCornice`), dall'ingresso del
   pacchetto. Le voci hanno la forma del design system, in `vendor/zeiras/zr-core/resources/zeiras/index.d.ts`: `nav` è una
   lista di gruppi (`group`, `items`) di `NavItem`, `create` una lista di `MenuItem`, `crumbs` una lista di `ShellCrumb`;
+  il nome del «+» lo dai con `createLabel` («Nuovo nel CRM»; senza, è «Crea» nella lingua della persona);
 - **una voce di `nav` del modulo non porta `href`**: al clic la cornice chiama `onNavigate` con l'id della voce, e lì fai
   la visita di Inertia; la cornice resta montata. Con `href` la voce è un link vero: il browser ricarica la pagina e la
   cornice si rifà, come per la Dashboard e per i prodotti, a meno che tu dia `naviga`: dalla `v2.25.0` il clic semplice con un

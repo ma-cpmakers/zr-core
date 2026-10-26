@@ -1674,9 +1674,10 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   Luciano), e questa è fatta coi soli suoi pezzi, `Logo` e `Button`. Quando la barra c'è nel design system questa si toglie
   e la sostituisce lui, con una versione che lo annuncia.
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
-  (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
-  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Nessuna voce
-  attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
+  (`active`), `onNavigate`, le voci del menu «+» (`create`) e il suo nome (`createLabel`, dalla `v3.6.0`: «Nuovo nel CRM»;
+  senza, «Crea» nella lingua), le azioni in topbar (`actions`) e l'area senza margine (`flush`). Ciò che dà vince sulle
+  props del layout finché la pagina è montata, e sparisce quando se ne va.
+  Nessuna voce attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
   valore, e quello della pagina vince anche su una voce data dal layout; ciò che la pagina non dà, o dà `undefined`, resta
   del layout. Le funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo
   involucro, non in tutti e due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando

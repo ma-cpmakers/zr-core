@@ -471,7 +471,7 @@ function Collegamenti() {
 type OgniFacoltativa<T> = Record<{ [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T], undefined>;
 const propsScritteUndefined = {
     cornice: undefined, subito: undefined, dopo: undefined, product: undefined, nav: undefined, active: undefined, onNavigate: undefined, crumbs: undefined, onCrumb: undefined,
-    create: undefined, actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
+    create: undefined, createLabel: undefined, actions: undefined, flush: undefined, naviga: undefined, piano: undefined, children: undefined,
 } satisfies OgniFacoltativa<LayoutDellaCorniceProps> satisfies Partial<LayoutDellaCorniceProps>;
 
 /**
