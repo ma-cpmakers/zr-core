@@ -49,7 +49,7 @@ function eUnaFermata(elemento: HTMLElement): boolean {
  */
 let preso: [dialogo: HTMLElement, loAveva: Element | null] | null = null;
 
-export function fuocoAChiLoAveva(): void {
+function fuocoAChiLoAveva(): void {
     if (preso !== null && !preso[0].isConnected) {
         const loAveva = preso[1];
 
@@ -58,6 +58,31 @@ export function fuocoAChiLoAveva(): void {
             loAveva.focus();
         }
     }
+}
+
+/**
+ * Le voci «Presto» della barra laterale e del menu Moduli non portano da nessuna parte (`aria-disabled`), ma fermavano il Tab, e un
+ * lettore di schermo le leggeva «CRMPresto» (riga 6 delle richieste al design system): escono dal giro del Tab e il loro nome è
+ * quello della voce e lo stato, separati. Una voce che smette di essere «Presto» torna com'era: l'`AppShell` non dà a queste voci
+ * né `tabindex` né un nome suo. Si rifà a ogni cambio della pagina e quando il pezzo arriva. Provvisorio, finché l'`AppShell` non
+ * lo fa da sé.
+ */
+function vociPresto(): void {
+    document.querySelectorAll('.zr-shell a.zr-nav-item').forEach((voce) => {
+        if (voce.matches('.is-soon')) {
+            voce.setAttribute('tabindex', '-1');
+            voce.setAttribute('aria-label', [...voce.children].map((parte) => parte.textContent).filter(Boolean).join(', '));
+        } else {
+            voce.removeAttribute('tabindex');
+            voce.removeAttribute('aria-label');
+        }
+    });
+}
+
+/** Ciò che questo pezzo rifà a ogni gruppo di cambi della pagina: l'osservatore è quello del pezzo dei rimedi. */
+export function aOgniCambio(): void {
+    fuocoAChiLoAveva();
+    vociPresto();
 }
 
 /** Un `Dialog` aperto che non è un'anteprima, dentro il suo velo. */
@@ -159,3 +184,4 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean): void {
 }
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
+vociPresto();

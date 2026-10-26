@@ -175,7 +175,8 @@ che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropa
 l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
 alzare la soglia; il margine sta nel peso tolto, non nel tetto). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera (la misura più 20; i byte che
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.321 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
@@ -915,6 +916,12 @@ cornice === null ? pagina : (
   con un dialogo aperto dalla voce non va al «+» dietro il velo. Il modulo non deve fare niente. Sta nel pezzo dei rimedi, non
   in quello della tastiera, che è al suo tetto, ed è provvisorio: quando il `Menu` del design system lo fa da sé (riga 11 delle
   richieste al design system) si toglie, e se il pezzo non arriva il fuoco resta alla pagina com'era.
+- **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
+  portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
+  schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della
+  cornice. Una voce che smette di essere «Presto» torna com'era. Il modulo non deve fare niente; un test del modulo che col Tab
+  raggiunge una voce «Presto» va riletto. Sta nel pezzo della tastiera, che arriva al primo tasto: prima del primo tasto le voci
+  sono quelle dell'`AppShell`. È provvisorio: quando l'`AppShell` lo fa da sé (riga 6 delle richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso

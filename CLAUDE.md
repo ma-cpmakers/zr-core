@@ -106,7 +106,8 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   ingresso riesporta niente) e i rimedi provvisori di tastiera (`resources/js/rimedi.ts`, tetto 1.327 dalla `v2.22.1`: +99 per C1 e C2, Decisione 14804; 1.450 dalla `v2.25.0`: +123 per #2033 e #2344, zr-pm 22/10, nota 15310; 1.666 dalla `v2.25.2`: +216 per #2394, il contenuto che scorre nel giro del Tab, Decisioni 15823 e 15827; 1.768 dalla `v3.4.0`: +102 per #2627, il pannello delle notifiche senza punti di riferimento e la barra in alto sotto la ricerca, Decisione 17522; 1.870 dalla `v3.6.0`: +82 per #2720 e #2722, il pannello della ricerca nel giro del Tab e i clic sul percorso, più 20, Decisione 18266; 1.922 nella stessa: +52 per Esc dal pannello della ricerca, più 20, zr-pm 26/10) e, dalla `v3.7.0`, i testi dei due avvisi della cornice ridotta (`resources/js/avvisi.ts`, coi
   file di `resources/lingue/avvisi/`, tetto 778: la misura più 20; chiesto solo quando la cornice passa all'accettazione richiesta o a
   `non_letti`); dalla `v3.8.0` i rimedi della sola tastiera (`resources/js/tastiera.ts`, tetto 1.201, la misura più 20: Tab
-  dentro un dialogo, Esc dal pannello della ricerca), usciti da quello dei rimedi, che lo chiede al primo tasto e gli ripete i
+  dentro un dialogo, Esc dal pannello della ricerca; 1.321 dalla `v3.8.1`: +120 per la riga 6, le voci «Presto», più 20; di riga in riga
+  per i rimedi di tastiera, al più 2.000 B, Decisione 18611), usciti da quello dei rimedi, che lo chiede al primo tasto e gli ripete i
   tasti premuti prima (un Tab lo ferma); i byte liberati restano nel tetto dei rimedi, per i prossimi (zr-pm, 26/10). Ciò che
   non ci sta non entra nell'ingresso: il tetto non si alza.
 - In locale si lanciano Pint e PHPStan (i comandi esatti sono nel prompt di partenza), `tsc --noEmit` (anche `-p tsconfig.stretto.json`), vitest e la build;

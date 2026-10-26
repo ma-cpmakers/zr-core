@@ -325,7 +325,7 @@ new MutationObserver((cambi) => {
         });
     }
     azioniSottoLaRicerca();
-    tastiera?.fuocoAChiLoAveva();
+    tastiera?.aOgniCambio();
     fuocoAlPiu();
     contenuto();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-hidden'] });

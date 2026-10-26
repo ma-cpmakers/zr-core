@@ -670,13 +670,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
     });
 
-    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.201 byte: la misura della v3.8.0 più 20', () => {
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.321 byte: la misura della v3.8.1 più 20 (1.201 nella v3.8.0)', () => {
         const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
 
         expect(tastiera).not.toBe('');
         // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
         // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
-        expect(gzip(tastiera)).toBeLessThanOrEqual(1_201);
+        expect(gzip(tastiera)).toBeLessThanOrEqual(1_321);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

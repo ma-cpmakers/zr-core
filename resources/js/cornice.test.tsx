@@ -8439,6 +8439,38 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
     });
 });
 
+// Riga 6 delle richieste al design system: le voci «Presto» non portano da nessuna parte ma fermavano il Tab, e un lettore di
+// schermo leggeva «CRMPresto». Col pezzo della tastiera escono dal giro del Tab, e il nome dice la voce e lo stato, separati.
+describe('le voci «Presto» escono dal giro del Tab e dicono nome e stato separati (riga 6)', () => {
+    const voci = () => tutti('.zr-shell a.zr-nav-item');
+    const comeSono = () => voci().map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('tabindex'), voce.getAttribute('aria-label')]);
+    const conIDati = async (lingua: string, prodotti: DatiDellaCornice['prodotti']) => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, lingua, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+
+    it('col pezzo della tastiera arrivato una voce «Presto» ha `tabindex="-1"` e il nome «<voce>, Presto»; le altre restano come sono, anche quella che smette di essere «Presto», e il nome segue la lingua', async () => {
+        await conIDati('it', { pm: 'attivo', crm: 'in_arrivo' });
+        await conLaTastiera();
+
+        expect(comeSono().slice(0, 3)).toStrictEqual([['Dashboard', null, null], ['Board', null, null], ['CRM', '-1', 'CRM, Presto']]);
+        expect(comeSono().slice(3, -1).map(([nome, fermata, etichetta]) => fermata === '-1' && etichetta === `${nome}, Presto`)).toStrictEqual(Array(5).fill(true));
+        expect(comeSono().at(-1)).toStrictEqual(['Impostazioni', null, null]);
+
+        await conIDati('it', { pm: 'attivo', crm: 'attivo' });
+
+        expect(comeSono()[2]).toStrictEqual(['CRM', null, null]);
+
+        await conIDati('en', { pm: 'attivo', crm: 'in_arrivo' });
+        const soon = uno('.zr-shell a.zr-nav-item.is-soon .zr-nav-soon')?.textContent;
+
+        expect(soon).not.toBe('Presto');
+        expect(comeSono()[2]).toStrictEqual(['CRM', '-1', `CRM, ${soon}`]);
+    });
+});
+
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
     const { Dialog, DetailPanel, Menu } = componenti;
     const senzaEffetto = () => {};
