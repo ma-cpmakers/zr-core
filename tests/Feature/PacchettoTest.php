@@ -4289,19 +4289,26 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
 // dallo stesso posto, perché gli stili che un modulo porta arrivano dopo il bundle.
 // Sprint 74 (zr-pm-07, 26/10): chi passa alla v3.6 da una versione 3 di prima (Bookings dalla 3.2.1) trova, versione per
 // versione, che cosa cambia, che cosa si tocca e che cosa si controlla; e lo script UAT della cornice.
-it('il README dice, in «Passare alla v3.6», versione per versione che cosa cambia, che cosa si tocca e che cosa si controlla, e lo script UAT della cornice (sprint 74)', function (string $frase) {
+// v3.8.1 (zr-pm-07, 26/10 sera): la sezione arriva alla v3.8.1, con una colonna per ciò che cambia nei test del modulo, così
+// zr-home, zr-board, zr-crm e zr-bookings aggiornano in un colpo solo.
+it('il README dice, in «Passare alla v3.8», versione per versione che cosa cambia, che cosa si tocca, che cosa cambia nei test del modulo e che cosa si controlla, e lo script UAT della cornice (sprint 74; v3.8.1)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
-    preg_match('/^### Passare alla v3\.6$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+    preg_match('/^### Passare alla v3\.8$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
 
     expect(str_contains(suUnaRiga($passaggio[1] ?? ''), $frase))->toBe(true);
 })->with([
-    'le colonne' => ['| Versione | Che cosa cambia | Che cosa si tocca | Che cosa si controlla |'],
+    'le colonne' => ['| Versione | Che cosa cambia | Che cosa si tocca | Che cosa cambia nei test del modulo | Che cosa si controlla |'],
     'la v3.2.2' => ['| `v3.2.2` |'],
     'la v3.2.3' => ['| `v3.2.3` |'],
     'la v3.3.0' => ['| `v3.3.0` |'],
     'la v3.4.0' => ['| `v3.4.0` |'],
     'la v3.5.0' => ['| `v3.5.0` |'],
     'la v3.6.0, che cosa si tocca' => ['`createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte'],
+    'la v3.6.1' => ['| `v3.6.1` |'],
+    'la v3.7.0' => ['| `v3.7.0` |'],
+    'la v3.8.0, nei test' => ['un caso che preme Tab in un dialogo, o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto)'],
+    'la v3.8.1, nei test' => ['Un caso che si aspettava il contrario va riletto'],
+    'più versioni in un colpo' => ['un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano'],
     'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
 ]);
 
