@@ -403,16 +403,18 @@ final class NotificheDellaCornice
      * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
      * che il browser usa. Un elenco di chiavi per percorso, nell'ordine in cui si provano: `percorso`, poi quelli di
      * `altrimenti`; un percorso senza segnaposto ha un elenco vuoto. La voce è quella dell'app della notifica, e il tipo si
-     * cerca intero. Nessun percorso per un tipo che lì non ha una destinazione, per un'app che il registro non ha, o senza
-     * app; e nessuno per una voce «Presto», che il browser non apre: i suoi id non servono ad aprire niente. Le voci le dà
-     * `Registro`, che il file lo legge una volta per processo: qui non c'è una lettura, né una copia.
+     * cerca intero; una notifica senza app (del workspace, di un invito) cerca nella voce della Dashboard, `home` (dalla
+     * `v3.6.1`), e l'app `home`, che il backoffice non dà, non la trova, come nel browser. Nessun percorso per un tipo che lì
+     * non ha una destinazione, o per un'app che il registro non ha; e nessuno per una voce «Presto», che il browser non apre:
+     * i suoi id non servono ad aprire niente. Le voci le dà `Registro`, che il file lo legge una volta per processo: qui non
+     * c'è una lettura, né una copia.
      *
      * @return list<list<string>>
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
         foreach (Registro::voci() as $voce) {
-            foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
+            foreach ($voce['id'] === ($app ?? 'home') && $app !== 'home' && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     return array_map(function (string $percorso): array {
                         preg_match_all(self::SEGNAPOSTO, $percorso, $segnaposto);

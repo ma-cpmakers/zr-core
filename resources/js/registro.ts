@@ -75,7 +75,8 @@ export interface NotificaDelProdotto {
      * Il percorso nel prodotto, dopo `/w/<slug>`. Un segnaposto è `{id}` o `{<nome>_id}`, e prende l'id che la notifica porta con
      * quella chiave (`ids`): `{trattativa_id}` per una nota, che si apre nell'opportunità a cui è attaccata. Un percorso può non
      * avere un segnaposto (`/da-fare`, per un'attività, che non ha una pagina sua): allora non chiede un id. Senza uno dei suoi
-     * id questo percorso non si apre, e si provano quelli di `altrimenti`.
+     * id questo percorso non si apre, e si provano quelli di `altrimenti`. Dalla `v3.6.1` può finire con un parametro col suo
+     * segnaposto (`/todo?todo={id}`, il promemoria di una To-do).
      */
     percorso: string;
     /**

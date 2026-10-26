@@ -163,7 +163,7 @@ caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e i
 di zr-pm, Decisione 18231), e altri 25: il colore che il workspace ha scelto, nel selettore (8 byte misurati, e 20 di
 margine: un'eccezione di zr-pm), e altri 25: la ricerca che non resta in caricamento quando nel campo si incolla la parola
 che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropartita, zr-pm). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.222 byte la campanella, 1.922 i rimedi, 1.538 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.538 la
 ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
@@ -314,6 +314,7 @@ controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer upda
 | `v3.4.0` | la testa e il piede del pannello delle notifiche non sono punti di riferimento; a 720 px o meno le azioni della barra in alto, con le `actions` del modulo, si nascondono sotto la ricerca aperta | niente; un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto | axe a 390 px con la ricerca aperta, senza `target-size` |
 | `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente |
 | `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i menu della barra in alto sopra il pannello di dettaglio («Esci» si clicca a pannello aperto); i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
+| `v3.6.1` | le scadenze di una scheda e il promemoria di una To-do aprono la scheda e la To-do; l'invito accettato apre Impostazioni › Membri della Dashboard | niente | un clic su quelle notifiche apre la pagina, non più la pagina delle notifiche |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1273,7 +1274,10 @@ cornice === null ? pagina : (
   modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`; una di una scheda eliminata no:
   la sua pagina non c'è più. Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso
   indirizzo: l'id è quello della scheda, e `commento_id` non entra nell'indirizzo, perché Project Management non ha una
-  pagina che porti dritto a un commento. Dalla `v2.25.3` il credito di un pacchetto sotto zero apre il contatto,
+  pagina che porti dritto a un commento. Dalla `v3.6.1` la scadenza di una scheda, domani e oggi, apre la scheda allo
+  stesso indirizzo, il promemoria di una To-do apre la To-do, `https://board.zeiras.com/w/<slug>/todo?todo=<id>`, e
+  l'invito accettato, che non è di un'app, apre Impostazioni › Membri della Dashboard,
+  `https://app.zeiras.com/w/<slug>/impostazioni/membri`. Dalla `v2.25.3` il credito di un pacchetto sotto zero apre il contatto,
   `https://crm.zeiras.com/w/<slug>/contatti/<persona_id>`: l'id dell'acquisto non entra nell'indirizzo, perché un
   acquisto non ha una pagina sua. Una nota apre la cosa più
   specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
@@ -1627,7 +1631,11 @@ backoffice, senza `com.zeiras.` davanti. Dalla `v1.14.0` ha le sue `notifiche` a
 scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata
 (`board.scheda.assegnata`), tutte e tre con `/c/{id}`. Dalla `v1.16.0` c'è la quarta, una menzione in un commento
 (`board.commento.menzione`), con `/c/{id}` anche lei: l'id è quello della scheda, e `commento_id`, che i `dati` portano,
-non è nel percorso. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
+non è nel percorso. Dalla `v3.6.1` Project Management ha anche le scadenze di una scheda (`board.scheda.scade_domani`,
+`board.scheda.scade_oggi`), con `/c/{id}`, e il promemoria di una To-do (`board.todo.promemoria`), con `/todo?todo={id}`:
+un percorso può finire con un parametro, uno, col suo segnaposto. E la voce della Dashboard, `home`, la prima del file,
+ha l'invito accettato (`io.invito.accettato`), con `/impostazioni/membri`: una notifica senza app (`app: null`) si cerca
+lì, e l'app `home` non c'è. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
 (`crm.acquisto.scoperto`), con `/contatti/{persona_id}`: apre il contatto, e l'`id` dell'acquisto, che i `dati` portano,
 non è nel percorso. Dalla `v3.0.0` il CRM ha anche le due notifiche delle scadenze: il preavviso
 (`crm.scadenza.in_preavviso`), con `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`, altrimenti

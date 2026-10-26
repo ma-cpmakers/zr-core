@@ -1,9 +1,15 @@
 {
+    "home": [
+        { "tipo": "io.invito.accettato", "percorso": "/impostazioni/membri" }
+    ],
     "pm": [
         { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
         { "tipo": "com.zeiras.board.scheda.modificata", "percorso": "/c/{id}" },
         { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" },
-        { "tipo": "board.commento.menzione", "percorso": "/c/{id}" }
+        { "tipo": "board.commento.menzione", "percorso": "/c/{id}" },
+        { "tipo": "board.scheda.scade_domani", "percorso": "/c/{id}" },
+        { "tipo": "board.scheda.scade_oggi", "percorso": "/c/{id}" },
+        { "tipo": "board.todo.promemoria", "percorso": "/todo?todo={id}" }
     ],
     "crm": [
         { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },

@@ -1,7 +1,7 @@
 import type { DatiDellaCornice } from './cornice';
 import { FORMA_DI_UN_ID, FORMA_DI_UNO_SLUG } from './forme';
 import righe from '../registro/notifiche.json';
-import { nelWorkspace, prodottoDelRegistro, raggiungibile, type NotificaDelProdotto } from './registro';
+import { nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type NotificaDelProdotto } from './registro';
 
 // Dove si apre una notifica. Lo dice il registro dei prodotti, non il codice: le righe dell'app da cui la notifica viene, in
 // `resources/registro/notifiche.json` (per id del prodotto), hanno il tipo intero dell'evento e il percorso nel prodotto — o più
@@ -26,9 +26,11 @@ const SEGNAPOSTO = /\{(id|[a-z][a-z_]*_id)\}/g;
  * funzione del pannello delle notifiche della cornice: chi mostra le notifiche in una pagina sua apre gli stessi indirizzi.
  */
 export function destinazioneDellaNotifica(notifica: { app?: unknown; tipo?: unknown; ids?: unknown }, slug: string, prodotti: DatiDellaCornice['prodotti']): string | undefined {
-    const voce = prodottoDelRegistro(typeof notifica.app === 'string' ? notifica.app : undefined);
+    // Una notifica che non è di un'app (`app: null`: del workspace, di un invito) si apre nella Dashboard, la prima voce del
+    // registro; `app: 'home'` non è un'app che il backoffice dà, e non apre niente.
+    const voce = notifica.app === null ? registro[0] : prodottoDelRegistro(typeof notifica.app === 'string' ? notifica.app : undefined);
     const delTipo = (voce && (righe as Record<string, NotificaDelProdotto[] | undefined>)[voce.id])?.find(({ tipo }) => tipo === notifica.tipo);
-    if (typeof slug !== 'string' || !FORMA_DI_UNO_SLUG.test(slug) || voce === undefined || voce.id === 'home' || delTipo === undefined || voce.presto || !raggiungibile(prodotti[voce.id])) {
+    if (typeof slug !== 'string' || !FORMA_DI_UNO_SLUG.test(slug) || voce === undefined || delTipo === undefined || voce.presto || (voce.id !== 'home' && !raggiungibile(prodotti[voce.id]))) {
         return undefined;
     }
     const { ids } = notifica;

@@ -40,7 +40,7 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3). Dallo sprint 74 anche
  * Bookings, coi tre tipi delle prenotazioni: `bookings.` davanti, senza `com.zeiras.` (zr-backoffice-55, #2652).
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'io.' => 'home'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -210,7 +210,8 @@ function problemiDelRegistro(array $voci): array
                 }
             }
             $percorso = $notifica['percorso'] ?? null;
-            $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*$~D';
+            // Dalla v3.6.1 anche un parametro, uno, in fondo, col suo segnaposto: `/todo?todo={id}`.
+            $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*(?:\?[a-z_]+=\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})?$~D';
             $chiaviDi = function (string $unPercorso): array {
                 preg_match_all('~\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}~', $unPercorso, $segnaposto);
 
@@ -291,8 +292,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
-            // Dallo sprint 27 la Dashboard ha `risorse` (più sotto): il membro del workspace, la cui pagina è di app.
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse'],
+            // Dallo sprint 27 la Dashboard ha `risorse` (più sotto): il membro del workspace, la cui pagina è di app. Dalla `v3.6.1`
+            // anche `notifiche`: l'invito accettato apre Impostazioni › Membri.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse'],
             // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
@@ -520,10 +522,13 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
     $righe = json_decode(File::get(__DIR__.'/../../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
 
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
-        ->and(array_keys($righe))->toBe(['pm', 'crm', 'bookings'])
+        // v3.6.1: per prima la Dashboard, con l'invito accettato.
+        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
-        // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo.
-        ->and(count($righe['pm']) + count($righe['crm']))->toBe(28)
+        // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
+        // promemoria di una To-do.
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(31)
+        ->and(count($righe['home']))->toBe(1)
         // Sprint 74 · T1.3: e le tre di Bookings.
         ->and(count($righe['bookings']))->toBe(3);
 });
@@ -635,7 +640,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquatt
             ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
         // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm', 'bookings'])
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });
@@ -657,7 +662,12 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'com.zeiras.board.scheda.modificata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.scheda.assegnata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
+            // v3.6.1 (zr-backoffice-55): le scadenze di una scheda aprono la scheda, il promemoria di una To-do la To-do.
+            ['tipo' => 'board.scheda.scade_domani', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.scheda.scade_oggi', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.todo.promemoria', 'percorso' => '/todo?todo={id}'],
         ])
+        ->and($voci[0]['notifiche'] ?? null)->toBe([['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri']])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
         ->and($voci[2]['notifiche'] ?? [])->toHaveCount(24);
 });

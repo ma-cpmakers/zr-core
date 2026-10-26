@@ -2626,13 +2626,15 @@ describe('il pannello delle notifiche', () => {
     it('un clic su una notifica di ogni riga delle destinazioni apre il suo primo percorso nel suo modulo, con gli id al posto dei segnaposto (sprint 70 · T1.2)', async () => {
         const righe = Object.entries(righeDelleNotifiche).flatMap(([app, delProdotto]) => delProdotto.map(({ tipo, percorso }) => ({ app, tipo, percorso })));
         const elenco = righe.map(({ app, tipo, percorso }, indice) => ({
-            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app, tipo,
+            // v3.6.1: le righe della Dashboard sono di notifiche che non vengono da un'app (`app: null`).
+            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: app === 'home' ? null : app, tipo,
             ids: Object.fromEntries([...percorso.matchAll(/\{([a-z_]+)\}/g)].map(([, chiave = '']) => [chiave, `uat-${chiave.replace('_', '-')}`])),
         }));
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
-        // Sprint 74 · T1.3: e le tre di Bookings.
-        expect(righe).toHaveLength(31);
+        // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
+        // accettato, che si apre nella Dashboard.
+        expect(righe).toHaveLength(35);
         expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
         // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.

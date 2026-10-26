@@ -598,7 +598,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 2.222 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.290 byte (v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -613,7 +613,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // impronte, +3) e con le notifiche di Bookings senza chi (Decisione di zr-pm del 26/10: la frase col servizio e la data, o
         // con la sola data, al posto di quella con chi, che cosa e quando): 2.201, la misura vera. Col colore scelto del workspace
         // (voce 2730) le impronte nuove dei nomi dei pezzi danno 2.202, col codice uguale: la misura + 20 (zr-pm, 26/10).
-        expect(gzip(campanella)).toBeLessThanOrEqual(2_222);
+        expect(gzip(campanella)).toBeLessThanOrEqual(2_290);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,9 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74)', () => {

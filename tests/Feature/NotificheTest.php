@@ -2125,6 +2125,10 @@ it('`idsDellaNotifica()` dà `[]`, senza eccezioni, per una notifica che non ha 
     'un\'app che il registro non ha' => ['uat-app', 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
     'un\'app vuota' => ['', 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
     'nessuna app' => [null, 'com.zeiras.crm.persona.creata', ['id' => 'p1']],
+    // v3.6.1: senza app cerca nella voce della Dashboard, che ha solo l'invito accettato, senza id; l'app `home` non c'è.
+    'l\'invito accettato, senza app: il percorso non chiede id' => [null, 'io.invito.accettato', ['id' => 'i1']],
+    'l\'invito accettato con l\'app `home`' => ['home', 'io.invito.accettato', ['id' => 'i1']],
+    'la scadenza di una scheda senza app' => [null, 'board.scheda.scade_oggi', ['id' => 's1']],
     '`dati` che manca' => ['crm', 'com.zeiras.crm.persona.creata', null],
     '`dati` vuoto' => ['crm', 'com.zeiras.crm.persona.creata', []],
     '`dati` che è un testo, anche con l\'id dentro' => ['crm', 'com.zeiras.crm.persona.creata', '{"id":"p1"}'],
@@ -2140,6 +2144,14 @@ it('`idsDellaNotifica()` dà `[]`, senza eccezioni, per una notifica che non ha 
     'un id che è `..`' => ['crm', 'com.zeiras.crm.persona.creata', ['id' => '..']],
     'un id con `:`' => ['crm', 'com.zeiras.crm.persona.creata', ['id' => 'p1:x']],
 ]);
+
+// v3.6.1 (zr-backoffice-55, dal giro del 27/10/2026 i `dati` portano l'`id`): le scadenze di una scheda e il promemoria di una
+// To-do danno al browser l'`id` della scheda o della To-do, e nient'altro dei `dati`.
+it('`idsDellaNotifica()` dà alle scadenze di una scheda e al promemoria di una To-do il solo `id` (v3.6.1)', function (string $tipo) {
+    expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, ['id' => 'uat-1', 'board_id' => 'uat-b', 'scade_il' => '2026-10-28']))->toBe(['id' => 'uat-1'])
+        ->and(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, ['board_id' => 'uat-b']))->toBe([])
+        ->and(NotificheDellaCornice::idsDellaNotifica('crm', $tipo, ['id' => 'uat-1']))->toBe([]);
+})->with(['board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.todo.promemoria']);
 
 it('`idsDellaNotifica()` lascia passare un id solo con la forma di un id — lettere, cifre, `-` e `_`, da 1 a 64 —, e lo dà com\'è (sprint 22 · T7.2)', function (string $id) {
     expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.persona.creata', ['id' => $id]))->toBe(['id' => $id])
