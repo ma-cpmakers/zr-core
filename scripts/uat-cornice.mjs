@@ -120,6 +120,10 @@ async function ricerca(page, largo) {
         await page.click('.zr-shell .zr-top > .zr-search input');
     }
     await page.keyboard.type(parola, { delay: 90 });
+    // Il campo tiene tutti i caratteri scritti: un ascolto della cornice che cambia lo stato durante l'evento del tasto può
+    // riportarlo al primo (26/10, sprint 74 · T4: vitest non lo vede, Chromium sì). Gira a ogni tag.
+    const nelValore = await page.evaluate(() => document.querySelector('.zr-shell .zr-top > .zr-search input')?.value);
+    scrivi(nelValore === parola ? '✅' : '❌', `${id}.0`, `scritti ${parola.length} caratteri, il campo li tiene tutti`, `campo: «${nelValore}»`);
     let stato = 'caricamento';
     for (let attesa = 0; attesa < 50 && stato === 'caricamento'; attesa++) {
         await pausa(200);
@@ -148,6 +152,11 @@ async function ricerca(page, largo) {
         const bene = pannello[0] === '0' && pannello[1] === 'group' && !!pannello[2] && fuocoNelPannello;
         scrivi(bene ? '✅' : '❌', `${id}.3`, 'il pannello coi risultati è una fermata del Tab, un gruppo col suo nome (#2720)', `tabindex=${pannello[0]}, role=${pannello[1]}, nome «${pannello[2]}», Tab dal campo → ${fuocoNelPannello ? 'pannello' : 'altrove'}`);
         await page.screenshot({ path: join(cartella, `ricerca-tab-${largo ? 1280 : 390}.png`) });
+        // Esc chiude la ricerca solo dal campo (l'`AppShell`, anche prima della v3.6): si torna lì, o a 390 px la barra in alto
+        // resta senza campanella.
+        if (fuocoNelPannello) {
+            await page.keyboard.press('Shift+Tab');
+        }
     }
     if (!largo) {
         const nascoste = await page.evaluate(() => {

@@ -4819,6 +4819,30 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
+    it('un campo della pagina fuori dalla ricerca non la mette in caricamento: l\'ascolto del tasto sta sulla finestra e guarda solo il campo della ricerca (voce 2062 · T4.4)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        const delModulo = document.createElement('input');
+        document.body.append(delModulo);
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(delModulo, 'uat');
+            delModulo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        delModulo.remove();
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
+    it('smontata, la cornice toglie dalla finestra l\'ascolto del tasto che vi aveva messo (voce 2062 · T4.4)', async () => {
+        const messi = vi.spyOn(window, 'addEventListener');
+        const tolti = vi.spyOn(window, 'removeEventListener');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const delTasto = messi.mock.calls.filter(([evento]) => evento === 'input').map(([, ascolto]) => ascolto);
+        expect(delTasto).toHaveLength(1);
+        await act(async () => radice.unmount());
+        expect(tolti.mock.calls.filter(([evento, ascolto]) => evento === 'input' && ascolto === delTasto[0])).toHaveLength(1);
+    });
+
     it.each([
         ['it', 'Board', ['Board', 'Aree']],
         ['es', 'Board', ['Tableros', 'Áreas']],

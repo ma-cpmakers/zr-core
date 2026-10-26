@@ -844,9 +844,12 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // l'ultimo tasto, e fino ad allora mostrerebbe lo stato della parola di prima — «Nessun risultato per» la parola nuova, o i
     // risultati della vecchia (voce 2062, Decisione 18231; il difetto dell'`AppShell` è la riga 46 delle richieste al design system).
     // Nello stato ridotto e in attesa l'`AppShell` non chiama la cornice, e nel freno la cornice resta all'errore: lì il tasto non
-    // cambia niente. La stessa funzione a ogni disegno, come quella del fuoco.
+    // cambia niente. L'ascolto sta sulla finestra, dopo quello di React: sul campo, lo stato cambiato durante l'evento ridisegnava
+    // l'`AppShell` col valore di prima, e in un browser vero il campo teneva solo il primo carattere (jsdom non lo vede; lo prova
+    // R.0 di `scripts/uat-cornice.mjs`). `.zr-search` è solo dell'`AppShell`, e lì l'unico campo è quello della ricerca.
     const alTasto = useRef((e: Event) => {
-        if (!ridottaAdesso.current && performance.now() >= frenataFinoA.current && (e.target as HTMLInputElement).value.trim().length > 1) {
+        const campo = e.target as HTMLInputElement;
+        if (campo.closest('.zr-search') && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
             setRicerca({ stato: 'loading' });
         }
     }).current;
@@ -855,7 +858,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const parola = campo?.value.trim();
         // La stessa funzione a ogni disegno: sul campo resta un ascolto solo.
         campo?.addEventListener('focus', alFuoco);
-        campo?.addEventListener('input', alTasto);
         if (ridottaAdesso.current !== 'loading') {
             diPrima.current = parola;
         }
@@ -879,8 +881,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona);
+        addEventListener('input', alTasto);
 
-        return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
+        return () => (mostra(persona, 1), ricercaInVolo.current?.abort(), removeEventListener('input', alTasto));
     }, []);
     // Il pezzo arriva una volta; `via` gli ridà i nomi del contenuto e dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
     useLayoutEffect(() => {
