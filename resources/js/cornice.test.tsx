@@ -4751,6 +4751,52 @@ describe('la ricerca', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
+    /** Batte una parola nel campo, come una persona, senza lasciar passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
+    async function batti(parola: string): Promise<void> {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+    /** Il testo sotto il campo, così come lo legge chi guarda: «Nessun risultato per…», «Sto cercando…», i titoli. */
+    const testoDelPannello = () => uno('.zr-search-panel')?.textContent ?? '';
+
+    it.each([
+        ['senza risultati', [], 'Nessun risultato per'],
+        ['con risultati', vecchi, 'Risultato di «ua»'],
+    ])('dopo una parola %s, una parola nuova mostra il caricamento dal tasto: né «Nessun risultato» né i risultati di prima nei 300 ms prima che l\'`AppShell` chiami la cornice, poi i suoi risultati (voce 2062 · T4.1, T4.2)', async (_caso, diPrima, testoDiPrima) => {
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? trovati(diPrima) : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        expect(testoDelPannello()).toContain(testoDiPrima);
+
+        await batti('uat');
+        const visti = [testoDelPannello()];
+        // A 1, 150 e 298 ms dal tasto: l'`AppShell` chiama la cornice a 300.
+        for (const ms of [1, 149, 148]) {
+            await act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+            visti.push(testoDelPannello());
+        }
+        expect(visti.filter((testo) => testo !== 'Sto cercando…')).toStrictEqual([]);
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(2); await giro(); });
+        await uat.arriva(trovati(nuovi));
+        expect(titoli()).toStrictEqual(['Risultato di «uat»']);
+    });
+
+    it('sotto i 2 caratteri un tasto lascia l\'invito, e tornati alla parola di prima ci sono i suoi risultati: il caricamento non resta (voce 2062 · T4.3)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        await batti('u');
+        expect(testoDelPannello()).toContain('scrivi almeno 2 caratteri.');
+        await scrivi('ua');
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
     it.each([
         ['it', 'Board', ['Board', 'Aree']],
         ['es', 'Board', ['Tableros', 'Áreas']],

@@ -838,11 +838,22 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // `non_letti` o l'accettazione non parte niente.
     const ridottaAdesso = useRef(ridotta);
     const diPrima = useRef<string>(undefined);
+    // A ogni tasto nel campo, con 2 caratteri o più, la ricerca è subito in caricamento: l'`AppShell` chiama la cornice 300 ms dopo
+    // l'ultimo tasto, e fino ad allora mostrerebbe lo stato della parola di prima — «Nessun risultato per» la parola nuova, o i
+    // risultati della vecchia (voce 2062, Decisione 18231; il difetto dell'`AppShell` è la riga 46 delle richieste al design system).
+    // Nello stato ridotto e in attesa l'`AppShell` non chiama la cornice, e nel freno la cornice resta all'errore: lì il tasto non
+    // cambia niente. La stessa funzione a ogni disegno, come quella del fuoco.
+    const alTasto = useRef((e: Event) => {
+        if (!ridottaAdesso.current && performance.now() >= frenataFinoA.current && (e.target as HTMLInputElement).value.trim().length > 1) {
+            setRicerca({ stato: 'loading' });
+        }
+    }).current;
     useLayoutEffect(() => {
         const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
         const parola = campo?.value.trim();
         // La stessa funzione a ogni disegno: sul campo resta un ascolto solo.
         campo?.addEventListener('focus', alFuoco);
+        campo?.addEventListener('input', alTasto);
         if (ridottaAdesso.current !== 'loading') {
             diPrima.current = parola;
         }
