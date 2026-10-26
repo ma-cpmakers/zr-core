@@ -73,8 +73,12 @@ const pausa = (ms) => new Promise((fatto) => setTimeout(fatto, ms));
  */
 async function violazioni(page) {
     await page.evaluate(axe);
+    // Senza `preload`: axe chiederebbe con `fetch` i fogli di stile, anche quello dei font di Google, e la CSP della pagina (che apre
+    // a Google Fonts solo `style-src` e `font-src`, come dice il README) lo ferma con due errori in console che sono di axe, non
+    // della pagina, e farebbero rossa E.1. Senza, axe non usa i fogli caricati da sé: la regola che ne ha bisogno
+    // (`css-orientation-lock`) resta da guardare a parte.
     return page.evaluate(async () => {
-        const esito = await window.axe.run(document, { resultTypes: ['violations'] });
+        const esito = await window.axe.run(document, { resultTypes: ['violations'], preload: false });
         const dellaPagina = (selettore) => {
             const elemento = typeof selettore === 'string' ? document.querySelector(selettore) : null;
             const main = elemento?.closest('main.zr-main');
