@@ -247,6 +247,21 @@ function fuocoAlPiu(): void {
     }
 }
 
+/**
+ * Col fuoco che esce dalla ricerca — dal campo o dal suo pannello — verso un altro elemento, la ricerca restava aperta e copriva
+ * il titolo della pagina (righe 7 e 90 delle richieste al design system): si chiude con Esc dal campo, come la chiude una
+ * persona, e la parola resta. Fra campo e pannello non si chiude, e nemmeno quando il fuoco lascia la finestra. Solo la ricerca
+ * aperta: Esc chiude ciò che l'`AppShell` tiene aperto, e col pannello delle notifiche aperto lo chiuderebbe.
+ */
+function fuoriDallaRicerca(uscita: FocusEvent): void {
+    const ricerca = (uscita.target as Element).closest?.('.zr-shell .zr-top > .zr-search.is-open');
+    const verso = uscita.relatedTarget as Node | null;
+
+    if (ricerca && verso && !ricerca.contains(verso)) {
+        ricerca.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }
+}
+
 /** La cornice dà la sua `naviga` e i nomi (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
 export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: typeof nomi): void {
     naviga = daUsare;
@@ -287,6 +302,7 @@ document.addEventListener('keydown', sceltoUnRisultato, true);
 document.addEventListener('keydown', sceltaDalPiu);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);
+document.addEventListener('focusout', fuoriDallaRicerca);
 // La ricerca si apre e si chiude coi suoi risultati, e lo vede l'osservatore; il campo che perde il fuoco dopo la chiusura no.
 // All'uscita il fuoco non è ancora arrivato dove va: si guarda al giro dopo.
 document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));

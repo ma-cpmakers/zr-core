@@ -252,6 +252,19 @@ async function ricerca(page, largo) {
             scrivi(dopo.valore === '' && !dopo.aperta ? '✅' : '❌', `${id}.7`, 'scelto un risultato col clic il campo si svuota e la ricerca resta chiusa (riga 60)', `valore «${dopo.valore}», aperta: ${dopo.aperta}`);
         }
     }
+    // Il fuoco che esce dal campo verso un altro elemento chiude la ricerca, e la parola resta (righe 7 e 90, rimedio della v3.8.1).
+    await page.keyboard.press('Control+k');
+    await page.keyboard.type(parola);
+    await pausa(800);
+    const primaDiUscire = await page.evaluate(() => !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'));
+    await page.keyboard.press('Shift+Tab');
+    await pausa(300);
+    const uscito = await page.evaluate(() => ({
+        aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+        valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
+        dentro: !!document.activeElement?.closest('.zr-search'),
+    }));
+    scrivi(primaDiUscire && !uscito.aperta && !uscito.dentro && uscito.valore === parola ? '✅' : '❌', `${id}.8`, 'col fuoco uscito dal campo (Maiusc+Tab) la ricerca si chiude e la parola resta (righe 7 e 90)', `aperta prima: ${primaDiUscire}, dopo: ${uscito.aperta}, fuoco nella ricerca: ${uscito.dentro}, valore «${uscito.valore}»`);
 }
 
 async function campanella(page, largo) {

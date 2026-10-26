@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 56,7 KB | 12,1 KB |
-| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 56,7 KB | 12,1 KB |
-| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 56,7 KB | 12,1 KB |
+| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 57,3 KB | 12,3 KB |
+| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 57,3 KB | 12,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 57,3 KB | 12,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -896,9 +896,10 @@ cornice === null ? pagina : (
   un test del modulo che cerca per ruolo l'avatar di una notifica col nome nel titolo non lo trova più. A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
-  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Tab fuori dal campo non chiude la
-  ricerca, che resta sopra la barra: le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, la scelta di un
-  risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.8.1` il fuoco che esce dalla
+  ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
+  design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
+  fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
 - **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con

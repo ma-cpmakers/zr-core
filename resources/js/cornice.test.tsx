@@ -9779,19 +9779,37 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         expect(azioni()?.style.visibility).toBe('');
     });
 
-    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiude la ricerca dell'`AppShell` (la chiude il `mousedown` fuori), e
-    // l'elenco aperto copre ancora la barra: le azioni restano nascoste finché la ricerca non si chiude.
-    it('T2.1 col fuoco uscito dal campo e l\'elenco ancora aperto la ricerca copre la barra, e campanella e profilo restano nascosti', async () => {
+    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiudeva la ricerca dell'`AppShell` (la chiudeva solo il `mousedown`
+    // fuori), e l'elenco aperto copriva la barra. Dalla v3.8.1 (righe 7 e 90 delle richieste al design system) la ricerca si chiude
+    // quando il fuoco va a un elemento fuori da campo e pannello: le azioni tornano. Il fuoco che lascia la finestra non la chiude.
+    it('T2.1 col fuoco uscito dal campo verso la pagina la ricerca si chiude, la parola resta, e campanella e profilo tornano (righe 7 e 90)', async () => {
         largaAlPiu720(true);
         await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
         await nelCampo();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'uat');
+        await act(async () => {
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+        });
 
         await act(async () => {
             (uno('.zr-main button') as HTMLElement).focus();
             await prossimoGiro();
         });
 
-        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), campo() === document.activeElement, azioni()?.style.visibility]).toStrictEqual([true, false, 'hidden']);
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement, campo().value, azioni()?.style.visibility]).toStrictEqual([false, uno('.zr-main button'), 'uat', '']);
+    });
+
+    it('T2.1 il fuoco che lascia il campo senza andare a un altro elemento — la finestra che lo perde — non chiude la ricerca (righe 7 e 90)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+
+        await act(async () => {
+            campo().dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+            await prossimoGiro();
+        });
+
+        expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(true);
     });
 
     it('T2.3 chiusa la ricerca col fuoco ancora nel campo, la ricerca copre ancora la barra; quando il campo perde il fuoco campanella e profilo tornano', async () => {
