@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,6 KB | 17,2 KB | 51,2 KB | 9,8 KB |
-| la cornice e due componenti per nome | 53,9 KB | 18,3 KB | 51,2 KB | 9,8 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,4 KB | 40,6 KB | 51,2 KB | 9,8 KB |
+| solo la cornice, dall'ingresso per le app | 50,6 KB | 17,2 KB | 52,8 KB | 10,4 KB |
+| la cornice e due componenti per nome | 53,9 KB | 18,3 KB | 52,8 KB | 10,4 KB |
+| la stessa cornice, dall'ingresso di sempre | 126,4 KB | 40,6 KB | 52,8 KB | 10,4 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -1004,9 +1004,16 @@ cornice === null ? pagina : (
   proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario:
   «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`). Non è un evento nemmeno lei, e il suo `tipo` non
   ha `com.zeiras.` davanti; chi l'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede
-  senza assegnatario»). Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
+  senza assegnatario»). Con lei i titoli erano 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
   zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario. Nei `dati` porta solo il numero
-  delle schede, nessun id: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  delle schede, nessun id: un clic apre la pagina delle notifiche. Dalla `v3.6.0` hanno un titolo anche quattro notifiche
+  che non sono eventi, col `tipo` senza `com.zeiras.` davanti: di Project Management il promemoria di una To-do,
+  «Promemoria: hai una cosa da fare» (`board.todo.promemoria`), e la scheda che scade, con un tipo per giorno: «Una scheda
+  scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`); senza prodotto
+  l'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`). Le prime tre non hanno chi l'ha fatto, e
+  il nome della To-do o della scheda sta sotto il titolo; dell'invito chi l'ha fatto è chi ha accettato («Marta Rossi ha
+  accettato il tuo invito»). Con loro e con le tre di Bookings (più sotto) i titoli sono 56. Nessuna delle quattro ha una
+  destinazione: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 min fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -1085,7 +1092,8 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantanove tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i cinquanta tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi, e dal
+  promemoria di una To-do e dalle due scadenze di una scheda, che non hanno chi; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta

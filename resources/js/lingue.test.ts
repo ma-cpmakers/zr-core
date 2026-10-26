@@ -147,9 +147,9 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
         expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 52 (dallo sprint 74 anche i tre di Bookings), in ogni lingua,
-        // anche con un file che ne ha uno in più.
-        expect(tipiCheHa(frasiInglesi)).toHaveLength(52);
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 56 (dallo sprint 74 anche i tre di Bookings, i due promemoria
+        // delle scadenze, quello delle To-do e l'invito accettato), in ogni lingua, anche con un file che ne ha uno in più.
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(56);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -170,16 +170,16 @@ describe('le lingue della cornice', () => {
         ['it', frasiItaliane, 'Nuova scheda'],
         ['es', frasiSpagnole, 'Nueva tarjeta'],
         ['en', frasiInglesi, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 52 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 56 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(52);
+        expect(tipiConosciuti).toHaveLength(56);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 52 titoli sono 52 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 56 titoli sono 56 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(52);
+        expect(new Set(titoli).size).toBe(56);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -398,6 +398,23 @@ describe('le lingue della cornice', () => {
 
         expect(titoloDellaNotifica('board.schede.senza_assegnatario', lingua)).toBe(titolo);
         expect(titolo).not.toBe(diRipiego[lingua]);
+        expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
+    });
+
+    // Sprint 74 (zr-backoffice-55, 26/10; Decisione di zr-pm: la scadenza di una scheda è divisa in due tipi): il promemoria di
+    // una To-do e la scheda che scade domani o oggi, con le parole di Project Management, e l'invito accettato. Non sono eventi:
+    // il tipo arriva senza `com.zeiras.` davanti.
+    it.each<[lingua: 'it' | 'en' | 'es', titoli: [promemoria: string, domani: string, oggi: string, invito: string]]>([
+        ['it', ['Promemoria: hai una cosa da fare', 'Una scheda scade domani', 'Una scheda scade oggi', 'Il tuo invito è stato accettato']],
+        ['en', ['Reminder: you have something to do', 'A card is due tomorrow', 'A card is due today', 'Your invitation was accepted']],
+        ['es', ['Recordatorio: tienes algo que hacer', 'Una tarjeta vence mañana', 'Una tarjeta vence hoy', 'Tu invitación fue aceptada']],
+    ])('con la lingua "%s", titoloDellaNotifica dà il titolo del promemoria di una To-do, delle due scadenze di una scheda e dell\'invito accettato; il tipo col prefisso, la scadenza non divisa e un pezzo del tipo restano col titolo di ripiego (sprint 74, zr-backoffice-55)', async (lingua, titoli) => {
+        const { titoloDellaNotifica } = await import('./frasi');
+        const tipi = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'io.invito.accettato'];
+        const cheNonConosce = ['com.zeiras.board.todo.promemoria', 'com.zeiras.io.invito.accettato', 'board.scheda.scade', 'board.todo', 'io.invito', 'invito.accettato'];
+
+        expect(tipi.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(titoli);
+        expect(titoli).not.toContain(diRipiego[lingua]);
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });
 
@@ -763,6 +780,8 @@ describe('rigaDellaNotifica', () => {
         // v3.2.2: la richiesta sul preventivo, con le parole di zr-crm: la sola frase con chi; il contratto non dà il nome del preventivo.
         ['crm.preventivo.richiesta', { it: [null, 'Giulia Bianchi: un cliente ha chiesto una modifica al preventivo'], en: [null, 'Giulia Bianchi: a client asked for changes to the quote'], es: [null, 'Giulia Bianchi: un cliente ha pedido un cambio en el presupuesto'] }],
         // Sprint 77 · T3: le schede senza assegnatario, con le parole di Project Management: la sola frase con chi, che è chi è uscito.
+        // Sprint 74: l'invito accettato, con chi l'ha accettato (zr-backoffice-55: l'autore è lui).
+        ['io.invito.accettato', { it: [null, 'Giulia Bianchi ha accettato il tuo invito'], en: [null, 'Giulia Bianchi accepted your invitation'], es: [null, 'Giulia Bianchi aceptó tu invitación'] }],
         ['board.schede.senza_assegnatario', { it: [null, 'Giulia Bianchi ha lasciato il workspace: restano schede senza assegnatario'], en: [null, 'Giulia Bianchi left the workspace: some cards have no assignee'], es: [null, 'Giulia Bianchi ha dejado el workspace: quedan tarjetas sin asignar'] }],
         // Sprint 31 · T2 (voce #1866). I cinque tipi del workspace, con le parole di zr-home: di un membro il backoffice non dà il nome.
         // `com.zeiras.app.modificata` ha le sue frasi e un caso suo, più sotto: il suo `{what}` è il nome di un modulo, non un nome scritto da una persona.
@@ -783,6 +802,8 @@ describe('rigaDellaNotifica', () => {
     const SU_UN_APP = 'com.zeiras.app.modificata';
     /** Sprint 74 · T1: i tre tipi di Bookings, che non hanno frasi con `{who}` (l'ospite non è un membro): le loro frasi, con la data, le prova «le notifiche di Bookings, con la data». */
     const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata'];
+    /** Sprint 74: il promemoria di una To-do e le due scadenze di una scheda non hanno chi (le manda il backoffice da sé): niente frasi con `{who}`. */
+    const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi'];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
@@ -791,7 +812,7 @@ describe('rigaDellaNotifica', () => {
     it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli undici del CRM (pipeline, aziende, opportunità e attività, e le tre assegnate) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri tredici del CRM, i tre di un membro e le schede senza assegnatario la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2; sprint 34 · T3.1, T3.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./frasi');
 
-        expect(frasi).toHaveLength(48);
+        expect(frasi).toHaveLength(49);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.workspace.'))).toHaveLength(5);
         expect(frasi.flatMap(([tipo, perLingua]) => (tipo.startsWith('com.zeiras.workspace.') && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.workspace.creato', 'com.zeiras.workspace.modificato']);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
@@ -869,10 +890,10 @@ describe('rigaDellaNotifica', () => {
 
     it('ogni tipo che ha un titolo ha le sue frasi; uno che zr-core non conosce, o che non è un testo, resta com\'è anche con chi (sprint 29 · T2.5; sprint 31 · T2.1)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
-        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS]);
+        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS, ...SENZA_CHI]);
         const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(conUnTitolo).toHaveLength(52);
+        expect(conUnTitolo).toHaveLength(56);
         expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
@@ -920,14 +941,15 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 77, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1; sprint 74 · T1.1)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 78, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1; sprint 74 · T1.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
         expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).sort());
         // Sprint 74 · T1 (Decisione di zr-pm del 26/10): nessuna delle tre notifiche di Bookings, che non dicono mai chi.
-        expect(chiavi).toHaveLength(77);
-        expect(chiavi.filter((chiave) => DI_BOOKINGS.some((tipo) => chiave.endsWith(`.${tipo}`)))).toStrictEqual([]);
+        // Sprint 74: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che non hanno chi; l'invito accettato sì.
+        expect(chiavi).toHaveLength(78);
+        expect(chiavi.filter((chiave) => [...DI_BOOKINGS, ...SENZA_CHI].some((tipo) => chiave.endsWith(`.${tipo}`)))).toStrictEqual([]);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
             expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, { notificationTitleWhoWhat: ['{what}', '{who}'] }[famiglia] ?? ['{who}']]);
@@ -1087,7 +1109,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             }
             expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
         }
-        expect(tipi).toHaveLength(52 + 4);
+        expect(tipi).toHaveLength(56 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
                 expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);
