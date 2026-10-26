@@ -221,7 +221,7 @@ function dataDi(quando: any, lingua: string, forma: Intl.DateTimeFormatOptions):
 
 /**
  * Il titolo e la riga di sotto di una notifica, in una lingua, con le frasi di quella lingua. Quando il backoffice dice chi ha
- * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
+ * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo, fuori dai tre di Bookings — il titolo è la
  * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e non sotto;
  * o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase. Quando la notifica
  * dice anche quando accade la cosa (`quando`, dalla `v3.6.0`) e la cornice sa scriverlo (`dataDi`, nel fuso della notifica e nella

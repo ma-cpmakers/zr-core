@@ -1658,8 +1658,10 @@ describe('le notifiche di Bookings, con la data', () => {
         for (const fine of ['creata', 'spostata', 'annullata']) {
             for (const risorsa_nome of ['Personal training', null]) {
                 for (const quando of [ROMA, ...quandiCheNonSiScrivono]) {
-                    const { titolo } = rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, quando, risorsa_nome), autore_nome: 'Mario Rossi' }, lingua);
-                    expect([fine, risorsa_nome, quando, titolo.includes('Mario Rossi')]).toStrictEqual([fine, risorsa_nome, quando, false]);
+                    // Lo stesso titolo, e la stessa riga di sotto, che senza chi (seconda lettura della revisione, N2).
+                    const conChi = rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, quando, risorsa_nome), autore_nome: 'Mario Rossi' }, lingua);
+                    expect([fine, risorsa_nome, quando, conChi]).toStrictEqual([fine, risorsa_nome, quando, riga(fine, lingua, quando, risorsa_nome)]);
+                    expect(conChi.titolo.includes('Mario Rossi')).toBe(false);
                 }
             }
         }
