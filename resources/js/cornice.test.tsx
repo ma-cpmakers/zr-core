@@ -1253,11 +1253,11 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
-        ['it', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
-        ['es', ['Novedades en el workspace', 'Nueva área'], ['hace 5 minutos', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
-        ['en', ['News in the workspace', 'New area'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
+        ['it', ['Novità nel workspace', 'Nuova area'], ['5 min fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['es', ['Novedades en el workspace', 'Nueva área'], ['hace 5 min', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
+        ['en', ['News in the workspace', 'New area'], ['5 min. ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['it_IT', ['Novità nel workspace', 'Nuova area'], ['5 min fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
     ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo del suo tipo nella lingua, o quello di ripiego, e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3; sprint 12 · T3.1, T3.2)', async (lingua, [diRipiego, dellaCartella], [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
@@ -1335,7 +1335,7 @@ describe('il pannello delle notifiche', () => {
         expect(righe()).toStrictEqual([con, senza, senza, senza, senza, con, senza, senza]);
         // Il titolo resta quello del tipo, e il prodotto con l'ora restano dov'erano.
         expect(titoli()).toStrictEqual(Array(8).fill('Nuova area'));
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 minuti fa'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 min fa'));
     });
 
     /** Una notifica su un'app: il backoffice dà in `risorsa_nome` il codice dell'app, non un nome. */
@@ -1367,7 +1367,7 @@ describe('il pannello delle notifiche', () => {
             ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova area', 'Novità nel workspace', 'Novità nel workspace',
         ]);
         // Il nome sta nella seconda riga e solo lì: davanti all'ora c'è il prodotto di `app`, che queste notifiche non hanno.
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 minuti fa'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 min fa'));
         expect(voci().slice(0, 9).map((voce) => /\bpm\b|reports|crm|uat-app-nuova|home/.test(voce.textContent ?? ''))).toStrictEqual(Array(9).fill(false));
     });
 
@@ -2422,7 +2422,7 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 32 · T3 (voce #1913). Una notifica che racconta più azioni arriva dalla parte server con l'istante dell'ultima in
     // `creata_il` (lo prova `NotificheTest`): il pannello mostra quell'ora, e «Segna tutte come lette» arriva fin lì.
-    it('una notifica che racconta più azioni — nata un\'ora fa, l\'ultima azione due minuti fa — mostra «2 minuti fa» e sta sopra quella di dieci minuti fa; «Segna tutte come lette» manda l\'istante dell\'ultima azione, che non sta prima della nascita di nessuna delle due (sprint 32 · T3.1, T3.3)', async () => {
+    it('una notifica che racconta più azioni — nata un\'ora fa, l\'ultima azione due minuti fa — mostra «2 min fa» e sta sopra quella di dieci minuti fa; «Segna tutte come lette» manda l\'istante dell\'ultima azione, che non sta prima della nascita di nessuna delle due (sprint 32 · T3.1, T3.3)', async () => {
         // Come le dà la parte server: nell'ordine del backoffice, che è sull'ultima azione.
         const accorpate = [
             { id: 'uat-n62', creata_il: '2026-10-06T11:58:00.000Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata' },
@@ -2433,10 +2433,32 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Board · 2 minuti fa', 'Board · 10 minuti fa']);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Board · 2 min fa', 'Board · 10 min fa']);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
         expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
+    });
+
+    // Sprint 74 · T5 (voce #2718, Decisione 18231): l'ora nella forma corta dei design di zr-home, «10 min fa», «1 h fa»; «ora»,
+    // «ieri» e la data del calendario restano quelle di prima.
+    it.each([
+        ['it', ['ora', '10 min fa', '1 h fa', '3 h fa', 'ieri', '1 ott']],
+        ['es', ['ahora', 'hace 10 min', 'hace 1 h', 'hace 3 h', 'ayer', '1 oct']],
+        ['en', ['now', '10 min. ago', '1 hr. ago', '3 hr. ago', 'yesterday', 'Oct 1']],
+    ])('con la lingua "%s" l\'ora delle notifiche è corta: minuti e ore abbreviati, «adesso», «ieri» e la data come prima (voce 2718, T5.1, T5.2)', async (lingua, attese) => {
+        const elenco = [
+            nata('uat-n86', '2026-10-06T11:59:30Z'),
+            nata('uat-n85', '2026-10-06T11:50:00Z'),
+            nata('uat-n84', '2026-10-06T11:00:00Z'),
+            nata('uat-n83', '2026-10-06T09:00:00Z'),
+            nata('uat-n82', '2026-10-05T12:00:00Z'),
+            nata('uat-n81', '2026-10-01T09:00:00Z'),
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 6 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(attese);
     });
 
     // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
@@ -3485,7 +3507,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 21 · T2 (voce #1641): le notifiche del CRM arrivano con `app: 'crm'`, e davanti all'ora c'è il nome del modulo.
-    it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche del CRM, comprese le due delle aziende, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, con «CRM» (sprint 21 · T2.1, T2.2, T5.1)', async (lingua, pocoFa) => {
+    it.each([['it', '5 min fa'], ['en', '5 min. ago'], ['es', 'hace 5 min']])('con la lingua "%s", le nove notifiche del CRM, comprese le due delle aziende, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, con «CRM» (sprint 21 · T2.1, T2.2, T5.1)', async (lingua, pocoFa) => {
         // Contatti, pipeline, note e aziende: opportunità, attività e «assegnata» hanno il loro caso, qui sotto (sprint 22 · T5.1).
         const delCrm = titoliPerTipo.filter(([tipo]) => /^com\.zeiras\.crm\.(persona|pipeline|nota|organizzazione)\./.test(tipo));
         const elenco = [
@@ -3506,7 +3528,7 @@ describe('il pannello delle notifiche', () => {
     // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM arrivano con `app: 'crm'`. I cinque eventi hanno `com.zeiras.` davanti;
     // i quattro «assegnata» no: il loro `tipo` è com'è nel backoffice, e lo stesso nome col prefisso resta un tipo che zr-core non
     // conosce.
-    it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
+    it.each([['it', '5 min fa'], ['en', '5 min. ago'], ['es', 'hace 5 min']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
         // Le nove del CRM: dopo, dallo sprint 24, la tabella ha la scheda assegnata di Project Management.
         const nuove = titoliPerTipo.slice(31, 40);
         const elenco = [
@@ -3530,7 +3552,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate sono di Project Management, e arrivano con `app: 'pm'`.
-    it.each([['it', '5 minuti fa', 'Board'], ['en', '5 minutes ago', 'Board'], ['es', 'hace 5 minutos', 'Board']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
+    it.each([['it', '5 min fa', 'Board'], ['en', '5 min. ago', 'Board'], ['es', 'hace 5 min', 'Board']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
         const delleViste = titoliPerTipo.filter(([tipo]) => tipo.startsWith('com.zeiras.board.vista.'));
         const elenco = delleViste.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'pm' }));
         vi.stubGlobal('fetch', rotte(elenco));

@@ -220,8 +220,8 @@ function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: 
 }
 
 /**
- * Quando è arrivata una notifica, come le date del design system: «ora», «5 minuti fa», «3 ore fa», «ieri», poi «1 ott» (con
- * l'anno se non è quest'anno). Un istante che non si legge non ha ora.
+ * Quando è arrivata una notifica, nella forma corta dei design di zr-home (dalla `v3.6.0`, Decisione 18231): «ora», «5 min fa»,
+ * «3 h fa», «ieri», poi «1 ott» (con l'anno se non è quest'anno). Un istante che non si legge non ha ora.
  */
 function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
     const data = new Date(istante);
@@ -229,7 +229,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
         return undefined;
     }
     const secondi = (+adesso - +data) / 1000;
-    const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto' });
+    const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto', style: 'short' });
     if (secondi < 60) {
         return relativa.format(0, 'second');
     }

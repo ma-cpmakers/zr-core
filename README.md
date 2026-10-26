@@ -918,8 +918,8 @@ cornice === null ? pagina : (
   system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello: il
   pallino dice «non letta» quando sulla campanella ce n'è una sola, «non lette» negli altri casi.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo del suo
-  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora nella lingua («5 minuti fa», «ieri»,
-  «1 ott»). Dalla `v1.22.0` una notifica che racconta più azioni mostra l'ora dell'ultima, non quella della prima. Il titolo
+  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora corta nella lingua («5 min fa», «ieri»,
+  «1 ott»; corta dalla `v3.6.0`). Dalla `v1.22.0` una notifica che racconta più azioni mostra l'ora dell'ultima, non quella della prima. Il titolo
   lo dice `tipo`, e i
   titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal
   12/10/2026 e che non genera notifiche (più sotto): una notifica di un tipo che zr-core non
@@ -992,7 +992,7 @@ cornice === null ? pagina : (
   zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario. Nei `dati` porta solo il numero
   delle schede, nessun id: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
-  porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
+  porta il suo nome nella lingua davanti all'ora («Project Management · 5 min fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
   backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»), tranne
