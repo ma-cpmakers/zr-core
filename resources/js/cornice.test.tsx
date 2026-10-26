@@ -8271,6 +8271,27 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(uno('.zr-top-actions > .zr-notif [role="tab"][aria-selected="true"]'));
     });
 
+
+    // Riga 85 delle richieste al design system: l'avatar di chi ha fatto è un `role="img"` col nome, dentro il pulsante della
+    // notifica; quando il titolo dice già quel nome, un lettore di schermo lo leggeva due volte.
+    it('l\'avatar di una notifica il cui titolo dice già il nome di chi ha fatto è nascosto ai lettori di schermo; quello di una notifica il cui titolo non lo dice resta com\'è, anche nelle righe che entrano con «Tutte» (riga 85)', async () => {
+        const conChi = (id: string, inPiu: Record<string, unknown>) => ({ id, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', autore_nome: 'Marta Rossi', ...inPiu });
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: [
+            conChi('uat-n85a', { tipo: 'com.zeiras.board.cartella.creata' }),
+            conChi('uat-n85b', { tipo: 'com.zeiras.uat.sconosciuto' }),
+            conChi('uat-n85c', { tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Bruno', per_me: false }),
+        ] })));
+        await laCornice();
+        await apri();
+        const righe = () => tutti('.zr-notif-list .zr-notif-item').map((riga) => [riga.querySelector('.zr-notif-title')?.textContent, riga.querySelector('.zr-avatar')?.getAttribute('aria-hidden') ?? null]);
+
+        expect(righe()).toStrictEqual([['\u{2068}Marta Rossi\u{2069} ha creato un\'area', 'true'], [expect.not.stringContaining('Marta'), null]]);
+
+        await clic(linguette()[1]);
+
+        expect(righe()).toStrictEqual([['\u{2068}Marta Rossi\u{2069} ha creato un\'area', 'true'], [expect.not.stringContaining('Marta'), null], ['\u{2068}Bruno\u{2069} ha creato un\'area', 'true']]);
+        expect(tutti('.zr-notif-list .zr-avatar').map((avatar) => avatar.getAttribute('aria-label'))).toStrictEqual(['Marta Rossi', 'Marta Rossi', 'Bruno']);
+    });
     it('fuori dalla cornice non si tocca niente: un pannello accanto a una barra con le stesse classi, ma non dentro la cornice, non prende il fuoco (T3.1)', async () => {
         vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
         await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Della pagina</button></Cornice>);

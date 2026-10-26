@@ -23,6 +23,22 @@ function fuocoNelPannelloDelleNotifiche(aggiunto: Node): void {
 }
 
 /**
+ * Nel pannello delle notifiche l'avatar di chi ha fatto è un `role="img"` col nome, dentro il pulsante della notifica: quando il
+ * titolo della stessa riga dice già quel nome, un lettore di schermo lo leggeva due volte (riga 85 delle richieste al design
+ * system). Allora l'avatar si nasconde; quando il titolo non lo dice — una frase senza chi, un nome tagliato — resta com'è. Le
+ * righe entrano dopo il pannello (quando l'elenco arriva, con «Tutte»): si guardano quelle accanto a ciò che entra.
+ */
+function avatarGiaNelTitolo(aggiunto: Node): void {
+    if (aggiunto instanceof HTMLElement && aggiunto.closest('.zr-shell .zr-top-actions > .zr-notif')) {
+        aggiunto.parentElement?.querySelectorAll('.zr-notif-item > .zr-avatar').forEach((avatar) => {
+            if (avatar.nextElementSibling?.firstElementChild?.textContent?.includes(avatar.getAttribute('aria-label')!)) {
+                avatar.setAttribute('aria-hidden', 'true');
+            }
+        });
+    }
+}
+
+/**
  * Chiusa la campanella col clic mentre il fuoco era nel pannello, il pannello esce dal documento con dentro l'elemento
  * attivo e il fuoco resta alla pagina: dove il clic non dà il fuoco a un pulsante (Safari, Firefox su macOS) non lo ha
  * nemmeno la campanella. Quando il pannello esce e il fuoco non è di nessuno torna alla campanella; a un elemento che lo
@@ -238,6 +254,7 @@ new MutationObserver((cambi) => {
         barraInert(cambio);
         cambio.addedNodes.forEach((aggiunto) => {
             fuocoNelPannelloDelleNotifiche(aggiunto);
+            avatarGiaNelTitolo(aggiunto);
             dialogoSopraIlPannello(aggiunto);
             avatarFuoriDalMenu(aggiunto);
         });

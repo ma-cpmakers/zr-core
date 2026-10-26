@@ -890,7 +890,10 @@ cornice === null ? pagina : (
 - **Il pannello delle notifiche e la barra in alto senza errori di accessibilità**: dalla `v3.4.0`, nel pannello delle
   notifiche aperto la testa e il piede (un `<header>` e un `<footer>` dell'`AppShell`) hanno `role="none"`: prima axe li
   leggeva come un secondo banner e un contentinfo dentro la pagina (`landmark-banner-is-top-level`,
-  `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). A 720 px o meno, finché la ricerca
+  `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). Dalla `v3.8.1`, in una notifica il cui titolo dice già il
+  nome di chi ha fatto, l'avatar con quel nome è nascosto ai lettori di schermo (`aria-hidden`): prima il nome si sentiva due
+  volte, dall'avatar e dal titolo; dove il titolo non lo dice — una frase senza chi, un nome tagliato — l'avatar resta com'è, e
+  un test del modulo che cerca per ruolo l'avatar di una notifica col nome nel titolo non lo trova più. A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
   all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Tab fuori dal campo non chiude la
