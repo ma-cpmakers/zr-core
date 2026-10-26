@@ -104,6 +104,8 @@ Un modulo che nasce parte dall'ingresso per le app (dalla `v1.15.0`): la cornice
 `vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da
 `vendor/zeiras/zr-core/resources/js/zeiras/componenti.js`, e nella tua build entra solo ciò che usi. La favicon di Zeiras arriva dal pacchetto, con una riga nel layout Blade e tre
 file statici: README, «La favicon». Il design system nella build è quello di zr-core: non ne tieni una copia tua.
+Se MentionField e AddressField li prendi solo dai loro moduli, in pagine caricate a richiesta, il primo `@import` può essere
+`zeiras.css` al posto di `bundle.css` (dalla `v3.3.0`): README, «Passare alla v3.3».
 
 **Prova**: `grep -c '"url": "git@' composer.lock` risponde 0 (la CI e il server installano senza chiavi); `tsc --noEmit` e
 la build passano; nella build il design system non entra intero:
@@ -367,6 +369,12 @@ righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo 
 Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
 che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
 a te: citalo nell'informativa sui cookie del modulo, come cookie tecnico.
+
+Se una tua pagina deve mandare la persona a creare un workspace, l'indirizzo lo dà `Cornice::nuovoWorkspace()` (dalla
+`v3.5.0`): la pagina di zr-home che apre il dialogo «Nuovo workspace», solo per chi è proprietario o amministratore
+nell'azienda del workspace della sessione, come il pulsante del selettore. Con `null` la tua pagina spiega e non mostra il
+pulsante. Il percorso di zr-home non lo scrivi tu, e la chiami nella pagina che la usa: legge il backoffice a ogni
+chiamata, e un suo errore arriva a te come da `Cornice::dati()` (README, «Un workspace nuovo da una pagina del modulo»).
 
 ## 7. La cornice montata una volta sola
 

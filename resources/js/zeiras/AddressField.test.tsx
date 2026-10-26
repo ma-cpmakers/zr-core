@@ -1,13 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, createElement, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
-import { aParte, A_PARTE, leggi } from '../../../scripts/componenti-genera.mjs';
+import { aParte, A_PARTE, dividiIlCss, leggi } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
 import { AddressField, type AddressLabels, type AddressPlace, type AddressSuggestion } from './AddressField';
 import generato from './AddressField.js?raw';
 import * as componenti from './componenti';
 import { Zeiras } from './index';
+// Gli stili del bundle (dalla `v3.3.0`, sprint 75 · T1.2): il modulo importa quelli dei componenti di cui usa le classi. Un CSS
+// con `?raw` vitest lo dà vuoto: si legge dal disco.
+const bundleCss = readFileSync(resolve(process.cwd(), 'resources/zeiras/bundle.css'), 'utf8');
 
 // Sprint 72 · T1 (voce #2454, Decisione 16431). AddressField, arrivato col design system ds-1792851600-0de4, ha un modulo suo
 // come MentionField (MentionField.test.tsx): resources/js/zeiras/AddressField.js. Qui: che il file è quello che il bundle genera,
@@ -27,14 +32,14 @@ const senzaNumeriDegliId = (html: string) => html.replace(/adr-\d+/g, 'adr-N');
 
 describe('il modulo di AddressField è quello che il bundle genera (sprint 72 · T1.3)', () => {
     it('rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
-        expect(aParte(leggi(bundle), 'AddressField')).toBe(generato);
+        expect(aParte(leggi(bundle), 'AddressField', dividiIlCss(bundleCss))).toBe(generato);
     });
 
     it('con un carattere cambiato nel blocco del bundle non è più uguale', () => {
         const cambiato = bundle.replace("attribution: 'Suggerimenti di Google'", "attribution: 'Suggerimenti di Google!'");
 
         expect(cambiato).not.toBe(bundle);
-        expect(aParte(leggi(cambiato), 'AddressField')).not.toBe(generato);
+        expect(aParte(leggi(cambiato), 'AddressField', dividiIlCss(bundleCss))).not.toBe(generato);
     });
 
     it('ha il blocco del bundle riga per riga, dal suo commento alla graffa che chiude la funzione, e le stesse righe private di MentionField', () => {
@@ -47,7 +52,7 @@ describe('il modulo di AddressField è quello che il bundle genera (sprint 72 ·
 
         expect([delBundle[inizio - 1]?.startsWith('  /* ---------- MentionField: '), blocco[1]?.startsWith('  var ADDRESS_LABELS = '), blocco[2], blocco.at(-1), delBundle[inizio + 56]]).toStrictEqual([true, true, '  function AddressField(p) {', '  }', '']);
         expect(righe.slice(daQui, daQui + blocco.length)).toStrictEqual(blocco);
-        expect(righe.slice(5, daQui - 1)).toStrictEqual(A_PARTE.AddressField);
+        expect(righe.slice(7, daQui - 1)).toStrictEqual(A_PARTE.AddressField);
         expect(A_PARTE.AddressField).toStrictEqual(A_PARTE.MentionField);
         expect(righe.slice(daQui + blocco.length)).toStrictEqual(['', 'export { AddressField };', '']);
     });
@@ -55,13 +60,14 @@ describe('il modulo di AddressField è quello che il bundle genera (sprint 72 ·
     it('da ./componenti prende per nome Icon e Label, e niente altro; di MentionField non porta niente', () => {
         expect(righe.filter((riga) => /\bfrom\b/.test(riga))).toStrictEqual(["import * as React from 'react';", "import { Icon, Label } from './componenti';"]);
         expect(righe.filter((riga) => riga.startsWith('export'))).toStrictEqual(['export { AddressField };']);
-        expect(['MentionField', 'MENTION_LABELS', 'zr-mention-chip'].filter((testo) => generato.includes(testo))).toStrictEqual([]);
+        // Dalla `v3.3.0` importa gli stili di MentionField, di cui usa le classi (sprint 75 · T1.2): il codice resta senza di lui.
+        expect(['MentionField', 'MENTION_LABELS', 'zr-mention-chip'].filter((testo) => righe.filter((riga) => !riga.endsWith(".css';")).join('\n').includes(testo))).toStrictEqual([]);
     });
 
     it('se il blocco non c\'è, lo script si ferma e dice quale commento manca', () => {
         const senzaCommento = bundle.replace('  /* ---------- AddressField: ', '  /* ---------- Indirizzi: ');
 
-        expect(() => aParte(leggi(senzaCommento), 'AddressField')).toThrow('il commento «/* ---------- AddressField: …», che segna il blocco di AddressField, c\'è 0 volte');
+        expect(() => aParte(leggi(senzaCommento), 'AddressField', dividiIlCss(bundleCss))).toThrow('il commento «/* ---------- AddressField: …», che segna il blocco di AddressField, c\'è 0 volte');
     });
 });
 

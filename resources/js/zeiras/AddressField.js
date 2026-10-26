@@ -3,6 +3,8 @@
 // usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.
 import * as React from 'react';
 import { Icon, Label } from './componenti';
+import '../../css/zeiras/MentionField.css';
+import '../../css/zeiras/AddressField.css';
   var h = React.createElement;
   var useState = React.useState;
   var useRef = React.useRef;

@@ -43,6 +43,23 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
+**`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
+`resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
+È per chi prende quei due campi **solo** dai loro moduli, in pagine caricate a richiesta: il CSS del primo carico pesa circa
+0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»). Si importa al posto di `bundle.css`, nello stesso ordine:
+
+```css
+@import '../../vendor/zeiras/zr-core/resources/css/zeiras.css';
+@import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
+```
+
+Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`: con `zeiras.css`
+quel campo resterebbe senza stili. Con `bundle.css` i due campi si prendono dallo stesso posto, tutti e due dai loro moduli o
+tutti e due da `…/zeiras/componenti`: gli stili che un modulo porta arrivano dopo il bundle, e con MentionField dal suo modulo e
+AddressField da `componenti` la lista di AddressField si allunga (da 300 a 360 px, e sotto i 720 px senza limite). Dai due moduli,
+con `bundle.css`, gli stili dei campi arrivano due volte, uguali, e ciò che si vede non cambia. Chi non cambia niente resta
+com'è.
+
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
 notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche per la quarta, `destinazioneDellaNotifica`
@@ -121,7 +138,7 @@ Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito.
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,7 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,8 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip; dalla `v3.0.0` circa 1,9 KB): ciò che compone le righe delle notifiche e carica le
 frasi, che la cornice chiede con `import()` quando si apre la campanella, non quando si monta, e dalla `v3.0.0` anche le righe
@@ -139,15 +156,13 @@ il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle 
 di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 17 byte in più: un modulo
 spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
-libera byte, il tetto riscende). Dalla `v3.3.0` sono 80 byte in più: l'invito della ricerca nomina le prenotazioni e i
-calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre lingue (un'eccezione di zr-pm: la misura
-vera; le loro risorse e i loro testi stanno nel pezzo della ricerca). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.199 byte la campanella, 1.666 i rimedi, 1.536 la
-ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 532 nella `v3.3.0`: le prenotazioni e i calendari di
-Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
-preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510). Nella `v3.3.0` è salito di altri
-214: le tre righe di Bookings e la data delle notifiche, col giorno e l'ora o il solo giorno (un'eccezione di zr-pm: la
-misura vera). Dalla `v2.0.0` l'eccezione per i
+libera byte, il tetto riscende). Hanno
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la
+ricerca. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
+per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
+del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
+che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -155,6 +170,19 @@ I due componenti sono `Button` e `DataTable`. **Per misurarlo nel frontend**, pr
 `find public/build/assets -name '*.js' -exec gzip -9 -c {} + | wc -c` dà i byte di tutto il JS, con gzip. Che il passaggio è
 completo lo dice `grep -rhoE --include='*.js' 'window\.Zeiras ?= ?Object\.assign' public/build | wc -l`: risponde 0
 dall'ingresso per le app, 1 finché un file importa dall'ingresso di sempre.
+
+**Quanto pesa il CSS** (dalla `v3.3.0`), su un'app di prova con la cornice e MentionField e AddressField presi dai loro moduli
+in due pagine a richiesta, col CSS del design system e quello dei token, costruita come le tre di sopra (la CI la ricostruisce e
+la pesa a ogni giro):
+
+| App di prova | CSS | con gzip | a richiesta | con gzip |
+|---|---|---|---|---|
+| la cornice e i due campi a richiesta, con `bundle.css` | 68,4 KB | 11,5 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 65,3 KB | 11,0 KB | 3,1 KB | 1,1 KB |
+
+Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
+arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
+CSS d'ingresso.
 
 **I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
 pacchetto. Vogliono `target` ES2022 o più recente, con la sua libreria (dalla `v1.9.0`). Reggono `strict`, `noUnusedLocals` e
@@ -238,6 +266,27 @@ d'ingresso dell'app che prende solo la cornice, 456 meno di prima, e 1.969 il pe
 La parte server (`GET /cornice/notifiche`, `idsDellaNotifica`) dà gli stessi `ids` di prima ai tipi che avevano già una riga;
 ai due delle Scadenze, che nella `v2.25.4` non l'avevano e avevano `ids` vuoti, dà quelli del percorso che si apre
 (`persona_id`, altrimenti `organizzazione_id`, altrimenti nessuno).
+
+### Passare alla v3.3
+
+Nessun frontend deve cambiare niente: `bundle.css` resta com'era. La `v3.3.0` aggiunge `resources/css/zeiras.css`, per chi
+prende MentionField e AddressField solo dai loro moduli (`…/resources/js/zeiras/MentionField` e `…/AddressField`): il CSS del
+primo carico non porta i loro stili, che arrivano col modulo, nelle pagine caricate a richiesta. Il passaggio è una riga del
+CSS:
+
+```diff
+-@import '../../vendor/zeiras/zr-core/resources/zeiras/bundle.css';
++@import '../../vendor/zeiras/zr-core/resources/css/zeiras.css';
+ @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
+```
+
+Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa: con `zeiras.css` quel campo
+resterebbe senza stili. Il risparmio è di circa 0,5 KB con gzip (vedi «Quanto pesa il CSS», sopra).
+
+Una cosa cambia, con `bundle.css`, per chi prende MentionField dal suo modulo (dalla `v3.1.0`) e AddressField da
+`…/zeiras/componenti` o da `window.Zeiras` (nessun frontend, il 25/10/2026): dalla `v3.3.0` il modulo di MentionField porta i
+suoi stili, che arrivano dopo il bundle e allungano la lista di AddressField. Chi è in questo caso prende anche AddressField dal
+suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra).
 
 ## La parte server
 
@@ -441,6 +490,32 @@ da mostrare. E la forma della lingua la guarda solo `Cornice::lingua()`: `Sessio
 Con la funzione nel `share()`, `BackofficeNonRisponde` ed `ErroreApi` fermano ogni risposta Inertia, anche quella di una
 pagina senza cornice: come mostrarle lo decide il frontend, nel suo gestore delle eccezioni (`withExceptions` in
 `bootstrap/app.php`); senza, sono un 500.
+
+### Un workspace nuovo da una pagina del modulo
+
+Una pagina di un modulo che deve mandare la persona a creare un workspace — per esempio quando un'installazione non si può
+fare nel workspace in cui è — prende l'indirizzo da `Cornice::nuovoWorkspace()` (dalla `v3.5.0`), e non scrive il percorso
+di zr-home nel suo codice. Dà `https://app.zeiras.com/w/<slug>/nuovo-workspace`, con lo slug del workspace della sessione
+codificato per un indirizzo, ed è la pagina che apre «Nuovo workspace» in fondo al selettore: la Dashboard di quel workspace
+col dialogo aperto. La pagina e il dialogo sono di zr-home, e se la persona può davvero creare il workspace lo decide il
+backoffice (`io.workspace.crea`): zr-core dà soltanto la strada.
+
+```php
+$nuovo = Cornice::nuovoWorkspace();   // null: la pagina spiega, senza il pulsante
+```
+
+La regola è quella del selettore, `nuovo_workspace`: l'indirizzo c'è se la persona è `proprietario` o `amministratore` in
+almeno un workspace dell'azienda del workspace della sessione. Il ruolo della sessione non conta, e quello di un'altra
+azienda nemmeno. L'azienda non si confronta con `/v1/io/aziende`, come fa la pagina di zr-home: se quell'elenco non la
+ha, il selettore non c'è e la cornice non mostra il pulsante, ma la pagina del modulo può avere l'indirizzo. In ogni altro
+caso dà `null` — solo `membro`, un ruolo che zr-core non conosce, il workspace della sessione
+che l'elenco non ha —, e allora la pagina spiega e non offre la strada. Senza sessione, o senza workspace, dà `null` senza
+chiamare il backoffice. Altrimenti legge `/v1/io/workspace` col gettone della persona, tutte le pagine, a ogni chiamata, e
+nient'altro: va chiamata nella pagina che la usa, non in un middleware. Un errore del backoffice non diventa `null`, che
+direbbe «non puoi» a chi può: `BackofficeNonRisponde`, `ErroreApi` e `GettoneRifiutato` arrivano al modulo come da ogni
+chiamata di zr-auth, e una riga senza `slug` o `azienda_id` testuali è `BackofficeNonRisponde`. Anche il 403
+`accettazione_richiesta` arriva com'è, e da zr-auth risponde da sé: `Cornice::dati()` lo prende e dà i dati ridotti, questo
+metodo no.
 
 ### Le rotte della cornice
 
@@ -700,7 +775,7 @@ cornice === null ? pagina : (
   l'elemento attivo va riletto, e così uno che apre una notifica dal pannello. È provvisorio: l'`AppShell` del design system apre il pannello e lascia il fuoco sulla
   campanella, e la cornice lo sposta da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie,
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
-  1,7 KB con gzip, con quelli dei due punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
+  1,8 KB con gzip, con quelli dei punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
   a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
@@ -750,6 +825,17 @@ cornice === null ? pagina : (
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il
   modulo cambi niente. Sta nello stesso pezzo a richiesta dei due punti sopra: se non arriva, il menu e la barra restano
   com'erano.
+- **Il pannello delle notifiche e la barra in alto senza errori di accessibilità**: dalla `v3.4.0`, nel pannello delle
+  notifiche aperto la testa e il piede (un `<header>` e un `<footer>` dell'`AppShell`) hanno `role="none"`: prima axe li
+  leggeva come un secondo banner e un contentinfo dentro la pagina (`landmark-banner-is-top-level`,
+  `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). A 720 px o meno, finché la ricerca
+  aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
+  prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Tab fuori dal campo non chiude la
+  ricerca, che resta sopra la barra: le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, la scelta di un
+  risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
+  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
+  sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
@@ -887,10 +973,16 @@ cornice === null ? pagina : (
   quando un cliente chiede una modifica dal link di un preventivo: «Un cliente ha chiesto una modifica al preventivo»
   (`crm.preventivo.richiesta`). Non è un evento, e il suo `tipo` non ha `com.zeiras.` davanti; gli eventi dei
   preventivi, compreso `com.zeiras.crm.preventivo.visto`, la prima apertura del link, non generano notifiche. Con lei i
-  titoli sono 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e
+  titoli erano 48: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze e
   la richiesta sul preventivo. Nei `dati` porta l'`id` del preventivo e `trattativa_id`, l'opportunità o `null`, mai il
   testo del cliente, e non ha chi l'ha fatto. Un clic apre il preventivo,
-  `https://crm.zeiras.com/w/<slug>/preventivi/<id>`. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  `https://crm.zeiras.com/w/<slug>/preventivi/<id>`. Dalla `v3.5.0` ha un titolo anche la notifica che arriva al
+  proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario:
+  «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`). Non è un evento nemmeno lei, e il suo `tipo` non
+  ha `com.zeiras.` davanti; chi l'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede
+  senza assegnatario»). Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
+  zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario. Nei `dati` porta solo il numero
+  delle schede, nessun id: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
@@ -969,7 +1061,7 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i cinquantuno tipi che hanno un titolo; la prima trentuno: i quattordici di
+  scheda»). La seconda la hanno tutti i cinquantadue tipi che hanno un titolo; la prima trentuno: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato, e dalla `v3.3.0` le tre prenotazioni di Bookings. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
