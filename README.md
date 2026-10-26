@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 54,9 KB | 11,2 KB |
-| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 54,9 KB | 11,2 KB |
-| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 54,8 KB | 11,2 KB |
+| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 55,8 KB | 11,9 KB |
+| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 55,8 KB | 11,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 55,8 KB | 11,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -146,7 +146,13 @@ del registro che dicono dove si apre ogni notifica, con la funzione che le legge
 (circa 1,5 KB con gzip dalla `v3.6.0`): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi
 (circa 0,8 KB con gzip): i testi dei due avvisi della cornice ridotta, nelle tre lingue — chi non ha accettato i documenti
-legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. Nel JS d'ingresso di queste app c'è anche l'aiuto
+legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. L'ottavo, dalla `v3.8.0`, è il
+pezzo della tastiera (circa 1,2 KB con gzip): i rimedi che servono solo a chi preme un tasto — «Tab dentro un dialogo aperto» e
+Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip), che lo
+chiede al primo tasto premuto: chi usa solo il mouse non lo scarica. I tasti premuti prima che arrivi non si perdono: il pezzo
+dei rimedi li tiene e glieli ripete quando arriva, e un Tab lo ferma, perché il fuoco non esca da un dialogo prima del rimedio
+(arrivato il pezzo, il fuoco va dove l'avrebbe portato il browser, o resta nel dialogo). Un tasto premuto prima che arrivi
+il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.296 byte con
@@ -168,10 +174,12 @@ che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropa
 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
 l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
 alzare la soglia; il margine sta nel peso tolto, non nel tetto). Hanno
-un tetto anche i quattro pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.538 la
-ricerca e, dalla `v3.7.0`, 778 gli avvisi (la misura più 20). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera (la misura più 20; i byte che
+lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
-le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
+le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
+pezzi, ancora col codice uguale, e 20 di margine (zr-pm). Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
 per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm), e di altri 102 nella `v3.6.0`: 82 per il pannello della ricerca
 nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm), poi di altri 52:
 Esc col fuoco nel pannello della ricerca chiude la ricerca (zr-pm, 26/10). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
@@ -807,7 +815,7 @@ cornice === null ? pagina : (
   con la classe del pannello non si tocca. Per chi aggiorna: con la ricerca aperta c'è una fermata del Tab in più, dopo il
   campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Esc col fuoco nel pannello chiude la
   ricerca come dal campo (l'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento,
-  come dopo Esc nel campo. Sta nel pezzo dei rimedi, ed è provvisorio
+  come dopo Esc nel campo. Sta nel pezzo dei rimedi (dalla `v3.8.0` in quello della tastiera, che arriva al primo tasto), ed è provvisorio
   come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
@@ -839,6 +847,8 @@ cornice === null ? pagina : (
   trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene (un menu che sta
   altrove nella pagina, senza il fuoco, non cambia niente); non interviene
   nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
+  Dalla `v3.8.0` il rimedio sta nel pezzo della tastiera, che arriva al primo tasto premuto: un Tab premuto prima si ferma,
+  e arrivato il pezzo il fuoco va nel dialogo, o dove l'avrebbe portato il browser.
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
   `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi

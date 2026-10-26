@@ -124,6 +124,8 @@ const DELLA_RICERCA = '/cornice/ricerca';
 const DEGLI_AVVISI = 'Zeiras is not responding';
 /** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
 const DEI_RIMEDI = 'MutationObserver';
+/** Ciò che nel codice costruito c'è solo nei rimedi della sola tastiera (dalla `v3.8.0`): l'ordine di due fermate del Tab. */
+const DELLA_TASTIERA = 'compareDocumentPosition';
 /** Ciò che nel codice costruito c'è solo nella barra minima di chi non ha i dati della cornice (sprint 68 · T1). */
 const DELLA_BARRA = 'var(--topbar-height)';
 
@@ -467,18 +469,18 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
     });
 
-    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri quattro sono pezzi di codice, senza frasi: la campanella, la ricerca, i rimedi di tastiera e gli avvisi della cornice ridotta (dalla v3.7.0)', (_nome, costruita) => {
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri cinque sono pezzi di codice, senza frasi: la campanella, la ricerca, i rimedi di tastiera, gli avvisi della cornice ridotta (dalla v3.7.0) e i rimedi della sola tastiera (dalla v3.8.0)', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
-        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], [], ['en'], ['es'], ['it']]);
-        expect(costruita().pezzi).toHaveLength(4);
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], [], [], ['en'], ['es'], ['it']]);
+        expect(costruita().pezzi).toHaveLength(5);
     });
 
     // Sprint 33 · T1.2 (voce #1915). Che il pezzo si chieda all'apertura della campanella, e non al montaggio, lo provano i casi
     // della cornice (`cornice.test.tsx`).
     it.each(app)('«%s»: ciò che compone la riga di una notifica non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello dei rimedi (sprint 33 · T1.2)', (_nome, costruita) => {
         expect(volte(costruita().js, DELLA_CAMPANELLA)).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, false], [false, true], [true, false]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, true], [true, false]]);
     });
 
     // Sprint 42 · T2.1 (voce #2054). Che il pezzo si chieda al primo fuoco nel campo, o alla prima parola, e non al montaggio, lo
@@ -511,7 +513,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
     it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
         expect(volte(costruita().js, 'Segmenter')).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [true, true]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, false], [true, true]]);
     });
 
     // Sprint 74 · T1.6 (voce 2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
@@ -524,6 +526,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
         expect(costruita().js).not.toContain(DEI_RIMEDI);
         expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
+    });
+
+    // Dalla v3.8.0 (zr-pm, 26/10/2026): i rimedi che servono solo a chi preme un tasto stanno in un pezzo loro, che il pezzo dei
+    // rimedi chiede al primo tasto. Che il primo tasto non si perda lo provano i casi di `tastiera.test.ts`.
+    it.each(app)('«%s»: i rimedi della sola tastiera stanno in un pezzo a richiesta solo, che non è quello dei rimedi: lo chiede quello dei rimedi, non il JS d\'ingresso (v3.8.0)', (_nome, costruita) => {
+        expect(costruita().js).not.toContain(DELLA_TASTIERA);
+        expect(costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
+        expect(costruita().pezzi.filter((pezzo) => /import\([\x22\x27\x60]\.\/tastiera-/.test(pezzo)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([true]);
     });
 
     it('in un frontend che alza `build.assetsInlineLimit` i file delle frasi restano file: come `data:` nel JS la CSP di tutti (`connect-src \'self\'`) fermerebbe la richiesta (sprint 30 · T1)', () => {
@@ -569,12 +579,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
     // tutti nel pezzo e non nel JS d'ingresso.
-    it('il pezzo della ricerca pesa, con gzip, al più 1.538 byte: la misura della v3.6.0, con le prenotazioni e i calendari di Bookings (sprint 42 · T2.5; voce 2549 T2.7)', () => {
+    it('il pezzo della ricerca pesa, con gzip, al più 1.561 byte: la misura della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7)', () => {
         const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
 
         expect(ricerca).not.toBe('');
         // Sprint 74, dopo il merge della v3.5.0 (26/10): 1.536 → 1.538, le impronte nuove dei nomi dei pezzi; il codice è lo stesso.
-        expect(gzip(ricerca)).toBeLessThanOrEqual(1_538);
+        // v3.8.0 (zr-pm, 26/10/2026): 1.541 col pezzo della tastiera, ancora solo le impronte nuove dei nomi dei pezzi; il tetto è la
+        // misura più 20.
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_561);
     });
 
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta stanno in un pezzo a richiesta, con le tre lingue,
@@ -656,6 +668,15 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Poi +52 per Esc col fuoco nel pannello della ricerca, che passa al campo e chiude la ricerca (dalla UAT in Chromium;
         // misura del 26/10: 1.902; tetto alla misura più 20, zr-pm 26/10).
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
+    });
+
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.201 byte: la misura della v3.8.0 più 20', () => {
+        const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
+
+        expect(tastiera).not.toBe('');
+        // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
+        // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
+        expect(gzip(tastiera)).toBeLessThanOrEqual(1_201);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

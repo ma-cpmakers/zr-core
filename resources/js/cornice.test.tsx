@@ -103,6 +103,17 @@ async function mostra(elemento: ReactElement): Promise<void> {
     await act(async () => radice.render(elemento));
 }
 
+/**
+ * Il pezzo dei rimedi della sola tastiera già arrivato: dalla `v3.8.0` lo chiede il primo tasto, che arriva a lui quando il
+ * pezzo c'è (`tastiera.test.ts`). Qui il primo tasto è un Maiusc, che non fa niente: i tasti del caso trovano il pezzo.
+ */
+async function conLaTastiera(): Promise<void> {
+    await act(async () => {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true }));
+        await vi.dynamicImportSettled();
+    });
+}
+
 /** Il giro dopo: le risposte già pronte delle rotte finte arrivano tutte. */
 function prossimoGiro(): Promise<void> {
     return new Promise((fatto) => setTimeout(fatto, 0));
@@ -8031,6 +8042,7 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     /** Come il clic di una persona: il pulsante prende il fuoco, poi il clic. */
     const apri = async () => {
@@ -8295,6 +8307,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const conIlFuoco = async (elemento: HTMLElement | null) => {
         expect(elemento).not.toBeNull();
@@ -8992,6 +9005,7 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const barra = () => uno('.zr-shell nav.zr-nav');
 
@@ -9097,6 +9111,7 @@ describe('i menu della barra in alto stanno sopra il pannello di dettaglio (riga
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
 
     it('aperti, il menu del profilo e il pannello delle notifiche hanno il gradino sopra il pannello', async () => {
@@ -9134,6 +9149,7 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const collegamenti = () => tutti('.zr-shell > .zr-side a[href]') as HTMLAnchorElement[];
     /** Quelli con un indirizzo vero: una voce «Presto» o senza indirizzo ha `#`, e l'`AppShell` il suo clic lo gestisce da sé. */
@@ -9226,6 +9242,7 @@ describe('i clic sul percorso passano da `naviga` (sprint 74, voce 2722)', () =>
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const voci = () => tutti('.zr-shell > main > .zr-crumbbar a') as HTMLAnchorElement[];
     /** Un clic sul collegamento, e se per il browser era già stato gestito quando è arrivato in cima (la navigazione vera non c'è in jsdom). */
@@ -9296,6 +9313,7 @@ describe('col selettore aperto il piede della barra laterale non è una fermata 
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const piede = () => uno('.zr-shell > .zr-side > .zr-side-foot');
 
@@ -9368,6 +9386,7 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const main = () => uno('.zr-shell > main.zr-main');
 
@@ -9520,6 +9539,7 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => uno(selettore)?.getAttribute('role') ?? null);
     const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
@@ -9670,6 +9690,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const pannello = () => uno('.zr-shell .zr-top > .zr-search > .zr-search-panel') as HTMLElement | null;
     /** Una parola nel campo, come una persona, e i risultati che arrivano dopo i 300 ms dell'`AppShell`. */
