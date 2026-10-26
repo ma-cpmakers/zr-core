@@ -22,6 +22,9 @@ const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 // vuole l'`AppShell`, e per i tipi del design system una chiave facoltativa manca. Per questo la cornice dà all'`AppShell`
 // una chiave solo quando ha un valore (`senzaUndefined`, più sotto).
 
+/** Un workspace di un'azienda nei dati della cornice (`DatiDellaCornice`, `aziende`). */
+type WorkspaceDeiDati = { id?: string | undefined; nome: string; slug: string; colore?: ShellWorkspace['tone'] };
+
 /** I dati della cornice, come li dà `Cornice::dati()` della parte server: la persona, la sua lingua, il workspace in cui è entrata. */
 export interface DatiDellaCornice {
     /** La lingua della persona (`it`, `es`, `en`…): in una lingua che zr-core non ha, la cornice è in inglese. */
@@ -44,12 +47,14 @@ export interface DatiDellaCornice {
     prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo' | undefined>> | (never[] & Partial<Record<IdDiProdotto, undefined>>);
     /**
      * Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace
-     * dei dati non sta in nessuna, il workspace resta testo. Dall'`id` di un workspace viene il tono del suo pallino
-     * (`tonoDelWorkspace`): è facoltativo, perché i dati scritti a mano nei test di un frontend restino validi, e senza non c'è tono.
+     * dei dati non sta in nessuna, il workspace resta testo. Il tono del suo pallino è il `colore` che il workspace ha scelto, se
+     * l'ha (dalla `v3.6.0`; la parte server lo dà solo se è uno dei cinque toni, mai `neutral`), altrimenti quello del suo `id`
+     * (`tonoDelWorkspace`). Tutti e due sono facoltativi, perché i dati scritti a mano nei test di un frontend restino validi, e
+     * senza nessuno dei due non c'è tono.
      * `nuovo_workspace` dice se la persona può creare un workspace in quell'azienda: lo ricava la parte server dal suo ruolo, che
      * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
-    aziende?: { id: string; nome: string; workspace: { id?: string | undefined; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[] | undefined;
+    aziende?: { id: string; nome: string; workspace: WorkspaceDeiDati[]; nuovo_workspace?: boolean | undefined }[] | undefined;
     /**
      * Dove si attiva un modulo (dalla `v2.25.0`): l'indirizzo di Impostazioni › Moduli nel workspace dei dati, che la parte server dà
      * solo a chi lo amministra. Un modulo `disponibile` nel menu Moduli porta lì; senza, non porta da nessuna parte.
@@ -214,11 +219,12 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
 }
 
 /**
- * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col tono del suo id (tono.ts), mai del nome, dello slug o del
- * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
+ * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col colore che ha scelto, o col tono del suo id (tono.ts), mai
+ * del nome, dello slug o del posto nell'elenco. Senza l'uno e l'altro nessun tono, nemmeno la chiave: il pallino è quello che
+ * l'`AppShell` mette da sé.
  */
-function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
-    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: tonoDelWorkspace(workspace.id) });
+function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
+    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: workspace.colore ?? tonoDelWorkspace(workspace.id) });
 }
 
 /**

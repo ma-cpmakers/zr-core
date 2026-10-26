@@ -3037,6 +3037,34 @@ it('i toni che il README elenca per tonoDelWorkspace sono quelli che il design s
         ->and($delReadme($senzaUnTono))->not->toContain('sky');
 });
 
+// Sprint 74 · C5 (voce 2730 di zr-home). Il colore che un workspace ha scelto: il README lo dice subito dopo il capoverso del
+// tono, e la parte server lo lascia passare solo se è uno dei toni che il design system ammette per un workspace, gli stessi
+// di `tonoDelWorkspace`, nello stesso ordine.
+it('il README dice, subito dopo il capoverso del tono, che il colore scelto vince sul tono dell\'id, dove sta nei dati e come lo scrive una pagina del frontend (voce 2730)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^Il colore di un workspace fuori dalla cornice .*?\n\n(.*?)(?=^$|\z)/ms', $readme, $dopo);
+
+    expect(str_contains(suUnaRiga($dopo[1] ?? ''), $frase))->toBe(true);
+})->with([
+    'da quale versione' => ['Dalla `v3.6.0` un workspace che ha scelto il suo colore'],
+    'vince sull\'id' => ['ha nel selettore quel colore, non il tono del suo `id`'],
+    'dove sta nei dati' => ['sta in ogni workspace di `aziende`, come `colore`, solo quando è uno dei cinque toni'],
+    'neutral non arriva' => ['`neutral`, il colore di chi non ne ha scelto uno, non arriva, e allora vale la regola dell\'`id`'],
+    'come lo scrive un frontend' => ['`workspace.colore ?? tonoDelWorkspace(workspace.id)`'],
+]);
+
+it('i colori di un workspace che la parte server lascia passare sono i toni che il design system ammette per un workspace, nello stesso ordine di tonoDelWorkspace (voce 2730)', function () {
+    preg_match('/^export type Tone = ([^;]+);$/m', (string) file_get_contents(__DIR__.'/../../resources/zeiras/index.d.ts'), $tone);
+    preg_match_all("/'([a-z]+)'/", $tone[1] ?? '', $nomi);
+    preg_match('/^const toni = \\[([^\\]]+)\\] as const/m', (string) file_get_contents(__DIR__.'/../../resources/js/tono.ts'), $diTono);
+    preg_match_all("/'([a-z]+)'/", $diTono[1] ?? '', $toni);
+
+    expect((new ReflectionClassConstant(Cornice::class, 'TONI_DI_UN_WORKSPACE'))->getValue())
+        ->toBe(array_values(array_diff($nomi[1], ['neutral'])))
+        ->toBe($toni[1])
+        ->not->toBe([]);
+});
+
 // Sprint 17 · review della PR #20, R1: i frontend compilano i sorgenti di zr-core dalla cartella del pacchetto col loro
 // tsconfig, e lì non li possono correggere. Il `tsc` di zr-core guarda quindi anche ciò che un tsconfig più stretto del suo
 // fermerebbe in quei sorgenti: una dichiarazione mai usata e un parametro mai usato.
@@ -5436,7 +5464,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.650 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.675 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     'i pesi: i 17 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 17 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
     'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
@@ -5446,7 +5474,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.922 i rimedi, 1.538 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.222 byte la campanella, 1.922 i rimedi, 1.538 la ricerca'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],

@@ -61,6 +61,12 @@ final class Cornice
     private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
 
     /**
+     * I colori di un workspace che il selettore mostra: i toni che il design system ammette per un workspace, gli stessi di
+     * `tonoDelWorkspace` (resources/js/tono.ts). Il backoffice ha anche `neutral`, che vale «nessun colore scelto».
+     */
+    private const TONI_DI_UN_WORKSPACE = ['pine', 'citrus', 'coral', 'sky', 'plum'];
+
+    /**
      * null senza una sessione entrata in un workspace: la pagina non ha un workspace, e il backoffice non si chiama. Il
      * workspace è quello del gettone, mai quello dell'indirizzo. Un backoffice che non risponde lancia BackofficeNonRisponde
      * (zr-auth), e così un elenco che la cornice non sa leggere (dalla `v2.17.0`, `testi()`): mai una lista di app vuota, che farebbe «Presto» di ogni prodotto, né un elenco di aziende vuoto o zero non
@@ -93,7 +99,7 @@ final class Cornice
      * StessaPersona dà 409 a quest'ultima). La cornice la manda in `X-Zr-Persona`, e StessaPersona la
      * confronta: un'email passata da un account a un altro non basta più a una scheda rimasta aperta. Non va mai a schermo.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -200,7 +206,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function dopo(): ?array
     {
@@ -280,7 +286,7 @@ final class Cornice
      * (Accettazione): da lì non lo si chiama più, e ciò che era già letto non esce.
      *
      * @param  int<0, max>  $nonLette
-     * @return array{prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>, non_lette: int<0, max>}|null
+     * @return array{prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int<0, max>}|null
      */
     private static function appEAziende(int $nonLette): ?array
     {
@@ -599,8 +605,10 @@ final class Cornice
      * Le aziende della persona nell'ordine di io.aziende.elenca, ognuna coi suoi workspace nell'ordine di
      * io.workspace.elenca: il backoffice dà le due liste, e raggruppare per `azienda_id` è della cornice. Col gettone della
      * persona, perché sono le aziende di tutti i suoi workspace e non di quello in cui è entrata. Un workspace di un'azienda
-     * che l'elenco non ha resta fuori: non va sotto un'altra. Di ogni workspace escono l'id, il nome e lo slug, e nient'altro della
-     * riga (ruolo e azienda no): dall'id la cornice ricava il tono del workspace nel selettore, e sta nella riga già letta.
+     * che l'elenco non ha resta fuori: non va sotto un'altra. Di ogni workspace escono l'id, il nome e lo slug, e il `colore` che
+     * ha scelto solo se è uno dei cinque toni del selettore (dalla v3.6.0): `neutral`, che è il colore di chi non ne ha scelto uno,
+     * e ogni altro valore restano qui, e la cornice dà il tono dall'id. Nient'altro della riga (ruolo e azienda no), e tutto sta
+     * nella riga già letta.
      *
      * `nuovo_workspace` dice se la persona può creare un workspace in quell'azienda: è vero se in almeno una riga di
      * io.workspace.elenca di quell'azienda il suo ruolo è `proprietario` o `amministratore`, i ruoli a cui il backoffice lo
@@ -608,7 +616,7 @@ final class Cornice
      * booleano. Ogni altro valore vale «no» — `membro`, un ruolo che zr-core non conosce, una riga senza ruolo —, perché qui
      * si decide solo se mostrare «Nuovo workspace» nel selettore: se la persona può davvero lo decide il backoffice.
      *
-     * @return list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string}>, nuovo_workspace: bool}>
+     * @return list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>
      */
     private static function aziende(): array
     {
@@ -623,7 +631,8 @@ final class Cornice
             [$azienda] = self::testi($workspace, ['azienda_id'], 'GET /v1/io/workspace');
             if (isset($aziende[$azienda])) {
                 [$id, $nome, $slug] = self::testi($workspace, ['id', 'nome', 'slug'], 'GET /v1/io/workspace');
-                $aziende[$azienda]['workspace'][] = ['id' => $id, 'nome' => $nome, 'slug' => $slug];
+                $colore = $workspace['colore'] ?? null;
+                $aziende[$azienda]['workspace'][] = ['id' => $id, 'nome' => $nome, 'slug' => $slug, ...(in_array($colore, self::TONI_DI_UN_WORKSPACE, true) ? ['colore' => $colore] : [])];
                 if (in_array($workspace['ruolo'] ?? null, ['proprietario', 'amministratore'], true)) {
                     $aziende[$azienda]['nuovo_workspace'] = true;
                 }

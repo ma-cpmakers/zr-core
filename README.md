@@ -147,7 +147,7 @@ del registro che dicono dove si apre ogni notifica, con la funzione che le legge
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.650 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.675 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -158,10 +158,11 @@ d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla
 spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
 libera byte, il tetto riscende). Dalla `v3.6.0` sono 80 byte in più: l'invito della ricerca nomina le prenotazioni e i
 calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre lingue (un'eccezione di zr-pm: la misura
-vera; le loro risorse e i loro testi stanno nel pezzo della ricerca), e altri 75 fino a 17.650: la ricerca che passa al
+vera; le loro risorse e i loro testi stanno nel pezzo della ricerca), altri 75: la ricerca che passa al
 caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e il nome del «+» che dà il modulo (un'eccezione
-di zr-pm, Decisione 18231). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.922 i rimedi, 1.538 la
+di zr-pm, Decisione 18231), e altri 25: il colore che il workspace ha scelto, nel selettore (8 byte misurati, e 20 di
+margine: un'eccezione di zr-pm). Hanno
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.222 byte la campanella, 1.922 i rimedi, 1.538 la
 ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
@@ -172,7 +173,8 @@ preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510
 del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
 che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Nella `v3.6.0` è salito di altri
 213: le tre righe di Bookings e la data delle notifiche, col giorno e l'ora o il solo giorno (un'eccezione di zr-pm: la
-misura vera). Dalla `v2.0.0` l'eccezione per i
+misura vera), e di altri 21 nella stessa: 1 per le impronte nuove dei nomi dei pezzi, col codice uguale, e 20 di margine
+(zr-pm). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -310,7 +312,7 @@ controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer upda
 | `v3.3.0` | `resources/css/zeiras.css`, il CSS del primo carico senza gli stili di MentionField e AddressField | niente; se il modulo li prende solo dai loro moduli, una riga del CSS («Passare alla v3.3») | le pagine con i due campi hanno i loro stili |
 | `v3.4.0` | la testa e il piede del pannello delle notifiche non sono punti di riferimento; a 720 px o meno le azioni della barra in alto, con le `actions` del modulo, si nascondono sotto la ricerca aperta | niente; un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto | axe a 390 px con la ricerca aperta, senza `target-size` |
 | `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente |
-| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
+| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1666,6 +1668,11 @@ lo stesso `id` il tono è lo stesso. `id` è l'`id` del workspace, com'è in ogn
 Dà il nome di uno dei toni che il design system ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un
 colore: il colore lo mette il CSS del design system (`var(--<tono>)`). Due workspace possono avere lo stesso tono. Un `id`
 vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
+
+Dalla `v3.6.0` un workspace che ha scelto il suo colore (`colore` di `io.workspace.elenca`, da `workspace.modifica`) ha nel
+selettore quel colore, non il tono del suo `id`. Nei dati della cornice sta in ogni workspace di `aziende`, come `colore`, solo
+quando è uno dei cinque toni: `neutral`, il colore di chi non ne ha scelto uno, non arriva, e allora vale la regola dell'`id`.
+Una pagina del frontend che vuole il pallino del selettore scrive `workspace.colore ?? tonoDelWorkspace(workspace.id)`.
 
 ### La cornice montata una volta sola
 

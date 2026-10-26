@@ -1071,6 +1071,32 @@ describe('il colore di ogni workspace nel selettore', () => {
         expect(pallini()).toStrictEqual({ Marketing: 'background: var(--plum);', 'ws-5': 'background: var(--pine);' });
     });
 
+    // Sprint 74 · C5 (voce 2730 di zr-home). Il colore che il workspace ha scelto (`colore`, uno dei cinque toni: `neutral` la parte
+    // server non lo dà) vince sulla regola dell'id; senza colore il tono resta quello della regola, anche negli altri workspace.
+    it('un workspace col suo colore ha il pallino di quel colore, non quello del suo id; gli altri restano col tono della regola (voce 2730)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        // «ws-4» per la regola è plum: col colore scelto è sky.
+        await mostra(<Cornice dati={{ ...dati, aziende: [zeta, { ...acme, workspace: [vendite, { ...marketing, colore: 'sky' }] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'sky']]);
+        await clic(uno('.zr-ws-switch'));
+        expect(pallini()).toStrictEqual({ Ricerca: 'background: var(--citrus);', Vendite: 'background: var(--coral);', Marketing: 'background: var(--sky);' });
+    });
+
+    it('un workspace senza id col suo colore ha il pallino di quel colore (voce 2730)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: [{ ...acme, workspace: [marketing, { nome: 'ws-5', slug: 'ws-2', colore: 'pine' }] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.[0]?.workspaces).toStrictEqual([
+            { slug: 'acme-marketing', name: 'Marketing', tone: 'plum' },
+            { slug: 'ws-2', name: 'ws-5', tone: 'pine' },
+        ]);
+    });
+
+    it('nel tipo dei dati il colore di un workspace è facoltativo ed è uno dei toni del selettore, senza neutral: lo guarda tsc (voce 2730)', () => {
+        expectTypeOf<Aziende[number]['workspace'][number]['colore']>().toEqualTypeOf<'pine' | 'citrus' | 'coral' | 'sky' | 'plum' | undefined>();
+    });
+
     it('nel tipo dei dati l\'id di un workspace è facoltativo: i dati di un frontend che non lo danno restano validi, lo guarda tsc (sprint 17 · T4.5)', () => {
         expectTypeOf<{ nome: string; slug: string }>().toExtend<Aziende[number]['workspace'][number]>();
         expectTypeOf<Aziende[number]['workspace'][number]['id']>().toEqualTypeOf<string | undefined>();
