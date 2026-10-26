@@ -2647,7 +2647,7 @@ function notificaConQuando(mixed $quando): array
 
 it('GET /cornice/notifiche passa `quando` alla pagina com\'è nella forma concordata, accanto alle altre chiavi (sprint 74 · T1.5)', function (array $quando) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
-    Http::fake(['*' => Http::response(['data' => [['tipo' => 'com.zeiras.bookings.prenotazione.creata', 'app' => 'bookings'] + notificaConQuando($quando)], 'successivo' => null])]);
+    Http::fake(['*' => Http::response(['data' => [['tipo' => 'bookings.prenotazione.creata', 'app' => 'bookings'] + notificaConQuando($quando)], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
 

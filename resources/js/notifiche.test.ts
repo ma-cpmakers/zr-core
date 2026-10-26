@@ -197,15 +197,16 @@ describe('la destinazione di una notifica', () => {
     // l'opportunità non prende il suo posto, e l'evento con lo stesso nome col prefisso non ha una destinazione.
     // Sprint 74 · T1.3 (voce 2548). Le tre notifiche di Bookings aprono la prenotazione, col suo `id`, nel workspace della
     // notifica; con Bookings che il workspace non ha, o senza un id che si possa scrivere, il pannello apre la pagina delle notifiche.
-    it.each(['creata', 'cambiata', 'annullata'])('una notifica `com.zeiras.bookings.prenotazione.%s` apre la prenotazione nel suo workspace; con Bookings spento, con un id fuori forma, senza `com.zeiras.` o di un\'altra app no (sprint 74 · T1.3)', (fine) => {
-        const tipo = `com.zeiras.bookings.prenotazione.${fine}`;
+    it.each(['creata', 'spostata', 'annullata'])('una notifica `bookings.prenotazione.%s` apre la prenotazione nel suo workspace; con Bookings spento, con un id fuori forma, col prefisso `com.zeiras.` o di un\'altra app no (sprint 74 · T1.3)', (fine) => {
+        const tipo = `bookings.prenotazione.${fine}`;
 
         expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } })).toBe('https://bookings.zeiras.com/w/acme-marketing/prenotazioni/uat-prenotazione-1');
         expect(destinazioneDellaNotifica({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, 'altro-ws', prodotti)).toBe('https://bookings.zeiras.com/w/altro-ws/prenotazioni/uat-prenotazione-1');
         expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, { pm: 'attivo', crm: 'attivo' })).toBeUndefined();
         expect(apre({ app: 'bookings', tipo, ids: {} })).toBeUndefined();
         expect(apre({ app: 'bookings', tipo, ids: { id: '../x' } })).toBeUndefined();
-        expect(apre({ app: 'bookings', tipo: `bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo: `com.zeiras.bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo: 'bookings.prenotazione.cambiata', ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
     });
 

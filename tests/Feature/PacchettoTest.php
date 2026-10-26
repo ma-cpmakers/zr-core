@@ -5008,7 +5008,7 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
 
     // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
     // Sprint 70 · T1.4 (voce #2429): dalla `v3.0.0` i file sono due, le voci e le righe delle notifiche, e li legge `Registro`.
-    // Sprint 74 · T2 (voce 2549): dalla `v3.3.0` tre, con le risorse della ricerca di Bookings.
+    // Sprint 74 · T2 (voce 2549): dalla `v3.6.0` tre, con le risorse della ricerca di Bookings.
     expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json') || str_contains($codice, 'registro/ricerca.json'))))->toBe(['Registro.php'])
         ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(3)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/ricerca.json')"))->toBe(1)
@@ -5306,7 +5306,7 @@ it('il README dice il conto delle azioni e il nome della board: le due chiavi de
     'il nome della board è difeso' => ['punto', 'Il nome della board è pulito e isolato come gli altri due nomi'],
     'una board di soli invisibili' => ['punto', 'un nome che pulito è vuoto è una board che manca'],
     'il nome della cosa resta' => ['punto', 'Quando sotto il titolo c\'è il nome della cosa — il titolo di prima, o la frase con solo chi — resta il nome'],
-    'ciò che legge rigaDellaNotifica' => ['fuori', 'Della notifica legge `tipo`, `autore_nome`, `risorsa_nome`, dalla `v2.1.0` `azioni` e `board_nome`, e dalla `v3.3.0` `quando`'],
+    'ciò che legge rigaDellaNotifica' => ['fuori', 'Della notifica legge `tipo`, `autore_nome`, `risorsa_nome`, dalla `v2.1.0` `azioni` e `board_nome`, e dalla `v3.6.0` `quando`'],
 ]);
 
 it('il README non dice più che `azioni` e `board` non arrivano in pagina, né che la board non compare (sprint 34 · T2.8)', function (string $frase) {
@@ -5403,7 +5403,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la ricerca'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.768 i rimedi, 1.538 la ricerca'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
@@ -5445,8 +5445,8 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
     'il passaggio: niente nel codice' => ['passaggio', 'La `v2.8.0` non cambia niente nel codice di chi installa'],
     'il passaggio: nei test' => ['passaggio', 'un caso che scrive nel campo, lascia passare i 300 ms dall\'ultimo tasto e guarda subito le richieste partite non ne trova'],
     'il passaggio: la riga che c\'è già' => ['passaggio', '`beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca'],
-    // Sprint 74 · T2.7 (voce 2549): dalla `v3.3.0` il pezzo della ricerca porta le risorse di Bookings.
-    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,5 KB con gzip dalla `v3.3.0`)'],
+    // Sprint 74 · T2.7 (voce 2549): dalla `v3.6.0` il pezzo della ricerca porta le risorse di Bookings.
+    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,5 KB con gzip dalla `v3.6.0`)'],
     'la guida: la riga dei test' => ['guida', 'Dalla `v2.8.0` dà alla cornice anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo'],
     'la guida: se non arriva' => ['guida', 'Se non arriva, sotto il campo c\'è l\'errore della ricerca, e si riprova scrivendo un\'altra parola, o la stessa'],
 ]);
@@ -5643,7 +5643,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i cinquantadue tipi che hanno un titolo; la prima trentuno: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i cinquantadue tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.

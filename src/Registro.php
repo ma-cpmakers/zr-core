@@ -12,7 +12,7 @@ namespace Zeiras\Core;
  * (resources/registro/notifiche.json, per id del prodotto), che nel browser legge solo il pezzo della campanella: qui si
  * rimettono nella voce del loro prodotto, in `notifiche`, così chi le chiede le trova dove le trovava.
  *
- * Dalla v3.3.0 le risorse della ricerca di Bookings stanno in un file loro (resources/registro/ricerca.json, per id del
+ * Dalla v3.6.0 le risorse della ricerca di Bookings stanno in un file loro (resources/registro/ricerca.json, per id del
  * prodotto), che nel browser legge solo il pezzo della ricerca (la voce ha solo i loro tipi, in `fonti`): qui si rimettono
  * nella voce del loro prodotto, in `risorse`, così la ricerca le trova dove trova quelle degli altri prodotti.
  *

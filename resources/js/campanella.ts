@@ -28,11 +28,12 @@ export function risorsaDellaNotifica(notifica: { tipo?: unknown; risorsa_nome?: 
     return prodotto && nomeDellaVoce(prodotto, lingua);
 }
 
-/** I posti dei due nomi in una frase delle lingue: `{who}` chi ha fatto, `{what}` la cosa; e quello della data, `{when}` o `{date}`. */
+/** I posti dei due nomi in una frase delle lingue: `{who}` chi ha fatto, `{what}` la cosa; e quello della data, `{when}` (il giorno e l'ora) o `{date}` (il giorno). */
 const POSTI_DEI_NOMI = /\{(who|what|when|date)\}/g;
 
 /**
- * Una frase delle lingue coi due nomi al posto di `{who}` e `{what}`, e con la data al posto di `{when}` o di `{date}`. I nomi vengono dal backoffice e sono testo: entrano in un
+ * Una frase delle lingue coi due nomi al posto di `{who}` e `{what}`, e con la data al posto di `{when}` (`quando`, il giorno e
+ * l'ora) o di `{date}` (`giorno`, il solo giorno). I nomi vengono dal backoffice e sono testo: entrano in un
  * passaggio solo, così un `{what}` scritto dentro il nome di una persona resta com'è, e da una funzione, così `$&` non è un
  * comando. Ogni nome sta fra U+2068 e U+2069, i caratteri che lo isolano dalla direzione della frase: un nome in arabo o in
  * ebraico non sposta le parole intorno. Li mette questa funzione, sempre in coppia: i nomi arrivano già puliti (`nomePulito`).
@@ -40,12 +41,12 @@ const POSTI_DEI_NOMI = /\{(who|what|when|date)\}/g;
  * con `{when}` o `{date}` la chiede solo chi ha la data già scritta (`rigaConLeFrasi`), così in pagina non arriva mai un posto
  * vuoto.
  */
-export function fraseConINomi(frase: unknown, chi: string, cosa?: string, quando?: string): string | undefined {
+export function fraseConINomi(frase: unknown, chi: string, cosa?: string, quando?: string, giorno?: string): string | undefined {
     if (typeof frase !== 'string' || !frase || (cosa === undefined && frase.includes('{what}'))) {
         return undefined;
     }
 
-    return frase.replace(POSTI_DEI_NOMI, (posto) => `\u2068${posto === '{who}' ? chi : posto === '{what}' ? cosa : quando}\u2069`);
+    return frase.replace(POSTI_DEI_NOMI, (posto) => `\u2068${posto === '{who}' ? chi : posto === '{what}' ? cosa : posto === '{when}' ? quando : giorno}\u2069`);
 }
 
 /**
@@ -223,10 +224,11 @@ function dataDi(quando: any, lingua: string, forma: Intl.DateTimeFormatOptions):
  * fatto (`autore_nome`) e le lingue hanno una frase per quel tipo — ogni tipo che ha un titolo — il titolo è la
  * frase: con chi e che cosa (`notificationTitleWhoWhat.<tipo>`), e allora il nome della cosa sta nel titolo e non sotto;
  * o con solo chi (`notificationTitleWho.<tipo>`) quando il nome della cosa manca o il tipo non ha l'altra frase. Quando la notifica
- * dice anche quando accade la cosa (`quando`, dalla `v3.3.0`) e la cornice sa scriverlo, prima di quella con chi e che cosa prova
- * quella con la data (`notificationTitleWhoWhatWhen.<tipo>`): il giorno e l'ora nel fuso della notifica, nella lingua (`dataDi`).
- * Una notifica senza chi (il preavviso di una scadenza) ha, col nome della cosa e la data, la frase con che cosa e il solo giorno
- * (`notificationTitleWhatWhen.<tipo>`), che si prova dopo quelle con chi.
+ * dice anche quando accade la cosa (`quando`, dalla `v3.6.0`) e la cornice sa scriverlo (`dataDi`, nel fuso della notifica e nella
+ * lingua), una notifica senza la frase con chi e che cosa — il preavviso di una scadenza, una prenotazione di Bookings, che non
+ * hanno chi — ha, col nome della cosa, la frase con che cosa e la data (`notificationTitleWhatWhen.<tipo>`: il solo giorno al
+ * posto di `{date}`, il giorno e l'ora al posto di `{when}`), e senza il nome della cosa quella con la sola data
+ * (`notificationTitleWhen.<tipo>`), che si prova prima di quella con solo chi: con la data, il titolo non dice chi.
  * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
  * `risorsaDellaNotifica`. Quando sotto il titolo non c'è il nome della cosa — è nel titolo, o manca — la riga di sotto dice
  * quante azioni la notifica racconta e in quale board sta la cosa (`contoEBoard`), se c'è qualcosa da dire. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
@@ -240,8 +242,9 @@ export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: un
     const chi = typeof notifica.tipo === 'string' ? nomeNelTitolo(nomePulito(notifica.autore_nome)) : undefined;
     const quando = dataDi(notifica.quando, lingua, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const giorno = dataDi(notifica.quando, lingua, { dateStyle: 'long' });
-    const conCosa = cosa === undefined ? undefined : (chi === undefined ? undefined : (quando && fraseConINomi(frasi[`notificationTitleWhoWhatWhen.${notifica.tipo}`], chi, cosa, quando)) ?? fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa)) ?? (giorno && fraseConINomi(frasi[`notificationTitleWhatWhen.${notifica.tipo}`], '', cosa, giorno));
-    const titolo = conCosa ?? (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
+    // `quando` e `giorno` vengono dallo stesso istante e dallo stesso fuso: o ci sono tutti e due, o nessuno.
+    const conCosa = cosa === undefined ? undefined : (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa)) ?? (quando && fraseConINomi(frasi[`notificationTitleWhatWhen.${notifica.tipo}`], '', cosa, quando, giorno));
+    const titolo = conCosa ?? (quando && fraseConINomi(frasi[`notificationTitleWhen.${notifica.tipo}`], '', cosa, quando, giorno)) ?? (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
     const sotto = (conCosa === undefined ? cosa : undefined) ?? contoEBoard(frasi, notifica);
 
     return sotto === undefined ? { titolo } : { titolo, sotto };

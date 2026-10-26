@@ -38,9 +38,9 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
  * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3). Dallo sprint 74 anche
- * Bookings, coi tre tipi delle prenotazioni: `com.zeiras.bookings.` davanti.
+ * Bookings, coi tre tipi delle prenotazioni: `bookings.` davanti, senza `com.zeiras.` (zr-backoffice-55, #2652).
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'com.zeiras.bookings.' => 'bookings'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -537,9 +537,9 @@ it('nel registro le notifiche di Bookings sono tre, col tipo intero, e aprono tu
         ->and($voci[3]['id'])->toBe('bookings')
         ->and($voci[3]['indirizzo'])->toBe('https://bookings.zeiras.com')
         ->and($voci[3]['notifiche'] ?? null)->toBe([
-            ['tipo' => 'com.zeiras.bookings.prenotazione.creata', 'percorso' => '/prenotazioni/{id}'],
-            ['tipo' => 'com.zeiras.bookings.prenotazione.cambiata', 'percorso' => '/prenotazioni/{id}'],
-            ['tipo' => 'com.zeiras.bookings.prenotazione.annullata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'bookings.prenotazione.creata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'bookings.prenotazione.spostata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'bookings.prenotazione.annullata', 'percorso' => '/prenotazioni/{id}'],
         ]);
 });
 

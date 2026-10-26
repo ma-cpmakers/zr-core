@@ -4,7 +4,7 @@ namespace Zeiras\Core\Http;
 
 /**
  * Quando accade la cosa di cui si parla — l'inizio di una prenotazione —, nella forma che le rotte della cornice lasciano
- * arrivare alla pagina (dalla v3.3.0): `il`, un istante ISO in UTC con la Z, e `fuso`, il nome IANA in cui si legge. La
+ * arrivare alla pagina (dalla v3.6.0): `il`, un istante ISO in UTC con la Z, e `fuso`, il nome IANA in cui si legge. La
  * usano le notifiche (`quando` di una notifica) e la ricerca (`quando` nel contesto di un risultato), così le due rotte non
  * ne tengono due copie che possano divergere.
  *

@@ -58,7 +58,7 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca, ed è la sola per un tipo di cui il
   backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome
   di un contatto è un dato personale): per questo delle quattro
-  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v3.3.0` la frase
+  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v3.6.0` la frase
   può dire anche quando accade la cosa: il backoffice manda `quando` (l'istante e il fuso) e la cornice scrive la data
   nella lingua di chi legge, al posto di `{when}` (giorno e ora) o di `{date}` (il solo giorno); un modulo che la vuole
   chiede la frase all'agente di zr-core coi suoi testi, e il campo al backoffice. Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
@@ -456,7 +456,7 @@ in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che l'invi
 modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi). Una chiave di `contesto` che
 porta un codice vuole anche `codici` (passo 8). Un risultato di
 un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
-ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo. Dalla `v3.3.0` zr-core può tenere le risorse di un modulo
+ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo. Dalla `v3.6.0` zr-core può tenere le risorse di un modulo
 fuori dalla sua voce, perché non pesino nel JS d'ingresso di ogni app: è il caso di Bookings, le cui risorse stanno in un
 file del pezzo della ricerca e nella voce restano solo i tipi (`fonti`). Dove stanno lo decide zr-core: tu chiedi le
 stesse cose. Se il backoffice dà, per riconoscere una risorsa, quando accade (l'inizio di una prenotazione), la forma è

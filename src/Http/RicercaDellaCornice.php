@@ -110,7 +110,7 @@ final class RicercaDellaCornice
      * cornice mostra il titolo. Il confronto delle chiavi è esatto: in PHP la chiave numerica di un oggetto JSON è un numero, e
      * non è nessuna di quelle del registro.
      *
-     * Una chiave sola non porta un testo: `quando` (dalla v3.3.0, l'inizio di una prenotazione di Bookings), che passa solo nella
+     * Una chiave sola non porta un testo: `quando` (dalla v3.6.0, l'inizio di una prenotazione di Bookings), che passa solo nella
      * forma di `Quando` — l'istante in UTC e il fuso, nient'altro —; in ogni altra forma non passa, come un testo vuoto.
      *
      * @return array<string, string|array{il: string, fuso: string}>|null

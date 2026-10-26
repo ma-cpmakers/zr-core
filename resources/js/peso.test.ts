@@ -515,7 +515,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
     // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
     // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.575 byte: la misura della v3.3.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.575 byte: la misura della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
         expect(TETTO_DELL_INGRESSO).toBe(17_575);
     });
@@ -549,11 +549,12 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
     // tutti nel pezzo e non nel JS d'ingresso.
-    it('il pezzo della ricerca pesa, con gzip, al più 1.536 byte: la misura della v3.3.0, con le prenotazioni e i calendari di Bookings (sprint 42 · T2.5; voce 2549 T2.7)', () => {
+    it('il pezzo della ricerca pesa, con gzip, al più 1.538 byte: la misura della v3.6.0, con le prenotazioni e i calendari di Bookings (sprint 42 · T2.5; voce 2549 T2.7)', () => {
         const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
 
         expect(ricerca).not.toBe('');
-        expect(gzip(ricerca)).toBeLessThanOrEqual(1_536);
+        // Sprint 74, dopo il merge della v3.5.0 (26/10): 1.536 → 1.538, le impronte nuove dei nomi dei pezzi; il codice è lo stesso.
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_538);
     });
 
     it('il README ha «Passare alla v2» con l\'import di prima e quello nuovo, e dice che cosa fa Chromium quando il pezzo non arriva (sprint 33 · T1.5, T1.7)', () => {
@@ -588,7 +589,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 2.199 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.201 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -599,8 +600,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Patch v3.2.2 (Decisione 16510 di zr-pm): +16 byte per la riga che apre il preventivo dalla richiesta di un cliente.
         // Sprint 74 · T1.6 (voce 2548, eccezione di zr-pm: la misura vera): le tre righe di Bookings e la data delle notifiche,
         // con la frase con la data provata prima di quella senza (2.162; il prototipo del refining, rimisurato, 2.153), e la frase
-        // senza chi col solo giorno, per il preavviso di una scadenza del CRM (zr-pm): 2.199.
-        expect(gzip(campanella)).toBeLessThanOrEqual(2_199);
+        // senza chi col solo giorno, per il preavviso di una scadenza del CRM (zr-pm): 2.199. Dopo il merge della v3.5.0 (le sue
+        // impronte, +3) e con le notifiche di Bookings senza chi (Decisione di zr-pm del 26/10: la frase col servizio e la data, o
+        // con la sola data, al posto di quella con chi, che cosa e quando): 2.201, la misura vera.
+        expect(gzip(campanella)).toBeLessThanOrEqual(2_201);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,8 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76)', () => {

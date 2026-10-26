@@ -32,8 +32,8 @@
         { "tipo": "crm.preventivo.richiesta", "percorso": "/preventivi/{id}" }
     ],
     "bookings": [
-        { "tipo": "com.zeiras.bookings.prenotazione.creata", "percorso": "/prenotazioni/{id}" },
-        { "tipo": "com.zeiras.bookings.prenotazione.cambiata", "percorso": "/prenotazioni/{id}" },
-        { "tipo": "com.zeiras.bookings.prenotazione.annullata", "percorso": "/prenotazioni/{id}" }
+        { "tipo": "bookings.prenotazione.creata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "bookings.prenotazione.spostata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "bookings.prenotazione.annullata", "percorso": "/prenotazioni/{id}" }
     ]
 }

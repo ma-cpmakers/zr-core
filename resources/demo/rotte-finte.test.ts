@@ -502,9 +502,9 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
 
         expect(notifiche.map(({ id }) => id)).toEqual(['uat-b1', 'uat-b2', 'uat-b3', 'uat-b4']);
         expect(notifiche.map((notifica) => senzaIsolanti(rigaDellaNotifica(notifica, 'it').titolo))).toEqual([
-            'Mario Rossi ha prenotato Personal training, mer 4 nov, 10:00',
-            'Mario Rossi ha spostato Personal training a mer 4 nov, 18:00',
-            'Mario Rossi ha annullato Personal training',
+            'Nuova prenotazione: Personal training, mer 4 nov, 10:00',
+            'Prenotazione spostata: Personal training, a mer 4 nov, 18:00',
+            'Prenotazione annullata, mer 4 nov, 10:00',
             'Certificato medico scade il 3 novembre 2026',
         ]);
         expect(notifiche.slice(0, 3).map((notifica) => destinazioneDellaNotifica(notifica, 'uat-marketing', { bookings: 'attivo' }))).toEqual([1, 2, 3].map((n) => `https://bookings.zeiras.com/w/uat-marketing/prenotazioni/uat-prenotazione-${n}`));

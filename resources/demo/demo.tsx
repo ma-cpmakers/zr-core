@@ -29,7 +29,7 @@ import { rotteFinte } from './rotte-finte';
 // o `?crediti=1` (il credito di un pacchetto sotto zero, del CRM: dalla `v2.25.3` apre il contatto)
 // o `?scadenze=1` (le due delle Scadenze del CRM, in quattro forme: dalla `v3.0.0` aprono il contatto, l'azienda o le scadenze)
 // o `?preventivi=1` (la richiesta di un cliente sul preventivo, del CRM: dalla `v3.2.2` apre il preventivo)
-// o `?prenotazioni=1` (dalla `v3.3.0` le tre di Bookings con la data, che aprono la prenotazione con Bookings attivo, e il
+// o `?prenotazioni=1` (dalla `v3.6.0` le tre di Bookings col servizio e la data, senza chi, che aprono la prenotazione con Bookings attivo, e il
 // preavviso di una scadenza col nome e il giorno)
 // l'ultimo si legge anche in pagina, sotto le scelte. Con `?accorpata=1` in cima alle notifiche ce n'è una che racconta più
 // azioni, con l'ora dell'ultima (non apre niente), e con `?nomi_crm=1` cinque del CRM con chi ha fatto: un'azienda e

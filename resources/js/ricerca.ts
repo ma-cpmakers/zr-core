@@ -42,7 +42,7 @@ export async function cerca(parola: string, segnale: AbortSignal, persona: Perso
 /**
  * Di che voce del registro è ogni tipo di risorsa, e come si mostra: un tipo sta in una voce sola. La voce è un prodotto, o la
  * Dashboard per ciò che non è di un modulo (il membro del workspace). Le risorse di un prodotto stanno nella sua voce, o (dalla
- * `v3.3.0`, Bookings) in `resources/registro/ricerca.json`, che legge solo questo pezzo, sotto l'id del prodotto.
+ * `v3.6.0`, Bookings) in `resources/registro/ricerca.json`, che legge solo questo pezzo, sotto l'id del prodotto.
  */
 const risorsePerTipo = new Map(
     registro.flatMap((dellaVoce) =>

@@ -38,7 +38,7 @@ const datiDiUnMembro: DatiDellaCornice = {
 /** I dati di chi amministra il workspace: con `moduli`, il CRM spento c'è e porta a Impostazioni › Moduli. */
 const dati: DatiDellaCornice = { ...datiDiUnMembro, moduli: 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli' };
 /**
- * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, Project Management e, dalla `v3.3.0`, Bookings (voce 2549, T2.5:
+ * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, Project Management e, dalla `v3.6.0`, Bookings (voce 2549, T2.5:
  * i tipi da `fonti` della sua voce) hanno risorse da cercare; per ultimo il membro del workspace, che non è di un modulo e c'è in
  * ogni workspace.
  */

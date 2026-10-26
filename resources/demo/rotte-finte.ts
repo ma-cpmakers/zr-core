@@ -71,9 +71,9 @@ const scadenze = new URLSearchParams(window.location.search).has('scadenze');
 // Con `?preventivi=1` (v3.2.2), dopo quelle di `?scadenze=1`, c'è la notifica della modifica che un cliente chiede dal link di
 // un preventivo, letta e senza chi: apre il preventivo, col suo `id`.
 const preventivi = new URLSearchParams(window.location.search).has('preventivi');
-// Con `?prenotazioni=1` (v3.3.0, sprint 74 · T1), in cima, ci sono le tre notifiche di Bookings, da leggere, con chi, che cosa e
-// `quando` nel fuso di Roma — la cambiata col fuso di Tokyo, l'annullata con un `quando` a metà —, e il preavviso di una scadenza
-// col nome del tipo e il giorno.
+// Con `?prenotazioni=1` (v3.6.0, sprint 74 · T1), in cima, ci sono le tre notifiche di Bookings, da leggere, senza chi (l'ospite
+// non è un membro), col nome del servizio e `quando` nel fuso di Roma — la spostata col fuso di Tokyo, l'annullata senza il nome
+// del servizio —, e il preavviso di una scadenza col nome del tipo e il giorno.
 const prenotazioni = new URLSearchParams(window.location.search).has('prenotazioni');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
@@ -116,14 +116,14 @@ const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_m
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
 const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
-    // Solo con `?prenotazioni=1`, le più recenti: le tre di Bookings e il preavviso di una scadenza (v3.3.0, sprint 74 · T1).
+    // Solo con `?prenotazioni=1`, le più recenti: le tre di Bookings e il preavviso di una scadenza (v3.6.0, sprint 74 · T1).
     ...(prenotazioni
         ? ([
-              ['uat-b1', 'bookings', 'com.zeiras.bookings.prenotazione.creata', 'Mario Rossi', 'Personal training', { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' }, { id: 'uat-prenotazione-1' }],
-              ['uat-b2', 'bookings', 'com.zeiras.bookings.prenotazione.cambiata', 'Mario Rossi', 'Personal training', { il: '2026-11-04T09:00:00Z', fuso: 'Asia/Tokyo' }, { id: 'uat-prenotazione-2' }],
-              ['uat-b3', 'bookings', 'com.zeiras.bookings.prenotazione.annullata', 'Mario Rossi', 'Personal training', null, { id: 'uat-prenotazione-3' }],
+              ['uat-b1', 'bookings', 'bookings.prenotazione.creata', null, 'Personal training', { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' }, { id: 'uat-prenotazione-1' }],
+              ['uat-b2', 'bookings', 'bookings.prenotazione.spostata', null, 'Personal training', { il: '2026-11-04T09:00:00Z', fuso: 'Asia/Tokyo' }, { id: 'uat-prenotazione-2' }],
+              ['uat-b3', 'bookings', 'bookings.prenotazione.annullata', null, null, { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' }, { id: 'uat-prenotazione-3' }],
               ['uat-b4', 'crm', 'crm.scadenza.in_preavviso', null, 'Certificato medico', { il: '2026-11-02T23:00:00Z', fuso: 'Europe/Rome' }, { persona_id: 'uat-persona-1' }],
-          ] as [string, string, string, string | null, string, { il: string; fuso: string } | null, Record<string, string>][]).map(([id, app, tipo, autore_nome, risorsa_nome, quando, ids], indice) => ({
+          ] as [string, string, string, string | null, string | null, { il: string; fuso: string } | null, Record<string, string>][]).map(([id, app, tipo, autore_nome, risorsa_nome, quando, ids], indice) => ({
               id, creata_il: fa(1 + indice), letta: false, app, tipo, autore_nome, risorsa_nome, per_me: true as boolean | null, quando, ids,
           }))
         : []),
@@ -278,7 +278,7 @@ const risultatiDiProva = [
             { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
         ]
         : []),
-    // Solo con `?prenotazioni=1` (v3.3.0, sprint 74 · T2), dove Bookings è attivo: due prenotazioni, una con `quando` e lo stato,
+    // Solo con `?prenotazioni=1` (v3.6.0, sprint 74 · T2), dove Bookings è attivo: due prenotazioni, una con `quando` e lo stato,
     // una con `quando` null, e un calendario, com'è ciò che la rotta vera lascia uscire.
     ...(prenotazioni
         ? [

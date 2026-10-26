@@ -28,7 +28,7 @@ function registroGiaLetto(?array $voci): void
 /**
  * @return list<array<string, mixed>> le voci del registro dei prodotti, resources/registro/prodotti.json, nel loro ordine; dalla
  *                                    v3.0.0 con le righe delle notifiche di resources/registro/notifiche.json rimesse in `notifiche`
- *                                    della voce del loro prodotto, e dalla v3.3.0 con le risorse della ricerca di
+ *                                    della voce del loro prodotto, e dalla v3.6.0 con le risorse della ricerca di
  *                                    resources/registro/ricerca.json rimesse in `risorse` (Bookings), come le dà `Registro::voci()`
  */
 function registroDeiProdotti(): array
@@ -93,7 +93,7 @@ function codiciDelContestoDellaRicerca(): array
 }
 
 /**
- * @return list<string> i tipi delle risorse di resources/registro/ricerca.json (dalla v3.3.0, Bookings), `<prodotto>.<tipo>`:
+ * @return list<string> i tipi delle risorse di resources/registro/ricerca.json (dalla v3.6.0, Bookings), `<prodotto>.<tipo>`:
  *                      nelle lingue della cornice hanno solo il nome da elenco (`searchSource.`), il resto sta in resources/lingue/ricerca
  */
 function tipiDellaRicerca(): array

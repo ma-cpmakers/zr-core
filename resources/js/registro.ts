@@ -17,7 +17,7 @@ export type IdDiProdotto = 'pm' | 'crm' | 'bookings' | 'flow' | 'reports' | 'aut
 export type TipoDiRisorsa = 'home.workspace.membro' | 'pm.board.scheda' | 'pm.board.board' | 'pm.board.cartelle' | 'crm.crm.persona' | 'crm.crm.organizzazione' | 'crm.crm.trattativa';
 
 /**
- * Le risorse della ricerca che non stanno nelle voci del registro ma in `resources/registro/ricerca.json` (dalla `v3.3.0`, quelle di
+ * Le risorse della ricerca che non stanno nelle voci del registro ma in `resources/registro/ricerca.json` (dalla `v3.6.0`, quelle di
  * Bookings), `<voce>.<tipo>`: come si mostrano, il nome del loro gruppo e i testi dei loro codici li legge solo il pezzo della
  * ricerca (coi testi in `resources/lingue/ricerca/`); nelle lingue della cornice hanno solo il nome da elenco, con `searchSource.`
  * davanti, perché l'invito le nomina prima che il pezzo arrivi (i tipi stanno in `fonti` della voce). Una risorsa nuova di quel
@@ -109,7 +109,7 @@ export interface VoceDelRegistro {
      */
     risorse?: RisorsaDelProdotto[];
     /**
-     * Dalla `v3.3.0`, al posto di `risorse` per un prodotto le cui risorse stanno in `resources/registro/ricerca.json` (Bookings):
+     * Dalla `v3.6.0`, al posto di `risorse` per un prodotto le cui risorse stanno in `resources/registro/ricerca.json` (Bookings):
      * i loro tipi, nell'ordine di quel file. Sono ciò che l'invito della ricerca deve sapere prima che il pezzo della ricerca
      * arrivi (`fontiDellaRicerca`); come si mostrano e dove si aprono lo dice quel file, che legge solo il pezzo.
      */
