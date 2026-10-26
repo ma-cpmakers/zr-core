@@ -5411,6 +5411,71 @@ describe('la ricerca', () => {
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/w/zeta-ricerca/impostazioni/membri/01k7c1m2']]);
     });
 
+    // Riga 60 delle richieste al design system: aperto un risultato, l'`AppShell` lascia la parola nel campo.
+    it.each<[come: string, scegli: () => void]>([
+        ['con un clic', () => righe()[0]?.click()],
+        ['con Invio', () => uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))],
+    ])('scelto un risultato %s il campo della ricerca si svuota e la ricerca resta chiusa; ripreso il campo, sotto c\'è l\'invito a scrivere (riga 60)', async (_come, scegli) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+        await act(async () => {
+            scegli();
+            await giro();
+        });
+
+        expect(naviga).toHaveBeenCalledOnce();
+        expect(campo.value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(document.activeElement).not.toBe(campo);
+        await act(async () => campo.focus());
+        expect(righe()).toHaveLength(0);
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).not.toBe('');
+    });
+
+    it('chiusa la ricerca con Esc, senza scegliere un risultato, la parola resta nel campo (riga 60)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        await act(async () => {
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await giro();
+        });
+
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(campo.value).toBe('uat');
+    });
+
+    it('Invio senza una riga da scegliere — a zero risultati — non svuota il campo: la parola resta, sotto «Nessun risultato» (riga 60)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        await act(async () => {
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            await giro();
+        });
+
+        expect(campo.value).toBe('uat');
+        expect(testoDelPannello()).toContain('Nessun risultato per');
+    });
+
     it('due cartelle si aprono sulla stessa pagina del workspace e restano due risultati (sprint 6 · T5.1)', async () => {
         const cartelle = [
             { tipo: 'board.cartelle', id: 'uat-c1', titolo: 'Clienti' },

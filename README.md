@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 55,8 KB | 11,9 KB |
-| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 55,8 KB | 11,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 55,8 KB | 11,9 KB |
+| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 56,7 KB | 12,1 KB |
+| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 56,7 KB | 12,1 KB |
+| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 56,7 KB | 12,1 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -901,6 +901,13 @@ cornice === null ? pagina : (
   risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
+- **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
+  Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
+  ripreso il campo c'erano ancora i risultati di prima. Il campo si svuota come lo svuota chi scrive, e la ricerca si chiude come
+  con Esc. Chiusa con Esc o con un clic fuori, o con Invio senza una riga da scegliere, la parola resta. Il modulo non deve fare
+  niente; un test del modulo che dopo la scelta di un risultato legge la parola nel campo va riletto. È provvisorio: quando
+  l'`AppShell` svuota il campo da sé (riga 60 delle richieste al design system) si toglie, e se il pezzo dei rimedi non arriva
+  la parola resta com'era.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso

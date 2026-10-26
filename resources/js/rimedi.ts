@@ -201,6 +201,24 @@ function contorno(evento: FocusEvent): void {
     }
 }
 
+/**
+ * Scelto un risultato della ricerca — un clic sulla riga, Invio con una riga attiva — l'`AppShell` lascia la parola nel campo
+ * (riga 60 delle richieste al design system). Il campo si svuota come lo svuota chi scrive, con un `input` che l'`AppShell`
+ * legge, e la ricerca che quel cambio riapre si chiude con Esc, come la chiude una persona: l'`AppShell` ferma il suo Esc, che
+ * non arriva alla finestra né al pezzo di tastiera. Si guarda prima dell'`AppShell` e si svuota al giro dopo, a scelta fatta.
+ * Chiusa con Esc o con un clic fuori, la ricerca tiene la parola.
+ */
+function sceltoUnRisultato(evento: Event): void {
+    const campo = document.querySelector<HTMLInputElement>('.zr-shell .zr-top > .zr-search input');
+    if (campo && (evento.type === 'click' ? (evento.target as Element).closest?.('.zr-shell .zr-top > .zr-search .zr-search-item') : (evento as KeyboardEvent).key === 'Enter' && evento.target === campo && campo.hasAttribute('aria-activedescendant'))) {
+        setTimeout(() => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, '');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        });
+    }
+}
+
 /** La cornice dà la sua `naviga` e i nomi (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
 export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: typeof nomi): void {
     naviga = daUsare;
@@ -236,6 +254,8 @@ function primoTasto(tasto: KeyboardEvent): void {
 
 addEventListener('keydown', primoTasto);
 document.addEventListener('click', clicSullaBarra);
+document.addEventListener('click', sceltoUnRisultato, true);
+document.addEventListener('keydown', sceltoUnRisultato, true);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);
 // La ricerca si apre e si chiude coi suoi risultati, e lo vede l'osservatore; il campo che perde il fuoco dopo la chiusura no.

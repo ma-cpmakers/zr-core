@@ -234,6 +234,24 @@ async function ricerca(page, largo) {
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await pausa(300);
+    // Ripreso il campo, la parola c'è ancora e i risultati con lei: scelto il primo, il campo si svuota e la ricerca resta
+    // chiusa (riga 60 delle richieste al design system, rimedio della v3.8.1).
+    if (stato === 'risultati') {
+        await page.keyboard.press('Control+k');
+        await pausa(300);
+        const riga = await page.$('.zr-shell .zr-top > .zr-search .zr-search-item');
+        if (!riga) {
+            scrivi('➖', `${id}.7`, 'scelto un risultato il campo si svuota (riga 60)', 'ripreso il campo, nessuna riga da scegliere');
+        } else {
+            await riga.click();
+            await pausa(300);
+            const dopo = await page.evaluate(() => ({
+                valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
+                aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+            }));
+            scrivi(dopo.valore === '' && !dopo.aperta ? '✅' : '❌', `${id}.7`, 'scelto un risultato col clic il campo si svuota e la ricerca resta chiusa (riga 60)', `valore «${dopo.valore}», aperta: ${dopo.aperta}`);
+        }
+    }
 }
 
 async function campanella(page, largo) {
