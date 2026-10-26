@@ -321,6 +321,34 @@ async function piu(page) {
     scrivi(sullaVoce && !dopo.menu && dopo.piu ? '✅' : '❌', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `voce col fuoco: ${sullaVoce}, menu aperto: ${dopo.menu}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
 }
 
+// Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
+// della v3.8.1 nel pezzo della tastiera).
+async function selettore(page) {
+    if (!(await page.locator('.zr-shell .zr-ws-switch').count())) {
+        scrivi('➖', 'S.1', 'Home e Fine nel selettore dei workspace (riga 48)', 'la pagina non ha il selettore: una sola azienda e un solo workspace');
+        return;
+    }
+    await page.focus('.zr-shell .zr-ws-switch');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const dove = () => page.evaluate(() => {
+        const voci = [...document.querySelectorAll('.zr-shell .zr-ws-menu .zr-ws-item')];
+        return { qui: voci.indexOf(document.activeElement), ultima: voci.length - 1, aperto: !!document.querySelector('.zr-shell .zr-ws.is-open'), nelSelettore: !!document.activeElement?.closest('.zr-ws') };
+    });
+    await page.keyboard.press('End');
+    await pausa(200);
+    const fine = await dove();
+    await page.keyboard.press('Home');
+    await pausa(200);
+    const inizio = await dove();
+    scrivi(fine.ultima > 0 && fine.qui === fine.ultima && inizio.qui === 0 && inizio.aperto ? '✅' : '❌', 'S.1', 'nel selettore dei workspace Fine va all\'ultima voce e Home alla prima (riga 48)', `Fine: voce ${fine.qui} di 0-${fine.ultima}, Home: voce ${inizio.qui}, aperto: ${inizio.aperto}`);
+    await page.keyboard.press('End');
+    await page.keyboard.press('Tab');
+    await pausa(300);
+    const fuori = await dove();
+    scrivi(!fuori.aperto && !fuori.nelSelettore ? '✅' : '❌', 'S.2', 'col Tab dall\'ultima voce il fuoco esce e il selettore si chiude (riga 48)', `aperto: ${fuori.aperto}, fuoco nel selettore: ${fuori.nelSelettore}`);
+}
+
 async function percorso(page) {
     const voce = await page.evaluate(() => {
         const collegamento = [...document.querySelectorAll('.zr-shell > main > .zr-crumbbar a[href]')].find((uno) => uno.origin === location.origin && uno.getAttribute('href') !== '#');
@@ -406,6 +434,7 @@ async function uat(page, apri) {
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
     await ricerca(page, true);
     await piu(page);
+    await selettore(page);
     await campanella(page, true);
     await sopraIlPannello(page);
     await percorso(page);

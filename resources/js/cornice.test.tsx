@@ -8471,6 +8471,53 @@ describe('le voci «Presto» escono dal giro del Tab e dicono nome e stato separ
     });
 });
 
+// Riga 48 delle richieste al design system: nel selettore dei workspace Home e Fine non facevano niente, e col Tab il fuoco usciva
+// verso la barra laterale nascosta (`aria-hidden`) col pannello ancora aperto. Col pezzo della tastiera Home e Fine vanno alla
+// prima e all'ultima voce, e il fuoco che va a un elemento fuori dal selettore lo chiude.
+describe('nel selettore dei workspace Home e Fine vanno alla prima e all\'ultima voce, e il fuoco che esce lo chiude (riga 48)', () => {
+    const voci = () => tutti('.zr-shell .zr-ws-menu .zr-ws-item');
+    const aperto = () => uno('.zr-shell .zr-ws')?.classList.contains('is-open');
+    const conIlSelettoreAperto = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno('.zr-ws-switch'));
+    };
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+
+    it('Fine porta il fuoco all\'ultima voce, Home alla prima, e il pannello resta aperto', async () => {
+        await conIlSelettoreAperto();
+        const [prima, , ...altre] = voci();
+
+        expect([aperto(), altre.length > 0, document.activeElement === prima]).toStrictEqual([true, true, false]);
+        await act(async () => voci()[1]?.focus());
+        await premi('End');
+        expect([document.activeElement, aperto()]).toStrictEqual([voci().at(-1), true]);
+        await premi('Home');
+        expect([document.activeElement, aperto()]).toStrictEqual([voci()[0], true]);
+    });
+
+    it('il fuoco che va alla pagina chiude il pannello e resta dove è andato; fra le voci, verso il pulsante del selettore o fuori dalla finestra il pannello resta aperto', async () => {
+        await conIlSelettoreAperto();
+
+        await act(async () => voci()[1]?.focus());
+        await act(async () => uno('.zr-ws-switch')?.focus());
+        await act(async () => {
+            uno('.zr-ws-switch')?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+        });
+        expect(aperto()).toBe(true);
+
+        await act(async () => uno('.zr-main button')?.focus());
+        expect([aperto(), document.activeElement]).toStrictEqual([false, uno('.zr-main button')]);
+    });
+});
+
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
     const { Dialog, DetailPanel, Menu } = componenti;
     const senzaEffetto = () => {};

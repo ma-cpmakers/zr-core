@@ -157,8 +157,35 @@ function escDalPannello(tasto: KeyboardEvent): void {
     }
 }
 
+/**
+ * Nel selettore dei workspace aperto l'`AppShell` muove il fuoco con le frecce, ma Home e Fine non facevano niente (riga 48 delle
+ * richieste al design system): portano il fuoco alla prima e all'ultima voce. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function inizioEFine(tasto: KeyboardEvent): void {
+    const voci = (tasto.target as Element).closest?.('.zr-shell .zr-ws-menu')?.querySelectorAll<HTMLElement>('.zr-ws-item');
+
+    if (voci && (tasto.key === 'Home' || tasto.key === 'End')) {
+        tasto.preventDefault();
+        [...voci].at(tasto.key === 'Home' ? 0 : -1)?.focus();
+    }
+}
+
+/**
+ * Col fuoco che esce dal selettore dei workspace aperto verso un altro elemento — col Tab, verso la barra laterale che l'`AppShell`
+ * nasconde finché il selettore è aperto — il pannello restava aperto (riga 48): si chiude col pulsante del selettore, e il fuoco
+ * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Provvisorio, come sopra.
+ */
+function fuoriDalSelettore(uscita: FocusEvent): void {
+    const selettore = (uscita.target as Element).closest?.('.zr-shell .zr-ws.is-open');
+    const verso = uscita.relatedTarget as Node | null;
+
+    if (selettore && verso && !selettore.contains(verso)) {
+        selettore.querySelector<HTMLElement>('.zr-ws-switch')?.click();
+    }
+}
+
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
@@ -184,4 +211,5 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean): void {
 }
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
+document.addEventListener('focusout', fuoriDalSelettore);
 vociPresto();

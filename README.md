@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 57,3 KB | 12,3 KB |
-| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 57,3 KB | 12,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 57,3 KB | 12,3 KB |
+| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 58,0 KB | 12,3 KB |
+| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 58,0 KB | 12,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 58,0 KB | 12,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -175,7 +175,7 @@ che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropa
 l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
 alzare la soglia; il margine sta nel peso tolto, non nel tetto). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.321 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -922,6 +922,12 @@ cornice === null ? pagina : (
   cornice. Una voce che smette di essere «Presto» torna com'era. Il modulo non deve fare niente; un test del modulo che col Tab
   raggiunge una voce «Presto» va riletto. Sta nel pezzo della tastiera, che arriva al primo tasto: prima del primo tasto le voci
   sono quelle dell'`AppShell`. È provvisorio: quando l'`AppShell` lo fa da sé (riga 6 delle richieste al design system) si toglie.
+- **Home, Fine e il Tab nel selettore dei workspace**: dalla `v3.8.1`, col selettore «Azienda › workspace» aperto Home porta il
+  fuoco alla prima voce e Fine all'ultima (prima non facevano niente; le frecce le muove l'`AppShell`), e il fuoco che va a un
+  elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
+  resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
+  Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
