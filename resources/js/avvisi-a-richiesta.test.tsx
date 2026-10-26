@@ -50,6 +50,19 @@ afterEach(async () => {
 
 const mostra = async (deiDati: DatiDellaCornice) => act(async () => radice.render(<Cornice dati={deiDati} product="pm" onLogout={() => {}}><p>La pagina</p></Cornice>));
 const arrivati = async () => act(() => vi.dynamicImportSettled());
+/**
+ * Finché sopra la pagina non c'è quel testo, al più per due secondi, un giro alla volta dentro `act`. Il pezzo passa dalla
+ * fabbrica di `vi.mock`, che carica il modulo vero per conto suo: `dynamicImportSettled` non sempre lo aspetta, e da solo
+ * lasciava il caso rosso una volta su tre (26/10/2026).
+ */
+const finoAlTesto = async (testo: string) => {
+    for (let giri = 0; giri < 200 && sopraLaPagina() !== testo; giri++) {
+        await act(async () => {
+            await vi.dynamicImportSettled();
+            await new Promise((fatto) => setTimeout(fatto, 10));
+        });
+    }
+};
 const sopraLaPagina = () => contenitore.querySelector('main .zr-alert')?.textContent ?? null;
 
 describe('i testi degli avvisi arrivano con un pezzo a richiesta, chiesto solo nella cornice ridotta (v3.7.0)', () => {
@@ -59,19 +72,19 @@ describe('i testi degli avvisi arrivano con un pezzo a richiesta, chiesto solo n
         expect([chiesto.volte, sopraLaPagina()]).toStrictEqual([0, null]);
 
         await mostra({ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true });
-        await arrivati();
+        await finoAlTesto(italiani.acceptanceTitle + italiani.acceptanceText + italiani.acceptanceAction);
         expect(chiesto.volte).toBe(1);
         expect(sopraLaPagina()).toBe(italiani.acceptanceTitle + italiani.acceptanceText + italiani.acceptanceAction);
 
         await mostra({ ...dati, lingua: 'es', non_letti: true });
-        await arrivati();
+        await finoAlTesto(spagnoli.downTitle + spagnoli.downText);
         expect(chiesto.volte).toBe(1);
         expect(sopraLaPagina()).toBe(spagnoli.downTitle + spagnoli.downText);
     });
 
     it('in una lingua che non ha il suo file l\'avviso è in inglese', async () => {
         await mostra({ ...dati, lingua: 'pt-BR', non_letti: true });
-        await arrivati();
+        await finoAlTesto(inglesi.downTitle + inglesi.downText);
         expect(sopraLaPagina()).toBe(inglesi.downTitle + inglesi.downText);
     });
 });
