@@ -203,6 +203,17 @@ function azioniSottoLaRicerca(): void {
     }
 }
 
+/**
+ * L'`AppShell` chiude la ricerca con Esc solo dal campo: col fuoco nel pannello dei risultati (una fermata del Tab, #2720) Esc
+ * non faceva niente, e sotto 720 px la barra in alto restava senza campanella. Da lì lo stesso Esc passa al campo, che chiude
+ * la ricerca come sempre. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 131 delle richieste al design system).
+ */
+function escDalPannello(tasto: KeyboardEvent): void {
+    if (tasto.key === 'Escape' && tasto.target === fermate[1]) {
+        fermate[1]?.parentElement?.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', tasto));
+    }
+}
+
 /** La `naviga` della cornice montata: gliela dà la cornice quando chiede questo pezzo. */
 let naviga: ((indirizzo: string) => void) | undefined;
 /** I nomi del contenuto e del pannello della ricerca, nella lingua della cornice. */
@@ -285,6 +296,7 @@ export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: t
 
 
 document.addEventListener('keydown', tabRestaDentro);
+document.addEventListener('keydown', escDalPannello);
 document.addEventListener('click', clicSullaBarra);
 document.addEventListener('focusin', contorno);
 document.addEventListener('focusout', contorno);

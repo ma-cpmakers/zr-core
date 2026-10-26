@@ -9590,4 +9590,30 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         expect([estraneo.hasAttribute('tabindex'), estraneo.hasAttribute('role'), estraneo.hasAttribute('aria-label')]).toStrictEqual([false, false, false]);
         expect(fermata()[0]).toBe('0');
     });
+    // Dalla UAT in Chromium (26/10): l'`AppShell` chiude la ricerca con Esc solo dal campo; col fuoco nel pannello Esc non
+    // faceva niente, e sotto 720 px la barra in alto restava senza campanella (riga 131 delle richieste al design system).
+    it('T7.5 Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
+        await laCornice();
+        await cerca();
+        await act(async () => pannello()?.focus());
+
+        await act(async () => {
+            pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement?.closest('.zr-search') ?? null]).toStrictEqual([false, null, null]);
+    });
+
+    it('T7.5 un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
+        await laCornice();
+        await cerca();
+        await act(async () => pannello()?.focus());
+
+        await act(async () => {
+            pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+            uno('.zr-main')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement]).toStrictEqual([true, pannello()]);
+    });
 });

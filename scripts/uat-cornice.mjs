@@ -139,6 +139,7 @@ async function ricerca(page, largo) {
         const sbagliati = primaDellUltimo.filter((uno) => uno === 'vuoto' || uno === 'risultati');
         scrivi(ultimoCaricamento < 0 ? '➖' : sbagliati.length ? '❌' : '✅', 'R.2', 'scrivendo, il pannello resta in caricamento fino alla risposta (#2062)', `stati: ${stati.join(' → ')}`);
     }
+    let nelPannello = false;
     if (stato !== 'risultati') {
         scrivi('➖', `${id}.3`, 'il pannello coi risultati nel giro del Tab (#2720)', `«${parola}» non trova niente (stato: ${stato}): rilanciare con --parola`);
     } else {
@@ -149,14 +150,10 @@ async function ricerca(page, largo) {
         await page.keyboard.press('Tab');
         await pausa(200);
         const fuocoNelPannello = await page.evaluate(() => document.activeElement?.matches('.zr-search-panel') ?? false);
+        nelPannello = fuocoNelPannello;
         const bene = pannello[0] === '0' && pannello[1] === 'group' && !!pannello[2] && fuocoNelPannello;
         scrivi(bene ? '✅' : '❌', `${id}.3`, 'il pannello coi risultati è una fermata del Tab, un gruppo col suo nome (#2720)', `tabindex=${pannello[0]}, role=${pannello[1]}, nome «${pannello[2]}», Tab dal campo → ${fuocoNelPannello ? 'pannello' : 'altrove'}`);
         await page.screenshot({ path: join(cartella, `ricerca-tab-${largo ? 1280 : 390}.png`) });
-        // Esc chiude la ricerca solo dal campo (l'`AppShell`, anche prima della v3.6): si torna lì, o a 390 px la barra in alto
-        // resta senza campanella.
-        if (fuocoNelPannello) {
-            await page.keyboard.press('Shift+Tab');
-        }
     }
     if (!largo) {
         const nascoste = await page.evaluate(() => {
@@ -166,6 +163,20 @@ async function ricerca(page, largo) {
         scrivi(nascoste === 'hidden' || nascoste === 'nessuna' ? '✅' : '❌', 'R390.4', 'a 390 px le azioni della barra in alto non stanno sopra la ricerca aperta (#2627)', `visibility: ${nascoste}`);
     }
     await controllaAxe(page, `${id}.5`, `a ${largo ? 1280 : 390} px con la ricerca aperta`);
+    // L'`AppShell` chiude la ricerca con Esc solo dal campo: dal pannello lo fa il rimedio della v3.6 (riga 131 delle
+    // richieste al design system). Senza, a 390 px la barra in alto resterebbe senza campanella.
+    if (nelPannello) {
+        await page.keyboard.press('Escape');
+        await pausa(300);
+        const dopo = await page.evaluate(() => ({
+            aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+            azioni: getComputedStyle(document.querySelector('.zr-shell .zr-top > .zr-top-actions') ?? document.body).visibility,
+        }));
+        scrivi(!dopo.aperta && dopo.azioni !== 'hidden' ? '✅' : '❌', `${id}.6`, 'Esc col fuoco nel pannello chiude la ricerca, e la barra in alto torna intera', `aperta: ${dopo.aperta}, azioni: ${dopo.azioni}`);
+        if (dopo.aperta) {
+            await page.keyboard.press('Shift+Tab');
+        }
+    }
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await pausa(300);

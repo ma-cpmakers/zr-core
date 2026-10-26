@@ -161,12 +161,13 @@ calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre
 vera; le loro risorse e i loro testi stanno nel pezzo della ricerca), e altri 75 fino a 17.650: la ricerca che passa al
 caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e il nome del «+» che dà il modulo (un'eccezione
 di zr-pm, Decisione 18231). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.870 i rimedi, 1.538 la
+un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 2.201 byte la campanella, 1.922 i rimedi, 1.538 la
 ricerca. Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
 per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm), e di altri 102 nella `v3.6.0`: 82 per il pannello della ricerca
-nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm), poi di altri 52:
+Esc col fuoco nel pannello della ricerca chiude la ricerca (zr-pm, 26/10). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
 del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
 che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Nella `v3.6.0` è salito di altri

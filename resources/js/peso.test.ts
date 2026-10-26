@@ -624,7 +624,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // della barra nascoste sotto la ricerca aperta a 720 px o meno (misura del 25/10: 1.768; deroga a misura vera, Decisione 17522).
         // Sprint 74 (voci #2720 e #2722): +67 byte per il pannello della ricerca nel giro del Tab, col suo nome e col contorno, e +15
         // per i clic sul percorso che passano da `naviga` (misura del 26/10: 1.850; tetto alla misura più 20, Decisione 18266).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_870);
+        // Poi +52 per Esc col fuoco nel pannello della ricerca, che passa al campo e chiude la ricerca (dalla UAT in Chromium;
+        // misura del 26/10: 1.902; tetto alla misura più 20, zr-pm 26/10).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
