@@ -298,6 +298,25 @@ Una cosa cambia, con `bundle.css`, per chi prende MentionField dal suo modulo (d
 suoi stili, che arrivano dopo il bundle e allungano la lista di AddressField. Chi è in questo caso prende anche AddressField dal
 suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra).
 
+### Passare alla v3.6
+
+Per chi viene da una versione 3 di prima, una per una: che cosa cambia per il modulo, che cosa si tocca, che cosa si
+controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer update zeiras/zr-core`, poi la build).
+
+| Versione | Che cosa cambia | Che cosa si tocca | Che cosa si controlla |
+|---|---|---|---|
+| `v3.2.2` | il titolo e la destinazione della richiesta di un cliente sul preventivo (`crm.preventivo.richiesta`) | niente | niente fuori dal CRM |
+| `v3.2.3` | il menu Moduli non mostra i moduli spenti a chi non li può attivare (17 byte in più nell'ingresso) | niente | da membro nessun modulo spento nel menu; da proprietario o amministratore sì |
+| `v3.3.0` | `resources/css/zeiras.css`, il CSS del primo carico senza gli stili di MentionField e AddressField | niente; se il modulo li prende solo dai loro moduli, una riga del CSS («Passare alla v3.3») | le pagine con i due campi hanno i loro stili |
+| `v3.4.0` | la testa e il piede del pannello delle notifiche non sono punti di riferimento; a 720 px o meno le azioni della barra in alto, con le `actions` del modulo, si nascondono sotto la ricerca aperta | niente; un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto | axe a 390 px con la ricerca aperta, senza `target-size` |
+| `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente |
+| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
+
+Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
+(`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
+1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
+Esc), il «+», la campanella, il percorso.
+
 ## La parte server
 
 I dati della cornice — chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato dei prodotti in quel
@@ -773,7 +792,9 @@ cornice === null ? pagina : (
   le frecce): prima chi usa la tastiera non poteva farlo scorrere (axe, `scrollable-region-focusable`). Col Tab dal campo il
   fuoco va al pannello, che scorre con le frecce, e ha il contorno del design system come il contenuto. Un elemento del modulo
   con la classe del pannello non si tocca. Per chi aggiorna: con la ricerca aperta c'è una fermata del Tab in più, dopo il
-  campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Sta nel pezzo dei rimedi, ed è provvisorio
+  campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Esc col fuoco nel pannello chiude la
+  ricerca come dal campo (l'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento,
+  come dopo Esc nel campo. Sta nel pezzo dei rimedi, ed è provvisorio
   come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il

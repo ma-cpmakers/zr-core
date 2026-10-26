@@ -4259,6 +4259,29 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
 // Sprint 75 · T1.4 (voce #2570; revisione della PR #134, rilievi 1 e 4): il README dice le due strade del CSS, e chi resta su
 // `bundle.css`. Con `zeiras.css` un campo preso da `componenti` resterebbe senza stili; con `bundle.css` i due campi si prendono
 // dallo stesso posto, perché gli stili che un modulo porta arrivano dopo il bundle.
+// Sprint 74 (zr-pm-07, 26/10): chi passa alla v3.6 da una versione 3 di prima (Bookings dalla 3.2.1) trova, versione per
+// versione, che cosa cambia, che cosa si tocca e che cosa si controlla; e lo script UAT della cornice.
+it('il README dice, in «Passare alla v3.6», versione per versione che cosa cambia, che cosa si tocca e che cosa si controlla, e lo script UAT della cornice (sprint 74)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v3\.6$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+
+    expect(str_contains(suUnaRiga($passaggio[1] ?? ''), $frase))->toBe(true);
+})->with([
+    'le colonne' => ['| Versione | Che cosa cambia | Che cosa si tocca | Che cosa si controlla |'],
+    'la v3.2.2' => ['| `v3.2.2` |'],
+    'la v3.2.3' => ['| `v3.2.3` |'],
+    'la v3.3.0' => ['| `v3.3.0` |'],
+    'la v3.4.0' => ['| `v3.4.0` |'],
+    'la v3.5.0' => ['| `v3.5.0` |'],
+    'la v3.6.0, che cosa si tocca' => ['`createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte'],
+    'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
+]);
+
+// Sprint 74 (dalla UAT in Chromium, zr-pm-07 26/10): Esc dal pannello della ricerca, e dove va il fuoco.
+it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al documento (sprint 74)', function () {
+    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento, come dopo Esc nel campo.'))->toBe(1);
+});
+
 it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^### Passare alla v3\.3$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
