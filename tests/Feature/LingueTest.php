@@ -163,6 +163,7 @@ function tipiDiNotificaDelContratto(): array
         ...array_keys(titoliDelleNotificheDiVisteEAziende()),
         ...array_keys(titoliDelleNotificheDiOpportunitaEAttivita()),
         ...array_keys(titoliDelleNotificheDeiMotiviDiPerdita()),
+        ...array_keys(titoliDelleNotificheDegliSprint()),
     ];
 }
 
@@ -255,6 +256,22 @@ function titoliDelleNotificheDeiMotiviDiPerdita(): array
     return [
         'com.zeiras.crm.motivo.creato' => ['it' => 'Nuovo motivo di perdita', 'en' => 'New loss reason', 'es' => 'Nuevo motivo de pérdida'],
         'com.zeiras.crm.motivo.modificato' => ['it' => 'Motivo di perdita modificato', 'en' => 'Loss reason changed', 'es' => 'Motivo de pérdida modificado'],
+    ];
+}
+
+/**
+ * I titoli dei due tipi di evento degli sprint di Project Management che il contratto porta dal 27/10/2026, con le parole di
+ * zr-board (nota 18909): «modificato» anche all'avvio e alla chiusura di uno sprint, che fanno lo stesso evento. Dei tipi del
+ * contratto del 27/10 sono i soli che arrivano alla campanella (zr-backoffice-55: lo Sprint notifica, gli altri modelli no).
+ * La tabella è scritta qui, non letta dai file delle lingue (sprint 79 · T1.1, voce 2820).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDegliSprint(): array
+{
+    return [
+        'com.zeiras.board.sprint.creato' => ['it' => 'Sprint creato', 'en' => 'Sprint created', 'es' => 'Sprint creado'],
+        'com.zeiras.board.sprint.modificato' => ['it' => 'Sprint modificato', 'en' => 'Sprint updated', 'es' => 'Sprint modificado'],
     ];
 }
 
@@ -484,6 +501,15 @@ function frasiDelleNotificheConChi(): array
         'com.zeiras.board.vista.eliminata' => [
             'chiECosa' => null,
             'chi' => ['it' => '{who} ha eliminato una vista', 'en' => '{who} deleted a view', 'es' => '{who} ha eliminado una vista'],
+        ],
+        // Sprint 79 · T1.2 (voce 2820): degli sprint zr-board ha dato la sola frase con chi.
+        'com.zeiras.board.sprint.creato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha creato uno sprint', 'en' => '{who} created a sprint', 'es' => '{who} ha creado un sprint'],
+        ],
+        'com.zeiras.board.sprint.modificato' => [
+            'chiECosa' => null,
+            'chi' => ['it' => '{who} ha cambiato uno sprint', 'en' => '{who} changed a sprint', 'es' => '{who} ha cambiado un sprint'],
         ],
         'board.scheda.assegnata' => [
             'chiECosa' => ['it' => '{who} ti ha assegnato la scheda «{what}»', 'en' => '{who} assigned you the card “{what}”', 'es' => '{who} te ha asignado la tarjeta «{what}»'],
@@ -934,14 +960,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 56 tipi di notifica, 38 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciotto che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l\'invito accettato —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 58 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciotto che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l\'invito accettato —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
-    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(38)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(56)
+    expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(40)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(58)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1141,6 +1167,23 @@ it('le tre notifiche di Bookings hanno il titolo della tabella nella lingua, sot
     expect($testi)->not->toHaveKey('notificationTitle.bookings.prenotazione.cambiata')
         ->and($testi)->not->toHaveKey('notificationTitle.com.zeiras.bookings.prenotazione.cambiata')
         ->and($testi)->not->toHaveKey('notificationTitle.bookings.prenotazione');
+})->with(['it', 'en', 'es']);
+
+// Sprint 79 · T1.1 (voce 2820). Gli sprint di Project Management hanno un titolo per tipo nella lingua, sotto il tipo dell'evento
+// col prefisso: senza `com.zeiras.` davanti, o col tipo a metà, resta il ripiego.
+it('i due tipi degli sprint hanno il titolo della tabella nella lingua, sotto il tipo dell\'evento con `com.zeiras.` davanti: senza il prefisso o con un pezzo del tipo restano senza titolo, e nessun\'altra notifica si chiama così (sprint 79 · T1.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelleNotificheDegliSprint();
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['com.zeiras.board.sprint.creato', 'com.zeiras.board.sprint.modificato'])
+        ->and(array_key_exists('notificationTitle.board.sprint.creato', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.board.sprint.modificato', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.com.zeiras.board.sprint', $testi))->toBe(false);
+    foreach ($tabella as $tipo => $titoli) {
+        expect($testi['notificationTitle.'.$tipo] ?? null)->toBe($titoli[$codice])
+            ->and(array_keys($deiTitoli, $titoli[$codice], true))->toBe(['notificationTitle.'.$tipo]);
+    }
 })->with(['it', 'en', 'es']);
 
 it('la notifica delle schede senza assegnatario ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: il tipo col prefisso, un pezzo del tipo e la scheda al singolare restano senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (sprint 77 · T3.1)', function (string $codice) {
@@ -1648,10 +1691,10 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     sort($conUnTitolo);
 
     // Sprint 74 · T1: nessuna di Bookings (le loro frasi, con la data, non cominciano con `notificationTitleWho`).
-    expect($attese)->toHaveCount(78)
+    expect($attese)->toHaveCount(80)
         // Nessun tipo che ha un titolo resta senza la frase con solo chi (T2.1), e nessuna frase è di un tipo senza titolo.
         ->and($conLeFrasi)->toBe($conUnTitolo)
-        ->and($conLeFrasi)->toHaveCount(50)
+        ->and($conLeFrasi)->toHaveCount(52)
         ->and(array_filter(array_keys($delleFrasi), fn (string $chiave) => str_contains($chiave, '.bookings.')))->toBe([])
         ->and(array_filter(frasiDelleNotificheConChi(), fn (array $frasi) => $frasi['chiECosa'] !== null))->toHaveCount(28)
         // Sprint 74 · T1 (Decisione di zr-pm del 26/10): nessuna frase col nome dell'ospite, che il backoffice non dà; la frase con

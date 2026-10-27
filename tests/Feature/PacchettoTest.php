@@ -4095,7 +4095,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45, 4
         ->and(substr_count($readme, 'i titoli erano 48'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 49'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 49'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 56'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 56'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 56'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 58'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4605,8 +4607,24 @@ it('il README dice, dalla v3.6.0, i titoli e i tipi del promemoria di una To-do,
     'le due scadenze' => ['«Una scheda scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`)'],
     'l\'invito' => ['senza prodotto l\'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`)'],
     'chi l\'ha fatto' => ['dell\'invito chi l\'ha fatto è chi ha accettato («Marta Rossi ha accettato il tuo invito»)'],
-    'quanti sono i titoli' => ['Con loro e con le tre di Bookings (più sotto) i titoli sono 56'],
+    // Sprint 79: con i due degli sprint i titoli sono 58, e i 56 passano al passato.
+    'quanti erano i titoli' => ['Con loro e con le tre di Bookings (più sotto) i titoli erano 56'],
     'dove si apre' => ['Nessuna delle quattro ha una destinazione: un clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 79 · T1 (voce 2820). I due tipi di evento degli sprint hanno un titolo: il README lo dice nel punto «Le notifiche», coi
+// titoli che ora sono 58, e dice che gli altri tipi del contratto del 27/10 non generano notifiche.
+it('il README dice, dalla v3.11.0, i titoli dei due tipi degli sprint, chi l\'ha fatto, che con loro i titoli sono 58, che gli altri tipi nuovi non generano notifiche e che un clic apre la pagina delle notifiche (sprint 79 · T1)', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'i due titoli' => ['Dalla `v3.11.0` hanno un titolo i due tipi di evento degli sprint di Project Management che il contratto ha dal 27/10/2026: `com.zeiras.board.sprint.creato`, «Sprint creato», e `com.zeiras.board.sprint.modificato`, «Sprint modificato»'],
+    'chi l\'ha fatto' => ['con chi l\'ha fatto «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint»'],
+    'quanti sono i titoli' => ['Con loro i titoli sono 58: 40 tipi di evento e i diciotto che non sono eventi'],
+    'gli altri non notificano' => ['Gli altri tipi di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo'],
+    'dove si apre' => ['Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche'],
 ]);
 
 // Sprint 77 · T2.1 (voce #2677). README e guida dicono `Cornice::nuovoWorkspace()`: l'indirizzo, quando dà null, che pagina e
