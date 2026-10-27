@@ -1186,6 +1186,68 @@ it('i due tipi degli sprint hanno il titolo della tabella nella lingua, sotto il
     }
 })->with(['it', 'en', 'es']);
 
+/**
+ * La copia dei tipi di evento del contratto e quelli che non arrivano mai alla campanella, con la fonte del backoffice
+ * (tests/contratto/x-eventi.json; prima di un tag la confronta col contratto pubblicato scripts/tipi-del-contratto.mjs).
+ *
+ * @return array{versione: string, tipi: list<string>, non_arrivano: array<string, string>}
+ */
+function tipiDiEventoDelContratto(): array
+{
+    return json_decode((string) file_get_contents(__DIR__.'/../contratto/x-eventi.json'), true, flags: JSON_THROW_ON_ERROR);
+}
+
+/**
+ * I tipi della copia che non hanno né un titolo in ogni lingua né un posto nell'elenco, e quelli che hanno tutti e due.
+ *
+ * @param  list<string>  $tipi
+ * @param  array<string, string>  $nonArrivano
+ * @param  array<string, array<string, string>>  $lingue
+ * @return array{senza: list<string>, doppi: list<string>}
+ */
+function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $lingue): array
+{
+    $conIlTitolo = fn (string $tipo) => array_reduce(array_keys($lingue), fn (bool $tutte, string $codice) => $tutte && isset($lingue[$codice]['notificationTitle.'.$tipo]), true);
+
+    return [
+        'senza' => array_values(array_filter($tipi, fn (string $tipo) => ! $conIlTitolo($tipo) && ! array_key_exists($tipo, $nonArrivano))),
+        'doppi' => array_values(array_filter($tipi, fn (string $tipo) => $conIlTitolo($tipo) && array_key_exists($tipo, $nonArrivano))),
+    ];
+}
+
+// Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
+// contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha gli 86 tipi della versione 7b68432d e l\'elenco 46, con crm.campo.creato e workspace.eliminato (sprint 79 · T2.1, T2.2, T2.3)', function () {
+    $contratto = tipiDiEventoDelContratto();
+    $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
+    $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
+
+    expect($contratto['versione'])->toBe('7b68432d')
+        ->and($contratto['tipi'])->toHaveCount(86)
+        ->and(array_unique($contratto['tipi']))->toHaveCount(86)
+        ->and($contratto['non_arrivano'])->toHaveCount(46)
+        ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
+        ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
+        ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')
+        ->and(array_filter($contratto['non_arrivano'], fn (string $fonte) => trim($fonte) === ''))->toBe([])
+        ->and(tipiDelContrattoFuoriPosto($contratto['tipi'], $contratto['non_arrivano'], $lingue))->toBe(['senza' => [], 'doppi' => []])
+        // I tipi del contratto che hanno un titolo sono quelli della tabella dei tipi di evento, né uno in più né uno in meno.
+        ->and($conIlTitolo)->toEqualCanonicalizing(array_values(array_unique(tipiDiNotificaDelContratto())));
+});
+
+it('il controllo del contratto trova un tipo senza titolo né posto nell\'elenco, un titolo tolto e un tipo dell\'elenco che ha un titolo (sprint 79 · T2.1)', function () {
+    $contratto = tipiDiEventoDelContratto();
+    $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
+    $senzaLoSprint = $lingue;
+    unset($senzaLoSprint['es']['notificationTitle.com.zeiras.board.sprint.creato']);
+
+    expect(tipiDelContrattoFuoriPosto([...$contratto['tipi'], 'com.zeiras.board.sprint.chiuso'], $contratto['non_arrivano'], $lingue))->toBe(['senza' => ['com.zeiras.board.sprint.chiuso'], 'doppi' => []])
+        ->and(tipiDelContrattoFuoriPosto($contratto['tipi'], $contratto['non_arrivano'], $senzaLoSprint))->toBe(['senza' => ['com.zeiras.board.sprint.creato'], 'doppi' => []])
+        ->and(tipiDelContrattoFuoriPosto($contratto['tipi'], [...$contratto['non_arrivano'], 'com.zeiras.board.scheda.creata' => 'prova'], $lingue))->toBe(['senza' => [], 'doppi' => ['com.zeiras.board.scheda.creata']]);
+});
+
 it('la notifica delle schede senza assegnatario ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: il tipo col prefisso, un pezzo del tipo e la scheda al singolare restano senza titolo, non è un tipo di evento del contratto, e il titolo non è quello di ripiego né quello di un altro tipo (sprint 77 · T3.1)', function (string $codice) {
     $testi = lingueDellaCornice()[$codice] ?? [];
     $tabella = titoloDellaNotificaDelleSchedeSenzaAssegnatario();

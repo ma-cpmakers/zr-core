@@ -1153,7 +1153,10 @@ cornice === null ? pagina : (
   `com.zeiras.board.sprint.modificato`, «Sprint modificato», anche quando uno sprint parte o si chiude; con chi l'ha fatto
   «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint». Con loro i titoli sono 58: 40 tipi di evento e
   i diciotto che non sono eventi. Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche. Gli altri tipi
-  di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Nel repo di zr-core la copia
+  dei tipi di evento del contratto e l'elenco di quelli che non arrivano mai alla campanella, con la fonte nel backoffice,
+  stanno in `tests/contratto/x-eventi.json`: un caso fallisce se un tipo non ha né un titolo né un posto nell'elenco, e prima
+  di ogni tag `scripts/tipi-del-contratto.mjs` dice i tipi nuovi o tolti del contratto pubblicato. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 min fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
