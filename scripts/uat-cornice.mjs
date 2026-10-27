@@ -629,6 +629,32 @@ async function linguetteDelleNotifiche(page) {
     await pausa(200);
 }
 
+async function quantiRisultati(page) {
+    const campo = '.zr-shell .zr-top > .zr-search input';
+    if (!(await page.$(campo))) {
+        scrivi('➖', 'Q.1', 'la zona di stato dice quanti risultati (#2801)', 'la pagina non ha il campo della ricerca');
+        return;
+    }
+    await page.click(campo);
+    await page.fill(campo, parola);
+    let stato = '';
+    for (let i = 0; i < 50 && !['risultati', 'vuoto', 'errore'].includes(stato); i++) {
+        await pausa(100);
+        stato = await page.evaluate(`(${statoDellaRicerca})()`);
+    }
+    await pausa(200);
+    const letto = await page.evaluate(() => ({
+        righe: document.querySelectorAll('.zr-shell .zr-search-panel [role=option]').length,
+        zone: [...document.querySelectorAll('body > p[role=status]')].map((zona) => zona.textContent),
+    }));
+    const ok = stato !== 'errore' && letto.zone.length === 1 && /\d/.test(letto.zone[0] ?? '') && letto.zone[0].includes(String(letto.righe));
+    scrivi(stato === 'errore' ? '➖' : ok ? '✅' : '❌', 'Q.1', 'a ricerca finita la zona di stato dice quanti risultati ci sono, nella lingua della cornice (#2801)', `«${parola}»: ${stato}, ${letto.righe} righe, zona: ${letto.zone.map((zona) => `«${zona}»`).join(', ') || 'nessuna'}`);
+    await page.keyboard.press('Escape');
+    await page.fill(campo, '');
+    await page.evaluate(() => document.activeElement?.blur());
+    await pausa(200);
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -645,6 +671,7 @@ async function uat(page, apri) {
     await fuoriDaiMenu(page);
     await inizioEFineNeiMenu(page);
     await linguetteDelleNotifiche(page);
+    await quantiRisultati(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);

@@ -6327,6 +6327,56 @@ describe('la ricerca', () => {
         expect(ricarica).not.toHaveBeenCalled();
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
+
+    // Sprint 78 · T7 (voce 2801): la zona `role="status"` dell'`AppShell` c'è solo mentre si cerca, e i risultati la tolgono. Il
+    // pezzo della ricerca tiene una zona sua nel documento, che a ricerca finita dice quanti risultati ci sono (zr-pm, opzione A).
+    const zonaDelNumero = () => [...document.querySelectorAll('body > p[role="status"].zr-visually-hidden')];
+
+    it('T7.1 a ricerca finita la zona di stato dice quanti risultati mostra; resta nel documento, si svuota quando parte una ricerca e cambia testo quando arrivano i risultati (voce 2801)', async () => {
+        const ua = inAttesaDellaRicerca();
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? ua.promessa : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('ua');
+        await ua.arriva(trovati(risultatiDelServer));
+        const zona = zonaDelNumero()[0];
+        // Cinque risultati dal server, tre righe: il numero è quello delle righe che l'`AppShell` mostra.
+        expect([zonaDelNumero().length, righe().length, zona?.textContent]).toStrictEqual([1, 3, 'Risultati: 3']);
+
+        await scrivi('uat');
+        expect([inCaricamento(), zonaDelNumero(), zona?.textContent]).toStrictEqual(['Sto cercando…', [zona], '']);
+        await uat.arriva(trovati(nuovi));
+        expect([zonaDelNumero(), zona?.textContent, righe().length]).toStrictEqual([[zona], 'Risultati: 1', 1]);
+    });
+
+    it.each([
+        ['es', 'Resultados: 1'],
+        ['en', 'Results: 1'],
+        ['fr', 'Results: 1'],
+    ])('T7.2 con la lingua "%s" il numero dei risultati si dice nella lingua dei testi, in inglese se zr-core non la ha (voce 2801)', async (lingua, atteso) => {
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati(nuovi))));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+
+        expect([righe().length, zonaDelNumero().map((zona) => zona.textContent)]).toStrictEqual([1, [atteso]]);
+    });
+
+    it('a ricerca senza risultati la zona dice zero, e un altro giro della cornice con lo stesso numero non la riscrive (voce 2801)', async () => {
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati([]))));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('uat');
+        const zona = zonaDelNumero()[0]!;
+        const testo = zona.firstChild;
+        expect([zona.textContent, testoDelPannello().startsWith('Nessun risultato per')]).toStrictEqual(['Risultati: 0', true]);
+
+        // Un altro giro della cornice, con la stessa ricerca: la pagina che cambia dentro.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Un'altra pagina</p></Cornice>);
+        expect(testoDelPannello().startsWith('Nessun risultato per')).toBe(true);
+
+        expect(zona.firstChild).toBe(testo);
+    });
 });
 
 // Sprint 12 · T5 (voce #1464). `active={null}`: nessuna voce della barra è attiva. L'`AppShell` segna la voce che ha l'id

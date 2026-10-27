@@ -580,7 +580,7 @@ it('le risorse della ricerca di Bookings stanno in resources/registro/ricerca.js
         // `v3.9.0` (Decisione 18762) anche i testi dei codici delle risorse del registro, che il JS d'ingresso non porta più.
         ->and(collect(File::files(__DIR__.'/../../resources/lingue/ricerca'))->map(fn ($f) => $f->getFilename())->sort()->values()->all())->toBe(['en.json', 'es.json', 'it.json'])
         ->and(collect(['it', 'es', 'en'])->map(fn (string $codice) => array_keys(json_decode(File::get(__DIR__."/../../resources/lingue/ricerca/$codice.json"), true, flags: JSON_THROW_ON_ERROR)))->unique(fn (array $chiavi) => implode(',', $chiavi))->values()->all())
-        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", [...codiciDelContestoDellaRicerca(), ...codiciDelContesto()])]]);
+        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", [...codiciDelContestoDellaRicerca(), ...codiciDelContesto()]), 'searchCount']]);
 });
 
 it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: il testo di ognuno lo legge il pezzo della ricerca, non le lingue della cornice, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4; v3.9.0)', function () {

@@ -9,5 +9,6 @@
     "searchContext.home.workspace.membro.ruolo.amministratore": "Admin",
     "searchContext.home.workspace.membro.ruolo.membro": "Member",
     "searchContext.crm.crm.trattativa.esito.vinta": "Won",
-    "searchContext.crm.crm.trattativa.esito.persa": "Lost"
+    "searchContext.crm.crm.trattativa.esito.persa": "Lost",
+    "searchCount": "Results: {n}"
 }

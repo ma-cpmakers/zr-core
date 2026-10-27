@@ -1761,6 +1761,8 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
             risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
         ),
         ...codiciDelRegistro.map((codice) => `searchContext.${codice}`),
+        // Dalla `v3.10.0` quanti risultati ha trovato (#2801), che dice solo il pezzo.
+        'searchCount',
     ];
 
     it('ogni lingua della cornice ha il suo file dei testi della ricerca, con tutte e sole le chiavi delle risorse di ricerca.json e dei codici del registro, e testi non vuoti senza spazi ai bordi (T2.1, T2.2, T2.3; v3.9.0)', () => {
@@ -1769,7 +1771,7 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
             'bookings.bookings.prenotazione', 'searchContext.bookings.bookings.prenotazione.stato.confermata', 'searchContext.bookings.bookings.prenotazione.stato.svolta',
             'searchContext.bookings.bookings.prenotazione.stato.non_presentato', 'searchContext.bookings.bookings.prenotazione.stato.annullata', 'bookings.bookings.calendario',
             'searchContext.home.workspace.membro.ruolo.proprietario', 'searchContext.home.workspace.membro.ruolo.amministratore', 'searchContext.home.workspace.membro.ruolo.membro',
-            'searchContext.crm.crm.trattativa.esito.vinta', 'searchContext.crm.crm.trattativa.esito.persa',
+            'searchContext.crm.crm.trattativa.esito.vinta', 'searchContext.crm.crm.trattativa.esito.persa', 'searchCount',
         ]);
         for (const testi of Object.values(fileDellaRicerca)) {
             expect(Object.keys(testi).sort()).toStrictEqual([...chiavi].sort());

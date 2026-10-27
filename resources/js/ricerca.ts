@@ -172,8 +172,32 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
 }
 
-/** Le righe dell'`AppShell` per i risultati arrivati, nel workspace di cui sono (`slug`): solo quelli che il registro conosce, i gruppi vicini. */
-export const risultatiDellaRicerca = (risultati: RisultatoDellaRicerca[], lingua: string, t: TestiDellaCornice, slug: string) => perGruppo(risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, slug) ?? []));
+/**
+ * La zona che dice a un lettore di schermo quanti risultati ha trovato la ricerca, «Risultati: 12» nella lingua dei testi
+ * (#2801). Quella dell'`AppShell` (`role="status"`) c'è solo mentre cerca, e i risultati la tolgono: una zona che nasce col testo
+ * dentro non si legge. Questa resta nel documento, nascosta alla vista, e si svuota a ogni ricerca che parte, così lo stesso
+ * numero si dice di nuovo. Provvisoria: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design
+ * system) si toglie.
+ */
+let quanti: HTMLElement | undefined;
+
+/**
+ * Le righe dell'`AppShell` per i risultati arrivati, nel workspace di cui sono (`slug`): solo quelli che il registro conosce, i
+ * gruppi vicini; e quante sono, nella zona qui sopra, che cambia testo solo quando il numero cambia.
+ */
+export function risultatiDellaRicerca(risultati: RisultatoDellaRicerca[], lingua: string, t: TestiDellaCornice, slug: string) {
+    const righe = perGruppo(risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, slug) ?? []));
+    const testo = testiPerLaRiga(lingua, t)['searchCount']!.replace('{n}', `${righe.length}`);
+
+    if (!quanti?.isConnected) {
+        document.body.insertAdjacentHTML('beforeend', '<p role="status" class="zr-visually-hidden">');
+        quanti = document.body.lastElementChild as HTMLElement;
+    }
+    if (quanti.textContent !== testo) {
+        quanti.textContent = testo;
+    }
+    return righe;
+}
 
 /**
  * Quanti secondi, al più, la cornice tiene ferma la ricerca dopo un 429 del backoffice, qualunque cosa dica `Retry-After`: la
@@ -197,6 +221,7 @@ export function cercaPer(parola: string, questa: AbortController, persona: Perso
         return undefined;
     }
 
+    quanti?.replaceChildren();
     return cerca([...parola].slice(0, 100).join(''), questa.signal, persona, chiama_).then(
         ({ risultati, workspace }) => {
             if (inVolo.current === questa) {
