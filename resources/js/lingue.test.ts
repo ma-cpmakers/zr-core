@@ -1761,7 +1761,7 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
             risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
         ),
         ...codiciDelRegistro.map((codice) => `searchContext.${codice}`),
-        // Dalla `v3.10.0` quanti risultati ha trovato (#2801), che dice solo il pezzo.
+        // Dalla `v3.10.0` quanti risultati ha trovato (voce 2801), che dice solo il pezzo.
         'searchCount',
     ];
 
