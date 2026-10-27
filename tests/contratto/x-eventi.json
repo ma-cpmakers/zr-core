@@ -117,7 +117,7 @@
         "com.zeiras.crm.installazione.creata": "Installazione::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.pagamento.creato": "Pagamento::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.pagamento.modificato": "Pagamento::notifica() è false: l'evento resta nel registro",
-        "com.zeiras.crm.persona.anonimizzata": "Scrittura::anonimizzata con notifica=false (app/Registro/Scrittura.php:178)",
+        "com.zeiras.crm.persona.anonimizzata": "Scrittura::anonimizzata con notifica=false",
         "com.zeiras.crm.preventivo.accettato": "Preventivo::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.preventivo.creato": "Preventivo::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.preventivo.eliminato": "Preventivo::notifica() è false: l'evento resta nel registro",
@@ -134,7 +134,7 @@
         "com.zeiras.crm.scadenza.eliminata": "Scadenza::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.scadenza.modificata": "Scadenza::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.scadenza.rinnovata": "Scadenza::notifica() è false: l'evento resta nel registro",
-        "com.zeiras.workspace.eliminato": "Registro::archivia mette in archivio i membri prima di Scrittura::notifiche() (app/Models/Workspace.php:113 ss., app/Registro/Scrittura.php:544): nessuna riga, e il workspace non si apre più",
+        "com.zeiras.workspace.eliminato": "Registro::archivia mette in archivio i membri prima di Scrittura::notifiche(): nessuna riga, e il workspace non si apre più",
         "com.zeiras.workspace.esportazione.creata": "EsportazioneWorkspace::notifica() è false: l'evento resta nel registro"
     }
 }

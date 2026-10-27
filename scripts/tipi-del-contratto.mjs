@@ -5,8 +5,11 @@
 //
 // (di norma https://docs.zeiras.com/v1/openapi.json). Esce con 0 se i tipi sono gli stessi; con 1, e l'elenco dei tipi nuovi e
 // di quelli tolti, se no: un tipo nuovo entra nella copia insieme al suo titolo nelle lingue, o nell'elenco dei tipi che non
-// arrivano alla campanella con la fonte del backoffice. Con 2 se il contratto non si legge.
+// arrivano alla campanella con la fonte del backoffice. Con 2 se il contratto non si legge, o non ha nessun tipo di evento.
+// Il contratto non porta la versione del backoffice: lo script dice l'impronta dei tipi (sha256 dei tipi in ordine, uno per
+// riga), la stessa che il caso di Pest scrive per la copia.
 
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const fonte = process.argv[2] ?? 'https://docs.zeiras.com/v1/openapi.json';
@@ -14,7 +17,15 @@ const copia = JSON.parse(readFileSync(new URL('../tests/contratto/x-eventi.json'
 
 let contratto;
 try {
-    contratto = /^https?:\/\//.test(fonte) ? await (await fetch(fonte, { signal: AbortSignal.timeout(30_000) })).json() : JSON.parse(readFileSync(fonte, 'utf8'));
+    if (/^https?:\/\//.test(fonte)) {
+        const risposta = await fetch(fonte, { signal: AbortSignal.timeout(30_000) });
+        if (!risposta.ok) {
+            throw new Error(`risposta ${risposta.status}`);
+        }
+        contratto = await risposta.json();
+    } else {
+        contratto = JSON.parse(readFileSync(fonte, 'utf8'));
+    }
 } catch (errore) {
     console.error(`Il contratto non si legge da ${fonte}: ${errore.message}`);
     process.exit(2);
@@ -35,11 +46,16 @@ const visita = (nodo) => {
     }
 };
 visita(contratto);
+if (tipi.size === 0) {
+    console.error(`Il contratto letto da ${fonte} non ha nessun tipo di evento (x-eventi).`);
+    process.exit(2);
+}
 
 const nellaCopia = new Set(copia.tipi);
 const nuovi = [...tipi].filter((tipo) => !nellaCopia.has(tipo)).sort();
 const tolti = [...nellaCopia].filter((tipo) => !tipi.has(tipo)).sort();
-console.log(`Contratto: ${tipi.size} tipi di evento; copia (versione ${copia.versione}): ${nellaCopia.size}.`);
+const impronta = (elenco) => createHash('sha256').update([...elenco].sort().join('\n')).digest('hex');
+console.log(`Contratto: ${tipi.size} tipi di evento, impronta ${impronta(tipi)}; copia (versione ${copia.versione}): ${nellaCopia.size}, impronta ${impronta(nellaCopia)}.`);
 nuovi.forEach((tipo) => console.log(`+ ${tipo}`));
 tolti.forEach((tipo) => console.log(`- ${tipo}`));
 process.exit(nuovi.length || tolti.length ? 1 : 0);

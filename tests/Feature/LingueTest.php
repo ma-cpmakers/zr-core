@@ -1221,9 +1221,14 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
+    $inOrdine = $contratto['tipi'];
+    sort($inOrdine, SORT_STRING);
 
     expect($contratto['versione'])->toBe('7b68432d')
         ->and($contratto['tipi'])->toHaveCount(86)
+        // L'impronta dei tipi di 7b68432d, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+        // nella copia e nell'elenco insieme non resta verde.
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('8a86ff074c1889a94645ca18af4655546a095fad679c33e633e132f710d73c9e')
         ->and(array_unique($contratto['tipi']))->toHaveCount(86)
         ->and($contratto['non_arrivano'])->toHaveCount(46)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])

@@ -4310,6 +4310,7 @@ it('il README dice, in «Passare alla v3.8», versione per versione che cosa cam
     'la v3.7.0' => ['| `v3.7.0` |'],
     'la v3.8.0, nei test' => ['un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto)'],
     'la v3.8.1, nei test' => ['Un caso che si aspettava il contrario va riletto'],
+    'la v3.11.0' => ['| `v3.11.0` |'],
     'più versioni in un colpo' => ['un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano'],
     'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
 ]);
