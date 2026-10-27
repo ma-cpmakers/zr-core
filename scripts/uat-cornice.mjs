@@ -525,6 +525,37 @@ async function cassetto(page) {
     await page.evaluate(() => document.activeElement?.blur());
 }
 
+// Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono quando il Tab porta il fuoco fuori (#2804,
+// rimedio della v3.10.0), come il selettore dei workspace.
+async function fuoriDaiMenu(page) {
+    for (const [id, nome, pulsante, dentro] of [
+        ['T.1', 'il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['T.2', 'il menu «+»', '.zr-create', '.zr-menu'],
+        ['T.3', 'il pannello delle notifiche', '.zr-bell', '.zr-notif'],
+    ]) {
+        if (!(await page.$(`.zr-shell ${pulsante}`))) {
+            scrivi('➖', id, `${nome} si chiude quando il Tab esce (#2804)`, 'la pagina non ha il pulsante');
+            continue;
+        }
+        await page.focus(`.zr-shell ${pulsante}`);
+        await page.keyboard.press('Enter');
+        await pausa(500);
+        const aperto = await page.evaluate((sel) => document.querySelector(`.zr-shell ${sel}`)?.getAttribute('aria-expanded'), pulsante);
+        let fuori = false;
+        for (let i = 0; i < 30 && !fuori; i++) {
+            await page.keyboard.press('Tab');
+            await pausa(100);
+            fuori = await page.evaluate(([sel, zona]) => !document.activeElement?.closest(zona) && !document.activeElement?.matches(`.zr-shell ${sel}`), [pulsante, dentro]);
+        }
+        await pausa(200);
+        const dopo = await page.evaluate((sel) => [document.querySelector(`.zr-shell ${sel}`)?.getAttribute('aria-expanded'), document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent?.trim().slice(0, 30)], pulsante);
+        scrivi(aperto === 'true' && fuori && dopo[0] === 'false' ? '✅' : '❌', id, `${nome}, aperto con Invio, si chiude quando il Tab porta il fuoco fuori (#2804)`, `aperto: ${aperto}, uscito: ${fuori}, dopo: aria-expanded ${dopo[0]}, fuoco su «${dopo[1]}»`);
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.keyboard.press('Escape');
+        await pausa(200);
+    }
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -538,6 +569,7 @@ async function uat(page, apri) {
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
     await ricerca(page, true);
     await escNellaBarra(page, true);
+    await fuoriDaiMenu(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);

@@ -188,15 +188,25 @@ function inizioEFine(tasto: KeyboardEvent): void {
 /**
  * Col fuoco che esce dal selettore dei workspace aperto verso un altro elemento — col Tab, verso la barra laterale che l'`AppShell`
  * nasconde finché il selettore è aperto — il pannello restava aperto (riga 48): si chiude col pulsante del selettore, e il fuoco
- * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Provvisorio, come sopra.
+ * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Lo stesso, dalla
+ * v3.10.0, per il menu del profilo, il menu «+» e il pannello delle notifiche (#2804): aperti, hanno il fuoco (la cornice lo dà
+ * loro), e il fuoco che va a un elemento che non è il loro pulsante, né un menu o un pannello della cornice, li chiude col loro
+ * pulsante. Provvisorio, come sopra.
  */
 function fuoriDalSelettore(uscita: FocusEvent): void {
     const selettore = (uscita.target as Element).closest?.('.zr-shell .zr-ws.is-open');
-    const verso = uscita.relatedTarget as Node | null;
+    const verso = uscita.relatedTarget as Element | null;
 
     if (selettore && verso && !selettore.contains(verso)) {
         selettore.querySelector<HTMLElement>('.zr-ws-switch')?.click();
     }
+    document.querySelectorAll<HTMLElement>('.zr-shell .zr-avatar-btn[aria-expanded="true"], .zr-shell .zr-bell[aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"]').forEach((pulsante) => {
+        const suo = (qui: Element | null): boolean => qui === pulsante || !!qui?.closest?.('.zr-menu, .zr-pop');
+
+        if (verso && !suo(verso)) {
+            pulsante.click();
+        }
+    });
 }
 
 /**

@@ -7174,7 +7174,8 @@ describe('chi non ha accettato i documenti legali', () => {
         if (daUnaRotta) {
             await clic(uno('.zr-bell'));
         }
-        campo.focus();
+        // Dalla v3.10.0 (sprint 78 · T4, voce 2804) il fuoco che va al campo della pagina chiude il pannello delle notifiche.
+        await act(async () => campo.focus());
         expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
 
         // Lo stato ridotto arriva.
@@ -8239,17 +8240,18 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(campanella());
     });
 
-    it('il fuoco non si toglie a un elemento della pagina che lo ha già: arrivato su un campo fuori dal pannello senza un clic — col Tab —, chiuso il pannello resta su quel campo (sprint 31 · T3.4; sprint 32 · T2.1)', async () => {
+    // Dalla v3.10.0 (sprint 78 · T4, voce 2804) il pannello si chiude già quando il fuoco va al campo, senza il clic sulla campanella.
+    it('il fuoco non si toglie a un elemento della pagina che lo ha già: arrivato su un campo fuori dal pannello senza un clic — col Tab —, il pannello si chiude e il fuoco resta su quel campo (sprint 31 · T3.4; sprint 32 · T2.1; voce 2804)', async () => {
         vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
         await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><input id="della-pagina" /></Cornice>);
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
 
         await apri();
         expect(document.activeElement).toBe(scelta());
         await conIlFuoco(uno('#della-pagina'));
-        await clic(campanella());
         expect(uno('.zr-notif')).toBeNull();
         expect(document.activeElement).toBe(uno('#della-pagina'));
     });
@@ -10135,6 +10137,70 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
         await esc(voce);
 
         expect([uno('.zr-avatar-btn')?.getAttribute('aria-expanded'), aperti()[2]]).toStrictEqual(['false', 'true']);
+    });
+});
+
+// Sprint 78 · T4 (voce 2804): col Tab fuori dal menu del profilo, dal menu «+» o dal pannello delle notifiche restavano aperti
+// col fuoco altrove, e potevano coprirlo. Si chiudono col loro pulsante, come il selettore dalla v3.8.1 (riga 48).
+describe('i menu della barra si chiudono quando il fuoco esce (sprint 78, voce 2804)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Una scheda' }, { label: 'Un elenco' }]}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const fuocoA = async (elemento: Element | null | undefined) => act(async () => {
+        (elemento as HTMLElement).focus();
+        await vi.dynamicImportSettled();
+        await prossimoGiro();
+    });
+    const pagina = () => uno('#della-pagina');
+
+    it.each([
+        ['il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu [role="menuitem"]'],
+        ['il menu «+»', '.zr-create', '.zr-menu [role="menuitem"]'],
+        ['il pannello delle notifiche', '.zr-bell', '.zr-notif a[href], .zr-notif button'],
+    ])('T4.1-T4.2 %s si chiude quando il fuoco va da dentro a un elemento della pagina, che lo tiene (voce 2804)', async (_nome, pulsante, dentro) => {
+        await laCornice();
+        await clic(uno(pulsante));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        expect(uno(pulsante)?.getAttribute('aria-expanded')).toBe('true');
+        await fuocoA(tutti(dentro).at(-1));
+
+        await fuocoA(pagina());
+
+        expect([uno(pulsante)?.getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', pagina()]);
+    });
+
+    it('T4.3 il fuoco che passa fra due elementi del pannello delle notifiche lo lascia aperto (voce 2804)', async () => {
+        await laCornice();
+        await clic(uno('.zr-bell'));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const dentro = tutti('.zr-notif a[href], .zr-notif button');
+        expect(dentro.length).toBeGreaterThan(1);
+        await fuocoA(dentro[0]);
+
+        await fuocoA(dentro.at(-1));
+
+        expect(uno('.zr-bell')?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('T4.3 dal menu del profilo verso il suo pulsante, o col fuoco che lascia la finestra, il menu resta aperto (voce 2804)', async () => {
+        await laCornice();
+        await clic(uno('.zr-avatar-btn'));
+        await fuocoA(uno('.zr-profile-menu [role="menuitem"]'));
+
+        await fuocoA(uno('.zr-avatar-btn'));
+        await act(async () => {
+            uno('.zr-avatar-btn')?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+        });
+
+        expect(uno('.zr-avatar-btn')?.getAttribute('aria-expanded')).toBe('true');
     });
 });
 
