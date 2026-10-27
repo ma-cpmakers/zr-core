@@ -132,8 +132,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 80 chiuso senza codice (#2821 in `test_umano`,
-   consegna 18960: prova della `v3.11.0` nei quattro moduli); #2722 e #2549 in `test_uat` (il verdetto viene dall'UAT di un
-   modulo con la `v3.6.0`); prossimo: sprint 81 su ciò che dice zr-pm (in `backlog_prodotto` nessuna voce prendibile).
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 81 chiuso (`v3.11.1`, #2822 in `test_umano`: il
+   fuoco torna al «+» dopo il dialogo che una sua voce apre); #2722 e #2549 in `test_uat` (il verdetto viene dall'UAT di un
+   modulo con la `v3.6.0`); prossimo: sprint 82 su ciò che dice zr-pm (in `backlog_prodotto` nessuna voce prendibile).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
