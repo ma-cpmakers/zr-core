@@ -944,12 +944,16 @@ cornice === null ? pagina : (
   la parola resta com'era.
 - **Scelta una voce del «+» con la tastiera, il fuoco torna al «+»**: dalla `v3.8.1`, scelta una voce del menu «+» con Invio o
   con lo spazio, il menu si chiude, la voce fa la sua parte e il fuoco torna sul «+», come dopo Esc: prima restava alla pagina, e
-  il Tab ripartiva dall'inizio. Se la voce dà il fuoco a un altro elemento — un dialogo che si apre, un campo — resta lì, e
-  con un dialogo aperto dalla voce non va al «+» dietro il velo. Un dialogo che la voce apre più tardi — dopo una richiesta, o un
-  dialogo a richiesta — trova il fuoco già sul «+», dietro il velo: in quel caso il fuoco nel dialogo lo dà il modulo. Il modulo
-  non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
-  (riga 11 delle richieste al design system) si toglie, e se il pezzo non arriva, o se la voce è scelta prima che arrivi (il
-  primo tasto premuto lo chiede), il fuoco resta alla pagina com'era.
+  il Tab ripartiva dall'inizio. Dalla `v3.11.1` il fuoco va al «+» prima che la voce faccia la sua parte, anche col mouse: un
+  dialogo che la voce apre si ricorda chi aveva il fuoco quando si è aperto, e alla chiusura glielo rende (il `<dialog>` del
+  browser lo fa da sé). Con la `v3.11.1` lo rende al «+»; prima lo aveva la voce, che esce col menu, e chiuso il dialogo il fuoco
+  restava alla pagina (#2822). Se la voce dà il fuoco a un altro elemento — un dialogo che si apre, un campo — resta lì. Se apre
+  un `Dialog` del design system senza dargli il fuoco, il fuoco non resta sul «+» dietro il velo, che Invio premerebbe: va al
+  dialogo, e quando il dialogo se ne va torna al «+». Un dialogo che la voce apre più tardi — dopo una richiesta, o un dialogo a
+  richiesta — trova il fuoco già sul «+», dietro il velo: in quel caso il fuoco nel dialogo lo dà il modulo. Il modulo non deve
+  fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé (riga 11 delle
+  richieste al design system) si toglie, e se il pezzo non arriva, o se la voce è scelta prima che arrivi (il primo tasto premuto
+  lo chiede), il fuoco resta alla pagina com'era.
 - **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
   portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
   schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della

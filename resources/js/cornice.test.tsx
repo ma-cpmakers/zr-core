@@ -8580,7 +8580,7 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
         expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 
-    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo', async () => {
+    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo: lo dà al dialogo, e quando il dialogo se ne va torna al «+»', async () => {
         const velo = document.createElement('div');
         velo.className = 'zr-scrim';
         velo.innerHTML = '<div class="zr-dialog" role="dialog"><button type="button">Nel dialogo</button></div>';
@@ -8590,7 +8590,28 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
 
         expect(uno('.zr-menu')).toBeNull();
         expect(document.activeElement).not.toBe(piu());
-        velo.remove();
+        expect(document.activeElement).toBe(velo.firstElementChild);
+
+        await act(async () => {
+            velo.remove();
+            await prossimoGiro();
+        });
+
+        expect(document.activeElement).toBe(piu());
+    });
+
+    // Voce #2822 (Decisione 18962): un dialogo che la voce apre si ricorda chi aveva il fuoco quando si è aperto, e alla chiusura
+    // glielo rende (il `<dialog>` del browser lo fa da sé). Era la voce, uscita col menu: chiuso il dialogo il fuoco andava alla
+    // pagina. Va al «+» prima che la voce faccia la sua parte, con la tastiera e col mouse.
+    it.each([['col tasto Invio', 'Enter'], ['col mouse', '']])('scelta una voce %s, quando la voce fa la sua parte il fuoco è già sul «+», e ci resta', async (_come, key) => {
+        let loAveva: Element | null = null;
+        await laCornice([{ label: 'Nuova board', onClick: () => { loAveva = document.activeElement; } }]);
+
+        await (key ? scegli(voce('Nuova board'), key) : clic(voce('Nuova board')));
+
+        expect(loAveva).toBe(piu());
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(piu());
     });
 });
 
