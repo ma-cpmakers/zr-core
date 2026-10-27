@@ -146,7 +146,8 @@ function escDalPannello(tasto: KeyboardEvent): void {
  * quel tasto il campo non si lascia togliere il fuoco. Un secondo Esc, col pannello chiuso, non svuota il campo (il README lo
  * dice). Col cassetto aperto Esc lo chiude anche dal campo della ricerca, che l'`AppShell` lascia fuori — non con un dialogo
  * aperto, né coi menu della barra o col selettore aperti, che si chiudono loro —, e il fuoco che non è nella barra in alto torna
- * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. In ascolto in cattura, perché
+ * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
+ * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto. In ascolto in cattura, perché
  * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
  */
 function escNellaBarra(tasto: KeyboardEvent): void {
@@ -158,7 +159,7 @@ function escNellaBarra(tasto: KeyboardEvent): void {
             campo.blur = () => {};
             setTimeout(() => delete (campo as Partial<HTMLInputElement>).blur);
         }
-        if (menu && !document.querySelector('.zr-scrim, .zr-shell .zr-top-actions [aria-expanded="true"], .zr-shell .zr-ws.is-open')) {
+        if (menu && campo === document.activeElement && !document.querySelector('.zr-scrim, .zr-shell .zr-top-actions [aria-expanded="true"], .zr-shell .zr-ws.is-open')) {
             setTimeout(() => {
                 if (menu.getAttribute('aria-expanded') === 'true') {
                     menu.click();
@@ -228,8 +229,37 @@ function fuocoAlPiu(): void {
     }
 }
 
+/**
+ * Il menu a cassetto (sotto 720 px) aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva verso la ricerca
+ * e la pagina (#2806). Aperto con Invio o con lo spazio — il clic della tastiera, senza `detail` — il fuoco va alla prima voce;
+ * col mouse resta sul pulsante. Finché è aperto il Tab gira fra il pulsante, che lo chiude, e le voci, e da fuori rientra sulla
+ * prima. Con un dialogo aperto, o un `DetailPanel` che trattiene il fuoco, vale lui. Chiuso con Esc il fuoco torna al pulsante
+ * (`escNellaBarra`). Provvisorio, finché l'`AppShell` non lo fa da sé (#2341, `role="dialog"`).
+ */
+function giroDelCassetto(): HTMLElement[] {
+    const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
+
+    return menu ? [menu, ...[...(document.querySelector('.zr-shell > .zr-side')?.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO) ?? [])].filter(eUnaFermata)] : [];
+}
+
+function tabNelCassetto(tasto: KeyboardEvent): void {
+    const giro = giroDelCassetto();
+    const qui = giro.indexOf(document.activeElement as HTMLElement);
+
+    if (giro.length && tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey && !chiTrattieneIlFuoco()) {
+        tasto.preventDefault();
+        giro.at(qui < 0 ? 1 : (qui + (tasto.shiftKey ? -1 : 1)) % giro.length)?.focus();
+    }
+}
+
+function apertoIlCassetto(clic: MouseEvent): void {
+    if (!clic.detail && (clic.target as Element).closest?.('.zr-shell .zr-top-menu')) {
+        setTimeout(() => giroDelCassetto()[1]?.focus());
+    }
+}
+
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu, tabNelCassetto];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
@@ -256,4 +286,5 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
 document.addEventListener('keydown', escNellaBarra, true);
+document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('focusout', fuoriDalSelettore);

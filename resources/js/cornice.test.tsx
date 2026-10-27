@@ -10137,3 +10137,101 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
         expect([uno('.zr-avatar-btn')?.getAttribute('aria-expanded'), aperti()[2]]).toStrictEqual(['false', 'true']);
     });
 });
+
+// Sprint 78 · T3 (voce 2806): il menu a cassetto aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva
+// verso la ricerca. Il Tab vero lo prova `scripts/uat-cornice.mjs` (K390.5-K390.7).
+describe('il menu a cassetto trattiene il fuoco (sprint 78, voce 2806)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const voci = () => tutti('.zr-shell > .zr-side a[href], .zr-shell > .zr-side button') as HTMLElement[];
+    /** Invio o spazio sul pulsante: il clic che il browser dà alla tastiera ha `detail` 0; quello del mouse, 1. */
+    const premi = async (detail: number) => act(async () => {
+        menu().focus();
+        menu().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+        await prossimoGiro();
+    });
+    const tab = async (shiftKey = false) => act(async () => {
+        (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+
+    it('T3.1 aperto con la tastiera, il fuoco va alla prima voce del cassetto; col mouse resta sul pulsante (voce 2806)', async () => {
+        await laCornice();
+
+        await premi(0);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['true', voci()[0]]);
+
+        await premi(0);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', menu()]);
+        await premi(1);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['true', menu()]);
+    });
+
+    it('T3.2 col cassetto aperto il Tab e Maiusc+Tab girano fra le voci e il pulsante, senza uscire (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        const [prima, ultima] = [voci()[0], voci().at(-1)];
+
+        await act(async () => ultima?.focus());
+        await tab();
+        expect(document.activeElement).toBe(menu());
+        await tab();
+        expect(document.activeElement).toBe(prima);
+        await tab(true);
+        expect(document.activeElement).toBe(menu());
+        await tab(true);
+        expect(document.activeElement).toBe(ultima);
+    });
+
+    it('T3.2 col fuoco fuori dal cassetto aperto il Tab rientra sulla prima voce; a cassetto chiuso il Tab resta del browser (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        await act(async () => (uno('.zr-top .zr-search input') as HTMLElement).focus());
+
+        await tab();
+        expect(document.activeElement).toBe(voci()[0]);
+
+        await premi(0);
+        const evento = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        await act(async () => {
+            menu().dispatchEvent(evento);
+        });
+        expect([evento.defaultPrevented, document.activeElement]).toStrictEqual([false, menu()]);
+    });
+
+    it('T3.2 con un dialogo aperto sopra il cassetto, anche con un suo menu che ha il fuoco, il Tab non gira nel cassetto (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        const velo = document.createElement('div');
+        velo.className = 'zr-scrim';
+        velo.innerHTML = '<div class="zr-dialog"><div class="zr-menu"><button type="button">Una voce</button></div></div>';
+        document.body.append(velo);
+        onTestFinished(() => velo.remove());
+        const voce = velo.querySelector('button') as HTMLElement;
+        await act(async () => voce.focus());
+
+        const evento = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        await act(async () => {
+            voce.dispatchEvent(evento);
+        });
+
+        expect([evento.defaultPrevented, document.activeElement]).toStrictEqual([false, voce]);
+    });
+
+    it('T3.3 chiuso il cassetto col pulsante o con Esc, il fuoco è su «Apri il menu» (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        await act(async () => {
+            voci()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await prossimoGiro();
+        });
+
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', menu()]);
+    });
+});

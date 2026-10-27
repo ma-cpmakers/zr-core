@@ -497,6 +497,34 @@ async function escNellaBarra(page, largo) {
     await page.evaluate(() => document.activeElement?.blur());
 }
 
+// Il menu a cassetto a 390 px (#2806, rimedio della v3.10.0): aperto con la tastiera il fuoco entra, il Tab resta dentro
+// (voci e pulsante), chiuso col pulsante il fuoco è su «Apri il menu».
+async function cassetto(page) {
+    const dove = () => page.evaluate(() => {
+        const a = document.activeElement;
+        return a?.matches('.zr-top-menu') ? 'pulsante' : a?.closest('.zr-shell > .zr-side') ? 'cassetto' : a?.closest('.zr-search') ? 'ricerca' : a?.closest('main') ? 'contenuto' : a?.tagName.toLowerCase() ?? 'niente';
+    });
+    const aperto = () => page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'));
+    await page.focus('.zr-shell .zr-top-menu');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const entrato = await dove();
+    scrivi((await aperto()) === 'true' && entrato === 'cassetto' ? '✅' : '❌', 'K390.5', 'Invio su «Apri il menu»: il cassetto si apre e il fuoco è sulla sua prima voce (#2806)', `fuoco: ${entrato}`);
+    const giro = [];
+    for (const tasto of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+        await page.keyboard.press(tasto);
+        await pausa(100);
+        giro.push(await dove());
+    }
+    scrivi(giro.every((qui) => qui === 'cassetto' || qui === 'pulsante') && giro.includes('pulsante') ? '✅' : '❌', 'K390.6', 'col cassetto aperto Tab e Maiusc+Tab restano fra le voci e il pulsante (#2806)', giro.join(' → '));
+    await page.focus('.zr-shell .zr-top-menu');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const chiuso = await dove();
+    scrivi((await aperto()) === 'false' && chiuso === 'pulsante' ? '✅' : '❌', 'K390.7', 'chiuso il cassetto col pulsante, il fuoco è su «Apri il menu» (#2806)', `aperto: ${await aperto()}, fuoco: ${chiuso}`);
+    await page.evaluate(() => document.activeElement?.blur());
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -524,6 +552,7 @@ async function uat(page, apri) {
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
     await ricerca(page, false);
     await escNellaBarra(page, false);
+    await cassetto(page);
     await campanella(page, false);
 
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));

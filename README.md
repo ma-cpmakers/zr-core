@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 59,7 KB | 12,7 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 59,7 KB | 12,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 59,7 KB | 12,7 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 60,3 KB | 12,7 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 60,3 KB | 12,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 60,3 KB | 12,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -182,7 +182,7 @@ cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm)
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.558 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.707 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -919,13 +919,15 @@ cornice === null ? pagina : (
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
-- **Esc nella ricerca e nel cassetto**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
+- **Esc nella ricerca, e il cassetto da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
   il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto 720 px) Esc lo chiude anche col
   fuoco nel campo della ricerca, che l'`AppShell` lasciava fuori, e il fuoco che era sulle sue voci torna ad «Apri il menu»
   (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra o il selettore aperti, Esc chiude
-  prima quelli e il cassetto resta. Il modulo non deve fare niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco
-  sul documento va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
+  prima quelli e il cassetto resta. Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
+  sul pulsante), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
+  (#2806: prima il Tab usciva verso la ricerca). Il modulo non deve fare niente; un test del modulo che dopo Esc nella ricerca
+  cerca il fuoco sul documento, o che col cassetto aperto conta le fermate del Tab, va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
   andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé.
 - **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
   Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
