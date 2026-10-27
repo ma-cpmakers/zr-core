@@ -182,7 +182,7 @@ cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm)
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.762 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.782 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -958,8 +958,9 @@ cornice === null ? pagina : (
   fuoco alla prima voce e Fine all'ultima (prima non facevano niente; le frecce le muove l'`AppShell`), e il fuoco che va a un
   elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
   resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
-  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina.
-  Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina. Dalla
+  `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); un `Menu`
+  della pagina resta com'è. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama

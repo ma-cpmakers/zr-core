@@ -556,6 +556,38 @@ async function fuoriDaiMenu(page) {
     }
 }
 
+async function inizioEFineNeiMenu(page) {
+    for (const [id, nome, pulsante, menu] of [
+        ['M.1', 'menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['M.2', 'menu «+»', '.zr-create', '.zr-side .zr-menu'],
+    ]) {
+        if (!(await page.$(`.zr-shell ${pulsante}`))) {
+            scrivi('➖', id, `nel ${nome} Fine e Home vanno all'ultima e alla prima voce (#2802)`, 'la pagina non ha il pulsante');
+            continue;
+        }
+        await page.focus(`.zr-shell ${pulsante}`);
+        await page.keyboard.press('Enter');
+        await pausa(500);
+        const dove = () => page.evaluate((sel) => {
+            const voci = [...document.querySelectorAll(`.zr-shell ${sel} [role="menuitem"]:not(:disabled)`)];
+            return `${voci.indexOf(document.activeElement)} di 0-${voci.length - 1}`;
+        }, menu);
+        await page.keyboard.press('ArrowDown');
+        await pausa(100);
+        const giu = await dove();
+        await page.keyboard.press('End');
+        await pausa(100);
+        const fine = await dove();
+        await page.keyboard.press('Home');
+        await pausa(100);
+        const inizio = await dove();
+        const ultima = fine.split('-').at(-1);
+        scrivi(fine === `${ultima} di 0-${ultima}` && inizio.startsWith('0 di') && Number(ultima) > 1 ? '✅' : '❌', id, `nel ${nome}, aperto con Invio, Fine va all'ultima voce e Home alla prima (#2802)`, `freccia giù: voce ${giu}, Fine: voce ${fine}, Home: voce ${inizio}`);
+        await page.keyboard.press('Escape');
+        await pausa(200);
+    }
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -570,6 +602,7 @@ async function uat(page, apri) {
     await ricerca(page, true);
     await escNellaBarra(page, true);
     await fuoriDaiMenu(page);
+    await inizioEFineNeiMenu(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);

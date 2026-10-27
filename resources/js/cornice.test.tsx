@@ -10204,6 +10204,52 @@ describe('i menu della barra si chiudono quando il fuoco esce (sprint 78, voce 2
     });
 });
 
+// Sprint 78 · T5 (voce 2802): nel menu del profilo e nel menu «+» le frecce muovono il fuoco, Home e Fine no (il `Menu` del design
+// system ascolta le sole frecce). Col pezzo della tastiera Home e Fine vanno alla prima e all'ultima voce, come nel selettore dei
+// workspace (riga 48). Solo nei menu della cornice: un `Menu` della pagina resta com'è.
+describe('nel menu del profilo e nel «+» Home e Fine vanno alla prima e all\'ultima voce (sprint 78, voce 2802)', () => {
+    const { Menu } = componenti;
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+
+    it.each([
+        ['T5.1 il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['T5.2 il menu «+»', '.zr-create', '.zr-side .zr-menu'],
+    ])('%s: freccia giù, Fine porta il fuoco all\'ultima voce che non è spenta, Home alla prima, e il menu resta aperto (voce 2802)', async (_nome, pulsante, menu) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Una scheda' }, { label: 'Un elenco' }, { label: 'Una cartella' }, { label: 'Spenta', disabled: true }]}><button type="button">Nella pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno(pulsante));
+        const voci = () => tutti(`${menu} [role="menuitem"]:not(:disabled)`);
+        await act(async () => voci()[0]?.focus());
+        await premi('ArrowDown');
+        expect([voci().length > 2, document.activeElement]).toStrictEqual([true, voci()[1]]);
+
+        await premi('End');
+        expect([document.activeElement, uno(pulsante)?.getAttribute('aria-expanded')]).toStrictEqual([voci().at(-1), 'true']);
+        await premi('Home');
+        expect([document.activeElement, uno(pulsante)?.getAttribute('aria-expanded')]).toStrictEqual([voci()[0], 'true']);
+    });
+
+    it('un menu della pagina dentro la cornice non cambia: Fine non sposta il fuoco (voce 2802)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><Menu anchor={null} inline label="Della pagina" items={[{ label: 'Uno' }, { label: 'Due' }, { label: 'Tre' }]} onClose={() => {}} /></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await act(async () => tutti('.zr-main [role="menuitem"]')[0]?.focus());
+
+        await premi('End');
+
+        expect(document.activeElement).toBe(tutti('.zr-main [role="menuitem"]')[0]);
+    });
+});
+
 // Sprint 78 · T3 (voce 2806): il menu a cassetto aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva
 // verso la ricerca. Il Tab vero lo prova `scripts/uat-cornice.mjs` (K390.5-K390.7).
 describe('il menu a cassetto trattiene il fuoco (sprint 78, voce 2806)', () => {

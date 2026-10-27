@@ -174,10 +174,12 @@ function escNellaBarra(tasto: KeyboardEvent): void {
 
 /**
  * Nel selettore dei workspace aperto l'`AppShell` muove il fuoco con le frecce, ma Home e Fine non facevano niente (riga 48 delle
- * richieste al design system): portano il fuoco alla prima e all'ultima voce. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ * richieste al design system): portano il fuoco alla prima e all'ultima voce. Lo stesso, dalla v3.10.0, nel menu del profilo e nel
+ * menu «+» (#2802, riga 132), fra le voci che non sono spente; un `Menu` della pagina no. Provvisorio, finché l'`AppShell` non lo
+ * fa da sé.
  */
 function inizioEFine(tasto: KeyboardEvent): void {
-    const voci = (tasto.target as Element).closest?.('.zr-shell .zr-ws-menu')?.querySelectorAll<HTMLElement>('.zr-ws-item');
+    const voci = (tasto.target as Element).closest?.('.zr-shell .zr-ws-menu, .zr-shell .zr-top .zr-menu, .zr-shell .zr-side .zr-menu')?.querySelectorAll<HTMLElement>('.zr-ws-item, [role="menuitem"]:not(:disabled)');
 
     if (voci && (tasto.key === 'Home' || tasto.key === 'End')) {
         tasto.preventDefault();

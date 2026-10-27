@@ -134,7 +134,7 @@ function Lunga({ visita }: Props) {
         nav: vociDellaLunga,
         active: 'risorse',
         onNavigate: (id) => segna(`UAT voce «${id}» col conteggio ${conteggio}`),
-        create: [{ label: 'UAT Board', icon: 'board', onClick: () => segna(`UAT «+» UAT Board col conteggio ${conteggio}`) }],
+        create: [{ label: 'UAT Board', icon: 'board', onClick: () => segna(`UAT «+» UAT Board col conteggio ${conteggio}`) }, { label: 'UAT Elenco' }, { label: 'UAT Cartella' }],
         actions: <Zeiras.Button variant="secondary" size="sm" onClick={() => segna(`UAT azione col conteggio ${conteggio}`)}>UAT azione</Zeiras.Button>,
         flush: senzaMargine,
     });
