@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 60,3 KB | 12,7 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 60,3 KB | 12,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 60,3 KB | 12,7 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 60,9 KB | 12,7 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 60,9 KB | 12,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 60,9 KB | 12,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -182,7 +182,7 @@ cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm)
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.782 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.901 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -962,6 +962,13 @@ cornice === null ? pagina : (
   `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); un `Menu`
   della pagina resta com'è. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
+- **Le linguette del pannello delle notifiche con le frecce**: dalla `v3.10.0`, nel pannello delle notifiche aperto, col fuoco
+  su «Per me» o su «Tutte», la freccia a destra o a sinistra passa all'altra linguetta e la sceglie, Home va alla prima e Fine
+  all'ultima (#2803: prima le frecce non facevano niente). Nel giro del Tab resta la sola linguetta scelta, anche quando la
+  sceglie un clic: prima il Tab si fermava su tutte e due. Il legame fra la linguetta e ciò che mostra (`aria-controls`) non c'è
+  ancora: è struttura dell'`AppShell` (riga 133 delle richieste al design system). Il modulo non deve fare niente; un test del
+  modulo che col Tab passa da «Per me» a «Tutte» va riletto. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell`
+  lo fa da sé si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso

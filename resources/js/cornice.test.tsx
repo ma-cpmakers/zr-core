@@ -10347,3 +10347,70 @@ describe('il menu a cassetto trattiene il fuoco (sprint 78, voce 2806)', () => {
         expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', menu()]);
     });
 });
+
+// Sprint 78 · T6 (voce 2803): nel pannello delle notifiche le linguette «Per me» e «Tutte» erano due fermate del Tab e le frecce
+// non facevano niente. Col pezzo della tastiera le frecce passano all'altra linguetta e la scelgono, Home e Fine vanno alla prima
+// e all'ultima, e nel giro del Tab resta la sola linguetta scelta. Il Tab vero lo prova `scripts/uat-cornice.mjs` (N.1-N.2).
+describe('le linguette del pannello delle notifiche si scorrono con le frecce (sprint 78, voce 2803)', () => {
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+    const linguette = () => tutti('.zr-notif-tabs [role="tab"]');
+    const scelta = () => linguette().map((linguetta) => linguetta.getAttribute('aria-selected'));
+    const laCampanella = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno('.zr-bell'));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+
+    it('T6.1 dal fuoco su «Per me» la freccia a destra sceglie «Tutte», quella a sinistra torna, Fine va all\'ultima e Home alla prima (voce 2803)', async () => {
+        await laCampanella();
+        expect([linguette().length, document.activeElement, scelta()]).toStrictEqual([2, linguette()[0], ['true', 'false']]);
+
+        await premi('ArrowRight');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[1], ['false', 'true']]);
+        await premi('ArrowLeft');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        await premi('End');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[1], ['false', 'true']]);
+        await premi('Home');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        // Dall'ultima la freccia a destra torna alla prima, e dalla prima quella a sinistra va all'ultima.
+        await premi('ArrowLeft');
+        expect(document.activeElement).toBe(linguette()[1]);
+        await premi('ArrowRight');
+        expect(document.activeElement).toBe(linguette()[0]);
+    });
+
+    it('T6.2 nel giro del Tab resta solo la linguetta scelta, anche quando la sceglie un clic (voce 2803)', async () => {
+        await laCampanella();
+        await premi('Shift');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([0, -1]);
+
+        await premi('ArrowRight');
+        await premi('Shift');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([-1, 0]);
+
+        await clic(linguette()[0]);
+        await premi('Tab');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([0, -1]);
+    });
+
+    it('un tasto che non è una freccia, Home o Fine non sposta il fuoco né la scelta, e le frecce fuori dalle linguette non le toccano (voce 2803)', async () => {
+        await laCampanella();
+
+        await premi('ArrowDown');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        await act(async () => uno('.zr-bell')?.focus());
+        await premi('ArrowRight');
+        expect([document.activeElement, scelta()]).toStrictEqual([uno('.zr-bell'), ['true', 'false']]);
+    });
+});

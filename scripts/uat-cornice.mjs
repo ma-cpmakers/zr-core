@@ -588,6 +588,47 @@ async function inizioEFineNeiMenu(page) {
     }
 }
 
+async function linguetteDelleNotifiche(page) {
+    if (!(await page.$('.zr-shell .zr-bell'))) {
+        scrivi('➖', 'N.1', 'le linguette del pannello delle notifiche con le frecce (#2803)', 'la pagina non ha la campanella');
+        return;
+    }
+    await page.focus('.zr-shell .zr-bell');
+    await page.keyboard.press('Enter');
+    await pausa(500);
+    /** Su quale linguetta sta il fuoco e quale è scelta: «-» se il fuoco non è su una linguetta. */
+    const dove = () => page.evaluate(() => {
+        const linguette = [...document.querySelectorAll('.zr-shell .zr-notif-tabs [role="tab"]')];
+        return `fuoco ${linguette.indexOf(document.activeElement)}, scelta ${linguette.findIndex((linguetta) => linguetta.getAttribute('aria-selected') === 'true')}`;
+    });
+    const passi = [await dove()];
+    for (const tasto of ['ArrowRight', 'ArrowLeft', 'End', 'Home']) {
+        await page.keyboard.press(tasto);
+        await pausa(150);
+        passi.push(await dove());
+    }
+    const attesi = ['fuoco 0, scelta 0', 'fuoco 1, scelta 1', 'fuoco 0, scelta 0', 'fuoco 1, scelta 1', 'fuoco 0, scelta 0'];
+    scrivi(passi.join() === attesi.join() ? '✅' : '❌', 'N.1', 'nel pannello delle notifiche, aperto con Invio, le frecce, Home e Fine passano fra «Per me» e «Tutte» e le scelgono (#2803)', passi.join(' → '));
+
+    // Col fuoco sulla linguetta scelta, Tab va oltre le linguette e Maiusc+Tab torna a lei; scelta «Tutte», Maiusc+Tab non si ferma su «Per me».
+    const linguetta = () => page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' ? document.activeElement.textContent : '-');
+    await page.keyboard.press('Tab');
+    await pausa(150);
+    const avanti = await linguetta();
+    await page.keyboard.press('Shift+Tab');
+    await pausa(150);
+    const indietro = await linguetta();
+    await page.keyboard.press('ArrowRight');
+    await pausa(150);
+    await page.keyboard.press('Shift+Tab');
+    await pausa(150);
+    const primaDiTutte = await linguetta();
+    scrivi(avanti === '-' && indietro !== '-' && primaDiTutte === '-' ? '✅' : '❌', 'N.2', 'nel giro del Tab c\'è solo la linguetta scelta (#2803)', `Tab da «Per me»: ${avanti}; Maiusc+Tab: ${indietro}; scelta «Tutte», Maiusc+Tab: ${primaDiTutte}`);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press('Escape');
+    await pausa(200);
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -603,6 +644,7 @@ async function uat(page, apri) {
     await escNellaBarra(page, true);
     await fuoriDaiMenu(page);
     await inizioEFineNeiMenu(page);
+    await linguetteDelleNotifiche(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);

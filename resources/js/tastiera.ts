@@ -188,6 +188,30 @@ function inizioEFine(tasto: KeyboardEvent): void {
 }
 
 /**
+ * Nel pannello delle notifiche le linguette «Per me» e «Tutte» erano due fermate del Tab, e le frecce non facevano niente (#2803):
+ * le frecce a destra e a sinistra passano all'altra linguetta e la scelgono, Home e Fine vanno alla prima e all'ultima, e nel giro
+ * del Tab resta la sola linguetta scelta (`tabindex` mobile), rimesso a ogni tasto, prima che il browser sposti il fuoco: anche
+ * dopo un clic. Il legame fra la linguetta e ciò che mostra (`aria-controls`, `tabpanel`) è struttura dell'`AppShell`: riga 133
+ * delle richieste al design system. Provvisorio, come sopra.
+ */
+function frecceSulleLinguette(tasto: KeyboardEvent): void {
+    const linguette = [...document.querySelectorAll<HTMLElement>('.zr-shell .zr-notif-tabs [role="tab"]')];
+    const qui = linguette.indexOf(tasto.target as HTMLElement);
+    const verso = { ArrowRight: qui + 1, ArrowLeft: qui - 1, Home: 0, End: -1 }[tasto.key];
+
+    linguette.forEach((linguetta) => {
+        linguetta.tabIndex = linguetta.matches('[aria-selected="true"]') ? 0 : -1;
+    });
+    if (qui >= 0 && verso !== undefined) {
+        tasto.preventDefault();
+        const scelta = linguette.at(verso % linguette.length);
+
+        scelta?.click();
+        scelta?.focus();
+    }
+}
+
+/**
  * Col fuoco che esce dal selettore dei workspace aperto verso un altro elemento — col Tab, verso la barra laterale che l'`AppShell`
  * nasconde finché il selettore è aperto — il pannello restava aperto (riga 48): si chiude col pulsante del selettore, e il fuoco
  * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Lo stesso, dalla
@@ -271,7 +295,7 @@ function apertoIlCassetto(clic: MouseEvent): void {
 }
 
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu, tabNelCassetto];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, sceltaDalPiu, tabNelCassetto];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
