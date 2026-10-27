@@ -117,7 +117,9 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde, e prima del tag `scripts/uat-cornice.mjs` in un Chromium vero sulle pagine di
 prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con R.0 ✅ — il campo della ricerca tiene tutti i
-caratteri scritti: un difetto che vitest non vede (sprint 74, #2062; zr-pm 26/10). Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
+caratteri scritti: un difetto che vitest non vede (sprint 74, #2062; zr-pm 26/10); e, da solo, `node scripts/tipi-del-contratto.mjs`
+con esito 0: un tipo di evento nuovo del contratto ha un titolo o sta nell'elenco dei tipi che non arrivano alla campanella
+(dalla `v3.11.0`, #2820). Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
 `composer.json`, nessun token) a una versione con tag, e la aggiorna col suo agente e la sua CI. Il design system cambia
 → lo vedi all'avvio → riallinei → esce una versione nuova → **lo dici tu** ai frontend che usano zr-core, con un
 messaggio alla loro sessione (tag, cosa cambia, cosa devono fare) → ognuno la aggiorna. Le versioni seguono SemVer e i

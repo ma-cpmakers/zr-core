@@ -75,6 +75,9 @@ const preventivi = new URLSearchParams(window.location.search).has('preventivi')
 // non è un membro), col nome del servizio e `quando` nel fuso di Roma — la spostata col fuso di Tokyo, l'annullata senza il nome
 // del servizio —, e il preavviso di una scadenza col nome del tipo e il giorno.
 const prenotazioni = new URLSearchParams(window.location.search).has('prenotazioni');
+// Con `?sprint=1` (v3.11.0, sprint 79 · T1), in cima, le due notifiche degli sprint di Project Management, da leggere: la creata
+// senza chi, la modificata con chi, col nome dello sprint sotto il titolo.
+const sprint = new URLSearchParams(window.location.search).has('sprint');
 // Con `?frasi=1` l'elenco ha tre notifiche di Project Management in più, per le tre righe che il pannello può scrivere (sprint 29 · T3).
 const frasi = new URLSearchParams(window.location.search).has('frasi');
 // Con `?accorpata=1` in cima all'elenco c'è una notifica che racconta più azioni (sprint 32 · T3): è nata un'ora fa e l'ultima
@@ -116,6 +119,13 @@ const nonDetti: { autore_nome: string | null; risorsa_nome: string | null; per_m
 /** Gli stessi tre dati quando il backoffice li manda: solo con `?chi=1`. */
 const detti = (autore_nome: string | null, risorsa_nome: string | null, per_me: boolean | null) => (chi ? { autore_nome, risorsa_nome, per_me } : nonDetti);
 const notificheDiProva = [
+    // Solo con `?sprint=1`, le più recenti: le due degli sprint (v3.11.0, sprint 79 · T1).
+    ...(sprint
+        ? [
+              { id: 'uat-s1', creata_il: fa(1), letta: false, app: 'pm', tipo: 'com.zeiras.board.sprint.creato', autore_nome: null, risorsa_nome: 'UAT Sprint 12', per_me: null, ids: {} as Record<string, string> },
+              { id: 'uat-s2', creata_il: fa(2), letta: false, app: 'pm', tipo: 'com.zeiras.board.sprint.modificato', autore_nome: 'Marta Rossi', risorsa_nome: 'UAT Sprint 12', per_me: null, ids: {} as Record<string, string> },
+          ]
+        : []),
     // Solo con `?prenotazioni=1`, le più recenti: le tre di Bookings e il preavviso di una scadenza (v3.6.0, sprint 74 · T1).
     ...(prenotazioni
         ? ([
