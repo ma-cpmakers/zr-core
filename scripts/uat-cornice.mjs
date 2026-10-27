@@ -269,6 +269,29 @@ async function ricerca(page, largo) {
         dentro: !!document.activeElement?.closest('.zr-search'),
     }));
     scrivi(primaDiUscire && !uscito.aperta && !uscito.dentro && uscito.valore === parola ? '✅' : '❌', `${id}.8`, 'col fuoco uscito dal campo (Maiusc+Tab) la ricerca si chiude e la parola resta (righe 7 e 90)', `aperta prima: ${primaDiUscire}, dopo: ${uscito.aperta}, fuoco nella ricerca: ${uscito.dentro}, valore «${uscito.valore}»`);
+    // A 720 px o meno le azioni della barra stanno nascoste sotto la ricerca aperta (#2627): col Tab dalla ricerca il fuoco deve
+    // arrivare a campanella e profilo prima del contenuto (#2805, regressione della v3.4.0, rimedio della v3.10.0).
+    if (!largo) {
+        await page.keyboard.press('Control+k');
+        await page.keyboard.type(parola);
+        await pausa(800);
+        const passi = [];
+        for (let i = 0; i < 6; i++) {
+            await page.keyboard.press('Tab');
+            await pausa(200);
+            const dove = await page.evaluate(() => {
+                const a = document.activeElement;
+                return a?.closest('.zr-search') ? 'ricerca' : a?.matches('.zr-bell') ? 'campanella' : a?.matches('.zr-avatar-btn') ? 'profilo' : a?.closest('.zr-top-actions') ? 'barra' : a?.closest('main') ? 'contenuto' : a?.tagName.toLowerCase() ?? 'niente';
+            });
+            passi.push(dove);
+            if (dove === 'contenuto') break;
+        }
+        const fuori = passi.filter((dove) => dove !== 'ricerca');
+        const bene = fuori[0] !== 'contenuto' && fuori.indexOf('campanella') > -1 && fuori.indexOf('campanella') < fuori.indexOf('profilo') && (fuori.indexOf('contenuto') === -1 || fuori.indexOf('profilo') < fuori.indexOf('contenuto'));
+        scrivi(bene ? '✅' : '❌', `${id}.9`, 'col Tab dalla ricerca aperta il fuoco arriva a campanella e profilo prima del contenuto (#2805)', passi.join(' → '));
+        await page.keyboard.press('Escape');
+        await pausa(300);
+    }
 }
 
 async function campanella(page, largo) {

@@ -9909,6 +9909,38 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
 
         expect(azioni()?.style.visibility).toBe('');
     });
+
+    // Sprint 78 · T1 (voce 2805, regressione della v3.4.0): col fuoco nella ricerca le azioni erano nascoste, e il Tab saltava
+    // al contenuto. Al Tab si mostrano prima che il browser cerchi dove andare; il passaggio vero lo prova `scripts/uat-cornice.mjs`.
+    const tasto = async (key: string) => act(async () => {
+        campo().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+
+    it('T1.1 a 720 px o meno, col fuoco nel campo della ricerca, al Tab campanella e profilo si vedono e il Tab li raggiunge (voce 2805)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+        expect(azioni()?.style.visibility).toBe('hidden');
+
+        await tasto('Tab');
+
+        expect(azioni()?.style.visibility).toBe('');
+    });
+
+    it('T1.2 gli altri tasti nel campo lasciano campanella e profilo sotto la ricerca, e dopo il Tab, se il fuoco resta nella ricerca, si nascondono di nuovo (voce 2805)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+
+        await tasto('ArrowDown');
+        expect(azioni()?.style.visibility).toBe('hidden');
+
+        await tasto('Tab');
+        await tasto('a');
+
+        expect(azioni()?.style.visibility).toBe('hidden');
+    });
 });
 
 // Sprint 74 · T7 (voce #2720, dalla UAT di #2625 di zr-board): il pannello della ricerca scorre e dentro niente prende il fuoco

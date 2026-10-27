@@ -911,7 +911,9 @@ cornice === null ? pagina : (
   come la riga lo scrive: l'avatar di «Ada» resta in una notifica di «Adamo». A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
-  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.8.1` il fuoco che esce dalla
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.10.0` al Tab si
+  mostrano prima che il browser cerchi dove portare il fuoco, e dal campo o dal pannello il Tab arriva alle azioni della barra
+  prima del contenuto (#2805: nella `v3.4.0` le saltava); se il fuoco resta nella ricerca si nascondono di nuovo. Dalla `v3.8.1` il fuoco che esce dalla
   ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
   design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
