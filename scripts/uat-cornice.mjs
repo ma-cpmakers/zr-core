@@ -356,6 +356,35 @@ async function piu(page) {
     scrivi(sullaVoce && !dopo.menu && dopo.piu ? '✅' : '❌', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `voce col fuoco: ${sullaVoce}, menu aperto: ${dopo.menu}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
 }
 
+// L'ultima voce del «+», se apre un dialogo: chiuso con Esc, il fuoco torna al «+» (#2822, Decisione 18962). Il dialogo si
+// ricorda chi aveva il fuoco quando si è aperto, e la voce esce col menu. Sulle pagine di prova «UAT Cartella» apre un `<dialog>`
+// del browser, come il «Nuova board» di zr-board. È l'ultima prova a 1280 px: se la voce porta altrove, la pagina si riapre.
+async function dialogoDalPiu(page) {
+    const nome = 'l\'ultima voce del «+» apre un dialogo: chiuso con Esc, il fuoco torna al «+» (#2822)';
+    const aperto = () => page.evaluate(() => !!document.querySelector('dialog[open], .zr-scrim:not(.is-inline) > .zr-dialog'));
+    if (!(await page.locator('.zr-shell .zr-create').count())) {
+        scrivi('➖', 'P.3', nome, 'la pagina non ha il «+»: il modulo non dà `create`');
+        return;
+    }
+    await page.focus('.zr-shell .zr-create');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    await page.keyboard.press('End');
+    await pausa(100);
+    await page.keyboard.press('Enter');
+    await pausa(500);
+    if (!(await aperto())) {
+        scrivi('➖', 'P.3', nome, 'l\'ultima voce del «+» non apre un dialogo');
+        return;
+    }
+    await page.screenshot({ path: join(cartella, 'piu-dialogo-1280.png') });
+    await page.keyboard.press('Escape');
+    await pausa(400);
+    const chiuso = !(await aperto());
+    const dopo = await page.evaluate(() => ({ piu: document.activeElement?.matches('.zr-shell .zr-create') ?? false, attivo: document.activeElement?.tagName }));
+    scrivi(chiuso && dopo.piu ? '✅' : '❌', 'P.3', nome, `dialogo chiuso: ${chiuso}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
+}
+
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
 // della v3.8.1 nel pezzo della tastiera).
 async function selettore(page) {
@@ -733,6 +762,7 @@ async function uat(page, apri) {
     await campanella(page, true);
     await sopraIlPannello(page);
     await percorso(page);
+    await dialogoDalPiu(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);

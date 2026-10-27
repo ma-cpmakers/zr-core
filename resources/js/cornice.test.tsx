@@ -8580,7 +8580,7 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
         expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 
-    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo', async () => {
+    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo: lo dà al dialogo, e quando il dialogo se ne va torna al «+»', async () => {
         const velo = document.createElement('div');
         velo.className = 'zr-scrim';
         velo.innerHTML = '<div class="zr-dialog" role="dialog"><button type="button">Nel dialogo</button></div>';
@@ -8590,7 +8590,46 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
 
         expect(uno('.zr-menu')).toBeNull();
         expect(document.activeElement).not.toBe(piu());
-        velo.remove();
+        expect(document.activeElement).toBe(velo.firstElementChild);
+
+        await act(async () => {
+            velo.remove();
+            await prossimoGiro();
+        });
+
+        expect(document.activeElement).toBe(piu());
+    });
+
+    // Voce #2822 (Decisione 18962): un dialogo che la voce apre si ricorda chi aveva il fuoco quando si è aperto, e alla chiusura
+    // glielo rende (il `<dialog>` del browser lo fa da sé). Era la voce, uscita col menu: chiuso il dialogo il fuoco andava alla
+    // pagina. Va al «+» prima che la voce faccia la sua parte, con la tastiera e col mouse.
+    it.each([['col tasto Invio', 'Enter'], ['col mouse', '']])('scelta una voce %s, quando la voce fa la sua parte il fuoco è già sul «+», e ci resta', async (_come, key) => {
+        let loAveva: Element | null = null;
+        await laCornice([{ label: 'Nuova board', onClick: () => { loAveva = document.activeElement; } }]);
+
+        await (key ? scegli(voce('Nuova board'), key) : clic(voce('Nuova board')));
+
+        expect(loAveva).toBe(piu());
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(piu());
+    });
+
+    it('una voce di un menu della pagina dentro la cornice, scelta col «+» aperto, non manda il fuoco al «+»: il rimedio è del solo menu del «+» (revisione dello sprint 81, R3)', async () => {
+        await mostra(
+            <Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Nuova board' }]}>
+                <div className="zr-menu" role="menu"><button type="button" role="menuitem" id="della-pagina">Della pagina</button></div>
+            </Cornice>,
+        );
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(piu());
+        expect(piu().getAttribute('aria-expanded')).toBe('true');
+
+        await scegli(uno('#della-pagina'), 'Enter');
+
+        expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 });
 
@@ -10323,6 +10362,7 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
 
         expect([uno('.zr-product-switch')?.getAttribute('aria-expanded'), aperti()[2], document.activeElement]).toStrictEqual(['false', 'true', uno('.zr-product-switch')]);
     });
+
 });
 
 // Sprint 78 · T4 (voce 2804): col Tab fuori dal menu del profilo, dal menu «+» o dal pannello delle notifiche restavano aperti

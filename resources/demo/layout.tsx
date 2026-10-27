@@ -121,6 +121,7 @@ function Lunga({ visita }: Props) {
     const contatori = useContatori();
     const [conteggio, setConteggio] = useState(0);
     const [senzaMargine, setSenzaMargine] = useState(false);
+    const [dialogo, setDialogo] = useState(false);
     // Un clic si segna nel DOM, non nello stato: segnarlo non fa rendere la pagina, e «render» conta solo i clic su «conta».
     const ultimoClic = useRef<HTMLOutputElement>(null);
     const segna = (testo: string) => {
@@ -134,7 +135,7 @@ function Lunga({ visita }: Props) {
         nav: vociDellaLunga,
         active: 'risorse',
         onNavigate: (id) => segna(`UAT voce «${id}» col conteggio ${conteggio}`),
-        create: [{ label: 'UAT Board', icon: 'board', onClick: () => segna(`UAT «+» UAT Board col conteggio ${conteggio}`) }, { label: 'UAT Elenco' }, { label: 'UAT Cartella' }],
+        create: [{ label: 'UAT Board', icon: 'board', onClick: () => segna(`UAT «+» UAT Board col conteggio ${conteggio}`) }, { label: 'UAT Elenco' }, { label: 'UAT Cartella', onClick: () => setDialogo(true) }],
         actions: <Zeiras.Button variant="secondary" size="sm" onClick={() => segna(`UAT azione col conteggio ${conteggio}`)}>UAT azione</Zeiras.Button>,
         flush: senzaMargine,
     });
@@ -153,9 +154,35 @@ function Lunga({ visita }: Props) {
             </p>
             <p>UAT ultimo clic: <output data-uat="ultimo-clic" ref={ultimoClic} /></p>
             <Collegamenti />
+            <DialogoDelModulo aperto={dialogo} onChiudi={() => setDialogo(false)} />
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
         </>
+    );
+}
+
+/**
+ * Un dialogo come quelli dei moduli che il «+» apre (il «Nuova board» di zr-board): il `<dialog>` del browser, aperto con
+ * `showModal` dopo il clic, col fuoco al campo. Alla chiusura il browser rende il fuoco a chi lo aveva quando si è aperto: la voce
+ * del «+», che però è uscita col menu; il rimedio della cornice gli lascia il «+».
+ */
+function DialogoDelModulo({ aperto, onChiudi }: { aperto: boolean; onChiudi: () => void }) {
+    const ref = useRef<HTMLDialogElement>(null);
+
+    useEffect(() => {
+        const dialogo = ref.current;
+        if (aperto && dialogo && !dialogo.open) {
+            dialogo.showModal();
+            dialogo.querySelector('input')?.focus();
+        } else if (!aperto && dialogo?.open) {
+            dialogo.close();
+        }
+    }, [aperto]);
+
+    return (
+        <dialog ref={ref} aria-label="UAT Cartella" data-uat="dialogo" onCancel={(evento) => { evento.preventDefault(); onChiudi(); }}>
+            <label>UAT nome <input /></label>
+        </dialog>
     );
 }
 

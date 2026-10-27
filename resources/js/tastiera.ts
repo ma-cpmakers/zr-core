@@ -247,32 +247,34 @@ function fuoriDalSelettore(uscita: FocusEvent): void {
 }
 
 /**
- * Scelta una voce del menu «+» con Invio o con lo spazio, il menu esce dal documento con dentro l'elemento attivo e il fuoco
- * restava alla pagina: torna al «+», come dopo Esc (riga 11 delle richieste al design system). Se la voce dà il fuoco a un
- * altro elemento non si toglie, e con un dialogo aperto — la voce lo ha aperto — non va al «+» dietro il velo. Il menu è quello
- * che il «+» della cornice tiene aperto. Nel pezzo dei rimedi fino alla v3.8.1, che ha fatto posto lì alle voci «Presto»: se la
- * scelta è il primo tasto, che chiede il pezzo, o se il pezzo non arriva, il fuoco resta alla pagina com'era. Se la voce apre il
- * dialogo più tardi (dopo una richiesta, o un dialogo a richiesta) il fuoco va al «+» prima: il README lo dice. Provvisorio,
- * finché il `Menu` non lo fa da sé.
+ * Scelta una voce del menu «+», con la tastiera o col mouse, il menu esce dal documento con dentro l'elemento attivo e il fuoco
+ * restava alla pagina; un dialogo che la voce apre si ricorda chi aveva il fuoco quando si è aperto — la voce, già uscita, o la
+ * pagina — e alla chiusura non lo rendeva a nessuno (#2822). Il fuoco va al «+» prima che la voce faccia la sua parte, come
+ * dopo Esc (riga 11 delle richieste al design system), e il dialogo lo rende a lui. Se la voce lo dà a un altro elemento non si
+ * toglie. Il menu è quello che il «+» della cornice tiene aperto, accanto a lui nella barra: una voce di un menu della pagina
+ * non conta. Il pezzo arriva al primo tasto: una scelta fatta prima, col mouse o col tasto che lo chiede, o senza il pezzo,
+ * lascia il fuoco com'era. Provvisorio, finché il `Menu` non lo fa da sé.
  */
-let dalPiu: [menu: Element, piu: HTMLElement] | undefined;
-
-function sceltaDalPiu(tasto: KeyboardEvent): void {
-    const voce = tasto.target as Element;
+function sceltaDalPiu(clic: MouseEvent): void {
     const piu = document.querySelector<HTMLElement>('.zr-shell .zr-create[aria-expanded="true"]');
 
-    if ((tasto.key === 'Enter' || tasto.key === ' ') && piu && voce.matches?.('.zr-shell .zr-menu > [role="menuitem"]')) {
-        dalPiu = [voce.parentElement!, piu];
+    if (piu && (clic.target as Element).closest?.('.zr-shell .zr-side > .zr-menu > [role="menuitem"]')) {
+        piu.focus();
     }
 }
 
-/** Uscito il menu del «+» scelto con la tastiera, il fuoco che non è di nessuno torna al «+». */
+/**
+ * Il «+» col fuoco dietro il velo di un `Dialog` — una voce lo ha aperto senza dargli il fuoco — non resta lì, dove Invio lo
+ * premerebbe: il fuoco va al dialogo, e torna al «+» quando il dialogo se ne va.
+ */
 function fuocoAlPiu(): void {
-    if (dalPiu && !dalPiu[0].isConnected) {
-        if (document.activeElement === document.body && !document.querySelector(DIALOGO_APERTO)) {
-            dalPiu[1].focus();
-        }
-        dalPiu = undefined;
+    const dialogo = document.querySelector<HTMLElement>(DIALOGO_APERTO);
+    const piu = document.activeElement;
+
+    if (dialogo && piu?.matches('.zr-shell .zr-create')) {
+        preso = [dialogo, piu];
+        dialogo.tabIndex = -1;
+        dialogo.focus();
     }
 }
 
@@ -307,7 +309,7 @@ function apertoIlCassetto(clic: MouseEvent): void {
 }
 
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, attivaInVista, sceltaDalPiu, tabNelCassetto];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, attivaInVista, tabNelCassetto];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
@@ -335,4 +337,5 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
 document.addEventListener('keydown', escNellaBarra, true);
 document.addEventListener('click', apertoIlCassetto);
+document.addEventListener('click', sceltaDalPiu, true);
 document.addEventListener('focusout', fuoriDalSelettore);
